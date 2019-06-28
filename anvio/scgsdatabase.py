@@ -117,8 +117,6 @@ class scgsdatabase():
                 pathblast=os.path.join(outpath,name)
                 if not os.path.exists(path_diamondb):
                     os.mkdir(path_diamondb)
-                    #pathdb=self.diamonddb(pathdb,pathgenes)
-                    #self.diamondblast(pathdb,pathblast)
 
 
                 if not os.path.exists(outpath):
@@ -126,8 +124,8 @@ class scgsdatabase():
                     outpath=os.path.join(self.outputdirectory, "diamondblast")
 
 
-                #sequencetoblast=self.refundgenes(pathgenes,pathrefundgenes,pathdb)
-                #self.diamonddb_stdin(sequencetoblast,pathrefundgenes)
+                sequencetoblast=self.refundgenes(pathgenes,pathrefundgenes,pathdb)
+                self.diamonddb_stdin(sequencetoblast,pathrefundgenes)
                 if not os.path.exists(pathrefundgenes):
                     continue
                 diamond_output=self.diamondblast_stdou(self.hmms,pathrefundgenes)
@@ -138,9 +136,8 @@ class scgsdatabase():
                     os.remove(pathrefundgenes+'.dmnd')
                     continue
 
-                #self.trie_blast(diamond_output,dictionnary_corres)
                 hmm_gene=str(diamond_output).split('\n')[0].split('\t')[0]
-                #hmm_gene, bacgene=self.make_dictionnary__correspondance(diamond_output)
+                hmm_gene, bacgene=self.make_dictionnary__correspondance(diamond_output)
                 if hmm_gene not in dictionnary_corres:
                     dictionnary_corres[hmm_gene]=[name]
 

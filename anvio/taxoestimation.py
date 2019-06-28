@@ -209,7 +209,7 @@ class SCGTaxonomy:
                                   show_list_position_ribosomal)
 
     @timer
-    def get_hmm_sequences_dict_into_type(self, hmm_sequences_dict):
+    def get_hmm_sequences_dict_into_type_multi(self, hmm_sequences_dict):
         hmm_sequences_dict_per_type = {}
 
         for entry_id in hmm_sequences_dict:
@@ -219,6 +219,25 @@ class SCGTaxonomy:
                 name = entry['bin_id']
             else:"""
             name = entry['gene_name']
+
+            if name in hmm_sequences_dict_per_type:
+                hmm_sequences_dict_per_type[name][entry_id] = entry
+            else:
+                hmm_sequences_dict_per_type[name] = {entry_id: entry}
+
+        return hmm_sequences_dict_per_type
+
+    @timer
+    def get_hmm_sequences_dict_into_type(self, hmm_sequences_dict):
+        hmm_sequences_dict_per_type = {}
+
+        for entry_id in hmm_sequences_dict:
+            entry = hmm_sequences_dict[entry_id]
+
+            if self.profile_db:
+                name = entry['bin_id']
+            else:
+                name = entry['gene_name']
 
             if name in hmm_sequences_dict_per_type:
                 hmm_sequences_dict_per_type[name][entry_id] = entry
@@ -262,7 +281,7 @@ class SCGTaxonomy:
                 end_get_raw_blast_hits = time.perf_counter()
                 print("\n time predict_from_SCGs_dict for a bin : ",
                       end_get_raw_blast_hits - start_get_raw_blast_hits)
-                continue
+
 
                 if not hits:
                     j += 1
@@ -273,6 +292,11 @@ class SCGTaxonomy:
                     hit['taxonomy'] = self.taxonomy_dict[hit['accession']]
 
                 hits_per_gene[gene_name] = hits
+
+
+                #print(hits_per_gene)
+
+
 
                 if anvio.DEBUG:
                     self.show_hits(name, gene_name, hits)
@@ -287,6 +311,7 @@ class SCGTaxonomy:
                 self.run.info(name, "diamond didn't return any match \n")
                 continue
             if self.profile_db:
+
                 taxonomy = self.get_consensus_taxonomy(
                     hits_per_gene, name, hmm_sequences_dict_per_type)
 
@@ -300,53 +325,76 @@ class SCGTaxonomy:
         self.init()
 
         # split hmm_sequences_dict
-        hmm_sequences_dict_per_type = self.get_hmm_sequences_dict_into_type(
+        hmm_sequences_dict_per_type = self.get_hmm_sequences_dict_into_type_multi(
             hmm_sequences_dict)
         j=0
-        for name in hmm_sequences_dict_per_type:
+        hits_per_gene = {}
+        for SCG in hmm_sequences_dict_per_type:
             start_predict_from_SCGs_dict = time.perf_counter()
-            hits_per_gene = {}
 
-            self.run.info('SCGs', name)
-            self.run.info('Num SCGs', len(hmm_sequences_dict_per_type[name]))
+
+            self.run.info('SCGs', SCG)
+            self.run.info('Num sequence', len(hmm_sequences_dict_per_type[SCG]))
 
             """self.run.info('SCGs', ', '.join(
-                [e['gene_name'] for e in hmm_sequences_dict_per_type[name].values()]))"""
+                [e['gene_SCG'] for e in hmm_sequences_dict_per_type[SCG].values()]))"""
 
             start_get_raw_blast_hits = time.perf_counter()
 
-            hmm_sequences_dict_per_type[name] = self.get_raw_blast_hits_multi(hmm_sequences_dict_per_type[name])
+            hmm_sequences_dict_per_type[SCG] = self.get_raw_blast_hits_multi(hmm_sequences_dict_per_type[SCG])
 
             end_get_raw_blast_hits = time.perf_counter()
             print("\n time predict_from_SCGs_dict for a bin : ",
                   end_get_raw_blast_hits - start_get_raw_blast_hits)
 
-            continue
-            # replace accessions with taxonomy
-            for hit in hmm_sequences_dict_per_type[name]['hits']:
-                hit['taxonomy'] = self.taxonomy_dict[hit['accession']]
 
-            ###
-            hits_per_gene[gene_name] = hmm_sequences_dict_per_type[name]['hits']
+            #print(hmm_sequences_dict_per_type,"hmm_sequences_dict_per_type")
+            """print(SCG, Bacteria_id)
+            print(hmm_sequences_dict_per_type[SCG][Bacteria_id])
+            print(hmm_sequences_dict_per_type[SCG][Bacteria_id]['hits'])
+            print(hits_per_gene[hmm_sequences_dict_per_type[SCG][Bacteria_id]['bin_id']][SCG])"""
+            for query in hmm_sequences_dict_per_type[SCG].values():
+                if query['bin_id'] not in hits_per_gene:
+                    hits_per_gene[query['bin_id']]={}
+                if SCG not in hits_per_gene[query['bin_id']]:
+                    hits_per_gene[query['bin_id']][SCG]=[]
+                if len(query['hits']):
+                    hits_per_gene[query['bin_id']][SCG] = query['hits']
+                else:
+                    hits_per_gene[query['bin_id']][SCG] = hits_per_gene[query['bin_id']][SCG] + query['hits']
+
+
+
+
+                """if hmm_sequences_dict_per_type[SCG][Bacteria_id]['bin_id'] not in hits_per_gene:
+                    hits_per_gene[hmm_sequences_dict_per_type[SCG][Bacteria_id]['bin_id']]={}
+                if SCG not in hits_per_gene[hmm_sequences_dict_per_type[SCG][Bacteria_id]['bin_id']]:
+                    hits_per_gene[hmm_sequences_dict_per_type[SCG][Bacteria_id]['bin_id']][SCG]=[]
+                if Bacteria_id in hmm_sequences_dict_per_type[SCG][Bacteria_id] and len(hmm_sequences_dict_per_type[SCG][Bacteria_id]['hits']):
+                    hits_per_gene[hmm_sequences_dict_per_type[SCG][Bacteria_id]['bin_id']][SCG] = hmm_sequences_dict_per_type[SCG][Bacteria_id]['hits']
+                else:
+                    hits_per_gene[hmm_sequences_"dict_per_type[SCG][Bacteria_id]['bin_id']][SCG] = hits_per_gene[hmm_sequences_dict_per_type[SCG][Bacteria_id]['bin_id']][SCG] + hmm_sequences_dict_per_type[SCG][Bacteria_id]['hits']"""
 
             if anvio.DEBUG:
-                self.show_hits(name, gene_name, hmm_sequences_dict_per_type[name]['hits'])
+                self.show_hits(SCG, gene_name, hmm_sequences_dict_per_type[SCG]['hits'])
 
+        for name, SCGs_hit_per_gene in hits_per_gene.items():
+            self.run.info('Taxo for ', name)
             taxonomy = self.get_consensus_taxonomy(
-                hits_per_gene, name, hmm_sequences_dict_per_type)
-            entry['taxonomy'] = taxonomy
-                # print(entry)
+                SCGs_hit_per_gene, name, hmm_sequences_dict_per_type)
+            hmm_sequences_dict_per_type[SCG]['taxonomy'] = taxonomy
+            # print(entry)
 
-            if j >= len(hits_per_gene):
-                self.run.info(name, "diamond didn't return any match \n")
-                continue
-            if self.profile_db:
-                taxonomy = self.get_consensus_taxonomy(
-                    hits_per_gene, name, hmm_sequences_dict_per_type)
+        """if j >= len(hits_per_gene):
+            self.run.info(name, "diamond didn't return any match \n")
+            continue
+        if self.profile_db:
+            taxonomy = self.get_consensus_taxonomy(
+                hits_per_gene, name, hmm_sequences_dict_per_type)"""
 
-                end_predict_from_SCGs_dict = time.perf_counter()
-                print("\n time predict_from_SCGs_dict for a bin : ",
-                      end_predict_from_SCGs_dict - start_predict_from_SCGs_dict)
+        end_predict_from_SCGs_dict = time.perf_counter()
+        print("\n time predict_from_SCGs_dict for a bin : ",
+              end_predict_from_SCGs_dict - start_predict_from_SCGs_dict)
 
 
 
@@ -373,7 +421,7 @@ class SCGTaxonomy:
             diamond.max_target_seqs = max_target_seqs
             diamond.evalue = evalue
             diamond.min_pct_id = min_pct_id
-            diamond.num_threads=self.num_threads
+            diamond.num_threads = self.num_threads
 
             diamond_output = diamond.blastp_stdin(sequence)
 
@@ -408,10 +456,11 @@ class SCGTaxonomy:
             entry['hits']=[]
 
         db_path = self.SCG_DB_PATH(entry['gene_name'])
-        diamond = Diamond(db_path)
-        diamond.max_target_seqs = 999
+        diamond = Diamond(db_path,run=run_quiet, progress= progress_quiet)
+        diamond.max_target_seqs = max_target_seqs
         diamond.evalue = evalue
         diamond.min_pct_id = min_pct_id
+        diamond.num_threads = self.num_threads
 
         diamond_output = diamond.blastp_stdin_multi(sequence)
 
@@ -423,6 +472,7 @@ class SCGTaxonomy:
             # dict(zip(['accession', 'pident', 'length', 'mismatch', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore'], [float(entry[i]) if i > 1 else entry[i] for i in range(1, 12)]))
             hit=dict(zip(['accession', 'pident', 'bitscore'], [
                        float(entry[i]) if i > 1 else entry[i] for i in [1, 2, 11]]))
+            hit['taxonomy']=self.taxonomy_dict[entry[1]]
             d[entry[0]]['hits']=d[entry[0]]['hits']+[hit]
 
         return d
@@ -760,8 +810,10 @@ class SCGTaxonomy:
         return matrixlist_position_entry, matrix
 
     def assign_taxonomie_solo_hit(self, taxonomy):
-        # print(taxonomy)
+        if not taxonomy or not taxonomy[0]:
+            return 0
         assignation = taxonomy[0]
+
         for s in taxonomy[1:]:
             for key in s:
                 if s[key] not in assignation.values():
