@@ -244,6 +244,15 @@ check_sample_data_file <- function(opts) {
     }
 }
 
+check_snv_data_file <- function(opts) {
+    ## Check the SNV file exists if it is given.
+    if (!is.null(opts$snv_data) && !file.exists(opts$snv_data)) {
+        abort(paste0("SNV data file '",
+                     opts$snv_data,
+                     "' does not exist!"))
+    }
+}
+
 ## Check that double type options are actually doubles.
 check_typeof_double_opts <- function(opts) {
     double_type_opts <- c("whole_chart_width",
@@ -328,6 +337,7 @@ check_opts <- function(opts) {
     check_required_args(opts)
     check_infile(opts)
     check_outfile(opts)
+    check_snv_data_file(opts)
     check_sample_data_file(opts)
     check_typeof_double_opts(opts)
     check_size_opts(opts)
@@ -479,6 +489,53 @@ parse_sample_data <- function(opts) {
     sample_data
 }
 
+## functions to parse SNV data ##
+
+## Certain colnames are required.  This function validates presence
+## of those.
+check_snv_data_header <- function(snv_data) {
+    required_colnames <- c(
+        "contig_name",
+        "sample_id",
+        "pos_in_contig",
+        "departure_from_reference",
+        "competing_nts"
+    )
+
+    if (any(required_colnames %nin% colnames(snv_data))) {
+        abort("bad header row in snv data file.  Required colnames include: %s",
+              paste(required_colnames, collapse = TRUE))
+    }
+}
+
+check_snv_proportions <- function(vals) {
+    ## Divergence from ref must be between 0 and 1.
+    if (any(vals < 0 || vals > 1)) {
+        abort("bad departure_from_reference values.  Should be between 0 and 1.")
+    }
+
+    ## Divergence from ref must be present for all rows.
+    if (any(is.na(vals))) {
+        abort("missing values in departure_from_reference_column")
+    }
+}
+
+parse_snv_data <- function(opts) {
+    if (is.null(opts$snv_data)) {
+        snv_data <- NULL
+    } else {
+        snv_data <- read.table(opts$snv_data,
+                               header = TRUE,
+                               sep = "\t",
+                               comment.char = "")
+
+        check_snv_data_header(snv_data)
+        ## You could change the input depending on the input.
+        check_snv_proportions(snv_data$departure_from_reference)
+    }
+
+    snv_data
+}
 
 check_sample_names <- function(sample_data, sample_names) {
     ## Make sure all sample names in additional data are present
@@ -527,10 +584,48 @@ add_sample_data <- function(split_coverages, sample_data) {
           all.x = TRUE)
 }
 
+## Contigs are offset by the length of all preceding contigs.
+get_contig_offsets <- function(split_coverages) {
+    contig_length <- function(names, split_coverages) {
+        nrow(subset(split_coverages, split_name %in% names))
+    }
+
+    contigs <- levels(split_coverages$split_name)
+
+    ## Contigs will be sorted in the proper factor order.
+    contig_offsets <- lapply(seq_along(contigs), function(idx) {
+        ifelse(idx == 1,
+               0,
+               ## sum up all the preceding contig lengths
+               contig_length(contigs[1:(idx - 1)], split_coverages))
+    })
+
+    names(contig_offsets) <- contigs
+
+    contig_offsets
+}
+
+## Return a vec of offset snv positions.  These will match up with the
+## `x_values` of the split_coverages data.
+get_offset_snv_positions <- function(snv_data, contig_offsets) {
+    contig_names <- snv_data$contig_name
+    snv_posns <- snv_data$pos_in_contig
+
+    sapply(seq_along(contig_names), function(idx) {
+        this_name <- contig_names[[idx]]
+        this_pos <- snv_posns[[idx]]
+
+        this_offset <- contig_offsets[[this_name]]
+
+        this_pos + this_offset
+    })
+}
+
 ## This function is called in the main part of the script.
 parse_input_data <- function(opts) {
     split_coverages <- parse_split_coverages(opts)
     sample_data <- parse_sample_data(opts)
+    snv_data <- parse_snv_data(opts)
 
     ## If sample_data file is given, we need to adjust the split
     ## coverages data frame.
@@ -550,6 +645,33 @@ parse_input_data <- function(opts) {
                      length(unique(split_coverages$sample_name)))
     }
 
+    if (!is.null(snv_data)) {
+        ## Check that contig names in the snv data match those in the
+        ## split coverages.  TODO contigs can be split and have names
+        ## like _split_00001.  The SNV data reports SNVs on contigs as
+        ## a whole, so you need to calculate offset for each split of
+        ## each contig.
+        if (any(levels(snv_data$contig_name) %nin%
+                levels(split_coverages$split_name))) {
+            abort("Some contig names in the SNV data file are not present in the split coverages file.  Do the names in the split coverages file end with '_split_00001' or something similar?")
+        }
+
+        ## We need to order the snv data in the same contig order as the
+        ## split_coverages.  Then need to convert the pos_in_contig column
+        ## of the snv_data so that it matches the x_values in the
+        ## split_coverages file.  To do this we need to calculate offsets
+        ## for each of the contigs.  The first one would have no offset,
+        ## the 2nd would have to take into account the legth of the first
+        ## offset.  Etc.
+
+        contig_offsets <- get_contig_offsets(split_coverages)
+
+        snv_data$x_values <- get_offset_snv_positions(
+            snv_data,
+            contig_offsets
+        )
+    }
+
     list(split_coverages = split_coverages,
          sample_data = sample_data,
          ## Take sample names here in case any samples were removed
@@ -561,6 +683,8 @@ parse_input_data <- function(opts) {
 
 
 #### Plotting functions ####
+
+## NEXT STEP: add the SNV data to the plots.
 
 area_plot <- function(dat, opts) {
     ## Set up the coverage chart.
@@ -650,6 +774,10 @@ set_up_opts <- function() {
                     action = "store",
                     type = "character",
                     help = "Path to additional data file"),
+        make_option(opt_str = c("--snv-data"),
+                    action = "store",
+                    type = "character",
+                    help = "Path to SNV data file (output of anvi-gen-variability-profile"),
 
         ## Outfile options
         make_option(opt_str = c("-o", "--outfile"),
