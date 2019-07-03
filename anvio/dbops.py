@@ -14,6 +14,8 @@ import random
 import argparse
 import textwrap
 import multiprocessing
+import itertools
+import scipy.stats
 
 from io import StringIO
 from collections import Counter
@@ -43,7 +45,8 @@ from anvio.tables.ntpositions import TableForNtPositions
 from anvio.tables.miscdata import TableForItemAdditionalData
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
-from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
+# TODO: REMOVE EXTRA IMPORT AND THIS LINE
+from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages, TableForInseqGeneLevelCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
 
@@ -131,7 +134,7 @@ class ContigsSuperclass(object):
 
         if not self.contigs_db_path:
             raise ConfigError("Someone (hopefully, you) is trying to initialize the Contigs Super Class without a contigs database path.\
-                               There are many ways this can happen, but .. do you think you were trying to run anvi-interactive in\
+                               There are many ways this can happen, but .. do you think you were trying to run tive in\
                                manual mode but without a --manual flag right before this? Just a gut feeling... No? Maybe you created\
                                an instance of the profile superclass without a `contigs_db` argument in the namespace? No? Well, then we \
                                may be in a really big trouble. Please run what you did before seeing this again with a `--debug` flag,\
@@ -2151,16 +2154,18 @@ class ProfileSuperclass(object):
             >>> p = ProfileSuperClass(args)
 
 
-        The best practice is to set anvi'o programs to put together `args` objectd with these variables.
+        The best practice is to set anvi'o programs to put together `args` objects with these variables.
        """
 
     def __init__(self, args, r=run, p=progress):
+        # TODO: MOVE THIS TO PROPER PLACE
+        self.inseq_stats = args.inseq_stats
         self.args = args
         self.run = r
         self.progress = p
 
         # these are initialized by the member function `init_gene_level_coverage_stats_dicts`. but you knew
-        # that already becasue you are a smart ass.
+        # that already because you are a smart ass.
         self.gene_level_coverage_stats_dict = {}
         self.split_coverage_values_per_nt_dict = {}
 
@@ -2367,8 +2372,13 @@ class ProfileSuperclass(object):
 
 
     def store_gene_level_coverage_stats_into_genes_db(self, parameters):
-        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, run=self.run)
-        table_for_gene_level_coverages.store(self.gene_level_coverage_stats_dict)
+        # TODO: MAYBE THIS ISNT THE RIGHT WAY TO DO THIS
+        if self.inseq_stats:
+            table_for_inseq_level_coverages = TableForInseqGeneLevelCoverages(self.genes_db_path, parameters, run=self.run)
+            table_for_inseq_level_coverages.store(self.gene_level_coverage_stats_dict)
+        else:
+            table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, run=self.run)
+            table_for_gene_level_coverages.store(self.gene_level_coverage_stats_dict)
 
 
     def init_gene_level_coverage_stats_from_genes_db(self, parameters):
@@ -2376,8 +2386,13 @@ class ProfileSuperclass(object):
             raise ConfigError("The function `get_gene_level_coverage_stats_dicts_for_a_bin` can only be called from an instance\
                                of the profile super class that is initalized with a collection name and a single bin.")
 
-        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, split_names=self.split_names_of_interest, run=self.run)
-        self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
+            # TODO: Fix this with Meren
+            if self.inseq_stats:
+                table_for_gene_level_coverages = TableForInseqGeneLevelCoverages(self.genes_db_path, parameters,split_names=self.split_names_of_interest,run=self.run)
+                self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
+            else:
+                table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters,split_names=self.split_names_of_interest,run=self.run)
+                self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
 
 
     def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, zeros_are_outliers=False, callback=None, callback_interval=100, init_split_coverage_values_per_nt=False):
@@ -2505,6 +2520,159 @@ class ProfileSuperclass(object):
 
         self.progress.end()
 
+    def get_gene_level_coverage_stats_entry_for_default(self, gene_callers_id, split_coverage, sample_name, gene_start,
+        gene_stop, gene_length, outliers_threshold=1.5):
+        # and recover the gene coverage array per position for a given sample:
+
+        gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
+
+        mean_coverage = numpy.mean(gene_coverage_values_per_nt)
+        detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
+
+         # findout outlier positions, and get non-outliers
+        outliers_bool = get_list_of_outliers(gene_coverage_values_per_nt, outliers_threshold)
+        non_outlier_positions = numpy.invert(outliers_bool)
+        non_outliers = gene_coverage_values_per_nt[non_outlier_positions]
+
+
+        if not (len(non_outliers)):
+            non_outlier_mean_coverage = 0.0
+            non_outlier_coverage_std = 0.0
+        else:
+            non_outlier_mean_coverage = numpy.mean(non_outliers)
+            non_outlier_coverage_std = numpy.std(non_outliers)
+
+        return {'gene_callers_id': gene_callers_id,
+                'sample_name': sample_name,
+                'mean_coverage': mean_coverage,
+                'detection': detection,
+                'non_outlier_mean_coverage': non_outlier_mean_coverage,
+                'non_outlier_coverage_std': non_outlier_coverage_std,
+                'gene_coverage_values_per_nt': gene_coverage_values_per_nt,
+                'non_outlier_positions': non_outlier_positions}
+
+
+
+    def get_gene_level_coverage_stats_entry_for_inseq(self, gene_callers_id, split_coverage, sample_name, gene_start,
+        gene_stop, gene_length, outliers_threshold=1.5):
+
+        #Find total reads mapped
+        total_reads_counts = \
+        [int(reads) for (sample, reads) in zip(self.p_meta["samples"], self.p_meta["total_reads_mapped"].split(",")) if
+         sample == sample_name][0]
+
+        # INSeq views
+        gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
+
+        mean_coverage = 0
+        three_primeness = numpy.array([])
+        average_disruption = 0
+        detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
+        total_gene_count = 0
+        total_gene_count_normalized = 0
+        mean_three_prime = 0
+        below_9, over_9 = 0, 0
+
+        # Remove zero values
+        insertion_splits_nonzero = [numpy.array(list(g)) for k, g in itertools.groupby(gene_coverage_values_per_nt, lambda x: x != 0) if k]
+
+        overall_splits_counts = numpy.array([])
+        if insertion_splits_nonzero:
+            for split in insertion_splits_nonzero:
+                print(split)
+                # Predict TA sites
+                ta_sites_values = []
+
+                # TODO: Turn recursive function into a while loop
+                copy_split = numpy.copy(split)
+                while (copy_split.size != 0):
+                    max_v = max(split)
+                    predict_ta = [value for value in split if value in (max_v, max_v - 1)]
+                    if len(predict_ta) == 2:
+                        ta_sites_values.append(predict_ta)
+                    copy_split = numpy.array([i for i in split if not i in (max_v, max_v - 1)])
+
+                # Find ta locations using predicted ta indexes
+                ta_locations_list = list()
+                for ta in ta_sites_values:
+                    if ta[0] != ta[1]:
+                        index_left_ta,  index_right_ta = numpy.where(split == ta[0])[0][0], numpy.where(split == ta[1])[0][0]
+                    else:
+                        index_left_ta, index_right_ta = numpy.where(split == ta[0])[0][0], numpy.where(split == ta[0])[0][0] + 1
+                    ta_locations_list.append({"l": index_left_ta, "r": index_right_ta, "l_value": ta[0], "r_value": ta[1], '3-primeness': None, 'count': 0})
+
+
+                if ta_sites_values:
+                    checked = []
+                    three_p = []
+                    for i, ta_dict in enumerate(ta_locations_list):
+                        # 3' primeness
+                        if not ta_dict['l_value'] in checked:
+                            left_prime_index = numpy.where(gene_coverage_values_per_nt == ta_dict['l_value'])[0][0]
+                            t_prime = (left_prime_index + 2)/gene_length
+                            checked.append(ta_dict['l_value'])
+
+
+                        # Count math
+                        count = (ta_dict['l_value'] + ta_dict['r_value']) / 2
+                        if count < 3:
+                            count = 0
+                        overall_splits_counts = numpy.append(overall_splits_counts, count)
+                        ta_dict['count'] = count
+
+                        # Average disruption
+                        three_p.append({'3-primeness': t_prime, 'count': count})
+
+                        # CPM math
+                        total_gene_count = sum(overall_splits_counts)
+                        total_gene_count_normalized = (total_gene_count * 10e6) / total_reads_counts
+                        mean_coverage = numpy.mean(overall_splits_counts)
+                        # Disruption in gene math
+                        below_9, over_9 = 0, 0
+                        mean_three_prime = numpy.array([])
+
+                        for t in three_p:
+                            mean_three_prime = numpy.append(mean_three_prime, t["3-primeness"])
+                            t["proportion_three_prime"] = t['count'] / total_gene_count
+                            if t["3-primeness"] >= 0.9:
+                                over_9 += t["proportion_three_prime"]
+                            if t["3-primeness"] < 0.9:
+                                below_9 += t["proportion_three_prime"]
+
+                        mean_three_prime = numpy.mean(mean_three_prime)
+                else:
+                    overall_splits_counts = numpy.append(overall_splits_counts, numpy.mean(split))
+
+                # Check minimum counts
+                if mean_coverage < 3:
+                    mean_coverage = 0
+
+                # # findout outlier positions, and get non-outliers
+                #outliers_bool = get_list_of_outliers(split, outliers_threshold)
+                # non_outlier_positions = numpy.invert(outliers_bool)
+                # non_outliers = split[non_outlier_positions]
+                #
+                # if not (len(non_outliers)):
+                #     non_outlier_mean_coverage = 0.0
+                #     non_outlier_coverage_std = 0.0
+                # else:
+                #     non_outlier_mean_coverage = numpy.mean(non_outliers)
+                #     non_outlier_coverage_std = numpy.std(non_outliers)
+
+
+        results = {'gene_callers_id': gene_callers_id,
+                    'sample_name': sample_name,
+                    'gene_coverage_values_per_nt': list(gene_coverage_values_per_nt),
+                    'mean_coverage': float(mean_coverage),
+                    'insertions': total_gene_count,
+                    'insertions_count_normalized': total_gene_count_normalized,
+                    'detection': detection,
+                   'mean_disruption': mean_three_prime,
+                   'disruption_below_0.9': below_9,
+                    }
+
+
+        return results
 
     def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5,
                                       zeros_are_outliers=False, gene_caller_ids_of_interest=set([])):
@@ -2552,32 +2720,22 @@ class ProfileSuperclass(object):
 
             # the magic happens here:
             for sample_name in self.p_meta['samples']:
-                # and recover the gene coverage array per position for a given sample:
-                gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
-
-                mean_coverage = numpy.mean(gene_coverage_values_per_nt)
-                detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
-
-                # findout outlier psitions, and get non-outliers
-                outliers_bool = get_list_of_outliers(gene_coverage_values_per_nt, outliers_threshold)
-                non_outlier_positions = numpy.invert(outliers_bool)
-                non_outliers = gene_coverage_values_per_nt[non_outlier_positions]
-
-                if not(len(non_outliers)):
-                    non_outlier_mean_coverage = 0.0
-                    non_outlier_coverage_std = 0.0
+                if self.inseq_stats:
+                    output[gene_callers_id][sample_name] = self.get_gene_level_coverage_stats_entry_for_inseq(gene_callers_id=gene_callers_id,
+                        split_coverage=split_coverage,
+                        sample_name=sample_name,
+                        gene_start=gene_start,
+                        gene_stop=gene_stop,
+                        gene_length=gene_length,
+                        outliers_threshold=outliers_threshold)
                 else:
-                    non_outlier_mean_coverage = numpy.mean(non_outliers)
-                    non_outlier_coverage_std = numpy.std(non_outliers)
-
-                output[gene_callers_id][sample_name] = {'gene_callers_id': gene_callers_id,
-                                                        'sample_name': sample_name,
-                                                        'mean_coverage': mean_coverage,
-                                                        'detection': detection,
-                                                        'non_outlier_mean_coverage': non_outlier_mean_coverage,
-                                                        'non_outlier_coverage_std':  non_outlier_coverage_std,
-                                                        'gene_coverage_values_per_nt': gene_coverage_values_per_nt,
-                                                        'non_outlier_positions': non_outlier_positions}
+                    output[gene_callers_id][sample_name] = self.get_gene_level_coverage_stats_entry_for_default(gene_callers_id=gene_callers_id,
+                        split_coverage=split_coverage,
+                        sample_name=sample_name,
+                        gene_start=gene_start,
+                        gene_stop=gene_stop,
+                        gene_length=gene_length,
+                        outliers_threshold=outliers_threshold)
 
         return output
 

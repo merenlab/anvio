@@ -1049,7 +1049,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # the gene_level_coverage_stats_dict contains a mixture of data, some of which are not relevant to
         # our purpose of generating views for the interactive interface. here we explicitly list keys that
         # correspond to views we wish to generate:
-        views_of_interest = ['mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std']
+        # TODO: change back to default, here I want to write my custom views
+        if self.inseq_stats:
+            views_of_interest = ['mean_coverage', 'median_coverage', 'total_insertions', 'Three_primeness', 'd']
+        else:
+            views_of_interest = ['mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std']
 
         for view in views_of_interest:
             self.views[view] = {
@@ -1091,7 +1095,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     self.views[view]['dict'][str(gene_callers_id)] = {}
                     for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
                         self.views[view]['dict'][str(gene_callers_id)][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][view]
-
         if len(gene_caller_ids_missing_in_gene_level_cov_stats_dict):
             self.run.warning("Anvi'o observed something weird while it was processing gene level coverage statistics.\
                               Some of the gene calls stored in your contigs database (%d of them, precisely) did not\
