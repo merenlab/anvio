@@ -107,7 +107,7 @@ class Diamond:
         self.progress.end()
 
         expected_output = (output_file_path or self.target_fasta) + '.dmnd'
-        self.check_output(expected_output, 'makedb')
+        #self.check_output(expected_output, 'makedb')
 
         self.run.info('diamond makedb cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
         self.run.info('Diamond search db', expected_output)
@@ -120,7 +120,7 @@ class Diamond:
                     'blastp',
                     '-q', self.query_fasta,
                     '-d', self.target_fasta,
-                    '-a', self.search_output_path,
+                    '-o', self.tabular_output_path,
                     '-t', self.tmp_dir,
                     '-p', self.num_threads]
 
@@ -140,13 +140,12 @@ class Diamond:
         self.progress.new('DIAMOND')
         self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
 
-
         utils.run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
 
         expected_output = self.search_output_path + '.daa'
-        self.check_output(expected_output, 'blastp')
+        #self.check_output(expected_output, 'blastp')
 
         self.run.info('Diamond blastp results', expected_output)
 
@@ -179,13 +178,11 @@ class Diamond:
         new_commande_line=' '.join(str(x) for x in cmd_line)
         out_bytes, ret_code = utils.get_command_output_from_shell(new_commande_line)
         #output = utils.run_command(cmd_line, self.run.log_file_path)
-        output=out_bytes
-        print(output)
 
 
         self.progress.end()
 
-        return(output)
+        return(out_bytes)
 
 
 

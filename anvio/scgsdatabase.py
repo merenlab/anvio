@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 
 import os
@@ -41,7 +42,6 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 run_quiet = terminal.Run(verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
-
 
 
 class scgsdatabase():
@@ -125,10 +125,10 @@ class scgsdatabase():
 
 
                 sequencetoblast=self.refundgenes(pathgenes,pathrefundgenes,pathdb)
-                self.diamonddb_stdin(sequencetoblast,pathrefundgenes)
+                self.diamonddb(self.hmms)
                 if not os.path.exists(pathrefundgenes):
                     continue
-                diamond_output=self.diamondblast_stdou(self.hmms,pathrefundgenes)
+                diamond_output=self.diamondblast_stdou(pathrefundgenes,self.hmms)
                 #print(diamond_output)
                 if not diamond_output:
                     run.info("no match", gene)
@@ -299,6 +299,14 @@ class scgsdatabase():
         run.info("diamonddb_stdin", pathgene)
         diamond.makedb_stdin(sequencetoblast)
 
+    def diamonddb(self, pathgdb):
+
+        diamond = Diamond()
+        diamond.target_fasta = pathgene
+        run.info("diamonddb_stdin", pathgene)
+        diamond.makedb(pathgdb)
+
+
     def diamondblast_stdin(self,sequencetoblast, pathgene):
 
         diamond = Diamond()
@@ -324,7 +332,6 @@ class scgsdatabase():
 
 
     def refundgenes(self,pathgenes,pathrefundgenes,path_diamondb):
-        print(pathgenes)
         fasta=u.ReadFasta(pathgenes)
         i=0
         sequencetoblast=""
@@ -332,8 +339,6 @@ class scgsdatabase():
             if fasta.sequences[i].count('-') < len(fasta.sequences[i])*0.5:
                 sequencetoblast=sequencetoblast+">"+fasta.ids[i]+"\n"+fasta.sequences[i]+"\n"
             i+=1
-        with open(pathrefundgenes,'w') as newfastadb:
-            newfastadb.write(sequencetoblast)
         return(sequencetoblast)
 
 
