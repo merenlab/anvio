@@ -204,7 +204,7 @@ def main(args):
             if(gene_names):
                 gene_names = [g for g in gene_names if g not in genes_removed]
 
-    if args.return_best_hit:
+    if not args.metagenome:
         run.warning("You requested only the best hits to be reported, which means, if, say, there are more than one RecA\
                      hits in a bin for a given HMM source, only the one with the lowest e-value will be kept, and others\
                      will be removed from your final results.")
@@ -222,7 +222,7 @@ def main(args):
             len(hmm_sequences_dict)))
 
     t = taxoestimation.SCGTaxonomy(args)
-    t.predict_from_SCGs_dict(hmm_sequences_dict)
+    t.predict_from_SCGs_dict_multiseq(hmm_sequences_dict)
 
 
 if __name__ == '__main__':
@@ -307,6 +307,7 @@ if __name__ == '__main__':
     groupH.add_argument(*anvio.A('cut_off_methode'), **anvio.K('cut_off_methode'))
     # , help="method chosen for estimation of taxonomy ")
     groupH.add_argument(*anvio.A('methode'), **anvio.K('methode'))
+    parser.add_argument('--metagenome', default=False, action="store_true", help="metagenomes")
     groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
     args = anvio.get_args(parser)
