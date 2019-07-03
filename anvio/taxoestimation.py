@@ -47,6 +47,13 @@ class SCGTaxonomy:
 
         self.initialized = False
 
+        self.metagenome=False
+
+        if args.metagenome:
+            self.metagenome=True
+
+
+
         if not self.taxonomy_file_path:
             self.taxonomy_file_path = os.path.join(os.path.dirname(
                 anvio.__file__), 'data/misc/SCG/mergedb/matching_taxonomy.tsv')
@@ -85,7 +92,6 @@ class SCGTaxonomy:
         self.SCG_DB_PATH = lambda SCG: os.path.join(
             self.taxonomy_database_path, SCG)
 
-        print(self.SCG_DB_PATH)
 
         """self.SCG_DB_PATH = lambda db: os.path.join(
             self.taxonomy_database_path, [db for db in os.listdir(self.taxonomy_database_path) if db.endswith(".dmnd")])
@@ -191,10 +197,8 @@ class SCGTaxonomy:
         i = 0
 
         for individue in show_matrix:
-            print(list_position_entry[i])
             taxonomyindividue = list(
                 self.taxonomy_dict[list_position_entry[i]].values())
-            print(taxonomyindividue)
             line = [taxonomyindividue[-1]] + individue
             table.append(line)
             i += 1
@@ -215,9 +219,6 @@ class SCGTaxonomy:
         for entry_id in hmm_sequences_dict:
             entry = hmm_sequences_dict[entry_id]
 
-            """if self.profile_db:
-                name = entry['bin_id']
-            else:"""
             name = entry['gene_name']
 
             if name in hmm_sequences_dict_per_type:
@@ -234,10 +235,7 @@ class SCGTaxonomy:
         for entry_id in hmm_sequences_dict:
             entry = hmm_sequences_dict[entry_id]
 
-            if self.profile_db:
-                name = entry['bin_id']
-            else:
-                name = entry['gene_name']
+            name = entry['gene_name']
 
             if name in hmm_sequences_dict_per_type:
                 hmm_sequences_dict_per_type[name][entry_id] = entry
@@ -294,9 +292,6 @@ class SCGTaxonomy:
                 hits_per_gene[gene_name] = hits
 
 
-                #print(hits_per_gene)
-
-
 
                 if anvio.DEBUG:
                     self.show_hits(name, gene_name, hits)
@@ -305,7 +300,6 @@ class SCGTaxonomy:
                     taxonomy = self.get_consensus_taxonomy(
                         hits_per_gene, name, hmm_sequences_dict_per_type)
                     entry['taxonomy'] = taxonomy
-                    # print(entry)
 
             if j >= len(hits_per_gene):
                 self.run.info(name, "diamond didn't return any match \n")
@@ -329,8 +323,9 @@ class SCGTaxonomy:
             hmm_sequences_dict)
         j=0
         hits_per_gene = {}
+        start_blast_sort = time.perf_counter()
         for SCG in hmm_sequences_dict_per_type:
-            start_predict_from_SCGs_dict = time.perf_counter()
+
 
 
             self.run.info('SCGs', SCG)
@@ -339,62 +334,80 @@ class SCGTaxonomy:
             """self.run.info('SCGs', ', '.join(
                 [e['gene_SCG'] for e in hmm_sequences_dict_per_type[SCG].values()]))"""
 
-            start_get_raw_blast_hits = time.perf_counter()
+
 
             hmm_sequences_dict_per_type[SCG] = self.get_raw_blast_hits_multi(hmm_sequences_dict_per_type[SCG])
 
+
+            start_get_raw_blast_hits = time.perf_counter()
+
+            if self.metagenome:
+                var='contig'
+                possibles_taxonomy=[]
+            else:
+                var='bin_id'
+
+            for query in hmm_sequences_dict_per_type[SCG].values():
+
+                if anvio.DEBUG:
+                    self.show_hits(query[var], SCG, query['hits'])
+                if query[var] not in hits_per_gene:
+                    hits_per_gene[query[var]]={}
+                if SCG not in hits_per_gene[query[var]]:
+                    hits_per_gene[query[var]][SCG]=[]
+                if len(query['hits']):
+                    hits_per_gene[query[var]][SCG] = query['hits']
+                else:
+                    hits_per_gene[query[var]][SCG] = hits_per_gene[query[var]][SCG] + query['hits']
+
             end_get_raw_blast_hits = time.perf_counter()
-            print("\n time predict_from_SCGs_dict for a bin : ",
+            print("\n time sort hit : ",
                   end_get_raw_blast_hits - start_get_raw_blast_hits)
 
 
-            #print(hmm_sequences_dict_per_type,"hmm_sequences_dict_per_type")
-            """print(SCG, Bacteria_id)
-            print(hmm_sequences_dict_per_type[SCG][Bacteria_id])
-            print(hmm_sequences_dict_per_type[SCG][Bacteria_id]['hits'])
-            print(hits_per_gene[hmm_sequences_dict_per_type[SCG][Bacteria_id]['bin_id']][SCG])"""
-            for query in hmm_sequences_dict_per_type[SCG].values():
-                if query['bin_id'] not in hits_per_gene:
-                    hits_per_gene[query['bin_id']]={}
-                if SCG not in hits_per_gene[query['bin_id']]:
-                    hits_per_gene[query['bin_id']][SCG]=[]
-                if len(query['hits']):
-                    hits_per_gene[query['bin_id']][SCG] = query['hits']
-                else:
-                    hits_per_gene[query['bin_id']][SCG] = hits_per_gene[query['bin_id']][SCG] + query['hits']
 
 
 
 
-                """if hmm_sequences_dict_per_type[SCG][Bacteria_id]['bin_id'] not in hits_per_gene:
-                    hits_per_gene[hmm_sequences_dict_per_type[SCG][Bacteria_id]['bin_id']]={}
-                if SCG not in hits_per_gene[hmm_sequences_dict_per_type[SCG][Bacteria_id]['bin_id']]:
-                    hits_per_gene[hmm_sequences_dict_per_type[SCG][Bacteria_id]['bin_id']][SCG]=[]
-                if Bacteria_id in hmm_sequences_dict_per_type[SCG][Bacteria_id] and len(hmm_sequences_dict_per_type[SCG][Bacteria_id]['hits']):
-                    hits_per_gene[hmm_sequences_dict_per_type[SCG][Bacteria_id]['bin_id']][SCG] = hmm_sequences_dict_per_type[SCG][Bacteria_id]['hits']
-                else:
-                    hits_per_gene[hmm_sequences_"dict_per_type[SCG][Bacteria_id]['bin_id']][SCG] = hits_per_gene[hmm_sequences_dict_per_type[SCG][Bacteria_id]['bin_id']][SCG] + hmm_sequences_dict_per_type[SCG][Bacteria_id]['hits']"""
 
-            if anvio.DEBUG:
-                self.show_hits(SCG, gene_name, hmm_sequences_dict_per_type[SCG]['hits'])
 
+        end_blast_sort = time.perf_counter()
+        print("\n time blast_sort : ",
+              end_blast_sort - start_blast_sort)
+        self.run.info("Assignation methode : ", self.methode)
         for name, SCGs_hit_per_gene in hits_per_gene.items():
-            self.run.info('Taxo for ', name)
+
             taxonomy = self.get_consensus_taxonomy(
                 SCGs_hit_per_gene, name, hmm_sequences_dict_per_type)
-            hmm_sequences_dict_per_type[SCG]['taxonomy'] = taxonomy
-            # print(entry)
 
-        """if j >= len(hits_per_gene):
-            self.run.info(name, "diamond didn't return any match \n")
-            continue
-        if self.profile_db:
-            taxonomy = self.get_consensus_taxonomy(
-                hits_per_gene, name, hmm_sequences_dict_per_type)"""
+
+
+            if not taxonomy:
+                self.run.info('taxonomy estimation not possible for:', name)
+                continue
+
+
+            if not self.metagenome:
+
+                self.run.info('Taxo for ', name)
+                self.run.info('estimate taxonomy',
+                              '/'.join(list(taxonomy.values())))
+
+
+            if self.metagenome and str(list(taxonomy.values())[-1]) not in possibles_taxonomy:
+                possibles_taxonomy.append(str(list(taxonomy.values())[-1]))
+
+
+        if self.metagenome:
+            self.run.info('Possible presence ','|'.join(list(possibles_taxonomy)))
+
+
+
+        """start_predict_from_SCGs_dict = time.perf_counter()
 
         end_predict_from_SCGs_dict = time.perf_counter()
         print("\n time predict_from_SCGs_dict for a bin : ",
-              end_predict_from_SCGs_dict - start_predict_from_SCGs_dict)
+              end_predict_from_SCGs_dict - start_predict_from_SCGs_dict)"""
 
 
 
@@ -487,7 +500,6 @@ class SCGTaxonomy:
 
         if not self.solo_hits(hits_per_gene):
 
-            self.run.info("Assignation methode : ", self.methode)
 
             if self.methode == "friedman":
                 consensus_taxonomy = self.rank_assignement(hits_per_gene, name)
@@ -505,8 +517,7 @@ class SCGTaxonomy:
                 consensus_taxonomy = self.get_consensus_taxonomy_with_score_by_entry(
                     score_by_entry, name, self.cut_off_methode)
 
-            if not self.profile_db:
-                return(consensus_taxonomy)
+            return(consensus_taxonomy)
 
     def get_consensus_taxonomy_with_score_by_entry(self, score_by_entry, name, cut_off_methode):
         try:
@@ -818,8 +829,8 @@ class SCGTaxonomy:
             for key in s:
                 if s[key] not in assignation.values():
                     assignation.pop(key, None)
-        self.run.info('estimate taxonomy',
-                      '/'.join(list(assignation.values())))
+
+
         return(assignation)
 
     def make_dicoidentitielevel(self):

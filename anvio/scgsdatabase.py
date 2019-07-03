@@ -44,6 +44,7 @@ run_quiet = terminal.Run(verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 
 
+### open fasta once.... make db of Bacteria_71 fasta .......
 class scgsdatabase():
     def __init__(self, args, run=run, progress=progress):
         self.args = args
