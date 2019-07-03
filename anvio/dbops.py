@@ -2579,19 +2579,16 @@ class ProfileSuperclass(object):
         overall_splits_counts = numpy.array([])
         if insertion_splits_nonzero:
             for split in insertion_splits_nonzero:
-                print(split)
                 # Predict TA sites
                 ta_sites_values = []
-
                 # TODO: Turn recursive function into a while loop
                 copy_split = numpy.copy(split)
                 while (copy_split.size != 0):
-                    max_v = max(split)
-                    predict_ta = [value for value in split if value in (max_v, max_v - 1)]
+                    max_v = max(copy_split)
+                    predict_ta = [value for value in copy_split if value in (max_v, max_v - 1)]
                     if len(predict_ta) == 2:
                         ta_sites_values.append(predict_ta)
-                    copy_split = numpy.array([i for i in split if not i in (max_v, max_v - 1)])
-
+                    copy_split = numpy.array([i for i in copy_split if not i in (max_v, max_v - 1)])
                 # Find ta locations using predicted ta indexes
                 ta_locations_list = list()
                 for ta in ta_sites_values:
