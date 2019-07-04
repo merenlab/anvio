@@ -49,7 +49,6 @@ if __name__ == '__main__':
                                                                        nice to have).")
     groupG = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
 
-    # TODO: Talk this with EREN
     groupH = parser.add_argument_group("INSEQ MODE", "For when analyzing INSeq data.")
 
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
@@ -101,8 +100,7 @@ if __name__ == '__main__':
     groupG.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
     groupG.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
     groupG.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
-    # TODO: Elaborate more on this
-    groupH.add_argument("--inseq_stats", action="store_true")
+    groupH.add_argument("--inseq-stats", action="store_true")
 
     args = anvio.get_args(parser)
 
