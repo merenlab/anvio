@@ -2297,6 +2297,8 @@ class ProfileSuperclass(object):
                                flaw, but THANKS for reminding anyway... The best way to address this is to make sure all anvi'o\
                                profile and pan databases maintain a table with all item names they are supposed to be working with.")
 
+        self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: int(self.p_meta['total_reads_mapped'][i]) for i in range(0, len(self.p_meta['samples']))}
+
         profile_db.disconnect()
 
         self.p_meta['available_item_orders'], self.item_orders = get_item_orders_from_db(self.profile_db_path)
