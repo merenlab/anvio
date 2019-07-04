@@ -13,8 +13,7 @@ import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
-from anvio.tables.genelevelcoverages import TableForInseqGeneLevelCoverages
+from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages, TableForGeneLevelCoveragesINSeq
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -65,7 +64,6 @@ def main(args):
     for i in range(0, len(bin_names)):
         bin_name = bin_names[i]
         # recover the expected path
-        print(args.profile_db)
         genes_db_path = utils.get_genes_database_path_for_bin(args.profile_db, args.collection_name, bin_name)
 
         run.warning(None, header="WORKING ON '%s' (%d of %d)" % (bin_name, i + 1, len(bin_names)), lc='green')
@@ -74,11 +72,12 @@ def main(args):
         if os.path.exists(genes_db_path):
             genes_db_is_clean = True
             try:
-                # TODO: CHANGE BACK TO DEFAULT
-                TableForInseqGeneLevelCoverages(genes_db_path, parameters, run=terminal.Run(verbose=False)).check_params()
-                TableForInseqGeneLevelCoverages(genes_db_path, parameters, split_names=splits_dict[bin_name], run=terminal.Run(verbose=False)).check_split_names()
-                #TableForGeneLevelCoverages(genes_db_path, parameters, run=terminal.Run(verbose=False)).check_params()
-                #TableForGeneLevelCoverages(genes_db_path, parameters, split_names=splits_dict[bin_name], run=terminal.Run(verbose=False)).check_split_names()
+                if args.inseq_stats:
+                    TableForGeneLevelCoveragesINSeq(genes_db_path, parameters, run=terminal.Run(verbose=False)).check_params()
+                    TableForGeneLevelCoveragesINSeq(genes_db_path, parameters, split_names=splits_dict[bin_name], run=terminal.Run(verbose=False)).check_split_names()
+                else:
+                    TableForGeneLevelCoverages(genes_db_path, parameters, run=terminal.Run(verbose=False)).check_params()
+                    TableForGeneLevelCoverages(genes_db_path, parameters, split_names=splits_dict[bin_name], run=terminal.Run(verbose=False)).check_split_names()
             except ConfigError as e:
                 run.info_single("A genes database found, but the parameters or split names associated with that\
                                  database do not match to what we want now :( anvi'o will regenerate it.", nl_after=1)
@@ -91,7 +90,6 @@ def main(args):
                 continue
 
         # we don't have a genes database, so we will create one.
-        # TODO: Check the passing arg.inseq_stats
         profile = dbops.ProfileSuperclass(argparse.Namespace(profile_db=args.profile_db,
                                                              contigs_db=args.contigs_db,
                                                              collection_name=args.collection_name,
@@ -135,8 +133,9 @@ if __name__ == '__main__':
     groupD = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "They say they save lives.")
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    groupE = parser.add_argument_group('INSEQ DATA', "When analyzing inseq/tn-seq data")
-    groupE.add_argument("--inseq_stats", action="store_true")
+    groupE = parser.add_argument_group('INSEQ DATA', "When analyzing INSeq/Tn-Seq data")
+    groupE.add_argument("--inseq-stats", action="store_true")
+
 
     args = anvio.get_args(parser)
 

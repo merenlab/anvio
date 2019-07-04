@@ -15,7 +15,7 @@ import argparse
 import textwrap
 import multiprocessing
 import itertools
-import scipy.stats
+import scipy.signal
 
 from io import StringIO
 from collections import Counter
@@ -45,8 +45,7 @@ from anvio.tables.ntpositions import TableForNtPositions
 from anvio.tables.miscdata import TableForItemAdditionalData
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
-# TODO: REMOVE EXTRA IMPORT AND THIS LINE
-from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages, TableForInseqGeneLevelCoverages
+from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages, TableForGeneLevelCoveragesINSeq
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
 
@@ -134,7 +133,7 @@ class ContigsSuperclass(object):
 
         if not self.contigs_db_path:
             raise ConfigError("Someone (hopefully, you) is trying to initialize the Contigs Super Class without a contigs database path.\
-                               There are many ways this can happen, but .. do you think you were trying to run tive in\
+                               There are many ways this can happen, but .. do you think you were trying to run anvio-interactive in\
                                manual mode but without a --manual flag right before this? Just a gut feeling... No? Maybe you created\
                                an instance of the profile superclass without a `contigs_db` argument in the namespace? No? Well, then we \
                                may be in a really big trouble. Please run what you did before seeing this again with a `--debug` flag,\
@@ -2158,8 +2157,6 @@ class ProfileSuperclass(object):
        """
 
     def __init__(self, args, r=run, p=progress):
-        # TODO: MOVE THIS TO PROPER PLACE
-        self.inseq_stats = args.inseq_stats
         self.args = args
         self.run = r
         self.progress = p
@@ -2197,6 +2194,9 @@ class ProfileSuperclass(object):
         self.item_orders = {}
         self.views = {}
         self.collection_profile = {}
+
+        # INSEQ Stats
+        self.inseq_stats = self.args.inseq_stats
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
@@ -2297,7 +2297,8 @@ class ProfileSuperclass(object):
                                flaw, but THANKS for reminding anyway... The best way to address this is to make sure all anvi'o\
                                profile and pan databases maintain a table with all item names they are supposed to be working with.")
 
-        self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: int(self.p_meta['total_reads_mapped'][i]) for i in range(0, len(self.p_meta['samples']))}
+
+        self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: int(self.p_meta['total_reads_mapped'].split(',')[i]) for i in range(len(self.p_meta['samples']))}
 
         profile_db.disconnect()
 
@@ -2374,27 +2375,22 @@ class ProfileSuperclass(object):
 
 
     def store_gene_level_coverage_stats_into_genes_db(self, parameters):
-        # TODO: MAYBE THIS ISNT THE RIGHT WAY TO DO THIS
         if self.inseq_stats:
-            table_for_inseq_level_coverages = TableForInseqGeneLevelCoverages(self.genes_db_path, parameters, run=self.run)
-            table_for_inseq_level_coverages.store(self.gene_level_coverage_stats_dict)
+            table_for_gene_level_coverages = TableForGeneLevelCoveragesINSeq(self.genes_db_path, parameters, split_names=self.split_names_of_interest, table_name=t.gene_level_inseq_stats_table_name, table_structure=t.gene_level_inseq_stats_table_structure, mode="INSEQ", run=self.run)
         else:
-            table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, run=self.run)
-            table_for_gene_level_coverages.store(self.gene_level_coverage_stats_dict)
+            table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, split_names=self.split_names_of_interest, table_name=t.gene_level_coverage_stats_table_name, table_structure=t.gene_level_coverage_stats_table_structure, mode="GENE_LEVEL COVERAGES", run=self.run)
+        table_for_gene_level_coverages.store(self.gene_level_coverage_stats_dict)
 
 
     def init_gene_level_coverage_stats_from_genes_db(self, parameters):
         if not (self.collection_name and len(self.bin_names) == 1):
             raise ConfigError("The function `get_gene_level_coverage_stats_dicts_for_a_bin` can only be called from an instance\
                                of the profile super class that is initalized with a collection name and a single bin.")
-
-            # TODO: Fix this with Meren
             if self.inseq_stats:
-                table_for_gene_level_coverages = TableForInseqGeneLevelCoverages(self.genes_db_path, parameters,split_names=self.split_names_of_interest,run=self.run)
-                self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
+                table_for_gene_level_coverages = TableForGeneLevelCoveragesINSeq(self.genes_db_path, parameters, split_names=self.split_names_of_interest, table_name=t.gene_level_inseq_stats_table_name, table_structure=t.gene_level_inseq_stats_table_structure, mode="INSEQ", run=self.run)
             else:
-                table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters,split_names=self.split_names_of_interest,run=self.run)
-                self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
+                table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, split_names=self.split_names_of_interest, table_name=t.gene_level_coverage_stats_table_name, table_structure=t.gene_level_coverage_stats_table_structure, mode="GENE_LEVEL COVERAGES", run=self.run)
+            self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
 
 
     def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, zeros_are_outliers=False, callback=None, callback_interval=100, init_split_coverage_values_per_nt=False):
@@ -2408,7 +2404,7 @@ class ProfileSuperclass(object):
            the genes database to read form or to write to.
            """
 
-        # let's get these paramters set
+        # let's get these parameters set
         parameters = {
             'min_cov_for_detection': min_cov_for_detection,
             'outliers_threshold': outliers_threshold,
@@ -2480,7 +2476,10 @@ class ProfileSuperclass(object):
         # if we have not 'returned' yet it means we gotta go through this
         self.init_split_coverage_values_per_nt_dict(split_names)
 
-        self.progress.new('Computing gene-level coverage stats ...')
+        if self.inseq_stats:
+            self.progress.new('Computing INSEQ stats ...')
+        else:
+            self.progress.new('Computing gene-level coverage stats ...')
         self.progress.update('...')
 
         num_splits, counter = len(split_names), 1
@@ -2556,122 +2555,87 @@ class ProfileSuperclass(object):
 
 
     def get_gene_level_coverage_stats_entry_for_inseq(self, gene_callers_id, split_coverage, sample_name, gene_start,
-        gene_stop, gene_length, outliers_threshold=1.5):
+        gene_stop, gene_length, outliers_threshold=0.9):
+        # Lets ignore those pesty warnings...
+        numpy.seterr(divide='ignore', over='ignore')
 
-        #Find total reads mapped
-        total_reads_counts = \
-        [int(reads) for (sample, reads) in zip(self.p_meta["samples"], self.p_meta["total_reads_mapped"].split(",")) if
-         sample == sample_name][0]
-
-        # INSeq views
+        total_read_counts_in_sample = self.num_mapped_reads_per_sample[sample_name]
         gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
 
+        # INSEQ/Tn-SEQ views
         mean_coverage = 0
-        three_primeness = numpy.array([])
-        average_disruption = 0
         detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
-        total_gene_count = 0
-        total_gene_count_normalized = 0
+        total_counts_of_sites_in_gene = 0
+        total_counts_of_sites_in_gene_normalized = 0
         mean_three_prime = 0
-        below_9, over_9 = 0, 0
+        below_threshold, over_threshold = 0, 0
 
-        # Remove zero values
+        # Split gene coverage values into splits that are nonzero
         insertion_splits_nonzero = [numpy.array(list(g)) for k, g in itertools.groupby(gene_coverage_values_per_nt, lambda x: x != 0) if k]
-
-        overall_splits_counts = numpy.array([])
         if insertion_splits_nonzero:
             for split in insertion_splits_nonzero:
-                # Predict TA sites
-                ta_sites_values = []
-                # TODO: Turn recursive function into a while loop
-                copy_split = numpy.copy(split)
-                while (copy_split.size != 0):
-                    max_v = max(copy_split)
-                    predict_ta = [value for value in copy_split if value in (max_v, max_v - 1)]
-                    if len(predict_ta) == 2:
-                        ta_sites_values.append(predict_ta)
-                    copy_split = numpy.array([i for i in copy_split if not i in (max_v, max_v - 1)])
-                # Find ta locations using predicted ta indexes
-                ta_locations_list = list()
-                for ta in ta_sites_values:
-                    if ta[0] != ta[1]:
-                        index_left_ta,  index_right_ta = numpy.where(split == ta[0])[0][0], numpy.where(split == ta[1])[0][0]
-                    else:
-                        index_left_ta, index_right_ta = numpy.where(split == ta[0])[0][0], numpy.where(split == ta[0])[0][0] + 1
-                    ta_locations_list.append({"l": index_left_ta, "r": index_right_ta, "l_value": ta[0], "r_value": ta[1], '3-primeness': None, 'count': 0})
+                ta_sites = scipy.signal.find_peaks(split)[0]
 
+                gene_sites_stats = list()
+                if ta_sites.any():
+                    # If we found high peaks, then we check if they are TA sites.
+                    for ta_index in ta_sites:
+                        index_highest_peak = numpy.where(gene_coverage_values_per_nt == split[ta_index])[0][0]
+                        value_highest_peak = gene_coverage_values_per_nt[index_highest_peak]
 
-                if ta_sites_values:
-                    checked = []
-                    three_p = []
-                    for i, ta_dict in enumerate(ta_locations_list):
-                        # 3' primeness
-                        if not ta_dict['l_value'] in checked:
-                            left_prime_index = numpy.where(gene_coverage_values_per_nt == ta_dict['l_value'])[0][0]
-                            t_prime = (left_prime_index + 2)/gene_length
-                            checked.append(ta_dict['l_value'])
+                        # Need to check left and right indexes to see it part of TA site
+                        check_sites_dict = {gene_coverage_values_per_nt[index_highest_peak + 1]: index_highest_peak + 1,
+                                            gene_coverage_values_per_nt[index_highest_peak - 1]: index_highest_peak - 1}
 
+                        # Need to check left and right indexes to see it part of TA site
+                        value_second_highest_possible_peak = min(check_sites_dict.keys(), key=lambda x: abs(x - value_highest_peak))
+                        index_second_highest_possible_peak = check_sites_dict[value_second_highest_possible_peak]
 
-                        # Count math
-                        count = (ta_dict['l_value'] + ta_dict['r_value']) / 2
-                        if count < 3:
-                            count = 0
-                        overall_splits_counts = numpy.append(overall_splits_counts, count)
-                        ta_dict['count'] = count
+                        # Decide which one is left and right.
+                        if index_highest_peak > index_second_highest_possible_peak:
+                            index_left_ta, index_right_ta = index_second_highest_possible_peak, index_highest_peak
+                        elif index_highest_peak < index_second_highest_possible_peak:
+                            index_left_ta, index_right_ta = index_highest_peak, index_second_highest_possible_peak
 
-                        # Average disruption
-                        three_p.append({'3-primeness': t_prime, 'count': count})
+                        value_left_ta, value_right_ta = gene_coverage_values_per_nt[index_left_ta], gene_coverage_values_per_nt[index_right_ta]
 
-                        # CPM math
-                        total_gene_count = sum(overall_splits_counts)
-                        total_gene_count_normalized = (total_gene_count * 10e6) / total_reads_counts
-                        mean_coverage = numpy.mean(overall_splits_counts)
-                        # Disruption in gene math
-                        below_9, over_9 = 0, 0
-                        mean_three_prime = numpy.array([])
+                        # Now, average left and right counts, and get three prime value.
+                        count_site_in_gene = (value_left_ta + value_right_ta) / 2
+                        three_prime = (index_right_ta + 1) / gene_length
 
-                        for t in three_p:
-                            mean_three_prime = numpy.append(mean_three_prime, t["3-primeness"])
-                            t["proportion_three_prime"] = t['count'] / total_gene_count
-                            if t["3-primeness"] >= 0.9:
-                                over_9 += t["proportion_three_prime"]
-                            if t["3-primeness"] < 0.9:
-                                below_9 += t["proportion_three_prime"]
+                        gene_sites_stats.append(
+                            {"l": index_left_ta, "r": index_right_ta, "l_value": value_left_ta, "r_value": value_right_ta, '3-primeness': three_prime,
+                             'count': count_site_in_gene})
 
-                        mean_three_prime = numpy.mean(mean_three_prime)
+                        total_counts_of_sites_in_gene += count_site_in_gene
+
+                    # CPM math
+                    total_counts_of_sites_in_gene_normalized = (total_counts_of_sites_in_gene * 10e6) / total_read_counts_in_sample
+                    # Disruption in gene math
+                    mean_three_prime = numpy.mean(numpy.array([i['3-primeness'] for i in gene_sites_stats]))
+                    # Calculate the proportion of insertions that fell below the outlier threshold, important for knowing if insertions are effective
+                    below_threshold = round(sum([i["count"] for i in gene_sites_stats if i['3-primeness'] <= outliers_threshold])/total_counts_of_sites_in_gene * 100, 2)
+
+                # Didnt find any TA site :( life is sad
+                # Lets be sad and take the mean of whole split, whatever
                 else:
-                    overall_splits_counts = numpy.append(overall_splits_counts, numpy.mean(split))
+                    pass
+                mean_coverage += numpy.mean(split)
 
-                # Check minimum counts
-                if mean_coverage < 3:
-                    mean_coverage = 0
+            # Check that counts are not too small... Think about dead bacteria that dont actually contribute to fitness.
+            if mean_coverage < 3:
+                mean_coverage = 0
 
-                # # findout outlier positions, and get non-outliers
-                #outliers_bool = get_list_of_outliers(split, outliers_threshold)
-                # non_outlier_positions = numpy.invert(outliers_bool)
-                # non_outliers = split[non_outlier_positions]
-                #
-                # if not (len(non_outliers)):
-                #     non_outlier_mean_coverage = 0.0
-                #     non_outlier_coverage_std = 0.0
-                # else:
-                #     non_outlier_mean_coverage = numpy.mean(non_outliers)
-                #     non_outlier_coverage_std = numpy.std(non_outliers)
-
-
-        results = {'gene_callers_id': gene_callers_id,
-                    'sample_name': sample_name,
-                    'gene_coverage_values_per_nt': list(gene_coverage_values_per_nt),
-                    'mean_coverage': float(mean_coverage),
-                    'insertions': total_gene_count,
-                    'insertions_count_normalized': total_gene_count_normalized,
-                    'detection': detection,
+        return {'gene_callers_id': gene_callers_id,
+                   'sample_name': sample_name,
+                   'gene_coverage_values_per_nt': list(gene_coverage_values_per_nt),
+                   'mean_coverage': float(mean_coverage),
+                   'insertions': total_counts_of_sites_in_gene,
+                   'insertions_count_normalized': total_counts_of_sites_in_gene_normalized,
+                   'detection': detection,
                    'mean_disruption': mean_three_prime,
-                   'disruption_below_0.9': below_9,
-                    }
+                   'below_disruption_threshold': below_threshold,}
 
-
-        return results
 
     def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5,
                                       zeros_are_outliers=False, gene_caller_ids_of_interest=set([])):
