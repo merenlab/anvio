@@ -10,6 +10,8 @@ import time
 from collections import Counter
 
 import anvio
+
+import anvio.db as db
 import anvio.ccollections as ccollections
 import anvio.fastalib as f
 import anvio.filesnpaths as filesnpaths
@@ -17,17 +19,31 @@ import anvio.hmmops as hmmops
 import anvio.hmmopswrapper as hmmopswrapper
 import anvio.terminal as terminal
 import anvio.utils as utils
+
+from anvio.tables.tableops import Table
 from anvio.dbops import ContigsSuperclass
 from anvio.drivers import Aligners, driver_modules
 from anvio.drivers.diamond import Diamond
 from anvio.errors import ConfigError, FilesNPathsError
 from tabulate import tabulate
 
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__status__ = "Development"
+
 run = terminal.Run()
 progress = terminal.Progress()
 run_quiet = terminal.Run(verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 aligners = Aligners()
+
+
 
 
 class SCGTaxonomy:
@@ -39,6 +55,14 @@ class SCGTaxonomy:
         def A(x): return args.__dict__[x] if x in args.__dict__ else None
         self.taxonomy_file_path = A('taxonomy_file')
         self.taxonomy_database_path = A('taxonomy_database')
+        self.db_path=A('contigs_db')
+
+        #contigs_db=db(self.contigs_db_path)
+
+
+
+
+
 
         self.num_threads=args.num_threads
 
@@ -67,6 +91,20 @@ class SCGTaxonomy:
         self.methode = args.methode
 
         self.profile_db = args.profile_db
+
+
+        hmm_hits_table_name                    = 'hmm_hits'                                      # _______|_______
+        hmm_hits_table_structure               = ['entry_id', 'source', 'gene_unique_identifier', 'gene_callers_id', 'gene_name', 'gene_hmm_id', 'e_value']
+        hmm_hits_table_types                   = [ 'numeric',  'text' ,          'text'         ,      'numeric'   ,   'text'   ,     'text'   , 'numeric']
+
+        self.blast_hits_table_name                    = 'blast_hits'
+        self.blast_hits_table_structure               = ['match_id',  'gene_callers_id', 'taxon_id', 'pourcentage_identity', 'bitscore']
+        self.blast_hits_table_types                   = ['numeric'   ,   'numeric'   ,   'numeric'   ,     'numeric'   , 'numeric']
+
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+
+        self.db.create_table(self.blast_hits_table_name, self.blast_hits_table_structure, self.blast_hits_table_types)
 
         """self.SCGs = ["Ribosomal_L1", "Ribosomal_L13", "Ribosomal_L16", "Ribosomal_L17",
                      "Ribosomal_L2", "Ribosomal_L20", "Ribosomal_L21p", "Ribosomal_L22",
@@ -342,11 +380,14 @@ class SCGTaxonomy:
             start_get_raw_blast_hits = time.perf_counter()
 
             if self.metagenome:
-                var='contig'
+                var='gene_callers_id'
                 possibles_taxonomy=[]
             else:
                 var='bin_id'
 
+
+            print(hmm_sequences_dict_per_type)
+            sys.exit()
             for query in hmm_sequences_dict_per_type[SCG].values():
 
                 if anvio.DEBUG:
@@ -477,16 +518,22 @@ class SCGTaxonomy:
 
         diamond_output = diamond.blastp_stdin_multi(sequence)
 
+        y=0
+        for line_hit in [line.split('\t') for line in diamond_output.split('\n') if line.startswith('Bacteria')]:
 
-        for entry in [line.split('\t') for line in diamond_output.split('\n') if line.startswith('Bacteria')]:
-            accession = entry[1]
 
+            entries=[y,line_hit[0],line_hit[1],line_hit[2],line_hit[11]]
 
+            database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % self.blast_hits_table_name, entries)
+
+            database.disconnect()
             # dict(zip(['accession', 'pident', 'length', 'mismatch', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore'], [float(entry[i]) if i > 1 else entry[i] for i in range(1, 12)]))
             hit=dict(zip(['accession', 'pident', 'bitscore'], [
-                       float(entry[i]) if i > 1 else entry[i] for i in [1, 2, 11]]))
-            hit['taxonomy']=self.taxonomy_dict[entry[1]]
-            d[entry[0]]['hits']=d[entry[0]]['hits']+[hit]
+                       float(line_hit[i]) if i > 1 else line_hit[i] for i in [1, 2, 11]]))
+            hit['taxonomy']=self.taxonomy_dict[line_hit[1]]
+            d[line_hit[0]]['hits']=d[line_hit[0]]['hits']+[hit]
+
+            y+=1
 
         return d
 
