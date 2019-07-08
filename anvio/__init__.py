@@ -482,8 +482,8 @@ D = {
             {'metavar': 'FILE',
              'default': None,
              'type': str,
-             'help': "Saves the presence/absence information for functions in genomes in a TAB-delimited format.\
-                      A file name must be provided. To learn more about how the presence/absence is computed, please\
+             'help': "Saves the occurrence frequency information for functions in genomes in a TAB-delimited format.\
+                      A file name must be provided. To learn more about how the functional occurrence is computed, please\
                       refer to the tutorial."}
                 ),
     'table': (

@@ -291,8 +291,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         from anvio.dbops import PanDatabase
         pan_db = PanDatabase(self.pan_db_path)
 
-        gene_cluster_presence_absence_dataframe = pd.DataFrame.from_dict(
-                                                    pan_db.db.get_table_as_dict('gene_cluster_presence_absence'),
+        gene_cluster_frequencies_dataframe = pd.DataFrame.from_dict(
+                                                    pan_db.db.get_table_as_dict('gene_cluster_frequencies'),
                                                     orient='index')
 
         self.progress.update('Merging presence/absence of gene clusters with the same function')
@@ -302,9 +302,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             v = None
             for gene_cluster_id in occurrence_of_functions_in_pangenome_dict[gene_cluster_function]['gene_clusters_ids']:
                 if v is None:
-                    v = gene_cluster_presence_absence_dataframe.loc[gene_cluster_id, ].astype(bool)
+                    v = gene_cluster_frequencies_dataframe.loc[gene_cluster_id, ].astype(int)
                 else:
-                    v = numpy.logical_or(v, gene_cluster_presence_absence_dataframe.loc[gene_cluster_id, ])
+                    v = v.add(gene_cluster_frequencies_dataframe.loc[gene_cluster_id, ])
             D[gene_cluster_function] = {}
             for genome in v.index:
                 D[gene_cluster_function][genome] = v[genome]
@@ -393,11 +393,14 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.run.info('Category', category_variable)
         self.run.info('Functional annotation source', functional_annotation_source)
 
-        occurrence_of_functions_in_pangenome_dataframe, occurrence_of_functions_in_pangenome_dict = self.get_occurrence_of_functions_in_pangenome(gene_clusters_functions_summary_dict)
+        occurrence_frequency_of_functions_in_pangenome_dataframe, occurrence_of_functions_in_pangenome_dict = self.get_occurrence_of_functions_in_pangenome(gene_clusters_functions_summary_dict)
 
         if functional_occurrence_table_output:
-            occurrence_of_functions_in_pangenome_dataframe.astype(int).transpose().to_csv(functional_occurrence_table_output, sep='\t')
-            self.run.info('Presence/absence of functions summary:', functional_occurrence_table_output)
+            occurrence_frequency_of_functions_in_pangenome_dataframe.astype(int).transpose().to_csv(functional_occurrence_table_output, sep='\t')
+            self.run.info('Occurrence frequency of functions summary:', functional_occurrence_table_output)
+
+        # Get the presence/absence info for functions, which we will use for the comparisson between groups
+        occurrence_of_functions_in_pangenome_dataframe = occurrence_frequency_of_functions_in_pangenome_dataframe.astype(bool).astype(int)
 
         self.progress.new('Functional enrichment analysis')
         self.progress.update('Creating a dictionary')
@@ -406,7 +409,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         functions_names = set(occurrence_of_functions_in_pangenome_dataframe.columns)
 
         # the total occurrence of functions in all categories (it is important to this before adding the category column)
-        total_occurrence_of_functions = occurrence_of_functions_in_pangenome_dataframe.sum()
+        total_occurrence_of_functions = occurrence_of_functions_in_pangenome_dataframe.astype(bool).sum()
 
         # add a category column to the dataframe
         occurrence_of_functions_in_pangenome_dataframe['category'] = occurrence_of_functions_in_pangenome_dataframe.index.map(lambda x: str(categories_dict[x][category_variable]))
