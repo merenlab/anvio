@@ -178,11 +178,16 @@ class Diamond:
         new_commande_line=' '.join(str(x) for x in cmd_line)
         out_bytes, ret_code = utils.get_command_output_from_shell(new_commande_line)
         #output = utils.run_command(cmd_line, self.run.log_file_path)
+        try:
+            decode_out=out_bytes.decode("utf-8")
+        except:
+            print(out_bytes)
+            decode_out=out_bytes
 
 
         self.progress.end()
 
-        return(out_bytes)
+        return(decode_out)
 
 
 
