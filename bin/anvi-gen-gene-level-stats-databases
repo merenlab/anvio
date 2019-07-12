@@ -134,8 +134,7 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     groupE = parser.add_argument_group('INSEQ DATA', "When analyzing INSeq/Tn-Seq data")
-    groupE.add_argument("--inseq-stats", action="store_true")
-
+    groupE.add_argument(*anvio.A('inseq-stats'), **anvio.K('inseq-stats'))
 
     args = anvio.get_args(parser)
 

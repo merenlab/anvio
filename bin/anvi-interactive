@@ -100,7 +100,7 @@ if __name__ == '__main__':
     groupG.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
     groupG.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
     groupG.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
-    groupH.add_argument("--inseq-stats", action="store_true")
+    groupH.add_argument(*anvio.A('inseq-stats'), **anvio.K('inseq-stats'))
 
     args = anvio.get_args(parser)
 

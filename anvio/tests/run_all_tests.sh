@@ -369,6 +369,13 @@ anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              --quince-mode \
                              --engine AA
 
+INFO "Computing INSeq stats database"
+anvi-gen-gene-level-stats-databases -c $output_dir/CONTIGS.db \
+                                    -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                                    -C DEFAULT \
+                                    -b EVERYTHING \
+                                    --inseq-stats
+
 INFO "Generating amino acid frequencies for gene caller id 3 in SAMPLE-01.bam"
 anvi-get-codon-frequencies -b $output_dir/SAMPLE-01.bam \
                            -c $output_dir/CONTIGS.db \
