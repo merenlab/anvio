@@ -2297,6 +2297,15 @@ class ProfileSuperclass(object):
                                flaw, but THANKS for reminding anyway... The best way to address this is to make sure all anvi'o\
                                profile and pan databases maintain a table with all item names they are supposed to be working with.")
 
+        # learn the number of mapped reads and set it in a nice variable
+        if self.p_meta['blank']:
+            self.num_mapped_reads_per_sample = None
+        elif self.p_meta['merged']:
+            self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: int(self.p_meta['total_reads_mapped'][i]) for i in range(0, len(self.p_meta['samples']))}
+        else:
+            sample_name = self.p_meta['samples'][0]
+            keys, data = TableForLayerAdditionalData(self.args).get()
+            self.num_mapped_reads_per_sample = {sample_name: int(data[sample_name]['total_reads_mapped'])}
 
         self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: int(self.p_meta['total_reads_mapped'].split(',')[i]) for i in range(len(self.p_meta['samples']))}
 
