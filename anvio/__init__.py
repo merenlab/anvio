@@ -1902,7 +1902,7 @@ D = {
             ['--compute-gene-coverage-stats'],
             {'required': False,
              'action': 'store_true',
-             'help': "If provided, gene coverage statistics will be appended for each entry in variability reoprt.\
+             'help': "If provided, gene coverage statistics will be appended for each entry in variability report.\
                       This is very useful information, but will not be included by default because it is an expensive\
                       operation, and may take some additional time."}
                 ),
@@ -1911,6 +1911,14 @@ D = {
             {'default': 'merenlab/anvio',
              'type': str,
              'help': "Source repository to download releases, currently only Github is supported. Enter in 'merenlab/anvio' format."}
+                ),
+    'inseq-stats': (
+            ['--inseq-stats'],
+            {'required': False,
+             'action': 'store_true',
+             'default': False,
+             'help': "Provide if working with INSeq/Tn-Seq genomic data. With this, all gene level \
+                      coverage stats will be calculated using INSeq/Tn-Seq statistical methods."}
                 ),
 }
 

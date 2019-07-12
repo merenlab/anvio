@@ -2195,8 +2195,7 @@ class ProfileSuperclass(object):
         self.views = {}
         self.collection_profile = {}
 
-        # INSEQ Stats
-        self.inseq_stats = self.args.inseq_stats
+
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
@@ -2205,6 +2204,7 @@ class ProfileSuperclass(object):
         init_split_coverage_values_per_nt = A('init_split_coverage_values_per_nt')
         outliers_threshold = A('outliers_threshold')
         zeros_are_outliers = A('zeros_are_outliers')
+        self.inseq_stats = A('inseq_stats')
 
         # early on let's check some ground truth
         if not self.profile_db_path:
@@ -2395,11 +2395,11 @@ class ProfileSuperclass(object):
         if not (self.collection_name and len(self.bin_names) == 1):
             raise ConfigError("The function `get_gene_level_coverage_stats_dicts_for_a_bin` can only be called from an instance\
                                of the profile super class that is initalized with a collection name and a single bin.")
-            if self.inseq_stats:
-                table_for_gene_level_coverages = TableForGeneLevelCoveragesINSeq(self.genes_db_path, parameters, split_names=self.split_names_of_interest, table_name=t.gene_level_inseq_stats_table_name, table_structure=t.gene_level_inseq_stats_table_structure, mode="INSEQ", run=self.run)
-            else:
-                table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, split_names=self.split_names_of_interest, table_name=t.gene_level_coverage_stats_table_name, table_structure=t.gene_level_coverage_stats_table_structure, mode="GENE_LEVEL COVERAGES", run=self.run)
-            self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
+        if self.inseq_stats:
+            table_for_gene_level_coverages = TableForGeneLevelCoveragesINSeq(self.genes_db_path, parameters, split_names=self.split_names_of_interest, table_name=t.gene_level_inseq_stats_table_name, table_structure=t.gene_level_inseq_stats_table_structure, mode="INSEQ", run=self.run)
+        else:
+            table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, split_names=self.split_names_of_interest, table_name=t.gene_level_coverage_stats_table_name, table_structure=t.gene_level_coverage_stats_table_structure, mode="GENE_LEVEL COVERAGES", run=self.run)
+        self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
 
 
     def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, zeros_are_outliers=False, callback=None, callback_interval=100, init_split_coverage_values_per_nt=False):
@@ -2640,10 +2640,10 @@ class ProfileSuperclass(object):
                    'gene_coverage_values_per_nt': list(gene_coverage_values_per_nt),
                    'mean_coverage': float(mean_coverage),
                    'insertions': total_counts_of_sites_in_gene,
-                   'insertions_count_normalized': total_counts_of_sites_in_gene_normalized,
+                   'insertions_normalized': total_counts_of_sites_in_gene_normalized,
                    'detection': detection,
                    'mean_disruption': mean_three_prime,
-                   'below_disruption_threshold': below_threshold,}
+                   'below_disruption': below_threshold,}
 
 
     def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5,
