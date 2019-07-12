@@ -48,6 +48,8 @@ if __name__ == '__main__':
     # , help="method chosen for estimation of taxonomy ")
     groupH.add_argument(*anvio.A('methode'), **anvio.K('methode'))
     parser.add_argument('--metagenome', default=False, action="store_true", help="metagenomes")
+
+    groupH.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     #parser.add_argument(*anvio.A('list-states'), **anvio.K('list-states'))
 
     args = anvio.get_args(parser)
