@@ -218,7 +218,7 @@ class Diamond:
         self.progress.new('DIAMOND')
         self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
 
-        output = utils.run_command_STDIN(cmd_line, self.run.log_file_path, '>seq\n%s' % sequence)
+        output = utils.run_command_STDIN(cmd_line, self.run.log_file_path, '>seq\n%s' % sequence,remove_log_file_if_exists=False)
 
         self.progress.end()
 
@@ -252,7 +252,7 @@ class Diamond:
         self.progress.new('DIAMOND')
         self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
 
-        output = utils.run_command_STDIN(cmd_line, self.run.log_file_path, multisequence)
+        output = utils.run_command_STDIN(cmd_line, self.run.log_file_path, multisequence,remove_log_file_if_exists=False)
 
         self.progress.end()
 

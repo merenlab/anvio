@@ -204,7 +204,7 @@ def main(args):
             if(gene_names):
                 gene_names = [g for g in gene_names if g not in genes_removed]
 
-    if not args.metagenome:
+    if not True:
         run.warning("You requested only the best hits to be reported, which means, if, say, there are more than one RecA\
                      hits in a bin for a given HMM source, only the one with the lowest e-value will be kept, and others\
                      will be removed from your final results.")

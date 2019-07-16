@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 # -*- coding: utf-8
 
@@ -7,10 +6,13 @@ import os
 import re
 import sys
 import time
+import copy
+
+import multiprocessing
 from collections import Counter
 
 import anvio
-
+import pickle
 import anvio.db as db
 import anvio.ccollections as ccollections
 import anvio.fastalib as f
@@ -266,10 +268,11 @@ class SCGsdiamond:
             print("\n time predict_from_SCGs_dict for a bin : ",
                   end_predict_from_SCGs_dict - start_predict_from_SCGs_dict)
     @timer
-    def predict_from_SCGs_dict_multiseq(self, hmm_sequences_dict):
+    def predict_from_SCGs_dict_multiseq_orginal(self, hmm_sequences_dict):
         """Takes an HMMs dictionary, and yields predictions"""
 
         self.init()
+
 
         # split hmm_sequences_dict
         hmm_sequences_dict_per_type = self.get_hmm_sequences_dict_into_type_multi(
@@ -278,6 +281,7 @@ class SCGsdiamond:
         hits_per_gene = {}
         start_blast_sort = time.perf_counter()
         match_id=0
+        num_listeprocess = len(hmm_sequences_dict_per_type)
         for SCG in hmm_sequences_dict_per_type:
 
 
@@ -285,12 +289,12 @@ class SCGsdiamond:
             self.run.info('SCGs', SCG)
             self.run.info('Num sequence', len(hmm_sequences_dict_per_type[SCG]))
 
-            """self.run.info('SCGs', ', '.join(
-                [e['gene_SCG'] for e in hmm_sequences_dict_per_type[SCG].values()]))"""
 
 
 
-            hmm_sequences_dict_per_type[SCG],match_id = self.get_raw_blast_hits_multi(hmm_sequences_dict_per_type[SCG],match_id)
+
+
+            hmm_sequences_dict_per_type[SCG],match_id = self.get_raw_blast_hits_multi_original(hmm_sequences_dict_per_type[SCG],match_id)
 
 
             start_get_raw_blast_hits = time.perf_counter()
@@ -319,56 +323,164 @@ class SCGsdiamond:
 
 
 
+    @timer
+    def predict_from_SCGs_dict_multiseq(self, hmm_sequences_dict):
+        """Takes an HMMs dictionary, and yields predictions"""
+
+        self.init()
+
+        manager = multiprocessing.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+        self.threats=1
+        self.core=2
+
+
+
+
+        # split hmm_sequences_dict
+        hmm_sequences_dict_per_type = self.get_hmm_sequences_dict_into_type_multi(
+            hmm_sequences_dict)
+        j=0
+        sequence_by_SCG = {}
+        start_blast_sort = time.perf_counter()
+        match_id=0
+        num_listeprocess = len(hmm_sequences_dict_per_type)
+
+        #self.progress.new('Aligning amino acid sequences for genes in gene clusters', progress_total_items=num_listeprocess)
+        #self.progress.update('...')
+        self.bin_dict_id={}
+        Sequence_queu=[]
+        sequence_by_SCG = []
+        for SCG in hmm_sequences_dict_per_type:
+
+
+
+
+            self.run.info('SCGs', SCG)
+            self.run.info('Num sequence', len(hmm_sequences_dict_per_type[SCG]))
+
+            sequence=""
+            for entry in hmm_sequences_dict_per_type[SCG].values():
+                if 'sequence' not in entry or 'gene_name' not in entry:
+                    raise ConfigError("The `get_filtered_dict` function got a parameter that\
+                                       does not look like the way we expected it. This function\
+                                       expects a dictionary that contains keys `gene_name` and `sequence`.")
+
+                    #sequence = sequence+">%s\n%s\n"% (id,entry['sequence'])
+                sequence = sequence+">"+str(entry['gene_callers_id'])+"\n"+entry['sequence']+"\n"
+                entry['hits']=[]
+                self.bin_dict_id[entry['gene_callers_id']]=entry['bin_id']
+                #print(SCG,sequence)
+            input_queue.put([SCG,sequence])
+            #print(sequence_by_SCG)
+            #sys.exit()
+        #input_queue.put(sequence_by_SCG)
+
+
+
+
+
+
+
+        workers = []
+        for i in range(0, self.threats):
+            worker = multiprocessing.Process(target=self.get_raw_blast_hits_multi,
+                args=(match_id,input_queue,output_queue,self.core,self.bin_dict_id))
+
+            workers.append(worker)
+            worker.start()
+
+
+            #hmm_sequences_dict_per_type[SCG],match_id = self.get_raw_blast_hits_multi(hmm_sequences_dict_per_type[SCG],match_id)
+
+        finish_process = 0
+        while finish_process < num_listeprocess:
+            try:
+                diamond_output = output_queue.get()
+                #print(diamond_output)
+
+
+                for line_hit in [line.split('\t') for line in diamond_output[1].split('\n')[1:-2]]:
+
+                    entries=[tuple([match_id,self.bin_dict_id[int(line_hit[0])],int(line_hit[0]),diamond_output[0],line_hit[1],line_hit[2],line_hit[11]])]
+
+                    self.database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % self.blast_hits_table_name, entries)
+                    match_id+=1
+                    taxo=[tuple([line_hit[1]]+list(self.taxonomy_dict[line_hit[1]].values()))]
+                    #print(taxo)
+
+                    try:
+                        self.database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % "taxon_names", taxo)
+                    except:
+                        pass
+
+
+
+
+
+
+                finish_process += 1
+                progress.increment()
+                #progress.update("Processed %d of %d non-singleton GCs in 10 threads." %(finish_process, num_listeprocess ))
+
+            except KeyboardInterrupt:
+                print("Anvi'o profiler recieved SIGINT, terminating all processes...")
+                self.database.disconnect()
+                break
+
+        for worker in workers:
+            worker.terminate()
+
+        progress.end()
+
+        #start_get_raw_blast_hits = time.perf_counter()
+
+
+
+
+        self.database.disconnect()
 
 
 
 
 
     @timer
-    def get_raw_blast_hits(self, d, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
-        """Takes a dictionary that contains `gene_name` and `sequence`, and returns
-           filtered BLAST hits against the corresopnding database. I.e.,
+    def get_raw_blast_hits_multi(self, match_id, input_queue,output_queue,core,bin_dict_id, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
 
-            >>> d = {'sequence': 'MVRVKKGVNALKTRRNILKQAKGFRGPRKSKEKLAYEQLVHSYTSAFAHRRDKKGDFRRLWNVRINAALRPLGHTYSKFIGAMNKKGMEVDRKTLSDLAQNAPESFERLVKQVTA',
-                     'gene_name': 'Ribosomal_L20'}
-            >>> self.get_raw_blast_hits(d)
-        """
+        while True:
+            d = input_queue.get(True)
+            #print(d)
 
-        if 'sequence' not in d or 'gene_name' not in d:
-            raise ConfigError("The `get_filtered_dict` function got a parameter that\
-                               does not look like the way we expected it. This function\
-                               expects a dictionary that contains keys `gene_name` and `sequence`.")
 
-        db_path = self.SCG_DB_PATH(d['gene_name'])
-        if db_path:
-            sequence = d['sequence']
 
-            diamond = Diamond(db_path)
+
+
+
+
+            db_path = self.SCG_DB_PATH(d[0])
+            diamond = Diamond(db_path,run=run_quiet, progress= progress_quiet)
             diamond.max_target_seqs = max_target_seqs
             diamond.evalue = evalue
             diamond.min_pct_id = min_pct_id
-            diamond.num_threads = self.num_threads
+            diamond.num_threads = self.core
 
-            diamond_output = diamond.blastp_stdin(sequence)
+            diamond_output = diamond.blastp_stdin_multi(d[1])
 
-            hits = []
-            for entry in [line.split('\t') for line in diamond_output.split('\n') if line.startswith('seq')]:
-                accession = entry[1]
 
-                # dict(zip(['accession', 'pident', 'length', 'mismatch', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore'], [float(entry[i]) if i > 1 else entry[i] for i in range(1, 12)]))
-                hit = dict(zip(['accession', 'pident', 'bitscore'], [
-                           float(entry[i]) if i > 1 else entry[i] for i in [1, 2, 11]]))
+            output_queue.put([d[0],diamond_output])
 
-                hits.append(hit)
 
-            return hits
-        else:
-            raise ConfigError("No matching database for" + d['gene_name'])
+
+
+
+
+
 
 
 
     @timer
-    def get_raw_blast_hits_multi(self, d,match_id, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
+    def get_raw_blast_hits_multi_original(self, d,match_id, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
 
         sequence=""
         bin_dict_id={}
@@ -450,6 +562,13 @@ class SCGsTaxomy:
 
         self.taxonomy_dict = {}
 
+
+        self.pident_level_path=os.path.join(os.path.dirname(
+            anvio.__file__), 'data/misc/SCG/mergedb/dico_low_ident.pickle')
+
+        with open(self.pident_level_path, 'rb') as handle:
+            self.dicolevel = pickle.load(handle)
+
         #self.profile_db = args.profile_db
 
     def estimate_taxonomy(self):
@@ -515,9 +634,11 @@ class SCGsTaxomy:
                 self.run.info('estimate taxonomy',
                               '/'.join(list(taxonomy.values())))
 
-
+            #entries=[name,]
+            #self.database._exec('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % self.blast_hits_table_name, entries)
             if self.metagenome and str(list(taxonomy.values())[-1]) not in possibles_taxonomy:
                 possibles_taxonomy.append(str(list(taxonomy.values())[-1]))
+
 
         if self.metagenome:
             self.run.info('Possible presence ','|'.join(list(possibles_taxonomy)))
@@ -813,60 +934,34 @@ class SCGsTaxomy:
     def fill_matrix(self, name, emptymatrix, hits_per_gene, list_position_entry,
                     list_position_ribosomal, matchinggenes):
         maxrank = 1
-        bestident = 0
-        bestSCG=None
-        emptymatrix_ident=emptymatrix
-        for hit in list_position_ribosomal:
 
-            rank = 1
-            bestscore = 0
-            perfectident = False
+        emptymatrix_ident= copy.deepcopy(emptymatrix)
+
+        for hit in list_position_ribosomal:
+            rank = 0
+            lastscore= 1000
             for entry in hits_per_gene[hit]:
                 if entry['accession'] in list_position_entry:
-                    if rank > maxrank:
-                        maxrank = rank
-                    # parameter
-                    if entry['pident'] > bestident:
-                        bestident = entry['pident']
-                        bestSCG=hit
-                    if perfectident and entry['pident'] != 100:
 
+                    # parameter for considere 2 hit have same rank rank
+                    if float(entry['pident']) < lastscore:
                         rank += 1
 
-                        emptymatrix, emptymatrix_ident = self.fill_position_matrix(
-                            emptymatrix, emptymatrix_ident, list_position_entry, list_position_ribosomal, entry['pident'], rank, entry, hit)
-
-                        continue
-
-                    if bestscore < entry['bitscore']:
-                        bestscore = entry['bitscore']
-
-                        if entry['pident'] == 100:
-                            perfectident = True
-
-                        emptymatrix, emptymatrix_ident = self.fill_position_matrix(
-                            emptymatrix, emptymatrix_ident, list_position_entry, list_position_ribosomal, entry['pident'], rank, entry, hit)
-
-                        continue
-                    # parameter for considere 2 hit have same rank rank
-                    if entry['pident'] == 100 or float(entry['bitscore']) >= (bestscore * 1):
-                        emptymatrix, emptymatrix_ident = self.fill_position_matrix(
-                            emptymatrix, emptymatrix_ident, list_position_entry, list_position_ribosomal, entry['pident'], rank, entry, hit)
-
-                        continue
-                    rank += 1
                     emptymatrix, emptymatrix_ident = self.fill_position_matrix(
                         emptymatrix, emptymatrix_ident, list_position_entry, list_position_ribosomal, entry['pident'], rank, entry, hit)
+                    lastscore=entry['pident']
 
 
-        return(emptymatrix, emptymatrix_ident, maxrank, bestident,bestSCG)
+        return(emptymatrix, emptymatrix_ident, maxrank)
 
 
     def fill_position_matrix(self, emptymatrix, emptymatrix_ident, list_position_entry, list_position_ribosomal, pident, rank, entry, hit):
         emptymatrix[list_position_entry.index(
             entry['accession'])][list_position_ribosomal.index(hit)] = rank
+
         emptymatrix_ident[list_position_entry.index(
             entry['accession'])][list_position_ribosomal.index(hit)] = pident
+
         return(emptymatrix,emptymatrix_ident)
 
     def fill_NA_matrix(self, matrix, penality, max_target_seqs=20):
@@ -886,18 +981,20 @@ class SCGsTaxomy:
         emptymatrix = self.make_emptymatrix(
             list_position_entry, list_position_ribosomal)
 
-        matrix, matrix_pident, maxrank, bestident, bestSCG = self.fill_matrix(name, emptymatrix, hits_per_gene, list_position_entry,
+        matrix, matrix_pident, maxrank= self.fill_matrix(name, emptymatrix, hits_per_gene, list_position_entry,
                                                       list_position_ribosomal, matchinggenes)
+
+
+        final_matrix = self.fill_NA_matrix(matrix, maxrank)
+
         if anvio.DEBUG:
             self.show_matrix_rank(
-                name, matrix, list_position_entry, list_position_ribosomal)
+                name, final_matrix, list_position_entry, list_position_ribosomal)
 
             self.show_matrix_rank(
                 name, matrix_pident, list_position_entry, list_position_ribosomal)
 
-        final_matrix = self.fill_NA_matrix(matrix, maxrank)
-
-        return(final_matrix, matrix_pident, list_position_entry, list_position_ribosomal, bestident, bestSCG)
+        return(final_matrix, matrix_pident, list_position_entry, list_position_ribosomal)
 
     def statistic_test_friedman(self, name, matrix, matrixlist_position_entry, list_position_ribosomal):
         pvalue = 0
@@ -915,19 +1012,16 @@ class SCGsTaxomy:
 
     def rank_assignement(self, hits_per_gene, name):
 
-        matrix, matrix_pident, matrixlist_position_entry, list_position_ribosomal, bestident, bestSCG = self.make_rank_matrix(
+        matrix, matrix_pident, matrixlist_position_entry, list_position_ribosomal = self.make_rank_matrix(
             name, hits_per_gene)
-        """if anvio.DEBUG:
-            self.show_matrix_rank(
-                name, matrix, matrixlist_position_entry, list_position_ribosomal)"""
         start_make_list_taxonomy = time.perf_counter()
 
         taxonomy,bestlist = self.make_list_taxonomy(
-            matrix, matrixlist_position_entry,list_position_ribosomal)
+            matrix_pident, matrix, matrixlist_position_entry,list_position_ribosomal)
 
-        print(bestlist)
-        assignation = self.assign_taxonomie_solo_hit(taxonomy)
-        #assignation_reduce = self.reduce_assignation_level(matrix_pident, assignation, bestlist)
+        assignation_reduce = self.reduce_assignation_level(taxonomy,bestlist)
+        assignation = self.assign_taxonomie_solo_hit(assignation_reduce)
+
         return(assignation)
 
         end_make_list_taxonomy = time.perf_counter()
@@ -951,7 +1045,7 @@ class SCGsTaxomy:
         print("posthoc_nemenyi_friedman")
         print(posthoc_nemenyi_friedman)"""
 
-    def del_higher_ranked_individu_matrix(self, matrix, matrixlist_position_entry,):
+    def del_higher_ranked_individu_matrix(self, matrix, matrixlist_position_entry):
         maxrank = 0
         i = 0
         for liste in matrix:
@@ -985,43 +1079,58 @@ class SCGsTaxomy:
         dicoidentitielevel[80] = 't_order'
         return(dicoidentitielevel)
 
-    def make_list_taxonomy(self, matrix, list_position_entry,list_position_ribosomal):
+    def make_list_taxonomy(self, matrix_pident, matrix, list_position_entry,list_position_ribosomal):
         taxonomy = []
         bestlist=[]
         miniscore = 10000
         i = 0
-        for liste in matrix:
-            summist = sum(list(liste))
-            bestident = max(list(liste))
-            bestSCG=list_position_ribosomal[liste.index(bestident)]
+        while i < len(matrix):
+            summist = sum(matrix[i])
+            bestident = max(matrix_pident[i])
+            bestSCG=list_position_ribosomal[matrix_pident[i].index(bestident)]
             if summist == miniscore:
                 taxonomy.append(self.taxonomy_dict[list_position_entry[i]])
                 bestlist.append([bestSCG,bestident])
             if summist < miniscore:
                 taxonomy = []
-
                 taxonomy.append(self.taxonomy_dict[list_position_entry[i]])
                 miniscore = summist
                 bestlist=[[bestSCG,bestident]]
             i += 1
         return(taxonomy,bestlist)
 
-    def reduce_assignation_level(self, taxonomy, bestident, bestSCG):
-        dicoidentitielevel = self.make_dicoidentitielevel()
-        for key, value in dicoidentitielevel.items():
-            if bestident < int(key):
-                for possibilitie in taxonomy:
-                    possibilitie.pop(value, None)
-        return(taxonomy)
-
-    def low_ident(self,matrix_pident,taxonomy):
-        "lol"
 
 
-    def reduce_assignation_level(self,matrix_pident, taxonomy, bestident, bestSCG):
+    def reduce_assignation_level(self,taxonomy,bestlist):
+        i=0
+
+
+        print(taxonomy)
         for possibilitie in taxonomy:
-            while bestident < dico[bestSCG][list(taxonomy.values())[-1]]:
-                possibilitie.pop(list(taxonomy.key())[-1], None)
+            j=-1
+
+            if str(bestlist[i][0]+"_"+list(possibilitie.values())[j]) in self.dicolevel[str(bestlist[i][0])]:
+                cutoff=float(self.dicolevel[bestlist[i][0]][bestlist[i][0]+"_"+list(possibilitie.values())[j]])
+            else:
+                cutoff=100
+
+
+            while bestlist[i][1] < cutoff:
+                print(cutoff,bestlist[i][1],list(possibilitie.keys())[j],list(possibilitie.values())[j])
+                possibilitie.pop(list(possibilitie.keys())[j], None)
+
+                j-=1
+
+
+                if str(bestlist[i][0]+"_"+list(possibilitie.values())[j]) in self.dicolevel[str(bestlist[i][0])]:
+                    cutoff=float(self.dicolevel[bestlist[i][0]][bestlist[i][0]+"_"+list(possibilitie.values())[j]])
+                else:
+                    cutoff=100
+
+            print(cutoff,bestlist[i][1],list(possibilitie.keys())[j],list(possibilitie.values())[j])
+            i+=1
+
+
         return(taxonomy)
 
 
