@@ -13,7 +13,7 @@ import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
+from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages, TableForGeneLevelCoveragesINSeq
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -72,8 +72,12 @@ def main(args):
         if os.path.exists(genes_db_path):
             genes_db_is_clean = True
             try:
-                TableForGeneLevelCoverages(genes_db_path, parameters, run=terminal.Run(verbose=False)).check_params()
-                TableForGeneLevelCoverages(genes_db_path, parameters, split_names=splits_dict[bin_name], run=terminal.Run(verbose=False)).check_split_names()
+                if args.inseq_stats:
+                    TableForGeneLevelCoveragesINSeq(genes_db_path, parameters, run=terminal.Run(verbose=False)).check_params()
+                    TableForGeneLevelCoveragesINSeq(genes_db_path, parameters, split_names=splits_dict[bin_name], run=terminal.Run(verbose=False)).check_split_names()
+                else:
+                    TableForGeneLevelCoverages(genes_db_path, parameters, run=terminal.Run(verbose=False)).check_params()
+                    TableForGeneLevelCoverages(genes_db_path, parameters, split_names=splits_dict[bin_name], run=terminal.Run(verbose=False)).check_split_names()
             except ConfigError as e:
                 run.info_single("A genes database found, but the parameters or split names associated with that\
                                  database do not match to what we want now :( anvi'o will regenerate it.", nl_after=1)
@@ -85,11 +89,12 @@ def main(args):
                 run.info_single('A clean genes database found, moving on.', nl_after=1)
                 continue
 
-        # we don't have a genes database, so we willcreate one.
+        # we don't have a genes database, so we will create one.
         profile = dbops.ProfileSuperclass(argparse.Namespace(profile_db=args.profile_db,
                                                              contigs_db=args.contigs_db,
                                                              collection_name=args.collection_name,
-                                                             bin_id=bin_name,),
+                                                             bin_id=bin_name,
+                                                             inseq_stats=args.inseq_stats,),
                                           r=terminal.Run(verbose=False))
 
         profile.init_gene_level_coverage_stats_dicts(outliers_threshold=args.outliers_threshold,
@@ -128,7 +133,11 @@ if __name__ == '__main__':
     groupD = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "They say they save lives.")
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
+    groupE = parser.add_argument_group('INSEQ DATA', "When analyzing INSeq/Tn-Seq data")
+    groupE.add_argument(*anvio.A('inseq-stats'), **anvio.K('inseq-stats'))
+
     args = anvio.get_args(parser)
+
 
     try:
         main(args)
