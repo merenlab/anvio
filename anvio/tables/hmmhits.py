@@ -193,7 +193,7 @@ class TablesForHMMHits(Table):
 
         # we will first learn the next available id in the gene callers table
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        next_id = database.get_max_value_in_column('genes_in_contigs', 'gene_callers_id') + 1
+        next_id = database.get_max_value_in_column('genes_in_contigs', 'gene_callers_id', value_if_empty=0) + 1
         database.disconnect()
 
         additional_gene_calls = {}
