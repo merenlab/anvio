@@ -191,6 +191,9 @@ class TablesForHMMHits(Table):
            slution is to add additional gene calls for a given set of HMM hits to keep
            them in the database."""
 
+        if not len(search_results_dict):
+            return search_results_dict
+
         # we will first learn the next available id in the gene callers table
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         next_id = database.get_max_value_in_column('genes_in_contigs', 'gene_callers_id', value_if_empty=0) + 1
