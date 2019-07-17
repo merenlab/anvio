@@ -45,5 +45,14 @@ rm -r $output_dir/SAMPLES-MERGED/GENES/
 INFO "Computing INSeq stats database"
 anvi-gen-gene-level-stats-databases -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                                     -c $inseq_files/CONTIGS.db  \
-                                    -C DEFAULT -b EVERYTHING \
-                                    --inseq-stats --just-do-it
+                                    -C DEFAULT \
+                                    -b EVERYTHING \
+                                    --inseq-stats \
+                                    --just-do-it
+
+# Visualize the bin in gene-mode:
+anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                 -c $inseq_files/CONTIGS.db  \
+                 -C DEFAULT \
+                 -b EVERYTHING \
+                 --gene-mode
