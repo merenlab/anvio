@@ -2307,8 +2307,6 @@ class ProfileSuperclass(object):
             keys, data = TableForLayerAdditionalData(self.args).get()
             self.num_mapped_reads_per_sample = {sample_name: int(data[sample_name]['total_reads_mapped'])}
 
-        self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: int(self.p_meta['total_reads_mapped'].split(',')[i]) for i in range(len(self.p_meta['samples']))}
-
         profile_db.disconnect()
 
         self.p_meta['available_item_orders'], self.item_orders = get_item_orders_from_db(self.profile_db_path)
