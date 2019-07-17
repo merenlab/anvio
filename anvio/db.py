@@ -171,7 +171,6 @@ class DB:
         """if try_as_type_int, value is attempted to be converted to integer. If it fails, no harm no foul."""
         response = self._exec("""SELECT value FROM self WHERE key='%s'""" % key)
         rows = response.fetchall()
-
         if not rows:
             raise ConfigError("A value for '%s' does not seem to be set in table 'self'." % key)
 

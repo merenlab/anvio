@@ -60,7 +60,6 @@ class NetworkDescriptonSamples:
         if not skip_auto_init:
             self.init()
 
-
     def init(self):
         utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 

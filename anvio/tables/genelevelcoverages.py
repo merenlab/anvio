@@ -29,11 +29,14 @@ pp = terminal.pretty_print
 
 
 class TableForGeneLevelCoverages(Table):
-    def __init__(self, db_path, parameters, split_names=None, ignore_splits_name_check=False, run=run, progress=progress):
+    def __init__(self, db_path, parameters, split_names=None, ignore_splits_name_check=False, table_name=None, table_structure=None, mode=None, run=run, progress=progress):
         self.db_path = db_path
         self.parameters = parameters
         self.split_names = split_names
         self.ignore_splits_name_check = ignore_splits_name_check
+        self.table_name = table_name
+        self.table_structure = table_structure
+        self.mode = mode
 
         if not isinstance(parameters, dict):
             raise ConfigError("Parameters must be of type. These are basically the parameters such as \
@@ -56,9 +59,7 @@ class TableForGeneLevelCoverages(Table):
 
     def check_params(self):
         """Make sure params to generate gene-level stats match across the board"""
-
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-
         non_matching_parameters = []
         for parameter in self.parameters:
             try:
@@ -69,7 +70,7 @@ class TableForGeneLevelCoverages(Table):
                                    clearly the parameters you used to generate these gene-level coverage data has little\
                                    to do with the parameters you are using now. For instance, parameter '%s' was not even\
                                    stored in the database :/" % \
-                                        (self.collection_name, self.bin_name, len(non_matching_parameters), parameter))
+                                        (self.collection_name, self.bin_name , str(parameter)))
 
             parameter_user_set = self.parameters[parameter]
             try:
@@ -137,10 +138,10 @@ class TableForGeneLevelCoverages(Table):
         self.check_params()
 
         self.progress.new("Database bleep bloop")
-        self.progress.update("Recovering gene-level coverage stats from the genes database...")
+        self.progress.update("Recovering %s stats from the genes database..." % self.mode)
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        raw_data = database.get_table_as_dict(t.gene_level_coverage_stats_table_name)
+        raw_data = database.get_table_as_dict(self.table_name)
         data = {}
 
         # here we are converting the data as it is stored in the database into something that
@@ -165,7 +166,7 @@ class TableForGeneLevelCoverages(Table):
         database.disconnect()
         self.progress.end()
 
-        self.run.warning(None, header="GENE-LEVEL COVERAGES RECOVERED (yay)", lc="green")
+        self.run.warning(None, header="%s RECOVERED (yay)" % self.mode, lc="green")
         self.run.info("Num genes", len(data))
         self.print_info()
 
@@ -174,7 +175,7 @@ class TableForGeneLevelCoverages(Table):
 
     def store(self, data):
         self.progress.new("Database bleep bloop")
-        self.progress.update("Adding gene-level coverage stats into the genes database...")
+        self.progress.update("Adding %s stats into the genes database..." % self.mode)
 
         db_entries = []
         for gene_callers_id in data:
@@ -182,16 +183,16 @@ class TableForGeneLevelCoverages(Table):
                 entry = data[gene_callers_id][sample_name]
 
                 d = []
-                for h in t.gene_level_coverage_stats_table_structure[1:]:
+                for h in self.table_structure[1:]:
                     if h in ['gene_coverage_values_per_nt', 'non_outlier_positions']:
                         d.append(utils.convert_numpy_array_to_binary_blob(np.array(entry[h]), 'uint16'))
                     else:
                         d.append(entry[h])
 
-                db_entries.append(tuple([self.next_id(t.gene_level_coverage_stats_table_name)] + d), )
+                db_entries.append(tuple([self.next_id(self.table_name)] + d), )
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % t.gene_level_coverage_stats_table_name, db_entries)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % self.table_name, db_entries)
 
         for parameter in self.parameters:
             database.remove_meta_key_value_pair(parameter)
@@ -202,7 +203,7 @@ class TableForGeneLevelCoverages(Table):
 
         self.progress.end()
 
-        self.run.warning(None, header="GENE-LEVEL COVERAGES STORED", lc="green")
+        self.run.warning(None, header="%s STORED" % self.mode, lc="green")
         self.run.info("Num genes", len(data))
         self.run.info("Num entries", len(db_entries))
         self.print_info()
@@ -212,3 +213,10 @@ class TableForGeneLevelCoverages(Table):
         self.run.info("Genes database", self.db_path)
         self.run.info("Collection name", self.collection_name, mc="green")
         self.run.info("Bin name", self.bin_name, mc="green")
+
+
+class TableForGeneLevelCoveragesINSeq(TableForGeneLevelCoverages):
+    def __init__(self, db_path, parameters, split_names=None, ignore_splits_name_check=False, table_name=None, table_structure=None, mode=None, run=run, progress=progress):
+        super().__init__(db_path, parameters, split_names, ignore_splits_name_check, table_name, table_structure, mode, run, progress)
+
+
