@@ -338,7 +338,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         functional_occurrence_table_output = A('functional_occurrence_table_output')
         exclude_ungrouped = A('exclude_ungrouped')
 
-        min_number_for_q_value_calculation = 5
+        min_number_for_p_value_calculation = 5
 
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
@@ -427,7 +427,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         number_of_genomes = len(categories_dict.keys())
 
         enrichment_dict = {}
-        chi2_test_q_values = []
+        chi2_test_p_values = []
         function_occurrence_table = {}
 
         # populate the number of genomes per category once
@@ -435,7 +435,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         for c in categories:
             function_occurrence_table[c] = {}
             function_occurrence_table[c]['N'] = len(categories_to_genomes_dict[c])
-            if function_occurrence_table[c]['N'] < min_number_for_q_value_calculation:
+            if function_occurrence_table[c]['N'] < min_number_for_p_value_calculation:
                 groups_below_threshold.append(c)
 
         self.progress.update("Calculating functional enrichment statistics")
@@ -444,17 +444,17 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 function_occurrence_table[c]['p'] = functions_in_categories.loc[c, f] / function_occurrence_table[c]['N']
             function_occurrence_table_df = pd.DataFrame.from_dict(function_occurrence_table, orient='index')
             c_dict = dict(zip(function_occurrence_table_df['p'].index, range(len(function_occurrence_table_df['p'].index))))
-            test_statistic, q_value, relative_statistic_vector = utils.get_enriched_functions_statistics(function_occurrence_table_df['p'].values,
+            test_statistic, p_value, relative_statistic_vector = utils.get_enriched_functions_statistics(function_occurrence_table_df['p'].values,
                                                                               function_occurrence_table_df['N'].values)
             if groups_below_threshold:
                 # if there were groups with less than 5 members than we discard the q-value
-                q_value = None
+                p_value = None
 
-            chi2_test_q_values.append(q_value)
+            chi2_test_p_values.append(p_value)
             enrichment_dict[f] = {}
 
             enrichment_dict[f]["enrichment_score"] = test_statistic
-            enrichment_dict[f]["q_value"] = q_value
+            enrichment_dict[f]["unadjusted_p_value"] = p_value
             enrichment_dict[f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
             enrichment_dict[f]["function_accession"] = occurrence_of_functions_in_pangenome_dict[f]["accession"]
             for c in categories:
@@ -469,21 +469,21 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         if not groups_below_threshold:
             import statsmodels.stats.multitest as multitest
-            reject, corrected_q_values, foo1, foo2 = multitest.multipletests(chi2_test_q_values, method='fdr_bh', alpha=fdr)
+            reject, corrected_p_values, foo1, foo2 = multitest.multipletests(chi2_test_p_values, method='fdr_bh', alpha=fdr)
         else:
-            corrected_q_values = [None] * len(enrichment_dict.keys())
+            corrected_p_values = [None] * len(enrichment_dict.keys())
             run.warning('At least one of your groups has less than %s members. \
                          This is fine, but small groups do not allow the computation \
                          of a meaningful q-value, and hence anvi\'o will still \
                          compute a test statistic (AKA enrichment score) that you can \
                          use to sort your functions but there will be no q-value asociated \
-                         with these scores. Here are the problematic groups: %s.' % (min_number_for_q_value_calculation, ', '.join(groups_below_threshold)))
+                         with these scores. Here are the problematic groups: %s.' % (min_number_for_p_value_calculation, ', '.join(groups_below_threshold)))
 
         i = 0
-        if len(corrected_q_values) != len(enrichment_dict.keys()):
+        if len(corrected_p_values) != len(enrichment_dict.keys()):
             raise ConfigError('This should never happen, contact Alon Shaiber now.')
         for f in enrichment_dict:
-            enrichment_dict[f]['corrected_q_value'] = corrected_q_values[i]
+            enrichment_dict[f]['adjusted_q_value'] = corrected_p_values[i]
             i += 1
 
         if output_file_path:
@@ -497,8 +497,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             enrichment_data_frame.sort_values(by=['enrichment_score'], axis=0, ascending=False, inplace=True)
 
             # Sort the columns the way we want them
-            columns = [functional_annotation_source, 'enrichment_score', 'q_value', \
-                       'corrected_q_value', 'associated_groups', 'function_accession', \
+            columns = [functional_annotation_source, 'enrichment_score', 'unadjusted_p_value', \
+                       'adjusted_q_value', 'associated_groups', 'function_accession', \
                        'gene_clusters_ids']
             columns.extend([s + c for s in ['p_', 'N_', 'r_'] for c in categories])
             enrichment_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.4f', columns=columns)

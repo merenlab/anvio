@@ -2329,12 +2329,6 @@ def get_enriched_functions_statistics(props, reps):
     if not np.count_nonzero(props):
         return (0, 1, np.zeros(len(props)))
 
-    # zero correction: changing zero occurrences to 1
-    props = np.maximum(props, 1/reps)
-
-    # changing occurrences of 1 to 1-1/ni (ni is the size of the i'th group)
-    props = np.minimum(props, 1 - 1/reps)
-
     overall_portion = np.sum(np.multiply(props, reps)) / np.sum(reps)
     occurrences_per_group = np.multiply(props, reps)    ## just the number of genomes with the gene as a vector
     expected_occurrences_for_uniformal_dist = np.multiply(overall_portion, reps)
@@ -2349,13 +2343,9 @@ def get_enriched_functions_statistics(props, reps):
     # multiplying each score with either -1 or 1, depending if the group has more or less than the expected occurrence.
     chisq_vector_signed = np.multiply(chisq_vector, np.sign(occurrences_per_group - expected_occurrences_for_uniformal_dist))
 
-    # if a group with zero occurrence has a positive score due to the zero correction from above then we manually adjust the value to zero.
-    # In other words, here we make sure that the maximum score for a group with zero occurrence is zero.
-    chisq_vector_signed_lower_bound = np.minimum(np.multiply(chisq_vector_signed, props > 0), chisq_vector_signed)
-
     p_value = get_p_value_for_chisq_test(chisq, len(reps)-1)
 
-    return (chisq, p_value, chisq_vector_signed_lower_bound)
+    return (chisq, p_value, chisq_vector_signed)
 
 
 def get_two_sample_z_test_statistic(p1, p2, n1, n2):
