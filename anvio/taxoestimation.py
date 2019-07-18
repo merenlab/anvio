@@ -35,8 +35,8 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__maintainer__ = "Quentin Clayssen"
+__email__ = "quentin.clayssen@gmail.com"
 __status__ = "Development"
 
 run = terminal.Run()
@@ -95,8 +95,8 @@ class SCGsdiamond:
 
 
         self.blast_hits_table_name                    = 'blast_hits'
-        self.blast_hits_table_structure               = ['match_id','bin_id',  'gene_callers_id', 'gene_name', 'taxon_id', 'pourcentage_identity', 'bitscore']
-        self.blast_hits_table_types                   = ['text'     , 'text'     ,   'text'    ,      'text'   ,   'text'   ,     'text'   ,         'text']
+        self.blast_hits_table_structure               = ['match_id',  'gene_callers_id', 'gene_name', 'taxon_id', 'pourcentage_identity', 'bitscore']
+        self.blast_hits_table_types                   = ['text'      ,   'text'    ,      'text'   ,   'text'   ,     'text'   ,         'text']
 
         self.taxon_names_table_name                 = 'taxon_names'
         self.taxon_names_table_structure            = ['taxon_id', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
@@ -349,7 +349,6 @@ class SCGsdiamond:
 
         #self.progress.new('Aligning amino acid sequences for genes in gene clusters', progress_total_items=num_listeprocess)
         #self.progress.update('...')
-        self.bin_dict_id={}
         Sequence_queu=[]
         sequence_by_SCG = []
         for SCG in hmm_sequences_dict_per_type:
@@ -370,7 +369,6 @@ class SCGsdiamond:
                     #sequence = sequence+">%s\n%s\n"% (id,entry['sequence'])
                 sequence = sequence+">"+str(entry['gene_callers_id'])+"\n"+entry['sequence']+"\n"
                 entry['hits']=[]
-                self.bin_dict_id[entry['gene_callers_id']]=entry['bin_id']
                 #print(SCG,sequence)
             input_queue.put([SCG,sequence])
             #print(sequence_by_SCG)
@@ -386,7 +384,7 @@ class SCGsdiamond:
         workers = []
         for i in range(0, self.threats):
             worker = multiprocessing.Process(target=self.get_raw_blast_hits_multi,
-                args=(match_id,input_queue,output_queue,self.core,self.bin_dict_id))
+                args=(match_id,input_queue,output_queue,self.core))
 
             workers.append(worker)
             worker.start()
@@ -403,9 +401,9 @@ class SCGsdiamond:
 
                 for line_hit in [line.split('\t') for line in diamond_output[1].split('\n')[1:-2]]:
 
-                    entries=[tuple([match_id,self.bin_dict_id[int(line_hit[0])],int(line_hit[0]),diamond_output[0],line_hit[1],line_hit[2],line_hit[11]])]
+                    entries=[tuple([match_id,int(line_hit[0]),diamond_output[0],line_hit[1],line_hit[2],line_hit[11]])]
 
-                    self.database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % self.blast_hits_table_name, entries)
+                    self.database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % self.blast_hits_table_name, entries)
                     match_id+=1
                     taxo=[tuple([line_hit[1]]+list(self.taxonomy_dict[line_hit[1]].values()))]
                     #print(taxo)
@@ -446,17 +444,11 @@ class SCGsdiamond:
 
 
     @timer
-    def get_raw_blast_hits_multi(self, match_id, input_queue,output_queue,core,bin_dict_id, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
+    def get_raw_blast_hits_multi(self, match_id, input_queue,output_queue,core, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
 
         while True:
             d = input_queue.get(True)
             #print(d)
-
-
-
-
-
-
 
             db_path = self.SCG_DB_PATH(d[0])
             diamond = Diamond(db_path,run=run_quiet, progress= progress_quiet)
@@ -541,6 +533,7 @@ class SCGsTaxomy:
         self.run = run
         self.progress = progress
 
+
         def A(x): return args.__dict__[x] if x in args.__dict__ else None
         self.db_path=A('contigs_db')
 
@@ -550,6 +543,8 @@ class SCGsTaxomy:
             self.num_threads="2"
 
         self.initialized = False
+
+        self.bin_id=args.bin_id
 
         self.metagenome=False
 
@@ -562,6 +557,8 @@ class SCGsTaxomy:
 
         self.taxonomy_dict = {}
 
+        self.profile_db=args.profile_db
+
 
         self.pident_level_path=os.path.join(os.path.dirname(
             anvio.__file__), 'data/misc/SCG/mergedb/dico_low_ident.pickle')
@@ -569,53 +566,86 @@ class SCGsTaxomy:
         with open(self.pident_level_path, 'rb') as handle:
             self.dicolevel = pickle.load(handle)
 
-        #self.profile_db = args.profile_db
+        self.taxonomic_levels_parser = {'t_domain' : 'd__',
+                                        "t_phylum" : 'p__',
+                                        "t_class" : 'c__',
+                                        "t_order" : 'o__',
+                                        "t_family" : 'f__',
+                                        "t_genus" : 'g__' ,
+                                        "t_species" : 's__' }
 
     def estimate_taxonomy(self):
 
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
 
-
-        """A=self.database.get_table_as_dataframe('blast_hits')
-        B=self.database.get_table_as_dataframe('taxon_names')
-        print(A)
-        print(B)
-        """
-
-        A=self.database.get_table_as_dict('blast_hits')
+        dic_blast_hits=self.database.get_table_as_dict('blast_hits')
         self.taxonomy_dict =self.database.get_table_as_dict('taxon_names')
 
+        dic_id_bin={}
+        if self.profile_db:
+            utils.is_profile_db_and_contigs_db_compatible(
+                self.profile_db, self.db_path)
+
+            splits_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
+            run.info('Init', '%d splits in %d bin(s)' % (
+                sum([len(v) for v in list(splits_dict.values())]), len(splits_dict)))
+
+
+            s = hmmops.SequencesForHMMHits(self.db_path)
+
+            database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+
+
+            hits_in_splits, split_name_to_bin_id = s.get_hmm_hits_in_splits(splits_dict)
+            dic_genes_in_splits=self.database.get_table_as_dict("genes_in_splits")
+
+
+            for split in dic_genes_in_splits.values():
+                if split['split'] in split_name_to_bin_id:
+                    if split_name_to_bin_id[split['split']] not in dic_id_bin:
+                        dic_id_bin[split_name_to_bin_id[split['split']]]=[split['gene_callers_id']]
+                    else:
+                        dic_id_bin[split_name_to_bin_id[split['split']]]+=[split['gene_callers_id']]
 
 
 
 
-        #print(A)
-        if self.metagenome:
-            var='gene_callers_id'
-            possibles_taxonomy=[]
-        else:
-            var='bin_id'
+
+
+
         hits_per_gene={}
-        for query in A.values():
+        for query in dic_blast_hits.values():
+
+            if self.profile_db:
+                for key,value in dic_id_bin.items():
+                    if int(query['gene_callers_id']) in value:
+                        var=key
+                        break
+
+
+            else:
+                var=query['gene_callers_id']
+
             hit=[{'accession':query['taxon_id'], 'pident':float(query['pourcentage_identity']), 'bitscore': float(query['bitscore'])}]
 
 
 
-            if query[var] not in hits_per_gene:
-                hits_per_gene[query[var]]={}
-            if query['gene_name'] not in hits_per_gene[query[var]]:
-                hits_per_gene[query[var]][query['gene_name']]=[]
+            if var not in hits_per_gene:
+                hits_per_gene[var]={}
+            if query['gene_name'] not in hits_per_gene[var]:
+                hits_per_gene[var][query['gene_name']]=[]
 
-            hits_per_gene[query[var]][query['gene_name']] = hits_per_gene[query[var]][query['gene_name']] + hit
-
-
+            hits_per_gene[var][query['gene_name']] = hits_per_gene[var][query['gene_name']] + hit
 
 
 
 
 
 
+
+        possibles_taxonomy=[]
         for name, SCGs_hit_per_gene in hits_per_gene.items():
 
             if not self.metagenome:
@@ -722,7 +752,6 @@ class SCGsTaxomy:
             self.show_matrix_rank(name, matrix, show_matrix,
                                   show_list_position_ribosomal)
 
-    @timer
     def get_consensus_taxonomy(self, hits_per_gene, name):
         """Different methode for assignation"""
 
@@ -946,6 +975,7 @@ class SCGsTaxomy:
                     # parameter for considere 2 hit have same rank rank
                     if float(entry['pident']) < lastscore:
                         rank += 1
+                        lastscore=float(entry['pident'])
 
                     emptymatrix, emptymatrix_ident = self.fill_position_matrix(
                         emptymatrix, emptymatrix_ident, list_position_entry, list_position_ribosomal, entry['pident'], rank, entry, hit)
@@ -960,18 +990,22 @@ class SCGsTaxomy:
             entry['accession'])][list_position_ribosomal.index(hit)] = rank
 
         emptymatrix_ident[list_position_entry.index(
-            entry['accession'])][list_position_ribosomal.index(hit)] = pident
+            entry['accession'])][list_position_ribosomal.index(hit)] = float(pident)
 
         return(emptymatrix,emptymatrix_ident)
 
-    def fill_NA_matrix(self, matrix, penality, max_target_seqs=20):
+    def fill_NA_matrix(self, matrix, matrix_pident, penality,max_target_seqs=20):
+        j=0
         for liste in matrix:
+
             for n, i in enumerate(liste):
                 if str(i) == 'NA':
                     liste[n] = (int(penality) + int(max_target_seqs))
-        return(matrix)
+                    matrix_pident[j][n]=0
+            j+=1
+        return(matrix,matrix_pident)
 
-    @timer
+
     def make_rank_matrix(self, name, hits_per_gene):
         matchinggenes = self.get_matching_gene(hits_per_gene)
 
@@ -985,16 +1019,16 @@ class SCGsTaxomy:
                                                       list_position_ribosomal, matchinggenes)
 
 
-        final_matrix = self.fill_NA_matrix(matrix, maxrank)
+        final_matrix,matrix_pident_final = self.fill_NA_matrix(matrix, matrix_pident, maxrank)
 
         if anvio.DEBUG:
             self.show_matrix_rank(
                 name, final_matrix, list_position_entry, list_position_ribosomal)
 
             self.show_matrix_rank(
-                name, matrix_pident, list_position_entry, list_position_ribosomal)
+                name, matrix_pident_final, list_position_entry, list_position_ribosomal)
 
-        return(final_matrix, matrix_pident, list_position_entry, list_position_ribosomal)
+        return(final_matrix, matrix_pident_final, list_position_entry, list_position_ribosomal)
 
     def statistic_test_friedman(self, name, matrix, matrixlist_position_entry, list_position_ribosomal):
         pvalue = 0
@@ -1105,14 +1139,11 @@ class SCGsTaxomy:
         i=0
 
 
-        print(taxonomy)
         for possibilitie in taxonomy:
             j=-1
 
-            if str(bestlist[i][0]+"_"+list(possibilitie.values())[j]) in self.dicolevel[str(bestlist[i][0])]:
-                cutoff=float(self.dicolevel[bestlist[i][0]][bestlist[i][0]+"_"+list(possibilitie.values())[j]])
-            else:
-                cutoff=100
+            cutoff=float(self.dicolevel[self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j]])
+
 
 
             while bestlist[i][1] < cutoff:
@@ -1122,12 +1153,10 @@ class SCGsTaxomy:
                 j-=1
 
 
-                if str(bestlist[i][0]+"_"+list(possibilitie.values())[j]) in self.dicolevel[str(bestlist[i][0])]:
-                    cutoff=float(self.dicolevel[bestlist[i][0]][bestlist[i][0]+"_"+list(possibilitie.values())[j]])
-                else:
-                    cutoff=100
+                cutoff=float(self.dicolevel[self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j]])
 
-            print(cutoff,bestlist[i][1],list(possibilitie.keys())[j],list(possibilitie.values())[j])
+
+            print(cutoff,bestlist[i][1],list(possibilitie.keys())[j],self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j])
             i+=1
 
 
@@ -1136,10 +1165,10 @@ class SCGsTaxomy:
 
     def solo_hits(self, hits_per_gene):
         taxonomy = []
-        for hit in hits_per_gene:
-            for entry in hits_per_gene[hit]:
-                if len(hits_per_gene[hit]) == 1 and entry['pident'] > 0.90:
-                    taxonomy.append(self.taxonomy_dict[entry['accession']])
+        for entry in hits_per_gene.values():
+            if len(entry) == 1 and entry[0]['pident'] > 0.90:
+                #self.run.info('Solo hit',self.taxonomy_dict[entry[0]['accession']])
+                taxonomy.append(self.taxonomy_dict[entry[0]['accession']])
         if taxonomy:
             assignation=self.assign_taxonomie_solo_hit(taxonomy)
             return assignation
