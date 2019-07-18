@@ -2299,9 +2299,10 @@ class ProfileSuperclass(object):
 
         # learn the number of mapped reads and set it in a nice variable
         if self.p_meta['blank']:
-            self.num_mapped_reads_per_sample = None
+            self.num_mapped_reads_per_sample    = None
         elif self.p_meta['merged']:
-            self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: int(self.p_meta['total_reads_mapped'][i]) for i in range(0, len(self.p_meta['samples']))}
+            total_reads_mapped_list = self.p_meta['total_reads_mapped'].replace(", ", ',').split(',')
+            self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: total_reads_mapped_list[i] for i in range(0, len(self.p_meta['samples']))}
         else:
             sample_name = self.p_meta['samples'][0]
             keys, data = TableForLayerAdditionalData(self.args).get()
@@ -2573,7 +2574,7 @@ class ProfileSuperclass(object):
 
         # INSEQ/Tn-SEQ views
         mean_coverage = 0
-        detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
+        #detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
         total_counts_of_sites_in_gene = 0
         total_counts_of_sites_in_gene_normalized = 0
         mean_three_prime = 0
@@ -2637,11 +2638,10 @@ class ProfileSuperclass(object):
 
         return {'gene_callers_id': gene_callers_id,
                    'sample_name': sample_name,
-                   'gene_coverage_values_per_nt': list(gene_coverage_values_per_nt),
+                   'gene_coverage_values_per_nt': gene_coverage_values_per_nt,
                    'mean_coverage': float(mean_coverage),
                    'insertions': total_counts_of_sites_in_gene,
                    'insertions_normalized': total_counts_of_sites_in_gene_normalized,
-                   'detection': detection,
                    'mean_disruption': mean_three_prime,
                    'below_disruption': below_threshold,}
 
