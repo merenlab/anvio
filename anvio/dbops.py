@@ -2301,7 +2301,8 @@ class ProfileSuperclass(object):
         if self.p_meta['blank']:
             self.num_mapped_reads_per_sample = None
         elif self.p_meta['merged']:
-            self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: int(self.p_meta['total_reads_mapped'][i]) for i in range(0, len(self.p_meta['samples']))}
+            total_reads_mapped = [int(num_reads) for num_reads in self.p_meta['total_reads_mapped'].split(',')]
+            self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: total_reads_mapped[i] for i in range(0, len(self.p_meta['samples']))}
         else:
             sample_name = self.p_meta['samples'][0]
             keys, data = TableForLayerAdditionalData(self.args).get()
