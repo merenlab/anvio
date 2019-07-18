@@ -137,6 +137,7 @@ def main(args):
         if args.profile_db:
             utils.is_profile_db_and_contigs_db_compatible(
                 args.profile_db, args.contigs_db)
+            print(args)
             splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
             run.info('Init', '%d splits in %d bin(s)' % (
                 sum([len(v) for v in list(splits_dict.values())]), len(splits_dict)))
@@ -152,6 +153,7 @@ def main(args):
 
     hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(
         splits_dict, return_amino_acid_sequences=args.get_aa_sequences)
+
     CHK()
 
     run.info('Hits', '%d hits for %d source(s)' %
@@ -309,6 +311,7 @@ if __name__ == '__main__':
     groupH.add_argument(*anvio.A('methode'), **anvio.K('methode'))
     parser.add_argument('--metagenome', default=False, action="store_true", help="metagenomes")
     groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    parser.add_argument('--num-core-by-threads', default=2, action="store_true", help="metagenomes")
 
     args = anvio.get_args(parser)
 
