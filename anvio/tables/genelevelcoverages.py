@@ -195,7 +195,7 @@ class TableForGeneLevelCoverages(Table):
                 db_entries.append(tuple([self.next_id(self.table_name)] + d), )
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many(f'''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % self.table_name, db_entries)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % self.table_name, db_entries)
 
         for parameter in self.parameters:
             database.remove_meta_key_value_pair(parameter)
