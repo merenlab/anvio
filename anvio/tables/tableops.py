@@ -86,7 +86,7 @@ class Table(object):
         return self.next_available_id[table] - 1
 
 
-    def set_next_available_id(self, table):
+    def set_next_available_id(self, table, table_structure=None):
         # FIXME: This is one of the least efficient funcitons ever.
         #        we need to get the max int value found in the first
         #        column of the table .. there is no need to get the
@@ -96,7 +96,7 @@ class Table(object):
         #            db.get_max_value_in_column(table_name, 'entry_id')
         #
         database = db.DB(self.db_path, self.version)
-        table_content = database.get_table_as_dict(table)
+        table_content = database.get_table_as_dict(table, table_structure)
         if table_content:
             self.next_available_id[table] = max(table_content.keys()) + 1
         else:

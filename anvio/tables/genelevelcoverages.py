@@ -51,7 +51,10 @@ class TableForGeneLevelCoverages(Table):
         Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run=self.run, progress=self.progress)
 
         self.num_entries = 0
-        self.set_next_available_id(t.gene_level_coverage_stats_table_name)
+        if self.mode == 'INSEQ':
+            self.set_next_available_id(t.gene_level_inseq_stats_table_name, t.gene_level_inseq_stats_table_structure)
+        else:
+            self.set_next_available_id(t.gene_level_coverage_stats_table_name)
 
         self.collection_name = db.DB(self.db_path, None, ignore_version=True).get_meta_value('collection_name')
         self.bin_name = db.DB(self.db_path, None, ignore_version=True).get_meta_value('bin_name')
@@ -141,7 +144,7 @@ class TableForGeneLevelCoverages(Table):
         self.progress.update("Recovering %s stats from the genes database..." % self.mode)
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        raw_data = database.get_table_as_dict(self.table_name)
+        raw_data = database.get_table_as_dict(self.table_name, self.table_structure)
         data = {}
 
         # here we are converting the data as it is stored in the database into something that
@@ -192,6 +195,7 @@ class TableForGeneLevelCoverages(Table):
                 db_entries.append(tuple([self.next_id(self.table_name)] + d), )
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        print(self.table_name)
         database._exec_many(f'''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % self.table_name, db_entries)
 
         for parameter in self.parameters:

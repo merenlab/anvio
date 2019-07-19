@@ -116,7 +116,7 @@ gene_level_coverage_stats_table_name      = 'gene_level_coverage_stats'
 gene_level_coverage_stats_table_structure = ['entry_id', 'gene_callers_id', 'sample_name', 'mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std', 'gene_coverage_values_per_nt', 'non_outlier_positions']
 gene_level_coverage_stats_table_types     = [ 'numeric',     'numeric'    ,     'text'   ,    'numeric'   ,  'numeric' ,         'numeric'          ,          'numeric'        ,             'blob'           ,          'blob'        ]
 
-gene_level_inseq_stats_table_name      = 'gene_level_coverage_stats'
+gene_level_inseq_stats_table_name      = 'gene_level_inseq_stats'
 gene_level_inseq_stats_table_structure = ['entry_id', 'gene_callers_id', 'sample_name', 'mean_coverage', 'insertions', 'insertions_normalized', 'mean_disruption', 'below_disruption', 'gene_coverage_values_per_nt']
 gene_level_inseq_stats_table_types     = [ 'numeric',     'numeric'    ,     'text'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,      'numeric'   ,      'numeric'    ,              'blob'          ]
 
