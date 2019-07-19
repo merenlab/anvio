@@ -52,7 +52,7 @@ class TableForGeneLevelCoverages(Table):
 
         self.num_entries = 0
         if self.mode == 'INSEQ':
-            self.set_next_available_id(t.gene_level_inseq_stats_table_name, t.gene_level_inseq_stats_table_structure)
+            self.set_next_available_id(t.gene_level_inseq_stats_table_name)
         else:
             self.set_next_available_id(t.gene_level_coverage_stats_table_name)
 
