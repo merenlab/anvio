@@ -70,9 +70,13 @@ class SCGsdiamond:
         self.taxonomy_file_path = A('taxonomy_file')
         self.taxonomy_database_path = A('taxonomy_database')
         self.db_path=A('contigs_db')
+        self.core=int(A('num_core_by_threads'))
 
 
         self.num_threads=args.num_threads
+
+        if not self.core:
+            self.num_threads="2"
 
         if not args.num_threads:
             self.num_threads="2"
@@ -332,8 +336,6 @@ class SCGsdiamond:
         manager = multiprocessing.Manager()
         input_queue = manager.Queue()
         output_queue = manager.Queue()
-        self.threats=1
-        self.core=2
 
 
 
@@ -352,9 +354,6 @@ class SCGsdiamond:
         Sequence_queu=[]
         sequence_by_SCG = []
         for SCG in hmm_sequences_dict_per_type:
-
-
-
 
             self.run.info('SCGs', SCG)
             self.run.info('Num sequence', len(hmm_sequences_dict_per_type[SCG]))
@@ -382,9 +381,10 @@ class SCGsdiamond:
 
 
         workers = []
-        for i in range(0, self.threats):
+        for i in range(0, self.num_threads):
             worker = multiprocessing.Process(target=self.get_raw_blast_hits_multi,
                 args=(match_id,input_queue,output_queue,self.core))
+            print(self.core)
 
             workers.append(worker)
             worker.start()
@@ -455,7 +455,7 @@ class SCGsdiamond:
             diamond.max_target_seqs = max_target_seqs
             diamond.evalue = evalue
             diamond.min_pct_id = min_pct_id
-            diamond.num_threads = self.core
+            diamond.num_threads = core
 
             diamond_output = diamond.blastp_stdin_multi(d[1])
 
@@ -574,6 +574,26 @@ class SCGsTaxomy:
                                         "t_genus" : 'g__' ,
                                         "t_species" : 's__' }
 
+        self.taxonomy_estimation_bin_name                 = 'taxonomy_estimation_bin'
+        self.taxonomy_estimation_bin_structure            = ['entry_id',      'collection_name', 'bin_name', 'source'  , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+        self.taxonomy_estimation_bin_types                = [ 'numeric UNIQUE',   'text'       ,   'text'  ,  'text',      'text',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
+
+        self.taxonomy_estimation_metagenome_name                 = 'taxonomy_estimation_metagenome'
+        self.taxonomy_estimation_metagenome_structure            = ['gene_caller_id',      'gene_name',  'source'  , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+        self.taxonomy_estimation_metagenome_types                = [ 'numeric',             'text'    ,  'text',      'text',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
+
+
+
+        self.contigs_database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+        self.profile_database = db.DB(self.profile_db, utils.get_required_version_for_db(self.profile_db))
+
+        self.profile_database.drop_table(self.taxonomy_estimation_bin_name)
+        self.profile_database.drop_table(self.taxonomy_estimation_metagenome_name)
+
+        self.database.create_table(self.taxonomy_estimation_metagenome_name , self.taxonomy_estimation_metagenome_structure, self.taxonomy_estimation_metagenome_types)
+        self.contigs_database.create_table(self.taxonomy_estimation_bin_name, self.taxonomy_estimation_bin_structure, self.taxonomy_estimation_bin_types)
+
     def estimate_taxonomy(self):
 
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
@@ -588,6 +608,7 @@ class SCGsTaxomy:
                 self.profile_db, self.db_path)
 
             splits_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
+
             run.info('Init', '%d splits in %d bin(s)' % (
                 sum([len(v) for v in list(splits_dict.values())]), len(splits_dict)))
 
@@ -599,6 +620,7 @@ class SCGsTaxomy:
 
 
             hits_in_splits, split_name_to_bin_id = s.get_hmm_hits_in_splits(splits_dict)
+
             dic_genes_in_splits=self.database.get_table_as_dict("genes_in_splits")
 
 
@@ -615,6 +637,9 @@ class SCGsTaxomy:
 
 
 
+
+
+
         hits_per_gene={}
         for query in dic_blast_hits.values():
 
@@ -623,7 +648,11 @@ class SCGsTaxomy:
                     if int(query['gene_callers_id']) in value:
                         var=key
                         break
+                    else:
+                        var=None
 
+                if var==None:
+                    continue
 
             else:
                 var=query['gene_callers_id']
@@ -638,6 +667,9 @@ class SCGsTaxomy:
                 hits_per_gene[var][query['gene_name']]=[]
 
             hits_per_gene[var][query['gene_name']] = hits_per_gene[var][query['gene_name']] + hit
+
+        #print(hits_per_gene.keys())
+        #sys.exit(status=None)
 
 
 
@@ -664,8 +696,6 @@ class SCGsTaxomy:
                 self.run.info('estimate taxonomy',
                               '/'.join(list(taxonomy.values())))
 
-            #entries=[name,]
-            #self.database._exec('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % self.blast_hits_table_name, entries)
             if self.metagenome and str(list(taxonomy.values())[-1]) not in possibles_taxonomy:
                 possibles_taxonomy.append(str(list(taxonomy.values())[-1]))
 
@@ -674,12 +704,6 @@ class SCGsTaxomy:
             self.run.info('Possible presence ','|'.join(list(possibles_taxonomy)))
 
 
-
-        """start_predict_from_SCGs_dict = time.perf_counter()
-
-        end_predict_from_SCGs_dict = time.perf_counter()
-        print("\n time predict_from_SCGs_dict for a bin : ",
-              end_predict_from_SCGs_dict - start_predict_from_SCGs_dict)"""
 
 
 
@@ -1142,21 +1166,22 @@ class SCGsTaxomy:
         for possibilitie in taxonomy:
             j=-1
 
-            cutoff=float(self.dicolevel[self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j]])
+            cutoff=50
+            #cutoff=float(self.dicolevel[self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j]])
 
 
 
             while bestlist[i][1] < cutoff:
-                print(cutoff,bestlist[i][1],list(possibilitie.keys())[j],list(possibilitie.values())[j])
+                #print(cutoff,bestlist[i][1],list(possibilitie.keys())[j],list(possibilitie.values())[j])
                 possibilitie.pop(list(possibilitie.keys())[j], None)
 
                 j-=1
 
+                cutoff=50
+                #cutoff=float(self.dicolevel[self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j]])
 
-                cutoff=float(self.dicolevel[self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j]])
 
-
-            print(cutoff,bestlist[i][1],list(possibilitie.keys())[j],self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j])
+            #print(cutoff,bestlist[i][1],list(possibilitie.keys())[j],self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j])
             i+=1
 
 
