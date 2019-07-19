@@ -96,7 +96,7 @@ class Table(object):
         #            db.get_max_value_in_column(table_name, 'entry_id')
         #
         database = db.DB(self.db_path, self.version)
-        table_content = database.get_table_as_dict(table, table_structure)
+        table_content = database.get_table_as_dict(table)
         if table_content:
             self.next_available_id[table] = max(table_content.keys()) + 1
         else:

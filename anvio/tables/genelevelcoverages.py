@@ -144,7 +144,7 @@ class TableForGeneLevelCoverages(Table):
         self.progress.update("Recovering %s stats from the genes database..." % self.mode)
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        raw_data = database.get_table_as_dict(self.table_name, self.table_structure)
+        raw_data = database.get_table_as_dict(self.table_name)
         data = {}
 
         # here we are converting the data as it is stored in the database into something that
@@ -195,7 +195,6 @@ class TableForGeneLevelCoverages(Table):
                 db_entries.append(tuple([self.next_id(self.table_name)] + d), )
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        print(self.table_name)
         database._exec_many(f'''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % self.table_name, db_entries)
 
         for parameter in self.parameters:
