@@ -8,23 +8,29 @@ import shutil
 import requests
 from io import BytesIO
 import anvio
+import pickle
+import re
+import shutil
+import subprocess
+import sys
+import tarfile
+import anvio.fastalib as u
+from anvio.drivers.diamond import Diamond
+import anvio.terminal as terminal
+import anvio.pfam as pfam
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-import os
-import pickle
-import re
-import shutil
-import subprocess
-import sys
-import anvio.fastalib as u
-from anvio.drivers.diamond import Diamond
-import anvio.terminal as terminal
-import anvio.pfam as pfam
-import tarfile
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+pp = terminal.pretty_print
+run_quiet = terminal.Run(log_file_path=None,verbose=False)
+progress_quiet = terminal.Progress(verbose=False)
 
 
 #run_quiet = terminal.Run(verbose=False)
@@ -550,3 +556,236 @@ class SCGsSetup(object):
                 with open(self.SCG_data_dir+"/"+fname) as infile:
                     for line in infile:
                         outfile.write(line)
+
+class lowident():
+    def __init__(self, args, run=run, progress=progress):
+
+        self.args = args
+        self.run = run
+        self.progress = progress
+        self.SCG_data_dir = args.scgs_data_dir
+
+        if not self.files_dir:
+            self.files_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/mergedb/')
+
+
+
+        self.genes_file_dir=os.path.join(
+            self.files_dir, 'species')
+
+        self.genesfiles = [files for files in os.listdir(
+            self.genes_file_dir) if not files.endswith(".dmnd")]
+
+        self.outputdirectory = sys.argv[3]
+        self.taxofiles = os.path.join(
+            self.files_dir, 'matching_taxonomy.tsv')
+        self.pathpickle_dico_taxo = os.path.join(
+            self.outputdirectory, 'dico_taxo_code_species.pickle')
+
+        if not os.path.exists(pathpickle_dico_taxo):
+            self.dicolevel = self.make_dicolevel(taxofiles)
+            with open(pathpickle_dico_taxo, 'wb') as handle:
+                pickle.dump(dicolevel, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    else:
+        with open(pathpickle_dico_taxo, 'rb') as handle:
+            dicolevel = pickle.load(handle)
+
+
+    dico_low_ident = {}
+    for genes in genesfiles:
+        dico_low_ident_genes={}
+        pathfa = os.path.join(genesfilesdir, genes)
+        dico_low_ident_genes=self.self.creatsubfa_ident(dicolevel, pathfa, outputdirectory, genes,dico_low_ident_genes)
+        pathpickle_dico_ident = os.path.join(
+            outputdirectory, genes+'_dico_low_ident.pickle')
+        with open(pathpickle_dico_ident, 'wb') as handle:
+            pickle.dump(dico_low_ident_genes, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        if genes not in dico_low_ident:
+            dico_low_ident[genes]=dico_low_ident_genes
+        else:
+            dico_low_ident[genes]=dico_low_ident[genes].update(dico_low_ident_genes)
+
+    pathpickle_dico_ident = os.path.join(
+        outputdirectory, 'dico_low_ident.pickle')
+    with open(pathpickle_dico_ident, 'wb') as handle:
+        pickle.dump(dico_low_ident, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    print(dico_low_ident)
+
+
+    def make_dicolevel(self,taxofiles):
+        with open(taxofiles, 'r') as taxotsv:
+            linestaxo = taxotsv.readlines()
+            dicolevel = {}
+            for line in linestaxo:
+                names = line.split('\t')
+                code = names[0]
+                leveltaxos = names[1].split(';')
+                for leveltaxo in leveltaxos:
+                    leveltaxo=leveltaxo.rstrip()
+                    if leveltaxo not in dicolevel:
+                        dicolevel[leveltaxo] = [code]
+                        continue
+                    if code in dicolevel[leveltaxo]:
+                        continue
+                    else:
+                        dicolevel[leveltaxo] = dicolevel[leveltaxo] + [code]
+        return(dicolevel)
+
+
+
+    def match_ident(self, fasta, codes, listindex, dicolevel=False):
+        for code in codes:
+            if code in fasta.ids:
+                index = fasta.ids.index(code)
+                if index:
+                    listindex.append(index)
+        return(listindex)
+
+
+
+
+
+
+
+    def multidiamond(self, listeprocess,outputdirectory,dico_low_ident):
+        manager = multiprocessing.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+
+        num_listeprocess = len(listeprocess)
+
+        progress.new('Aligning amino acid sequences for genes in gene clusters', progress_total_items=num_listeprocess)
+        progress.update('...')
+
+        for pathquery in listeprocess:
+            input_queue.put(pathquery)
+
+        workers = []
+        for i in range(0, 23):
+            worker = multiprocessing.Process(target=self.diamond,
+                args=(input_queue,output_queue,outputdirectory))
+
+            workers.append(worker)
+            worker.start()
+
+
+        finish_process = 0
+        while finish_process < num_listeprocess:
+            try:
+                taxo_ident_item = output_queue.get()
+
+                if taxo_ident_item:
+                    dico_low_ident[taxo_ident_item['taxonomy']]= taxo_ident_item['cutoff']
+
+
+                finish_process += 1
+                progress.increment()
+                progress.update("Processed %d of %d non-singleton GCs in 10 threads." %
+                    (finish_process, num_listeprocess ))
+
+            except KeyboardInterrupt:
+                print("Anvi'o profiler recieved SIGINT, terminating all processes...")
+                break
+
+        for worker in workers:
+            worker.terminate()
+
+        progress.end()
+
+        return dico_low_ident
+
+
+    def creatsubfa_ident(self, dicolevel, pathfa, outputdirectory, genes,dico_low_ident):
+
+        fasta = lvl.getfasta(pathfa)
+        listeprocess=[]
+        for taxonomy, codes in dicolevel.items():
+            if taxonomy.startswith("d__"):
+                continue
+            #taxonomymodif=re.sub(r'[a-z]__', '', )
+            listindex = []
+            riboname = genes.replace(".faa", "")
+            pathfile = os.path.join(outputdirectory,taxonomy)
+            pathpickle_dico_ident = pathfile + "_dico_low_ident.pickle"
+
+
+
+            if not os.path.exists(pathfile):
+                listindex = self.match_ident(fasta, codes, listindex)
+                if len(listindex) > 1:
+                    listeprocess.append(pathfile)
+                    with open(pathfile, 'w+') as file:
+                        for index in listindex:
+                            file.write(">" + fasta.ids[index] +
+                                       "\n" + fasta.sequences[index] + "\n")
+                else:
+                    if genes not in dico_low_ident:
+                        dico_low_ident[genes]={}
+                        dico_low_ident[riboname][taxonomy]=100
+                    else:
+                        dico_low_ident[riboname][taxonomy]=100
+
+        if listeprocess:
+            dico_low_ident=self.multidiamond(listeprocess,outputdirectory,dico_low_ident)
+            return(dico_low_ident)
+        else:
+            dico_low_ident={}
+            return(dico_low_ident)
+
+
+
+    def diamond(self, input_queue,output_queue,outputdirectory):
+        while True:
+            pathquery = input_queue.get(True)
+            pathdb=pathquery+".dmnd"
+            path_diamond=pathquery+'.txt'
+            taxonomy=os.path.basename(pathquery)
+
+            if not os.path.exists(path_diamond):
+                self.diamonddb(pathquery,pathdb)
+                ouputdiamond=self.run_diamond(pathquery,pathdb)
+
+                os.remove(pathdb)
+                os.remove(pathquery+'log_file')
+            low_ident = select_low_ident(ouputdiamond)
+            os.remove(pathquery)
+            #taxonomymodif=re.sub(r'[a-z]__', '', taxonomy)
+            output = {'taxonomy': taxonomy, 'cutoff': low_ident}
+            output_queue.put(output)
+
+
+    def diamonddb(self, pathquery,pathdb,num_threads=2):
+
+        diamond = Diamond(query_fasta=pathquery,run=run_quiet, progress=progress_quiet, num_threads=num_threads)
+        diamond.query_fasta=pathquery
+        diamond.run.log_file_path=pathquery+'log_file'
+        diamond.target_fasta = pathquery
+        diamond.num_threads = num_threads
+        diamond.makedb()
+
+
+    def run_diamond(self, pathquery,pathdb,num_threads=2):
+        diamond = Diamond(run=run_quiet, progress=progress_quiet, num_threads=num_threads)
+
+        diamond.evalue=None
+        diamond.run.log_file_path=pathquery+'log_file'
+        diamond.target_fasta = pathdb
+        diamond.query_fasta=pathquery
+        diamond.max_target_seqs=None
+        diamond.search_output_path = pathquery
+        diamond.tabular_output_path = pathquery + '.txt'
+        output=diamond.blastp_stdout()
+
+        return output
+
+
+
+
+    def select_low_ident(str_diamond_output):
+        low_ident=101
+        for line in str_diamond_output.split('\n'):
+            if line:
+                ident = line.strip().split('\t')[2]
+                if float(ident) < float(low_ident):
+                    low_ident = ident
+        return(low_ident)
