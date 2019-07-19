@@ -14,6 +14,8 @@ import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 import anvio.filesnpaths as filesnpaths
 
+from anvio.errors import ConfigError, FilesNPathsError
+
 import anvio.db as db
 import anvio.hmmops as hmmops
 import anvio.utils as utils
@@ -34,23 +36,8 @@ progress = terminal.Progress()
 
 def main(args):
 
-
-
-
-
-
-
-
-
-
-
     t = taxoestimation.SCGsTaxomy(args)
     t.estimate_taxonomy()
-
-
-
-
-
 
 if __name__ == '__main__':
     import argparse

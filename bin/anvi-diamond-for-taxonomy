@@ -309,9 +309,9 @@ if __name__ == '__main__':
     groupH.add_argument(*anvio.A('cut_off_methode'), **anvio.K('cut_off_methode'))
     # , help="method chosen for estimation of taxonomy ")
     groupH.add_argument(*anvio.A('methode'), **anvio.K('methode'))
-    parser.add_argument('--metagenome', default=False, action="store_true", help="metagenomes")
+    groupH.add_argument('--metagenome', default=False, action="store_true", help="metagenomes")
     groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    parser.add_argument('--num-core-by-threads', default=2, action="store_true", help="metagenomes")
+    groupH.add_argument('--num-core-by-threads', default=2, help="num-core-by-threads")
 
     args = anvio.get_args(parser)
 
