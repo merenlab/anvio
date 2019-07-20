@@ -49,7 +49,7 @@ def main(args):
     else:
         run.info('Num HMM hits', len(hmm_results_dict))
 
-    header = ['gene_callers_id', 'source', 'gene_name', 'gene_hmm_id']
+    header = ['unique_entry_id', 'gene_callers_id', 'source', 'gene_name', 'gene_hmm_id']
     utils.store_dict_as_TAB_delimited_file(hmm_results_dict, output_file_path, headers=header)
 
     run.info('Output', output_file_path)
