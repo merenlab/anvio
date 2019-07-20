@@ -51,7 +51,10 @@ class TableForGeneLevelCoverages(Table):
         Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run=self.run, progress=self.progress)
 
         self.num_entries = 0
-        self.set_next_available_id(t.gene_level_coverage_stats_table_name)
+        if self.mode == 'INSEQ':
+            self.set_next_available_id(t.gene_level_inseq_stats_table_name)
+        else:
+            self.set_next_available_id(t.gene_level_coverage_stats_table_name)
 
         self.collection_name = db.DB(self.db_path, None, ignore_version=True).get_meta_value('collection_name')
         self.bin_name = db.DB(self.db_path, None, ignore_version=True).get_meta_value('bin_name')

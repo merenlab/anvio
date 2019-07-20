@@ -2299,7 +2299,7 @@ class ProfileSuperclass(object):
 
         # learn the number of mapped reads and set it in a nice variable
         if self.p_meta['blank']:
-            self.num_mapped_reads_per_sample = None
+            self.num_mapped_reads_per_sample    = None
         elif self.p_meta['merged']:
             total_reads_mapped = [int(num_reads) for num_reads in self.p_meta['total_reads_mapped'].split(',')]
             self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: total_reads_mapped[i] for i in range(0, len(self.p_meta['samples']))}
@@ -2572,7 +2572,7 @@ class ProfileSuperclass(object):
 
         # INSEQ/Tn-SEQ views
         mean_coverage = 0
-        detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
+        #detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
         total_counts_of_sites_in_gene = 0
         total_counts_of_sites_in_gene_normalized = 0
         mean_three_prime = 0
@@ -2636,11 +2636,10 @@ class ProfileSuperclass(object):
 
         return {'gene_callers_id': gene_callers_id,
                    'sample_name': sample_name,
-                   'gene_coverage_values_per_nt': list(gene_coverage_values_per_nt),
+                   'gene_coverage_values_per_nt': gene_coverage_values_per_nt,
                    'mean_coverage': float(mean_coverage),
                    'insertions': total_counts_of_sites_in_gene,
                    'insertions_normalized': total_counts_of_sites_in_gene_normalized,
-                   'detection': detection,
                    'mean_disruption': mean_three_prime,
                    'below_disruption': below_threshold,}
 
@@ -3022,7 +3021,8 @@ class GenesDatabase:
         self.db.create_table(t.item_orders_table_name, t.item_orders_table_structure, t.item_orders_table_types)
         self.db.create_table(t.layer_additional_data_table_name, t.layer_additional_data_table_structure, t.layer_additional_data_table_types)
         self.db.create_table(t.layer_orders_table_name, t.layer_orders_table_structure, t.layer_orders_table_types)
-        self.db.create_table(t.gene_level_coverage_stats_table_name, t.gene_level_coverage_stats_table_structure, t.gene_level_coverage_stats_table_structure)
+        self.db.create_table(t.gene_level_coverage_stats_table_name, t.gene_level_coverage_stats_table_structure, t.gene_level_coverage_stats_table_types)
+        self.db.create_table(t.gene_level_inseq_stats_table_name, t.gene_level_inseq_stats_table_structure, t.gene_level_inseq_stats_table_types)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
