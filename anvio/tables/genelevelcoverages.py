@@ -29,7 +29,7 @@ pp = terminal.pretty_print
 
 
 class TableForGeneLevelCoverages(Table):
-    def __init__(self, db_path, parameters, split_names=None, ignore_splits_name_check=False, table_name=None, table_structure=None, mode=None, run=run, progress=progress):
+    def __init__(self, db_path, parameters, mode, split_names=None, ignore_splits_name_check=False, run=run, progress=progress):
         self.run = run
         self.progress = progress
 
@@ -37,9 +37,18 @@ class TableForGeneLevelCoverages(Table):
         self.parameters = parameters
         self.split_names = split_names
         self.ignore_splits_name_check = ignore_splits_name_check
-        self.table_name = table_name
-        self.table_structure = table_structure
         self.mode = mode
+
+        if self.mode == 'INSEQ':
+            self.table_name = t.gene_level_inseq_stats_table_name
+            self.table_structure = t.gene_level_inseq_stats_table_structure
+        elif self.mode == 'STANDARD':
+            self.table_name = t.gene_level_coverage_stats_table_name
+            self.table_structure = t.gene_level_coverage_stats_table_structure
+        else:
+            raise ConfigError("TableForGeneLevelCoverages class is speaking: you came here with an improper 'mode'\
+                               when you were expected to come with 'INSEQ' or 'STANDARD' modes. Your mode, '%s',\
+                               is not welcome here :(" % (self.mode))
 
         if not isinstance(parameters, dict):
             raise ConfigError("Parameters must be of type. These are basically the parameters such as \
@@ -53,10 +62,7 @@ class TableForGeneLevelCoverages(Table):
         Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run=self.run, progress=self.progress)
 
         self.num_entries = 0
-        if self.mode == 'INSEQ':
-            self.set_next_available_id(t.gene_level_inseq_stats_table_name)
-        else:
-            self.set_next_available_id(t.gene_level_coverage_stats_table_name)
+        self.set_next_available_id(self.table_name)
 
         self.collection_name = db.DB(self.db_path, None, ignore_version=True).get_meta_value('collection_name')
         self.bin_name = db.DB(self.db_path, None, ignore_version=True).get_meta_value('bin_name')
@@ -171,7 +177,8 @@ class TableForGeneLevelCoverages(Table):
         database.disconnect()
         self.progress.end()
 
-        self.run.warning(None, header="%s RECOVERED (yay)" % self.mode, lc="green")
+        self.run.warning(None, header="GENE LEVEL COVERAGE STATS RECOVERED (yay)", lc="green")
+        self.run.info("Mode", self.mode, mc="red")
         self.run.info("Num genes", len(data))
         self.print_info()
 
@@ -208,7 +215,8 @@ class TableForGeneLevelCoverages(Table):
 
         self.progress.end()
 
-        self.run.warning(None, header="%s STORED" % self.mode, lc="green")
+        self.run.warning(None, header="GENE LEVEL COVERAGE STATS STORED", lc="green")
+        self.run.info("Mode", self.mode, mc="red")
         self.run.info("Num genes", len(data))
         self.run.info("Num entries", len(db_entries))
         self.print_info()
@@ -218,10 +226,3 @@ class TableForGeneLevelCoverages(Table):
         self.run.info("Genes database", self.db_path)
         self.run.info("Collection name", self.collection_name, mc="green")
         self.run.info("Bin name", self.bin_name, mc="green")
-
-
-class TableForGeneLevelCoveragesINSeq(TableForGeneLevelCoverages):
-    def __init__(self, db_path, parameters, split_names=None, ignore_splits_name_check=False, table_name=None, table_structure=None, mode=None, run=run, progress=progress):
-        super().__init__(db_path, parameters, split_names, ignore_splits_name_check, table_name, table_structure, mode, run, progress)
-
-
