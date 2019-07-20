@@ -112,10 +112,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if self.gene_mode:
             if self.collection_name is None or self.bin_id is None:
-                raise ConfigError("Gene view requires a collection and a bin to be specified. If you want to \
-                                    view all the genes in your profile database then you can use \
-                                    anvi-script-add-default-collection to create a default collection \
-                                    with all contigs.")
+                raise ConfigError("Gene view requires a collection and a bin to be specified. To SEE all collections and bins in\
+                                   your profile databse, you can use the program `anvi-show-collections-and-bins`. If you want to\
+                                   ADD a collection to your profile database, you can either use `anvi-import-collection` or\
+                                   `anvi-cluster-contigs` if appropriate, or you can go lazy and use the program\
+                                   `anvi-script-add-default-collection`, which would add a single collection that describes all contigs\
+                                   in your contigs database (in an ideal world you should use the last one only if you are working with\
+                                   a single genome).")
 
         if self.collection_name and (not self.gene_mode) and (self.bin_id or self.bin_ids_file_path) and self.mode != 'refine':
             raise ConfigError("There is something confusing here. On the one hand you provide a collection name, telling\
