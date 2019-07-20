@@ -1056,6 +1056,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             views_of_interest = ['mean_coverage', 'insertions', 'insertions_normalized', 'mean_disruption', 'below_disruption']
         else:
             views_of_interest = ['mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std']
+
         for view in views_of_interest:
             self.views[view] = {
                 'table_name': 'genes',
@@ -1141,7 +1142,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.p_meta['default_item_order'] = 'mean_coverage'
         self.default_view = 'mean_coverage'
-        self.title = "Genes in '%s'" % self.bin_id
+        self.title = "Genes in '%s' [mode: %s]" % (self.bin_id, 'IN-Seq/Tn-Seq' if self.inseq_stats else 'Standard')
 
         # FIXME: When we are in gene-mode mode, our item names are no longer split names, hence the
         # following dictionaries are useless. Until we find a better way to fill them up with

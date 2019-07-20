@@ -30,6 +30,9 @@ pp = terminal.pretty_print
 
 class TableForGeneLevelCoverages(Table):
     def __init__(self, db_path, parameters, split_names=None, ignore_splits_name_check=False, table_name=None, table_structure=None, mode=None, run=run, progress=progress):
+        self.run = run
+        self.progress = progress
+
         self.db_path = db_path
         self.parameters = parameters
         self.split_names = split_names
@@ -45,8 +48,7 @@ class TableForGeneLevelCoverages(Table):
                                the gene database, so it can warn the user what they're about to read\
                                from the database is not what they actually want to read (because the\
                                parameters have changed at some point).")
-        self.run = run
-        self.progress = progress
+
 
         Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run=self.run, progress=self.progress)
 
