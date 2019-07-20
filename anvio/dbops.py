@@ -2509,7 +2509,7 @@ class ProfileSuperclass(object):
             callback()
         else:
             if self.genes_db_path:
-                # we computer all the stuff, and we can as well store them into the genes db.
+                # we computed all the stuff, and we can as well store them into the genes db.
                 self.store_gene_level_coverage_stats_into_genes_db(parameters)
 
 
@@ -2635,13 +2635,13 @@ class ProfileSuperclass(object):
                 mean_coverage = 0
 
         return {'gene_callers_id': gene_callers_id,
-                   'sample_name': sample_name,
-                   'gene_coverage_values_per_nt': gene_coverage_values_per_nt,
-                   'mean_coverage': float(mean_coverage),
-                   'insertions': total_counts_of_sites_in_gene,
-                   'insertions_normalized': total_counts_of_sites_in_gene_normalized,
-                   'mean_disruption': mean_three_prime,
-                   'below_disruption': below_threshold,}
+                'sample_name': sample_name,
+                'gene_coverage_values_per_nt': gene_coverage_values_per_nt,
+                'mean_coverage': float(mean_coverage),
+                'insertions': total_counts_of_sites_in_gene,
+                'insertions_normalized': total_counts_of_sites_in_gene_normalized,
+                'mean_disruption': mean_three_prime,
+                'below_disruption': below_threshold}
 
 
     def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5,
