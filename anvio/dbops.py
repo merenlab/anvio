@@ -2665,7 +2665,7 @@ class ProfileSuperclass(object):
 
 
     def get_gene_level_coverage_stats(self, split_name, contigs_db, min_cov_for_detection=0, outliers_threshold=1.5,
-                                      zeros_are_outliers=False, gene_caller_ids_of_interest=set([])):
+                                      zeros_are_outliers=False, mode=None, gene_caller_ids_of_interest=set([])):
 
         # sanity check
         if not isinstance(gene_caller_ids_of_interest, set):
