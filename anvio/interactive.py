@@ -1050,7 +1050,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # our purpose of generating views for the interactive interface. here we explicitly list keys that
         # correspond to views we wish to generate:
         if self.inseq_stats:
-            views_of_interest = ['mean_coverage', 'insertions', 'insertions_normalized', 'detection', 'mean_disruption', 'below_disruption']
+            views_of_interest = ['mean_coverage', 'insertions', 'insertions_normalized', 'mean_disruption', 'below_disruption']
         else:
             views_of_interest = ['mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std']
         for view in views_of_interest:
