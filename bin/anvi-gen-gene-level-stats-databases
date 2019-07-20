@@ -13,7 +13,7 @@ import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages, TableForGeneLevelCoveragesINSeq
+from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -73,14 +73,21 @@ def main(args):
             genes_db_is_clean = True
             try:
                 if args.inseq_stats:
-                    TableForGeneLevelCoveragesINSeq(genes_db_path, parameters, run=terminal.Run(verbose=False)).check_params()
-                    TableForGeneLevelCoveragesINSeq(genes_db_path, parameters, split_names=splits_dict[bin_name], run=terminal.Run(verbose=False)).check_split_names()
+                    # update the parameters dict to make sure gene-level stats databases are
+                    # recognized distinctly
+                    parameters['mode'] = 'INSEQ'
+                    run.info('Mode', 'INSEQ', mc="red", nl_after=1)
                 else:
-                    TableForGeneLevelCoverages(genes_db_path, parameters, run=terminal.Run(verbose=False)).check_params()
-                    TableForGeneLevelCoverages(genes_db_path, parameters, split_names=splits_dict[bin_name], run=terminal.Run(verbose=False)).check_split_names()
+                    parameters['mode'] = 'STANDARD'
+                    run.info('Mode', 'STANDARD', mc="red", nl_after=1)
+
+                TableForGeneLevelCoverages(genes_db_path, parameters, mode=parameters['mode'], run=terminal.Run(verbose=False)).check_params()
+                TableForGeneLevelCoverages(genes_db_path, parameters, mode=parameters['mode'], split_names=splits_dict[bin_name], run=terminal.Run(verbose=False)).check_split_names()
             except ConfigError as e:
                 run.info_single("A genes database found, but the parameters or split names associated with that\
-                                 database do not match to what we want now :( anvi'o will regenerate it.", nl_after=1)
+                                 database do not match to what we want now :( Anvi'o will regenerate it. This was\
+                                 the actual error, by the way: '%s'." % e.clear_text(), nl_after=1)
+
                 os.remove(genes_db_path)
                 genes_db_is_clean = False
 
