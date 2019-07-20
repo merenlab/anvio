@@ -45,7 +45,7 @@ from anvio.tables.ntpositions import TableForNtPositions
 from anvio.tables.miscdata import TableForItemAdditionalData
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
-from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages, TableForGeneLevelCoveragesINSeq
+from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
 
@@ -2383,10 +2383,12 @@ class ProfileSuperclass(object):
 
 
     def store_gene_level_coverage_stats_into_genes_db(self, parameters):
-        if self.inseq_stats:
-            table_for_gene_level_coverages = TableForGeneLevelCoveragesINSeq(self.genes_db_path, parameters, split_names=self.split_names_of_interest, table_name=t.gene_level_inseq_stats_table_name, table_structure=t.gene_level_inseq_stats_table_structure, mode="INSEQ", run=self.run)
-        else:
-            table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, split_names=self.split_names_of_interest, table_name=t.gene_level_coverage_stats_table_name, table_structure=t.gene_level_coverage_stats_table_structure, mode="GENE_LEVEL COVERAGES", run=self.run)
+        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path,
+                                                                    parameters,
+                                                                    split_names=self.split_names_of_interest,
+                                                                    mode="INSEQ" if self.inseq_stats else "STANDARD",
+                                                                    run=self.run)
+
         table_for_gene_level_coverages.store(self.gene_level_coverage_stats_dict)
 
 
@@ -2394,10 +2396,13 @@ class ProfileSuperclass(object):
         if not (self.collection_name and len(self.bin_names) == 1):
             raise ConfigError("The function `get_gene_level_coverage_stats_dicts_for_a_bin` can only be called from an instance\
                                of the profile super class that is initalized with a collection name and a single bin.")
-        if self.inseq_stats:
-            table_for_gene_level_coverages = TableForGeneLevelCoveragesINSeq(self.genes_db_path, parameters, split_names=self.split_names_of_interest, table_name=t.gene_level_inseq_stats_table_name, table_structure=t.gene_level_inseq_stats_table_structure, mode="INSEQ", run=self.run)
-        else:
-            table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path, parameters, split_names=self.split_names_of_interest, table_name=t.gene_level_coverage_stats_table_name, table_structure=t.gene_level_coverage_stats_table_structure, mode="GENE_LEVEL COVERAGES", run=self.run)
+
+        table_for_gene_level_coverages = TableForGeneLevelCoverages(self.genes_db_path,
+                                                                    parameters,
+                                                                    split_names=self.split_names_of_interest,
+                                                                    mode="INSEQ" if self.inseq_stats else "STANDARD",
+                                                                    run=self.run)
+
         self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
 
 
@@ -2416,7 +2421,8 @@ class ProfileSuperclass(object):
         parameters = {
             'min_cov_for_detection': min_cov_for_detection,
             'outliers_threshold': outliers_threshold,
-            'zeros_are_outliers': zeros_are_outliers
+            'zeros_are_outliers': zeros_are_outliers,
+            'mode': 'INSEQ' if self.inseq_stats else 'STANDARD'
         }
 
         if self.p_meta['blank']:
@@ -2484,10 +2490,7 @@ class ProfileSuperclass(object):
         # if we have not 'returned' yet it means we gotta go through this
         self.init_split_coverage_values_per_nt_dict(split_names)
 
-        if self.inseq_stats:
-            self.progress.new('Computing INSEQ stats ...')
-        else:
-            self.progress.new('Computing gene-level coverage stats ...')
+        self.progress.new('Computing gene-level coverage stats in %s mode...' % ('INSEQ' if self.inseq_stats else 'STANDARD'))
         self.progress.update('...')
 
         num_splits, counter = len(split_names), 1
