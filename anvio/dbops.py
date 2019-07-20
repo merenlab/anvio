@@ -2465,7 +2465,25 @@ class ProfileSuperclass(object):
         if self.genes_db_path and self.genes_db_available:
             # THIS IS A SPECIAL CASE, where someone is initializing the gene-level coverage
             # stats for a single bin. In this case anvi'o will want to work with a genes
-            # database to read from, or to populate one for later uses.
+            # database to read from, or to populate one for later uses. But the proplem is,
+            # we may be called from a part of the code that doesn't know what KIND of genes
+            # database is being called. Therefore, the `parameters` dict we are about to send
+            # to `init_gene_level_coverage_stats_from_genes_db` may contain the default
+            # `mode` value set before. BUT WE DON'T WANT THAT. 
+            mode_set_in_db = db.DB(self.genes_db_path, client_version=None, ignore_version=True).get_meta_value('mode')
+
+            self.run.warning("A gene stats database of type '%s' is found (anvi'o hopes that this is the type of stats you\
+                              were expecting to find)." % mode_set_in_db.upper())
+
+            parameters['mode'] = mode_set_in_db 
+
+            # since we are here and learned the mode, we can also set the self.inseq_stats variable IF the table
+            # is actually inseq stats table. if we don't do this, the interactive interface will never load the inseq
+            # data because this variable is not set anywhere :/ the best practice would have been using a mode variable
+            # rather than an operation specific boolean flag, but well .. apologies to future generations of developers:
+            if mode_set_in_db == "INSEQ":
+                self.inseq_stats = True
+
             self.init_gene_level_coverage_stats_from_genes_db(parameters)
         elif self.genes_db_path and not self.genes_db_available:
             self.run.warning("You don't seem to have a genes database associated with your profile database.\
@@ -2562,7 +2580,6 @@ class ProfileSuperclass(object):
                 'non_outlier_coverage_std': non_outlier_coverage_std,
                 'gene_coverage_values_per_nt': gene_coverage_values_per_nt,
                 'non_outlier_positions': non_outlier_positions}
-
 
 
     def get_gene_level_coverage_stats_entry_for_inseq(self, gene_callers_id, split_coverage, sample_name, gene_start,
