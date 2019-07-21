@@ -684,6 +684,8 @@ class LocusSplitter:
         self.input_contigs_db_path = A('contigs_db')
         self.num_genes = A('num_genes')
         self.search_term = A('search_term')
+        self.flank_gene_downstream = A('flank_gene_downstream')
+        self.flank_gene_upstream = A('flank_gene_upstream')
         self.gene_caller_ids = A('gene_caller_ids')
         self.delimiter = A('delimiter')
         self.output_dir = A('output_dir') or os.path.abspath(os.path.curdir)
@@ -695,6 +697,7 @@ class LocusSplitter:
         self.remove_partial_hits = A('remove_partial_hits')
         self.reverse_complement_if_necessary = not A('never_reverse_complement')
         self.include_fasta_output = True
+        self.flanking_genes = A('flanking_genes')
 
         if A('list_hmm_sources'):
             hmmops.SequencesForHMMHits(self.input_contigs_db_path).list_available_hmm_sources()
@@ -732,6 +735,10 @@ class LocusSplitter:
 
         if len(self.num_genes_list) == 1:
             self.num_genes_list = [0, self.num_genes_list[0]]
+
+            # # add sanity check for flanking genes 
+            # if self.flanking_genes 
+
 
         self.run.warning(None, header="Input / Output", lc="cyan")
         self.run.info('Contigs DB', os.path.abspath(self.input_contigs_db_path))
@@ -822,17 +829,12 @@ class LocusSplitter:
 
     def export_locus(self, gene_callers_id, output_path_prefix):
         """Takes a gene callers ID, and exports a contigs database.
-
            Output path prefix should be unique for every export locus call. If the prefix you provide
            looks like this:
-
                 >>> output_path_prefix = '/path/to/dir/file_name_prefix'
-
            the output files will be stored as this:
-
                 >>> '/path/to/dir/file_name_prefix.fa'
                 >>> '/path/to/dir/file_name_prefix.db'
-
            """
 
         if os.path.isdir(output_path_prefix):
@@ -856,6 +858,10 @@ class LocusSplitter:
         self.run.info("Num genes in contig", len(genes_in_contig_sorted))
         self.run.info("Target gene call", gene_callers_id)
         self.run.info("Target gene direction", "Forward" if D() == 1 else "Reverse", mc = 'green' if D() == 1 else 'red')
+
+        ##############################
+        # Search_term locus extraction
+        ##############################
 
         gene_1 = gene_callers_id - self.num_genes_list[0] * D()
         gene_2 = gene_callers_id + self.num_genes_list[1] * D()
@@ -891,18 +897,69 @@ class LocusSplitter:
         contig_sequence = db.DB(self.input_contigs_db_path, None, ignore_version=True) \
                             .get_some_rows_from_table(t.contig_sequences_table_name,
                                                       where_clause="contig='%s'" % contig_name)[0][1]
+
+        ################################
+        # Flanking gene locus extraction
+        ################################
+
+        # Parse flanking genes argument
+
+        flanking_genes_list = self.flanking_genes.split(',')
+
+        flank_1 = flanking_genes_list[0]
+        flank_2 = flanking_genes_list[1]
+
+        # Get the contigs_db ready
+        self.run.info('Mode', 'Function search')
+        contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object) # This somehow gives us the original contigs_db
+
+        # Retrieve gene_caller_IDs for both flanking genes
+
+        ## flank_1
+        contigs_db.init_functions() # This somehow allows us to search the function in the contigs_db
+        self.run.info('Flank_1', flank_1, mc='green')
+        self.run.info('Function calls being used', ', '.join(contigs_db.gene_function_call_sources))
+
+        foo, search_report_flank_1 = contigs_db.search_for_gene_functions([flank_1], requested_sources=self.annotation_sources, verbose=True)
+
+        first_gene_of_the_block = search_report_flank_1[0][0]
+
+        ## flank_2
+        self.run.info('Flank_2', flank_2, mc='green')
+        self.run.info('Function calls being used', ', '.join(contigs_db.gene_function_call_sources))
+
+        foo, search_report_flank_2 = contigs_db.search_for_gene_functions([flank_2], requested_sources=self.annotation_sources, verbose=True)
+
+        last_gene_of_the_block = search_report_flank_2[0][0]
+
+        # Use flanking gene gene_caller_IDs to cut out locus
+
+        # Get positions to cut at
+        locus_start = self.contigs_db.genes_in_contigs_dict[first_gene_of_the_block]['start']
+        locus_stop = self.contigs_db.genes_in_contigs_dict[last_gene_of_the_block]['stop']
+    
+        # Get original contig sequence (probably the entire genome)
+        # being a performance nerd here yes
+        contig_sequence = db.DB(self.input_contigs_db_path, None, ignore_version=True) \
+                            .get_some_rows_from_table(t.contig_sequences_table_name,
+                                                      where_clause="contig='%s'" % contig_name)[0][1]
+        
+        #... and cut (for both search_term and flanking_genes)!
         locus_sequence = contig_sequence[locus_start:locus_stop]
+        
 
         # here we will create a gene calls dict for genes that are specific to our locus. since we trimmed
         # the contig sequence to the locus of interest, we will have to adjust start and stop positions of
         # genes in teh gene calls dict.
+        # New with flanking
+        
         locus_gene_calls_dict = {}
         for g in range(first_gene_of_the_block, last_gene_of_the_block + 1):
             locus_gene_calls_dict[g] = copy.deepcopy(self.contigs_db.genes_in_contigs_dict[g])
             excess = self.contigs_db.genes_in_contigs_dict[first_gene_of_the_block]['start']
             locus_gene_calls_dict[g]['start'] -= excess
             locus_gene_calls_dict[g]['stop'] -= excess
-
+        
         self.run.info("Locus gene call start/stops excess (nts)", excess)
 
         if D() != 1 and self.reverse_complement_if_necessary:
@@ -939,7 +996,6 @@ class LocusSplitter:
                                        locus_gene_calls_dict,
                                        output_path_prefix,
                                        reverse_complement)
-
 
     def store_locus_as_contigs_db(self, contig_name, sequence, gene_calls, output_path_prefix, reverse_complement=False):
         """Generates a contigs database and a blank profile for a given locus"""
