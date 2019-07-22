@@ -76,6 +76,10 @@ class DAS_Tool:
                  'help': "Directory of single copy gene database. (default: install_dir/db)"}
                     ),
     }
+    citation = "Christian M. K. Sieber, Alexander J. Probst, Allison Sharrar, Brian C. Thomas, \
+                Matthias Hess, Susannah G. Tringe & Jillian F. Banfield (2018). \
+                Recovery of genomes from metagenomes via a dereplication, aggregation \
+                and scoring strategy. Nature Microbiology. https://doi.org/10.1038/s41564-018-0171-1."
 
     def __init__(self, run=run, progress=progress):
         self.run = run
@@ -84,6 +88,9 @@ class DAS_Tool:
         self.program_name = 'DAS_Tool'
 
         utils.is_program_exists(self.program_name)
+        self.run.info_single("If you publish results from this workflow, \
+                               please do not forget to cite \n%s" % DAS_Tool.citation,
+                               nl_before=1, nl_after=1, mc='green')
         self.temp_path = filesnpaths.get_temp_directory_path()
 
 

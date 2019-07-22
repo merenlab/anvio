@@ -99,7 +99,9 @@ class MetaBAT:
                  'help': "For exact reproducibility. (0: use random seed)."}
                     ),
     }
-    citation = "Citation here"
+    citation = "Kang DD, Froula J, Egan R, Wang Z. 2015. MetaBAT, an efficient tool \
+                for accurately reconstructing single genomes from complex microbial \
+                communities. PeerJ 3:e1165 https://doi.org/10.7717/peerj.1165"
 
     def __init__(self, run=run, progress=progress):
         self.run = run
@@ -107,6 +109,10 @@ class MetaBAT:
         self.program_name = 'metabat2'
 
         utils.is_program_exists(self.program_name)
+        self.run.info_single("If you publish results from this workflow, \
+                               please do not forget to cite \n%s" % MetaBAT.citation,
+                               nl_before=1, nl_after=1, mc='green')
+
         self.temp_path = filesnpaths.get_temp_directory_path()
 
 

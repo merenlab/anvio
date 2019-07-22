@@ -114,14 +114,18 @@ class CONCOCT:
                 ['--seed'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 1
+                 'default': 1,
                  'help': "Specify an integer to use as seed for clustering. 0\
                         gives a random seed, 1 is the default seed and any\
                         other positive integer can be used. Other values give\
                         ArgumentTypeError."}
                     )
     }
-    citation = "Citation here"
+    citation = "Johannes Alneberg, Brynjar Smári Bjarnason, Ino de Bruijn, \
+                Melanie Schirmer, Joshua Quick, Umer Z Ijaz, Leo Lahti,\
+                Nicholas J Loman, Anders F Andersson & Christopher Quince. \
+                2014. Binning metagenomic contigs by coverage and composition. \
+                Nature Methods, doi: 10.1038/nmeth.3103"
 
     def __init__(self, run=run, progress=progress):
         self.run = run
@@ -130,6 +134,10 @@ class CONCOCT:
         self.program_name = 'concoct'
 
         utils.is_program_exists(self.program_name)
+        self.run.info_single("If you publish results from this workflow, \
+                               please do not forget to cite \n%s" % CONCOCT.citation,
+                               nl_before=1, nl_after=1, mc='green')
+
         self.temp_path = filesnpaths.get_temp_directory_path()
 
 
