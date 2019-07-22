@@ -159,7 +159,9 @@ class CONCOCT:
         self.progress.end()
 
         clusters = {}
-        with open(os.path.join(self.temp_path, 'clustering_gt1000.csv'), 'r') as f:
+        threshold = args.length_threshold if 'length_threshold' in args.__dict__ else '1000'
+
+        with open(os.path.join(self.temp_path, 'clustering_gt%s.csv' % threshold), 'r') as f:
             lines = f.readlines()[1:]
 
             for entry in lines:
