@@ -49,7 +49,6 @@ class CONCOCT:
                 ['--clusters'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 400,
                  'help': "specify maximal number of clusters for VGMM, default\
                         400"}
                     ),
@@ -57,14 +56,12 @@ class CONCOCT:
                 ['--kmer_length'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 4,
                  'help': "pecify kmer length, default 4"}
                     ),
         'length_threshold': (
                 ['--length-threshold'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 1000,
                  'help': "specify the sequence length threshold, contigs shorter\
                         than this value will not be included. Defaults to\
                         1000"}
@@ -72,8 +69,6 @@ class CONCOCT:
         'read_length': (
                 ['--read-length'],
                 {'metavar': "INT",
-                 'required': False,
-                 'default': 100,
                  'help': "specify read length for coverage, default 100"}
                     ),
         'no_cov_normalization': (
@@ -90,7 +85,6 @@ class CONCOCT:
                 ['--total-percentage-pca'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 100,
                  'help': "The percentage of variance explained by the principal\
                         components for the combined data."}
                     ),
@@ -99,14 +93,12 @@ class CONCOCT:
                 {'metavar': "FLOAT",
                  'type': float,
                  'required': False,
-                 'default': 1.0e-6,
                  'help': "Specify the epsilon for VBGMM. Default value is 1.0e-6"}
                     ),
         'iterations': (
                 ['--iterations'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 500,
                  'help': "Specify maximum number of iterations for the VBGMM.\
                         Default value is 500"}
                     ),
@@ -114,7 +106,6 @@ class CONCOCT:
                 ['--seed'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 1,
                  'help': "Specify an integer to use as seed for clustering. 0\
                         gives a random seed, 1 is the default seed and any\
                         other positive integer can be used. Other values give\
@@ -159,7 +150,7 @@ class CONCOCT:
         self.progress.end()
 
         clusters = {}
-        threshold = args.length_threshold if 'length_threshold' in args.__dict__ else '1000'
+        threshold = args.length_threshold or '1000'
 
         with open(os.path.join(self.temp_path, 'clustering_gt%s.csv' % threshold), 'r') as f:
             lines = f.readlines()[1:]

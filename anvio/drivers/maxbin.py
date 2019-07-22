@@ -30,28 +30,24 @@ class MaxBin:
                 ['--min-contig-length'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 1000,
                  'help': "Minimum contig length. Default: 1000."}
                     ),
         'max_iteration': (
                 ['--max-iteration'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 50,
                  'help': "Maximum Expectation-Maximization algorithm iteration number. Default 50."}
                     ),
         'prob_threshold': (
                 ['--prob-threshold'],
                 {'metavar': "FLOAT",
                  'required': False,
-                 'default': 0.9,
                  'help': "Probability threshold for EM final classification. Default 0.9."}
                     ),
         'markerset': (
                 ['--merkerset'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 1000,
                  'help': "Minimum contig length. Default: 1000"}
                     ),
     }
