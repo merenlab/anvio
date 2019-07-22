@@ -109,14 +109,14 @@ class MetaBAT:
         self.program_name = 'metabat2'
 
         utils.is_program_exists(self.program_name)
+
+
+    def cluster(self, input_files, args, threads=1, splits_mode=False):
+        self.temp_path = filesnpaths.get_temp_directory_path()
         self.run.info_single("If you publish results from this workflow, \
                                please do not forget to cite \n%s" % MetaBAT.citation,
                                nl_before=1, nl_after=1, mc='green')
 
-        self.temp_path = filesnpaths.get_temp_directory_path()
-
-
-    def cluster(self, input_files, args, threads=1, splits_mode=False):
         if anvio.DEBUG:
             self.run.info('Working directory', self.temp_path)
 

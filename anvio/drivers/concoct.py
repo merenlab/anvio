@@ -132,16 +132,15 @@ class CONCOCT:
         self.progress = progress
 
         self.program_name = 'concoct'
-
         utils.is_program_exists(self.program_name)
+
+
+    def cluster(self, input_files, args, threads=1, splits_mode=False):
         self.run.info_single("If you publish results from this workflow, \
                                please do not forget to cite \n%s" % CONCOCT.citation,
                                nl_before=1, nl_after=1, mc='green')
 
         self.temp_path = filesnpaths.get_temp_directory_path()
-
-
-    def cluster(self, input_files, args, threads=1, splits_mode=False):
         log_path = os.path.join(self.temp_path, 'logs.txt')
         
         if anvio.DEBUG:
