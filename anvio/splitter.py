@@ -736,8 +736,8 @@ class LocusSplitter:
         if len(self.num_genes_list) == 1:
             self.num_genes_list = [0, self.num_genes_list[0]]
 
-            # # add sanity check for flanking genes 
-            # if self.flanking_genes 
+            # # add sanity check for flanking genes
+            # if self.flanking_genes
 
 
         self.run.warning(None, header="Input / Output", lc="cyan")
@@ -893,73 +893,69 @@ class LocusSplitter:
         locus_start = self.contigs_db.genes_in_contigs_dict[first_gene_of_the_block]['start']
         locus_stop = self.contigs_db.genes_in_contigs_dict[last_gene_of_the_block]['stop']
 
-        # being a performance nerd here yes
-        contig_sequence = db.DB(self.input_contigs_db_path, None, ignore_version=True) \
-                            .get_some_rows_from_table(t.contig_sequences_table_name,
-                                                      where_clause="contig='%s'" % contig_name)[0][1]
-
         ################################
         # Flanking gene locus extraction
         ################################
 
         # Parse flanking genes argument
+        if self.flanking_genes:
 
-        flanking_genes_list = self.flanking_genes.split(',')
+            flanking_genes_list = self.flanking_genes.split(',')
 
-        flank_1 = flanking_genes_list[0]
-        flank_2 = flanking_genes_list[1]
+            flank_1 = flanking_genes_list[0]
+            flank_2 = flanking_genes_list[1]
 
-        # Get the contigs_db ready
-        self.run.info('Mode', 'Function search')
-        contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object) # This somehow gives us the original contigs_db
+            # Get the contigs_db ready
+            self.run.info('Mode', 'Function search')
+            contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object) # This somehow gives us the original contigs_db
 
-        # Retrieve gene_caller_IDs for both flanking genes
+            # Retrieve gene_caller_IDs for both flanking genes
 
-        ## flank_1
-        contigs_db.init_functions() # This somehow allows us to search the function in the contigs_db
-        self.run.info('Flank_1', flank_1, mc='green')
-        self.run.info('Function calls being used', ', '.join(contigs_db.gene_function_call_sources))
+            ## flank_1
+            contigs_db.init_functions() # This somehow allows us to search the function in the contigs_db
+            self.run.info('Flank_1', flank_1, mc='green')
+            self.run.info('Function calls being used', ', '.join(contigs_db.gene_function_call_sources))
 
-        foo, search_report_flank_1 = contigs_db.search_for_gene_functions([flank_1], requested_sources=self.annotation_sources, verbose=True)
+            foo, search_report_flank_1 = contigs_db.search_for_gene_functions([flank_1], requested_sources=self.annotation_sources, verbose=True)
 
-        first_gene_of_the_block = search_report_flank_1[0][0]
+            first_gene_of_the_block = search_report_flank_1[0][0]
 
-        ## flank_2
-        self.run.info('Flank_2', flank_2, mc='green')
-        self.run.info('Function calls being used', ', '.join(contigs_db.gene_function_call_sources))
+            ## flank_2
+            self.run.info('Flank_2', flank_2, mc='green')
+            self.run.info('Function calls being used', ', '.join(contigs_db.gene_function_call_sources))
 
-        foo, search_report_flank_2 = contigs_db.search_for_gene_functions([flank_2], requested_sources=self.annotation_sources, verbose=True)
+            foo, search_report_flank_2 = contigs_db.search_for_gene_functions([flank_2], requested_sources=self.annotation_sources, verbose=True)
 
-        last_gene_of_the_block = search_report_flank_2[0][0]
+            last_gene_of_the_block = search_report_flank_2[0][0]
 
         # Use flanking gene gene_caller_IDs to cut out locus
 
-        # Get positions to cut at
+        # Get positions to cut at for either flanking or search_term
         locus_start = self.contigs_db.genes_in_contigs_dict[first_gene_of_the_block]['start']
         locus_stop = self.contigs_db.genes_in_contigs_dict[last_gene_of_the_block]['stop']
-    
+
         # Get original contig sequence (probably the entire genome)
         # being a performance nerd here yes
         contig_sequence = db.DB(self.input_contigs_db_path, None, ignore_version=True) \
                             .get_some_rows_from_table(t.contig_sequences_table_name,
                                                       where_clause="contig='%s'" % contig_name)[0][1]
-        
+
         #... and cut (for both search_term and flanking_genes)!
         locus_sequence = contig_sequence[locus_start:locus_stop]
-        
+
 
         # here we will create a gene calls dict for genes that are specific to our locus. since we trimmed
         # the contig sequence to the locus of interest, we will have to adjust start and stop positions of
         # genes in teh gene calls dict.
         # New with flanking
-        
+
         locus_gene_calls_dict = {}
         for g in range(first_gene_of_the_block, last_gene_of_the_block + 1):
             locus_gene_calls_dict[g] = copy.deepcopy(self.contigs_db.genes_in_contigs_dict[g])
             excess = self.contigs_db.genes_in_contigs_dict[first_gene_of_the_block]['start']
             locus_gene_calls_dict[g]['start'] -= excess
             locus_gene_calls_dict[g]['stop'] -= excess
-        
+
         self.run.info("Locus gene call start/stops excess (nts)", excess)
 
         if D() != 1 and self.reverse_complement_if_necessary:
