@@ -684,8 +684,6 @@ class LocusSplitter:
         self.input_contigs_db_path = A('contigs_db')
         self.num_genes = A('num_genes')
         self.search_term = A('search_term')
-        self.flank_gene_downstream = A('flank_gene_downstream')
-        self.flank_gene_upstream = A('flank_gene_upstream')
         self.gene_caller_ids = A('gene_caller_ids')
         self.delimiter = A('delimiter')
         self.output_dir = A('output_dir') or os.path.abspath(os.path.curdir)
