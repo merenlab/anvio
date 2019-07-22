@@ -539,6 +539,8 @@ class SCGsTaxomy:
 
         self.num_threads=args.num_threads
 
+        self.collection_name=args.collection_name
+
         if not args.num_threads:
             self.num_threads="2"
 
@@ -557,7 +559,6 @@ class SCGsTaxomy:
 
         self.taxonomy_dict = {}
 
-        self.profile_db=args.profile_db
 
 
         self.pident_level_path=os.path.join(os.path.dirname(
@@ -576,7 +577,7 @@ class SCGsTaxomy:
 
         self.taxonomy_estimation_bin_name                 = 'taxonomy_estimation_bin'
         self.taxonomy_estimation_bin_structure            = ['entry_id',      'collection_name', 'bin_name', 'source'  , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-        self.taxonomy_estimation_bin_types                = [ 'numeric UNIQUE',   'text'       ,   'text'  ,  'text',      'text',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
+        self.taxonomy_estimation_bin_types                = [ 'numeric',   'text'       ,   'text'  ,  'text',      'text',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
 
         self.taxonomy_estimation_metagenome_name                 = 'taxonomy_estimation_metagenome'
         self.taxonomy_estimation_metagenome_structure            = ['gene_caller_id',      'gene_name',  'source'  , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
@@ -586,15 +587,24 @@ class SCGsTaxomy:
 
         self.contigs_database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
-        self.profile_database = db.DB(self.profile_db, utils.get_required_version_for_db(self.profile_db))
+        self.profile_db=args.profile_db
+        if self.profile_db:
 
-        self.profile_database.drop_table(self.taxonomy_estimation_bin_name)
-        self.profile_database.drop_table(self.taxonomy_estimation_metagenome_name)
+            self.profile_database = db.DB(self.profile_db, utils.get_required_version_for_db(self.profile_db))
 
-        self.database.create_table(self.taxonomy_estimation_metagenome_name , self.taxonomy_estimation_metagenome_structure, self.taxonomy_estimation_metagenome_types)
-        self.contigs_database.create_table(self.taxonomy_estimation_bin_name, self.taxonomy_estimation_bin_structure, self.taxonomy_estimation_bin_types)
+            self.profile_database.drop_table(self.taxonomy_estimation_bin_name)
+            self.profile_database.create_table(self.taxonomy_estimation_bin_name, self.taxonomy_estimation_bin_structure, self.taxonomy_estimation_bin_types)
+
+
+
+
+        self.contigs_database.drop_table(self.taxonomy_estimation_metagenome_name)
+
+        self.contigs_database.create_table(self.taxonomy_estimation_metagenome_name , self.taxonomy_estimation_metagenome_structure, self.taxonomy_estimation_metagenome_types)
 
     def estimate_taxonomy(self):
+        #print(self.dicolevel)
+        #sys.exit()
 
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
@@ -643,7 +653,7 @@ class SCGsTaxomy:
         hits_per_gene={}
         for query in dic_blast_hits.values():
 
-            if self.profile_db:
+            if self.profile_db or not self.metagenome:
                 for key,value in dic_id_bin.items():
                     if int(query['gene_callers_id']) in value:
                         var=key
@@ -678,6 +688,7 @@ class SCGsTaxomy:
 
 
         possibles_taxonomy=[]
+        entry_id=0
         for name, SCGs_hit_per_gene in hits_per_gene.items():
 
             if not self.metagenome:
@@ -695,9 +706,30 @@ class SCGsTaxomy:
             if not self.metagenome:
                 self.run.info('estimate taxonomy',
                               '/'.join(list(taxonomy.values())))
+                self.run.info('Possible presence ','|'.join(list(possibles_taxonomy)))
 
-            if self.metagenome and str(list(taxonomy.values())[-1]) not in possibles_taxonomy:
-                possibles_taxonomy.append(str(list(taxonomy.values())[-1]))
+                entries=[tuple([entry_id,self.collection_name,name,"GTDB"]+list(taxonomy.values()))]
+                print(entries)
+                self.profile_database.insert_many(self.taxonomy_estimation_bin_name, entries)
+
+
+
+            if self.metagenome :
+
+
+                entries=[tuple([name,list(SCGs_hit_per_gene.keys())[0],"GTDB"]+list(taxonomy.values()))]
+                self.contigs_database.insert_many(self.taxonomy_estimation_metagenome_name, entries)
+
+                if str(list(taxonomy.values())[-1]) not in possibles_taxonomy:
+                    possibles_taxonomy.append(str(list(taxonomy.values())[-1]))
+
+
+                #self.database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?)''' % self.taxonomy_estimation_metagenome_name  , entries)
+
+            entry_id+=1
+
+                #'gene_caller_id',      'gene_name',  'source'  , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+
 
 
         if self.metagenome:
@@ -706,6 +738,9 @@ class SCGsTaxomy:
 
 
 
+        if not self.metagenome:
+            self.profile_database.disconnect()
+        self.contigs_database.disconnect()
 
     def sanity_check(self):
         filesnpaths.is_file_exists(self.db_path)
@@ -1126,7 +1161,8 @@ class SCGsTaxomy:
                 if s[key] not in assignation.values():
                     if anvio.DEBUG:
                         self.run.info('CONSIDER taxonomy','/'.join(assignation.values()))
-                    assignation.pop(key, None)
+                    #assignation.pop(key, None)
+                    assignation[key]=''
         return(assignation)
 
     def make_dicoidentitielevel(self):
@@ -1162,12 +1198,34 @@ class SCGsTaxomy:
     def reduce_assignation_level(self,taxonomy,bestlist):
         i=0
 
+        #print(self.dicolevel)
+        #sys.exit()
 
+        """for ribo,values in self.dicolevel.items():
+            print(ribo)
+            for key,val in values.items():
+                #if key.endswith('aureus'):
+                    #print(ribo,key,type(key))
+                if key.startswith('Ribosomal'):
+                    print(key)
+                    pri=val
+                    riba=key
+
+        print(riba,pri)
+        sys.exit()"""
+
+        #print(bestlist)
         for possibilitie in taxonomy:
+
             j=-1
 
             cutoff=50
-            #cutoff=float(self.dicolevel[self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j]])
+            #print(bestlist[i][0],bestlist[i][1],list(possibilitie.keys())[j],self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j])
+            #print(self.dicolevel[bestlist[i][0]].items())
+            #print(self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j])
+            #print(type(self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j]))
+            #sys.exit()
+            #cutoff=float(self.dicolevel[bestlist[i][0]][self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j]])
 
 
 
@@ -1178,10 +1236,10 @@ class SCGsTaxomy:
                 j-=1
 
                 cutoff=50
-                #cutoff=float(self.dicolevel[self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j]])
+                #cutoff=float(self.dicolevel[bestlist[i][0]][self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j]])
 
 
-            #print(cutoff,bestlist[i][1],list(possibilitie.keys())[j],self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j])
+            print(cutoff,bestlist[i][1],list(possibilitie.keys())[j],self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j])
             i+=1
 
 
