@@ -88,14 +88,14 @@ class DAS_Tool:
         self.program_name = 'DAS_Tool'
 
         utils.is_program_exists(self.program_name)
+
+
+    def cluster(self, input_files, args, threads=1, splits_mode=False):
         self.run.info_single("If you publish results from this workflow, \
                                please do not forget to cite \n%s" % DAS_Tool.citation,
                                nl_before=1, nl_after=1, mc='green')
         self.temp_path = filesnpaths.get_temp_directory_path()
 
-
-
-    def cluster(self, input_files, args, threads=1, splits_mode=False):
         if not splits_mode:
             raise ConfigError("DAS_Tool can only be run in splits mode. See --help for details.")
 
