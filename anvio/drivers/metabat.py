@@ -30,14 +30,12 @@ class MetaBAT:
                 ['-m', '--minContig'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 2500,
                  'help': "Minimum size of a contig for binning (should be >=1500)"}
                     ),
         'maxP': (
                 ['--maxP'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 95,
                  'help': "Percentage of 'good' contigs considered for binning decided by connection\
                                     among contigs. The greater, the more sensitive."}
                     ),
@@ -45,7 +43,6 @@ class MetaBAT:
                 ['--minS'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 60,
                  'help': "Minimum score of a edge for binning (should be between 1 and 99). The\
                                     greater, the more specific."}
                     ),
@@ -53,14 +50,12 @@ class MetaBAT:
                 ['--maxEdges'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 200,
                  'help': "Maximum number of edges per node. The greater, the more sensitive."}
                     ),
         'pTNF': (
                 ['--pTNF'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 0,
                  'help': "TNF probability cutoff for building TNF graph. Use it to skip the\
                                     preparation step. (0: auto)."}
                     ),
@@ -74,28 +69,24 @@ class MetaBAT:
                 ['--minCV'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 1,
                  'help': "Minimum mean coverage of a contig in each library for binning."}
                     ),
         'minCVSum': (
                 ['--minCVSum'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 1,
                  'help': "Minimum size of a bin as the output."}
                     ),
         'minClsSize': (
                 ['--minClsSize'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 200000,
                  'help': "Minimum size of a bin as the output."}
                     ),
         'seed': (
                 ['--seed'],
                 {'metavar': "INT",
                  'required': False,
-                 'default': 0,
                  'help': "For exact reproducibility. (0: use random seed)."}
                     ),
     }

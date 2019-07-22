@@ -47,7 +47,6 @@ class DAS_Tool:
                 ['--score-threshold'],
                 {'metavar': "FLOAT",
                  'required': False,
-                 'default': 0.5,
                  'help': "Score threshold until selection algorithm will keep selecting bins [0..1].\
                               (default: 0.5)"}
                     ),
@@ -55,7 +54,6 @@ class DAS_Tool:
                 ['--duplicate-penalty'],
                 {'metavar': "FLOAT",
                  'required': False,
-                 'default': 0.6,
                  'help': "Penalty for duplicate single copy genes per bin (weight b).\
                               Only change if you know what you're doing. [0..3]\
                               (default: 0.6)"}
@@ -64,7 +62,6 @@ class DAS_Tool:
                 ['--megabin-penalty'],
                 {'metavar': "FLOAT",
                  'required': False,
-                 'default': 0.5,
                  'help': "Penalty for megabins (weight c). Only change if you know what you're doing. [0..3]\
                               (default: 0.5)"}
                     ),
