@@ -45,19 +45,83 @@ progress = terminal.Progress()
 
 class CONCOCT:
     arguments = {
+        'clusters': (
+                ['--clusters'],
+                {'metavar': "INT",
+                 'required': False,
+                 'default': 400,
+                 'help': "specify maximal number of clusters for VGMM, default\
+                        400"}
+                    ),
+        'kmer_length': (
+                ['--kmer_length'],
+                {'metavar': "INT",
+                 'required': False,
+                 'default': 4,
+                 'help': "pecify kmer length, default 4"}
+                    ),
+        'length_threshold': (
+                ['--length-threshold'],
+                {'metavar': "INT",
+                 'required': False,
+                 'default': 1000,
+                 'help': "specify the sequence length threshold, contigs shorter\
+                        than this value will not be included. Defaults to\
+                        1000"}
+                    ),
+        'read_length': (
+                ['--read-length'],
+                {'metavar': "INT",
+                 'required': False,
+                 'default': 100,
+                 'help': "specify read length for coverage, default 100"}
+                    ),
+        'no_cov_normalization': (
+                ['--no-cov-normalization'],
+                {'required': False,
+                 'action': 'store_true',
+                 'help': "By default the coverage is normalized with regards to\
+                        samples, then normalized with regards of contigs and\
+                        finally log transformed. By setting this flag you skip\
+                        the normalization and only do log transorm of the\
+                        coverage."}
+                    ),
+        'total_percentage_pca': (
+                ['--total-percentage-pca'],
+                {'metavar': "INT",
+                 'required': False,
+                 'default': 100,
+                 'help': "The percentage of variance explained by the principal\
+                        components for the combined data."}
+                    ),
+        'epsilon': (
+                ['--epsilon'],
+                {'metavar': "FLOAT",
+                 'type': float,
+                 'required': False,
+                 'default': 1.0e-6,
+                 'help': "Specify the epsilon for VBGMM. Default value is 1.0e-6"}
+                    ),
+        'iterations': (
+                ['--iterations'],
+                {'metavar': "INT",
+                 'required': False,
+                 'default': 500,
+                 'help': "Specify maximum number of iterations for the VBGMM.\
+                        Default value is 500"}
+                    ),
         'seed': (
                 ['--seed'],
                 {'metavar': "INT",
                  'required': False,
-                 'help': "Seed for random numbers"}
-                    ),
-        'threads': (
-                ['-T', '--threads'],
-                {'metavar': "INT",
-                 'required': False,
-                 'help': "Number of threads"}
-                    ),
+                 'default': 1
+                 'help': "Specify an integer to use as seed for clustering. 0\
+                        gives a random seed, 1 is the default seed and any\
+                        other positive integer can be used. Other values give\
+                        ArgumentTypeError."}
+                    )
     }
+    citation = "Citation here"
 
     def __init__(self, run=run, progress=progress):
         self.run = run
@@ -79,7 +143,8 @@ class CONCOCT:
             '--coverage_file', input_files.coverage, 
             '--composition_file', input_files.fasta,
             '--basename', self.temp_path,
-            '--threads', threads]
+            '--threads', threads,
+             *utils.serialize_args(args, use_underscore=True)]
 
         self.progress.new(self.program_name)
         self.progress.update('Running using %d threads...' % threads)
