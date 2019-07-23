@@ -1,24 +1,6 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
-"""Anvi'o - CONCOCT interface for unsupervised clustering
-
-   There are two classes in this file, `CONCOCT` and `CONCOCT_INTERFACE`.
-   `CONCOCT` is pretty straightforward to use using anvi'o resources. Here
-   is an example:
-
-   >>> import anvio.concoct as concoct
-   >>> class Args:
-          pass
-   >>> args = Args()
-   >>> args.profile_db = '/path/to/PROFILE.db'
-   >>> args.contigs_db = '/path/to/CONTIGS.db'
-   >>> c = concoct.CONCOCT(args)
-   >>> c.cluster()
-   >>> print c.clusters
-
-   The other class `CONCOCT_INTERFACE`, handles more low-level access
-   to the vbgmm module.
-"""
+"""Anvi'o - CONCOCT interface for unsupervised clustering"""
 import os
 
 import anvio
