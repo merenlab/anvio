@@ -695,6 +695,7 @@ class LocusSplitter:
         self.remove_partial_hits = A('remove_partial_hits')
         self.reverse_complement_if_necessary = not A('never_reverse_complement')
         self.include_fasta_output = True
+        self.mode = A('mode')
 
         if A('list_hmm_sources'):
             hmmops.SequencesForHMMHits(self.input_contigs_db_path).list_available_hmm_sources()
@@ -712,12 +713,16 @@ class LocusSplitter:
         """
         Game plan for sanity check:
             - Mode 1 (1 gene): requires (gene-caller-id or search-term or [use-hmm and search-term]) and --num-genes
+                * goal: list of single gene-caller-ids
             - Mode 2 (flanking genes): requires 2x(gene-caller-id or search-term or hmm)
+                * goal: tuple of paired gene-caller-ids
+
+        ** Both modes will end with tuple of start and stop positions!!!!!!! i.e. [(start,stop), (start,stop)]
         """
 
         filesnpaths.is_output_dir_writable(self.output_dir)
 
-        # Mode 1
+        # Check that inputs make sense
         if (not (self.gene_caller_ids or self.search_term)) or (self.gene_caller_ids and self.search_term):
             raise ConfigError("You must specify exacly one of the following: --gene-caller-ids or --search-term")
 
@@ -727,9 +732,11 @@ class LocusSplitter:
 
         utils.is_contigs_db(self.input_contigs_db_path)
 
+        # Parse hmm sources
         if len(self.hmm_sources):
             self.hmm_sources = set([s.strip() for s in self.hmm_sources.split(',')])
 
+        # Parse --num-genes into list and sanity check it
         self.num_genes_list = [int(x) for x in self.num_genes.split(',')]
         if len(self.num_genes_list) > 2:
             raise ConfigError("The block size you provided, \"%s\", is not valid.\
@@ -740,6 +747,7 @@ class LocusSplitter:
         if len(self.num_genes_list) == 1:
             self.num_genes_list = [0, self.num_genes_list[0]]
 
+        # Extra stuff to print to screen
         self.run.warning(None, header="Input / Output", lc="cyan")
         self.run.info('Contigs DB', os.path.abspath(self.input_contigs_db_path))
         self.run.info('Output directory', self.output_dir)
@@ -749,6 +757,17 @@ class LocusSplitter:
             self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[0]))
         self.run.info('Rev-comp the locus sequence if necessary', self.reverse_complement_if_necessary)
 
+        # Now sanity check depending on mode 1 or 2
+
+        self.mode = int(self.mode)
+        if self.mode == 1:
+            print("Mode 1") # Mode 1 (1 gene): requires (gene-caller-id or search-term or [use-hmm and search-term]) and --num-genes
+            if (not (self.gene_caller_ids or self.search_term)) or (self.gene_caller_ids and self.search_term) and num_genes:
+                raise ConfigError("You must specify --gene-caller-ids or --search-term AND --num-genes")
+        if self.mode == 2:
+            print("Mode 2") # Mode 2 (flanking genes): requires 2x(gene-caller-id or search-term or hmm)
+            if (not (',' in self.gene_caller_ids)) or (not (',' in self.search_term)):
+                raise ConfigError("You must specify 2 flanking --gene-caller-ids or --search-term to export locus")
 
     def init(self):
         """The whole purpose of this function is to identify which gene calls to focus"""
@@ -757,11 +776,17 @@ class LocusSplitter:
 
         self.run.warning(None, header="Initialization bleep bloops", lc="cyan")
 
+        # Ok here all input sources for both *mode 1* and *mode 2* will lead to gene_caller_ids in the list gene_caller_ids_of_interest
+
+        # Input: gene_caller_ids
+        # So we dont need to do much
         if self.gene_caller_ids:
             self.run.info('Mode', 'User-provided gene caller id(s)')
 
             gene_caller_ids_of_interest = list(utils.get_gene_caller_ids_from_args(self.gene_caller_ids, self.delimiter))
             self.sources = ['gene_caller_ids']
+
+        # Input: use-hmm annotations flag
         elif self.use_hmm:
             self.run.info('Mode', 'HMM search')
 
@@ -775,6 +800,8 @@ class LocusSplitter:
 
             self.targets.append('HMMs')
             self.sources = s.sources
+
+        # Input: --search-term
         else:
             self.run.info('Mode', 'Function search')
 
@@ -798,6 +825,8 @@ class LocusSplitter:
             run.info('Matching genes',
                      '%d genes matched your search' % len(self.gene_caller_ids_of_interest),
                      mc='green', nl_after=1)
+
+        # Mode 2
 
 
     def process(self, skip_init=False):
