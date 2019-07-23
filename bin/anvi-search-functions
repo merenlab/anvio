@@ -178,7 +178,7 @@ if __name__ == '__main__':
                                                   TAB-delimited output that is compatible with anvi'o additional data format (so you can give\
                                                   it to the `anvi-interactive` to see which splits contained genes that were matching to your\
                                                   search terms). You can also ask anvi'o to generate a full-report, that contains much more and\
-                                                  much helpful information about each hit. Optionally you can even ask the gene seqeunces to\
+                                                  much helpful information about each hit. Optionally you can even ask the gene sequences to\
                                                   appear in this report.")
     groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     groupC.add_argument(*anvio.A('full-report'), **anvio.K('full-report'))

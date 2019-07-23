@@ -55,11 +55,11 @@ anvi-export-gene-calls -c $output_dir/CONTIGS.db \
 
 INFO "Exporting contig sequences from the contigs database"
 anvi-export-contigs -c $output_dir/CONTIGS.db \
-                    -o $output_dir/exported_contig_seqeunces.fa
+                    -o $output_dir/exported_contig_sequences.fa
 
 INFO "Exporting contig sequences from the contigs database in 'splits mode'"
 anvi-export-contigs -c $output_dir/CONTIGS.db \
-                    -o $output_dir/exported_split_seqeunces.fa \
+                    -o $output_dir/exported_split_sequences.fa \
                     --splits-mode
 
 INFO "Populating taxonomy for splits table in the database using 'centrifuge' parser"

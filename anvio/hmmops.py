@@ -305,7 +305,7 @@ class SequencesForHMMHits:
                     ...
                 }
 
-            This function will return DNA seqeunces by default. If `return_amino_acid_sequences` parameter
+            This function will return DNA sequences by default. If `return_amino_acid_sequences` parameter
             is True, it will return AA sequences instead.
 
             `return_best_hit=True` will filter the resulting dictionary to remove weak hits if there are more
