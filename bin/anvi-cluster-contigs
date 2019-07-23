@@ -172,8 +172,18 @@ if __name__ == '__main__':
 
         contigs_db = dbops.ContigsDatabase(args.contigs_db)
 
+        # Here we parse not sys.argv but unknown parameters 
+        # that is not recognized by parent parser.
         driver = args.driver
-        sub_args, unknown = subparsers[driver].parse_known_args()
+        sub_args, sub_unknown = subparsers[driver].parse_known_args(unknown)
+
+        # --debug handled by anvio/__init__.py can be in args
+        if '--debug' in sub_unknown:
+            sub_unknown.remove('--debug')
+
+        if len(sub_unknown):
+            raise ConfigError("Unrecognized parameters %s" % ' '.join(sub_unknown))
+
         binning_module = modules[driver]()
 
         input_files = prepare_input_files(merged_profile_db, contigs_db, splits_mode=splits_mode)
