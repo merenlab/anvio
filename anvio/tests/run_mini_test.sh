@@ -63,6 +63,9 @@ anvi-import-misc-data $files/samples-order.txt \
 INFO "Importing a state file into the merged profile"
 anvi-import-state -p $output_dir/SAMPLES-MERGED/PROFILE.db --state $files/example_state.json --name default
 
+INFO "Importing a collection file into the merged profile"
+anvi-import-collection -c $output_dir/CONTIGS.db -p $output_dir/SAMPLES-MERGED/PROFILE.db -C CONCOCT $files/concoct_mini_test.txt
+
 INFO "Listing collections available"
 anvi-show-collections-and-bins -p $output_dir/SAMPLES-MERGED/PROFILE.db
 
@@ -72,3 +75,5 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
                  --split-hmm-layers
 
+INFO "Summarizing CONCOCT results"
+anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED-SUMMARY -C 'CONCOCT' --init-gene-coverages
