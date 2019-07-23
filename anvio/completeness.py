@@ -91,6 +91,7 @@ class Completeness:
         self.domains_missing_in_SCG_domain_predictor = [d for d in self.domains if d not in self.SCG_domain_predictor.SCG_domains]
         if len(self.domains_missing_in_SCG_domain_predictor):
             num_domains_missing = len(self.domains_missing_in_SCG_domain_predictor)
+            self.progress.reset()
             self.run.warning("OK. We have a problem. You seem to have single-copy core gene collections for among your HMM hits %s that\
                               are not included when the anvi'o domain predictor was trained :/ Here is the list of domains that are making\
                               us upset here: \"%s\". This means either you put a new HMM single-copy core gene collection to the anvi'o HMMs\
