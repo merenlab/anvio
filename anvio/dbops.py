@@ -1021,7 +1021,7 @@ class PanSuperclass(object):
                                   it was the the amino acid sequences that was aligned for these gene clusters, you are asking for DNA sequences.\
                                   Anvi'o will convert the amino acid sequence alignment into a DNA alignment instantly (wihtout any additional\
                                   alignment step), but due to the intricacies of gene calling, the amino acid sequence of a gene that is stored\
-                                  in the contigs database may differ from its DNA seqeunce. YES THAT IS TRUE BECAUSE THAT'S HOW BIOINFORATICS ROLLS.\
+                                  in the contigs database may differ from its DNA sequence. YES THAT IS TRUE BECAUSE THAT'S HOW BIOINFORATICS ROLLS.\
                                   For those rare instances, the alignment summary for the amino acid sequence can no longer be used to make sense of\
                                   the DNA sequence (see https://github.com/merenlab/anvio/issues/772 for an example in which we have observed this).\
                                   But we will give it a try here in your case becasue you asked anvi'o to just do it :/ If this explodes downstream,\
@@ -1029,11 +1029,11 @@ class PanSuperclass(object):
             else:
                 self.run.warning("Please read carefully. At this part of the code anvi'o attempts to get sequences for the gene clusters you are\
                                   interested in. While it was the amino acid sequences that were aligned here, you are you are asking for DNA sequences.\
-                                  Even though the amino acid seuqence alignment summary (the anvi'o way of storing alignment information) can be used to\
+                                  Even though the amino acid sequence alignment summary (the anvi'o way of storing alignment information) can be used to\
                                   align DNA sequences instantaneously, due to intricacies associated with the gene calling step, the amino acid sequence\
-                                  of a gene stored in the contigs database may differ from its DNA seqeunce (true story). For those rare instances, the\
+                                  of a gene stored in the contigs database may differ from its DNA sequence (true story). For those rare instances, the\
                                   alignment summary for the amino acid sequence may no longer be used to make sense of the DNA sequence \
-                                  (see https://github.com/merenlab/anvio/issues/772 for more informaiton). What needs to be done is to do another alignment\
+                                  (see https://github.com/merenlab/anvio/issues/772 for more information). What needs to be done is to do another alignment\
                                   on the fly. But as you probably already have already guessed, anvi'o will not do that for you, and instead it will report\
                                   your DNA sequences for your genes in your gene clusters unaligned. If you really really want to try and see whether it will\
                                   work for your gene clusters here, you can try to include `--just-do-it` flag in your command line.")
@@ -1052,7 +1052,7 @@ class PanSuperclass(object):
             raise ConfigError("gene_cluster_names for get_sequences_for_gene_clusters must be a non-empty `set`.")
 
         if not self.genomes_storage_is_available:
-            raise ConfigError("The pan anvi'o super class for is upset. You are attempting to get AA seqeunces for %s,\
+            raise ConfigError("The pan anvi'o super class for is upset. You are attempting to get AA sequences for %s,\
                                but there is not genomes storage is available to get it." \
                                     % 'a gene cluster' if len(gene_cluster_names) > 1 else '%d gene_clusters' % len(gene_cluster_names))
 
@@ -1067,7 +1067,7 @@ class PanSuperclass(object):
                                Here are some of the missing ones; %s" \
                                         % (len(missing_gene_cluster_names), len(gene_cluster_names), ', '.join(missing_gene_cluster_names[0:5])))
 
-        self.progress.new('Accessing gene cluster seqeunces', progress_total_items=len(gene_cluster_names))
+        self.progress.new('Accessing gene cluster sequences', progress_total_items=len(gene_cluster_names))
 
         for gene_cluster_name in gene_cluster_names:
             self.progress.increment()
@@ -1193,7 +1193,7 @@ class PanSuperclass(object):
                                                               skip_alignments=skip_alignments,
                                                               report_DNA_sequences=report_DNA_sequences)
 
-        self.progress.new('Writing gene cluster seqeunces to file')
+        self.progress.new('Writing gene cluster sequences to file')
         sequence_counter = 0
         for gene_cluster_name in sequences_dict:
             for genome_name in sequences_dict[gene_cluster_name]:
