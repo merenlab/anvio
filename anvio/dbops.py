@@ -889,6 +889,7 @@ class PanSuperclass(object):
         self.pan_db_path = A('pan_db')
         self.genomes_storage_path = A('genomes_storage')
         self.skip_init_functions = A('skip_init_functions')
+        self.just_do_it = A('just_do_it')
 
         self.genome_names = []
         self.gene_clusters = {}
@@ -1014,17 +1015,29 @@ class PanSuperclass(object):
                                both command line and interactive anvi'o interfaces.")
 
         if not skip_alignments and self.gene_clusters_gene_alignments_available and report_DNA_sequences:
-            self.run.warning("Please read carefully. Here anvi'o attempts to get sequences for the gene clusters you are interested in. While\
-                              the amino acid sequences for those gene clusters were aligned, you are asking for DNA sequences. While amino acid\
-                              seuqence alignment summary (the anvi'o way of storing alignment information) can be used to align DNA sequences\
-                              instantaneously, due to intricacies of gene callers, the amino acid sequence of a gene stored in the\
-                              contigs database may differ from its DNA seqeunce. For those rare instances, the alignment summary for the amino acid\
-                              sequence can no longer be used to make sense of the DNA sequence (see https://github.com/merenlab/anvio/issues/772 for\
-                              more informaiton). What needs to be done is to do another alignment on the fly. But as you probably already guessed,\
-                              anvi'o will not do that for you, and instead will report your DNA sequences for your genes in your gene clusters\
-                              unaligned. If you really really think anvi'o should do it you have two options: if you are a member of the MerenLab,\
-                              re-open and fix the issue #772. If you are not a member, then send us an e-mail.")
-            skip_alignments = True
+            if self.just_do_it:
+                self.run.warning("Please read carefully. Since you are using the flag `--just-do-it`, anvi'o will attempt to do someting that may not\
+                                  work in some cases. It seems you wish to get sequences for some gene clusters you are interested in. Even though\
+                                  it was the the amino acid sequences that was aligned for these gene clusters, you are asking for DNA sequences.\
+                                  Anvi'o will convert the amino acid sequence alignment into a DNA alignment instantly (wihtout any additional\
+                                  alignment step), but due to the intricacies of gene calling, the amino acid sequence of a gene that is stored\
+                                  in the contigs database may differ from its DNA seqeunce. YES THAT IS TRUE BECAUSE THAT'S HOW BIOINFORATICS ROLLS.\
+                                  For those rare instances, the alignment summary for the amino acid sequence can no longer be used to make sense of\
+                                  the DNA sequence (see https://github.com/merenlab/anvio/issues/772 for an example in which we have observed this).\
+                                  But we will give it a try here in your case becasue you asked anvi'o to just do it :/ If this explodes downstream,\
+                                  it is on you alone.")
+            else:
+                self.run.warning("Please read carefully. At this part of the code anvi'o attempts to get sequences for the gene clusters you are\
+                                  interested in. While it was the amino acid sequences that were aligned here, you are you are asking for DNA sequences.\
+                                  Even though the amino acid seuqence alignment summary (the anvi'o way of storing alignment information) can be used to\
+                                  align DNA sequences instantaneously, due to intricacies associated with the gene calling step, the amino acid sequence\
+                                  of a gene stored in the contigs database may differ from its DNA seqeunce (true story). For those rare instances, the\
+                                  alignment summary for the amino acid sequence may no longer be used to make sense of the DNA sequence \
+                                  (see https://github.com/merenlab/anvio/issues/772 for more informaiton). What needs to be done is to do another alignment\
+                                  on the fly. But as you probably already have already guessed, anvi'o will not do that for you, and instead it will report\
+                                  your DNA sequences for your genes in your gene clusters unaligned. If you really really want to try and see whether it will\
+                                  work for your gene clusters here, you can try to include `--just-do-it` flag in your command line.")
+                skip_alignments = True
 
         sequences = {}
 
