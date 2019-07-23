@@ -186,6 +186,10 @@ if __name__ == '__main__':
 
         binning_module = modules[driver]()
 
+        run.info("Contigs DB", args.contigs_db)
+        run.info("Profile DB", args.profile_db)
+        run.info("Contigs Mode", args.contigs_mode)
+
         input_files = prepare_input_files(merged_profile_db, contigs_db, splits_mode=splits_mode)
 
         if anvio.DEBUG:
