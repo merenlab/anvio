@@ -13,6 +13,9 @@ from collections import Counter
 
 import anvio
 import pickle
+from collections import OrderedDict
+
+from tabulate import tabulate
 import anvio.db as db
 import anvio.ccollections as ccollections
 import anvio.fastalib as f
@@ -27,7 +30,6 @@ from anvio.dbops import ContigsSuperclass
 from anvio.drivers import Aligners, driver_modules
 from anvio.drivers.diamond import Diamond
 from anvio.errors import ConfigError, FilesNPathsError
-from tabulate import tabulate
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -104,7 +106,7 @@ class SCGsdiamond:
 
         self.taxon_names_table_name                 = 'taxon_names'
         self.taxon_names_table_structure            = ['taxon_id', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-        self.taxon_names_table_types                = [ 'numeric UNIQUE',   'text',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
+        self.taxon_names_table_types                = [ 'numeric unique',   'text',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
 
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
@@ -141,7 +143,7 @@ class SCGsdiamond:
 
         self.sanity_check()
 
-        self.taxonomy_dict={}
+        self.taxonomy_dict=OrderedDict()
 
 
     def sanity_check(self):
@@ -439,10 +441,6 @@ class SCGsdiamond:
 
         self.database.disconnect()
 
-
-
-
-
     @timer
     def get_raw_blast_hits_multi(self, match_id, input_queue,output_queue,core, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
 
@@ -482,7 +480,6 @@ class SCGsdiamond:
                                    does not look like the way we expected it. This function\
                                    expects a dictionary that contains keys `gene_name` and `sequence`.")
 
-                #sequence = sequence+">%s\n%s\n"% (id,entry['sequence'])
             sequence = sequence+">"+id+"\n"+entry['sequence']+"\n"
             entry['hits']=[]
             bin_dict_id[id]=entry['bin_id']
@@ -505,14 +502,12 @@ class SCGsdiamond:
             self.database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % self.blast_hits_table_name, entries)
 
             taxo=[tuple([line_hit[1]]+list(self.taxonomy_dict[line_hit[1]].values()))]
-            #print(taxo)
 
             try:
                 self.database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % "taxon_names", taxo)
             except:
                 pass
 
-            #dict(zip(['accession', 'pident', 'length', 'mismatch', 'gaps', 'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore'], [float(entry[i]) if i > 1 else entry[i] for i in range(1, 12)]))
             hit=dict(zip(['accession', 'pident', 'bitscore'], [
                        float(line_hit[i]) if i > 1 else line_hit[i] for i in [1, 2, 11]]))
             taxo=self.taxonomy_dict[line_hit[1]]
@@ -587,13 +582,16 @@ class SCGsTaxomy:
 
         self.contigs_database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
-        self.profile_db=args.profile_db
-        if self.profile_db:
 
-            self.profile_database = db.DB(self.profile_db, utils.get_required_version_for_db(self.profile_db))
+        if args.profile_db:
+            self.profile_database_path=args.profile_db
+
+            self.profile_database = db.DB(self.profile_database_path, utils.get_required_version_for_db(self.profile_database_path))
 
             self.profile_database.drop_table(self.taxonomy_estimation_bin_name)
             self.profile_database.create_table(self.taxonomy_estimation_bin_name, self.taxonomy_estimation_bin_structure, self.taxonomy_estimation_bin_types)
+        else:
+            self.profile_database=None
 
 
 
@@ -603,19 +601,16 @@ class SCGsTaxomy:
         self.contigs_database.create_table(self.taxonomy_estimation_metagenome_name , self.taxonomy_estimation_metagenome_structure, self.taxonomy_estimation_metagenome_types)
 
     def estimate_taxonomy(self):
-        #print(self.dicolevel)
-        #sys.exit()
-
-        self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
 
-        dic_blast_hits=self.database.get_table_as_dict('blast_hits')
-        self.taxonomy_dict =self.database.get_table_as_dict('taxon_names')
+        dic_blast_hits=self.contigs_database.get_table_as_dict('blast_hits')
+        self.taxonomy_dict =OrderedDict(self.contigs_database.get_table_as_dict('taxon_names'))
+
 
         dic_id_bin={}
-        if self.profile_db:
+        if self.profile_database:
             utils.is_profile_db_and_contigs_db_compatible(
-                self.profile_db, self.db_path)
+                self.profile_database_path, self.db_path)
 
             splits_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
 
@@ -625,13 +620,10 @@ class SCGsTaxomy:
 
             s = hmmops.SequencesForHMMHits(self.db_path)
 
-            database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-
-
 
             hits_in_splits, split_name_to_bin_id = s.get_hmm_hits_in_splits(splits_dict)
 
-            dic_genes_in_splits=self.database.get_table_as_dict("genes_in_splits")
+            dic_genes_in_splits=self.contigs_database.get_table_as_dict("genes_in_splits")
 
 
             for split in dic_genes_in_splits.values():
@@ -653,7 +645,7 @@ class SCGsTaxomy:
         hits_per_gene={}
         for query in dic_blast_hits.values():
 
-            if self.profile_db or not self.metagenome:
+            if self.profile_database:
                 for key,value in dic_id_bin.items():
                     if int(query['gene_callers_id']) in value:
                         var=key
@@ -677,9 +669,6 @@ class SCGsTaxomy:
                 hits_per_gene[var][query['gene_name']]=[]
 
             hits_per_gene[var][query['gene_name']] = hits_per_gene[var][query['gene_name']] + hit
-
-        #print(hits_per_gene.keys())
-        #sys.exit(status=None)
 
 
 
@@ -706,39 +695,37 @@ class SCGsTaxomy:
             if not self.metagenome:
                 self.run.info('estimate taxonomy',
                               '/'.join(list(taxonomy.values())))
-                self.run.info('Possible presence ','|'.join(list(possibles_taxonomy)))
 
                 entries=[tuple([entry_id,self.collection_name,name,"GTDB"]+list(taxonomy.values()))]
-                print(entries)
-                self.profile_database.insert_many(self.taxonomy_estimation_bin_name, entries)
+
+                if self.profile_database:
+                    self.profile_database.insert_many(self.taxonomy_estimation_bin_name, entries)
 
 
 
-            if self.metagenome :
+            if self.metagenome or not self.profile_database:
 
 
                 entries=[tuple([name,list(SCGs_hit_per_gene.keys())[0],"GTDB"]+list(taxonomy.values()))]
-                self.contigs_database.insert_many(self.taxonomy_estimation_metagenome_name, entries)
+                #self.contigs_database.insert_many(self.taxonomy_estimation_metagenome_name, entries)
+
 
                 if str(list(taxonomy.values())[-1]) not in possibles_taxonomy:
                     possibles_taxonomy.append(str(list(taxonomy.values())[-1]))
 
 
-                #self.database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?)''' % self.taxonomy_estimation_metagenome_name  , entries)
-
             entry_id+=1
 
-                #'gene_caller_id',      'gene_name',  'source'  , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 
 
 
-        if self.metagenome:
+        if self.metagenome or not self.profile_database:
             self.run.info('Possible presence ','|'.join(list(possibles_taxonomy)))
 
 
 
 
-        if not self.metagenome:
+        if self.profile_database:
             self.profile_database.disconnect()
         self.contigs_database.disconnect()
 
@@ -967,7 +954,6 @@ class SCGsTaxomy:
             if j< 10 and dico_position_entry[key] > (len_position * 0.5):
                 list_position_entry.append(key)
                 j += 1
-                #print(self.taxonomy_dict[key]['t_species'] ,key,dico_position_entry[key])
 
         list_position_ribosomal = self.make_list_position_ribosomal(
             matchinggenes, hits_per_gene, list_position_entry)
@@ -1012,7 +998,7 @@ class SCGsTaxomy:
         maxposition = len(list_position_entry)
         i = 0
         # do 'matrix=[(['NA'] *len(list_position_ribosomal))]*(len(dico_position_entry))' don't work.\
-        # subsitution will impact all items on the index in lists
+        # subsitution will impact all items on the same index in lists
         while i < maxposition:
             emptylist = self.emptylistmaker(numbr_genes)
             matrix.append(emptylist)
@@ -1109,10 +1095,10 @@ class SCGsTaxomy:
             name, hits_per_gene)
         start_make_list_taxonomy = time.perf_counter()
 
-        taxonomy,bestlist = self.make_list_taxonomy(
+        taxonomy= self.make_list_taxonomy(
             matrix_pident, matrix, matrixlist_position_entry,list_position_ribosomal)
 
-        assignation_reduce = self.reduce_assignation_level(taxonomy,bestlist)
+        assignation_reduce = self.reduce_assignation_level(taxonomy)
         assignation = self.assign_taxonomie_solo_hit(assignation_reduce)
 
         return(assignation)
@@ -1160,8 +1146,7 @@ class SCGsTaxomy:
             for key in s:
                 if s[key] not in assignation.values():
                     if anvio.DEBUG:
-                        self.run.info('CONSIDER taxonomy','/'.join(assignation.values()))
-                    #assignation.pop(key, None)
+                        self.run.info('CONSIDER taxonomy','/'.join(s.values()))
                     assignation[key]=''
         return(assignation)
 
@@ -1175,75 +1160,36 @@ class SCGsTaxomy:
 
     def make_list_taxonomy(self, matrix_pident, matrix, list_position_entry,list_position_ribosomal):
         taxonomy = []
-        bestlist=[]
         miniscore = 10000
         i = 0
         while i < len(matrix):
             summist = sum(matrix[i])
-            bestident = max(matrix_pident[i])
+            bestident = float(max(matrix_pident[i]))
             bestSCG=list_position_ribosomal[matrix_pident[i].index(bestident)]
             if summist == miniscore:
-                taxonomy.append(self.taxonomy_dict[list_position_entry[i]])
-                bestlist.append([bestSCG,bestident])
+                taxonomy.append({"bestSCG" : bestSCG,"bestident" : bestident,"taxo" : OrderedDict(self.taxonomy_dict[list_position_entry[i]])})
             if summist < miniscore:
-                taxonomy = []
-                taxonomy.append(self.taxonomy_dict[list_position_entry[i]])
+                taxonomy=[]
+                taxonomy.append({"bestSCG" : bestSCG,"bestident" : bestident,"taxo" : OrderedDict(self.taxonomy_dict[list_position_entry[i]])})
                 miniscore = summist
-                bestlist=[[bestSCG,bestident]]
             i += 1
-        return(taxonomy,bestlist)
-
-
-
-    def reduce_assignation_level(self,taxonomy,bestlist):
-        i=0
-
-        #print(self.dicolevel)
-        #sys.exit()
-
-        """for ribo,values in self.dicolevel.items():
-            print(ribo)
-            for key,val in values.items():
-                #if key.endswith('aureus'):
-                    #print(ribo,key,type(key))
-                if key.startswith('Ribosomal'):
-                    print(key)
-                    pri=val
-                    riba=key
-
-        print(riba,pri)
-        sys.exit()"""
-
-        #print(bestlist)
-        for possibilitie in taxonomy:
-
-            j=-1
-
-            cutoff=50
-            #print(bestlist[i][0],bestlist[i][1],list(possibilitie.keys())[j],self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j])
-            #print(self.dicolevel[bestlist[i][0]].items())
-            #print(self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j])
-            #print(type(self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j]))
-            #sys.exit()
-            #cutoff=float(self.dicolevel[bestlist[i][0]][self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j]])
-
-
-
-            while bestlist[i][1] < cutoff:
-                #print(cutoff,bestlist[i][1],list(possibilitie.keys())[j],list(possibilitie.values())[j])
-                possibilitie.pop(list(possibilitie.keys())[j], None)
-
-                j-=1
-
-                cutoff=50
-                #cutoff=float(self.dicolevel[bestlist[i][0]][self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j]])
-
-
-            print(cutoff,bestlist[i][1],list(possibilitie.keys())[j],self.taxonomic_levels_parser[list(possibilitie.keys())[j]]+list(possibilitie.values())[j])
-            i+=1
-
-
         return(taxonomy)
+
+
+
+    def reduce_assignation_level(self,taxonomy):
+        reduce_taxonomy=[]
+        for possibilitie in taxonomy:
+            for level,value in reversed(possibilitie["taxo"].items()):
+                if possibilitie["bestident"] < float(self.dicolevel[possibilitie["bestSCG"]][self.taxonomic_levels_parser[level]+value]):
+                    possibilitie["taxo"][level]=''
+                    continue
+                else:
+                    break
+            reduce_taxonomy.append(possibilitie["taxo"])
+
+
+        return(reduce_taxonomy)
 
 
     def solo_hits(self, hits_per_gene):
