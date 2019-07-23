@@ -764,10 +764,11 @@ class LocusSplitter:
             print("Mode 1") # Mode 1 (1 gene): requires (gene-caller-id or search-term or [use-hmm and search-term]) and --num-genes
             if (not (self.gene_caller_ids or self.search_term)) or (self.gene_caller_ids and self.search_term) and num_genes:
                 raise ConfigError("You must specify --gene-caller-ids or --search-term AND --num-genes")
-        if self.mode == 2:
-            print("Mode 2") # Mode 2 (flanking genes): requires 2x(gene-caller-id or search-term or hmm)
-            if (not (',' in self.gene_caller_ids)) or (not (',' in self.search_term)):
-                raise ConfigError("You must specify 2 flanking --gene-caller-ids or --search-term to export locus")
+        # NEED TO FIXXXXXXXX!
+        # if self.mode == 2:
+        #     print("Mode 2") # Mode 2 (flanking genes): requires 2x(gene-caller-id or search-term or hmm)
+        #     if (not (',' in self.gene_caller_ids)) or (not (',' in self.search_term)):
+        #         raise ConfigError("You must specify 2 flanking --gene-caller-ids or --search-term to export locus")
 
     def init(self):
         """The whole purpose of this function is to identify which gene calls to focus"""
@@ -827,6 +828,7 @@ class LocusSplitter:
                      mc='green', nl_after=1)
 
         # Mode 2
+        print(self.gene_caller_ids_of_interest)
 
 
     def process(self, skip_init=False):
@@ -842,21 +844,29 @@ class LocusSplitter:
 
         self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
         self.contigs_db.init_functions()
-        counter = 1
-        for gene_callers_id in self.gene_caller_ids_of_interest:
-            self.run.warning(None,
-                             header="Exporting locus %d of %d" % \
-                                        (counter, len(self.gene_caller_ids_of_interest)),
-                             nl_after=0)
 
+        if self.mode == 1:
+            counter = 1
+            for gene_callers_id in self.gene_caller_ids_of_interest:
+                self.run.warning(None,
+                                 header="Exporting locus %d of %d" % \
+                                            (counter, len(self.gene_caller_ids_of_interest)),
+                                 nl_after=0)
+
+                output_path_prefix = os.path.join(self.output_dir, "%s_%.4d" % (self.output_file_prefix, counter))
+
+                self.export_locus_single(gene_callers_id, output_path_prefix)
+
+                counter += 1
+        # HEREEEEEEEEEEEE
+        elif self.mode == 2:
+            gene_caller_ids_of_interest = self.gene_caller_ids_of_interest
+            counter = 1
             output_path_prefix = os.path.join(self.output_dir, "%s_%.4d" % (self.output_file_prefix, counter))
-
-            self.export_locus(gene_callers_id, output_path_prefix)
-
-            counter += 1
+            self.export_locus_flank(gene_caller_ids_of_interest, output_path_prefix)
 
 
-    def export_locus(self, gene_callers_id, output_path_prefix):
+    def export_locus_single(self, gene_callers_id, output_path_prefix):
         """Takes a gene callers ID, and exports a contigs database.
 
            Output path prefix should be unique for every export locus call. If the prefix you provide
@@ -976,6 +986,9 @@ class LocusSplitter:
                                        output_path_prefix,
                                        reverse_complement)
 
+
+    def export_locus_flank(self, gene_callers_id, output_path_prefix):
+        print("its working?")
 
     def store_locus_as_contigs_db(self, contig_name, sequence, gene_calls, output_path_prefix, reverse_complement=False):
         """Generates a contigs database and a blank profile for a given locus"""
