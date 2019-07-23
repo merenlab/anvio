@@ -35,7 +35,7 @@ class CONCOCT:
                         400"}
                     ),
         'kmer_length': (
-                ['--kmer_length'],
+                ['--kmer-length'],
                 {'metavar': "INT",
                  'required': False,
                  'help': "pecify kmer length, default 4"}
