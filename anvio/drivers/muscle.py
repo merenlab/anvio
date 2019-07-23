@@ -53,7 +53,7 @@ class Muscle:
         tmp_dir = filesnpaths.get_temp_directory_path()
         log_file_path = os.path.join(tmp_dir, '00_log.txt')
 
-        self.run.info('Running %s' % self.program_name, '%d seqeunces will be aligned' % len(sequences_list))
+        self.run.info('Running %s' % self.program_name, '%d sequences will be aligned' % len(sequences_list))
         self.run.info('Log file path', log_file_path)
 
         sequences_data = ''.join(['>%s\n%s\n' % (t[0], t[1]) for t in sequences_list])

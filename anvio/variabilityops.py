@@ -2188,7 +2188,7 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
         self.sequence_variants_in_samples_dict = {}
 
 
-    def populate_seqeunce_variants_in_samples_dict(self):
+    def populate_sequence_variants_in_samples_dict(self):
         """Populates the main dictionary that keeps track of variants for each sample."""
         if self.compress_samples:
             # self data needs to be collapsed
@@ -2294,7 +2294,7 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
 
     def report(self):
         if not self.sequence_variants_in_samples_dict:
-            self.populate_seqeunce_variants_in_samples_dict()
+            self.populate_sequence_variants_in_samples_dict()
 
         self.progress.new('Generating the report')
         self.progress.update('...')

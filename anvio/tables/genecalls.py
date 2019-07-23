@@ -160,7 +160,7 @@ class TablesForGeneCalls(Table):
             #            contigs_db.disconnect()
             append_to_the_db = True
 
-        # recover amino acid seqeunces or create a blank dictionary
+        # recover amino acid sequences or create a blank dictionary
         if skip_amino_acid_sequences:
             amino_acid_sequences = dict([(g, '') for g in gene_calls_dict])
         else:
@@ -221,7 +221,7 @@ class TablesForGeneCalls(Table):
                     num_genes_with_internal_stops += 1
                 else:
                     os.remove(self.db_path)
-                    raise ConfigError("Oops. Anvi'o run into an amino acid seqeunce (that corresponds to the gene callers id '%s')\
+                    raise ConfigError("Oops. Anvi'o run into an amino acid sequence (that corresponds to the gene callers id '%s')\
                                        which had an internal stop codon :/ This usually indicates that your external gene calls\
                                        have problems. If you still want to continue, you can ask anvi'o to ignore internal stop\
                                        codons on your own risk. It will probably look very ugly on your screen, but here is the\

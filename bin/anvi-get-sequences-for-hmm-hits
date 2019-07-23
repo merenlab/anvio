@@ -219,7 +219,7 @@ def main(args):
                                      align_with=args.align_with,
                                      just_do_it=args.just_do_it)
 
-    run.info('Mode', 'AA seqeunces' if args.get_aa_sequences else 'DNA seqeunces', mc='green')
+    run.info('Mode', 'AA sequences' if args.get_aa_sequences else 'DNA sequences', mc='green')
     run.info('Genes are concatenated', args.concatenate_genes)
     run.info('Output', args.output_file)
 

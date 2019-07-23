@@ -1050,7 +1050,7 @@ class LocusSplitter:
         #                            them. but amino acid sequences for each gene call was stored
         #                            in the original contigs database, and the best practice is to
         #                            carry them into the new one. so here we will remove all data
-        #                            from the amino acid seqeunces table in the new database, and
+        #                            from the amino acid sequences table in the new database, and
         #                            copy the contents from the original one.
         ############################################################################################
         amino_acid_sequences = R(t.gene_amino_acid_sequences_table_name)

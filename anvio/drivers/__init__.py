@@ -31,7 +31,7 @@ class Aligners:
     def list(self):
         available_options = [o for o in self.aligners.keys() if o != 'default']
 
-        self.run.warning("The default anvi'o driver for multiple seqeunce alignment is '%s'. Available drivers \
+        self.run.warning("The default anvi'o driver for multiple sequence alignment is '%s'. Available drivers \
                           are:" % (self.default), header="Multiple sequence alignment", lc='yellow')
         for option in available_options:
             self.run.info_single(option, nl_after = 1 if available_options[-1] == option else 0, mc='yellow')
