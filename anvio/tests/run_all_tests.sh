@@ -184,8 +184,13 @@ anvi-merge $output_dir/*/PROFILE.db -o $output_dir/SAMPLES-MERGED \
 INFO "Merging profiles without any clustering"
 anvi-merge $output_dir/*/PROFILE.db -o $output_dir/SAMPLES-MERGED-WO-CLUSTERING \
                               -c $output_dir/CONTIGS.db \
-                              --skip-concoct-binning \
                               --skip-hierarchical-clustering
+
+INFO "Importing a collection file into the merged profile"
+anvi-import-collection -c $output_dir/CONTIGS.db \
+                       -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                       -C CONCOCT \
+                       $files/concoct_mini_test.txt
 
 INFO "Update the description in the merged profile"
 anvi-update-db-description $output_dir/SAMPLES-MERGED/PROFILE.db \
@@ -291,19 +296,12 @@ INFO "Deleting the collection 'CONTIGS_RE_IMPORTED'"
 anvi-delete-collection -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                        -C CONTIGS_RE_IMPORTED
 
-INFO "Use CONCOCT to cluster splits in the merged profile and export as a text file..."
-anvi-cluster-with-concoct -p $output_dir/SAMPLES-MERGED/PROFILE.db \
-                          -c $output_dir/CONTIGS.db \
-                          -o $output_dir/anvio_concoct_clusters.txt \
-                          --collection-name 'cmdline_concoct'
 
-INFO "Recover short reads for Bin_2 in CONCOCT collection and store them in a FASTA file"
-anvi-get-short-reads-from-bam -p $output_dir/SAMPLES-MERGED/PROFILE.db \
-                              -c $output_dir/CONTIGS.db \
-                              -C CONCOCT \
-                              -b Bin_2 \
-                              -o $output_dir/short_reads_for_Bin_2.fasta \
-                              $output_dir/*bam
+INFO "Importing 'cmdline_concoct' collection file into the merged profile"
+anvi-import-collection -c $output_dir/CONTIGS.db \
+                       -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                       -C cmdline_concoct \
+                       $files/concoct_mini_test.txt
 
 INFO "Rename bins in collection 'cmdline_concoct' using SCG averages"
 anvi-rename-bins -c $output_dir/CONTIGS.db \
