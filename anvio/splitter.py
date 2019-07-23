@@ -709,8 +709,15 @@ class LocusSplitter:
     def sanity_check(self):
         """Check sanity while straightening some input variables"""
 
+        """
+        Game plan for sanity check:
+            - Mode 1 (1 gene): requires (gene-caller-id or search-term or [use-hmm and search-term]) and --num-genes
+            - Mode 2 (flanking genes): requires 2x(gene-caller-id or search-term or hmm)
+        """
+
         filesnpaths.is_output_dir_writable(self.output_dir)
 
+        # Mode 1
         if (not (self.gene_caller_ids or self.search_term)) or (self.gene_caller_ids and self.search_term):
             raise ConfigError("You must specify exacly one of the following: --gene-caller-ids or --search-term")
 
