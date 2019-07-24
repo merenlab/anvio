@@ -107,7 +107,6 @@ class Diamond:
         self.progress.end()
 
         expected_output = (output_file_path or self.target_fasta) + '.dmnd'
-        #self.check_output(expected_output, 'makedb')
 
         self.run.info('diamond makedb cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
         self.run.info('Diamond search db', expected_output)
@@ -144,10 +143,9 @@ class Diamond:
 
         self.progress.end()
 
-        expected_output = self.search_output_path + '.daa'
-        #self.check_output(expected_output, 'blastp')
+        self.expected_output = self.search_output_path + '.daa'
 
-        self.run.info('Diamond blastp results', expected_output)
+        self.run.info('Diamond blastp results', self.expected_output)
 
     def blastp_stdout(self):
         self.run.info('DIAMOND is set to be', 'Sensitive' if self.sensitive else 'Fast')
@@ -175,13 +173,12 @@ class Diamond:
         self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
 
 
-        new_commande_line=' '.join(str(x) for x in cmd_line)
-        out_bytes, ret_code = utils.get_command_output_from_shell(new_commande_line)
-        #output = utils.run_command(cmd_line, self.run.log_file_path)
+        shell_cmd_line=' '.join(str(x) for x in cmd_line)
+        out_bytes, ret_code = utils.get_command_output_from_shell(shell_cmd_line)
+
         try:
             decode_out=out_bytes.decode("utf-8")
         except:
-            print(out_bytes)
             decode_out=out_bytes
 
 

@@ -1,29 +1,33 @@
-
-
 #!/usr/bin/env python3
+# -*- coding: utf-8
+"""
+    This file contains SCGsSetup, SCGsDataBase, LowestIdentity classes.
 
+"""
 import os
+import sys
 import gzip
 import shutil
 import requests
 from io import BytesIO
-import anvio
+
 import pickle
 import re
 import shutil
 import subprocess
-import sys
 import tarfile
+
+import anvio
 import anvio.fastalib as u
-from anvio.drivers.diamond import Diamond
+
 import anvio.terminal as terminal
 import anvio.pfam as pfam
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
 from anvio.errors import ConfigError
+from anvio.drivers.diamond import Diamond
 
 
 run = terminal.Run()
@@ -33,9 +37,6 @@ run_quiet = terminal.Run(log_file_path=None,verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 
 
-#run_quiet = terminal.Run(verbose=False)
-#progress_quiet = terminal.Progress(verbose=False)
-
 _author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
@@ -43,169 +44,23 @@ __version__ = anvio.__version__
 __maintainer__ = "Quentin Clayssen"
 __email__ = "quentin.clayssen@gmail.com"
 
-
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
-run_quiet = terminal.Run(verbose=False)
-progress_quiet = terminal.Progress(verbose=False)
-
-
-### open fasta once.... make db of Bacteria_71 fasta .......
-class scgsdatabase():
+class SCGsSetup(object):
     def __init__(self, args, run=run, progress=progress):
         self.args = args
         self.run = run
         self.progress = progress
+        self.SCG_data_dir = args.scgs_data_dir
 
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        if not self.SCG_data_dir:
+            self.SCG_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG')
 
-        self.genes_files_directory = args.genes_files_directory
+        if not args.reset:
+            self.is_database_exists()
 
-        self.scgs_directory = args.scgs_directory
+        filesnpaths.gen_output_directory(self.SCG_data_dir, delete_if_exists=args.reset)
 
-        #self.num_threads=args.num_threads
-
-
-
-        self.dictionnary_level=self.dictionnary_level()
-
-
-
-        if not args.taxofiles:
-            self.taxofiles = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/merge_taxonomy.tsv')
-
-        #if not args.outtsv:
-        self.outtsv = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/mergedb/matching_taxonomy.tsv')
-
-        #if not args.num_threads:
-        self.num_threads=args.num_threads
-
-        if not args.num_threads:
-            self.num_threads=2
-
-
-        self.hmms=args.hmms
-
-        if not args.genes_files_directory:
-            self.genes_files_directory = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/msa_individual_genes')
-
-        self.genesfiles=os.listdir(self.genes_files_directory)
-
-
-        if not args.outputdirectory:
-            outputdirectory = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/mergedb')
-            if not os.path.exists(outputdirectory):
-                os.mkdir(os.path.dirname(anvio.__file__)+'/data/misc/SCG/mergedb')
-            self.outputdirectory = outputdirectory
-
-
-
-        self.scgsfasa = [files for files in os.listdir(
-            self.scgs_directory) if not files.endswith(".dmnd")]
-
-
-
-
-        dictionnary_corres={}
-
-        matrix_taxonomy=self.domatrix(self.taxofiles)
-
-        pathpickle_dictionnary__corres = os.path.join(
-            self.outputdirectory, 'dictionnary__corres.pickle')
-        if not os.path.exists(pathpickle_dictionnary__corres):
-            for gene in self.genesfiles:
-                #for dbdiamond
-                name=gene.replace('.faa','')
-                path_diamondb=os.path.join(self.outputdirectory, "diamonddb")
-                pathdb=os.path.join(self.genes_files_directory, name)
-                pathgenes=os.path.join(self.genes_files_directory, gene)
-                outpath=os.path.join(self.outputdirectory, "diamondblast")
-                pathrefundgenes=os.path.join(path_diamondb, gene)
-                pathblast=os.path.join(outpath,name)
-                if not os.path.exists(path_diamondb):
-                    os.mkdir(path_diamondb)
-
-
-                if not os.path.exists(outpath):
-                    os.mkdir(outpath)
-                    outpath=os.path.join(self.outputdirectory, "diamondblast")
-
-
-                sequencetoblast=self.refundgenes(pathgenes,pathrefundgenes,pathdb)
-                self.diamonddb(self.hmms)
-                if not os.path.exists(pathrefundgenes):
-                    continue
-                diamond_output=self.diamondblast_stdou(pathrefundgenes,self.hmms)
-                #print(diamond_output)
-                if not diamond_output:
-                    run.info("no match", gene)
-                    os.remove(pathrefundgenes)
-                    os.remove(pathrefundgenes+'.dmnd')
-                    continue
-
-                hmm_gene=str(diamond_output).split('\n')[0].split('\t')[0]
-                if hmm_gene not in dictionnary_corres:
-                    dictionnary_corres[hmm_gene]=[name]
-
-                else:
-                    dictionnary_corres[hmm_gene]=dictionnary_corres[hmm_gene]+[name]
-
-                with open(pathpickle_dictionnary__corres, 'wb') as handle:
-                    pickle.dump(dictionnary_corres, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-        else:
-            with open(pathpickle_dictionnary__corres, 'rb') as handle:
-                dictionnary_corres = pickle.load(handle)
-
-
-
-
-        keylevel = "species"
-
-        dictionnary__pickel_taxo={}
-        for keycorres in dictionnary_corres.keys():
-
-            outputsub=os.path.join(self.outputdirectory, keylevel)
-
-            pathfile=os.path.join(outputsub, keycorres)
-
-            pathfa=os.path.join(self.genes_files_directory, str(keycorres))
-
-            if not os.path.exists(outputsub):
-                os.mkdir(outputsub)
-
-            dictionnary__pickel_taxo=self.creatsubfa(matrix_taxonomy,dictionnary_corres[keycorres],pathfile,keylevel,dictionnary__pickel_taxo)
-            pathpickle_dictionnary__taxo_anvi = os.path.join(
-                self.outputdirectory, 'dictionnary__msa_taxonomy_anvio.pickle')
-
-            with open(pathpickle_dictionnary__taxo_anvi, 'wb') as handle:
-                pickle.dump(dictionnary__pickel_taxo, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-        #self.cleandir(outpath)
-        #self.cleandir(path_diamondb)
-        sys.exit()
-        if True:
-            pathpickle_dictionnary__taxo = os.path.join(
-                self.outputdirectory, 'dictionnary__taxo_code_species.pickle')
-
-            if not os.path.exists(pathpickle_dictionnary__taxo):
-                dictionnary_level = self.make_dictionnary_level(self.taxofiles)
-                with open(pathpickle_dictionnary__taxo, 'wb') as handle:
-                    pickle.dump(dictionnary_level, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            else:
-                with open(pathpickle_dictionnary__taxo, 'rb') as handle:
-                    dictionnary_level = pickle.load(handle)
-
-            dictionnary__low_ident = {}
-            for scgsfasta in os.listdir(outputsub):
-                pathfa = os.path.join(self.genes_files_directory, scgsfasta )
-                self.creatsubfa_ident(dictionnary_level, pathfa, self.outputdirectory, scgsfasta )
-
-            pathpickle_dictionnary__ident = os.path.join(
-                self.outputdirectory, 'dictionnary__low_ident.pickle')
-            with open(pathpickle_dictionnary__ident, 'wb') as handle:
-                pickle.dump(dictionnary__low_ident, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        self.database_url = "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
+        self.files = ['VERSION', 'ar122_msa_individual_genes.tar.gz', 'ar122_taxonomy.tsv','bac120_msa_individual_genes.tar.gz','bac120_taxonomy.tsv']
 
 
     def is_database_exists(self):
@@ -216,38 +71,271 @@ class scgsdatabase():
     def get_remote_version(self):
         content = read_remote_file(self.database_url + '/VERSION')
 
+        # below we are parsing this, not so elegant.
+        #v89
+        #
+        #Released June 17th, 2019
+        version = content.strip().split('\n')[0].strip()
+        release_date = content.strip().split('\n')[2].strip()
 
-    def getfasta(self,pathfa):
-        fasta = u.ReadFasta(pathfa)
-        return(fasta)
+        self.run.info("Current gtdb release", "%s (%s)" % (version, release_date))
 
-    def domatrix(self,taxofile):
+
+    def download(self):
+        self.run.info("Database URL", self.database_url)
+
+        for file_name in self.files:
+            utils.download_file(self.database_url + '/' + file_name,
+                os.path.join(self.SCG_data_dir, file_name), progress=self.progress, run=self.run)
+
+        self.confirm_downloaded_files()
+        self.decompress_files()
+        self.merge_tsv_files()
+
+
+    def confirm_downloaded_files(self):
+
+        for file_name in self.files:
+            if not filesnpaths.is_file_exists(os.path.join(self.SCG_data_dir, file_name), dont_raise=True):
+                 # TO DO: Fix messages :(
+                raise ConfigError("Have missing file %s, please run --reset" % file_name)
+
+            hash_on_disk = utils.get_file_md5(os.path.join(self.SCG_data_dir, file_name))
+
+
+    def decompress_files(self):
+
+        file_to_dextract=[file_name for file_name in self.files if file_name.endswith(".tar.gz")]
+        for file_name in file_to_dextract:
+            full_path = os.path.join(self.SCG_data_dir, file_name)
+            tar=tarfile.open(full_path)
+            extractpaht=os.path.join(self.SCG_data_dir,"msa_individual_genes")
+            self.run.info("Extracting %s" % (file_name), "%s" % (extractpaht))
+            tar.extractall(path=extractpaht)
+            tar.close()
+            #os.remove(full_path)
+
+    def merge_tsv_files(self):
+        file_to_dextract=[file_name for file_name in self.files if file_name.endswith(".tsv")]
+        full_path = os.path.join(self.SCG_data_dir, "merge_taxonomy.tsv")
+        self.run.info("Mergin tsv file ", ','.join(file_to_dextract))
+        with open(full_path, 'w') as outfile:
+            for fname in file_to_dextract:
+                with open(self.SCG_data_dir+"/"+fname) as infile:
+                    for line in infile:
+                        outfile.write(line)
+
+
+
+class SCGsDataBase():
+
+    """"""
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+
+        self.genes_files_directory = A('genes_files_directory')
+        self.scgs_directory =A('scgs_directory')
+        self.hmms=A('hmms')
+        self.taxofiles=A('taxonomy_files')
+        self.output_directory=A('out_put_directory')
+        self.num_threads=A('num_threads')
+
+
+        self.classic_input_directory = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/')
+
+        if not self.taxofiles:
+            self.taxofiles = os.path.join(self.classic_input_directory,'merge_taxonomy.tsv')
+
+        self.num_threads=args.num_threads
+
+        if not self.num_threads:
+            self.num_threads=2
+
+
+        if not self.genes_files_directory:
+            self.genes_files_directory = (self.classic_input_directory,'msa_individual_genes')
+
+
+        if not self.output_directory:
+             self.output_directory=os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/mergedb')
+        filesnpaths.gen_output_directory(self.output_directory)
+
+        self.outtsv = os.path.join(self.output_directory, 'matching_taxonomy.tsv')
+
+
+        self.SCGs_fasta = [files for files in os.listdir(
+            self.scgs_directory) if not files.endswith(".dmnd")] #FIXME useless?
+
+
+
+        self.sanity_check()
+
+        if self.classic_input_directory:
+            check_latest_version()
+
+
+
+        def sanity_check(self):
+            if not filesnpaths.is_file_exists(self.genes_files_directory, dont_raise=True):
+                raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
+                                   anvi'o looks in '%s'. You can download file by using the commande 'anvi-setup-scgs'."\
+                                   % self.genes_files_directory, self.classic_input_directory)
+
+            self.genesfiles = os.path.abspath(self.genes_files_directory)
+
+            if not filesnpaths.is_file_exists(self.taxofiles, dont_raise=True):
+                raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
+                                   anvi'o looks in '%s'. You can download file by using the commande 'anvi-setup-scgs'."\
+                                   % self.taxofiles, self.classic_input_directory)
+
+            if not filesnpaths.is_file_exists(self.hmms, dont_raise=True):
+                raise ConfigError("Anvi'o could not find gene list file '%s'. You must declare one before continue."\
+                                   % self.hmms)
+
+        def check_latest_version(self):
+            self.database_url = "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
+
+            with open(os.path.join(self.classic_input_directory, 'VERSION')) as f:
+                content_local = f.read()
+
+                version_local = content_local.strip().split('\n')[0].strip()
+                release_date_local = content_local.strip().split('\n')[2].strip()
+
+
+            content_online = read_remote_file(self.database_url + '/VERSION')
+            version_online = content_online.strip().split('\n')[0].strip()
+            release_date_online= content_online.strip().split('\n')[2].strip()
+
+            self.run.info("Your current gtdb release", "%s (%s)" % (version_local, release_date_local))
+
+            if version_local != version_online or release_date_online != release_date_local:
+                run.warning("There is a more recent version online %s (%s).\
+                             You can download it by using the commande 'anvi-setup-scgs'" % (version_online, release_date_online))
+            else:
+                self.run.info("and this is the lates veriosn", " :D")
+
+
+        def make_scg_db(self):
+            self.dictionary_correspondance_SCGs={}
+
+            self.matrix_taxonomy=self.domatrix(self.taxofiles)
+
+            pathpickle_dictionnary_corres = os.path.join(
+                self.outputdirectory, 'dictionary_correspondance_SCGs.pickle')
+
+            if not os.path.exists(pathpickle_dictionnary_corres):
+                for gene in self.genesfiles:
+                    self.name=gene.replace('.faa','')
+                    self.path_diamondb=os.path.join(self.outputdirectory, "diamonddb")
+                    self.pathdb=os.path.join(self.genes_files_directory, self.name)
+                    self.pathgenes=os.path.join(self.genes_files_directory, self.gene)
+                    self.outpath=os.path.join(self.outputdirectory, "diamondblast")
+                    self.pathrefundgenes=os.path.join(self.path_diamondb, self.gene)
+                    self.pathblast=os.path.join(self.outpath,self.name)
+
+                    filesnpaths.gen_output_directory(self.path_diamondb)
+                    filesnpaths.gen_output_directory(self.outpath)
+
+                    self.sequencetoblast=self.refundgenes()
+                    self.diamonddb()
+
+                    if not os.path.exists(pathrefundgenes):
+                        continue
+                    diamond_output=self.diamondblast_stdou(pathrefundgenes,self.hmms)
+
+                    if not diamond_output:
+                        run.info("no match", gene)
+                        os.remove(pathrefundgenes)
+                        os.remove(pathrefundgenes+'.dmnd')
+                        continue
+
+                    hmm_gene=str(diamond_output).split('\n')[0].split('\t')[0]
+                    if hmm_gene not in dictionnary_corres:
+                        dictionnary_corres[hmm_gene]=[name]
+
+                    else:
+                        dictionnary_corres[hmm_gene]=dictionnary_corres[hmm_gene]+[name]
+
+                    with open(pathpickle_dictionnary__corres, 'wb') as handle:
+                        pickle.dump(dictionnary_corres, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+            else:
+                with open(pathpickle_dictionnary__corres, 'rb') as handle:
+                    dictionnary_corres = pickle.load(handle)
+
+
+            keylevel = "species"
+
+            dictionnary__pickel_taxo={}
+            for keycorres in dictionnary_corres.keys():
+
+                outputsub=os.path.join(self.outputdirectory, keylevel)
+
+                pathfile=os.path.join(outputsub, keycorres)
+
+                pathfa=os.path.join(self.genes_files_directory, str(keycorres))
+
+                if not os.path.exists(outputsub):
+                    os.mkdir(outputsub)
+
+                dictionnary__pickel_taxo=self.creatsubfa(matrix_taxonomy,dictionnary_corres[keycorres],pathfile,keylevel,dictionnary__pickel_taxo)
+                pathpickle_dictionnary__taxo_anvi = os.path.join(
+                    self.outputdirectory, 'dictionnary__msa_taxonomy_anvio.pickle')
+
+                with open(pathpickle_dictionnary__taxo_anvi, 'wb') as handle:
+                    pickle.dump(dictionnary__pickel_taxo, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def do_taxonomy_dictonnrary_with_tsv(self,taxofile,filter=True):
         """format tsv in dictonnary with code as key and liste for taxonomy for value"""
-        with open(taxofile,'r') as taxo:
-            linestaxo=taxo.readlines()
-            listspecies=[]
-            matrix={}
-            for line in linestaxo:
-                names=line.split("\t")
-                code=str(names[0])
-                taxos=names[1].split(";")
-                """for name in taxos[0:-2]:
-                    if not re.match('[a-z]__[A-Z]{1}[a-z]{1,}',name):"""
 
-                taxo= re.sub(r'_[A-Z]*$', '', taxos[-1]).rstrip()
-                leveltaxo3 = re.sub(r'(\\*[a-z])\_[A-Z]', r'\1', taxo)
-                last_taxo1 = re.sub(r'sp[0-9]{1,}$', '', leveltaxo3)
-                last_taxo=last_taxo1.rstrip(" ").replace(" ","_")
-                if not re.match('s__[A-Z]{1}[a-z]{1,}',last_taxo):
+        self.progress.new('Parse tsv file')
+        self.progress.update('...')
+
+
+        matrix={}
+        individues_filterd=[]
+        number_individues_filterd=0
+
+        i=1
+
+        linestaxo= [line for line in open(taxofile).readlines()]
+        for line in linestaxo:
+
+            if filter:
+
+                taxo=line.split("\t")[1].split(";")[::].rstrip()\
+                .replace(r'(\\*[a-z])\_[A-Z]', r'\1').replace(" ","_").replace(r"sp[0-9]*","")
+
+                if not re.match('[a-z]__[A-Z][a-z]*_[a-z]{3,}',taxo):
+                    individues_filterd+=taxo #FIXME out put liste individue filtred ?
+                    number_individues_filterd+=1
                     continue
-                taxos[-1]=last_taxo
+                else:
+                    taxo=line.split("\t")[1].split(";")
 
-                matrix[code]=taxos
-            return(matrix)
+            """taxox= re.sub(r'_[A-Z]*$', '', taxos[-1]).rstrip()
+            leveltaxo3 = re.sub(r'(\\*[a-z])\_[A-Z]', r'\1', taxo)
+            last_taxo1 = re.sub(r'sp[0-9]{1,}$', '', leveltaxo3)
+            last_taxo=last_taxo1.rstrip(" ").replace(" ","_")
+            #if not re.match('s__[A-Z]{1}[a-z]{1,}',taxo):"""
+
+            self.progress.update('line %s/%s' % i,len(linestaxo))
+
+            i+=1
+
+            matrix[str(line.split("\t")[0])]=taxo
+
+            #.replace(r'_[A-Z]*$','').replace(r"_[A-Z] ","")
+        self.progress.end()
+        self.run.info_single("On the %s individues %s have been filtred"%len(linestaxo),number_individues_filterd)
+        return(matrix)
 
 
-
-    def creatsubfa(self,matrix_taxonomy,listerefence,pathfile,keylevel,dictionnary__pickel_taxo,dictionnary_level=None):
+    def create_fasta_(self,matrix_taxonomy,listerefence,pathfile,keylevel,dictionnary__pickel_taxo,dictionnary_level=None):
 
         listtaxo=[]
         unmatch=[]
@@ -401,161 +489,10 @@ class scgsdatabase():
                     if code in dictionnary_level[leveltaxo]:
                         continue
                     else:
-                        dictionnary_level[leveltaxo] = dictionnary_level[leveltaxo] + [code]
+                        dictionnary_level[leveltaxo] += [code]
         return(dictionnary_level)
 
 
-    def match_ident(self,fasta, taxonomy, codes, listindex, dictionnary_level=False):
-        for code in codes:
-            if code in fasta.ids:
-                index = fasta.ids.index(code)
-                if index:
-                    listindex.append(index)
-        return(listindex)
-
-
-    def creatsubfa_ident(self,dictionnary_level, pathfa, outputdirectory, genes):
-        fasta = self.getfasta(pathfa)
-
-        unmatch = []
-
-        dictionnary__low_ident = {}
-        for taxonomy, codes in dictionnary_level.items():
-            listindex = []
-
-            if taxonomy == "d__Bacteria":
-                continue
-            listindex = self.match_ident(fasta, taxonomy, codes, listindex)
-            if listindex:
-                riboname = genes.replace(".faa", "")
-                pathfile = os.path.join(self.outputdirectory, riboname + "_" + taxonomy)
-                with open(pathfile, 'a') as file:
-                    for index in listindex:
-                        file.write(">" + fasta.ids[index] +
-                                   "\n" + fasta.sequences[index] + "\n")
-                if not os.path.exists(pathfile + ".diamond"):
-                    cmddb = "diamond makedb --in " + pathfile + " -d " + pathfile
-                    os.system(cmddb)
-                    cmddb = "diamond blastp -d " + pathfile + ".dmnd -q " + \
-                        pathfile + " -o " + pathfile + ".diamond"
-                    os.system(cmddb)
-                #result = subprocess.run(['diamond', 'blastp', '-d', pathfile+'.dmnd', '-q', pathfile], stdout=subprocess.PIPE)
-                # diamond=result.stdout
-                # print(diamond)
-                dictionnary__low_ident = select_low_ident(pathfile, genes, dictionnary__low_ident)
-                pathpickle_dictionnary__ident = pathfile + "_dictionnary__low_ident.pickle"
-                with open(pathpickle_dictionnary__ident, 'wb') as handle:
-                    pickle.dump(dictionnary__low_ident, handle,
-                                protocol=pickle.HIGHEST_PROTOCOL)
-        return(dictionnary__low_ident)
-
-
-    def select_low_ident(self,pathfile, genes, dictionnary__low_ident):
-        low_ident = 101
-        genes_taxo = os.path.basename(pathfile)
-        with open(pathfile + ".diamond", 'r') as file:
-            lines = file.readlines()
-            for line in lines:
-                info = line.split("\t")
-                ident = info[3].rstrip()
-                if float(ident) < float(low_ident):
-                    low_ident = ident
-            dictionnary__low_ident[genes_taxo] = low_ident
-        return(dictionnary__low_ident)
-
-
-def read_remote_file(url, is_gzip=True):
-    remote_file = requests.get(url)
-
-    if remote_file.status_code == 404:
-        raise Exception("'%s' returned 404 Not Found. " % url)
-
-    return remote_file.content.decode('utf-8')
-
-
-class SCGsSetup(object):
-    def __init__(self, args, run=run, progress=progress):
-        self.args = args
-        self.run = run
-        self.progress = progress
-        self.SCG_data_dir = args.scgs_data_dir
-
-        filesnpaths.is_program_exists('hmmpress')
-
-        if not self.SCG_data_dir:
-            self.SCG_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG')
-
-        if not args.reset:
-            self.is_database_exists()
-
-        filesnpaths.gen_output_directory(self.SCG_data_dir, delete_if_exists=args.reset)
-
-        self.database_url = "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
-        self.files = ['VERSION', 'ar122_msa_individual_genes.tar.gz', 'ar122_taxonomy.tsv','bac120_msa_individual_genes.tar.gz','bac120_taxonomy.tsv']
-
-
-    def is_database_exists(self):
-        if os.path.exists(os.path.join(self.SCG_data_dir, 'SCG-A.hmm.gz')):
-            raise ConfigError("It seems you already have SCG database installed in '%s', please use --reset flag if you want to re-download it." % self.SCG_data_dir)
-
-
-    def get_remote_version(self):
-        content = read_remote_file(self.database_url + '/VERSION')
-
-        # below we are parsing this, not so elegant.
-        #v89
-        #
-        #Released June 17th, 2019
-        version = content.strip().split('\n')[0].strip()
-        release_date = content.strip().split('\n')[2].strip()
-
-        self.run.info("Current gtdb release", "%s (%s)" % (version, release_date))
-
-
-    def download(self):
-        self.run.info("Database URL", self.database_url)
-
-        for file_name in self.files:
-            utils.download_file(self.database_url + '/' + file_name,
-                os.path.join(self.SCG_data_dir, file_name), progress=self.progress, run=self.run)
-
-        self.confirm_downloaded_files()
-        self.decompress_files()
-        self.merge_tsv_files()
-
-
-    def confirm_downloaded_files(self):
-
-
-        for file_name in self.files:
-            if not filesnpaths.is_file_exists(os.path.join(self.SCG_data_dir, file_name), dont_raise=True):
-                 # TO DO: Fix messages :(
-                raise ConfigError("Have missing file %s, please run --reset" % file_name)
-
-            hash_on_disk = utils.get_file_md5(os.path.join(self.SCG_data_dir, file_name))
-
-
-    def decompress_files(self):
-
-        file_to_dextract=[file_name for file_name in self.files if file_name.endswith(".tar.gz")]
-        for file_name in file_to_dextract:
-            full_path = os.path.join(self.SCG_data_dir, file_name)
-            tar=tarfile.open(full_path)
-            extractpaht=os.path.join(self.SCG_data_dir,"msa_individual_genes")
-            self.run.info("Extracting %s" % (file_name), "%s" % (extractpaht))
-            tar.extractall(path=extractpaht)
-            tar.close()
-            #os.remove(full_path)
-
-    def merge_tsv_files(self):
-        file_to_dextract=[file_name for file_name in self.files if file_name.endswith(".tsv")]
-        full_path = os.path.join(self.SCG_data_dir, "merge_taxonomy.tsv")
-        self.run.info("Mergin tsv file ", ','.join(file_to_dextract))
-        with open(full_path, 'w') as outfile:
-            for fname in file_to_dextract:
-                with open(self.SCG_data_dir+"/"+fname) as infile:
-                    for line in infile:
-                        outfile.write(line)
 
 class lowident():
     def __init__(self, args, run=run, progress=progress):
@@ -697,12 +634,11 @@ class lowident():
 
     def creatsubfa_ident(self, dicolevel, pathfa, outputdirectory, genes,dico_low_ident):
 
-        fasta = lvl.getfasta(pathfa)
+        fasta = u.ReadFasta(pathfa)
         listeprocess=[]
         for taxonomy, codes in dicolevel.items():
             if taxonomy.startswith("d__"):
                 continue
-            #taxonomymodif=re.sub(r'[a-z]__', '', )
             listindex = []
             riboname = genes.replace(".faa", "")
             pathfile = os.path.join(outputdirectory,taxonomy)
