@@ -25,9 +25,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__resources__ = [("Original CONCOCT paper by Alneberg et al.", "https://www.nature.com/articles/nmeth.3103"),
-                 ("An example usage of the program in the context of the Infant Gut Dataset by Sharon et al.", "http://merenlab.org/tutorials/infant-gut/#from-fragmentation-to-conflation-error-a-meren-lab-heuristic-to-fight-back"),
-                 ("The use of this program in the context of initial binning of TARA population genomes", "http://merenlab.org/data/2017_Delmont_et_al_HBDs/#initial-automated-binning-with-concoct")]
+__resources__ = []
 __tags__ = ["profile_db", "clustering", "collections"]
 __requires__ = ['profile-db', 'contigs-db']
 __provides__ = ['collection', 'bin']
@@ -108,10 +106,7 @@ if __name__ == '__main__':
     show_help = ('--help' in sys.argv) or ('-h' in sys.argv)
     modules = driver_modules['binning']
 
-    parent_parser = argparse.ArgumentParser(description="A program to cluster items in a merged anvi'o profile using CONCOCT, and optionally\
-                                                  creating a collection in the profile database. This is especially useful if you need to\
-                                                  have more control over the number of clusters to work with if you are planning to refine\
-                                                  them manually later.")
+    parent_parser = argparse.ArgumentParser(description="A program to cluster items in a merged anvi'o profile using automatic binning algorithms.")
 
     parent_parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parent_parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
