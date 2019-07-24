@@ -1413,8 +1413,10 @@ class PanSuperclass(object):
 
         if self.include_gc_identity_as_function:
             self.progress.reset()
-            self.run.info_single("Gene cluster identities are being added as functions into the functions dictionary. Functional\
-                                  annotation resources will include `IDENTITY` as an option.", nl_after=1, mc='green')
+            self.run.info_single("Gene cluster identities are being added as functions into the functions dictionary.\
+                                  Functional annotation resources will include `IDENTITY` as an option. See here why\
+                                  (apart from the fact that you asked for it by using the flag `--include-gc-identity-as-function`):\
+                                  https://github.com/merenlab/anvio/issues/1196", nl_after=1, mc='green')
             for gene_cluster_id in self.gene_clusters:
                 for genome_name in self.genome_names:
                     for gene_callers_id in self.gene_clusters[gene_cluster_id][genome_name]:
