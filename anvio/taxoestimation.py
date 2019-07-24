@@ -1150,13 +1150,6 @@ class SCGsTaxomy:
                     assignation[key]=''
         return(assignation)
 
-    def make_dicoidentitielevel(self):
-        dicoidentitielevel = {}
-        dicoidentitielevel[95] = 't_species'
-        dicoidentitielevel[90] = 't_genus'
-        dicoidentitielevel[85] = 't_family'
-        dicoidentitielevel[80] = 't_order'
-        return(dicoidentitielevel)
 
     def make_list_taxonomy(self, matrix_pident, matrix, list_position_entry,list_position_ribosomal):
         taxonomy = []
@@ -1183,7 +1176,6 @@ class SCGsTaxomy:
             for level,value in reversed(possibilitie["taxo"].items()):
                 if possibilitie["bestident"] < float(self.dicolevel[possibilitie["bestSCG"]][self.taxonomic_levels_parser[level]+value]):
                     possibilitie["taxo"][level]=''
-                    continue
                 else:
                     break
             reduce_taxonomy.append(possibilitie["taxo"])
