@@ -47,6 +47,7 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('category-variable'), **anvio.K('category-variable'))
     groupB.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source'))
     groupB.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources'))
+    groupB.add_argument(*anvio.A('include-gc-identity-as-function'), **anvio.K('include-gc-identity-as-function'))
 
     groupC = parser.add_argument_group('REPORTING', "Output and stuff.")
     groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))

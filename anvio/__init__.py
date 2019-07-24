@@ -590,6 +590,18 @@ D = {
              'action': 'store_true',
              'help': "List available functional annotation sources."}
                 ),
+    'include-gc-identity-as-function': (
+            ['--include-gc-identity-as-function'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "This is an option that asks anvi'o to treat gene cluster names as functions. By\
+                      doing so, you are in fact creating an opportunity to study functional enrichment\
+                      statistics for each gene cluster independently. For instance, multiple gene\
+                      clusters may have the same COG function. But if you wish to use the same enrichment\
+                      analysis in your pangenome without collapsing multiple gene clusters into a single\
+                      function name, you can use this flag, and ask for 'IDENTITY' as the functional\
+                      annotation source."}
+                ),
     'gene-names': (
             ['--gene-names'],
             {'metavar': 'HMM HIT NAME',
