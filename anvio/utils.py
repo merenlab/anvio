@@ -172,12 +172,15 @@ def rev_comp_gene_calls_dict(gene_calls_dict, contig_sequence):
     return reverse_complemented_gene_calls, gene_caller_id_conversion_dict
 
 
-def serialize_args(args, single_dash=False, use_underscore=False, skip_keys=None):
+def serialize_args(args, single_dash=False, use_underscore=False, skip_keys=None, translate=None):
     cmdline = []
     for param, value in args.__dict__.items():
         if isinstance(skip_keys, list):
             if param in skip_keys:
                 continue
+
+        if param in translate:
+            param = translate[param]
         
         dash = '-' if single_dash else '--'
 
