@@ -890,6 +890,7 @@ class PanSuperclass(object):
         self.genomes_storage_path = A('genomes_storage')
         self.skip_init_functions = A('skip_init_functions')
         self.just_do_it = A('just_do_it')
+        self.include_gc_identity_as_function = A('include_gc_identity_as_function')
 
         self.genome_names = []
         self.gene_clusters = {}
@@ -1362,7 +1363,7 @@ class PanSuperclass(object):
                     if functional_annotation_source in self.gene_clusters_functions_dict[gene_cluster][genome][gene_caller_id]:
                         annotation_blob = self.gene_clusters_functions_dict[gene_cluster][genome][gene_caller_id][functional_annotation_source]
                         accessions, annotations = [l.split('!!!') for l in annotation_blob.split("|||")]
-                        for a,f in zip(accessions, annotations):
+                        for a, f in zip(accessions, annotations):
                             if f not in gene_clusters_functions_summary_dict[gene_cluster]:
                                 gene_clusters_functions_summary_dict[gene_cluster][f] = 0
 
@@ -1409,6 +1410,16 @@ class PanSuperclass(object):
 
                     if functions:
                         self.gene_clusters_function_sources.update(list(functions.keys()))
+
+        if self.include_gc_identity_as_function:
+            self.progress.reset()
+            self.run.info_single("Gene cluster identities are being added as functions into the functions dictionary. Functional\
+                                  annotation resources will include `IDENTITY` as an option.", nl_after=1, mc='green')
+            for gene_cluster_id in self.gene_clusters:
+                for genome_name in self.genome_names:
+                    for gene_callers_id in self.gene_clusters[gene_cluster_id][genome_name]:
+                        self.gene_clusters_functions_dict[gene_cluster_id][genome_name][gene_callers_id]['IDENTITY'] = '%s|||%s' % (gene_cluster_id, gene_cluster_id)
+            self.gene_clusters_function_sources.update(['IDENTITY'])
 
         self.functions_initialized = True
 
