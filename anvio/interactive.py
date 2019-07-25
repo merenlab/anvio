@@ -782,6 +782,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.run.warning('HMMs for single-copy core genes were not run for this contigs database. So you will not\
                               see completion / redundancy estimates in the collection mode as additional layers. SAD.')
             completion_redundancy_available = False
+            self.hmm_access = None
         else:
             self.progress.new('Accessing HMM hits')
             self.progress.update('...')

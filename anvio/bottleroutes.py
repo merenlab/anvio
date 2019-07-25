@@ -990,6 +990,9 @@ class BottleApplication(Bottle):
         if not self.interactive.collection:
             return json.dumps({'error': "You are in 'collection' mode, but your collection is empty. You are killing me."})
 
+        if self.interactive.hmm_access is None:
+            return json.dumps({'error': "HMMs for single-copy core genes were not run for this contigs database. "})            
+
         hmm_sequences_dict = self.interactive.hmm_access.get_sequences_dict_for_hmm_hits_in_splits({bin_name: set(self.interactive.collection[bin_name])})
         gene_sequences = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set([gene_name]))
 
