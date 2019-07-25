@@ -10,7 +10,9 @@ from collections import Counter
 
 import anvio
 import anvio.scgsdatabase as scgsdatabase
-import anvio.fastalib as f
+
+
+from anvio.errors import ConfigError
 import anvio.terminal as terminal
 
 
@@ -41,20 +43,24 @@ if __name__ == '__main__':
                         help = "fasta file of hmm from anvi'o")
     parser.add_argument('-g', '--genes_files_directory', default = None,
                         help = "directory with fasta file for import SCGs")
-    parser.add_argument('-o', '--outputdirectory', default = None,
+    parser.add_argument('-o', '--out_put_directory', default = None,
                         help = "out put directory")
-    parser.add_argument('-t', '--taxofiles', default = None,
+    parser.add_argument('-t', '--taxonomy_files', default = None,
                         help = "tsv file with taxonomy")
     parser.add_argument('-s', '--scgs_directory', default = None,
                         help = "scgs_directory")
+    parser.add_argument('-tl', '--taxonomy_level', default = None,
+                        help = "taxonomy_level")
+    parser.add_argument('-f', '--no-filter', default = None,
+                        help = "filter for tsv file")
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     #parser.add_argument(*anvio.A('list-states'), **anvio.K('list-states'))
 
     args = anvio.get_args(parser)
 
     try:
-        scgsdatabase = scgsdatabase.scgsdatabase(args)
-        #scgsdatabase.process()
+        scgsdatabase = scgsdatabase.SCGsDataBase(args)
+        scgsdatabase.make_scg_db()
     except ConfigError as e:
         print(e)
         sys.exit(-1)

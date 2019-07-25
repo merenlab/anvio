@@ -9,23 +9,23 @@ import sys
 import gzip
 import shutil
 import requests
-from io import BytesIO
-
 import pickle
 import re
 import shutil
 import subprocess
 import tarfile
 
+from io import BytesIO
+
 import anvio
 import anvio.fastalib as u
-
 import anvio.terminal as terminal
 import anvio.pfam as pfam
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+
 from anvio.errors import ConfigError
 from anvio.drivers.diamond import Diamond
 
@@ -43,6 +43,21 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Quentin Clayssen"
 __email__ = "quentin.clayssen@gmail.com"
+
+def read_remote_file(url, is_gzip=True):
+    remote_file = requests.get(url)
+
+    if remote_file.status_code == 404:
+        raise Exception("'%s' returned 404 Not Found. " % url)
+
+    if is_gzip:
+        buf = BytesIO(remote_file.content)
+        fg = gzip.GzipFile(fileobj=buf)
+        return fg.read().decode('utf-8')
+
+    return remote_file.content.decode('utf-8')
+
+
 
 class SCGsSetup(object):
     def __init__(self, args, run=run, progress=progress):
@@ -69,7 +84,7 @@ class SCGsSetup(object):
 
 
     def get_remote_version(self):
-        content = read_remote_file(self.database_url + '/VERSION')
+        content = read_remote_file(self.database_url + 'VERSION',is_gzip=False)
 
         # below we are parsing this, not so elegant.
         #v89
@@ -143,6 +158,7 @@ class SCGsDataBase():
         self.taxofiles=A('taxonomy_files')
         self.output_directory=A('out_put_directory')
         self.num_threads=A('num_threads')
+        self.taxonomy_level=A('taxonomy_level')
 
 
         self.classic_input_directory = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/')
@@ -157,7 +173,7 @@ class SCGsDataBase():
 
 
         if not self.genes_files_directory:
-            self.genes_files_directory = (self.classic_input_directory,'msa_individual_genes')
+            self.genes_files_directory = os.path.join(self.classic_input_directory,'msa_individual_genes')
 
 
         if not self.output_directory:
@@ -170,213 +186,139 @@ class SCGsDataBase():
         self.SCGs_fasta = [files for files in os.listdir(
             self.scgs_directory) if not files.endswith(".dmnd")] #FIXME useless?
 
-
+        self.tanomie_index_tsv={"domain": 1,
+        "phylum": 2,
+        "class": 3,
+        "order": 4,
+        "family": 5,
+        "genus": 6,
+        "species": 7}
 
         self.sanity_check()
 
         if self.classic_input_directory:
-            check_latest_version()
+            self.check_latest_version()
 
 
 
-        def sanity_check(self):
-            if not filesnpaths.is_file_exists(self.genes_files_directory, dont_raise=True):
-                raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
-                                   anvi'o looks in '%s'. You can download file by using the commande 'anvi-setup-scgs'."\
-                                   % self.genes_files_directory, self.classic_input_directory)
+    def sanity_check(self):
+        if not filesnpaths.is_file_exists(self.genes_files_directory, dont_raise=True):
+            raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
+                               anvi'o looks in '%s'. You can download file by using the commande 'anvi-setup-scgs'."\
+                               % self.genes_files_directory, self.classic_input_directory)
 
-            self.genesfiles = os.path.abspath(self.genes_files_directory)
+        self.genes_files = os.path.abspath(self.genes_files_directory)
 
-            if not filesnpaths.is_file_exists(self.taxofiles, dont_raise=True):
-                raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
-                                   anvi'o looks in '%s'. You can download file by using the commande 'anvi-setup-scgs'."\
-                                   % self.taxofiles, self.classic_input_directory)
+        if not filesnpaths.is_file_exists(self.taxofiles, dont_raise=True):
+            raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
+                               anvi'o looks in '%s'. You can download file by using the commande 'anvi-setup-scgs'."\
+                               % self.taxofiles, self.classic_input_directory)
 
-            if not filesnpaths.is_file_exists(self.hmms, dont_raise=True):
-                raise ConfigError("Anvi'o could not find gene list file '%s'. You must declare one before continue."\
-                                   % self.hmms)
+        if not filesnpaths.is_file_exists(self.hmms, dont_raise=True):
+            raise ConfigError("Anvi'o could not find gene list file '%s'. You must declare one before continue."\
+                               % self.hmms)
 
-        def check_latest_version(self):
-            self.database_url = "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
+    def check_latest_version(self):
+        self.database_url = "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
 
-            with open(os.path.join(self.classic_input_directory, 'VERSION')) as f:
-                content_local = f.read()
+        with open(os.path.join(self.classic_input_directory, 'VERSION')) as f:
+            content_local = f.read()
 
-                version_local = content_local.strip().split('\n')[0].strip()
-                release_date_local = content_local.strip().split('\n')[2].strip()
-
-
-            content_online = read_remote_file(self.database_url + '/VERSION')
-            version_online = content_online.strip().split('\n')[0].strip()
-            release_date_online= content_online.strip().split('\n')[2].strip()
-
-            self.run.info("Your current gtdb release", "%s (%s)" % (version_local, release_date_local))
-
-            if version_local != version_online or release_date_online != release_date_local:
-                run.warning("There is a more recent version online %s (%s).\
-                             You can download it by using the commande 'anvi-setup-scgs'" % (version_online, release_date_online))
-            else:
-                self.run.info("and this is the lates veriosn", " :D")
+            version_local = content_local.strip().split('\n')[0].strip()
+            release_date_local = content_local.strip().split('\n')[2].strip()
 
 
-        def make_scg_db(self):
-            self.dictionary_correspondance_SCGs={}
+        content_online = read_remote_file(self.database_url + 'VERSION',is_gzip=False)
+        version_online = content_online.strip().split('\n')[0].strip()
+        release_date_online= content_online.strip().split('\n')[2].strip()
 
-            self.matrix_taxonomy=self.domatrix(self.taxofiles)
+        self.run.info("Your current gtdb release", "%s (%s)" % (version_local, release_date_local))
 
-            pathpickle_dictionnary_corres = os.path.join(
-                self.outputdirectory, 'dictionary_correspondance_SCGs.pickle')
-
-            if not os.path.exists(pathpickle_dictionnary_corres):
-                for gene in self.genesfiles:
-                    self.name=gene.replace('.faa','')
-                    self.path_diamondb=os.path.join(self.outputdirectory, "diamonddb")
-                    self.pathdb=os.path.join(self.genes_files_directory, self.name)
-                    self.pathgenes=os.path.join(self.genes_files_directory, self.gene)
-                    self.outpath=os.path.join(self.outputdirectory, "diamondblast")
-                    self.pathrefundgenes=os.path.join(self.path_diamondb, self.gene)
-                    self.pathblast=os.path.join(self.outpath,self.name)
-
-                    filesnpaths.gen_output_directory(self.path_diamondb)
-                    filesnpaths.gen_output_directory(self.outpath)
-
-                    self.sequencetoblast=self.refundgenes()
-                    self.diamonddb()
-
-                    if not os.path.exists(pathrefundgenes):
-                        continue
-                    diamond_output=self.diamondblast_stdou(pathrefundgenes,self.hmms)
-
-                    if not diamond_output:
-                        run.info("no match", gene)
-                        os.remove(pathrefundgenes)
-                        os.remove(pathrefundgenes+'.dmnd')
-                        continue
-
-                    hmm_gene=str(diamond_output).split('\n')[0].split('\t')[0]
-                    if hmm_gene not in dictionnary_corres:
-                        dictionnary_corres[hmm_gene]=[name]
-
-                    else:
-                        dictionnary_corres[hmm_gene]=dictionnary_corres[hmm_gene]+[name]
-
-                    with open(pathpickle_dictionnary__corres, 'wb') as handle:
-                        pickle.dump(dictionnary_corres, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-            else:
-                with open(pathpickle_dictionnary__corres, 'rb') as handle:
-                    dictionnary_corres = pickle.load(handle)
+        if version_local != version_online or release_date_local != release_date_online :
+            run.warning("There is a more recent version online %s (%s).\
+                         You can download it by using the commande 'anvi-setup-scgs'" % (version_online, release_date_online))
+        else:
+            self.run.info_single("and this is the lates version")
 
 
-            keylevel = "species"
+    def make_scg_db(self):
+        self.dictionary_correspondance_SCGs={}
 
-            dictionnary__pickel_taxo={}
-            for keycorres in dictionnary_corres.keys():
+        self.matrix_taxonomy=self.do_taxonomy_dictonnrary_with_tsv(self.taxofiles)
 
-                outputsub=os.path.join(self.outputdirectory, keylevel)
+        self.pathpickle_dictionary_correspondance_SCGs = os.path.join(
+            self.outputdirectory, 'dictionary_correspondance_SCGs.pickle')
 
-                pathfile=os.path.join(outputsub, keycorres)
+        if not os.path.exists(self.pathpickle_dictionary_correspondance_SCGs):
+            self.make_correpondance_dictonnary_SCG()
 
-                pathfa=os.path.join(self.genes_files_directory, str(keycorres))
-
-                if not os.path.exists(outputsub):
-                    os.mkdir(outputsub)
-
-                dictionnary__pickel_taxo=self.creatsubfa(matrix_taxonomy,dictionnary_corres[keycorres],pathfile,keylevel,dictionnary__pickel_taxo)
-                pathpickle_dictionnary__taxo_anvi = os.path.join(
-                    self.outputdirectory, 'dictionnary__msa_taxonomy_anvio.pickle')
-
-                with open(pathpickle_dictionnary__taxo_anvi, 'wb') as handle:
-                    pickle.dump(dictionnary__pickel_taxo, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    def do_taxonomy_dictonnrary_with_tsv(self,taxofile,filter=True):
-        """format tsv in dictonnary with code as key and liste for taxonomy for value"""
-
-        self.progress.new('Parse tsv file')
-        self.progress.update('...')
+        else:
+            with open(pathpickle_dictionnary__corres, 'rb') as handle:
+                dictionary_correspondance_SCGs = pickle.load(handle)
 
 
-        matrix={}
-        individues_filterd=[]
-        number_individues_filterd=0
 
-        i=1
+        dictionnary_pickel_taxo={}
+        for keycorres in self.dictionary_correspondance_SCGs.keys():
 
-        linestaxo= [line for line in open(taxofile).readlines()]
-        for line in linestaxo:
+            self.output_directory_SCG=os.path.join(self.outputdirectory, self.taxonomy_level)
 
-            if filter:
+            self.path_new_fasta_SCG=os.path.join(output_directory_SCG, self.keycorres)
 
-                taxo=line.split("\t")[1].split(";")[::].rstrip()\
-                .replace(r'(\\*[a-z])\_[A-Z]', r'\1').replace(" ","_").replace(r"sp[0-9]*","")
+            self.pathfa=os.path.join(self.genes_files_directory, str(self.keycorres))
 
-                if not re.match('[a-z]__[A-Z][a-z]*_[a-z]{3,}',taxo):
-                    individues_filterd+=taxo #FIXME out put liste individue filtred ?
-                    number_individues_filterd+=1
-                    continue
-                else:
-                    taxo=line.split("\t")[1].split(";")
+            filesnpaths.gen_output_directory(self.output_directory_SCG)
 
-            """taxox= re.sub(r'_[A-Z]*$', '', taxos[-1]).rstrip()
-            leveltaxo3 = re.sub(r'(\\*[a-z])\_[A-Z]', r'\1', taxo)
-            last_taxo1 = re.sub(r'sp[0-9]{1,}$', '', leveltaxo3)
-            last_taxo=last_taxo1.rstrip(" ").replace(" ","_")
-            #if not re.match('s__[A-Z]{1}[a-z]{1,}',taxo):"""
+            dictionnary__pickel_taxo=self.create_SCG_db(self.matrix_taxonomy,self.path_new_fasta_SCG,self.taxonomy_level,dictionnary__pickel_taxo)
+            pathpickle_dictionnary__taxo_anvi = os.path.join(
+                self.outputdirectory, 'dictionnary__msa_taxonomy_anvio.pickle')
 
-            self.progress.update('line %s/%s' % i,len(linestaxo))
-
-            i+=1
-
-            matrix[str(line.split("\t")[0])]=taxo
-
-            #.replace(r'_[A-Z]*$','').replace(r"_[A-Z] ","")
-        self.progress.end()
-        self.run.info_single("On the %s individues %s have been filtred"%len(linestaxo),number_individues_filterd)
-        return(matrix)
+            with open(pathpickle_dictionnary__taxo_anvi, 'wb') as handle:
+                pickle.dump(dictionnary__pickel_taxo, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-    def create_fasta_(self,matrix_taxonomy,listerefence,pathfile,keylevel,dictionnary__pickel_taxo,dictionnary_level=None):
+
+
+    def create_fasta_(self,dictionnary_pickel_taxo,dictionnary_level=None):
 
         listtaxo=[]
         unmatch=[]
         newfasta=""
         with open(self.outtsv,'a') as tsv:
-            with open(pathfile,'a') as file:
-                for refence in listerefence:
-                    pathfa=os.path.join(self.outputdirectory, "diamonddb",refence+".faa")
-                    run.info("pathfa",pathfa)
-                    fasta=u.ReadFasta(pathfa)
-                    if dictionnary_level!=None:
-                        for code, taxonomy in matrix_taxonomy.items():
-                            index,name=self.match(fasta,keylevel,taxonomy,code,listtaxo)
-                            if not index:
-                                unmatch.append(name)
-                                continue
-                            else:
-                                listtaxo.append(name)
-                                newfasta=newfasta+">"+fasta.ids[index]+"\n"+fasta.sequences[index]+"\n"
-                                tsv.write(fasta.ids[index]+"\t"+';'.join([matrix_taxonomy[fasta.ids[index]]])+"\n")
-                                dictionnary__pickel_taxo[fasta.ids[index]]=matrix_taxonomy[fasta.ids[index]]
-                    else:
-                        i=0
-                        while i<len(fasta.ids):
-                            if fasta.ids[i] in matrix_taxonomy:
-                                newfasta=newfasta+">"+fasta.ids[i]+"\n"+fasta.sequences[i]+"\n"
-                                if fasta.ids[i] not in dictionnary__pickel_taxo:
-                                    dictionnary__pickel_taxo[fasta.ids[i]]=matrix_taxonomy[fasta.ids[i]]
-                                    tsv.write(fasta.ids[i]+"\t"+';'.join(matrix_taxonomy[fasta.ids[i]])+"\n")
-
-                            else:
-                                unmatch.append(fasta.ids[i])
-                            i+=1
+            for refence in self.dictionary_correspondance_SCGs[self.keycorres]:
+                self.path_new_fasta_SCG=os.path.join(self.outputdirectory, "diamonddb",refence+".faa")
+                fasta=u.ReadFasta(pathfa)
+                if dictionnary_level!=None:
+                    for self.matrixcode, self.matrix_taxonomy in self.matrix_taxonomy.items():
+                        index,name=self.match(fasta,listtaxo,dictionnary_level)
+                        if not index:
+                            unmatch.append(name)
+                            continue
+                        else:
+                            listtaxo.append(name)
+                            newfasta=newfasta+">"+fasta.ids[index]+"\n"+fasta.sequences[index]+"\n"
+                            tsv.write(fasta.ids[index]+"\t"+';'.join([self.matrix_taxonomy[fasta.ids[index]]])+"\n")
+                            dictionnary_pickel_taxo[fasta.ids[index]]=self.matrix_taxonomy[fasta.ids[index]]
+                else:
+                    i=0
+                    for fasta_id in fasta.ids:
+                        if fasta_id in self.matrix_taxonomy:
+                            newfasta=newfasta+">"+fasta_id+"\n"+fasta.sequences[i]+"\n"
+                            if fasta_id not in dictionnary__pickel_taxo:
+                                dictionnary_pickel_taxo[fasta_id]=self.matrix_taxonomy[fasta_id]
+                                tsv.write(fasta_id+"\t"+';'.join(self.matrix_taxonomy[fasta_id])+"\n")
+                        else:
+                            unmatch.append(fasta_id)
+                        i+=1
+            with open(self.path_new_fasta_SCG,'a') as file:
                 file.write(newfasta)
-                self.diamonddb_stdin(newfasta,pathfile)
-                #print(unmatch)
+            self.diamonddb_stdin(newfasta,self.path_new_fasta_SCG)
         return(dictionnary__pickel_taxo)
 
-    def match(self,fasta,keylevel,taxonomy,code,listtaxo,dictionnary_level=False):
-        if dictionnary_level:
-            name=str(taxonomy[keylevel]).rstrip()
+
+    def match(self,fasta,dictionnary_level=False):
+        if self.dictionnary_level:
+            name=str(taxonomy[self.taxonomy_level]).rstrip()
         else:
             name=str(taxonomy[-1]).rstrip()
         if name not in listtaxo and code in fasta.ids:
@@ -388,23 +330,98 @@ class SCGsDataBase():
             return(index,name)
 
 
-    def diamonddb_stdin(self,sequencetoblast, pathgene):
+    def make_correpondance_dictonnary_SCG(self):
 
-        diamond = Diamond()
-        diamond.target_fasta = pathgene
-        run.info("diamonddb_stdin", pathgene)
-        diamond.makedb_stdin(sequencetoblast)
+            for self.gene in self.genes_files:
+                self.name=self.gene.replace('.faa','')
+                self.path_diamondb=os.path.join(self.outputdirectory, "diamonddb")
+                self.path_refund_genes=os.path.join(self.path_diamondb, self.gene)
+                filesnpaths.gen_output_directory(self.path_diamondb)
+                self.sequence_to_blast=self.refundgenes()
+
+                diamonddb_stdin(self.hmms)
+                self.diamond_output=self.diamondblast_stdou(self.sequence_to_blast,self.hmms)
+
+                if not self.diamond_output:
+                    run.info("no match", self.gene)
+                    os.remove(self.path_refund_genes)
+                    os.remove(self.path_refund_genes+'.dmnd')
+                    continue
+
+                self.hmm_gene=str(self.diamond_output).split('\n')[0].split('\t')[1]
+                if self.hmm_gene not in self.dictionary_correspondance_SCGs:
+                    self.dictionary_correspondance_SCGs[self.hmm_gene]=[self.name]
+
+                else:
+                    self.dictionary_correspondance_SCGs[self.hmm_gene]+=[self.name]
+
+                with open(self.pathpickle_dictionnary_corres, 'wb') as handle:
+                    pickle.dump(self.dictionary_correspondance_SCGs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+                os.remove(self.path_refund_genes)
+                os.remove(self.pathrefpath_refund_genesundgenes+'.dmnd')
+
+    def do_taxonomy_dictonnrary_with_tsv(self,taxofile,filter=True):
+        """format tsv in dictonnary with code as key and liste for taxonomy for value"""
+        self.progress.new('Parse tsv file')
+        self.progress.update('...')
+        self.matrix={}
+        individues_filterd=[]
+        number_individues_filterd=0
+        number_individues_selected=0
+        linestaxo= [line for line in open(taxofile).readlines()]
+        for line in linestaxo:
+            taxo=[]
+            if filter==True:
+                for taxonomy in line.split("\t")[1].split(";"):
+                    level_taxo=taxonomy.rstrip().replace(r'(\\*[a-z])\_[A-Z]', r'\1').replace(" ","_").replace(r"sp[0-9]*","")
+                    if not re.match(r'[a-z]{3,}__[A-Z][a-z]*_[a-z]{3,}',level_taxo) and not re.match(r'[a-z]__[A-Z][a-z]{3,}',level_taxo):
+                        continue
+                    taxo.append(level_taxo)
+                if not len(taxo):
+                    number_individues_filterd+=1
+                    continue
+
+
+                """taxo=[taxonomy if re.match(r'[a-z]__[A-Z][a-z]*_[a-z]{3,}',taxonomy) else '' \
+                      for taxonomy.rstrip().replace(r'(\\*[a-z])\_[A-Z]', r'\1').replace(" ","_").replace(r"sp[0-9]*","")\
+                       in line.split("\t")[1].split(";") ]"""
+
+            else:
+                self.taxo=line.split("\t")[1].split(";")
+
+            """taxox= re.sub(r'_[A-Z]*$', '', taxos[-1]).rstrip()
+            leveltaxo3 = re.sub(r'(\\*[a-z])\_[A-Z]', r'\1', taxo)
+            last_taxo1 = re.sub(r'sp[0-9]{1,}$', '', leveltaxo3)
+            last_taxo=last_taxo1.rstrip(" ").replace(" ","_")
+            #if not re.match('s__[A-Z]{1}[a-z]{1,}',taxo):"""
+
+            number_individues_selected+=1
+            self.progress.update('Number of indivues selected %s' % number_individues_selected)
+
+            self.matrix[str(line.split("\t")[0])]=taxo
+
+            #.replace(r'_[A-Z]*$','').replace(r"_[A-Z] ","")
+        self.progress.end()
+        if number_individues_selected==0:
+            raise ConfigError("There's a problem with the file '%s'. Anvi'o couldn't use it. \
+                              If you are sure that the file is not empty and in the right format try the option '--no-filter'."\
+                               % self.taxofiles)
+
+        self.run.info_single("On the %d individues %d have been selected and %d have been filtred"% (len(linestaxo), int(number_individues_selected), int(number_individues_filterd)))
+        print(self.matrix)
+        sys.exit(status=None)
+        return(self.matrix)
+
+
 
     def diamonddb(self, pathgdb):
 
         diamond = Diamond()
         diamond.target_fasta = pathgene
-        run.info("diamonddb_stdin", pathgene)
         diamond.makedb(pathgdb)
 
-
-    def diamondblast_stdin(self,sequencetoblast, pathgene):
-
+    def diamonddb_stdin(self,sequencetoblast, pathgene):
         diamond = Diamond()
         diamond.target_fasta = pathgene
         run.info("diamonddb_stdin", pathgene)
@@ -412,85 +429,44 @@ class SCGsDataBase():
 
 
 
-    def diamondblast_stdou(self,pathquery,pathdb, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
-        pathdb=pathdb+".dmnd"
+    def diamondblast_stdou(self,path_refund_genes,hmms, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
+        pathdb=hmms+".dmnd"
         diamond = Diamond(pathdb,run=self.run, progress=self.progress, num_threads=self.num_threads)
         #diamond = Diamond(pathdb)#, run=run_quiet, progress=progress_quiet
         diamond.max_target_seqs = max_target_seqs
-        diamond.query_fasta=pathquery
+        diamond.query_fasta=path_refund_genes
         run.info("diamondblast_stdou", pathdb)
         diamond_output = diamond.blastp_stdout()
         str_diamond_output=diamond_output.decode("utf-8")
         return(str_diamond_output)
 
 
-
-
-
-    def refundgenes(self,pathgenes,pathrefundgenes,path_diamondb):
-        fasta=u.ReadFasta(pathgenes)
+    def refund_genes(self,path_gene,percent_gap=0.5):
+        """Use only the sequence with less than percent_gap"""
+        fasta=u.ReadFasta(path_gene)
         i=0
-        sequencetoblast=""
+        sequence_to_blast=""
         while i < len(fasta.ids):
-            if fasta.sequences[i].count('-') < len(fasta.sequences[i])*0.5:
-                sequencetoblast=sequencetoblast+">"+fasta.ids[i]+"\n"+fasta.sequences[i]+"\n"
+            if fasta.sequences[i].count('-') < len(fasta.sequences[i])*percent_gap:
+                sequence_to_blast=sequence_to_blast+">"+fasta.ids[i]+"\n"+fasta.sequences[i]+"\n"
             i+=1
-        return(sequencetoblast)
+        return(sequence_to_blast)
 
 
-
-
-    def trie_blast(self,outpath,dictionnary_corres):
+    def trie_blast(self,out_put_path,dictionary_correspondance_SCGs):
         """ return dictonnary with the name of Genes from given sequence corresponding with the one from anvi'o"""
 
         pathblastfile=os.path.join(outpath,blastfile)
         if os.stat(pathblastfile).st_size == 0:
             os.remove(pathblastfile)
         hmm_gene, bacgene=self.corre(pathblastfile)
-        dictionnary_corres[bacgene]=hmm_gene
-        return dictionnary_corres;
+        dictionary_correspondance_SCGs[bacgene]=hmm_gene
+        return dictionary_correspondance_SCGs;
 
 
 
     def cleandir(self,dir):
         shutil.rmtree(dir)
-
-    def dictionnary_level(self):
-        dictionnary_level= {}
-        dictionnary_level["domain"]=1
-        dictionnary_level["phylum"]=2
-        dictionnary_level["class"]=3
-        dictionnary_level["order"]=4
-        dictionnary_level["family"]=5
-        dictionnary_level["genus"]=6
-        dictionnary_level["species"]=7
-        return(dictionnary_level)
-
-    def make_dictionnary_level(self,taxofiles):
-        with open(taxofiles, 'r') as taxotsv:
-            linestaxo = taxotsv.readlines()
-            dictionnary_level = {}
-            for line in linestaxo:
-                names = line.split('\t')
-                code = names[0]
-                leveltaxos = names[1].split(';')
-                for leveltaxo in leveltaxos[::-1]:
-                    leveltaxo1 = re.sub(r'sp[1-9]*', '', leveltaxo)
-                    leveltaxo3 = re.sub(r'(\\*[a-z])\_[A-Z]', r'\1', leveltaxo1)
-                    leveltaxo2 = leveltaxo3.rstrip()
-                    leveltaxo = re.sub(r'\s+', r'_', leveltaxo2)
-                    if leveltaxo == 's__':
-                        continue
-                    if leveltaxo == 'd__Bacteria':
-                        continue
-                    if leveltaxo not in dictionnary_level:
-                        dictionnary_level[leveltaxo] = [code]
-                        continue
-                    if code in dictionnary_level[leveltaxo]:
-                        continue
-                    else:
-                        dictionnary_level[leveltaxo] += [code]
-        return(dictionnary_level)
 
 
 
@@ -510,7 +486,7 @@ class lowident():
         self.genes_file_dir=os.path.join(
             self.files_dir, 'species')
 
-        self.genesfiles = [files for files in os.listdir(
+        self.genes_files = [files for files in os.listdir(
             self.genes_file_dir) if not files.endswith(".dmnd")]
 
         self.outputdirectory = sys.argv[3]
@@ -523,30 +499,30 @@ class lowident():
             self.dicolevel = self.make_dicolevel(taxofiles)
             with open(pathpickle_dico_taxo, 'wb') as handle:
                 pickle.dump(dicolevel, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    else:
-        with open(pathpickle_dico_taxo, 'rb') as handle:
-            dicolevel = pickle.load(handle)
-
-
-    dico_low_ident = {}
-    for genes in genesfiles:
-        dico_low_ident_genes={}
-        pathfa = os.path.join(genesfilesdir, genes)
-        dico_low_ident_genes=self.self.creatsubfa_ident(dicolevel, pathfa, outputdirectory, genes,dico_low_ident_genes)
-        pathpickle_dico_ident = os.path.join(
-            outputdirectory, genes+'_dico_low_ident.pickle')
-        with open(pathpickle_dico_ident, 'wb') as handle:
-            pickle.dump(dico_low_ident_genes, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        if genes not in dico_low_ident:
-            dico_low_ident[genes]=dico_low_ident_genes
         else:
-            dico_low_ident[genes]=dico_low_ident[genes].update(dico_low_ident_genes)
+            with open(pathpickle_dico_taxo, 'rb') as handle:
+                dicolevel = pickle.load(handle)
 
-    pathpickle_dico_ident = os.path.join(
-        outputdirectory, 'dico_low_ident.pickle')
-    with open(pathpickle_dico_ident, 'wb') as handle:
-        pickle.dump(dico_low_ident, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    print(dico_low_ident)
+
+        dico_low_ident = {}
+        for genes in genes_files:
+            dico_low_ident_genes={}
+            pathfa = os.path.join(genes_filesdir, genes)
+            dico_low_ident_genes=self.self.creatsubfa_ident(dicolevel, pathfa, outputdirectory, genes,dico_low_ident_genes)
+            pathpickle_dico_ident = os.path.join(
+                outputdirectory, genes+'_dico_low_ident.pickle')
+            with open(pathpickle_dico_ident, 'wb') as handle:
+                pickle.dump(dico_low_ident_genes, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            if genes not in dico_low_ident:
+                dico_low_ident[genes]=dico_low_ident_genes
+            else:
+                dico_low_ident[genes]=dico_low_ident[genes].update(dico_low_ident_genes)
+
+        pathpickle_dico_ident = os.path.join(
+            outputdirectory, 'dico_low_ident.pickle')
+        with open(pathpickle_dico_ident, 'wb') as handle:
+            pickle.dump(dico_low_ident, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        print(dico_low_ident)
 
 
     def make_dicolevel(self,taxofiles):
@@ -569,7 +545,6 @@ class lowident():
         return(dicolevel)
 
 
-
     def match_ident(self, fasta, codes, listindex, dicolevel=False):
         for code in codes:
             if code in fasta.ids:
@@ -577,11 +552,6 @@ class lowident():
                 if index:
                     listindex.append(index)
         return(listindex)
-
-
-
-
-
 
 
     def multidiamond(self, listeprocess,outputdirectory,dico_low_ident):
@@ -641,16 +611,16 @@ class lowident():
                 continue
             listindex = []
             riboname = genes.replace(".faa", "")
-            pathfile = os.path.join(outputdirectory,taxonomy)
-            pathpickle_dico_ident = pathfile + "_dico_low_ident.pickle"
+            path_new_fasta_SCG = os.path.join(outputdirectory,taxonomy)
+            pathpickle_dico_ident = path_new_fasta_SCG + "_dico_low_ident.pickle"
 
 
 
-            if not os.path.exists(pathfile):
+            if not os.path.exists(path_new_fasta_SCG):
                 listindex = self.match_ident(fasta, codes, listindex)
                 if len(listindex) > 1:
-                    listeprocess.append(pathfile)
-                    with open(pathfile, 'w+') as file:
+                    listeprocess.append(path_new_fasta_SCG)
+                    with open(path_new_fasta_SCG, 'w+') as file:
                         for index in listindex:
                             file.write(">" + fasta.ids[index] +
                                        "\n" + fasta.sequences[index] + "\n")
