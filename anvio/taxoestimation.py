@@ -339,10 +339,6 @@ class SCGsdiamond:
         input_queue = manager.Queue()
         output_queue = manager.Queue()
 
-
-
-
-        # split hmm_sequences_dict
         hmm_sequences_dict_per_type = self.get_hmm_sequences_dict_into_type_multi(
             hmm_sequences_dict)
         j=0
@@ -351,8 +347,7 @@ class SCGsdiamond:
         match_id=0
         num_listeprocess = len(hmm_sequences_dict_per_type)
 
-        #self.progress.new('Aligning amino acid sequences for genes in gene clusters', progress_total_items=num_listeprocess)
-        #self.progress.update('...')
+        
         Sequence_queu=[]
         sequence_by_SCG = []
         for SCG in hmm_sequences_dict_per_type:
@@ -367,14 +362,9 @@ class SCGsdiamond:
                                        does not look like the way we expected it. This function\
                                        expects a dictionary that contains keys `gene_name` and `sequence`.")
 
-                    #sequence = sequence+">%s\n%s\n"% (id,entry['sequence'])
                 sequence = sequence+">"+str(entry['gene_callers_id'])+"\n"+entry['sequence']+"\n"
                 entry['hits']=[]
-                #print(SCG,sequence)
             input_queue.put([SCG,sequence])
-            #print(sequence_by_SCG)
-            #sys.exit()
-        #input_queue.put(sequence_by_SCG)
 
 
 
