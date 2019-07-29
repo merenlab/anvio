@@ -41,18 +41,6 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-# Let's make sure we have CONCOCT available
-__CONCOCT_IS_AVAILABLE__ = False
-try:
-    import anvio.concoct as concoct
-    __CONCOCT_IS_AVAILABLE__ = True
-except ImportError as e:
-    run.warning("The CONCOCT module could not be imported :( Anvi'o will still be able to perform\
-                 the merging, however, the unsupervised binning results will not be available to\
-                 you in the resulting merged profile database. This is what the module was upset about:\
-                 '''%s''', in case you would like to fix this problem." % e)
-
-
 class MultipleRuns:
     def __init__(self, args, run=run, progress=progress):
         self.progress = progress
@@ -67,7 +55,6 @@ class MultipleRuns:
         self.output_directory = A('output_dir')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
         self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
-        self.skip_concoct_binning = A('skip_concoct_binning')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.debug = A('debug')
         self.distance = A('distance') or constants.distance_metric_default
@@ -432,14 +419,6 @@ class MultipleRuns:
         smallest_sample_size = min(self.total_reads_mapped_per_sample.values())
         smallest_non_zero_sample_size = min([v for v in self.total_reads_mapped_per_sample.values() if v] or [0])
 
-        if smallest_sample_size == 0 and not self.skip_concoct_binning:
-            self.run.warning("At least one of the single profiles you are trying to merge has zero reads. Since anvi'o\
-                              is certain this will make CONCOCT freak out big time, it will set the flag `skip-concoct-binning`\
-                              to True (whihc means you will have no CONCOCT results in your merged profile database by default,\
-                              but you can always try later with `anvi-cluster-with-concoct` and see it fail in your own time).",
-                              header="CONCOCT WARNING")
-            self.skip_concoct_binning = True
-
         if smallest_non_zero_sample_size == 0 and not self.skip_hierarchical_clustering:
             self.run.warning("It seems none of the single profiles you are trying to merge has more than zero reads :/\
                               Anvi'o will let this pass, assuming you have some grand plans with these data. But to\
@@ -574,10 +553,6 @@ class MultipleRuns:
         self.cluster_contigs_anvio()
 
         self.progress.end()
-
-        # run CONCOCT, if otherwise is not requested:
-        if not self.skip_concoct_binning and __CONCOCT_IS_AVAILABLE__:
-            self.bin_contigs_concoct()
 
         self.populate_misc_data_tables()
 
@@ -718,27 +693,6 @@ class MultipleRuns:
             TablesForViews(self.merged_profile_db_path).remove(view_name='variability', table_names_to_blank=['variability_splits', 'variability_contigs'])
 
         self.progress.end()
-
-
-    def bin_contigs_concoct(self):
-        self.run.info_single("Automatic binning with CONCOCT...", nl_before=1, nl_after=1, mc="blue")
-
-        if not __CONCOCT_IS_AVAILABLE__:
-            self.run.warning('The CONCOCT module is not available. Skipping the unsupervised binning\
-                              with CONCOCT.')
-            return
-
-        class Args:
-            pass
-
-        args = Args()
-        args.profile_db = self.merged_profile_db_path
-        args.contigs_db = self.contigs_db_path
-        args.debug = self.debug
-
-        c = concoct.CONCOCT(args)
-        c.cluster()
-        c.store_clusters_in_db()
 
 
     def cluster_contigs_anvio(self):

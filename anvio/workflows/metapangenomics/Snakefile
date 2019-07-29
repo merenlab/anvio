@@ -790,7 +790,6 @@ rule anvi_merge:
         enforce_hierarchical_clustering = M.get_rule_param("anvi_merge", "--enforce-hierarchical-clustering"),
         distance = M.get_rule_param("anvi_merge", "--distance"),
         linkage = M.get_rule_param("anvi_merge", "--linkage"),
-        skip_concoct_binning = M.get_rule_param("anvi_merge", "--skip-concoct-binning"),
         overwrite_output_destinations = M.get_rule_param("anvi_merge", "--overwrite-output-destinations"),
     run:
         # using run instead of shell so we can choose the appropriate shell command.
@@ -846,7 +845,7 @@ rule anvi_merge:
 
         else:
             shell("anvi-merge {input.profiles} -o {params.output_dir} -c {input.contigs} \
-                   {params.sample_name} {params.skip_concoct_binning} \
+                   {params.sample_name} \
                    {params.overwrite_output_destinations} >> {log} 2>&1")
 
 
