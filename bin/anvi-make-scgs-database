@@ -9,11 +9,12 @@ import time
 from collections import Counter
 
 import anvio
+
+import anvio.terminal as terminal
 import anvio.scgsdatabase as scgsdatabase
 
-
 from anvio.errors import ConfigError
-import anvio.terminal as terminal
+from anvio.errors import FilesNPathsError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"

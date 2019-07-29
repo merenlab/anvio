@@ -148,7 +148,6 @@ class Diamond:
         self.run.info('Diamond blastp results', self.expected_output)
 
     def blastp_stdout(self):
-        self.run.info('DIAMOND is set to be', 'Sensitive' if self.sensitive else 'Fast')
 
         cmd_line = ['diamond',
                     'blastp',
@@ -169,9 +168,6 @@ class Diamond:
 
         self.run.info('DIAMOND blastp cmd', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
 
-        self.progress.new('DIAMOND')
-        self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
-
 
         shell_cmd_line=' '.join(str(x) for x in cmd_line)
         out_bytes, ret_code = utils.get_command_output_from_shell(shell_cmd_line)
@@ -180,9 +176,6 @@ class Diamond:
             decode_out=out_bytes.decode("utf-8")
         except:
             decode_out=out_bytes
-
-
-        self.progress.end()
 
         return(decode_out)
 
@@ -211,9 +204,6 @@ class Diamond:
 
 
         self.run.info('DIAMOND blastp stdin cmd', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
-
-        self.progress.new('DIAMOND')
-        self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
 
         output = utils.run_command_STDIN(cmd_line, self.run.log_file_path, '>seq\n%s' % sequence,remove_log_file_if_exists=False)
 
@@ -275,7 +265,6 @@ class Diamond:
         self.check_output(expected_output, 'makedb')
 
         self.run.info('diamond makedb cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
-        self.run.info('Diamond search db', expected_output)
 
     def view(self):
         self.progress.new('DIAMOND')
