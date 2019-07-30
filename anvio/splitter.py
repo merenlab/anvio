@@ -695,7 +695,8 @@ class LocusSplitter:
         self.remove_partial_hits = A('remove_partial_hits')
         self.reverse_complement_if_necessary = not A('never_reverse_complement')
         self.include_fasta_output = True
-        self.mode = A('mode')
+        self.is_in_flank_mode = bool(A('flank_mode'))
+
 
         if A('list_hmm_sources'):
             hmmops.SequencesForHMMHits(self.input_contigs_db_path).list_available_hmm_sources()
@@ -710,19 +711,8 @@ class LocusSplitter:
     def sanity_check(self):
         """Check sanity while straightening some input variables"""
 
-        """
-        Game plan for sanity check:
-            - Mode 1 (1 gene): requires (gene-caller-id or search-term or [use-hmm and search-term]) and --num-genes
-                * goal: list of single gene-caller-ids
-            - Mode 2 (flanking genes): requires 2x(gene-caller-id or search-term or hmm)
-                * goal: tuple of paired gene-caller-ids
-
-        ** Both modes will end with tuple of start and stop positions!!!!!!! i.e. [(start,stop), (start,stop)]
-        """
-
         filesnpaths.is_output_dir_writable(self.output_dir)
 
-        # Check that inputs make sense
         if (not (self.gene_caller_ids or self.search_term)) or (self.gene_caller_ids and self.search_term):
             raise ConfigError("You must specify exacly one of the following: --gene-caller-ids or --search-term")
 
@@ -732,11 +722,9 @@ class LocusSplitter:
 
         utils.is_contigs_db(self.input_contigs_db_path)
 
-        # Parse hmm sources
         if len(self.hmm_sources):
             self.hmm_sources = set([s.strip() for s in self.hmm_sources.split(',')])
 
-        # Parse --num-genes into list and sanity check it
         self.num_genes_list = [int(x) for x in self.num_genes.split(',')]
         if len(self.num_genes_list) > 2:
             raise ConfigError("The block size you provided, \"%s\", is not valid.\
@@ -747,7 +735,6 @@ class LocusSplitter:
         if len(self.num_genes_list) == 1:
             self.num_genes_list = [0, self.num_genes_list[0]]
 
-        # Extra stuff to print to screen
         self.run.warning(None, header="Input / Output", lc="cyan")
         self.run.info('Contigs DB', os.path.abspath(self.input_contigs_db_path))
         self.run.info('Output directory', self.output_dir)
@@ -757,18 +744,6 @@ class LocusSplitter:
             self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[0]))
         self.run.info('Rev-comp the locus sequence if necessary', self.reverse_complement_if_necessary)
 
-        # Now sanity check depending on mode 1 or 2
-
-        self.mode = int(self.mode)
-        if self.mode == 1:
-            print("Mode 1") # Mode 1 (1 gene): requires (gene-caller-id or search-term or [use-hmm and search-term]) and --num-genes
-            if (not (self.gene_caller_ids or self.search_term)) or (self.gene_caller_ids and self.search_term) and num_genes:
-                raise ConfigError("You must specify --gene-caller-ids or --search-term AND --num-genes")
-        # NEED TO FIXXXXXXXX!
-        # if self.mode == 2:
-        #     print("Mode 2") # Mode 2 (flanking genes): requires 2x(gene-caller-id or search-term or hmm)
-        #     if (not (',' in self.gene_caller_ids)) or (not (',' in self.search_term)):
-        #         raise ConfigError("You must specify 2 flanking --gene-caller-ids or --search-term to export locus")
 
     def init(self):
         """The whole purpose of this function is to identify which gene calls to focus"""
@@ -777,17 +752,11 @@ class LocusSplitter:
 
         self.run.warning(None, header="Initialization bleep bloops", lc="cyan")
 
-        # Ok here all input sources for both *mode 1* and *mode 2* will lead to gene_caller_ids in the list gene_caller_ids_of_interest
-
-        # Input: gene_caller_ids
-        # So we dont need to do much
         if self.gene_caller_ids:
             self.run.info('Mode', 'User-provided gene caller id(s)')
 
             gene_caller_ids_of_interest = list(utils.get_gene_caller_ids_from_args(self.gene_caller_ids, self.delimiter))
             self.sources = ['gene_caller_ids']
-
-        # Input: use-hmm annotations flag
         elif self.use_hmm:
             self.run.info('Mode', 'HMM search')
 
@@ -801,8 +770,6 @@ class LocusSplitter:
 
             self.targets.append('HMMs')
             self.sources = s.sources
-
-        # Input: --search-term
         else:
             self.run.info('Mode', 'Function search')
 
@@ -827,9 +794,6 @@ class LocusSplitter:
                      '%d genes matched your search' % len(self.gene_caller_ids_of_interest),
                      mc='green', nl_after=1)
 
-        # Mode 2
-        print(self.gene_caller_ids_of_interest)
-
 
     def process(self, skip_init=False):
         if not skip_init:
@@ -845,12 +809,15 @@ class LocusSplitter:
         self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
         self.contigs_db.init_functions()
 
-        # Mode 1
-        if self.mode == 1:
+        """
+        Here we will differentiate between being in flank mode or not. If NOT in flank mode, we will iterate through
+        the gene-caller-ids-of-interest and cut out the locus X amount of gene above and below the gene-caller-id
+        based on the --num-genes given by the user. If in flank mode, we will only export 1 locus based on the flanking
+        gene-caller-ids provided.
+        """
+
+        if not self.is_in_flank_mode:
             counter = 1
-
-            start_stop_position_list = []
-
             for gene_callers_id in self.gene_caller_ids_of_interest:
                 self.run.warning(None,
                                  header="Exporting locus %d of %d" % \
@@ -859,21 +826,21 @@ class LocusSplitter:
 
                 output_path_prefix = os.path.join(self.output_dir, "%s_%.4d" % (self.output_file_prefix, counter))
 
-                start_stop_position_list.append(self.export_locus_single(gene_callers_id, output_path_prefix))
+                self.export_locus(output_path_prefix, gene_callers_id)
 
                 counter += 1
 
-            print(start_stop_position_list)
+        if self.is_in_flank_mode:
+            self.run.warning(None,
+                             header="Exporting locus 1 of 1",
+                             nl_after=0)
 
-        # Mode 2
-        elif self.mode == 2:
-            gene_caller_ids_of_interest = self.gene_caller_ids_of_interest
-            counter = 1
-            output_path_prefix = os.path.join(self.output_dir, "%s_%.4d" % (self.output_file_prefix, counter))
-            self.export_locus_flank(gene_caller_ids_of_interest, output_path_prefix)
+            output_path_prefix = os.path.join(self.output_dir, self.output_file_prefix)
+
+            self.export_locus(output_path_prefix)
 
 
-    def export_locus_single(self, gene_callers_id, output_path_prefix):
+    def export_locus(self, output_path_prefix, gene_callers_id=None, gene_caller_ids=None):
         """Takes a gene callers ID, and exports a contigs database.
 
            Output path prefix should be unique for every export locus call. If the prefix you provide
@@ -887,6 +854,25 @@ class LocusSplitter:
                 >>> '/path/to/dir/file_name_prefix.db'
 
            """
+        # Confirming the user provided the right parameters for export_locus
+        if gene_callers_id and gene_caller_ids:
+                raise ConfigError("You can only provide the gene_callers_id or gene_caller_ids (with a , delimiter).")
+        elif not (gene_callers_id or gene_caller_ids):
+            raise ConfigError("You must provide at least 1 of the following: gene_callers_id or gene_caller_ids (with a , delimiter).")
+        if gene_callers_id and not isinstance(gene_caller_id, int):
+            raise ConfigError("The gene_caller_id must be an integer.")
+        if gene_caller_ids:
+            if not isinstance(gene_caller_ids, list):
+                raise ConfigError("The gene_caller_ids must be an integer.")
+            if len(gene_caller_ids) != 2:
+                raise ConfigError("gene-caller_ids requires two inputs!")
+
+            if [g for g in gene_caller_ids if not isinstance(g, int) or g < 0]:
+                raise ConfigError("Both gene-caller_ids inputs must be integers!")
+
+        if gene_caller_ids:
+            first_gene_of_the_block, last_gene_of_the_block = sorted(gene_caller_ids)
+            gene_callers_id = first_gene_of_the_block # just for getting contig name from contigDB
 
         if os.path.isdir(output_path_prefix):
             raise ConfigError("Output path prefix can't be a directory name...")
@@ -910,10 +896,12 @@ class LocusSplitter:
         self.run.info("Target gene call", gene_callers_id)
         self.run.info("Target gene direction", "Forward" if D() == 1 else "Reverse", mc = 'green' if D() == 1 else 'red')
 
-        gene_1 = gene_callers_id - self.num_genes_list[0] * D()
-        gene_2 = gene_callers_id + self.num_genes_list[1] * D()
-        first_gene_of_the_block = min(gene_1, gene_2)
-        last_gene_of_the_block = max(gene_1, gene_2)
+        if not self.is_in_flank_mode:
+            gene_1 = gene_callers_id - self.num_genes_list[0] * D()
+            gene_2 = gene_callers_id + self.num_genes_list[1] * D()
+            first_gene_of_the_block = min(gene_1, gene_2)
+            last_gene_of_the_block = max(gene_1, gene_2)
+
 
         self.run.info("First and last gene of the locus (raw)", "%d and %d" % (first_gene_of_the_block, last_gene_of_the_block))
 
@@ -934,73 +922,6 @@ class LocusSplitter:
             return
         elif premature and not self.remove_partial_hits:
             self.run.info_single("A premature locus is found .. the current configuration says 'whatevs'. Anvi'o will continue.", mc="yellow", nl_before=1, nl_after=1)
-
-
-        #copied to cut_locus
-        self.run.info("First and last gene of the locus (final)", "%d and %d" % (first_gene_of_the_block, last_gene_of_the_block))
-
-        locus_start = self.contigs_db.genes_in_contigs_dict[first_gene_of_the_block]['start']
-        locus_stop = self.contigs_db.genes_in_contigs_dict[last_gene_of_the_block]['stop']
-
-        return [locus_start,locus_stop]
-        # # being a performance nerd here yes
-        # contig_sequence = db.DB(self.input_contigs_db_path, None, ignore_version=True) \
-        #                     .get_some_rows_from_table(t.contig_sequences_table_name,
-        #                                               where_clause="contig='%s'" % contig_name)[0][1]
-        # locus_sequence = contig_sequence[locus_start:locus_stop]
-
-        # # here we will create a gene calls dict for genes that are specific to our locus. since we trimmed
-        # # the contig sequence to the locus of interest, we will have to adjust start and stop positions of
-        # # genes in teh gene calls dict.
-        # locus_gene_calls_dict = {}
-        # for g in range(first_gene_of_the_block, last_gene_of_the_block + 1):
-        #     locus_gene_calls_dict[g] = copy.deepcopy(self.contigs_db.genes_in_contigs_dict[g])
-        #     excess = self.contigs_db.genes_in_contigs_dict[first_gene_of_the_block]['start']
-        #     locus_gene_calls_dict[g]['start'] -= excess
-        #     locus_gene_calls_dict[g]['stop'] -= excess
-
-        # self.run.info("Locus gene call start/stops excess (nts)", excess)
-
-        # if D() != 1 and self.reverse_complement_if_necessary:
-        #     reverse_complement = True
-        # else:
-        #     reverse_complement = False
-
-        # self.run.info('Reverse complementing everything', reverse_complement, mc='green')
-
-        # # report a stupid FASTA file.
-        # if self.include_fasta_output:
-        #     fasta_file_path = output_path_prefix + ".fa"
-
-        #     self.run.info("Output FASTA file", fasta_file_path)
-        #     with open(fasta_file_path, 'w') as f:
-        #         locus_header = contig_name + ' ' + \
-        #                        '|'.join(['target:%s' % ','.join(self.targets),
-        #                                  'sources:%s' % ','.join(self.sources),
-        #                                  'query:%s' % self.search_term or 'None',
-        #                                  'hit_contig:%s' % contig_name,
-        #                                  'hit_gene_callers_id:%s' % str(gene_callers_id),
-        #                                  'project_name:%s' % self.contigs_db.a_meta['project_name'].replace(' ', '_').replace("'", '_').replace('"', '_'),
-        #                                  'locus:%s,%s' % (str(first_gene_of_the_block), str(last_gene_of_the_block)),
-        #                                  'nt_positions_in_contig:%s:%s' % (str(locus_start), str(locus_stop)),
-        #                                  'premature:%s' % str(premature),
-        #                                  'reverse_complemented:%s' % str(reverse_complement)])
-
-        #         f.write('>%s\n' % locus_header)
-        #         f.write('%s\n' % utils.rev_comp(locus_sequence) if reverse_complement else locus_sequence)
-
-        # # report a fancy anvi'o contigs database
-        # self.store_locus_as_contigs_db(contig_name,
-        #                                locus_sequence,
-        #                                locus_gene_calls_dict,
-        #                                output_path_prefix,
-        #                                reverse_complement)
-
-
-    def export_locus_flank(self, gene_callers_id, output_path_prefix):
-        print("its working?")
-
-    def cut_locus(self, start_stop_position_list, locus_output_prefix):
 
         self.run.info("First and last gene of the locus (final)", "%d and %d" % (first_gene_of_the_block, last_gene_of_the_block))
 
@@ -1059,6 +980,7 @@ class LocusSplitter:
                                        locus_gene_calls_dict,
                                        output_path_prefix,
                                        reverse_complement)
+
 
     def store_locus_as_contigs_db(self, contig_name, sequence, gene_calls, output_path_prefix, reverse_complement=False):
         """Generates a contigs database and a blank profile for a given locus"""
@@ -1169,7 +1091,7 @@ class LocusSplitter:
         #                            them. but amino acid sequences for each gene call was stored
         #                            in the original contigs database, and the best practice is to
         #                            carry them into the new one. so here we will remove all data
-        #                            from the amino acid seqeunces table in the new database, and
+        #                            from the amino acid sequences table in the new database, and
         #                            copy the contents from the original one.
         ############################################################################################
         amino_acid_sequences = R(t.gene_amino_acid_sequences_table_name)
