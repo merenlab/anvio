@@ -52,7 +52,7 @@ To train the classifier, you can simply run the following command:
 
 ```
 anvi-script-gen-scg-domain-classifier --genomes-dir . \
-                                      --output /(...)/anvio/data/misc/SCGDOMAINCLASSIFIER.rf
+                                      --output $(python -c 'import anvio; import os; print(os.path.join(os.path.dirname(anvio.__file__), "data/misc/SCGDOMAINCLASSIFIER.rf"));')
 ```
 
 How to add a new SCG collection for a new domain
@@ -90,7 +90,7 @@ Once this is done, you are golden. Run the trainer again,
 
 ```
 anvi-script-gen-scg-domain-classifier --genomes-dir . \
-                                      --output /(...)/anvio/data/misc/SCGDOMAINCLASSIFIER.rf
+                                      --output $(python -c 'import anvio; import os; print(os.path.join(os.path.dirname(anvio.__file__), "data/misc/SCGDOMAINCLASSIFIER.rf"));')
 ```
 
 And test one of your new genomes with `anvi-estimate-genome-completeness`.
