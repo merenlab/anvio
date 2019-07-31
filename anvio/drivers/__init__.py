@@ -7,7 +7,7 @@ from anvio.drivers.muscle import Muscle
 from anvio.drivers.famsa import FAMSA
 from anvio.drivers.concoct import CONCOCT
 from anvio.drivers.metabat2 import MetaBAT2
-from anvio.drivers.maxbin import MaxBin
+from anvio.drivers.maxbin2 import MaxBin2
 from anvio.drivers.dastool import DAS_Tool
 from anvio.drivers.binsanity import BinSanity
 from anvio.errors import ConfigError
@@ -23,7 +23,7 @@ driver_modules['phylogeny'] = {"default":  FastTree,
 
 driver_modules['binning'] = {"concoct": CONCOCT,
                              "metabat2": MetaBAT2,
-                             "maxbin": MaxBin,
+                             "maxbin2": MaxBin2,
                              "dastool": DAS_Tool,
                              "binsanity": BinSanity}
 

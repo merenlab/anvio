@@ -24,7 +24,7 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-class MaxBin:
+class MaxBin2:
     arguments = {
         'min_contig_length': (
                 ['--min-contig-length'],
@@ -67,7 +67,7 @@ class MaxBin:
 
     def cluster(self, input_files, args, threads=1, splits_mode=False):
         self.run.info_single("If you publish results from this workflow, \
-                               please do not forget to cite \n%s" % MaxBin.citation,
+                               please do not forget to cite \n%s" % MaxBin2.citation,
                                nl_before=1, nl_after=1, mc='green')
 
         self.temp_path = filesnpaths.get_temp_directory_path()
