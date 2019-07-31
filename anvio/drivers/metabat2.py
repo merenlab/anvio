@@ -1,5 +1,5 @@
 # coding: utf-8
-"""Interface to MetaBAT."""
+"""Interface to MetaBAT2."""
 import os
 import glob
 import shutil
@@ -24,7 +24,7 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-class MetaBAT:
+class MetaBAT2:
     arguments = {
         'minContig': (
                 ['-m', '--minContig'],
@@ -90,9 +90,10 @@ class MetaBAT:
                  'help': "For exact reproducibility. (0: use random seed)."}
                     ),
     }
-    citation = "Kang DD, Froula J, Egan R, Wang Z. 2015. MetaBAT, an efficient tool \
-                for accurately reconstructing single genomes from complex microbial \
-                communities. PeerJ 3:e1165 https://doi.org/10.7717/peerj.1165"
+    citation = "Kang DD, Li F, Kirton E, Thomas A, Egan R, An H, Wang Z. 2019. \
+                MetaBAT 2: an adaptive binning algorithm for robust and efficient \
+                genome reconstruction from metagenome assemblies. \
+                PeerJ 7:e7359 https://doi.org/10.7717/peerj.7359"
 
     def __init__(self, run=run, progress=progress):
         self.run = run
@@ -105,7 +106,7 @@ class MetaBAT:
     def cluster(self, input_files, args, threads=1, splits_mode=False):
         self.temp_path = filesnpaths.get_temp_directory_path()
         self.run.info_single("If you publish results from this workflow, \
-                               please do not forget to cite \n%s" % MetaBAT.citation,
+                               please do not forget to cite \n%s" % MetaBAT2.citation,
                                nl_before=1, nl_after=1, mc='green')
 
         if anvio.DEBUG:
