@@ -733,23 +733,25 @@ class LocusSplitter:
         if len(self.hmm_sources):
             self.hmm_sources = set([s.strip() for s in self.hmm_sources.split(',')])
 
-        self.num_genes_list = [int(x) for x in self.num_genes.split(',')]
-        if len(self.num_genes_list) > 2:
-            raise ConfigError("The block size you provided, \"%s\", is not valid.\
-                                The gene block size is defined by only one or two integers for either \
-                                a block following the search match or a block preceding and following \
-                                the search match respectively." % self.num_genes)
+        if self.num_genes:
+            self.num_genes_list = [int(x) for x in self.num_genes.split(',')]
+            if len(self.num_genes_list) > 2:
+                raise ConfigError("The block size you provided, \"%s\", is not valid.\
+                                    The gene block size is defined by only one or two integers for either \
+                                    a block following the search match or a block preceding and following \
+                                    the search match respectively." % self.num_genes)
 
-        if len(self.num_genes_list) == 1:
-            self.num_genes_list = [0, self.num_genes_list[0]]
+            if len(self.num_genes_list) == 1:
+                self.num_genes_list = [0, self.num_genes_list[0]]
+
+            if ',' in self.num_genes:
+                self.run.info('Genes to report', '%d genes before the matching gene, and %d that follow' % (self.num_genes_list[0], self.num_genes_list[1]))
+            else:
+                self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[0]))
 
         self.run.warning(None, header="Input / Output", lc="cyan")
         self.run.info('Contigs DB', os.path.abspath(self.input_contigs_db_path))
         self.run.info('Output directory', self.output_dir)
-        if ',' in self.num_genes:
-            self.run.info('Genes to report', '%d genes before the matching gene, and %d that follow' % (self.num_genes_list[0], self.num_genes_list[1]))
-        else:
-            self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[0]))
         self.run.info('Rev-comp the locus sequence if necessary', self.reverse_complement_if_necessary)
 
 
@@ -832,6 +834,8 @@ class LocusSplitter:
         """
 
         if not self.is_in_flank_mode:
+            if not self.num_genes:
+                raise ConfigError("You must provide --num-genes when in default mode.")
             counter = 1
             for gene_callers_id in self.gene_caller_ids_of_interest:
                 self.run.warning(None,
