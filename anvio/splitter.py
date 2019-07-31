@@ -720,6 +720,14 @@ class LocusSplitter:
             raise ConfigError("If you want to use HMMs to find the gene of interest that will define your locus,\
                                you must also specify a --search-term.")
 
+        # Preventing user from looking for more than one search_term at a time
+        # Will improve funcitonality laster to allow user to provide more than one search term
+        # if ',' in self.search_term:
+        #     raise ConfigError("anvi-export-locus can only search for one search_term at a time.")
+
+        if ',' in self.search_term:
+            self.search_term_list = self.search_term.split(',')
+
         utils.is_contigs_db(self.input_contigs_db_path)
 
         if len(self.hmm_sources):
@@ -776,15 +784,22 @@ class LocusSplitter:
             contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
             # use functional annotation
             contigs_db.init_functions()
-            self.run.info('Search term', self.search_term, mc='green')
-            self.run.info('Function calls being used', ', '.join(contigs_db.gene_function_call_sources))
 
-            foo, search_report = contigs_db.search_for_gene_functions([self.search_term], requested_sources=self.annotation_sources, verbose=True)
-            # gene id's of genes with the searched function
-            gene_caller_ids_of_interest = [i[0] for i in search_report]
+            if self.search_term_list:
+                gene_caller_ids_of_interest = []
+                counter = 1
+                for term in self.search_term_list:
+                    self.run.info('Search term %d of %d' % (counter,len(self.search_term_list)), term, mc='green')
+                    self.run.info('Function calls being used', ', '.join(contigs_db.gene_function_call_sources))
 
-            self.targets.append('functions')
-            self.sources = contigs_db.gene_function_call_sources
+                    foo, search_report = contigs_db.search_for_gene_functions([term], requested_sources=self.annotation_sources, verbose=True)
+                    # gene id's of genes with the searched function
+                    #gene_caller_ids_of_interest = [i[0] for i in search_report]
+                    gene_caller_ids_of_interest.extend(i[0] for i in search_report)
+
+                    self.targets.append('functions')
+                    self.sources = contigs_db.gene_function_call_sources
+                    counter += 1
 
         # Multiple sources could annotate the same gene, so make sure the list is unique
         self.gene_caller_ids_of_interest = set(gene_caller_ids_of_interest)
@@ -841,35 +856,41 @@ class LocusSplitter:
 
 
     def export_locus(self, output_path_prefix, gene_callers_id=None, gene_caller_ids=None):
-        """Takes a gene callers ID, and exports a contigs database.
+        """
+        Takes a list (gene_callers_id) or pair (gene_caller_ids) of gene-callers-ID, and exports a contigs database.
 
-           Output path prefix should be unique for every export locus call. If the prefix you provide
-           looks like this:
+        If gene_callers_id is provided, export_locus will cut X above and below the gene_callers_id based
+        on self.num_genes_list. If gene_caller_ids is provided, export_locus will cut out the locus between
+        the pair provided. It is REQUIRED to provide a pair of gene-callers-ID for gene_caller_ids.
 
-                >>> output_path_prefix = '/path/to/dir/file_name_prefix'
+        Output path prefix should be unique for every export locus call. If the prefix you provide
+        looks like this:
 
-           the output files will be stored as this:
+            >>> output_path_prefix = '/path/to/dir/file_name_prefix'
 
-                >>> '/path/to/dir/file_name_prefix.fa'
-                >>> '/path/to/dir/file_name_prefix.db'
+        the output files will be stored as this:
 
-           """
-        # Confirming the user provided the right parameters for export_locus
+            >>> '/path/to/dir/file_name_prefix.fa'
+            >>> '/path/to/dir/file_name_prefix.db'
+
+        """
+
+        # Confirming the user provided the right parameters for export_locus method
         if gene_callers_id and gene_caller_ids:
                 raise ConfigError("You can only provide the gene_callers_id or gene_caller_ids (with a , delimiter).")
         elif not (gene_callers_id or gene_caller_ids):
             raise ConfigError("You must provide at least 1 of the following: gene_callers_id or gene_caller_ids (with a , delimiter).")
-        if gene_callers_id and not isinstance(gene_caller_id, int):
-            raise ConfigError("The gene_caller_id must be an integer.")
+        # if gene_callers_id and not isinstance(gene_caller_id, int):
+            # raise ConfigError("The gene_caller_id must be an integer.")
         if gene_caller_ids:
             if not isinstance(gene_caller_ids, list):
-                raise ConfigError("The gene_caller_ids must be an integer.")
+                raise ConfigError("The gene_caller_ids must be integers.")
             if len(gene_caller_ids) != 2:
-                raise ConfigError("gene-caller_ids requires two inputs!")
-
+                raise ConfigError("gene-caller_ids requires two inputs to cut out locus based on flanking genes!")
             if [g for g in gene_caller_ids if not isinstance(g, int) or g < 0]:
                 raise ConfigError("Both gene-caller_ids inputs must be integers!")
 
+        # Get flanking first and last gene-caller-id of locus
         if gene_caller_ids:
             first_gene_of_the_block, last_gene_of_the_block = sorted(gene_caller_ids)
             gene_callers_id = first_gene_of_the_block # just for getting contig name from contigDB
@@ -879,10 +900,12 @@ class LocusSplitter:
 
         filesnpaths.is_output_file_writable(output_path_prefix + '.fa')
 
+        # if not already initiated, re-initiate contigsDB
         if not self.contigs_db:
             self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
             self.contigs_db.init_functions()
 
+        # Query for gene_call, contig_name, and genes_in_contig_sorted
         gene_call = self.contigs_db.genes_in_contigs_dict[gene_callers_id]
         contig_name = self.contigs_db.genes_in_contigs_dict[gene_callers_id]['contig']
         genes_in_contig_sorted = sorted(list(self.contigs_db.contig_name_to_genes[contig_name]))
@@ -890,12 +913,15 @@ class LocusSplitter:
         D = lambda: 1 if gene_call['direction'] == 'f' else -1
         premature = False
 
+        # Print out locus info for user
         self.run.info("Contig name", contig_name)
         self.run.info("Contig length", self.contigs_db.contigs_basic_info[contig_name]['length'])
         self.run.info("Num genes in contig", len(genes_in_contig_sorted))
         self.run.info("Target gene call", gene_callers_id)
         self.run.info("Target gene direction", "Forward" if D() == 1 else "Reverse", mc = 'green' if D() == 1 else 'red')
 
+        # Here we run the default way of cutting out the locus based on the anchor gene_callers_id and
+        # cut + self.num_genes_list[0] and - self.num_genes_list[1] arount it
         if not self.is_in_flank_mode:
             gene_1 = gene_callers_id - self.num_genes_list[0] * D()
             gene_2 = gene_callers_id + self.num_genes_list[1] * D()
@@ -932,6 +958,8 @@ class LocusSplitter:
         contig_sequence = db.DB(self.input_contigs_db_path, None, ignore_version=True) \
                             .get_some_rows_from_table(t.contig_sequences_table_name,
                                                       where_clause="contig='%s'" % contig_name)[0][1]
+
+        # Extract the locus!
         locus_sequence = contig_sequence[locus_start:locus_stop]
 
         # here we will create a gene calls dict for genes that are specific to our locus. since we trimmed
