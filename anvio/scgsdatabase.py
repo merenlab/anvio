@@ -368,24 +368,28 @@ class SCGsDataBase():
             os.remove(self.path_refund_genes)
             os.remove(self.pathrefpath_refund_genesundgenes+'.dmnd')
 
+        self.progress.end()
         if not len(self.dictionary_correspondance_SCGs):
-            raise ConfigError("There is no match with SCGs fasta and anvi'o ressource")
+            raise ConfigError("There is no match with SCGs fasta provide and anvi'o ressource")
+
+        self.run.info("Path correspondance dictonnary",path_tsv_taxonomy)
 
         with open(self.pathpickle_dictionary_correspondance_SCGs, 'wb') as handle:
             pickle.dump(self.dictionary_correspondance_SCGs, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        self.progress.end()
+
 
     def do_taxonomy_dictonnrary_with_tsv(self, path_tsv_taxonomy, filter=True):
         """format tsv in dictonnary with code as key and liste for taxonomy for value"""
         self.run.info("Correspondance taxonomy file",path_tsv_taxonomy)
-        self.progress.new('Parse tsv file')
-        self.progress.update('...')
+
         self.matrix={}
         individues_filterd=[]
         number_individues_filterd=0
         number_individues_selected=0
         linestaxo= [line for line in open(path_tsv_taxonomy).readlines()]
-        self.run.info("Total Indivues"," %d"% (len(linestaxo)
+        self.run.info("Total Indivues"," %d"% len(linestaxo))
+        self.progress.new('Parse tsv file')
+        self.progress.update('...')
         for line in linestaxo:
             taxo=[]
             if filter==True:

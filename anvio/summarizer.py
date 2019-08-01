@@ -1872,7 +1872,7 @@ class Bin:
 
                 fasta_id = contig_id + appendix
                 self.contig_lengths.append(len(sequence))
-                
+
                 output += '>%s\n' % fasta_id
                 output += '%s\n' % textwrap.fill(sequence, 80, break_on_hyphens=False)
 

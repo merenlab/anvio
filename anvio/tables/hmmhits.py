@@ -147,7 +147,7 @@ class TablesForHMMHits(Table):
                     self.run.warning("You just called an HMM profile that runs on contigs and not genes. Because this HMM\
                                       operation is not directly working with gene calls anvi'o already knows about, the resulting\
                                       hits will need to be added as 'new gene calls' into the contigs database. So far so good.\
-                                      But blecause we are in the contigs realm rater than genes realm, it is likely that\
+                                      But because we are in the contigs realm rater than genes realm, it is likely that\
                                       resulting hits will not correspond to open reading frames that are supposed to be\
                                       translated (such as ribosomal RNAs), because otherwise you would be working with genes\
                                       instad of defining CONTIGS as your context in that HMM profile you just used unless you\
@@ -333,5 +333,4 @@ class TablesForHMMHits(Table):
                         db_entries_for_splits.append(db_entry)
 
         return db_entries_for_splits
-
 
