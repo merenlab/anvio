@@ -834,7 +834,7 @@ class LocusSplitter:
         based on the --num-genes given by the user. If in flank mode, we will only export 1 locus based on the flanking
         gene-caller-ids provided.
         """
-        # add this to sanity check
+        # default
         if not self.is_in_flank_mode:
             counter = 1
             for gene_callers_id in self.gene_caller_ids_of_interest:
@@ -848,6 +848,7 @@ class LocusSplitter:
 
                 counter += 1
 
+        # flank-mode
         elif self.is_in_flank_mode:
             self.run.warning(None,
                              header="Exporting locus 1 of 1",
@@ -891,7 +892,13 @@ class LocusSplitter:
             if not isinstance(gene_caller_ids, list):
                 raise ConfigError("The gene_caller_ids must be integers.")
             if len(gene_caller_ids) != 2:
-                raise ConfigError("gene-caller_ids requires two inputs to cut out locus based on flanking genes (i.e. only a pair of flanking genes)!")
+                raise ConfigError("You are in flank-mode and you provided either 1 or >2 gene-caller-ids... \
+                                   Anvi'o cannot handle this because flank-mode can only use 2 gene-caller_ids \
+                                   to cut out locus based on flanking genes (i.e. only a pair of flanking genes)! \
+                                   If you used --search-term one of your flanking gene inputs may have matched to more \
+                                   than one gene on the contig. Use `anvi-export-functions` on your CONTIGS.db and \
+                                   check for if one of your flanking genes is found twice in the genome. If so, then \
+                                   choose a different flanking gene :)")
             if [g for g in gene_caller_ids if not isinstance(g, int) or g < 0]:
                 raise ConfigError("Both gene-caller_ids inputs must be integers!")
 
