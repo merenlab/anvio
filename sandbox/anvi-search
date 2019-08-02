@@ -1,0 +1,187 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import os
+import sys
+import glob
+import argparse
+import importlib
+
+import anvio
+
+from tabulate import tabulate
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Evan Kiefl"
+__email__ = "kiefl.evan@gmail.com"
+
+
+class Program:
+    def __init__(self, program_filepath, requested_info):
+        self.program_filepath = program_filepath
+        self.requested_info = requested_info
+        self.name = os.path.basename(self.program_filepath)
+        self.exclude_substrings = ['README']
+
+        self.info = []
+        self.missing_info_string = 'unknown'
+
+        if not self.is_anvio_program():
+            raise NotAnvioProgram
+
+        try:
+            self.program = self.import_program(self.program_filepath)
+            self.python = True
+        except:
+            self.python = False
+
+
+    def process(self):
+        self.fill_info()
+
+
+    def fill_info(self):
+        self.info.append(self.name)
+
+        if not self.python:
+            self.info.extend([self.missing_info_string] * len(self.requested_info))
+            return
+
+        for attribute in self.requested_info:
+            try:
+                raw_info = getattr(self.program, attribute)
+            except AttributeError:
+                raw_info = self.missing_info_string
+
+            self.info.append(self.make_printable(raw_info))
+
+
+    def make_printable(self, info):
+        if type(info) == list:
+            formatted_info = '\n'.join([str(item) for item in info])
+
+        elif type(info) == str:
+            words = info.split(' ')
+            lines = []
+            line = []; characters = 0
+            for word in words:
+                characters += len(word)
+                line.append(word)
+                if characters > 30:
+                    lines.append(' '.join(line))
+                    line = []; characters = 0
+            else:
+                lines.append(' '.join(line))
+            formatted_info = '\n'.join(lines)
+
+        else:
+            formatted_info = info
+
+        return formatted_info
+
+
+    def is_anvio_program(self):
+        if any([exclude in self.name for exclude in self.exclude_substrings]):
+            return False
+
+        return True if self.name.startswith('anvi-') else False
+
+
+    def import_program(self, path):
+        """
+        Taken from stackoverflow user Ciro Santilli:
+        https://stackoverflow.com/questions/2601047/import-a-python-module-without-the-py-extension/56090741#56090741
+        """
+        module_name = os.path.basename(path).replace('-', '_')
+        spec = importlib.util.spec_from_loader(
+            module_name,
+            importlib.machinery.SourceFileLoader(module_name, path)
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        sys.modules[module_name] = module
+        return module
+
+
+
+class Table:
+    def __init__(self, args):
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        self.headers = A('headers', null)
+        self.requested_info = A('requested_info', null)
+        self.keyword = A('keyword', null)
+        self.requires = A('requires', null)
+        self.provides = A('provides', null)
+
+        anvio_path = os.path.dirname(os.path.dirname(anvio.__file__))
+
+        self.program_directories = [
+            os.path.join(anvio_path, 'bin'),
+            os.path.join(anvio_path, 'sandbox'),
+        ]
+
+        self.exclude_substrings = [
+            'README',
+        ]
+
+        self.table = []
+
+
+    def process(self):
+        self.populate_table()
+        self.filter_table()
+        self.display_table()
+
+
+    def populate_table(self):
+        for program_directory in self.program_directories:
+            for program_filepath in glob.glob(os.path.join(program_directory, '*')):
+                try:
+                    program = Program(program_filepath, self.requested_info)
+                except NotAnvioProgram:
+                    continue
+
+                program.fill_info()
+                self.table.append(program.info)
+
+        self.table = sorted(self.table, key=lambda row: row[0])
+
+
+    def filter_table(self):
+        if self.keyword:
+            idx = self.headers.index('Program')
+            self.table = [row for row in self.table if self.keyword in row[idx]]
+
+        if self.provides:
+            idx = self.headers.index('Provides')
+            self.table = [row for row in self.table if self.provides in row[idx]]
+
+        if self.requires:
+            idx = self.headers.index('Requires')
+            self.table = [row for row in self.table if self.requires in row[idx]]
+
+
+    def display_table(self):
+        print(tabulate(self.table, self.headers, tablefmt="fancy_grid"))
+
+
+
+class NotAnvioProgram(Exception):
+    pass
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Search for anvi\'o programs')
+    parser.add_argument('--keyword', '-k', help='Find programs that contain this in their name')
+    parser.add_argument('--requires', '-r', help='Programs that have these inputs')
+    parser.add_argument('--provides', '-p', help='Programs that provide these outputs')
+
+    args = anvio.get_args(parser)
+    args.headers = ['Program', 'Description', 'Requires', 'Provides']
+    args.requested_info = ['__description__', '__requires__', '__provides__']
+    Table(args).process()
