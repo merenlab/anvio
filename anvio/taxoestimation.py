@@ -28,7 +28,7 @@ import anvio.terminal as terminal
 import anvio.utils as utils
 
 from anvio.tables.tableops import Table
-#from anvio.tables.taxoestimation import Tabletaxo
+from anvio.tables.taxoestimation import TablesForTaxoestimation
 import anvio.tables as t
 from anvio.dbops import ContigsSuperclass
 from anvio.drivers import Aligners, driver_modules
@@ -75,6 +75,7 @@ class SCGsdiamond:
         def A(x): return args.__dict__[x] if x in args.__dict__ else None
         self.taxonomy_file_path = A('taxonomy_file')
         self.taxonomy_database_path = A('taxonomy_database')
+        self.write_buffer_size = int(A('write_buffer_size') if A('write_buffer_size') is not None else 500)
         self.db_path=A('contigs_db')
         self.core=int(A('num_core_by_threads'))
 
@@ -215,7 +216,7 @@ class SCGsdiamond:
         sequence_by_SCG = {}
 
 
-        match_id=0
+
         num_listeprocess = len(hmm_sequences_dict_per_type)
 
 
@@ -226,12 +227,15 @@ class SCGsdiamond:
         self.progress.new('Computing SCGs aligments', progress_total_items=num_listeprocess)
         #self.progress.update('Initializing %d threads...' % self.num_threads)
 
+        tables_for_taxonomy = TablesForTaxoestimation(self.db_path, run, progress)
+
 
         manager = multiprocessing.Manager()
         input_queue = manager.Queue()
         output_queue = manager.Queue()
-        dico_taxo={}
-        entries=[]
+
+        diamond_output=[]
+        match_id=0
 
         for SCG in hmm_sequences_dict_per_type:
 
@@ -250,7 +254,7 @@ class SCGsdiamond:
         for i in range(0, self.num_threads):
             #self.progress.update('Initializing %d core...' % self.core)
             worker = multiprocessing.Process(target=self.get_raw_blast_hits_multi,
-                args=(match_id,input_queue,output_queue,self.core))
+                args=(input_queue,output_queue,))
 
             workers.append(worker)
             worker.start()
@@ -259,41 +263,34 @@ class SCGsdiamond:
         finish_process = 0
         while finish_process < num_listeprocess:
             try:
-                diamond_output = output_queue.get()
-
-                for line_hit in [line.split('\t') for line in diamond_output[1].split('\n')[1:-2]]:
-
-                    entries+=[tuple([match_id,int(line_hit[0]),diamond_output[0],line_hit[1],line_hit[2],line_hit[11]])]
+                diamond_output += [output_queue.get()]
 
 
-                    match_id+=1
+                if self.write_buffer_size > 0 and len(diamond_output) % self.write_buffer_size == 0:
 
-                    dico_taxo[line_hit[1]]=list(self.taxonomy_dict[line_hit[1]].values())
+                    match_id=tables_for_taxonomy.alligment_result_to_congigs(diamond_output,self.taxonomy_dict,match_id)
+                    diamond_output=[]
 
-
-
-                #self.database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % "taxon_names", taxo)
                 finish_process += 1
-                self.progress.increment(increment_to=finish_process)
-                progress.update("ok")
+                #self.progress.increment(increment_to=finish_process)
+                #progress.update("finish_process")
                 #progress.update("Processed %d of %d SGCs aligment in %d threads with %d cores." % (finish_process, num_listeprocess,self.num_threads,self.core))
 
             except KeyboardInterrupt:
                 print("Anvi'o profiler recieved SIGINT, terminating all processes...")
-                self.database.disconnect()
                 break
 
         for worker in workers:
             worker.terminate()
 
-        self.database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % t.blast_hits_table_name, entries)
+
+        tables_for_taxonomy.alligment_result_to_congigs(diamond_output,self.taxonomy_dict,match_id)
+        tables_for_taxonomy.close()
+
         progress.end()
-        self.run.info('Number of hit', match_id)
-
-        self.database.disconnect()
 
 
-    def get_raw_blast_hits_multi(self, match_id, input_queue,output_queue,core, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
+    def get_raw_blast_hits_multi(self, input_queue,output_queue, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
 
         while True:
             d = input_queue.get(True)
@@ -302,60 +299,13 @@ class SCGsdiamond:
             diamond.max_target_seqs = max_target_seqs
             diamond.evalue = evalue
             diamond.min_pct_id = min_pct_id
-            diamond.num_threads = core
+            diamond.num_threads = self.core
 
             diamond_output = diamond.blastp_stdin_multi(d[1])
 
 
             output_queue.put([d[0],diamond_output])
 
-
-    def get_raw_blast_hits_multi_original(self, d,match_id, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
-
-        sequence=""
-        bin_dict_id={}
-        for id, entry in d.items():
-            if 'sequence' not in entry or 'gene_name' not in entry:
-                raise ConfigError("The `get_filtered_dict` function got a parameter that\
-                                   does not look like the way we expected it. This function\
-                                   expects a dictionary that contains keys `gene_name` and `sequence`.")
-
-            sequence = sequence+">"+id+"\n"+entry['sequence']+"\n"
-            entry['hits']=[]
-            bin_dict_id[id]=entry['bin_id']
-
-        db_path = self.SCG_DB_PATH(entry['gene_name'])
-        diamond = Diamond(db_path,run=run_quiet, progress= progress_quiet)
-        diamond.max_target_seqs = max_target_seqs
-        diamond.evalue = evalue
-        diamond.min_pct_id = min_pct_id
-        diamond.num_threads = self.num_threads
-
-        diamond_output = diamond.blastp_stdin_multi(sequence)
-
-
-        for line_hit in [line.split('\t') for line in diamond_output.split('\n') if line.startswith('Bacteria')]:
-
-
-            entries=[tuple([match_id,bin_dict_id[line_hit[0]],line_hit[0],entry['gene_name'],line_hit[1],line_hit[2],line_hit[11]])]
-
-            self.database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % self.blast_hits_table_name, entries)
-
-            taxo=[tuple([line_hit[1]]+list(self.taxonomy_dict[line_hit[1]].values()))]
-
-            try:
-                self.database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % "taxon_names", taxo)
-            except:
-                pass
-
-            hit=dict(zip(['accession', 'pident', 'bitscore'], [
-                       float(line_hit[i]) if i > 1 else line_hit[i] for i in [1, 2, 11]]))
-            taxo=self.taxonomy_dict[line_hit[1]]
-            d[line_hit[0]]['hits']=d[line_hit[0]]['hits']+[hit]
-
-            match_id+=1
-
-        return d, match_id
 
 class SCGsTaxomy:
 
@@ -384,6 +334,8 @@ class SCGsTaxomy:
         self.methode = args.methode
 
         self.taxonomy_dict = {}
+        self.dic_id_bin={}
+        self.hits_per_gene={}
 
         self.pident_level_path=os.path.join(os.path.dirname(
             anvio.__file__), 'data/misc/SCG/mergedb/dico_low_ident.pickle')
@@ -430,7 +382,7 @@ class SCGsTaxomy:
         self.taxonomy_dict =OrderedDict(self.contigs_database.get_table_as_dict('taxon_names'))
 
 
-        self.dic_id_bin={}
+
         if self.profile_database_path and self.metagenome:
             self.run.info('Assignment level', "Bin")
             utils.is_profile_db_and_contigs_db_compatible(
@@ -459,7 +411,7 @@ class SCGsTaxomy:
             self.run.info('Assignment level', "Gene")
             self.bin_database=None
 
-        self.hits_per_gene={}
+
         for query in self.dic_blast_hits.values():
 
             if self.bin_database and not self.metagenome:
