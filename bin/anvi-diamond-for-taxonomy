@@ -235,7 +235,7 @@ if __name__ == '__main__':
                                         provide a contigs database, and call it a day. In this case the program will return you\
                                         everything from it.")
     groupA.add_argument(*anvio.A('contigs-db'), **
-                        anvio.K('contigs-db', {'required': False}))
+                        anvio.K('contigs-db', {'required': True}))
 
     groupB = parser.add_argument_group('INPUT OPTION #2: CONTIGS DB + PROFLIE DB', "You can also work with anvi'o profile databases and collections\
                                         stored in them. If you go this way, you still will need to provide a contigs database. If you\
@@ -312,6 +312,8 @@ if __name__ == '__main__':
     groupH.add_argument('--metagenome', default=False, action="store_true", help="metagenomes")
     groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupH.add_argument('--num-core-by-threads', default=2, help="num-core-by-threads")
+
+    groupH.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size'))
 
     args = anvio.get_args(parser)
 

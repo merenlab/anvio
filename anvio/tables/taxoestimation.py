@@ -59,16 +59,42 @@ class TablesForTaxoestimation(Table):
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
 
 
-    def add_diamond_result_to_congigs(self):
+        self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        self.database._exec('''DELETE FROM %s''' % (t.blast_hits_table_name))
+        self.database._exec('''DELETE FROM %s''' % ("taxon_names"))
 
-        for line_hit in [line.split('\t') for line in diamond_output[1].split('\n')[1:-2]]:
 
-            entries=[tuple([match_id,int(line_hit[0]),diamond_output[0],line_hit[1],line_hit[2],line_hit[11]])]
+    def alligment_result_to_congigs(self,diamond_output,taxonomy_dict,match_id):
 
-            self.database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % t.blast_hits_table_name, entries)
-            match_id+=1
-            taxo=[tuple([line_hit[1]]+list(self.taxonomy_dict[line_hit[1]].values()))]
 
+
+        list_taxo=[]
+        entries=[]
+        taxo_entries=[]
+
+        for result in diamond_output :
+            SCG=result[0]
+            for line_hit_to_split in result[1].split('\n')[1:-2]:
+                line_hit=line_hit_to_split.split('\t')
+
+
+
+                entries+=[tuple([match_id,int(line_hit[0]),SCG,line_hit[1],line_hit[2],line_hit[11]])]
+
+                match_id+=1
+
+                if line_hit[1] not in list_taxo:
+                    list_taxo+=[line_hit[1]]
+
+        print(entries)
+        taxo_entries+=[tuple([t_name_id]+list(taxonomy_dict[t_name_id].values())) for t_name_id in list_taxo]
+        self.database.insert_many(t.blast_hits_table_name, entries)
+        self.database.insert_many("taxon_names", taxo_entries)
+        return match_id
+
+
+    def close(self):
+        self.database.disconnect()
 
 
     def add_diamond_result_to_congigs(self):
