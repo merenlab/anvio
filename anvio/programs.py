@@ -295,13 +295,6 @@ class Program:
         self.module = self.load_as_module(self.program_path)
         self.get_meta_info()
 
-        # factory = {'requires': self.requires,
-        #            'provides': self.provides}
-
-        # for x in factory:
-        #     [factory[x].append(Item(item_name)) for item_name in {'requires': get_meta_information_from_file(program_path, '__requires__'),
-        #                                                            'provides': get_meta_information_from_file(program_path, '__provides__')}[x]]
-
 
     def get_meta_info(self):
         for info_type in self.meta_info.keys():
@@ -315,7 +308,6 @@ class Program:
                 info = [Item(item_name) for item_name in info]
 
             self.meta_info[info_type]['value'] = info
-
 
 
     def load_as_module(self, path):
@@ -454,21 +446,18 @@ class ProgramsVignette(AnvioPrograms):
 
 
     def generate(self):
+        self.create_program_classes(okay_if_no_meta = True, quiet = True)
+
         d = {}
-
         log_file = filesnpaths.get_temp_file_path()
-        num_all_programs = len(self.all_program_filepaths)
-        for i in range(0, num_all_programs):
-            program_path = self.all_program_filepaths[i]
-            program_name = os.path.basename(program_path)
-
-            if program_name in self.programs_to_skip:
-                run.warning("Someone doesn't want %s to be in the output :/ Fine. Skipping." % (program_name))
+        for i, program in enumerate(self.programs):
+            if program.name in self.programs_to_skip:
+                run.warning("Someone doesn't want %s to be in the output :/ Fine. Skipping." % (program.name))
 
             progress.new('Bleep bloop')
-            progress.update('%s (%d of %d)' % (program_name, i+1, num_all_programs))
+            progress.update('%s (%d of %d)' % (program.name, i+1, len(self.programs)))
 
-            output = utils.run_command_STDIN('%s --help' % (program_path), log_file, '').split('\n')
+            output = utils.run_command_STDIN('%s --help' % (program.program_path), log_file, '').split('\n')
 
             if anvio.DEBUG:
                     usage, description, params, output = parse_help_output(output)
@@ -478,14 +467,16 @@ class ProgramsVignette(AnvioPrograms):
                 except Exception as e:
                     progress.end()
                     run.warning("The program '%s' does not seem to have the expected help menu output. Skipping to the next.\
-                                 For the curious, this was the error message: '%s'" % (program_name, str(e).strip()))
+                                 For the curious, this was the error message: '%s'" % (program.name, str(e).strip()))
                     continue
 
-            d[program_name] = {'usage': usage,
+            d[program.name] = {'usage': usage,
                                'description': description,
                                'params': params,
-                               'tags': get_meta_information_from_file(program_path, '__tags__'),
-                               'resources': get_meta_information_from_file(program_path, '__resources__')}
+                               'tags': get_meta_information_from_file(program.program_path, '__tags__'),
+                               'resources': get_meta_information_from_file(program.program_path, '__resources__')}
+                               # 'tags': program.meta_info['tags']['value'],
+                               # 'resources': program.meta_info['tags']['value']}
 
             progress.end()
 
