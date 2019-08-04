@@ -1,0 +1,208 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import os
+import sys
+import glob
+import argparse
+import importlib
+import pandas as pd
+
+from collections import OrderedDict
+from tabulate import tabulate
+
+import anvio
+import anvio.programs as programs
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Evan Kiefl"
+__email__ = "kiefl.evan@gmail.com"
+
+
+class Program:
+    def __init__(self, program_filepath, headers):
+        self.program_filepath = program_filepath
+        self.headers = headers
+        self.name = os.path.basename(self.program_filepath)
+        self.exclude_substrings = ['README']
+
+        self.info = {}
+        self.missing_info_string = 'unknown'
+
+        if not self.is_anvio_program():
+            raise NotAnvioProgram
+
+        try:
+            self.program = self.import_program(self.program_filepath)
+            self.python = True
+        except:
+            self.python = False
+
+
+    def process(self):
+        self.fill_info()
+
+
+    def fill_info(self):
+        if not self.python:
+            for header in self.headers.keys():
+                self.info[header] = self.missing_info_string if not header == 'Program' else self.name
+            return
+
+        for header, attribute in self.headers.items():
+            if header == 'Program':
+                attribute_info = self.name
+            else:
+                try:
+                    attribute_info = getattr(self.program, attribute)
+                except AttributeError:
+                    attribute_info = self.missing_info_string
+
+            self.info[header] = attribute_info
+
+
+    def is_anvio_program(self):
+        if any([exclude in self.name for exclude in self.exclude_substrings]):
+            return False
+
+        return True if self.name.startswith('anvi-') else False
+
+
+    def import_program(self, path):
+        """
+        Taken from stackoverflow user Ciro Santilli:
+        https://stackoverflow.com/questions/2601047/import-a-python-module-without-the-py-extension/56090741#56090741
+        """
+        module_name = os.path.basename(path).replace('-', '_')
+        spec = importlib.util.spec_from_loader(
+            module_name,
+            importlib.machinery.SourceFileLoader(module_name, path)
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        sys.modules[module_name] = module
+        return module
+
+
+
+class Table:
+    def __init__(self, args):
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        self.keyword = A('keyword', null)
+        self.requires = A('requires', null)
+        self.provides = A('provides', null)
+
+        anvio_path = os.path.dirname(os.path.dirname(anvio.__file__))
+
+        self.program_directories = [
+            os.path.join(anvio_path, 'bin'),
+            os.path.join(anvio_path, 'sandbox'),
+        ]
+
+        self.exclude_substrings = [
+            'README',
+        ]
+
+        self.headers = OrderedDict([
+            ('Program', None),
+            ('Description', '__description__'),
+            ('Provides', '__provides__'),
+            ('Requires', '__requires__'),
+        ])
+
+        self.table = pd.DataFrame([], columns = list(self.headers.keys()))
+
+
+    def process(self):
+        self.populate_table()
+        self.filter_table()
+        self.display_table()
+
+
+    def populate_table(self):
+        for program_directory in self.program_directories:
+            for program_filepath in glob.glob(os.path.join(program_directory, '*')):
+                try:
+                    program = Program(program_filepath, self.headers)
+                except NotAnvioProgram:
+                    continue
+
+                program.fill_info()
+                self.table = self.table.append(program.info, ignore_index = True)
+
+        self.table.sort_values(by = 'Program').reset_index(inplace = True)
+
+
+    def filter_table(self):
+        if self.keyword:
+            self.table = self.table[self.table['Program'].str.contains(self.keyword)]
+
+        J = lambda l, item: True if item in l else False
+
+        if self.provides:
+            self.table = self.table.loc[self.table['Provides'].apply(J, args = (self.provides, )), :]
+
+        if self.requires:
+            self.table = self.table.loc[self.table['Requires'].apply(J, args = (self.requires, )), :]
+
+
+    def display_table(self):
+        print(tabulate(self.make_printable(self.table), headers='keys', showindex=False, tablefmt="fancy_grid"))
+
+
+    def make_printable(self, table):
+        printable_table = pd.DataFrame(columns=self.table.columns)
+
+        for idx, row in self.table.iterrows():
+            printable_table.loc[idx, :] = self.make_row_printable(row)
+
+        return printable_table
+
+
+    def make_row_printable(self, row):
+        for header, info in row.iteritems():
+            if type(info) == list:
+                formatted_info = '\n'.join([str(item) for item in info])
+
+            elif type(info) == str:
+                words = info.split(' ')
+                lines = []
+                line = []; characters = 0
+                for word in words:
+                    characters += len(word)
+                    line.append(word)
+                    if characters > 30:
+                        lines.append(' '.join(line))
+                        line = []; characters = 0
+                else:
+                    lines.append(' '.join(line))
+                formatted_info = '\n'.join(lines)
+
+            else:
+                formatted_info = info
+
+            row.loc[header] = formatted_info
+
+        return row
+
+
+
+class NotAnvioProgram(Exception):
+    pass
+
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Search for anvi\'o programs')
+    parser.add_argument('--keyword', '-k', help='Find programs that contain this in their name')
+    parser.add_argument('--requires', '-r', help='Programs that have these inputs')
+    parser.add_argument('--provides', '-p', help='Programs that provide these outputs')
+
+    args = anvio.get_args(parser)
+    Table(args).process()
