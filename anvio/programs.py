@@ -216,76 +216,111 @@ class AnvioPrograms:
         self.program_names_to_focus = A("program_names_to_focus")
 
         try:
-            self.main_programs = M('anvi-interactive')
-            self.scripts = S('anvi-script-gen-programs-vignette')
+            self.main_program_filepaths = M('anvi-interactive')
+            self.script_filepaths = S('anvi-script-gen-programs-vignette')
 
-            self.all_programs = sorted(list(set(self.main_programs + self.scripts)))
+            self.all_program_filepaths = sorted(list(set(self.main_program_filepaths + self.script_filepaths)))
         except:
             raise ConfigError("Something is wrong. Either your installation or anvi'o setup on this computer is missing some of\
                                the fundamental programs, or your configuration is broken :/")
 
-        if not len(self.main_programs) or not len(self.scripts):
+        if not len(self.main_program_filepaths) or not len(self.script_filepaths):
             raise ConfigError("Somethings fishy is happening. This script is unable to find things that want to be found :(")
 
-        self.run.info("Main anvi'o programs found", len(self.main_programs))
-        self.run.info("Anvi'o ad hoc scripts found", len(self.scripts))
+        self.run.info("Main anvi'o programs found", len(self.main_program_filepaths))
+        self.run.info("Anvi'o ad hoc scripts found", len(self.script_filepaths))
 
         if self.program_names_to_focus:
             self.program_names_to_focus = [p.strip() for p in self.program_names_to_focus.split(',')]
             run.info("Program names to focus", len(self.program_names_to_focus))
 
-            self.all_programs = [p for p in self.all_programs if os.path.basename(p) in self.program_names_to_focus]
+            self.all_program_filepaths = [p for p in self.all_program_filepaths if os.path.basename(p) in self.program_names_to_focus]
 
-            if not len(self.all_programs):
+            if not len(self.all_program_filepaths):
                 raise ConfigError("No anvi'o programs left to analyze after changing the focus to your list of program names.\
                                    Probably there is a typo or something :/")
 
 
-    def create_program_classes(self, create_if_no_meta=False, quiet=False):
+    def create_program_classes(self, okay_if_no_meta=False, quiet=False):
         programs_dict = {}
-        num_all_programs = len(self.all_programs)
+        num_all_programs = len(self.all_program_filepaths)
 
-        self.progress.new('Bleep bloop')
         meta_count = 0
-        for i in range(num_all_programs):
-            program_path = self.all_programs[i]
-            program_name = os.path.basename(program_path)
+        self.programs = []
+        self.progress.new('Characterizing program', progress_total_items=num_all_programs)
 
-            self.progress.update('%s (%d of %d)' % (program_name, i+1, num_all_programs))
+        for program_filepath in self.all_program_filepaths:
+            self.progress.update(os.path.basename(program_filepath))
+            self.progress.increment()
 
-            requires = get_meta_information_from_file(program_path, '__requires__')
-            provides = get_meta_information_from_file(program_path, '__provides__')
+            program = Program(program_filepath)
 
-            if requires or provides:
+            if program.requires or program.provides:
                 meta_count += 1
 
-            if not (requires or provides) and not create_if_no_meta:
+            if not (program.requires or program.provides) and not okay_if_no_meta:
                 pass
             else:
-                programs_dict[program_name] = {'requires': requires,
-                                               'provides': provides}
+                self.programs.append(program)
 
-        progress.end()
+        self.progress.end()
 
-        if len(programs_dict):
-            if not quiet:
-                self.run.info_single("Of %d programs found, %d did contain provides and/or requires \
-                                      statements." % (len(self.all_programs), meta_count),
-                                      nl_after=1, nl_before=1)
-            if anvio.DEBUG:
-                absentees = ', '.join(list(set([os.path.basename(p) for p in self.all_programs]) - set(programs_dict.keys())))
-                self.run.info_single("Here is a list of programs that do not contain any information\
-                                      about themselves: %s" % (absentees), nl_after=1, nl_before=1, mc="red")
-        else:
+        if not meta_count and not okay_if_no_meta:
             raise ConfigError("None of the %d anvi'o programs found contained any provides or\
-                               requires statements :/" % len(self.all_programs))
+                               requires statements :/" % len(self.all_program_filepaths))
 
-        self.programs = [Program(p, programs_dict[p]) for p in programs_dict]
+        if not quiet:
+            self.run.info_single("Of %d programs found, %d did contain provides and/or requires \
+                                  statements." % (len(self.all_program_filepaths), meta_count),
+                                  nl_after=1, nl_before=1)
+        if anvio.DEBUG:
+            absentees = ', '.join(list(set([os.path.basename(p) for p in self.all_program_filepaths]) - set([p.name for p in self.programs])))
+            self.run.info_single("Here is a list of programs that do not contain any information\
+                                  about themselves: %s" % (absentees), nl_after=1, nl_before=1, mc="red")
+
+        # ################################
+        # self.progress.new('Bleep bloop')
+        # meta_count = 0
+        # for i in range(num_all_programs):
+        #     program_path = self.all_program_filepaths[i]
+        #     program_name = os.path.basename(program_path)
+
+        #     self.progress.update('%s (%d of %d)' % (program_name, i+1, num_all_programs))
+
+        #     requires = get_meta_information_from_file(program_path, '__requires__')
+        #     provides = get_meta_information_from_file(program_path, '__provides__')
+
+        #     if requires or provides:
+        #         meta_count += 1
+
+        #     if not (requires or provides) and not okay_if_no_meta:
+        #         pass
+        #     else:
+        #         programs_dict[program_name] = {'requires': requires,
+        #                                        'provides': provides}
+
+        # progress.end()
+
+        # if len(programs_dict):
+        #     if not quiet:
+        #         self.run.info_single("Of %d programs found, %d did contain provides and/or requires \
+        #                               statements." % (len(self.all_program_filepaths), meta_count),
+        #                               nl_after=1, nl_before=1)
+        #     if anvio.DEBUG:
+        #         absentees = ', '.join(list(set([os.path.basename(p) for p in self.all_program_filepaths]) - set(programs_dict.keys())))
+        #         self.run.info_single("Here is a list of programs that do not contain any information\
+        #                               about themselves: %s" % (absentees), nl_after=1, nl_before=1, mc="red")
+        # else:
+        #     raise ConfigError("None of the %d anvi'o programs found contained any provides or\
+        #                        requires statements :/" % len(self.all_program_filepaths))
+
+        # self.programs = [Program(p, programs_dict[p]) for p in programs_dict]
+        # ############################
 
 
 class Program:
-    def __init__(self, name, program_data):
-        self.name = name
+    def __init__(self, program_path):
+        self.name = os.path.basename(program_path)
 
         self.provides = []
         self.requires = []
@@ -294,7 +329,9 @@ class Program:
                    'provides': self.provides}
 
         for x in factory:
-            [factory[x].append(Item(item_name)) for item_name in program_data[x]]
+            [factory[x].append(Item(item_name)) for item_name in {'requires': get_meta_information_from_file(program_path, '__requires__'),
+                                                                   'provides': get_meta_information_from_file(program_path, '__provides__')}[x]]
+        print(self.provides)
 
 
 class Item:
@@ -413,9 +450,9 @@ class ProgramsVignette(AnvioPrograms):
         d = {}
 
         log_file = filesnpaths.get_temp_file_path()
-        num_all_programs = len(self.all_programs)
+        num_all_programs = len(self.all_program_filepaths)
         for i in range(0, num_all_programs):
-            program_path = self.all_programs[i]
+            program_path = self.all_program_filepaths[i]
             program_name = os.path.basename(program_path)
 
             if program_name in self.programs_to_skip:
