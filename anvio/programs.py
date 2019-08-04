@@ -288,8 +288,10 @@ class Program:
         self.name = os.path.basename(program_path)
 
         self.meta_info = {
-            'requires': {'tag': '__requires__'},
-            'provides': {'tag': '__provides__'}
+            'requires': {'object_name': '__requires__'},
+            'provides': {'object_name': '__provides__'},
+            'tags': {'object_name': '__tags__'},
+            'resources': {'object_name': '__resources__'},
         }
 
         self.module = self.load_as_module(self.program_path)
@@ -299,7 +301,7 @@ class Program:
     def get_meta_info(self):
         for info_type in self.meta_info.keys():
             try:
-                info = getattr(self.module, self.meta_info[info_type]['tag'])
+                info = getattr(self.module, self.meta_info[info_type]['object_name'])
             except AttributeError:
                 info = []
 
@@ -473,10 +475,8 @@ class ProgramsVignette(AnvioPrograms):
             d[program.name] = {'usage': usage,
                                'description': description,
                                'params': params,
-                               'tags': get_meta_information_from_file(program.program_path, '__tags__'),
-                               'resources': get_meta_information_from_file(program.program_path, '__resources__')}
-                               # 'tags': program.meta_info['tags']['value'],
-                               # 'resources': program.meta_info['tags']['value']}
+                               'tags': program.meta_info['tags']['value'],
+                               'resources': program.meta_info['resources']['value']}
 
             progress.end()
 
