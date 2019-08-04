@@ -3,8 +3,10 @@
 """A library to build vignettes and networks of anvi'o programs"""
 
 import os
+import sys
 import glob
 import json
+import importlib
 
 from collections import Counter
 
@@ -255,10 +257,10 @@ class AnvioPrograms:
 
             program = Program(program_filepath)
 
-            if program.requires or program.provides:
+            if program.meta_info['provides']['value'] or program.meta_info['requires']['value']:
                 meta_count += 1
 
-            if not (program.requires or program.provides) and not okay_if_no_meta:
+            if not (program.meta_info['provides']['value'] or program.meta_info['requires']['value']) and not okay_if_no_meta:
                 pass
             else:
                 self.programs.append(program)
@@ -278,60 +280,65 @@ class AnvioPrograms:
             self.run.info_single("Here is a list of programs that do not contain any information\
                                   about themselves: %s" % (absentees), nl_after=1, nl_before=1, mc="red")
 
-        # ################################
-        # self.progress.new('Bleep bloop')
-        # meta_count = 0
-        # for i in range(num_all_programs):
-        #     program_path = self.all_program_filepaths[i]
-        #     program_name = os.path.basename(program_path)
-
-        #     self.progress.update('%s (%d of %d)' % (program_name, i+1, num_all_programs))
-
-        #     requires = get_meta_information_from_file(program_path, '__requires__')
-        #     provides = get_meta_information_from_file(program_path, '__provides__')
-
-        #     if requires or provides:
-        #         meta_count += 1
-
-        #     if not (requires or provides) and not okay_if_no_meta:
-        #         pass
-        #     else:
-        #         programs_dict[program_name] = {'requires': requires,
-        #                                        'provides': provides}
-
-        # progress.end()
-
-        # if len(programs_dict):
-        #     if not quiet:
-        #         self.run.info_single("Of %d programs found, %d did contain provides and/or requires \
-        #                               statements." % (len(self.all_program_filepaths), meta_count),
-        #                               nl_after=1, nl_before=1)
-        #     if anvio.DEBUG:
-        #         absentees = ', '.join(list(set([os.path.basename(p) for p in self.all_program_filepaths]) - set(programs_dict.keys())))
-        #         self.run.info_single("Here is a list of programs that do not contain any information\
-        #                               about themselves: %s" % (absentees), nl_after=1, nl_before=1, mc="red")
-        # else:
-        #     raise ConfigError("None of the %d anvi'o programs found contained any provides or\
-        #                        requires statements :/" % len(self.all_program_filepaths))
-
-        # self.programs = [Program(p, programs_dict[p]) for p in programs_dict]
-        # ############################
 
 
 class Program:
     def __init__(self, program_path):
+        self.program_path = program_path
         self.name = os.path.basename(program_path)
 
-        self.provides = []
-        self.requires = []
+        self.meta_info = {
+            'requires': {'tag': '__requires__'},
+            'provides': {'tag': '__provides__'}
+        }
 
-        factory = {'requires': self.requires,
-                   'provides': self.provides}
+        self.module = self.load_as_module(self.program_path)
+        self.get_meta_info()
 
-        for x in factory:
-            [factory[x].append(Item(item_name)) for item_name in {'requires': get_meta_information_from_file(program_path, '__requires__'),
-                                                                   'provides': get_meta_information_from_file(program_path, '__provides__')}[x]]
-        print(self.provides)
+        # factory = {'requires': self.requires,
+        #            'provides': self.provides}
+
+        # for x in factory:
+        #     [factory[x].append(Item(item_name)) for item_name in {'requires': get_meta_information_from_file(program_path, '__requires__'),
+        #                                                            'provides': get_meta_information_from_file(program_path, '__provides__')}[x]]
+
+
+    def get_meta_info(self):
+        for info_type in self.meta_info.keys():
+            try:
+                info = getattr(self.module, self.meta_info[info_type]['tag'])
+            except AttributeError:
+                info = []
+
+            if info_type == 'requires' or info_type == 'provides':
+                # these info_types have their items cast as Item types
+                info = [Item(item_name) for item_name in info]
+
+            self.meta_info[info_type]['value'] = info
+
+
+
+    def load_as_module(self, path):
+        """
+        Importing the program as a module has the advantage of grabbing the meta info as python
+        objects directly instead of parsing the file lines as a string object. if is not a Python
+        file, self.module is None.
+
+        Taken from stackoverflow user Ciro Santilli:
+        https://stackoverflow.com/questions/2601047/import-a-python-module-without-the-py-extension/56090741#56090741
+        """
+        try:
+            module_name = os.path.basename(path).replace('-', '_')
+            spec = importlib.util.spec_from_loader(
+                module_name,
+                importlib.machinery.SourceFileLoader(module_name, path)
+            )
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            sys.modules[module_name] = module
+            return module
+        except:
+            return None
 
 
 class Item:
@@ -376,7 +383,7 @@ class ProgramsNetwork(AnvioPrograms):
         items_seen = Counter({})
         all_items = []
         for program in self.programs:
-            for item in program.provides + program.requires:
+            for item in program.meta_info['provides']['value'] + program.meta_info['requires']['value']:
                 items_seen[item.id] += 1
                 if not item.id in item_names_seen:
                     all_items.append(item)
@@ -385,7 +392,7 @@ class ProgramsNetwork(AnvioPrograms):
         programs_seen = Counter({})
         for item in all_items:
             for program in self.programs:
-                for program_item in program.provides + program.requires:
+                for program_item in program.meta_info['provides']['value'] + program.meta_info['requires']['value']:
                     if item.name == program_item.name:
                         programs_seen[program.name] += 1
 
@@ -419,10 +426,10 @@ class ProgramsNetwork(AnvioPrograms):
 
         for item in all_items:
             for program in self.programs:
-                for item_provided in program.provides:
+                for item_provided in program.meta_info['provides']['value']:
                     if item_provided.id == item.id:
                         network_dict["links"].append({"source": node_indices[program.name], "target": node_indices[item.id]})
-                for item_needed in program.requires:
+                for item_needed in program.meta_info['requires']['value']:
                     if item_needed.id == item.id:
                         network_dict["links"].append({"target": node_indices[program.name], "source": node_indices[item.id]})
 
