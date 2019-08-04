@@ -88,6 +88,7 @@ ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'variability-profile': {'name': 'VARIABILITY PROFILE', 'type': 'CONCEPT', 'internal': False},
                'codon-frequencies-txt': {'name': 'CODON FREQUENCIES', 'type': 'TXT', 'internal': False},
                'aa-frequencies-txt': {'name': 'AA FREQUENCIES', 'type': 'TXT', 'internal': False},
+               'fixation-index-matrix': {'name': 'FIXATION INDEX MATRIX', 'type': 'TXT', 'internal': False},
                'summary': {'name': 'STATIC SUMMARY', 'type': 'SUMMARY', 'internal': False},
                'split-bins': {'name': 'SPLIT BINS', 'type': 'CONCEPT', 'internal': False},
                'state': {'name': 'INTERACTIVE STATE', 'type': 'CONCEPT', 'internal': True},
@@ -240,6 +241,48 @@ class AnvioPrograms:
                                    Probably there is a typo or something :/")
 
 
+    def create_program_classes(self, create_if_no_meta=False, quiet=False):
+        programs_dict = {}
+        num_all_programs = len(self.all_programs)
+
+        self.progress.new('Bleep bloop')
+        meta_count = 0
+        for i in range(num_all_programs):
+            program_path = self.all_programs[i]
+            program_name = os.path.basename(program_path)
+
+            self.progress.update('%s (%d of %d)' % (program_name, i+1, num_all_programs))
+
+            requires = get_meta_information_from_file(program_path, '__requires__')
+            provides = get_meta_information_from_file(program_path, '__provides__')
+
+            if requires or provides:
+                meta_count += 1
+
+            if not (requires or provides) and not create_if_no_meta:
+                pass
+            else:
+                programs_dict[program_name] = {'requires': requires,
+                                               'provides': provides}
+
+        progress.end()
+
+        if len(programs_dict):
+            if not quiet:
+                self.run.info_single("Of %d programs found, %d did contain provides and/or requires \
+                                      statements." % (len(self.all_programs), meta_count),
+                                      nl_after=1, nl_before=1)
+            if anvio.DEBUG:
+                absentees = ', '.join(list(set([os.path.basename(p) for p in self.all_programs]) - set(programs_dict.keys())))
+                self.run.info_single("Here is a list of programs that do not contain any information\
+                                      about themselves: %s" % (absentees), nl_after=1, nl_before=1, mc="red")
+        else:
+            raise ConfigError("None of the %d anvi'o programs found contained any provides or\
+                               requires statements :/" % len(self.all_programs))
+
+        self.programs = [Program(p, programs_dict[p]) for p in programs_dict]
+
+
 class Program:
     def __init__(self, name, program_data):
         self.name = name
@@ -287,39 +330,7 @@ class ProgramsNetwork(AnvioPrograms):
 
 
     def generate(self):
-        programs_dict = {}
-        num_all_programs = len(self.all_programs)
-
-        self.progress.new('Bleep bloop')
-        for i in range(0, num_all_programs):
-            program_path = self.all_programs[i]
-            program_name = os.path.basename(program_path)
-
-            self.progress.update('%s (%d of %d)' % (program_name, i+1, num_all_programs))
-
-            requires = get_meta_information_from_file(program_path, '__requires__')
-            provides = get_meta_information_from_file(program_path, '__provides__')
-
-            if requires or provides:
-                programs_dict[program_name] = {'requires': requires,
-                                               'provides': provides}
-
-        progress.end()
-
-        if len(programs_dict):
-            self.run.info_single("Of %d programs found, %d did contain provides and requires \
-                                  statements." % (len(self.all_programs), len(programs_dict)),
-                                  nl_after=1, nl_before=1)
-            if anvio.DEBUG:
-                absentees = ', '.join(list(set([os.path.basename(p) for p in self.all_programs]) - set(programs_dict.keys())))
-                self.run.info_single("Here is a list of programs that do not contain any information\
-                                      about themselves: %s" % (absentees), nl_after=1, nl_before=1, mc="red")
-        else:
-            raise ConfigError("None of the %d anvi'o programs found contained any provides or\
-                               requires statements :/" % len(self.all_programs))
-
-        self.programs = [Program(p, programs_dict[p]) for p in programs_dict]
-
+        self.create_program_classes()
         self.report_network()
 
 

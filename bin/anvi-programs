@@ -12,7 +12,7 @@ from collections import OrderedDict
 from tabulate import tabulate
 
 import anvio
-import anvio.programs as programs
+import anvio.programs as p
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -98,25 +98,12 @@ class Table:
         self.requires = A('requires', null)
         self.provides = A('provides', null)
 
-        anvio_path = os.path.dirname(os.path.dirname(anvio.__file__))
+        anvio_programs = p.AnvioPrograms(args)
+        anvio_programs.create_program_classes(create_if_no_meta=True, quiet=True)
+        self.programs = anvio_programs.programs
 
-        self.program_directories = [
-            os.path.join(anvio_path, 'bin'),
-            os.path.join(anvio_path, 'sandbox'),
-        ]
-
-        self.exclude_substrings = [
-            'README',
-        ]
-
-        self.headers = OrderedDict([
-            ('Program', None),
-            ('Description', '__description__'),
-            ('Provides', '__provides__'),
-            ('Requires', '__requires__'),
-        ])
-
-        self.table = pd.DataFrame([], columns = list(self.headers.keys()))
+        self.headers = ['Program', 'Provides', 'Requires']
+        self.table = pd.DataFrame([], columns = self.headers)
 
 
     def process(self):
@@ -126,15 +113,12 @@ class Table:
 
 
     def populate_table(self):
-        for program_directory in self.program_directories:
-            for program_filepath in glob.glob(os.path.join(program_directory, '*')):
-                try:
-                    program = Program(program_filepath, self.headers)
-                except NotAnvioProgram:
-                    continue
-
-                program.fill_info()
-                self.table = self.table.append(program.info, ignore_index = True)
+        for program in self.programs:
+            provides = [item.id for item in program.provides]
+            requires = [item.id for item in program.requires]
+            row_info = [program.name, provides, requires]
+            row = dict(zip(self.headers, row_info))
+            self.table = self.table.append(row, ignore_index = True)
 
         self.table.sort_values(by = 'Program').reset_index(inplace = True)
 
