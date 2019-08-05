@@ -148,6 +148,17 @@ D = {
             {'metavar': 'FASTA',
              'help': "A FASTA-formatted input file"}
                 ),
+    'fasta-text-file': (
+            ['-f', '--fasta-text-file'],
+            {'metavar': 'FASTA_TEXT_FILE',
+            'dest': 'fasta_txt',
+            'help': "A two-columb TAB-delimited file that lists multiple FASTA files to import\
+                     for analysis. The first item in the header line should read 'name',\
+                     and the second item should read 'fasta_path'. Each line in the field should\
+                     describe a single entry, where the first column is the name of the FASTA\
+                     file or corresponding sequence, and the second column is the path to the\
+                     FASTA file itself."}
+                ),
     'layers-information-file': (
             ['-D', '--layers-information-file'],
             {'metavar': 'FILE',
