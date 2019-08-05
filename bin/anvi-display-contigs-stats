@@ -23,6 +23,7 @@ __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
 __requires__ = ['contigs-db']
 __provides__ = ['contigs-stats', 'interactive', 'svg']
+__description__ = "Start the anvi'o interactive interactive for viewing or comparing contigs statistics"
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -40,7 +41,7 @@ def write_stats_to_file(tables, output_file):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Start the anvi'o interactive interactive for viewing or comparing contigs statistics")
+    parser = argparse.ArgumentParser(description=__description__)
     parser.add_argument('input', metavar = 'CONTIG DATABASE(S)', nargs='+',
                         help = "Anvio'o Contig databases to display statistics, \
                                 you can give multiple databases by seperating them with space.")

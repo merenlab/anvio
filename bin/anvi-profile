@@ -19,12 +19,13 @@ __tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "c
 __resources__ = [("The usage of the profiler in metagenomics workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 __requires__ = ['bam-file', 'contigs-db']
 __provides__ = ['single-profile-db', 'misc-data-item-orders']
+__description__ = "Creates a profile database. Main entry point for Post-Assembly Metagenomics Pipeline."
 
 
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Main entry point for Post-Assembly Metagenomics Pipeline')
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupI = parser.add_argument_group('INPUTS', 'There are two possible inputs for anvio profiler. You must\
                                                   to declare either of these two.')
