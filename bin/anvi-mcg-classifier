@@ -19,6 +19,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Alon Shaiber"
 __email__ = "alon.shaiber@gmail.com"
+__description__ = "A program to classify genes according to coverage across multiple metagenomes"
 
 
 def main(args):
@@ -69,7 +70,7 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description="A program to classify genes according to coverage across multiple metagenomes")
+    parser = argparse.ArgumentParser(description=__description__)
     group0 = parser.add_argument_group('ESSENTIAL INPUTS', "You must supply a merged profile db (along with a matching contigs db)")
     group0.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     group0.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))

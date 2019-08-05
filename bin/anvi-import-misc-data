@@ -19,6 +19,8 @@ __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['genes-db', 'pan-db', 'profile-db', 'misc-data-items-txt', 'dendrogram', 'phylogeny', 'misc-data-layers-txt', 'misc-data-layer-orders-txt']
 __provides__ = ['misc-data-items', 'misc-data-layers', 'misc-data-layer-orders']
+__description__ = ("Populate additional data or order tables in pan or profile databases for "
+                   "items or layers (the Swiss army knife-level serious stuff).")
 
 
 def main(args):
@@ -28,8 +30,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Populate additional data or order tables in pan or profile databases for\
-                                                  items or layers (the Swiss army knife-level serious stuff).")
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument('data_file', metavar = "TAB DELIMITED FILE", help = 'The input file that describes an additional data\
                         for layers or items. The expected format of this file depends on the data table you will target. This\

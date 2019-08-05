@@ -288,10 +288,30 @@ class Program:
         self.name = os.path.basename(program_path)
 
         self.meta_info = {
-            'requires': {'object_name': '__requires__'},
-            'provides': {'object_name': '__provides__'},
-            'tags': {'object_name': '__tags__'},
-            'resources': {'object_name': '__resources__'},
+            'requires': {
+                'object_name': '__requires__',
+                'null_object': []
+            },
+            'provides': {
+                'object_name': '__provides__',
+                'null_object': []
+            },
+            'tags': {
+                'object_name': '__tags__',
+                'null_object': []
+            },
+            'resources': {
+                'object_name': '__resources__',
+                'null_object': []
+            },
+            'description': {
+                'object_name': '__description__',
+                'null_object': ''
+            },
+            'status': {
+                'object_name': '__status__',
+                'null_object': ''
+            },
         }
 
         self.module = self.load_as_module(self.program_path)
@@ -303,11 +323,14 @@ class Program:
             try:
                 info = getattr(self.module, self.meta_info[info_type]['object_name'])
             except AttributeError:
-                info = []
+                info = self.meta_info[info_type]['null_object']
 
             if info_type == 'requires' or info_type == 'provides':
                 # these info_types have their items cast as Item types
                 info = [Item(item_name) for item_name in info]
+
+            if type(info) == str:
+                info = info.replace('\n', ' ')
 
             self.meta_info[info_type]['value'] = info
 

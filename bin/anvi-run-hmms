@@ -26,6 +26,8 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db', 'hmm-source',]
 __provides__ = ['hmm-profile',]
+__description__ = ("This program deals with populating tables that store HMM hits in an "
+                   "anvi'o contigs database.")
 
 
 run = terminal.Run()
@@ -67,8 +69,7 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description="This program deals with populating tables that store HMM hits in an\
-                                                  anvi'o contigs database.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))

@@ -16,12 +16,13 @@ __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
 __requires__ = ['contigs-db', 'pfams-data',]
 __provides__ = ['functions',]
+__description__ = "Run Pfam on Contigs Database."
 
 
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Run Pfam on Contigs Database.')
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('pfam-data-dir'), **anvio.K('pfam-data-dir'))

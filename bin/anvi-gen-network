@@ -20,6 +20,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = "Generate a Gephi network for functions based on non-normalized gene coverage values"
 
 
 run = terminal.Run()
@@ -112,7 +113,7 @@ class NetworkDescriptonSamples:
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Generate a Gephi network for functions based on non-normalized gene coverage values')
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))

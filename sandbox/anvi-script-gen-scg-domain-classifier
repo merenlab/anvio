@@ -22,12 +22,13 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
+__description__ = "Train a classifier for SCG domain prediction"
 
 
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Train a classifier for SCG domain prediction')
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument('--genomes-dir', help = "This should be a directory that contains a directory per domain for \
                                                  single-copy core gene collections a given version of anvi'o knows about.\

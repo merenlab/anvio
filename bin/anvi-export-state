@@ -21,6 +21,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['pan-db', 'profile-db']
 __provides__ = ['state-json',]
+__description__ = "Export an anvi'o state into a profile database."
 
 
 run = terminal.Run()
@@ -62,7 +63,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="Export an anvi'o state into a profile database.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))

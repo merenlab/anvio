@@ -21,17 +21,18 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['profile-db', 'contigs-db', 'collection',]
 __provides__ = ['split-bins',]
+__description__ = ("Split an anvi'o pan or profile database into smaller, self-contained pieces. "
+                   "This is usually great when you want to share a subset of an anvi'o project. "
+                   "You give this guy your databases, and a collection id, and it gives "
+                   "you back directories of individual projects for each bin that can be treated as "
+                   "self-contained smaller anvi'o projects. We know you don't read this far into "
+                   "these help menus, but please remember: you will either need to provide a profile & "
+                   "contigs database pair, or a pan & genomes storage pair. The rest will be taken "
+                   "care of. Magic.")
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Split an anvi'o pan or profile database into smaller, self-contained pieces.\
-                                                  This is usually great when you want to share a subset of an anvi'o project.\
-                                                  You give this guy your databases, and a collection id, and it gives\
-                                                  you back directories of individual projects for each bin that can be treated as\
-                                                  self-contained smaller anvi'o projects. We know you don't read this far into\
-                                                  these help menus, but please remember: you will either need to provide a profile &\
-                                                  contigs database pair, or a pan & genomes storage pair. The rest will be taken\
-                                                  care of. Magic.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DATABASES', "You will either provide a PROFILE/CONTIGS or a PAN/GENOMES STORAGE pair here.")
     groupA.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
