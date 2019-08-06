@@ -59,43 +59,45 @@ class TablesForTaxoestimation(Table):
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
 
 
+
+
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+
+
         self.database._exec('''DELETE FROM %s''' % (t.blast_hits_table_name))
-        self.database._exec('''DELETE FROM %s''' % ("taxon_names"))
+        self.database._exec('''DELETE FROM %s''' % (t.taxon_names_table_name))
+
+        self.database.disconnect()
+
 
 
     def alligment_result_to_congigs(self,diamond_output,taxonomy_dict,match_id):
+
+        self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
 
 
         list_taxo=[]
         entries=[]
-        taxo_entries=[]
 
         for result in diamond_output :
             SCG=result[0]
             for line_hit_to_split in result[1].split('\n')[1:-2]:
                 line_hit=line_hit_to_split.split('\t')
 
-
-
                 entries+=[tuple([match_id,int(line_hit[0]),SCG,line_hit[1],line_hit[2],line_hit[11]])]
-
                 match_id+=1
 
                 if line_hit[1] not in list_taxo:
                     list_taxo+=[line_hit[1]]
 
-        print(entries)
-        taxo_entries+=[tuple([t_name_id]+list(taxonomy_dict[t_name_id].values())) for t_name_id in list_taxo]
+        taxo_entries=[tuple([t_name_id]+list(taxonomy_dict[t_name_id].values())) for t_name_id in list_taxo]
         self.database.insert_many(t.blast_hits_table_name, entries)
-        self.database.insert_many("taxon_names", taxo_entries)
-        return match_id
+        self.database.insert_many(t.taxon_names_table_name, taxo_entries)
 
-
-    def close(self):
         self.database.disconnect()
-
+        return match_id
 
     def add_diamond_result_to_congigs(self):
         print()
