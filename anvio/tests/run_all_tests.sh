@@ -97,7 +97,7 @@ anvi-export-locus -c $output_dir/CONTIGS.db \
                   -n 22,22 \
                   -s S-AdoMet_synt_C \
                   --use-hmm \
-                  --hmm-sources Bacteria_71 
+                  --hmm-sources Bacteria_71
 
 INFO "Recovering completeness esimates for the contigs db"
 anvi-compute-completeness -c $output_dir/CONTIGS.db
@@ -131,6 +131,13 @@ anvi-export-locus -c $output_dir/CONTIGS.db \
                   -O $output_dir/exported_locus_from_functions \
                   -n 22,22 \
                   -s NusB
+
+INFO "Export genomic locus using functional annotation search in flank-mode"
+anvi-export-locus -c $output_dir/CONTIGS.db \
+                  -O $output_dir/exported_locus_from_functions \
+                  --flank-mode  \
+                  -s NusB,YigB
+
 
 INFO "Export only Pfam annotations"
 anvi-export-functions -c $output_dir/CONTIGS.db \
@@ -591,10 +598,10 @@ anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                     -C CONCOCT \
                     -b Bin_1 \
                     --exclude-samples $files/samples_to_exclude_for_mcg.txt
-# 
+#
 # INFO "Running anvi-mcg-classifier on a collection"
 # anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MCG_CLASSIFIER_OUTPUTS/MCG_CONCOCT -C CONCOCT
-# 
+#
 INFO 'A dry run with an items order file for the merged profile without any clustering'
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
