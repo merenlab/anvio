@@ -36,6 +36,9 @@ __maintainer__ = "Ozcan Esen"
 __email__ = "ozcanesen@gmail.com"
 __requires__ = ['external-genomes', 'internal-genomes', 'pan-db']
 __provides__ = ['ani-txt', 'ani']
+__description__ = ("Export sequences from external genomes and compute ANI. If a Pan Database "
+                   "is given anvi'o will write computed output to misc data tables of Pan Database.")
+
 
 run = terminal.Run()
 
@@ -244,9 +247,7 @@ def main(args):
         shutil.rmtree(temp_dir)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Export sequences from external genomes and compute\
-                                     ANI. If Pan Database is given anvi'o will write computed output\
-                                     to misc data tables of Pan Database.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT OPTIONS', "Tell anvi'o what you want.")
     groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))

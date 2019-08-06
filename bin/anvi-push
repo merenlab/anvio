@@ -20,10 +20,11 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = "Push stuff to an anvi'server"
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Push stuff to an anvi'server")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('SERVER DETAILS', "Details of how to access to an anvi'server instance.")
     groupA.add_argument(*anvio.A('user'), **anvio.K('user', {'required': True}))

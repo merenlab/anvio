@@ -20,6 +20,7 @@ __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 __requires__ = ['structure-db']
 __provides__ = ['protein-structure']
+__description__ = "Export .pdb structure files from a structure database."
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -31,7 +32,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Export .pdb structure files from a structure database.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('structure-db'), **anvio.K('structure-db'))
     parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))

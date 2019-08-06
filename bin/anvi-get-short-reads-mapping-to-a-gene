@@ -22,6 +22,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db', 'bam-file',]
 __provides__ = ['short-reads-fasta',]
+__description__ = "Access reads in contigs and positions in a BAM file"
 
 
 run = terminal.Run()
@@ -56,7 +57,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Access reads in contigs and positions in a BAM file')
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument('-i', '--input-files', metavar = 'INPUT_BAM(S)', nargs='+', default = None, required = True,
                         help = 'Sorted and indexed BAM files to analyze. It is essential that all BAM files must be\
