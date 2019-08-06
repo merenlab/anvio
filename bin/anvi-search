@@ -75,6 +75,8 @@ class ProgramSearch:
     def handle_inputs(self):
         if self.requires and self.provides:
             raise ConfigError("You can't provide --requires and --provides. Pick one.")
+        if self.name and (self.requires or self.provides):
+            raise ConfigError("You can't provide --name with --provides or --requires. Pick one.")
 
         self.search_terms = []
         if self.search_term_user_input:
@@ -149,7 +151,7 @@ class ProgramSearch:
                     continue
                 if self.requires and header != 'Requires':
                     continue
-                if self.name and header != 'Requires':
+                if self.name and header != 'Program':
                     continue
 
                 for search_term in self.search_terms:
