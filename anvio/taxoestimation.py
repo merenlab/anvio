@@ -138,6 +138,7 @@ class SCGsdiamond:
         self.taxonomy_dict=OrderedDict()
 
 
+
     def sanity_check(self):
         if not filesnpaths.is_file_exists(self.taxonomy_file_path, dont_raise=True):
             raise ConfigError("Anvi'o could not find taxonomy file '%s'. You must declare one before continue."\
@@ -213,15 +214,12 @@ class SCGsdiamond:
 
         hmm_sequences_dict_per_type = self.get_hmm_sequences_dict_into_type_multi(
             hmm_sequences_dict)
-        sequence_by_SCG = {}
 
 
 
         num_listeprocess = len(hmm_sequences_dict_per_type)
 
 
-        Sequence_queu=[]
-        sequence_by_SCG = []
         self.run.info('SCGs', ','.join(list(hmm_sequences_dict_per_type.keys())))
 
         self.progress.new('Computing SCGs aligments', progress_total_items=num_listeprocess)
@@ -285,7 +283,6 @@ class SCGsdiamond:
 
 
         tables_for_taxonomy.alligment_result_to_congigs(diamond_output,self.taxonomy_dict,match_id)
-        tables_for_taxonomy.close()
 
         progress.end()
 
@@ -325,6 +322,8 @@ class SCGsTaxomy:
         self.bin_id=args.bin_id
 
         self.metagenome=False
+
+        self.bin_database=None
 
         if args.metagenome:
             self.metagenome=True
@@ -378,10 +377,18 @@ class SCGsTaxomy:
 
     def init(self):
 
-        self.dic_blast_hits=self.contigs_database.get_table_as_dict('blast_hits')
-        self.taxonomy_dict =OrderedDict(self.contigs_database.get_table_as_dict('taxon_names'))
+        try:
+            self.dic_blast_hits=self.contigs_database.get_table_as_dict(t.blast_hits_table_name)
+            self.taxonomy_dict =OrderedDict(self.contigs_database.get_table_as_dict(t.taxon_names_table_name))
+        except:
+            raise ConfigError("Anvi'o could not find the data for the taxonomic estimation,\
+                               you should try to run 'anvi-diamond-for-taxonomy'")
 
 
+        for blast_hit in self.dic_blast_hits.values():
+            if blast_hit['taxon_id'] not in self.taxonomy_dict:
+                raise ConfigError("it seams , some taxon id of blast hit are not linked to any phylogenie,\
+                                   you should run 'anvi-diamond-for-taxonomy'")
 
         if self.profile_database_path and self.metagenome:
             self.run.info('Assignment level', "Bin")
@@ -409,7 +416,7 @@ class SCGsTaxomy:
                         self.dic_id_bin[split_name_to_bin_id[split['split']]]+=[split['gene_callers_id']]
         else:
             self.run.info('Assignment level', "Gene")
-            self.bin_database=None
+
 
 
         for query in self.dic_blast_hits.values():
@@ -446,7 +453,6 @@ class SCGsTaxomy:
 
         possibles_taxonomy=[]
         entry_id=0
-        self.run.info('Assignment level', "Gene")
         for name, SCGs_hit_per_gene in self.hits_per_gene.items():
 
             taxonomy = self.get_consensus_taxonomy(
@@ -457,9 +463,6 @@ class SCGsTaxomy:
                 continue
 
 
-            if not self.metagenome:
-                self.run.info('estimate taxonomy',
-                              '/'.join(list(taxonomy.values())))
 
                 entries=[tuple([entry_id,self.collection_name,name,"GTDB"]+list(taxonomy.values()))]
 
@@ -481,6 +484,11 @@ class SCGsTaxomy:
         if self.metagenome or not self.bin_database:
             if len(possibles_taxonomy):
                 self.run.info('Possible presence ','|'.join(list(possibles_taxonomy)))
+
+        if not self.metagenome:
+            self.run.info('estimate taxonomy',
+                          '/'.join(list(taxonomy.values())))
+
 
         if self.bin_database:
             self.bin_database.disconnect()
@@ -916,6 +924,7 @@ class SCGsTaxomy:
         taxonomy = []
         for entry in SCGs_hit_per_gene.values():
             if len(entry) == 1 and entry[0]['pident'] > 0.90:
+
                 taxonomy.append(self.taxonomy_dict[entry[0]['accession']])
         if taxonomy:
             assignation=self.assign_taxonomie_solo_hit(taxonomy)

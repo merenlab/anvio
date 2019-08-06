@@ -75,7 +75,7 @@ class DBClassFactory:
 
         if db_type not in self.DB_CLASSES:
             raise ConfigError("DBClassFactory speaking. I do not know a class for database type\
-                                %s :/ I can deal with these though: '%s'" % (db_type, ', '.join(self.DB_CLASSES))) 
+                                %s :/ I can deal with these though: '%s'" % (db_type, ', '.join(self.DB_CLASSES)))
         return self.DB_CLASSES[db_type]
 
 
@@ -250,7 +250,7 @@ class ContigsSuperclass(object):
         elif split_names_of_interest:
             contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in split_names_of_interest])
 
-        if gene_caller_ids_of_interest or split_names_of_interest: 
+        if gene_caller_ids_of_interest or split_names_of_interest:
             # someone was interested in a subest of things, but found nothing for them?
             if not len(contig_names_of_interest):
                 raise ConfigError("Well, it turns out there are no contigs matching to the list of gene calls anvi'o\
@@ -272,7 +272,7 @@ class ContigsSuperclass(object):
                                                                   error_if_no_data=True)
             self.progress.end()
         else:
-            # load all 
+            # load all
             self.progress.new('Loading contig sequences')
             self.progress.update('Reading ALL contig sequences')
             self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
@@ -1640,7 +1640,7 @@ class PanSuperclass(object):
             homogeneity_keys, homogeneity_dict = TableForItemAdditionalData(self.args).get(['functional_homogeneity_index', 'geometric_homogeneity_index'])
         elif self.functional_homogeneity_info_is_available and self.geometric_homogeneity_info_is_available and self.combined_homogeneity_info_is_available:
             homogeneity_keys, homogeneity_dict = TableForItemAdditionalData(self.args).get(['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'])
-        
+
 
         gene_clusters_to_remove = set([])
         all_gene_clusters = set(list(gene_cluster_occurrences_accross_genomes.keys()))
@@ -2812,6 +2812,8 @@ class ProfileDatabase:
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
+        self.db.create_table(t.blast_hits_table_name, t.blast_hits_table_structure, t.blast_hits_table_types)
+        self.db.create_table(t.taxonomy_estimation_bin_name, t.taxonomy_estimation_bin_structure, t.taxonomy_estimation_bin_types)
 
         return self.db
 
@@ -2985,6 +2987,9 @@ class PanDatabase:
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
+        self.db.create_table(t.blast_hits_table_name, t.blast_hits_table_structure, t.blast_hits_table_types)
+        self.db.create_table(t.taxonomy_estimation_metagenome_name, t.taxonomy_estimation_metagenome_structure, t.taxonomy_estimation_metagenome_types)
+
 
         return self.db
 
@@ -3095,6 +3100,9 @@ class ContigsDatabase:
         self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
         self.db.create_table(t.nt_position_info_table_name, t.nt_position_info_table_structure, t.nt_position_info_table_types)
+        self.db.create_table(t.blast_hits_table_name, t.blast_hits_table_structure, t.blast_hits_table_types)
+        self.db.create_table(t.taxonomy_estimation_metagenome_name, t.taxonomy_estimation_metagenome_structure, t.taxonomy_estimation_metagenome_types)
+
 
         return self.db
 
