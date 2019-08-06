@@ -422,7 +422,7 @@ class Timer:
         return checkpoint
 
 
-    def calculate_time_remaining(self, infinite_default = None):
+    def calculate_time_remaining(self, infinite_default = 'inf'):
         if self.complete:
             return datetime.timedelta(seconds = 0)
         if not self.required_completion_score:
