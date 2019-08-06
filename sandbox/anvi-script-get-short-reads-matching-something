@@ -20,6 +20,15 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = ("You give this program one or more FASTQ files and a short sequence, "
+                   "and it returns all short reads from the FASTQ file that matches to it. "
+                   "The purpose of this is to get back short reads that may be extending into "
+                   "hypervariable regions of genomes, resulting a decreased mappability of "
+                   "short reads in the metagenome given a reference. You often see those areas "
+                   "of genomes as significant dips in coverage, and in most cases with a large "
+                   "number of SNVs. When you provide the downstream conserved sequence, this "
+                   "program allows you to take a better look at those regions at the short "
+                   "read level without any mapping.")
 
 
 run = terminal.Run()
@@ -144,15 +153,7 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description="You give this program one or more FASTQ files and a short sequence,\
-                                                  and it returns all short reads from the FASTQ file that matches to it.\
-                                                  The purpose of this is to get back short reads that may be extending into\
-                                                  hypervariable regions of genomes, resulting a decreased mappability of\
-                                                  short reads in the metagenome given a reference. You often see those areas\
-                                                  of genomes as significant dips in coverage, and in most cases with a large\
-                                                  number of SNVs. When you provide the downstream conserved sequence, this\
-                                                  program allows you to take a better look at those regions at the short\
-                                                  read level without any mapping.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument('fastq_files', nargs='+', help='One or more FASTQ formatted files', metavar='FASTQ_FILES')
     parser.add_argument('--match-sequence', required=True, metavar='SHORT SEQUENCE',

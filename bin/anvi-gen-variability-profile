@@ -18,12 +18,17 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__resources__ = [("All about SNVs, SCVs, and SAAVs", "http://merenlab.org/2015/07/20/analyzing-variability/")]
 __requires__ = ['contigs-db', 'profile-db', 'structure-db', 'bin']
 __provides__ = ['variability-profile']
+__description__ = ("Generate a table that comprehensively summarizes the variability of nucleotide, "
+                   "codon, or amino acid positions. We call these single nucleotide variants (SNVs), "
+                   "single codon variants (SCVs), and single amino acid variants (SAAVs), respectively. "
+                   "Learn more here: http://merenlab.org/2015/07/20/analyzing-variability/")
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Extract information for variable positions')
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DATABASES', "Declaring relevant anvi'o databases. First things first. Some\
                                                      are mandatory, some are optional.")

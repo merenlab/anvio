@@ -22,6 +22,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['genes-db', 'pan-db', 'profile-db']
 __provides__ = ['misc-data-item-orders-txt', 'dendrogram', 'phylogeny']
+__description__ = "Export an item order from an anvi'o database"
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -82,7 +83,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="Export an item order from an anvi'o database")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupI = parser.add_argument_group('INPUT', 'The database and the items order of interest')
     groupI.add_argument('-p', '--db-path', metavar = 'DB PATH', help = "An appropriate anvi'o database.")
