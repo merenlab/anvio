@@ -6,11 +6,11 @@ import sys
 import glob
 import argparse
 import textwrap
+import tabulate
 import numpy as np
 import pandas as pd
 
-from colored import fg, bg, attr
-from tabulate import tabulate
+from colored import fore, back, style
 from operator import itemgetter
 from itertools import groupby
 from collections import OrderedDict
@@ -22,6 +22,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.terminal import tabulate
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -37,7 +38,14 @@ __description__ = "Search for anvi\'o programs by keyword, inputs/outputs, etc."
 run = terminal.Run()
 progress = terminal.Progress()
 
-COL_WIDTH = 20
+TABLE_BG = back.GREY_11
+TABLE_FG = fore.GREY_100
+TABLE_STYLE = TABLE_BG + TABLE_FG
+HIGHLIGHT_BG = back.GREY_11
+HIGHLIGHT_FG = fore.LIGHT_CYAN
+HIGHLIGHT_STYLE = HIGHLIGHT_BG + HIGHLIGHT_FG
+COL_WIDTH = 20 # Does not apply to the description column, which is extended if possible to fill terminal width
+
 T = lambda x, l=COL_WIDTH: textwrap.TextWrapper(width=l, break_on_hyphens=True, break_long_words=True).fill(text=x)
 F = lambda x, l=COL_WIDTH: textwrap.TextWrapper(width=l, break_on_hyphens=False, break_long_words=False).fill(text=x)
 
@@ -49,7 +57,6 @@ class ProgramSearch:
         self.requires = A('requires', bool)
         self.provides = A('provides', bool)
         self.name = A('name', bool)
-        self.highlight = A('highlight', bool)
         self.report = A('report', null)
 
         self.headers_to_report = []
@@ -168,8 +175,6 @@ class ProgramSearch:
 
 
     def highlight_matches(self):
-        """FIXME Currently breaks tabulate format due to newlines within cells. Issue made here:
-        https://bitbucket.org/astanin/python-tabulate/issues/176/ansi-color-codes-create-issues-with"""
         # this approach handles overlapping search terms
         for i, row in self.table_as_string.iterrows():
             for j, cell in row.items():
@@ -192,16 +197,16 @@ class ProgramSearch:
                 last_block_end = 0
                 for block_start, block_end in blocks_to_color:
                     new_cell += cell[last_block_end:block_start]
-                    new_cell += '%s%s%s' % (bg('cyan'), cell[block_start:block_end+1], attr('reset'))
-                    last_block_end = block_end+1
+                    new_cell += HIGHLIGHT_STYLE + cell[block_start:block_end+1] + TABLE_STYLE
+
+                    last_block_end = block_end + 1
                 new_cell += cell[last_block_end:]
 
                 self.table_as_string.loc[i, j] = new_cell
 
 
     def display_table(self):
-        if self.highlight:
-            self.highlight_matches()
+        self.highlight_matches()
         tabulated = tabulate(self.table_as_string, headers='keys', showindex=False, tablefmt="fancy_grid")
 
         terminal_width, _ = terminal.get_terminal_size()
@@ -216,11 +221,10 @@ class ProgramSearch:
             # Use all of the terminal width
             if 'Description' in self.table.columns:
                 self.table_as_string = self.stringify_table(self.table, COL_WIDTH + diff)
-                if self.highlight:
-                    self.highlight_matches()
+                self.highlight_matches()
                 tabulated = tabulate(self.table_as_string, headers='keys', showindex=False, tablefmt="fancy_grid")
 
-        print('\n' + tabulated)
+        print('\n' + TABLE_STYLE + tabulated + style.RESET)
 
         run.info('Number of programs matching', self.table.shape[0], nl_before=1)
 
@@ -265,8 +269,7 @@ if __name__ == '__main__':
     parser.add_argument('search-term', help='Find programs associated with this search term. if you want all programs, use \'ALL\'')
     parser.add_argument('--requires', '-r', action='store_true', help='Restrict to programs that require this search term')
     parser.add_argument('--provides', '-p', action='store_true', help='Restrict to programs that provide this search term')
-    parser.add_argument('--name', '-n', action='store_true', help='Restrict to programs that contain in their name this search term')
-    parser.add_argument('--highlight', '-g', action='store_true', help='Highlight searches. Ruins the grid :(')
+    parser.add_argument('--name', '-n', action='store_true', help='Restrict to programs that contain this search term in their name')
     parser.add_argument('--report', '-R', help='Which information would you like to be in the report? Mess with this if you \
                                                 are disappointed with the default. Possibles are Description, Tags, Requires, \
                                                 Provides, Status, and Resources. Add multiple of them with commas (no whitespace). \
