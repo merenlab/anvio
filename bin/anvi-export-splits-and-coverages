@@ -28,6 +28,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = "Export sequences and mean coverages across samples for splits or contigs"
 
 
 run = terminal.Run()
@@ -88,7 +89,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Export sequences and mean coverages across samples for splits or contigs')
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))

@@ -422,7 +422,7 @@ class Timer:
         return checkpoint
 
 
-    def calculate_time_remaining(self, infinite_default = None):
+    def calculate_time_remaining(self, infinite_default = 'inf'):
         if self.complete:
             return datetime.timedelta(seconds = 0)
         if not self.required_completion_score:
@@ -554,6 +554,50 @@ def pretty_print(n):
             ret.append(',')
     ret.reverse()
     return ''.join(ret[1:]) if ret[0] == ',' else ''.join(ret)
+
+
+def tabulate(*args, **kwargs):
+    """
+    Uses the function `tabulate` in the `tabulate` module to tabulate data. This function behaves
+    almost identically, but exists because currently multiline cells that have ANSI colors break the
+    formatting of the table grid. These issues can be tracked to assess the status of this bug and
+    whether or not it has been fixed:
+
+    https://bitbucket.org/astanin/python-tabulate/issues/170/ansi-color-code-doesnt-work-with-linebreak
+    https://bitbucket.org/astanin/python-tabulate/issues/176/ansi-color-codes-create-issues-with
+
+    Until then, this overwrites a function in the module to preserve formatting when using multiline
+    cells with ANSI color codes.
+    """
+    import tabulate
+
+    def _align_column(strings, alignment, minwidth=0, has_invisible=True, enable_widechars=False, is_multiline=False):
+        strings, padfn = tabulate._align_column_choose_padfn(strings, alignment, has_invisible)
+        width_fn = tabulate._choose_width_fn(has_invisible, enable_widechars, is_multiline)
+        s_widths = list(map(width_fn, strings))
+        maxwidth = max(max(s_widths), minwidth)
+        if is_multiline:
+            if not enable_widechars and not has_invisible:
+                padded_strings = [
+                    "\n".join([padfn(maxwidth, s) for s in ms.splitlines()])
+                    for ms in strings]
+            else:
+                lines = [line.splitlines() for line in strings]
+                lines_pad = [[(s, maxwidth + len(s) - width_fn(s)) for s in group]
+                             for group in lines]
+                padded_strings = ["\n".join([padfn(w, s) for s, w in group])
+                                  for group in lines_pad]
+        else:
+            if not enable_widechars and not has_invisible:
+                padded_strings = [padfn(maxwidth, s) for s in strings]
+            else:
+                s_lens = list(map(len, strings))
+                visible_widths = [maxwidth - (w - l) for w, l in zip(s_widths, s_lens)]
+                padded_strings = [padfn(w, s) for s, w in zip(strings, visible_widths)]
+        return padded_strings
+
+    tabulate._align_column = _align_column
+    return tabulate.tabulate(*args, **kwargs)
 
 
 def get_date():
