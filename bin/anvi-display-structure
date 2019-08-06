@@ -22,14 +22,14 @@ __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
 __requires__ = ['structure-db', 'variability-profile', 'contigs-db', 'profile-db']
 __provides__ = ['interactive', 'summary']
-
+__description__ = "Interactively visualize sequence variants on protein structures"
 
 
 run = terminal.Run()
 progress = terminal.Progress()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupS = parser.add_argument_group("STRUCTURE", "Information related to the structure database, which can be \
                                                      created with anvi-gen-structure-database.")

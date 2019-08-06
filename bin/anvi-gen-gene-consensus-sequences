@@ -18,10 +18,11 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = "Collapse variability for a set of genes across samples"
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Collapse variability for a set of genes across samples')
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupD = parser.add_argument_group('DATABASES', "Declaring relevant anvi'o databases. First things first.")
     groupD.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))

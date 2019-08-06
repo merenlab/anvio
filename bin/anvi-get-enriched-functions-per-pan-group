@@ -19,10 +19,14 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Alon Shaiber"
 __email__ = "alon.shaiber@gmail.com"
-__resources__ = [("An example usage of the program in the context of the Prochlorococcus metapangenome from Delmont and Eren 2018 is included in the pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/")]
+__resources__ = [(("An example usage of the program in the context of the Prochlorococcus metapangenome "
+                   "from Delmont and Eren 2018 is included in the pangenomics tutorial"),
+                  "http://merenlab.org/2016/11/08/pangenomics-v2/")]
 __tags__ = ["pangenomics", "functions"]
 __requires__ = ['misc-data-layers-category', 'pan-db', 'genomes-storage-db',]
 __provides__ = ['functional-enrichment-txt',]
+__description__ = ("A program that takes a pangenome, and a categorical layer additional data item, and "
+                   "reports back the functions enriched in per category.")
 
 
 run = terminal.Run()
@@ -32,8 +36,7 @@ progress = terminal.Progress()
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="A program that takes a pangenome, and a categorical layer additional data item, and\
-                                                  reports back the functions enriched in per category.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))

@@ -32,6 +32,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = ("A script to convert SNV output obtained from anvi-gen-variability-profile "
+                   "to the standard VCF format")
 
 
 progress = terminal.Progress()
@@ -144,8 +146,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='A script to convert SNV output obtained from anvi-gen-variability-profile \
-                                                  to the standard VCF format')
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument('-i', '--input', metavar='FILE_PATH', help='Filepath to the SNV table. This is the output from the \
                                 anvi-gen-variability-profile program with the nucleotide engine (which is the default engine).')

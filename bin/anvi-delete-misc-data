@@ -18,6 +18,7 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
+__description__ = "Remove stuff from additional data or order tables in pan or profile databases for items or layers"
 
 
 run = terminal.Run()
@@ -36,7 +37,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Remove stuff from additional data or order tables in pan or profile databases for items or layers")
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
     parser.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
