@@ -21,10 +21,11 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['single-profile-db', 'contigs-db']
 __provides__ = ['profile-db', 'misc-data-item-orders']
+__description__ = "Merge multiple anvio profiles"
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Merge multiple anvio profiles')
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument('input', metavar = 'SINGLE_PROFILE(S)', nargs='+',
                         help = "Anvo'o single profiles to merge")
