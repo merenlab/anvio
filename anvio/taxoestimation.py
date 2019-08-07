@@ -126,17 +126,10 @@ class SCGsdiamond:
         self.SCG_DB_PATH = lambda SCG: os.path.join(
             self.taxonomy_database_path, SCG)
 
-
-
         self.SCG_FASTA_DB_PATH = lambda SCG: os.path.join(self.taxonomy_database_path,
                                                           [db for db in os.listdir(self.taxonomy_database_path) if db.endwith(".dmnd")])
 
-
-
         self.sanity_check()
-
-        self.taxonomy_dict=OrderedDict()
-
 
 
     def sanity_check(self):
@@ -209,24 +202,18 @@ class SCGsdiamond:
 
         self.init()
 
-
-
-
         hmm_sequences_dict_per_type = self.get_hmm_sequences_dict_into_type_multi(
             hmm_sequences_dict)
 
-
-
         num_listeprocess = len(hmm_sequences_dict_per_type)
-
 
         self.run.info('SCGs', ','.join(list(hmm_sequences_dict_per_type.keys())))
 
         self.progress.new('Computing SCGs aligments', progress_total_items=num_listeprocess)
         #self.progress.update('Initializing %d threads...' % self.num_threads)
 
-        tables_for_taxonomy = TablesForTaxoestimation(self.db_path, run, progress)
-
+        self.tables_for_taxonomy = TablesForTaxoestimation(self.db_path, run, progress)
+        self.tables_for_taxonomy.delete_contents_of_table(t.blast_hits_table_name)
 
         manager = multiprocessing.Manager()
         input_queue = manager.Queue()
@@ -266,7 +253,7 @@ class SCGsdiamond:
 
                 if self.write_buffer_size > 0 and len(diamond_output) % self.write_buffer_size == 0:
 
-                    match_id=tables_for_taxonomy.alligment_result_to_congigs(diamond_output,self.taxonomy_dict,match_id)
+                    match_id=self.tables_for_taxonomy.alignment_result_to_congigs(diamond_output,self.taxonomy_dict,match_id)
                     diamond_output=[]
 
                 finish_process += 1
@@ -282,7 +269,7 @@ class SCGsdiamond:
             worker.terminate()
 
 
-        tables_for_taxonomy.alligment_result_to_congigs(diamond_output,self.taxonomy_dict,match_id)
+        self.tables_for_taxonomy.alignment_result_to_congigs(diamond_output,self.taxonomy_dict,match_id)
 
         progress.end()
 
@@ -313,7 +300,8 @@ class SCGsTaxomy:
 
         def A(x): return args.__dict__[x] if x in args.__dict__ else None
         self.db_path=A('contigs_db')
-        self.profile_database_path=A('profile_db')
+        self.profile_db_path=A('profile_db')
+        #self.metagenome=A('profile_db')
 
         self.collection_name=args.collection_name
 
@@ -323,7 +311,6 @@ class SCGsTaxomy:
 
         self.metagenome=False
 
-        self.bin_database=None
 
         if args.metagenome:
             self.metagenome=True
@@ -332,8 +319,6 @@ class SCGsTaxomy:
 
         self.methode = args.methode
 
-        self.taxonomy_dict = {}
-        self.dic_id_bin={}
         self.hits_per_gene={}
 
         self.pident_level_path=os.path.join(os.path.dirname(
@@ -350,12 +335,15 @@ class SCGsTaxomy:
                                         "t_genus" : 'g__' ,
                                         "t_species" : 's__' }
 
-        self.contigs_database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-
 
     def sanity_check(self):
         filesnpaths.is_file_exists(self.db_path)
         filesnpaths.is_file_exists(self.taxonomy_database_path)
+
+        utils.is_contigs_db(self.db_path)
+
+        if self.profile_db_path:
+            utils.is_profile_db(self.profile_db_path)
 
         if not len(self.SCGs):
             raise ConfigError(
@@ -377,51 +365,24 @@ class SCGsTaxomy:
 
     def init(self):
 
-        try:
-            self.dic_blast_hits=self.contigs_database.get_table_as_dict(t.blast_hits_table_name)
-            self.taxonomy_dict =OrderedDict(self.contigs_database.get_table_as_dict(t.taxon_names_table_name))
-        except:
-            raise ConfigError("Anvi'o could not find the data for the taxonomic estimation,\
-                               you should try to run 'anvi-diamond-for-taxonomy'")
+        self.tables_for_taxonomy = TablesForTaxoestimation(self.db_path, run, progress, self.profile_db_path)
+
+        self.dic_blast_hits,self.taxonomy_dict=self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
 
 
-        for blast_hit in self.dic_blast_hits.values():
-            if blast_hit['taxon_id'] not in self.taxonomy_dict:
-                raise ConfigError("it seams , some taxon id of blast hit are not linked to any phylogenie,\
-                                   you should run 'anvi-diamond-for-taxonomy'")
-
-        if self.profile_database_path and self.metagenome:
+        if self.profile_db_path and not self.metagenome:
             self.run.info('Assignment level', "Bin")
-            utils.is_profile_db_and_contigs_db_compatible(
-                self.profile_database_path, self.db_path)
 
-            self.bin_database = db.DB(self.profile_database_path, utils.get_required_version_for_db(self.profile_database_path))
 
-            splits_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
+            self.dic_id_bin = self.tables_for_taxonomy.get_dic_id_bin(self.args)
 
-            run.info('Init', '%d splits in %d bin(s)' % (
-                sum([len(v) for v in list(splits_dict.values())]), len(splits_dict)))
 
-            s = hmmops.SequencesForHMMHits(self.db_path)
-
-            hits_in_splits, split_name_to_bin_id = s.get_hmm_hits_in_splits(splits_dict)
-
-            dic_genes_in_splits=self.contigs_database.get_table_as_dict("genes_in_splits")
-
-            for split in dic_genes_in_splits.values():
-                if split['split'] in split_name_to_bin_id:
-                    if split_name_to_bin_id[split['split']] not in self.dic_id_bin:
-                        self.dic_id_bin[split_name_to_bin_id[split['split']]]=[split['gene_callers_id']]
-                    else:
-                        self.dic_id_bin[split_name_to_bin_id[split['split']]]+=[split['gene_callers_id']]
         else:
             self.run.info('Assignment level', "Gene")
 
-
-
         for query in self.dic_blast_hits.values():
 
-            if self.bin_database and not self.metagenome:
+            if self.profile_db_path and not self.metagenome:
                 for bin_id,bin_gene_callers_id in self.dic_id_bin.items():
                     if int(query['gene_callers_id']) in bin_gene_callers_id:
                         var=bin_id
@@ -447,11 +408,13 @@ class SCGsTaxomy:
         self.initialized = True
 
 
-    def estimate_taxonomy(self):
+    def estimate_taxonomy(self,source="GTDB"):
 
         self.init()
 
         possibles_taxonomy=[]
+        entries_db=[]
+
         entry_id=0
         for name, SCGs_hit_per_gene in self.hits_per_gene.items():
 
@@ -462,38 +425,32 @@ class SCGsTaxomy:
                 self.run.info('taxonomy estimation not possible for:', name)
                 continue
 
-
-
-                entries=[tuple([entry_id,self.collection_name,name,"GTDB"]+list(taxonomy.values()))]
-
-                if self.bin_database:
-                    self.bin_database.insert_many(t.taxonomy_estimation_bin_name, entries)
-
-
-            if self.metagenome or not self.bin_database:
-
-                entries=[tuple([name,list(SCGs_hit_per_gene.keys())[0],"GTDB"]+list(taxonomy.values()))]
-
-                self.contigs_database.insert_many(t.taxonomy_estimation_metagenome_name, entries)
-
-                if str(list(taxonomy.values())[-1]) not in possibles_taxonomy and taxonomy:
+            if self.metagenome or not self.profile_db_path:
+                if str(list(taxonomy.values())[-1]) not in possibles_taxonomy and str(list(taxonomy.values())[-1]) :
                     possibles_taxonomy.append(str(list(taxonomy.values())[-1]))
 
-            entry_id+=1
+                entries_db+=[(tuple([name,list(SCGs_hit_per_gene.keys())[0],source]+list(taxonomy.values())))]
 
-        if self.metagenome or not self.bin_database:
+            if self.profile_db_path:
+
+                self.run.info('Bin name',
+                              name, nl_before=1)
+                self.run.info('estimate taxonomy',
+                              '/'.join(list(taxonomy.values())))
+
+
+                entries_db+=[(tuple([entry_id,self.collection_name,name,source]+list(taxonomy.values())))]
+                entry_id+=1
+
+        if self.metagenome or not self.profile_db_path:
             if len(possibles_taxonomy):
                 self.run.info('Possible presence ','|'.join(list(possibles_taxonomy)))
 
-        if not self.metagenome:
-            self.run.info('estimate taxonomy',
-                          '/'.join(list(taxonomy.values())))
+                self.tables_for_taxonomy.taxonomy_estimation_to_congis(entries_db)
 
+        if self.profile_db_path:
 
-        if self.bin_database:
-            self.bin_database.disconnect()
-        self.contigs_database.disconnect()
-
+            self.tables_for_taxonomy.taxonomy_estimation_to_profile(entries_db)
 
 
     def show_hits(self, name, gene_name, hits):
@@ -694,22 +651,23 @@ class SCGsTaxomy:
         return(dico_position_entry)
 
 
-    def make_list_position_entry(self, SCGs_hit_per_gene, dico_position_entry, list_position_ribosomal, matchinggenes):
+    def make_list_position_entry(self, SCGs_hit_per_gene, dico_position_entry, list_position_ribosomal, matchinggenes, max_number_of_individues=10, percentage_of_appearance=0.5):
         list_position_entry = []
-        j = 0
+        number_of_individue = 0
         len_position = len(list_position_ribosomal)
         key_value = sorted(dico_position_entry,
                            key=lambda x: dico_position_entry[x], reverse=True)
         for key in key_value:
             # parameter number of individue in the first matrix "j <= 5 " and appear in minimun 50% of blast
-            if j< 10 and dico_position_entry[key] > (len_position * 0.5):
+            if number_of_individue< max_number_of_individues and dico_position_entry[key] > (len_position * percentage_of_appearance):
                 list_position_entry.append(key)
-                j += 1
+                number_of_individue += 1
 
         list_position_ribosomal = self.make_list_position_ribosomal(
             matchinggenes, SCGs_hit_per_gene, list_position_entry)
         if not len(list_position_entry) or not len(list_position_ribosomal) :
-            sys.exit(status=None)
+            raise ConfigError("Anvi'o fail to create array for alignment rank, at this point,\
+                               it's probably not your fault, please contact quentin.clayssen@gmail.com")
         return(list_position_entry, list_position_ribosomal)
 
 
@@ -860,32 +818,16 @@ class SCGsTaxomy:
 
         return(assignation)
 
-
-    def del_higher_ranked_individu_matrix(self, matrix, matrixlist_position_entry):
-        maxrank = 0
-        i = 0
-        for liste in matrix:
-            summist = sum(list(liste))
-            if summist > maxrank:
-                maxrank = summist
-                dellist = i
-            i += 1
-        del matrix[dellist]
-        del matrixlist_position_entry[dellist]
-        return matrixlist_position_entry, matrix
-
-
     def assign_taxonomie_solo_hit(self, taxonomy):
         if not taxonomy or not taxonomy[0]:
             return 0
         assignation = taxonomy[0]
-
-        for s in taxonomy[1:]:
-            for key in s:
-                if s[key] not in assignation.values():
+        for taxon in taxonomy[1:]:
+            for level in taxon:
+                if taxon[level] not in assignation.values():
                     if anvio.DEBUG:
                         self.run.info('CONSIDER taxonomy','/'.join(s.values()))
-                    assignation[key]=''
+                    assignation[level]=''
         return(assignation)
 
 
@@ -920,11 +862,10 @@ class SCGsTaxomy:
         return(reduce_taxonomy)
 
 
-    def solo_hits(self, SCGs_hit_per_gene):
+    def solo_hits(self, SCGs_hit_per_gene,cutoff_solo_hit=0.90):
         taxonomy = []
         for entry in SCGs_hit_per_gene.values():
-            if len(entry) == 1 and entry[0]['pident'] > 0.90:
-
+            if len(entry) == 1 and entry[0]['pident'] > cutoff_solo_hit:
                 taxonomy.append(self.taxonomy_dict[entry[0]['accession']])
         if taxonomy:
             assignation=self.assign_taxonomie_solo_hit(taxonomy)

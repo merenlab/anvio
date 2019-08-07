@@ -40,6 +40,7 @@ def migrate(db_path):
     profile_db.disconnect()
     progress.end()
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade profile database from version %s to version %s' % (current_version, next_version))
     parser.add_argument('profile_db', metavar = 'PROFILE_DB', help = "An anvi'o profile database of version %s" % current_version)
