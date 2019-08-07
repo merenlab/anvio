@@ -22,7 +22,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-
+__description__ = ("A script to add a 'DEFAULT' collection in an anvi'o pan or profile database with "
+                   "a bin named 'EVERYTHING' that describes all items available in the profile database.")
 
 pp = terminal.pretty_print
 run = terminal.Run()
@@ -56,8 +57,7 @@ def main(args):
     collections_table.append('DEFAULT', {'EVERYTHING': all_items})
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="A script to add a 'DEFAULT' collection in an anvi'o pan or profile database with a bin\
-                                                  named 'EVERYTHING' that describes all items available in the profile databse.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))

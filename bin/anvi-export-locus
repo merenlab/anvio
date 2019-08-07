@@ -47,6 +47,13 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db']
 __provides__ = ['locus-fasta']
+__description__ = ("This program helps you cut a 'locus' from a larger context. Anvi'o does this by "
+                   "starting from one gene, and extending its selection based on how many genes you "
+                   "want from its upstream or downstream in the contig its found. The first gene anvi'o "
+                   "focuses on is defined by you: you can either use a function name in any of the functional "
+                   "annotation databases or default or user-defined HMMs, or use a gene callers ID. If "
+                   "everything goes alright, you will get a separate contigs database for every matching "
+                   "gene anvi'o found in your master contigs database. Enjoy your mini contigs databases.")
 
 
 run = terminal.Run()
@@ -54,13 +61,7 @@ progress = terminal.Progress()
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="This program helps you cut a 'locus' from a larger context. Anvi'o does this by \
-                                                  starting from one gene, and extending its selection based on how many genes you \
-                                                  want from its upstream or downstream in the contig its found. The first gene anvi'o \
-                                                  focuses on is defined by you: you can either use a function name in any of the functional \
-                                                  annotation databases or default or user-defined HMMs, or use a gene callers ID. If \
-                                                  everything goes alright, you will get a separate contigs database for every matching \
-                                                  gene anvi'o found in your master contigs database. Enjoy your mini contigs databases.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('Essential INPUT')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))

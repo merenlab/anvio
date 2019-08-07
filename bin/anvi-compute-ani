@@ -36,6 +36,9 @@ __maintainer__ = "Ozcan Esen"
 __email__ = "ozcanesen@gmail.com"
 __requires__ = ['external-genomes', 'internal-genomes', 'pan-db']
 __provides__ = ['ani-txt', 'ani']
+__description__ = ("Export sequences from external genomes and compute ANI. If a Pan Database "
+                   "is given anvi'o will write computed output to misc data tables of Pan Database.")
+
 
 run = terminal.Run()
 
@@ -59,50 +62,7 @@ def main(args):
     program = genomedistance.ANI(args)
     temp_dir = program.get_fasta_sequences_dir()
     results = program.process(temp_dir)
-
-
-    # temp_dir = filesnpaths.get_temp_directory_path()
-
-    # run.info("Genomes found", len(genome_desc.genomes))
-    # run.info("Temporary FASTA output directory", temp_dir)
-    # run.info("Output directory", os.path.abspath(args.output_dir))
-    # ###
-    # hash_to_name = {}
-    # genome_names = set([])
-
-    # for genome_name in genome_desc.genomes:
-    #     genome_names.add(genome_name)
-    #     contigs_db_path = genome_desc.genomes[genome_name]['contigs_db_path']
-    #     hash_for_output_file = hashlib.sha256(genome_name.encode('utf-8')).hexdigest()
-    #     hash_to_name[hash_for_output_file] = genome_name
-
-    #     if 'bin_id' in genome_desc.genomes[genome_name]:
-    #         # Internal genome
-    #         bin_id = genome_desc.genomes[genome_name]['bin_id']
-    #         collection_id = genome_desc.genomes[genome_name]['collection_id']
-    #         profile_db_path = genome_desc.genomes[genome_name]['profile_db_path']
-
-    #         class Args: None
-    #         summary_args = Args()
-
-    #         summary_args.profile_db = profile_db_path
-    #         summary_args.contigs_db = contigs_db_path
-    #         summary_args.collection_name = collection_id
-    #         summary_args.quick = True
-
-    #         summary = summarizer.ProfileSummarizer(summary_args, r=terminal.Run(verbose=False))
-    #         summary.init()
-
-    #         bin_summary = summarizer.Bin(summary, bin_id)
-
-    #         with open(os.path.join(temp_dir, hash_for_output_file + '.fa'), 'w') as fasta:
-    #             fasta.write(bin_summary.get_bin_sequence())
-    #     else:
-    #         # External genome
-    #         utils.export_sequences_from_contigs_db(contigs_db_path, os.path.join(temp_dir, hash_for_output_file + '.fa'))
-    # results = program.run_command(temp_dir)
-    # results = restore_names_in_dict(results, hash_to_name)
-    # ###
+    genome_names = program.retrieve_genome_names()
 
     if anvio.DEBUG:
         import json
@@ -244,9 +204,7 @@ def main(args):
         shutil.rmtree(temp_dir)
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Export sequences from external genomes and compute\
-                                     ANI. If Pan Database is given anvi'o will write computed output\
-                                     to misc data tables of Pan Database.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT OPTIONS', "Tell anvi'o what you want.")
     groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
