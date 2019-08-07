@@ -3,6 +3,8 @@
 
 import os
 import hashlib
+from collections import OrderedDict
+
 
 import anvio
 import anvio.db as db
@@ -10,6 +12,9 @@ import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+import anvio.ccollections as ccollections
+
+import anvio.hmmops as hmmops
 
 from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
@@ -48,35 +53,33 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 class TablesForTaxoestimation(Table):
-    def __init__(self, db_path, run=run, progress=progress):
+    def __init__(self, db_path, run=run, progress=progress,profile_db_path=False):
 
         self.db_path = db_path
         self.run = run
         self.progress = progress
+        self.profile_db_path = profile_db_path
 
         utils.is_contigs_db(self.db_path)
+
+        if profile_db_path:
+            utils.is_profile_db(self.profile_db_path)
+            self.profile_db_path = profile_db_path
+
+            utils.is_profile_db_and_contigs_db_compatible(
+                self.profile_db_path, self.db_path)
+
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
 
 
 
 
-        self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
-
-
-        self.database._exec('''DELETE FROM %s''' % (t.blast_hits_table_name))
-        self.database._exec('''DELETE FROM %s''' % (t.taxon_names_table_name))
-
-        self.database.disconnect()
-
-
-
-    def alligment_result_to_congigs(self,diamond_output,taxonomy_dict,match_id):
+    def alignment_result_to_congigs(self,diamond_output,taxonomy_dict,match_id):
 
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-
-
+        taxonomy_dictonnary=self.database.get_table_as_dict(t.taxon_names_table_name)
 
         list_taxo=[]
         entries=[]
@@ -89,7 +92,7 @@ class TablesForTaxoestimation(Table):
                 entries+=[tuple([match_id,int(line_hit[0]),SCG,line_hit[1],line_hit[2],line_hit[11]])]
                 match_id+=1
 
-                if line_hit[1] not in list_taxo:
+                if line_hit[1] not in list_taxo and line_hit[1] not in taxonomy_dictonnary:
                     list_taxo+=[line_hit[1]]
 
         taxo_entries=[tuple([t_name_id]+list(taxonomy_dict[t_name_id].values())) for t_name_id in list_taxo]
@@ -99,5 +102,68 @@ class TablesForTaxoestimation(Table):
         self.database.disconnect()
         return match_id
 
-    def add_diamond_result_to_congigs(self):
-        print()
+    def taxonomy_estimation_to_congis(self,possibles_taxonomy):
+
+        self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        #entries=[for taxonomy in ]
+
+        self.database.insert_many(t.taxonomy_estimation_metagenome_name, possibles_taxonomy)
+        self.database.disconnect()
+
+    def taxonomy_estimation_to_profile(self,possibles_taxonomy):
+
+        self.bin_database = db.DB(self.profile_db_path, utils.get_required_version_for_db(self.profile_db_path))
+
+        #entries=[tuple([entry_id,self.collection_name,name,source]+list(taxonomy.values()))]
+
+        self.bin_database.insert_many(t.taxonomy_estimation_bin_name, possibles_taxonomy)
+        self.bin_database.disconnect()
+
+    def get_dic_id_bin(self,args):
+
+        self.bin_database = db.DB(self.profile_db_path, utils.get_required_version_for_db(self.profile_db_path))
+        self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        dic_id_bin={}
+
+        splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
+        run.info('Init', '%d splits in %d bin(s)' % (
+            sum([len(v) for v in list(splits_dict.values())]), len(splits_dict)))
+
+        s = hmmops.SequencesForHMMHits(self.db_path)
+
+        hits_in_splits, split_name_to_bin_id = s.get_hmm_hits_in_splits(splits_dict)
+
+        dic_genes_in_splits=self.database.get_table_as_dict("genes_in_splits")
+
+        for split in dic_genes_in_splits.values():
+            if split['split'] in split_name_to_bin_id:
+                if split_name_to_bin_id[split['split']] not in dic_id_bin:
+                    dic_id_bin[split_name_to_bin_id[split['split']]]=[split['gene_callers_id']]
+                else:
+                    dic_id_bin[split_name_to_bin_id[split['split']]]+=[split['gene_callers_id']]
+        self.bin_database.disconnect()
+        self.database.disconnect()
+
+        return(dic_id_bin)
+
+    def get_data_for_taxonomy_estimation(self):
+        self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+        try:
+            dic_blast_hits=self.database.get_table_as_dict(t.blast_hits_table_name)
+            taxonomy_dict =OrderedDict(self.database.get_table_as_dict(t.taxon_names_table_name))
+        except:
+            raise ConfigError("Anvi'o could not find the data for the taxonomic estimation,\
+                               you should try to run 'anvi-diamond-for-taxonomy'")
+
+        taxon_id_missing_taxonomy=[]
+        for blast_hit in dic_blast_hits.values():
+            if blast_hit['taxon_id'] not in taxonomy_dict:
+                taxon_id_missing_taxonomy+=blast_hit['taxon_id']
+        if len(taxon_id_missing_taxonomy):
+            print(taxon_id_missing_taxonomy)
+            raise ConfigError("it seams , some taxon id of blast hit are not linked to any phylogenie,\
+                               you should run 'anvi-diamond-for-taxonomy'.%d" % (','.join(taxon_id_missing_taxonomy)))
+
+        self.database.disconnect()
+        return(dic_blast_hits,taxonomy_dict)

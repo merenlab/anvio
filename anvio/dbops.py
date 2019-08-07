@@ -2812,7 +2812,6 @@ class ProfileDatabase:
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
-        self.db.create_table(t.blast_hits_table_name, t.blast_hits_table_structure, t.blast_hits_table_types)
         self.db.create_table(t.taxonomy_estimation_bin_name, t.taxonomy_estimation_bin_structure, t.taxonomy_estimation_bin_types)
 
         return self.db
