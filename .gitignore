@@ -10,4 +10,6 @@ anvio/data/misc/COG/
 anvio/data/misc/MODELLER/db/
 smtp_config.ini
 .snakemake
-anvio/data/misc/
+anvio/data/misc/SCG_test
+anvio/data/misc/SCG_old.tar.gz
+anvio/data/misc/SCG
