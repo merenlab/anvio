@@ -67,7 +67,7 @@ def timer(function):
 
 
 class SCGsdiamond:
-    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+    def __init__(self, args, run=run, progress=progress):
         self.args = args
         self.run = run
         self.progress = progress
@@ -77,16 +77,21 @@ class SCGsdiamond:
         self.taxonomy_database_path = A('taxonomy_database')
         self.write_buffer_size = int(A('write_buffer_size') if A('write_buffer_size') is not None else 500)
         self.db_path=A('contigs_db')
-        self.core=int(A('num_core_by_threads'))
+        self.core=A('num-threads')
+        self.num_process=A('contigs_db')
+
+        self.max_target_seqs=20
+        self.evalue=1e-05
+        self.min_pct_id=90
 
 
-        self.num_threads=args.num_threads
+        self.num_process=args.num_process
 
         if not self.core:
-            self.num_threads="2"
+            self.core="1"
 
-        if not args.num_threads:
-            self.num_threads="2"
+        if not args.num_process:
+            self.num_process="2"
 
         self.initialized = False
 
@@ -95,10 +100,15 @@ class SCGsdiamond:
         if args.metagenome:
             self.metagenome=True
 
+        self.source="unknow"
+
+
+
 
         if not self.taxonomy_file_path:
             self.taxonomy_file_path = os.path.join(os.path.dirname(
                 anvio.__file__), 'data/misc/SCG/mergedb/matching_taxonomy.tsv')
+            self.source="https://gtdb.ecogenomic.org/"
 
         if not self.taxonomy_database_path:
             self.taxonomy_database_path = os.path.join(os.path.dirname(
@@ -130,6 +140,8 @@ class SCGsdiamond:
                                                           [db for db in os.listdir(self.taxonomy_database_path) if db.endwith(".dmnd")])
 
         self.sanity_check()
+
+        self.taxonomy_dict=OrderedDict()
 
 
     def sanity_check(self):
@@ -207,13 +219,39 @@ class SCGsdiamond:
 
         num_listeprocess = len(hmm_sequences_dict_per_type)
 
+
+
+        aligners="Diamond"
+
+        #self.run.warning('', header='Aligment for %s ' % self.db_path, lc='green')
+        self.run.info('HMM PROFILE', "Bacteria 71")
+        self.run.info('Taxonomy', self.taxonomy_file_path)
+        self.run.info('Database reference', self.taxonomy_database_path)
+        self.run.info('Source', self.source)
+        self.run.info('Minimun level assigment', "species")
+        self.run.info('Number of SCGs', len(hmm_sequences_dict_per_type))
         self.run.info('SCGs', ','.join(list(hmm_sequences_dict_per_type.keys())))
 
-        self.progress.new('Computing SCGs aligments', progress_total_items=num_listeprocess)
-        #self.progress.update('Initializing %d threads...' % self.num_threads)
+
+        self.run.warning('', header='Parameters for aligments with %s for taxonomy' % aligners, lc='green')
+        self.run.info('Blast type', "Blastp")
+        self.run.info('Maximum number of target sequences', self.max_target_seqs)
+        self.run.info('Minimum bit score to report alignments', self.min_pct_id)
+        self.run.info('Number aligment running in same time', self.num_process)
+        self.run.info('Number of CPUs will be used for each aligment',self.core)
+
+        """tmp_dir = filesnpaths.get_temp_directory_path()
+
+        self.hmm_scan_output = os.path.join(tmp_dir, 'hmm.output')
+        self.hmm_scan_hits = os.path.join(tmp_dir, 'hmm.hits')"""
+
+
 
         self.tables_for_taxonomy = TablesForTaxoestimation(self.db_path, run, progress)
         self.tables_for_taxonomy.delete_contents_of_table(t.blast_hits_table_name)
+
+        self.progress.new('Computing SCGs aligments', progress_total_items=num_listeprocess)
+        self.progress.update('Initializing %d process...' % self.num_process)
 
         manager = multiprocessing.Manager()
         input_queue = manager.Queue()
@@ -236,14 +274,13 @@ class SCGsdiamond:
             input_queue.put([SCG,sequence])
 
         workers = []
-        for i in range(0, self.num_threads):
-            #self.progress.update('Initializing %d core...' % self.core)
+        for i in range(0, int(self.num_process)):
+
             worker = multiprocessing.Process(target=self.get_raw_blast_hits_multi,
-                args=(input_queue,output_queue,))
+                args=(input_queue,output_queue))
 
             workers.append(worker)
             worker.start()
-
 
         finish_process = 0
         while finish_process < num_listeprocess:
@@ -257,9 +294,8 @@ class SCGsdiamond:
                     diamond_output=[]
 
                 finish_process += 1
-                #self.progress.increment(increment_to=finish_process)
-                #progress.update("finish_process")
-                #progress.update("Processed %d of %d SGCs aligment in %d threads with %d cores." % (finish_process, num_listeprocess,self.num_threads,self.core))
+                self.progress.increment(increment_to=finish_process)
+                progress.update("Processed %s of %s SGCs aligment in %s threads with %s cores." % (finish_process, num_listeprocess,self.num_process,self.core))
 
             except KeyboardInterrupt:
                 print("Anvi'o profiler recieved SIGINT, terminating all processes...")
@@ -269,31 +305,30 @@ class SCGsdiamond:
             worker.terminate()
 
 
-        self.tables_for_taxonomy.alignment_result_to_congigs(diamond_output,self.taxonomy_dict,match_id)
-
+        match_id=self.tables_for_taxonomy.alignment_result_to_congigs(diamond_output,self.taxonomy_dict,match_id)
         progress.end()
+        self.run.info('Number of match selected',match_id)
 
 
-    def get_raw_blast_hits_multi(self, input_queue,output_queue, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
+    def get_raw_blast_hits_multi(self, input_queue,output_queue):
 
         while True:
             d = input_queue.get(True)
             db_path = self.SCG_DB_PATH(d[0])
             diamond = Diamond(db_path,run=run_quiet, progress= progress_quiet)
-            diamond.max_target_seqs = max_target_seqs
-            diamond.evalue = evalue
-            diamond.min_pct_id = min_pct_id
-            diamond.num_threads = self.core
+            diamond.max_target_seqs = self.max_target_seqs
+            diamond.evalue = self.evalue
+            diamond.min_pct_id = self.min_pct_id
+            diamond.num_process = self.core
 
             diamond_output = diamond.blastp_stdin_multi(d[1])
-
 
             output_queue.put([d[0],diamond_output])
 
 
 class SCGsTaxomy:
 
-    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+    def __init__(self, args, run=run, progress=progress):
         self.args = args
         self.run = run
         self.progress = progress
@@ -310,6 +345,8 @@ class SCGsTaxomy:
         self.bin_id=args.bin_id
 
         self.metagenome=False
+
+
 
 
         if args.metagenome:
@@ -371,14 +408,14 @@ class SCGsTaxomy:
 
 
         if self.profile_db_path and not self.metagenome:
-            self.run.info('Assignment level', "Bin")
+            self.run.info('Taxonomy assignment for', "Bin")
 
 
             self.dic_id_bin = self.tables_for_taxonomy.get_dic_id_bin(self.args)
 
 
         else:
-            self.run.info('Assignment level', "Gene")
+            self.run.info('Taxonomy assignment for', "Gene")
 
         for query in self.dic_blast_hits.values():
 
@@ -411,6 +448,15 @@ class SCGsTaxomy:
     def estimate_taxonomy(self,source="GTDB"):
 
         self.init()
+
+
+        self.run.warning('', header='Taxonomy estimation for %s' % self.db_path, lc='green')
+        self.run.info('HMM PROFILE', "Bacteria 71")
+        self.run.info('Source', source)
+        self.run.info('Minimun level assigment', "species")
+
+
+
 
         possibles_taxonomy=[]
         entries_db=[]
@@ -826,7 +872,7 @@ class SCGsTaxomy:
             for level in taxon:
                 if taxon[level] not in assignation.values():
                     if anvio.DEBUG:
-                        self.run.info('CONSIDER taxonomy','/'.join(s.values()))
+                        self.run.info('CONSIDER taxonomy','/'.join(taxon[level].values()))
                     assignation[level]=''
         return(assignation)
 

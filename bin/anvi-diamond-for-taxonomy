@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
     groupH.add_argument('--metagenome', default=False, action="store_true", help="metagenomes")
     groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    groupH.add_argument('--num-core-by-threads', default=2, help="num-core-by-threads")
+    groupH.add_argument('--num-process', default=2, help="num-process")
 
     groupH.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size'))
     groupH.add_argument(*anvio.A('gene-names'), **anvio.K('gene-names'))

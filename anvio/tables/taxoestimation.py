@@ -73,9 +73,6 @@ class TablesForTaxoestimation(Table):
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
 
 
-
-
-
     def alignment_result_to_congigs(self,diamond_output,taxonomy_dict,match_id):
 
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
@@ -105,17 +102,12 @@ class TablesForTaxoestimation(Table):
     def taxonomy_estimation_to_congis(self,possibles_taxonomy):
 
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        #entries=[for taxonomy in ]
-
         self.database.insert_many(t.taxonomy_estimation_metagenome_name, possibles_taxonomy)
         self.database.disconnect()
 
     def taxonomy_estimation_to_profile(self,possibles_taxonomy):
 
         self.bin_database = db.DB(self.profile_db_path, utils.get_required_version_for_db(self.profile_db_path))
-
-        #entries=[tuple([entry_id,self.collection_name,name,source]+list(taxonomy.values()))]
-
         self.bin_database.insert_many(t.taxonomy_estimation_bin_name, possibles_taxonomy)
         self.bin_database.disconnect()
 
