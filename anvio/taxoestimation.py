@@ -462,6 +462,8 @@ class SCGsTaxomy:
         entries_db=[]
 
         entry_id=0
+
+        output_taxonomy="Bin_id\tdomain\tphylum\tclass\torder\tfamily\tgenus\tspecies\n"
         for name, SCGs_hit_per_gene in self.hits_per_gene.items():
 
             taxonomy = self.get_consensus_taxonomy(
@@ -476,6 +478,7 @@ class SCGsTaxomy:
                     possibles_taxonomy.append(str(list(taxonomy.values())[-1]))
 
                 entries_db+=[(tuple([name,list(SCGs_hit_per_gene.keys())[0],source]+list(taxonomy.values())))]
+                output_taxonomy+=name+'\t'.join(list(taxonomy.values()))
 
             if self.profile_db_path:
 
@@ -487,6 +490,7 @@ class SCGsTaxomy:
 
                 entries_db+=[(tuple([entry_id,self.collection_name,name,source]+list(taxonomy.values())))]
                 entry_id+=1
+                output_taxonomy+=name+'\t'.join(list(taxonomy.values()))
 
         if self.metagenome or not self.profile_db_path:
             if len(possibles_taxonomy):
@@ -497,6 +501,8 @@ class SCGsTaxomy:
         if self.profile_db_path:
 
             self.tables_for_taxonomy.taxonomy_estimation_to_profile(entries_db)
+        with open("taxonomy.tsv","a") as output:
+            output.write(output_taxonomy)
 
 
     def show_hits(self, name, gene_name, hits):
