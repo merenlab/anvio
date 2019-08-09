@@ -253,7 +253,7 @@ class SCGsdiamond:
         self.tables_for_taxonomy.delete_contents_of_table(t.blast_hits_table_name)
 
         self.progress.new('Computing SCGs aligments', progress_total_items=num_listeprocess)
-        self.progress.update('Initializing %d process...' % self.num_process)
+        self.progress.update('Initializing %d process...' % int(self.num_process))
 
         manager = multiprocessing.Manager()
         input_queue = manager.Queue()
@@ -471,7 +471,7 @@ class SCGsTaxomy:
 
         entry_id=0
 
-        output_taxonomy=self.identifier+"\tdomain\tphylum\tclass\torder\tfamily\tgenus\tspecies\n"
+        stdout_taxonomy=[]
         possibles_taxonomy.append([self.identifier,'domain','phylum','class','order','family','genus','species'])
 
         for name, SCGs_hit_per_gene in self.hits_per_gene.items():
@@ -484,30 +484,32 @@ class SCGsTaxomy:
                 continue
 
             if self.metagenome or not self.profile_db_path:
-                #if str(list(taxonomy.values())[-1]) not in possibles_taxonomy and str(list(taxonomy.values())[-1]) :
+                if str(list(taxonomy.values())[-1]) not in stdout_taxonomy and str(list(taxonomy.values())[-1]) :
+                    stdout_taxonomy.append(str(list(taxonomy.values())[-1]))
+
                 possibles_taxonomy.append([name]+list(taxonomy.values()))
 
                 entries_db+=[(tuple([name,list(SCGs_hit_per_gene.keys())[0],source]+list(taxonomy.values())))]
-                output_taxonomy+=name+'\t'+'\t'.join(list(taxonomy.values()))+'\n'
+                #output_taxonomy+=name+'\t'+'\t'.join(list(taxonomy.values()))+'\n'
 
             if self.profile_db_path:
 
                 possibles_taxonomy.append([name]+list(taxonomy.values()))
 
 
-                '''self.run.info('Bin name',
+                self.run.info('Bin name',
                               name, nl_before=1)
                 self.run.info('estimate taxonomy',
-                              '/'.join(list(taxonomy.values())))'''
+                              '/'.join(list(taxonomy.values())))
 
 
                 entries_db+=[(tuple([entry_id,self.collection_name,name,source]+list(taxonomy.values())))]
                 entry_id+=1
-                output_taxonomy+=name+'\t'+'\t'.join(list(taxonomy.values()))+'\n'
+                #output_taxonomy+=name+'\t'+'\t'.join(list(taxonomy.values()))+'\n'
 
         if self.metagenome or not self.profile_db_path:
             if len(possibles_taxonomy):
-                """self.run.info('Possible presence ','|'.join(list(possibles_taxonomy)))"""
+                self.run.info('Possible presence ','|'.join(list(stdout_taxonomy)))
 
                 self.tables_for_taxonomy.taxonomy_estimation_to_congis(entries_db)
 
