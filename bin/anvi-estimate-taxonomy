@@ -56,6 +56,7 @@ if __name__ == '__main__':
     groupH.add_argument(*anvio.A('taxonomy-database'),** anvio.K('taxonomy-database'))
     # , help="cutoff for consider taxonomie to the best taxonomie score . Default value 0.98")
     groupH.add_argument(*anvio.A('methode'), **anvio.K('methode'))
+    groupH.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     groupH.add_argument(*anvio.A('cut_off_methode'), **anvio.K('cut_off_methode'))
     parser.add_argument('--metagenome', default=False, action="store_true", help="metagenomes")
     groupB = parser.add_argument_group('INPUT OPTION #2: CONTIGS DB + PROFLIE DB', "You can also work with anvi'o profile databases and collections\

@@ -13,6 +13,8 @@ from collections import Counter
 
 import anvio
 import pickle
+from anvio.drivers.diamond import Diamond
+import pandas as pd
 from collections import OrderedDict
 
 from tabulate import tabulate
@@ -32,7 +34,6 @@ from anvio.tables.taxoestimation import TablesForTaxoestimation
 import anvio.tables as t
 from anvio.dbops import ContigsSuperclass
 from anvio.drivers import Aligners, driver_modules
-from anvio.drivers.diamond import Diamond
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -166,6 +167,7 @@ class SCGsdiamond:
                                your setup seems to be missing %d databases required for everything to work\
                                with the current genes configuration of this class. Here are the list of\
                                genes for which we are missing databases: '%s'." % (', '.join(missing_databases)))
+
 
     def init(self):
         if self.initialized:
@@ -336,7 +338,7 @@ class SCGsTaxomy:
         def A(x): return args.__dict__[x] if x in args.__dict__ else None
         self.db_path=A('contigs_db')
         self.profile_db_path=A('profile_db')
-        #self.metagenome=A('profile_db')
+        self.output_file_path=A('output_file')
 
         self.collection_name=args.collection_name
 
@@ -402,20 +404,24 @@ class SCGsTaxomy:
 
     def init(self):
 
+        filesnpaths.is_output_file_writable(self.output_file_path)
+
+
         self.tables_for_taxonomy = TablesForTaxoestimation(self.db_path, run, progress, self.profile_db_path)
 
         self.dic_blast_hits,self.taxonomy_dict=self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
 
 
         if self.profile_db_path and not self.metagenome:
-            self.run.info('Taxonomy assignment for', "Bin")
+            self.identifier="Bin_id"
 
 
             self.dic_id_bin = self.tables_for_taxonomy.get_dic_id_bin(self.args)
 
 
         else:
-            self.run.info('Taxonomy assignment for', "Gene")
+            self.identifier="Gene_id"
+
 
         for query in self.dic_blast_hits.values():
 
@@ -442,6 +448,8 @@ class SCGsTaxomy:
 
             self.hits_per_gene[var][query['gene_name']] = self.hits_per_gene[var][query['gene_name']] + hit
 
+
+
         self.initialized = True
 
 
@@ -454,8 +462,8 @@ class SCGsTaxomy:
         self.run.info('HMM PROFILE', "Bacteria 71")
         self.run.info('Source', source)
         self.run.info('Minimun level assigment', "species")
-
-
+        self.run.info('Taxonomy assignment for', self.identifier)
+        self.run.info('output file for taxonomy', self.output_file_path)
 
 
         possibles_taxonomy=[]
@@ -463,7 +471,9 @@ class SCGsTaxomy:
 
         entry_id=0
 
-        output_taxonomy="Bin_id\tdomain\tphylum\tclass\torder\tfamily\tgenus\tspecies\n"
+        output_taxonomy=self.identifier+"\tdomain\tphylum\tclass\torder\tfamily\tgenus\tspecies\n"
+        possibles_taxonomy.append([self.identifier,'domain','phylum','class','order','family','genus','species'])
+
         for name, SCGs_hit_per_gene in self.hits_per_gene.items():
 
             taxonomy = self.get_consensus_taxonomy(
@@ -474,35 +484,55 @@ class SCGsTaxomy:
                 continue
 
             if self.metagenome or not self.profile_db_path:
-                if str(list(taxonomy.values())[-1]) not in possibles_taxonomy and str(list(taxonomy.values())[-1]) :
-                    possibles_taxonomy.append(str(list(taxonomy.values())[-1]))
+                #if str(list(taxonomy.values())[-1]) not in possibles_taxonomy and str(list(taxonomy.values())[-1]) :
+                possibles_taxonomy.append([name]+list(taxonomy.values()))
 
                 entries_db+=[(tuple([name,list(SCGs_hit_per_gene.keys())[0],source]+list(taxonomy.values())))]
-                output_taxonomy+=name+'\t'.join(list(taxonomy.values()))
+                output_taxonomy+=name+'\t'+'\t'.join(list(taxonomy.values()))+'\n'
 
             if self.profile_db_path:
 
-                self.run.info('Bin name',
+                possibles_taxonomy.append([name]+list(taxonomy.values()))
+
+
+                '''self.run.info('Bin name',
                               name, nl_before=1)
                 self.run.info('estimate taxonomy',
-                              '/'.join(list(taxonomy.values())))
+                              '/'.join(list(taxonomy.values())))'''
 
 
                 entries_db+=[(tuple([entry_id,self.collection_name,name,source]+list(taxonomy.values())))]
                 entry_id+=1
-                output_taxonomy+=name+'\t'.join(list(taxonomy.values()))
+                output_taxonomy+=name+'\t'+'\t'.join(list(taxonomy.values()))+'\n'
 
         if self.metagenome or not self.profile_db_path:
             if len(possibles_taxonomy):
-                self.run.info('Possible presence ','|'.join(list(possibles_taxonomy)))
+                """self.run.info('Possible presence ','|'.join(list(possibles_taxonomy)))"""
 
                 self.tables_for_taxonomy.taxonomy_estimation_to_congis(entries_db)
 
         if self.profile_db_path:
-
             self.tables_for_taxonomy.taxonomy_estimation_to_profile(entries_db)
-        with open("taxonomy.tsv","a") as output:
-            output.write(output_taxonomy)
+
+
+        with open(self.output_file_path,"w") as output:
+            output_taxonomy=['\t'.join(line) for line in possibles_taxonomy]
+            output.write('\n'.join(output_taxonomy))
+
+        if anvio.DEBUG:
+            self.show_taxonomy_estimation(possibles_taxonomy)
+
+    def show_taxonomy_estimation(self, possibles_taxonomy):
+        self.run.warning(None, header='Taxonomy estimation' , lc="yellow")
+
+
+        possibles_taxonomy_dataframe=pd.DataFrame(possibles_taxonomy,columns=possibles_taxonomy[0])
+        possibles_taxonomy_dataframe.set_index(self.identifier, inplace=True)
+        possibles_taxonomy_dataframe=possibles_taxonomy_dataframe.sort_values(by=['domain','phylum','class','order','family','genus','species'],ascending=False)
+
+
+        print(tabulate(possibles_taxonomy_dataframe,headers="firstrow",
+                       tablefmt="fancy_grid", numalign="right"))
 
 
     def show_hits(self, name, gene_name, hits):
@@ -530,6 +560,8 @@ class SCGsTaxomy:
 
         print(tabulate(table, headers=header,
                        tablefmt="fancy_grid", numalign="right"))
+
+
 
 
     def show_matrix_rank(self, name, matrix, list_position_entry, list_position_ribosomal):
