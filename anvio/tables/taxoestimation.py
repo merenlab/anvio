@@ -86,8 +86,12 @@ class TablesForTaxoestimation(Table):
             for line_hit_to_split in result[1].split('\n')[1:-2]:
                 line_hit=line_hit_to_split.split('\t')
 
+                try:
+                    entries+=[tuple([match_id,line_hit[0],SCG,line_hit[1],line_hit[2],line_hit[11]])]
+                except:
+                    print("error parsing output aligment: %s" % (' '.join(line_hit)))
+                    continue
 
-                entries+=[tuple([match_id,line_hit[0],SCG,line_hit[1],line_hit[2],line_hit[11]])]
 
 
                 match_id+=1
