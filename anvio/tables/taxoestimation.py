@@ -86,7 +86,10 @@ class TablesForTaxoestimation(Table):
             for line_hit_to_split in result[1].split('\n')[1:-2]:
                 line_hit=line_hit_to_split.split('\t')
 
-                entries+=[tuple([match_id,int(line_hit[0]),SCG,line_hit[1],line_hit[2],line_hit[11]])]
+
+                entries+=[tuple([match_id,line_hit[0],SCG,line_hit[1],line_hit[2],line_hit[11]])]
+
+
                 match_id+=1
 
                 if line_hit[1] not in list_taxo and line_hit[1] not in taxonomy_dictonnary:
