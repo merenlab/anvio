@@ -78,7 +78,7 @@ class SCGsdiamond:
         self.taxonomy_database_path = A('taxonomy_database')
         self.write_buffer_size = int(A('write_buffer_size') if A('write_buffer_size') is not None else 500)
         self.db_path=A('contigs_db')
-        self.core=A('num-threads')
+        self.core=A('num_threads')
         self.num_process=A('contigs_db')
 
         self.max_target_seqs=20
