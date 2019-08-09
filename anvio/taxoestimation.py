@@ -297,7 +297,7 @@ class SCGsdiamond:
 
                 finish_process += 1
                 self.progress.increment(increment_to=finish_process)
-                progress.update("Processed %s of %s SGCs aligment in %s threads with %s cores." % (finish_process, num_listeprocess,self.num_process,self.core))
+                progress.update("Processed %s of %s SGCs aligment in %s threads with %s cores." % (finish_process, num_listeprocess,int(self.num_process),self.core))
 
             except KeyboardInterrupt:
                 print("Anvi'o profiler recieved SIGINT, terminating all processes...")
