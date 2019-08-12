@@ -427,6 +427,9 @@ class SCGsTaxomy:
         else:
             self.identifier="Gene_id"
 
+
+        self.progress.new('Association alimgent result by %s' % self.identifier, progress_total_items=len(self.dic_blast_hits))
+
         for query in self.dic_blast_hits.values():
 
             if self.profile_db_path and not self.metagenome:
@@ -451,6 +454,8 @@ class SCGsTaxomy:
                 self.hits_per_gene[var][query['gene_name']]=[]
 
             self.hits_per_gene[var][query['gene_name']] = self.hits_per_gene[var][query['gene_name']] + hit
+            self.progress.increment()
+        self.progress.end()
 
 
 
@@ -899,20 +904,19 @@ class SCGsTaxomy:
         try:
             matrix, matrix_pident, matrixlist_position_entry, list_position_ribosomal = self.make_rank_matrix(
                 name, SCGs_hit_per_gene)
+
+            taxonomy= self.make_list_taxonomy(
+                matrix_pident, matrix, matrixlist_position_entry,list_position_ribosomal)
+
+            assignation_reduce = self.reduce_assignation_level(taxonomy)
+            assignation = self.assign_taxonomie_solo_hit(assignation_reduce)
+
         except:
             self.run.warning(SCGs_hit_per_gene, header='Fail matrix')
             assignation=[]
-            return (assignation)
 
-
-
-        taxonomy= self.make_list_taxonomy(
-            matrix_pident, matrix, matrixlist_position_entry,list_position_ribosomal)
-
-        assignation_reduce = self.reduce_assignation_level(taxonomy)
-        assignation = self.assign_taxonomie_solo_hit(assignation_reduce)
-
-        return(assignation)
+        finally:
+            return(assignation)
 
     def assign_taxonomie_solo_hit(self, taxonomy):
         if not taxonomy or not taxonomy[0]:
