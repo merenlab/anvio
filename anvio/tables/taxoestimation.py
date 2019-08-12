@@ -84,13 +84,14 @@ class TablesForTaxoestimation(Table):
         for result in diamond_output :
             SCG=result[0]
             for line_hit_to_split in result[1].split('\n')[1:-2]:
-                line_hit=line_hit_to_split.split('\t')
+                if not line_hit_to_split.startswith('Query') or len(line_hit_to_split):
+                    line_hit=line_hit_to_split.split('\t')
 
-                try:
-                    entries+=[tuple([match_id,line_hit[0],SCG,line_hit[1],line_hit[2],line_hit[11]])]
-                except:
-                    print("error parsing output aligment: %s" % (' '.join(line_hit)))
-                    continue
+                    try:
+                        entries+=[tuple([match_id,line_hit[0],SCG,line_hit[1],line_hit[2],line_hit[11]])]
+                    except:
+                        print("error parsing output aligment: %s" % (' '.join(line_hit)))
+                        continue
 
 
 
@@ -128,11 +129,20 @@ class TablesForTaxoestimation(Table):
         run.info('Init', '%d splits in %d bin(s)' % (
             sum([len(v) for v in list(splits_dict.values())]), len(splits_dict)))
 
+        self.progress.new('Load HMM resulst')
+
+
         s = hmmops.SequencesForHMMHits(self.db_path)
 
         hits_in_splits, split_name_to_bin_id = s.get_hmm_hits_in_splits(splits_dict)
 
         dic_genes_in_splits=self.database.get_table_as_dict("genes_in_splits")
+
+        self.progress.end()
+
+        self.progress.new('Aligment result by Bin', progress_total_items=len(dic_genes_in_splits))
+
+
 
         for split in dic_genes_in_splits.values():
             if split['split'] in split_name_to_bin_id:
@@ -140,6 +150,10 @@ class TablesForTaxoestimation(Table):
                     dic_id_bin[split_name_to_bin_id[split['split']]]=[split['gene_callers_id']]
                 else:
                     dic_id_bin[split_name_to_bin_id[split['split']]]+=[split['gene_callers_id']]
+            self.progress.increment()
+        self.progress.end()
+
+
         self.bin_database.disconnect()
         self.database.disconnect()
 

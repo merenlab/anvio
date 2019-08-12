@@ -296,6 +296,7 @@ class SCGsdiamond:
                     diamond_output=[]
 
                 finish_process += 1
+
                 self.progress.increment(increment_to=finish_process)
                 progress.update("Processed %s of %s SGCs aligment in %s threads with %s cores." % (finish_process, num_listeprocess,int(self.num_process),self.core))
 
@@ -411,6 +412,10 @@ class SCGsTaxomy:
 
         self.dic_blast_hits,self.taxonomy_dict=self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
 
+        if not (self.dic_blast_hits):
+            raise ConfigError("Anvi'o can't make a taxonomy estimation because aligment didn't return any match or you forgot to run 'anvi-diamond-for-taxonomy'.")
+            self.run.info('taxonomy estimation not possible for:', self.db_path)
+
 
         if self.profile_db_path and not self.metagenome:
             self.identifier="Bin_id"
@@ -421,7 +426,6 @@ class SCGsTaxomy:
 
         else:
             self.identifier="Gene_id"
-
 
         for query in self.dic_blast_hits.values():
 
@@ -481,6 +485,7 @@ class SCGsTaxomy:
 
             if not taxonomy:
                 self.run.info('taxonomy estimation not possible for:', name)
+                possibles_taxonomy.append([name]+["NA"]*7)
                 continue
 
             if self.metagenome or not self.profile_db_path:
@@ -737,7 +742,7 @@ class SCGsTaxomy:
         return(dico_position_entry)
 
 
-    def make_list_position_entry(self, SCGs_hit_per_gene, dico_position_entry, list_position_ribosomal, matchinggenes, max_number_of_individues=10, percentage_of_appearance=0.5):
+    def make_list_position_entry(self, SCGs_hit_per_gene, dico_position_entry, list_position_ribosomal, matchinggenes, max_number_of_individues=10, percentage_of_appearance=0):
         list_position_entry = []
         number_of_individue = 0
         len_position = len(list_position_ribosomal)
@@ -751,9 +756,8 @@ class SCGsTaxomy:
 
         list_position_ribosomal = self.make_list_position_ribosomal(
             matchinggenes, SCGs_hit_per_gene, list_position_entry)
-        if not len(list_position_entry) or not len(list_position_ribosomal) :
-            raise ConfigError("Anvi'o fail to create array for alignment rank, at this point,\
-                               it's probably not your fault, please contact quentin.clayssen@gmail.com")
+
+
         return(list_position_entry, list_position_ribosomal)
 
 
@@ -857,6 +861,7 @@ class SCGsTaxomy:
         list_position_entry, list_position_ribosomal = self.creat_list_position(
             SCGs_hit_per_gene, matchinggenes)
 
+
         emptymatrix = self.make_emptymatrix(
             list_position_entry, list_position_ribosomal)
 
@@ -891,10 +896,15 @@ class SCGsTaxomy:
 
 
     def rank_assignement(self, SCGs_hit_per_gene, name):
+        try:
+            matrix, matrix_pident, matrixlist_position_entry, list_position_ribosomal = self.make_rank_matrix(
+                name, SCGs_hit_per_gene)
+        except:
+            self.run.warning(SCGs_hit_per_gene, header='Fail matrix')
+            assignation=[]
+            return (assignation)
 
-        matrix, matrix_pident, matrixlist_position_entry, list_position_ribosomal = self.make_rank_matrix(
-            name, SCGs_hit_per_gene)
-        start_make_list_taxonomy = time.perf_counter()
+
 
         taxonomy= self.make_list_taxonomy(
             matrix_pident, matrix, matrixlist_position_entry,list_position_ribosomal)
