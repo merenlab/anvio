@@ -7,6 +7,8 @@ import re
 import sys
 import time
 import copy
+import traceback
+
 
 import multiprocessing
 from collections import Counter
@@ -19,7 +21,8 @@ from collections import OrderedDict
 
 from tabulate import tabulate
 import anvio.db as db
-
+import pandas as pd
+import numpy as np
 
 import anvio.ccollections as ccollections
 import anvio.fastalib as f
@@ -484,6 +487,9 @@ class SCGsTaxomy:
         possibles_taxonomy.append([self.identifier,'domain','phylum','class','order','family','genus','species'])
 
         for name, SCGs_hit_per_gene in self.hits_per_gene.items():
+            #print(SCGs_hit_per_gene)
+
+            """SCGs_hit_per_gene={'Ribosomal_S9': [{'accession': 'RS_GCF_000154805.1', 'pident': 100.0, 'bitscore': 235.7}, {'accession': 'RS_GCF_000686665.1', 'pident': 96.7, 'bitscore': 230.7}, {'accession': 'RS_GCF_000508865.1', 'pident': 96.7, 'bitscore': 230.7}, {'accession': 'RS_GCF_000154485.1', 'pident': 97.5, 'bitscore': 229.9}, {'accession': 'RS_GCF_900102365.1', 'pident': 95.9, 'bitscore': 228.0}, {'accession': 'RS_GCF_002160495.1', 'pident': 93.4, 'bitscore': 223.4}], 'Ribosomal_L13': [{'accession': 'RS_GCF_000154805.1', 'pident': 100.0, 'bitscore': 287.7}, {'accession': 'RS_GCF_000686665.1', 'pident': 98.6, 'bitscore': 283.1}, {'accession': 'RS_GCF_000508865.1', 'pident': 98.6, 'bitscore': 283.1}, {'accession': 'RS_GCF_000154485.1', 'pident': 96.4, 'bitscore': 279.6}, {'accession': 'RS_GCF_900102365.1', 'pident': 95.7, 'bitscore': 277.7}, {'accession': 'RS_GCF_002160495.1', 'pident': 91.3, 'bitscore': 265.0}], 'Ribosomal_S11': [{'accession': 'RS_GCF_002160025.1', 'pident': 90.6, 'bitscore': 201.1}, {'accession': 'RS_GCF_002160015.1', 'pident': 90.6, 'bitscore': 199.1}, {'accession': 'RS_GCF_001305115.1', 'pident': 90.6, 'bitscore': 198.0}, {'accession': 'RS_GCF_002159845.1', 'pident': 90.6, 'bitscore': 198.0}], 'Ribosomal_L16': [{'accession': 'GB_GCA_002437415.1', 'pident': 90.5, 'bitscore': 235.7}, {'accession': 'RS_GCF_000154325.1', 'pident': 90.5, 'bitscore': 235.7}, {'accession': 'RS_GCF_900119155.1', 'pident': 90.5, 'bitscore': 234.6}]}"""
 
             taxonomy = self.get_consensus_taxonomy(
                 SCGs_hit_per_gene, name)
@@ -531,8 +537,8 @@ class SCGsTaxomy:
             output_taxonomy=['\t'.join(line) for line in possibles_taxonomy]
             output.write('\n'.join(output_taxonomy))
 
-        if anvio.DEBUG:
-            self.show_taxonomy_estimation(possibles_taxonomy)
+
+        self.show_taxonomy_estimation(possibles_taxonomy)
 
     def show_taxonomy_estimation(self, possibles_taxonomy):
         self.run.warning(None, header='Taxonomy estimation' , lc="yellow")
@@ -576,7 +582,7 @@ class SCGsTaxomy:
 
 
 
-    def show_matrix_rank(self, name, matrix, list_position_entry, list_position_ribosomal):
+    def show_matrix_rank_orginal(self, name, matrix, list_position_entry, list_position_ribosomal):
         show_matrix = [sublist[:6] for sublist in matrix]
         show_list_position_ribosomal = list_position_ribosomal[:6]
         header = show_list_position_ribosomal
@@ -598,6 +604,21 @@ class SCGsTaxomy:
             show_list_position_ribosomal = show_list_position_ribosomal[6:]
             self.show_matrix_rank(name, matrix, show_matrix,
                                   show_list_position_ribosomal)
+
+    def show_matrix_rank(self, name, matrix, list_position_entry, list_position_ribosomal):
+
+        self.run.warning(None, header='%s' % (name), lc="blue")
+        print(tabulate(matrix, headers=header,
+                       tablefmt="fancy_grid", numalign="right"))
+        if len(show_list_position_ribosomal[6:]):
+            show_matrix = [sublist[6:] for sublist in show_matrix]
+            show_list_position_ribosomal = show_list_position_ribosomal[6:]
+            self.show_matrix_rank(name, matrix, show_matrix,
+                                  show_list_position_ribosomal)
+
+        print(tabulate(matrix,headers="firstrow",
+                       tablefmt="fancy_grid", numalign="right"))
+
 
 
     def get_consensus_taxonomy(self, SCGs_hit_per_gene, name):
@@ -751,12 +772,12 @@ class SCGsTaxomy:
         list_position_entry = []
         number_of_individue = 0
         len_position = len(list_position_ribosomal)
-        key_value = sorted(dico_position_entry,
+        order_list_individue = sorted(dico_position_entry,
                            key=lambda x: dico_position_entry[x], reverse=True)
-        for key in key_value:
+        for individu in order_list_individue:
             # parameter number of individue in the first matrix "j <= 5 " and appear in minimun 50% of blast
-            if number_of_individue< max_number_of_individues and dico_position_entry[key] > (len_position * percentage_of_appearance):
-                list_position_entry.append(key)
+            if number_of_individue< max_number_of_individues and dico_position_entry[individu] > (len_position * percentage_of_appearance):
+                list_position_entry.append(individu)
                 number_of_individue += 1
 
         list_position_ribosomal = self.make_list_position_ribosomal(
@@ -789,29 +810,14 @@ class SCGsTaxomy:
         list_position_entry = []
         list_position_ribosomal = self.make_list_position_ribosomal(
             matchinggenes, SCGs_hit_per_gene, list_position_entry)
+
+
         list_position_entry, last_list_position_ribosomal = self.make_list_position_entry(
             SCGs_hit_per_gene, dico_position_entry, list_position_ribosomal, matchinggenes)
+        print(list_position_entry)
+        #if not len(list_position_ribosomal):
 
         return(list_position_entry, last_list_position_ribosomal)
-
-
-    def emptylistmaker(self, numbr_genes, default_value='NA'):
-        listofempty = [default_value] * numbr_genes
-        return listofempty
-
-
-    def make_emptymatrix(self, list_position_entry, list_position_ribosomal):
-        matrix = []
-        numbr_genes = len(list_position_ribosomal)
-        maxposition = len(list_position_entry)
-        i = 0
-        # do 'matrix=[(['NA'] *len(list_position_ribosomal))]*(len(dico_position_entry))' don't work.\
-        # subsitution will impact all items on the same index in lists
-        while i < maxposition:
-            emptylist = self.emptylistmaker(numbr_genes)
-            matrix.append(emptylist)
-            i += 1
-        return(matrix)
 
 
     def fill_matrix(self, name, emptymatrix, SCGs_hit_per_gene, list_position_entry,
@@ -840,11 +846,8 @@ class SCGsTaxomy:
 
 
     def fill_position_matrix(self, emptymatrix, emptymatrix_ident, list_position_entry, list_position_ribosomal, pident, rank, entry, hit):
-        emptymatrix[list_position_entry.index(
-            entry['accession'])][list_position_ribosomal.index(hit)] = rank
-
-        emptymatrix_ident[list_position_entry.index(
-            entry['accession'])][list_position_ribosomal.index(hit)] = float(pident)
+        emptymatrix.at[entry['accession'], hit]=rank
+        emptymatrix_ident.at[entry['accession'], hit]= float(pident)
 
         return(emptymatrix,emptymatrix_ident)
 
@@ -859,6 +862,17 @@ class SCGsTaxomy:
             j+=1
         return(matrix,matrix_pident)
 
+    def make_liste_individue(self, SCGs_hit_per_gene, matchinggenes):
+        liste_individue = []
+        liste_ribo= []
+        for hit in matchinggenes:
+            if hit not in liste_ribo:
+                liste_ribo+=[hit]
+            for entry in SCGs_hit_per_gene[hit]:
+                if entry['accession'] not in liste_individue:
+                    liste_individue+=[entry['accession']]
+        return(liste_individue,liste_ribo)
+
 
     def make_rank_matrix(self, name, SCGs_hit_per_gene):
         matchinggenes = self.get_matching_gene(SCGs_hit_per_gene)
@@ -866,14 +880,22 @@ class SCGsTaxomy:
         list_position_entry, list_position_ribosomal = self.creat_list_position(
             SCGs_hit_per_gene, matchinggenes)
 
+        #list_position_entry, list_position_ribosomal=self.make_liste_individue( SCGs_hit_per_gene, matchinggenes)
 
-        emptymatrix = self.make_emptymatrix(
-            list_position_entry, list_position_ribosomal)
+
+        emptymatrix = pd.DataFrame(columns=list_position_ribosomal, index=list_position_entry)
+
 
         matrix, matrix_pident, maxrank= self.fill_matrix(name, emptymatrix, SCGs_hit_per_gene, list_position_entry,
                                                       list_position_ribosomal, matchinggenes)
 
-        final_matrix,matrix_pident_final = self.fill_NA_matrix(matrix, matrix_pident, maxrank)
+
+
+        #final_matrix,matrix_pident_final = self.fill_NA_matrix(matrix, matrix_pident, maxrank)
+        final_matrix=matrix.dropna()
+        matrix_pident_final=matrix_pident.dropna()
+        print(final_matrix)
+        print(matrix_pident_final)
 
         if anvio.DEBUG:
             self.show_matrix_rank(
@@ -912,6 +934,7 @@ class SCGsTaxomy:
             assignation = self.assign_taxonomie_solo_hit(assignation_reduce)
 
         except:
+            traceback.print_exc()
             self.run.warning(SCGs_hit_per_gene, header='Fail matrix')
             assignation=[]
 
@@ -925,27 +948,25 @@ class SCGsTaxomy:
         for taxon in taxonomy[1:]:
             for level in taxon:
                 if taxon[level] not in assignation.values():
-                    if anvio.DEBUG:
-                        self.run.info('CONSIDER taxonomy','/'.join(taxon[level].values()))
                     assignation[level]=''
         return(assignation)
 
 
     def make_list_taxonomy(self, matrix_pident, matrix, list_position_entry,list_position_ribosomal):
         taxonomy = []
-        miniscore = 10000
-        i = 0
-        while i < len(matrix):
-            summist = sum(matrix[i])
-            bestident = float(max(matrix_pident[i]))
-            bestSCG=list_position_ribosomal[matrix_pident[i].index(bestident)]
-            if summist == miniscore:
-                taxonomy.append({"bestSCG" : bestSCG,"bestident" : bestident,"taxo" : OrderedDict(self.taxonomy_dict[list_position_entry[i]])})
-            if summist < miniscore:
-                taxonomy=[]
-                taxonomy.append({"bestSCG" : bestSCG,"bestident" : bestident,"taxo" : OrderedDict(self.taxonomy_dict[list_position_entry[i]])})
-                miniscore = summist
-            i += 1
+        for individue in list_position_entry:
+
+            best = matrix.sum(axis=1)
+            print(best)
+            for name ,some in best:
+                print(name, some)
+            bestident = matrix[individue].max()
+            bestSCG=matrix_pident[individue].sum(axis=1)
+            print(best)
+            print(summist)
+            print(bestident)
+
+            taxonomy.append({"bestSCG" : bestSCG,"bestident" : bestident,"taxo" : OrderedDict(self.taxonomy_dict[individue])})
         return(taxonomy)
 
 
