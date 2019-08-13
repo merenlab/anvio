@@ -769,6 +769,31 @@ D = {
                       every gene cluster with a combined homogeneity index greater than 0.5 will be removed from your analysis. This \
                       can be useful if you only want to look at gene clusters that have many not be as conserved overall as others"}
                 ),
+    'percent-alignment-threshold': (
+            ['--percent-alignment-threshold'],
+            {'default': 75,
+             'metavar': 'INT',
+             'type': int,
+             'help': "The cutoff value for percent alignment to use for dereplication purposes. Percent alignemnt \
+                 is the ratio between the alignment length and the shorter genome's length. The\
+                 default value is 75"}
+                ),
+    'correlation-threshold': (
+            ['--correlation-threshold'],
+            {'default': 0.9,
+             'metavar': 'NUM',
+             'type': float,
+             'help': "The cutoff value for correlation to use for dereplication purposes. The\
+                default value is 0.9"}
+                ),
+    'average-identity-threshold': (
+            ['--average-identity-threshold'],
+            {'default': 0.985,
+             'metavar': 'NUM',
+             'type': float,
+             'help': "The cutoff value for ani to use for dereplication purposes. The\
+                      default value is 0.985"}
+                ),
     'add-into-items-additional-data-table': (
             ['--add-into-items-additional-data-table'],
             {'default': None,

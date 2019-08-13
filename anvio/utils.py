@@ -1437,6 +1437,14 @@ def check_contig_names(contig_names, dont_raise=False):
     return True
 
 
+def move_fasta_files_from_fasta_dir(temp_dir, names, output_dir):
+    #names is a dictionary of type {name: hash}
+    for name in names.keys():
+        with open(os.path.join(temp_dir, names[name] + ".fa"), 'r') as original:
+            with open(os.path.join(output_dir, name + ".fa"), 'w') as dest:
+                dest.write(original.read())
+
+
 def create_fasta_dir_from_sequence_sources(genome_desc=None, fasta_txt=None):
     #where genome_desc is an instance of Genome_Descriptions
     #where fasta_dict is the path to a fasta text file
@@ -1483,7 +1491,6 @@ def create_fasta_dir_from_sequence_sources(genome_desc=None, fasta_txt=None):
         fasta_dict = get_TAB_delimited_file_as_dictionary(fasta_txt, expected_fields = ["name", "fasta_path"], only_expected_fields=True)
         for name in fasta_dict:
             fa_path = fasta_dict[name]['fasta_path']
-            print(fa_path)
             genome_names.add(name)
             hash_for_output_file = hashlib.sha256(name.encode('utf-8')).hexdigest()
             hash_to_name[hash_for_output_file] = name

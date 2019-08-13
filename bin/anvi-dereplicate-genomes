@@ -1,0 +1,155 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""A script to remove replicated genomes from a list of internal and external genome databases"""
+
+
+import os
+import sys
+import shutil
+import argparse
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+import anvio.genomedistance as genomedistance
+
+from anvio.errors import ConfigError, FilesNPathsError
+import anvio.errors
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Mahmoud Yousef"
+__email__ = "mahmoudyousef@uchicago.edu"
+__requires__ = ['external-genomes', 'internal-genomes']
+__provides__ = ['fasta-files']
+__description__ = ("Export sequences from external genomes and dereplicate them. Outputs genomes as fasta files")
+
+run = terminal.Run()
+
+def main(args):
+	#sanity checks
+	if args.percent_alignment_threshold < 1 or args.percent_alignment_threshold > 100:
+		if args.percent_alignment_threshold == 0 and args.just_do_it:
+			self.run.warning("You asked to dereplicate all genomes that have a percent alignment of at least 0%.\
+							 Clearly you know what you're doing, so enjoy :)")
+		else:
+			raise ConfigError("The percent alignment threshold must be an integer (not decimal) value between 0\
+							  and 100. The value of %f does not work" % args.percent_alignment_threshold)
+
+	if args.correlation_threshold < 0 or args.correlation_threshold > 1:
+		raise ConfigError("Correlation is a value between 0 and 1. Please double- and triple- check your value")
+
+	if args.average_identity_threshold < 0 or args.average_identity_threshold > 1:
+		raise ConfigError("Average identity is the percent identity of two genomes to each other.\
+						  It cannot be less than 0 or greater than 1. Please try again")
+
+	if args.keep_ani_results and not args.ani_output_dir:
+		if args.just_do_it:
+			self.run.warning("You asked anvio to keep ANI calculation results but did not provide a location to store\
+						  them. Go ahead")
+		else:
+			raise ConfigError("You asked anvio to keep ANI calculation results but did not provide a location to store\
+						  them :/ anvi'o is confused")
+
+
+	if args.ani_output_dir is not None and not args.keep_ani_results:
+		self.run.warning("You provided a location to store ANI results but did not ask anvi'o to store them. We\
+						 will go ahead and ignore this for now")
+
+	filesnpaths.check_output_directory(args.output_dir, ok_if_exists=False)
+	os.mkdir(args.output_dir)
+	if args.keep_ani_results and args.ani_output_dir:
+		filesnpaths.check_output_directory(args.ani_output_dir, ok_if_exists=False)
+		os.mkdir(args.ani_output_dir)
+
+	program = genomedistance.ANI(args)
+
+	temp_dir = program.get_fasta_sequences_dir()
+	results = program.process(temp_dir)
+	results = program.gen_additional_stats(results)
+	if anvio.DEBUG:
+		import json
+		for report in results:
+			run.warning(None, header=report)
+			print(json.dumps(results[report], indent=2))
+	genomes = program.retrieve_genome_names()
+	run.info('Number of genomes', len(genomes))
+
+	genome_names = program.remove_redundant_genomes(results)
+	num_redundant = len(genomes) - len(genome_names)
+	run.info('Number of redundant genomes', num_redundant)
+	run.info('Final number of dereplicated genomes', len(genome_names))
+
+	if args.keep_ani_results and args.ani_output_dir:
+		for report_name in results:
+			output_path_for_report = os.path.join(args.ani_output_dir, args.method + '_' + report_name)
+
+			utils.store_dict_as_TAB_delimited_file(results[report_name], output_path_for_report + '.txt')
+			with open(output_path_for_report + '.newick', 'w') as f:
+				f.write(clusterings[report_name])
+
+		run.info_single('ANI results stored in %s' % args.ani_output_dir)
+
+	hashes = program.rehash_names(genome_names)
+
+	utils.move_fasta_files_from_fasta_dir(temp_dir, hashes, args.output_dir)
+
+	run.info_single('Dereplicated fasta files stored in %s' % args.output_dir)
+
+	if anvio.DEBUG:
+		run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
+                     later" % temp_dir, header="Debug")
+	else:
+		run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
+                         like to keep it for testing purposes)', nl_before=1, nl_after=1)
+		shutil.rmtree(temp_dir)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('INPUT OPTIONS', "Tell anvi'o what you want.")
+    groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
+    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+
+    groupB = parser.add_argument_group('OUTPUT OPTIONS', "Tell anvi'o where to store your results.")
+    groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True }))
+
+    groupC = parser.add_argument_group('Cut-offs', "Cut-off values during dereplication.")
+    groupC.add_argument(*anvio.A('percent-alignment-threshold'), **anvio.K('percent-alignment-threshold'))
+    groupC.add_argument(*anvio.A('correlation-threshold'), **anvio.K('correlation-threshold'))
+    groupC.add_argument(*anvio.A('average-identity-threshold'), **anvio.K('average-identity-threshold'))
+
+    groupD = parser.add_argument_group('pyANI METHOD', "Tell anvi'o to tell pyANI what method you wish to use. Required for ANI analysis")
+    groupD.add_argument('--method', default='ANIb', type=str, help="Method for pyANI. The default is %(default)s.\
+                         You must have the necessary binary in path for whichever method you choose. According to\
+                         the pyANI help for v0.2.7 at https://github.com/widdowquinn/pyani, the method 'ANIm' uses\
+                         MUMmer (NUCmer) to align the input sequences. 'ANIb' uses BLASTN+ to align 1020nt fragments\
+                         of the input sequences. 'ANIblastall': uses the legacy BLASTN to align 1020nt fragments\
+                         Finally, 'TETRA': calculates tetranucleotide frequencies of each input sequence",\
+                         choices=['ANIm', 'ANIb', 'ANIblastall', 'TETRA'])
+    groupD.add_argument('--keep-ani-results', default=False, action='store_true', help="After dereplication, if you\
+    					wish, you can store the results of the ANI computation. You must provide a separate directory\
+    					for ANI results")
+    groupD.add_argument('--ani-output-dir', type=str, help="output directory for storing ANI results. Can only be\
+    					used in conjunction with '--keep-ani-results'")
+
+    groupE = parser.add_argument_group('OTHER IMPORTANT STUFF', "Yes. You're almost done.")
+    groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    groupE.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
