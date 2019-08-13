@@ -549,7 +549,7 @@ class SCGsTaxomy:
         possibles_taxonomy_dataframe=possibles_taxonomy_dataframe.sort_values(by=['domain','phylum','class','order','family','genus','species'],ascending=False)
 
 
-        print(tabulate(possibles_taxonomy_dataframe,headers="firstrow",
+        print(tabulate(possibles_taxonomy_dataframe, headers="firstrow",
                        tablefmt="fancy_grid", numalign="right"))
 
 
@@ -606,18 +606,12 @@ class SCGsTaxomy:
                                   show_list_position_ribosomal)
 
     def show_matrix_rank(self, name, matrix, list_position_entry, list_position_ribosomal):
+        headers =list(matrix.keys())
 
         self.run.warning(None, header='%s' % (name), lc="blue")
-        print(tabulate(matrix, headers=header,
+        print(tabulate(matrix, headers=headers,
                        tablefmt="fancy_grid", numalign="right"))
-        if len(show_list_position_ribosomal[6:]):
-            show_matrix = [sublist[6:] for sublist in show_matrix]
-            show_list_position_ribosomal = show_list_position_ribosomal[6:]
-            self.show_matrix_rank(name, matrix, show_matrix,
-                                  show_list_position_ribosomal)
 
-        print(tabulate(matrix,headers="firstrow",
-                       tablefmt="fancy_grid", numalign="right"))
 
 
 
@@ -758,13 +752,11 @@ class SCGsTaxomy:
     def make_dico_position_entry(self, SCGs_hit_per_gene, matchinggenes):
         dico_position_entry = {}
         for hit in matchinggenes:
-            i = 0
             for entry in SCGs_hit_per_gene[hit]:
                 if entry['accession'] not in dico_position_entry:
                     dico_position_entry[entry['accession']] = 1
                 else:
                     dico_position_entry[entry['accession']] += 1
-                i += 1
         return(dico_position_entry)
 
 
@@ -814,7 +806,6 @@ class SCGsTaxomy:
 
         list_position_entry, last_list_position_ribosomal = self.make_list_position_entry(
             SCGs_hit_per_gene, dico_position_entry, list_position_ribosomal, matchinggenes)
-        print(list_position_entry)
         #if not len(list_position_ribosomal):
 
         return(list_position_entry, last_list_position_ribosomal)
@@ -883,7 +874,7 @@ class SCGsTaxomy:
         #list_position_entry, list_position_ribosomal=self.make_liste_individue( SCGs_hit_per_gene, matchinggenes)
 
 
-        emptymatrix = pd.DataFrame(columns=list_position_ribosomal, index=list_position_entry)
+        emptymatrix = pd.DataFrame(columns=list_position_ribosomal, index=list_position_entry,)
 
 
         matrix, matrix_pident, maxrank= self.fill_matrix(name, emptymatrix, SCGs_hit_per_gene, list_position_entry,
@@ -894,8 +885,6 @@ class SCGsTaxomy:
         #final_matrix,matrix_pident_final = self.fill_NA_matrix(matrix, matrix_pident, maxrank)
         final_matrix=matrix.dropna()
         matrix_pident_final=matrix_pident.dropna()
-        print(final_matrix)
-        print(matrix_pident_final)
 
         if anvio.DEBUG:
             self.show_matrix_rank(
@@ -954,19 +943,11 @@ class SCGsTaxomy:
 
     def make_list_taxonomy(self, matrix_pident, matrix, list_position_entry,list_position_ribosomal):
         taxonomy = []
-        for individue in list_position_entry:
+        individue = matrix_pident.rank(method='min', ascending=False).sum(axis=1).idxmin()
+        bestSCG = pd.to_numeric(matrix_pident.loc[individue,:]).idxmax()
+        bestident = matrix_pident.loc[individue, bestSCG]
 
-            best = matrix.sum(axis=1)
-            print(best)
-            for name ,some in best:
-                print(name, some)
-            bestident = matrix[individue].max()
-            bestSCG=matrix_pident[individue].sum(axis=1)
-            print(best)
-            print(summist)
-            print(bestident)
-
-            taxonomy.append({"bestSCG" : bestSCG,"bestident" : bestident,"taxo" : OrderedDict(self.taxonomy_dict[individue])})
+        taxonomy.append({"bestSCG" : bestSCG,"bestident" : bestident,"taxo" : OrderedDict(self.taxonomy_dict[individue])})
         return(taxonomy)
 
 
