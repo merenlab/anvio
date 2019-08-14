@@ -109,15 +109,22 @@ class TablesForTaxoestimation(Table):
 
     def taxonomy_estimation_to_congis(self,possibles_taxonomy):
 
-        self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        self.database.insert_many(t.taxonomy_estimation_metagenome_name, possibles_taxonomy)
-        self.database.disconnect()
+        try:
+            self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+            self.database.insert_many(t.taxonomy_estimation_metagenome_name, possibles_taxonomy)
+        except:
+            self.run.warning(traceback.print_exc(), header='Anvi\'o fail the enter the result in %s' % self.db_pat, lc="red")
+        finally:
+            self.database.disconnect()
 
     def taxonomy_estimation_to_profile(self,possibles_taxonomy):
-
-        self.bin_database = db.DB(self.profile_db_path, utils.get_required_version_for_db(self.profile_db_path))
-        self.bin_database.insert_many(t.taxonomy_estimation_bin_name, possibles_taxonomy)
-        self.bin_database.disconnect()
+        try:
+            self.bin_database = db.DB(self.profile_db_path, utils.get_required_version_for_db(self.profile_db_path))
+            self.bin_database.insert_many(t.taxonomy_estimation_bin_name, possibles_taxonomy)
+        except:
+            self.run.warning(traceback.print_exc(), header='Anvi\'o fail the enter the result in %s' % self.profile_db_path, lc="red")
+        finally:
+            self.bin_database.disconnect()
 
     def get_dic_id_bin(self,args):
 
