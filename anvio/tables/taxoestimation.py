@@ -76,7 +76,7 @@ class TablesForTaxoestimation(Table):
     def alignment_result_to_congigs(self,diamond_output,taxonomy_dict,match_id):
 
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        taxonomy_dictonnary=self.database.get_table_as_dict(t.taxon_names_table_name)
+        taxonomy_dictonnary=self.database.get_table_as_dict(t.taxon_names_table_name_taxonomy)
 
         list_taxo=[]
         entries=[]
@@ -102,7 +102,7 @@ class TablesForTaxoestimation(Table):
 
         taxo_entries=[tuple([t_name_id]+list(taxonomy_dict[t_name_id].values())) for t_name_id in list_taxo]
         self.database.insert_many(t.blast_hits_table_name, entries)
-        self.database.insert_many(t.taxon_names_table_name, taxo_entries)
+        self.database.insert_many(t.taxon_names_table_name_taxonomy, taxo_entries)
 
         self.database.disconnect()
         return match_id
@@ -171,7 +171,7 @@ class TablesForTaxoestimation(Table):
 
         try:
             dic_blast_hits=self.database.get_table_as_dict(t.blast_hits_table_name)
-            taxonomy_dict =OrderedDict(self.database.get_table_as_dict(t.taxon_names_table_name))
+            taxonomy_dict =OrderedDict(self.database.get_table_as_dict(t.taxon_names_table_name_taxonomy))
         except:
             raise ConfigError("Anvi'o could not find the data for the taxonomic estimation,\
                                you should try to run 'anvi-diamond-for-taxonomy'")

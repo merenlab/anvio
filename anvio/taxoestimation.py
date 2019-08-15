@@ -408,7 +408,13 @@ class SCGsTaxomy:
 
     def init(self):
 
-        filesnpaths.is_output_file_writable(self.output_file_path)
+        if filesnpaths.is_file_exists(self.output_file_path) and not filesnpaths.is_file_empty(self.output_file_path):
+            run.warning('The existing files "%s" is about to be over overwrite... (You have \
+                         20 seconds to press CTRL + C).' % self.output_file_path,
+                         header = '!!! READ THIS NOW !!!')
+            time.sleep(20)
+        else:
+            filesnpaths.is_output_file_writable(self.output_file_path)
 
 
         self.tables_for_taxonomy = TablesForTaxoestimation(self.db_path, run, progress, self.profile_db_path)
@@ -517,7 +523,6 @@ class SCGsTaxomy:
 
                 self.entries_db_profile+=[(tuple([entry_id,self.collection_name,name,source]+list(taxonomy.values())))]
                 entry_id+=1
-                #output_taxonomy+=name+'\t'+'\t'.join(list(taxonomy.values()))+'\n'
 
 
         if self.metagenome or not self.profile_db_path:
@@ -532,7 +537,7 @@ class SCGsTaxomy:
 
 
         try:
-            with open(self.output_file_path,"w") as output:
+            with open(self.output_file_path,"a") as output:
                 output_taxonomy=['\t'.join(line) for line in possibles_taxonomy]
                 output.write('\n'.join(output_taxonomy))
         except:
@@ -717,7 +722,7 @@ class SCGsTaxomy:
         for taxon in taxonomy[1:]:
             for level in taxon:
                 if taxon[level] not in assignation.values():
-                    assignation[level]=''
+                    assignation[level]='NA'
         return(assignation)
 
 
