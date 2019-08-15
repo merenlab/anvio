@@ -408,13 +408,13 @@ class SCGsTaxomy:
 
     def init(self):
 
-        if filesnpaths.is_file_exists(self.output_file_path) and not filesnpaths.is_file_empty(self.output_file_path):
+        """if filesnpaths.is_file_exists(self.output_file_path) and not filesnpaths.is_file_empty(self.output_file_path):
             run.warning('The existing files "%s" is about to be over overwrite... (You have \
                          20 seconds to press CTRL + C).' % self.output_file_path,
                          header = '!!! READ THIS NOW !!!')
             time.sleep(20)
         else:
-            filesnpaths.is_output_file_writable(self.output_file_path)
+            filesnpaths.is_output_file_writable(self.output_file_path)"""
 
 
         self.tables_for_taxonomy = TablesForTaxoestimation(self.db_path, run, progress, self.profile_db_path)
