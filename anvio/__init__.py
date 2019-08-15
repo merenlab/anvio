@@ -533,12 +533,6 @@ D = {
              'type': str,
              'help': "Path to The directory containe Diamond database for SCGs."}
                 ),
-    'methode': (
-            ['-m', '--methode'],
-            {'default': 'friedman',
-             'type': str,
-             'help': "Methode chose for taxonomy estimation.friedman,tree,bitscore"}
-                ),
     'cut_off_methode': (
             ['--cut_off_methode'],
             {'default': 0.98,

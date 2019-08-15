@@ -14,6 +14,7 @@ import re
 import shutil
 import subprocess
 import tarfile
+import multiprocessing
 
 from io import BytesIO
 
@@ -58,7 +59,6 @@ def read_remote_file(url, is_gzip=True):
         return fg.read().decode('utf-8')
 
     return remote_file.content.decode('utf-8')
-
 
 
 class SCGsSetup(object):
@@ -180,7 +180,7 @@ class SCGsDataBase():
 
         if not self.output_directory:
              self.output_directory=os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/mergedb')
-        filesnpaths.gen_output_directory(self.output_directory)
+
 
         self.outtsv = os.path.join(self.output_directory, 'matching_taxonomy.tsv')
 
@@ -204,6 +204,9 @@ class SCGsDataBase():
 
 
     def sanity_check(self):
+
+
+
         if not filesnpaths.is_file_exists(self.genes_files_directory, dont_raise=True):
             raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
                                anvi'o looks in '%s'. You can download file by using the commande 'anvi-setup-scgs'."\
@@ -219,6 +222,11 @@ class SCGsDataBase():
         if not filesnpaths.is_file_exists(self.hmms, dont_raise=True):
             raise ConfigError("Anvi'o could not find gene list file '%s'. You must declare one before continue."\
                                % self.hmms)
+
+        filesnpaths.is_file_exists(self.output_directory)
+        filesnpaths.is_output_dir_writable(self.output_directory)
+
+        filesnpaths.gen_output_directory(self.output_directory)
 
     def check_latest_version(self):
         self.database_url = "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
@@ -244,7 +252,15 @@ class SCGsDataBase():
 
 
     def make_scg_db(self):
+
+        self.run.info('SCG genes directory', self.genes_files_directory)
+        self.run.info('Taxonomy file', self.path_tsv_taxonomy)
+        self.run.info('Fasta for HMM reference', self.hmms)
+        self.run.info('Output directory', self.output_directory)
+
         self.dictionary_correspondance_SCGs={}
+
+
 
         self.matrix_taxonomy=self.do_taxonomy_dictonnrary_with_tsv(self.path_tsv_taxonomy)
 
@@ -660,7 +676,6 @@ class lowident():
                 os.remove(pathquery+'log_file')
             low_ident = select_low_ident(ouputdiamond)
             os.remove(pathquery)
-            #taxonomymodif=re.sub(r'[a-z]__', '', taxonomy)
             output = {'taxonomy': taxonomy, 'cutoff': low_ident}
             output_queue.put(output)
 
@@ -690,13 +705,11 @@ class lowident():
         return output
 
 
-
-
-    def select_low_ident(str_diamond_output):
-        low_ident=101
+    def select_low_ident(str_diamond_output,lowest_ident=100):
+        "Select the lowest percent identity on aligment output"
         for line in str_diamond_output.split('\n'):
             if line:
                 ident = line.strip().split('\t')[2]
-                if float(ident) < float(low_ident):
-                    low_ident = ident
-        return(low_ident)
+                if float(ident) < float(lowest_ident):
+                    lowest_ident = ident
+        return(lowest_ident)
