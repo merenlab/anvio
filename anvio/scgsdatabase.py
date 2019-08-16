@@ -210,23 +210,22 @@ class SCGsDataBase():
         if not filesnpaths.is_file_exists(self.genes_files_directory, dont_raise=True):
             raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
                                anvi'o looks in '%s'. You can download file by using the commande 'anvi-setup-scgs'."\
-                               % self.genes_files_directory, self.classic_input_directory)
+                               % (self.genes_files_directory, self.classic_input_directory))
 
         self.genes_files = os.listdir(self.genes_files_directory)
 
         if not filesnpaths.is_file_exists(self.path_tsv_taxonomy, dont_raise=True):
             raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
                                anvi'o looks in '%s'. You can download file by using the commande 'anvi-setup-scgs'."\
-                               % self.path_tsv_taxonomy, self.classic_input_directory)
+                               % (self.path_tsv_taxonomy, self.classic_input_directory))
 
         if not filesnpaths.is_file_exists(self.hmms, dont_raise=True):
             raise ConfigError("Anvi'o could not find gene list file '%s'. You must declare one before continue."\
                                % self.hmms)
 
-        filesnpaths.is_file_exists(self.output_directory)
-        filesnpaths.is_output_dir_writable(self.output_directory)
 
-        filesnpaths.gen_output_directory(self.output_directory)
+        if filesnpaths.is_output_dir_writable(self.output_directory):
+                filesnpaths.gen_output_directory(self.output_directory)
 
     def check_latest_version(self):
         self.database_url = "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
@@ -367,7 +366,7 @@ class SCGsDataBase():
             filesnpaths.gen_output_directory(self.path_diamondb)
             self.sequence_to_blast=self.refund_genes()
 
-            self.progress.update("Reference %s %d/%d"% self.name,genes_files_number, number_genes_files)
+            #self.progress.update("Reference %s : %d / %d"% self.name, genes_files_number, number_genes_files)
             self.diamond_output=self.diamondblast_stdin(self.sequence_to_blast,self.hmms)
 
             if not self.diamond_output:
@@ -394,7 +393,7 @@ class SCGsDataBase():
             pickle.dump(self.dictionary_correspondance_SCGs, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-    def do_taxonomy_dictonnrary_with_tsv(self, path_tsv_taxonomy, filter=True):
+    def do_taxonomy_dictonnrary_with_tsv(self, path_tsv_taxonomy, filter=False):
         """format tsv in dictonnary with code as key and liste for taxonomy for value"""
         self.run.info("Correspondance taxonomy file",path_tsv_taxonomy)
 
@@ -408,20 +407,21 @@ class SCGsDataBase():
         self.progress.update('...')
         for line in linestaxo:
             taxo=[]
-            if filter==True:
-                for taxonomy in line.split("\t")[1].split(";"):
+            for taxonomy in line.split("\t")[1].split(";"):
+                if filter:
                     level_taxo=taxonomy.rstrip()
                     level_taxo=re.sub(r'(\\*[a-z])\_[A-Z]', r'\1',level_taxo)
                     level_taxo=re.sub(r"sp[0-9]*","",level_taxo)
                     level_taxo=re.sub(" ","_",level_taxo)
                     if re.match(r'[a-z]{3,}__[A-Z][a-z]*_[a-z]{3,}',level_taxo) or re.match(r'[a-z]__[A-Z][a-z]{3,}',level_taxo):
                         taxo.append(level_taxo)
-                if not len(taxo):
-                    number_individues_filterd+=1
-                    continue
+                    if not len(taxo):
+                        number_individues_filterd+=1
+                        continue
 
-            else:
-                self.taxo=line.split("\t")[1].split(";")
+                else:
+                    level_taxo=re.sub(r'[a-z]__', '',taxonomy).rstrip()
+                    taxo.append(level_taxo)
 
             number_individues_selected+=1
             self.progress.update('Number of indivues selected %s' % number_individues_selected)
@@ -446,14 +446,14 @@ class SCGsDataBase():
         diamond.makedb(pathgdb)
 
 
-    def diamondblast_stdin(self, sequencetoblast, pathgene):
+    def diamondblast_stdin(self, sequencetoblast, path_reference):
         diamond = Diamond(run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
-        diamond.target_fasta = pathgene
+        diamond.target_fasta = path_reference+".dmnd"
         diamond.blastp_stdin(sequencetoblast)
 
-    def diamonddb_stdin(self,sequencetoblast, pathgene):
+    def diamonddb_stdin(self,sequencetoblast, path_reference):
         diamond = Diamond(run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
-        diamond.makedb_stdin(sequencetoblast, output_file_path=pathgene)
+        diamond.makedb_stdin(sequencetoblast, output_file_path=path_reference)
 
 
 
@@ -497,41 +497,71 @@ class lowident():
         self.args = args
         self.run = run
         self.progress = progress
-        self.SCG_data_dir = args.scgs_data_dir
-
-        if not self.files_dir:
-            self.files_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/mergedb/')
 
 
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
-        self.genes_file_dir=os.path.join(
-            self.files_dir, 'species')
+        self.scgs_directory =A('scgs_directory')
+        self.path_tsv_taxonomy=A('taxonomy_files')
+        self.output_file=A('output_file')
+        self.num_threads=A('num_threads')
+        self.num_process=A('num_process')
+
+
+        self.classic_input_directory = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/')
+
+        if not self.path_tsv_taxonomy:
+            self.path_tsv_taxonomy = os.path.join(self.classic_input_directory,'merge_taxonomy.tsv')
+
+        self.num_threads=args.num_threads
+
+        if not self.num_threads:
+            self.num_threads=1
+
+        if not self.num_process:
+            self.num_process=1
+
+
+        if not self.scgs_directory:
+            self.scgs_directory = os.path.join(self.classic_input_directory,'msa_individual_genes')
+
+
+        if not self.output_file:
+            self.output_file = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/mergedb/dico_low_ident.pickle')
+
+
 
         self.genes_files = [files for files in os.listdir(
-            self.genes_file_dir) if not files.endswith(".dmnd")]
+            self.scgs_directory) if not files.endswith(".dmnd")]
 
-        self.output_directory = sys.argv[3]
-        self.path_tsv_taxonomy = os.path.join(
-            self.files_dir, 'matching_taxonomy.tsv')
+        self.dicolevel = {}
+
+
+    def process(self):
+
+
+
+
+        self.output_directory = filesnpaths.get_temp_directory_path()
         self.pathpickle_dico_taxo = os.path.join(
             self.output_directory, 'dico_taxo_code_species.pickle')
 
-        if not os.path.exists(pathpickle_dico_taxo):
-            self.dicolevel = self.make_dicolevel(path_tsv_taxonomy)
-            with open(pathpickle_dico_taxo, 'wb') as handle:
-                pickle.dump(dicolevel, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        if not os.path.exists(self.pathpickle_dico_taxo):
+            self.make_dicolevel(self.path_tsv_taxonomy)
+            with open(self.pathpickle_dico_taxo, 'wb') as handle:
+                pickle.dump(self.dicolevel, handle, protocol=pickle.HIGHEST_PROTOCOL)
         else:
-            with open(pathpickle_dico_taxo, 'rb') as handle:
-                dicolevel = pickle.load(handle)
+            with open(self.pathpickle_dico_taxo, 'rb') as handle:
+                self.dicolevel = pickle.load(handle)
 
 
         dico_low_ident = {}
-        for genes in genes_files:
+        for genes in self.genes_files:
             dico_low_ident_genes={}
-            pathfa = os.path.join(genes_filesdir, genes)
-            dico_low_ident_genes=self.self.creatsubfa_ident(dicolevel, pathfa, output_directory, genes,dico_low_ident_genes)
+            path_fasta = os.path.join(self.scgs_directory, genes)
+            dico_low_ident_genes=self.creatsubfa_ident( path_fasta, genes,dico_low_ident_genes)
             pathpickle_dico_ident = os.path.join(
-                output_directory, genes+'_dico_low_ident.pickle')
+                self.output_directory, genes+'_dico_low_ident.pickle')
             with open(pathpickle_dico_ident, 'wb') as handle:
                 pickle.dump(dico_low_ident_genes, handle, protocol=pickle.HIGHEST_PROTOCOL)
             if genes not in dico_low_ident:
@@ -540,33 +570,30 @@ class lowident():
                 dico_low_ident[genes]=dico_low_ident[genes].update(dico_low_ident_genes)
 
         pathpickle_dico_ident = os.path.join(
-            output_directory, 'dico_low_ident.pickle')
-        with open(pathpickle_dico_ident, 'wb') as handle:
+            self.output_file)
+        with open(self.output_file, 'wb') as handle:
             pickle.dump(dico_low_ident, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        print(dico_low_ident)
 
 
     def make_dicolevel(self,path_tsv_taxonomy):
         with open(path_tsv_taxonomy, 'r') as taxotsv:
             linestaxo = taxotsv.readlines()
-            dicolevel = {}
             for line in linestaxo:
                 names = line.split('\t')
                 code = names[0]
                 leveltaxos = names[1].split(';')
                 for leveltaxo in leveltaxos:
                     leveltaxo=leveltaxo.rstrip()
-                    if leveltaxo not in dicolevel:
-                        dicolevel[leveltaxo] = [code]
+                    if leveltaxo not in self.dicolevel:
+                        self.dicolevel[leveltaxo] = [code]
                         continue
-                    if code in dicolevel[leveltaxo]:
+                    if code in self.dicolevel[leveltaxo]:
                         continue
                     else:
-                        dicolevel[leveltaxo] = dicolevel[leveltaxo] + [code]
-        return(dicolevel)
+                        self.dicolevel[leveltaxo] = self.dicolevel[leveltaxo] + [code]
 
 
-    def match_ident(self, fasta, codes, listindex, dicolevel=False):
+    def match_ident(self, fasta, codes, listindex):
         for code in codes:
             if code in fasta.ids:
                 index = fasta.ids.index(code)
@@ -575,7 +602,7 @@ class lowident():
         return(listindex)
 
 
-    def multidiamond(self, listeprocess,output_directory,dico_low_ident):
+    def multidiamond(self, listeprocess,dico_low_ident):
         manager = multiprocessing.Manager()
         input_queue = manager.Queue()
         output_queue = manager.Queue()
@@ -589,9 +616,9 @@ class lowident():
             input_queue.put(pathquery)
 
         workers = []
-        for i in range(0, 23):
+        for i in range(0, self.num_process):
             worker = multiprocessing.Process(target=self.diamond,
-                args=(input_queue,output_queue,output_directory))
+                args=(input_queue,output_queue))
 
             workers.append(worker)
             worker.start()
@@ -623,19 +650,21 @@ class lowident():
         return dico_low_ident
 
 
-    def creatsubfa_ident(self, dicolevel, pathfa, output_directory, genes,dico_low_ident):
+    def creatsubfa_ident(self, path_fasta, genes,dico_low_ident):
 
-        fasta = u.ReadFasta(pathfa)
+        try:
+            fasta=u.ReadFasta(path_fasta, quiet=True)
+        except:
+            self.run.warning('%s does not seem to be a FASTA file.' % path_fasta)
+
         listeprocess=[]
-        for taxonomy, codes in dicolevel.items():
-            if taxonomy.startswith("d__"):
+        for taxonomy, codes in self.dicolevel.items():
+            if taxonomy.startswith("Archaea") or taxonomy.startswith("Bacteria"):
                 continue
             listindex = []
             riboname = genes.replace(".faa", "")
-            path_new_fasta_SCG = os.path.join(output_directory,taxonomy)
+            path_new_fasta_SCG = os.path.join(self.output_directory,taxonomy)
             pathpickle_dico_ident = path_new_fasta_SCG + "_dico_low_ident.pickle"
-
-
 
             if not os.path.exists(path_new_fasta_SCG):
                 listindex = self.match_ident(fasta, codes, listindex)
@@ -647,13 +676,13 @@ class lowident():
                                        "\n" + fasta.sequences[index] + "\n")
                 else:
                     if genes not in dico_low_ident:
-                        dico_low_ident[genes]={}
+                        dico_low_ident[riboname]={}
                         dico_low_ident[riboname][taxonomy]=100
                     else:
                         dico_low_ident[riboname][taxonomy]=100
 
         if listeprocess:
-            dico_low_ident=self.multidiamond(listeprocess,output_directory,dico_low_ident)
+            dico_low_ident=self.multidiamond(listeprocess,dico_low_ident)
             return(dico_low_ident)
         else:
             dico_low_ident={}
@@ -661,7 +690,7 @@ class lowident():
 
 
 
-    def diamond(self, input_queue,output_queue,output_directory):
+    def diamond(self, input_queue,output_queue):
         while True:
             pathquery = input_queue.get(True)
             pathdb=pathquery+".dmnd"
@@ -674,24 +703,24 @@ class lowident():
 
                 os.remove(pathdb)
                 os.remove(pathquery+'log_file')
-            low_ident = select_low_ident(ouputdiamond)
+            low_ident = self.select_low_ident(ouputdiamond)
             os.remove(pathquery)
             output = {'taxonomy': taxonomy, 'cutoff': low_ident}
             output_queue.put(output)
 
 
-    def diamonddb(self, pathquery,pathdb,num_threads=2):
+    def diamonddb(self, pathquery,pathdb):
 
-        diamond = Diamond(query_fasta=pathquery,run=run_quiet, progress=progress_quiet, num_threads=num_threads)
+        diamond = Diamond(query_fasta=pathquery,run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
         diamond.query_fasta=pathquery
         diamond.run.log_file_path=pathquery+'log_file'
         diamond.target_fasta = pathquery
-        diamond.num_threads = num_threads
+        diamond.num_threads = self.num_threads
         diamond.makedb()
 
 
-    def run_diamond(self, pathquery,pathdb,num_threads=2):
-        diamond = Diamond(run=run_quiet, progress=progress_quiet, num_threads=num_threads)
+    def run_diamond(self, pathquery,pathdb):
+        diamond = Diamond(run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
 
         diamond.evalue=None
         diamond.run.log_file_path=pathquery+'log_file'
@@ -705,7 +734,7 @@ class lowident():
         return output
 
 
-    def select_low_ident(str_diamond_output,lowest_ident=100):
+    def select_low_ident(self,str_diamond_output,lowest_ident=100):
         "Select the lowest percent identity on aligment output"
         for line in str_diamond_output.split('\n'):
             if line:

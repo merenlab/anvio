@@ -1,0 +1,45 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import os
+import sys
+
+import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.scgsdatabase as scgsdatabase
+
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description="This program deals with populating tables that store HMM hits in an\
+                                                  anvi'o contigs database.")
+
+    parser.add_argument('-s', '--scgs_directory', default = None,
+                        help = "scgs_directory")
+    parser.add_argument('-t', '--taxonomy_files', default = None,
+                        help = "tsv file with taxonomy")
+    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    parser.add_argument('--num-process', default=2, help="num-process")
+
+    args = anvio.get_args(parser)
+
+    try:
+        scgsdatabase = scgsdatabase.lowident(args)
+        scgsdatabase.process()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
