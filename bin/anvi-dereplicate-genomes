@@ -11,6 +11,7 @@ import argparse
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.genomedistance as genomedistance
 
@@ -48,21 +49,21 @@ def main(args):
 						  It cannot be less than 0 or greater than 1. Please try again")
 
 	if args.keep_ani_results and not args.ani_output_dir:
-		if args.just_do_it:
-			self.run.warning("You asked anvio to keep ANI calculation results but did not provide a location to store\
-						  them. Go ahead")
-		else:
-			raise ConfigError("You asked anvio to keep ANI calculation results but did not provide a location to store\
+		raise ConfigError("You asked anvio to keep ANI calculation results but did not provide a location to store\
 						  them :/ anvi'o is confused")
 
 
 	if args.ani_output_dir is not None and not args.keep_ani_results:
-		self.run.warning("You provided a location to store ANI results but did not ask anvi'o to store them. We\
-						 will go ahead and ignore this for now")
+		if args.just_do_it:
+			self.run.warning("You provided a location to store ANI results but did not ask anvi'o to store them. Anvi'o\
+						 will go ahead and create the path but nothing will happen")
+		else:
+			raise ConfigError("You provided a location to store ANI results but did not ask anvi'o to store them. This\
+							  doesn't make sense to us")
 
 	filesnpaths.check_output_directory(args.output_dir, ok_if_exists=False)
 	os.mkdir(args.output_dir)
-	if args.keep_ani_results and args.ani_output_dir:
+	if args.ani_output_dir:
 		filesnpaths.check_output_directory(args.ani_output_dir, ok_if_exists=False)
 		os.mkdir(args.ani_output_dir)
 
@@ -70,6 +71,26 @@ def main(args):
 
 	temp_dir = program.get_fasta_sequences_dir()
 	results = program.process(temp_dir)
+	try:
+		if args.keep_ani_results and args.ani_output_dir:
+			for report_name in results:
+				output_path_for_report = os.path.join(args.ani_output_dir, args.method + '_' + report_name)
+
+				utils.store_dict_as_TAB_delimited_file(results[report_name], output_path_for_report + '.txt')
+				with open(output_path_for_report + '.newick', 'w') as f:
+					f.write(clusterings[report_name])
+			run.info_single('ANI results stored in %s' % args.ani_output_dir)
+	except:
+		run.warning("Something went wrong while storing ANI results :/ This is probably not your fault, but\
+					please look at the log file for more information")
+		if anvio.DEBUG:
+			run.warning("The ANI output directory is kept. Please don't forget to clean it up once you're\
+							done with it")
+		else:
+			run.info_single("Cleaning up the faulty ANI output directory (you can use `--debug` if you would\
+							like to keep it for testing or debugging purposes)", nl_before=1, nl_after=1)
+			shutil.rmtree(args.ani_output_dir)
+		
 	results = program.gen_additional_stats(results)
 	if anvio.DEBUG:
 		import json
@@ -77,27 +98,15 @@ def main(args):
 			run.warning(None, header=report)
 			print(json.dumps(results[report], indent=2))
 	genomes = program.retrieve_genome_names()
-	run.info('Number of genomes', len(genomes))
+	run.info('Number of genomes retrieved', len(genomes))
 
 	genome_names = program.remove_redundant_genomes(results)
 	num_redundant = len(genomes) - len(genome_names)
 	run.info('Number of redundant genomes', num_redundant)
 	run.info('Final number of dereplicated genomes', len(genome_names))
 
-	if args.keep_ani_results and args.ani_output_dir:
-		for report_name in results:
-			output_path_for_report = os.path.join(args.ani_output_dir, args.method + '_' + report_name)
-
-			utils.store_dict_as_TAB_delimited_file(results[report_name], output_path_for_report + '.txt')
-			with open(output_path_for_report + '.newick', 'w') as f:
-				f.write(clusterings[report_name])
-
-		run.info_single('ANI results stored in %s' % args.ani_output_dir)
-
 	hashes = program.rehash_names(genome_names)
-
-	utils.move_fasta_files_from_fasta_dir(temp_dir, hashes, args.output_dir)
-
+	utils.move_fasta_files_from_fasta_dir(temp_dir, hashes, args.output_dir, fasta_txt=args.provide_fasta_txt)
 	run.info_single('Dereplicated fasta files stored in %s' % args.output_dir)
 
 	if anvio.DEBUG:
@@ -118,6 +127,10 @@ if __name__ == '__main__':
 
     groupB = parser.add_argument_group('OUTPUT OPTIONS', "Tell anvi'o where to store your results.")
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True }))
+    groupB.add_argument('--provide-fasta-txt', default=False, action='store_true', help="If you would like anvi'o to provide\
+    					a -fasta.txt file with all of the dereplicated fasta file outputs, you can use this option\
+    					to tell it to do so. The file will be called 'dereplicated-fasta.txt' and will be located\
+    					in the output directory")
 
     groupC = parser.add_argument_group('Cut-offs', "Cut-off values during dereplication.")
     groupC.add_argument(*anvio.A('percent-alignment-threshold'), **anvio.K('percent-alignment-threshold'))
@@ -132,10 +145,9 @@ if __name__ == '__main__':
                          of the input sequences. 'ANIblastall': uses the legacy BLASTN to align 1020nt fragments\
                          Finally, 'TETRA': calculates tetranucleotide frequencies of each input sequence",\
                          choices=['ANIm', 'ANIb', 'ANIblastall', 'TETRA'])
-    groupD.add_argument('--keep-ani-results', default=False, action='store_true', help="After dereplication, if you\
-    					wish, you can store the results of the ANI computation. You must provide a separate directory\
-    					for ANI results")
-    groupD.add_argument('--ani-output-dir', type=str, help="output directory for storing ANI results. Can only be\
+    groupD.add_argument('--keep-ani-results', default=False, action='store_true', help="If you wish, you can store the results\
+    					of the ANI computation. You must provide a separate directory for ANI results using `--ani-output-dir`")
+    groupD.add_argument('--ani-output-dir', type=str, metavar='PATH',help="output directory for storing ANI results. Can only be\
     					used in conjunction with '--keep-ani-results'")
 
     groupE = parser.add_argument_group('OTHER IMPORTANT STUFF', "Yes. You're almost done.")
@@ -143,7 +155,7 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     groupE.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
 
-    args = anvio.get_args(parser)
+    args = anvio.get_args(parser) 
 
     try:
         main(args)
