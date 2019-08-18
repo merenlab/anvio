@@ -4,7 +4,6 @@
 
 import shutil
 
-
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -65,8 +64,11 @@ class GenomeDictionary:
         return False
 
     def dereplicate(self):
-        for genome1 in self.genome_names:
-            for genome2 in self.genome_names:
+        names = list(self.genome_names)
+        for i in range(len(names))
+            for j in range(i+, len(names))
+                genome1 = names[i]
+                genome2 = names[j]
                 if genome1 == genome2 or self.are_redundant(genome1, genome2):
                     continue
 
@@ -91,7 +93,6 @@ class GenomeDictionary:
         elif best_two is None or best_two == [] and best_one != [] and best_one is not None:
             return best_one
 
-        #do some calc
         try:
             score1 = self.genomes_dict[best_one]['percent_completion'] - self.genomes_dict[best_one]['percent_redundancy']
         except:
@@ -141,7 +142,6 @@ class GenomeDistance:
             self.genome_desc = None
         else:
             self.genome_desc = genomedescriptions.GenomeDescriptions(args, run = terminal.Run(verbose=False))
-        #self.fasta_txt = args.fasta_txt or None
         self.fasta_txt = None
         self.hash_to_name = {}
         self.genome_names = set([])
@@ -149,7 +149,7 @@ class GenomeDistance:
     def get_fasta_sequences_dir(self):
         if self.genome_desc is not None:
             self.genome_desc.load_genomes_descriptions(skip_functions=True) #we want a full init
-        temp_dir, hash_to_name, genome_names = utils.create_fasta_dir_from_sequence_sources(self.genome_desc, self.fasta_txt)
+        temp_dir, hash_to_name, genome_names = utils.create_fasta_dir_from_sequence_sources(self.genome_desc)
         self.hash_to_name = hash_to_name
         self.genome_names = genome_names
         return temp_dir
@@ -192,6 +192,7 @@ class ANI(GenomeDistance):
     def __init__(self, args):
         GenomeDistance.__init__(self, args)
         self.program = pyani.PyANI(args)
+
     def process(self, temp=None):
         temp_dir=temp
         if temp is None:
@@ -216,7 +217,7 @@ class ANI(GenomeDistance):
         if 'correlations' not in results.keys():
             self.run.warning("Correlation values were not calculated for your genomes. Please\
                              refer to the log file for more information. Meanwhile, anvi'o\
-                             will add default values of 1")
+                             will bypass correlation checking for dereplication")
             results['correlations'] = self.add_default_correlation()
         results['percent_alignment'] = {}
         for name in self.genome_names:
