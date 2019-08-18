@@ -126,7 +126,7 @@ class HMMer:
         # thank you, hmmscan, for not generating a simple TAB-delimited, because we programmers
         # love to write little hacks like this into our code:
         parseable_output = open(self.hmm_scan_hits, 'w')
-        
+
         detected_non_ascii = False
         lines_with_non_ascii = []
 
@@ -142,15 +142,15 @@ class HMMer:
 
                 if line.startswith('#'):
                     continue
-            
+
                 parseable_output.write('\t'.join(line.split()[0:18]) + '\n')
-        
+
         parseable_output.close()
 
         if detected_non_ascii:
             self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii charachters while processing \
                 the file '%s' and cleared them. Here are the line numbers with non-ascii charachters: %s.\
-                You may want to check those lines with a command like \"awk 'NR==<line number>' <file path> | cat -vte\"." % 
+                You may want to check those lines with a command like \"awk 'NR==<line number>' <file path> | cat -vte\"." %
                 (self.hmm_scan_hits_shitty, ", ".join(map(str, lines_with_non_ascii))))
 
         num_raw_hits = filesnpaths.get_num_lines_in_file(self.hmm_scan_hits)
