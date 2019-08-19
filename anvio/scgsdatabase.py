@@ -182,7 +182,7 @@ class SCGsDataBase():
              self.output_directory=os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/mergedb')
 
 
-        self.outtsv = os.path.join(self.output_directory, 'matching_taxonomy.tsv')
+        self.tsv_output = os.path.join(self.output_directory, 'matching_taxonomy.tsv')
 
 
         self.SCGs_fasta = [files for files in os.listdir(
@@ -302,7 +302,7 @@ class SCGsDataBase():
         self.listtaxo=[]
         unmatch=[]
         newfasta=""
-        with open(self.outtsv,'a') as tsv:
+        with open(self.tsv_output,'a') as tsv:
             for refence in self.dictionary_correspondance_SCGs[keycorres]:
                 self.path_new_fasta_SCG=os.path.join(self.output_directory_SCG, keycorres+".faa")
                 fasta=u.ReadFasta(os.path.join(self.genes_files_directory, str(refence)+".faa"), quiet=True)
@@ -315,7 +315,6 @@ class SCGsDataBase():
                         else:
                             self.listtaxo.append(name)
                             print(index,fasta.ids[index],self.matrix_taxonomy[fasta.ids[index]])
-                            #sys.exit(status=None)
                             newfasta=newfasta+">"+fasta.ids[index]+"\n"+fasta.sequences[index]+"\n"
                             tsv.write(fasta.ids[index]+"\t"+';'.join(self.matrix_taxonomy[fasta.ids[index]])+"\n")
                             self.dictionnary_pickel_taxo[fasta.ids[index]]=self.matrix_taxonomy[fasta.ids[index]]
@@ -356,6 +355,11 @@ class SCGsDataBase():
         self.progress.new('Searching for corresponding SCG with Anvio reference', progress_total_items=number_genes_files)
         self.progress.update('...')
         genes_files_number=0
+
+        manager = multiprocessing.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+
         for gene_file in self.genes_files:
             genes_files_number+=1
 
@@ -421,6 +425,7 @@ class SCGsDataBase():
 
                 else:
                     level_taxo=re.sub(r'[a-z]__', '',taxonomy).rstrip()
+                    level_taxo=re.sub(r' ', '_',level_taxo).rstrip()
                     taxo.append(level_taxo)
 
             number_individues_selected+=1
