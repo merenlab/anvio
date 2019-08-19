@@ -1442,7 +1442,7 @@ def move_fasta_files_from_fasta_dir(temp_dir, names, output_dir, fasta_txt=False
     fasta=None
     if fasta_txt:
         fasta = open(os.path.join(output_dir, "dereplicated-fasta.txt"), 'w')
-        fasta.write("name\tfasta_path\n")
+        fasta.write("name\tpath\n")
     for name in names.keys():
         with open(os.path.join(temp_dir, names[name] + ".fa"), 'r') as original:
             with open(os.path.join(output_dir, name + ".fa"), 'w') as dest:
@@ -1455,10 +1455,9 @@ def move_fasta_files_from_fasta_dir(temp_dir, names, output_dir, fasta_txt=False
 
 def create_fasta_dir_from_sequence_sources(genome_desc):
     #where genome_desc is an instance of Genome_Descriptions
-    #where fasta_dict is the path to a fasta text file
     if genome_desc is None :
-        raise ConfigError("Anvi'o was given no internal genomes and no external genomes. Although\ anvi'o can technically go ahead and create a temporary\
-            FASTA directory, what's the point if there's nothing to do?")
+        raise ConfigError("Anvi'o was given no internal genomes and no external genomes. Although\ anvi'o can technically go ahead and create a temporary FASTA directory, what's\
+            the point if there's nothing to do?")
     temp_dir = filesnpaths.get_temp_directory_path()
     hash_to_name = {}
     genome_names = set([])
