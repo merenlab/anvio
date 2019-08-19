@@ -1878,8 +1878,11 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
             entry_name = line_fields[indexing_field]
 
         if entry_name in d:
-            raise ConfigError("The entry name %s appears twice in the TAB-delimited file '%s'. We don't think that you did that purposefully \
-                               (if you think this should be Ok, then feel free to contact us)." % (entry_name, file_path))
+            raise ConfigError("The entry name %s appears more than once in the TAB-delimited file '%s'. We assume that you\
+                               did not do it that purposefully, but if you need this file in this form, then feel free to\
+                               contact us so we can try to find a solution for you. But if you have gotten this error while\
+                               working with HMMs, do not contact us since helping you in that case is beyond us (see the issue\
+                               #1206 for details))." % (entry_name, file_path))
 
         d[entry_name] = {}
 
