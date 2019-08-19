@@ -105,6 +105,13 @@ def main(args):
 	run.info('Number of redundant genomes', num_redundant)
 	run.info('Final number of dereplicated genomes', len(genome_names))
 
+	if anvio.DEBUG:
+		import json
+		all_groups = program.retrieve_genome_groups(genome_names)
+		for name in all_groups.keys():
+			run.warning(None, header=name)
+			print(json.dumps(all_groups[name], indent=2))
+
 	hashes = program.rehash_names(genome_names)
 	utils.move_fasta_files_from_fasta_dir(temp_dir, hashes, args.output_dir, fasta_txt=args.provide_fasta_txt)
 	run.info_single('Dereplicated fasta files stored in %s' % args.output_dir)
@@ -130,7 +137,7 @@ if __name__ == '__main__':
     groupB.add_argument('--provide-fasta-txt', default=False, action='store_true', help="If you would like anvi'o to provide\
     					a -fasta.txt file with all of the dereplicated fasta file outputs, you can use this option\
     					to tell it to do so. The file will be called 'dereplicated-fasta.txt' and will be located\
-    					in the output directory")
+    					in the output directory.")
 
     groupC = parser.add_argument_group('Cut-offs', "Cut-off values during dereplication.")
     groupC.add_argument(*anvio.A('percent-alignment-threshold'), **anvio.K('percent-alignment-threshold'))
