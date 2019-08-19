@@ -112,10 +112,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if self.gene_mode:
             if self.collection_name is None or self.bin_id is None:
-                raise ConfigError("Gene view requires a collection and a bin to be specified. If you want to \
-                                    view all the genes in your profile database then you can use \
-                                    anvi-script-add-default-collection to create a default collection \
-                                    with all contigs.")
+                raise ConfigError("Gene view requires a collection and a bin to be specified. To SEE all collections and bins in\
+                                   your profile databse, you can use the program `anvi-show-collections-and-bins`. If you want to\
+                                   ADD a collection to your profile database, you can either use `anvi-import-collection` or\
+                                   `anvi-cluster-contigs` if appropriate, or you can go lazy and use the program\
+                                   `anvi-script-add-default-collection`, which would add a single collection that describes all contigs\
+                                   in your contigs database (in an ideal world you should use the last one only if you are working with\
+                                   a single genome).")
 
         if self.collection_name and (not self.gene_mode) and (self.bin_id or self.bin_ids_file_path) and self.mode != 'refine':
             raise ConfigError("There is something confusing here. On the one hand you provide a collection name, telling\
@@ -779,6 +782,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.run.warning('HMMs for single-copy core genes were not run for this contigs database. So you will not\
                               see completion / redundancy estimates in the collection mode as additional layers. SAD.')
             completion_redundancy_available = False
+            self.hmm_access = None
         else:
             self.progress.new('Accessing HMM hits')
             self.progress.update('...')
@@ -1049,7 +1053,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # the gene_level_coverage_stats_dict contains a mixture of data, some of which are not relevant to
         # our purpose of generating views for the interactive interface. here we explicitly list keys that
         # correspond to views we wish to generate:
-        views_of_interest = ['mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std']
+        if self.inseq_stats:
+            views_of_interest = ['mean_coverage', 'insertions', 'insertions_normalized', 'mean_disruption', 'below_disruption']
+        else:
+            views_of_interest = ['mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std']
 
         for view in views_of_interest:
             self.views[view] = {
@@ -1070,18 +1077,39 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.init_split_sequences(self.p_meta['min_contig_length'], split_names_of_interest=split_names_of_interest)
 
+        gene_caller_ids_missing_in_gene_level_cov_stats_dict = set([])
+        gene_caller_sources_for_missing_gene_caller_ids_in_gene_level_cov_stats_dict = set([])
         for split_name in split_names_of_interest:
             genes_in_splits_entries = self.split_name_to_genes_in_splits_entry_ids[split_name]
 
             for genes_in_splits_entry in genes_in_splits_entries:
                 e = self.genes_in_splits[genes_in_splits_entry]
                 gene_callers_id = e['gene_callers_id']
+                gene_caller_source = self.genes_in_contigs_dict[gene_callers_id]['source']
+
+                if gene_callers_id not in self.gene_level_coverage_stats_dict:
+                    gene_caller_ids_missing_in_gene_level_cov_stats_dict.add(gene_callers_id)
+                    gene_caller_sources_for_missing_gene_caller_ids_in_gene_level_cov_stats_dict.add(gene_caller_source)
+                    continue
+
                 all_gene_callers_ids.append(gene_callers_id)
 
                 for view in views_of_interest:
                     self.views[view]['dict'][str(gene_callers_id)] = {}
                     for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
                         self.views[view]['dict'][str(gene_callers_id)][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][view]
+        if len(gene_caller_ids_missing_in_gene_level_cov_stats_dict):
+            self.run.warning("Anvi'o observed something weird while it was processing gene level coverage statistics.\
+                              Some of the gene calls stored in your contigs database (%d of them, precisely) did not\
+                              have any information in gene level coverage stats dictionary. It is likely they were added\
+                              to the contigs database *after* these gene level coverage stats were computed and stored.\
+                              One way to address this is to remove the database file for gene coverage stats and re-run\
+                              this step. Another way to do it is the good ol' way of ignoring these warnings as you usually\
+                              do. If you do the latter, you will probably be fine. But we wanted to keep you in the loop\
+                              just in case you are not fine and the code does not realize that yet. The sources for gene\
+                              calls that will not be included in your gene view include these ones: '%s'." % \
+                                    (len(gene_caller_ids_missing_in_gene_level_cov_stats_dict),
+                                     ', '.join(gene_caller_sources_for_missing_gene_caller_ids_in_gene_level_cov_stats_dict)))
 
         # this is a bit tricky. we already populated the collections dict above, but it was to find out
         # genes caller ids of interest. we are now resetting the collections dict, and populating it
@@ -1115,7 +1143,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.p_meta['default_item_order'] = 'mean_coverage'
         self.default_view = 'mean_coverage'
-        self.title = "Genes in '%s'" % self.bin_id
+        self.title = "Genes in '%s' [mode: %s]" % (self.bin_id, 'IN-Seq/Tn-Seq' if self.inseq_stats else 'Standard')
 
         # FIXME: When we are in gene-mode mode, our item names are no longer split names, hence the
         # following dictionaries are useless. Until we find a better way to fill them up with
@@ -1158,10 +1186,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         search_terms = [s.strip() for s in search_terms.split(',')]
         full_report = None
 
-        if self.mode == 'full' or self.mode == 'gene':
+        if self.mode == 'full' or self.mode == 'gene' or self.mode == 'refine':
             items, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False, requested_sources=requested_sources)
-            if self.mode == 'gene':
+            if self.mode == 'gene' or self.mode == 'refine':
                 # otherwise gene mode report functions from other splits are not the bin interactive initialized.
+                for item in items:
+                    items[item] = [i for i in items[item] if i in self.split_names_of_interest]
+
                 full_report = [i for i in full_report if i[5] in self.split_names_of_interest]
         elif self.mode == 'pan':
             items, full_report = PanSuperclass.search_for_gene_functions(self, search_terms, verbose=False, requested_sources=requested_sources)

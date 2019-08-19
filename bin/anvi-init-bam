@@ -22,6 +22,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['raw-bam-file',]
 __provides__ = ['bam-file',]
+__description__ = "Sort/Index BAM files"
 
 
 progress = terminal.Progress()
@@ -64,7 +65,7 @@ def init_bam_file(input_file_path, output_file_path = None):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Sort/Index BAM files')
+    parser = argparse.ArgumentParser(description=__description__)
     parser.add_argument('input_file', metavar = 'BAM_FILE',
                         help = 'BAM file to analyze')
 

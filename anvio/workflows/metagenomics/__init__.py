@@ -96,13 +96,14 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                         "--skip-SNV-profiling", "--profile-SCVs", "--description",
                                                         "--skip-hierarchical-clustering", "--distance", "--linkage", "--min-contig-length",
                                                         "--min-mean-coverage", "--min-coverage-for-variability", "--cluster-contigs",
-                                                        "--contigs-of-interest", "--queue-size", "--write-buffer-size", "--max-contig-length", "--max-coverage-depth"]
+                                                        "--contigs-of-interest", "--queue-size", "--write-buffer-size", "--max-contig-length",
+                                                        "--max-coverage-depth", "--ignore-orphans"]
         rule_acceptable_params_dict['annotate_contigs_database'] = []
         rule_acceptable_params_dict['merge_fastas_for_co_assembly'] = []
         rule_acceptable_params_dict['merge_fastqs_for_co_assembly'] = []
         rule_acceptable_params_dict['anvi_merge'] = ["--sample-name", "--description", "--skip-hierarchical-clustering",
                                                      "--enforce-hierarchical-clustering", "--distance", "--linkage",
-                                                     "--skip-concoct-binning", "--overwrite-output-destinations"]
+                                                     "--overwrite-output-destinations"]
         rule_acceptable_params_dict['import_percent_of_reads_mapped'] = ["run"]
         rule_acceptable_params_dict['krakenuniq'] = ["additional_params", "run", "--db", "--gzip-compressed"]
         rule_acceptable_params_dict['import_krakenuniq_taxonomy'] = ["--min-abundance"]

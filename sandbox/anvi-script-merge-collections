@@ -22,6 +22,7 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = "Generate an additional data file from multiple collections."
 
 
 def main(args):
@@ -70,7 +71,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="Generate an additional data file from multiple collections.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None, required = True,

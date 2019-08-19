@@ -18,6 +18,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = "Delete an anvi'o state from a pan or profile database."
 
 
 run = terminal.Run()
@@ -54,7 +55,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="Delete an anvi'o state from a pan or profile database.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
     parser.add_argument('-s', '--state', metavar="STATE_NAME", default = None,

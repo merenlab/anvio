@@ -5,6 +5,11 @@ import anvio.terminal as terminal
 from anvio.drivers.fasttree import FastTree
 from anvio.drivers.muscle import Muscle
 from anvio.drivers.famsa import FAMSA
+from anvio.drivers.concoct import CONCOCT
+from anvio.drivers.metabat2 import MetaBAT2
+from anvio.drivers.maxbin2 import MaxBin2
+from anvio.drivers.dastool import DAS_Tool
+from anvio.drivers.binsanity import BinSanity
 from anvio.errors import ConfigError
 
 run = terminal.Run()
@@ -16,6 +21,11 @@ phylogeny_default = "fasttree"
 driver_modules['phylogeny'] = {"default":  FastTree,
                                "fasttree": FastTree}
 
+driver_modules['binning'] = {"concoct": CONCOCT,
+                             "metabat2": MetaBAT2,
+                             "maxbin2": MaxBin2,
+                             "dastool": DAS_Tool,
+                             "binsanity": BinSanity}
 
 class Aligners:
     def __init__(self, run=run, progress=progress):
@@ -31,7 +41,7 @@ class Aligners:
     def list(self):
         available_options = [o for o in self.aligners.keys() if o != 'default']
 
-        self.run.warning("The default anvi'o driver for multiple seqeunce alignment is '%s'. Available drivers \
+        self.run.warning("The default anvi'o driver for multiple sequence alignment is '%s'. Available drivers \
                           are:" % (self.default), header="Multiple sequence alignment", lc='yellow')
         for option in available_options:
             self.run.info_single(option, nl_after = 1 if available_options[-1] == option else 0, mc='yellow')

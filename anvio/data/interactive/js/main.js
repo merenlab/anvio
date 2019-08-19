@@ -20,6 +20,7 @@
 
 
 var VERSION = '3';
+var ANVIO_VERSION; // release version
 var LINE_COLOR='#888888';
 var MONOSPACE_FONT_ASPECT_RATIO = 0.6;
 
@@ -186,6 +187,7 @@ function initData() {
         cache: false,
         url: '/data/init',
         success: function(response) {
+            ANVIO_VERSION = response.version;
             mode = response.mode;
             server_mode = response.server_mode;
             switchUserInterfaceMode(response.project, response.title);
@@ -314,7 +316,7 @@ function initData() {
 }
 
 function switchUserInterfaceMode(project, title) {
-    if (server_mode == false && (mode == 'pan' || mode == 'gene' || mode == 'full')) {
+    if (server_mode == false && (mode == 'pan' || mode == 'gene' || mode == 'full' || mode == 'refine')) {
         $('#search_functions_button').attr('disabled', false);
         $('#searchFunctionsValue').attr('disabled', false);
         $('.functions-not-available-message').hide();
@@ -1555,9 +1557,21 @@ function drawTree() {
                 defer.resolve(); 
             },
             onShow: function() {
-                drawer = new Drawer(settings);
-                drawer.draw();
+                try {
+                    drawer = new Drawer(settings);
+                    drawer.draw();
+                }
+                catch (error) {
+                    let issue_title = encodeURIComponent("Interactive interface, " + error);
+                    let issue_body = encodeURIComponent("Anvi'o version: `" + ANVIO_VERSION + "`\n```\n" + error.stack + "```");
 
+                    showDraggableDialog('An exception occured', 
+                        '<textarea style="width: 100%; height: 360px;">' + error.stack + '</textarea>\
+                        <a target="_blank" href="https://github.com/merenlab/anvio/issues/new?title='+issue_title+'&body='+issue_body+'&labels=bug,interface">\
+                            <button type="button" class="btn btn-success btn-sm">Report this on GitHub</button>\
+                        </a> * Requires GitHub account.');
+                }
+                
                 // last_settings used in export svg for layer information,
                 // we didn't use "settings" sent to draw_tree because draw_tree updates layer's min&max
                 last_settings = serializeSettings();
@@ -1690,9 +1704,15 @@ function showCompleteness(bin_id, updateOnly) {
             msg += "<td></td>";
         }
 
-        msg += "<td data-value='" + stats[source]['domain'] + "'>" + stats[source]['domain'] + "</td>" +
-               "<td data-value='" + averages['domain_probabilities'][stats[source]['domain']] + "'>" + averages['domain_probabilities'][stats[source]['domain']].toFixed(2) + "</td>" +
-               "<td data-value='" + stats[source]['percent_completion'] + "'>" + stats[source]['percent_completion'].toFixed(2) + "%</td>" +
+        msg += "<td data-value='" + stats[source]['domain'] + "'>" + stats[source]['domain'] + "</td>";
+
+        if (averages['domain_probabilities'].hasOwnProperty(stats[source]['domain'])) {
+            msg += "<td data-value='" + averages['domain_probabilities'][stats[source]['domain']] + "'>" + averages['domain_probabilities'][stats[source]['domain']].toFixed(2) + "</td>";
+        } else {
+            msg += "<td data-value='N/A'>N/A</td>";
+        }
+        
+        msg += "<td data-value='" + stats[source]['percent_completion'] + "'>" + stats[source]['percent_completion'].toFixed(2) + "%</td>" +
                "<td data-value='" + stats[source]['percent_redundancy'] + "'>" + stats[source]['percent_redundancy'].toFixed(2) + "%</td>";
 
         msg += "</tr>";

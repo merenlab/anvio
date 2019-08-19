@@ -137,12 +137,28 @@ class Train(SCGDomainClassifier):
         """Initializes informaiton about the contigs databases."""
 
         D = lambda domain: os.path.join(self.genomes_dir, domain)
+        domain_dirs = [os.path.basename(os.path.abspath(f.path)) for f in os.scandir(self.genomes_dir) if f.is_dir()]
 
         self.progress.new('Training')
         self.progress.update("Making sure all domain subdirectories are present")
-        missing_domain_dirs = [domain for domain in self.SCG_domains if not os.path.exists(D(domain))]
+        missing_domain_dirs = [domain for domain in self.SCG_domains if domain not in domain_dirs]
         if len(missing_domain_dirs):
             raise ConfigError("Genomes directory is missing subdirectories for these domains: '%s'." % ', '.join(missing_domain_dirs))
+
+        unexpected_domain_dirs = [domain for domain in domain_dirs if domain not in self.SCG_domains]
+        if len(unexpected_domain_dirs):
+            self.progress.reset()
+            self.run.warning("THIS IS VERY IMPORTANT! In the directory where you have all the domain directories to\
+                              train a new domain classifier, anvi'o found domain directories that did not match any\
+                              known domains. Here is the list of orphan domains we are talking about here: \"%s.\".\
+                              This process will continue to train a classifier, but this is a serious problem as anvi'o\
+                              will simply ignore all orphan domains. This is becuase the current single copy-core gene\
+                              collections anvi'o knows and cares about do not include those orphan domains. Hence, the\
+                              training step will not take these orphan domains into consideration :/ If you don't care\
+                              about this, you should feel free to move on. If you want to include those one or more\
+                              orphan domains, you should first copy the HMM directory you have for that domain into\
+                              the directory (which seems to be at '%s' for your anvi'o instance) so it looks just\
+                              like another HMM profile for anvi'o, and then re-run the training." % (', '.join(unexpected_domain_dirs), hmm_data.dir_path))
 
         self.progress.update("Learning about the number of contigs databases in each domain subdirectory")
         for domain in self.SCG_domains:

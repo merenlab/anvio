@@ -298,7 +298,7 @@ class EggNOGMapper:
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         if not contigs_db.meta['genes_are_called']:
             raise ConfigError("It seems genes were not called for this contigs database (%s). This is a\
-                                total no-no since we will need them to get amino acid seqeunces for functional\
+                                total no-no since we will need them to get amino acid sequences for functional\
                                 annotationd :/" % self.contigs_db_path)
 
         aa_sequences_list = contigs_db.db.get_table_as_list_of_tuples(t.gene_amino_acid_sequences_table_name)

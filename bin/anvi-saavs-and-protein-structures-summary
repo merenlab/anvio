@@ -18,6 +18,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__status__ = "Deprecated"
+__description__ = "Generate a static web site for SAAVs and protein structures."
 
 
 run = terminal.Run()
@@ -32,7 +34,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="Generate a static web site for SAAVs and protein structures.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group("CONTIGS DB", "If you provide a contigs database, anvi'o will findout about\
                                         functions and other properties of genes using the contigs database. This is\

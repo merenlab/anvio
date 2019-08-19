@@ -25,6 +25,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['profile-db', 'single-profile-db', 'contigs-db', 'genes-db', 'bin', 'view-data', 'dendrogram', 'phylogeny']
 __provides__ = ['collection', 'bin', 'interactive', 'svg']
+__description__ = "Start an anvi'o server for the interactive interface"
 
 
 run = terminal.Run()
@@ -32,7 +33,7 @@ progress = terminal.Progress()
 
 if __name__ == '__main__':
     # setup the command line user interface
-    parser = argparse.ArgumentParser(description="Start an anvi'o server for the interactive interface")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DEFAULT INPUTS', "The interavtive interface can be started with and without\
                                                           anvi'o databases. The default use assumes you have your\
@@ -48,6 +49,8 @@ if __name__ == '__main__':
     groupF = parser.add_argument_group('SWEET PARAMS OF CONVENIENCE', "Parameters and flags that are not quite essential (but\
                                                                        nice to have).")
     groupG = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+
+    groupH = parser.add_argument_group("INSEQ MODE", "For when analyzing INSeq data.")
 
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
@@ -98,6 +101,7 @@ if __name__ == '__main__':
     groupG.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
     groupG.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
     groupG.add_argument(*anvio.A('user-server-shutdown'), **anvio.K('user-server-shutdown'))
+    groupH.add_argument(*anvio.A('inseq-stats'), **anvio.K('inseq-stats'))
 
     args = anvio.get_args(parser)
 

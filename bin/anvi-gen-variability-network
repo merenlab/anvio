@@ -18,11 +18,12 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = ("A program to generate a network description from an anvi'o variability profile "
+                   "(potentially outdated program).")
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="A program to generate a network description from an anvi'o\
-                                                  variability profile.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument('-i', '--input-file', metavar = 'VARIABILITY_PROFILE', required = True,
                         help = "The anvi'o variability profile. Please see `anvi-gen-variability-profile` to\
