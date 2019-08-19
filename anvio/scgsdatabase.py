@@ -125,7 +125,6 @@ class SCGsSetup(object):
                 os.path.join(self.SCG_data_dir, file_name))
 
     def decompress_files(self):
-
         file_to_dextract = [
             file_name for file_name in self.files if file_name.endswith(".tar.gz")]
         for file_name in file_to_dextract:
@@ -151,7 +150,6 @@ class SCGsSetup(object):
 
 
 class SCGsDataBase():
-
     """Generate diamond databases of GTDB or import's Single Copy core genes Fasta whom matching with anvi'o HMM's"""
 
     def __init__(self, args, run=run, progress=progress):
@@ -168,6 +166,7 @@ class SCGsDataBase():
         self.output_directory = A('out_put_directory')
         self.num_threads = A('num_threads')
         self.taxonomy_level = A('taxonomy_level')
+        self.database_url = A('taxonomy_level') or "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
 
         self.classic_input_directory = os.path.join(
             os.path.dirname(anvio.__file__), 'data/misc/SCG/')
@@ -208,8 +207,8 @@ class SCGsDataBase():
         if self.classic_input_directory:
             self.check_latest_version()
 
-    def sanity_check(self):
 
+    def sanity_check(self):
         if not filesnpaths.is_file_exists(self.genes_files_directory, dont_raise=True):
             raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
                                anvi'o looks in '%s'. You can download file by using the commande 'anvi-setup-scgs'."
@@ -229,17 +228,15 @@ class SCGsDataBase():
         if filesnpaths.is_output_dir_writable(self.output_directory):
             filesnpaths.gen_output_directory(self.output_directory)
 
-    def check_latest_version(self):
-        self.database_url = "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
 
+    def check_latest_version(self):
         with open(os.path.join(self.classic_input_directory, 'VERSION')) as f:
             content_local = f.read()
 
             version_local = content_local.strip().split('\n')[0].strip()
             release_date_local = content_local.strip().split('\n')[2].strip()
 
-        content_online = read_remote_file(
-            self.database_url + 'VERSION', is_gzip=False)
+        content_online = read_remote_file(self.database_url + 'VERSION', is_gzip=False)
         version_online = content_online.strip().split('\n')[0].strip()
         release_date_online = content_online.strip().split('\n')[2].strip()
 
@@ -252,8 +249,8 @@ class SCGsDataBase():
         else:
             self.run.info_single("and this is the lates version")
 
-    def make_scg_db(self):
 
+    def make_scg_db(self):
         self.run.info('SCG genes directory', self.genes_files_directory)
         self.run.info('Taxonomy file', self.path_tsv_taxonomy)
         self.run.info('Fasta for HMM reference', self.hmms)
@@ -300,8 +297,8 @@ class SCGsDataBase():
                 pickle.dump(self.dictionnary_pickel_taxo, handle,
                             protocol=pickle.HIGHEST_PROTOCOL)
 
-    def create_SCG_db(self, keycorres, dictionnary_level=None):
 
+    def create_SCG_db(self, keycorres, dictionnary_level=None):
         self.listtaxo = []
         unmatch = []
         newfasta = ""
@@ -346,6 +343,7 @@ class SCGsDataBase():
                 file.write(newfasta)
             self.diamonddb_stdin(newfasta, self.path_new_fasta_SCG)
 
+
     def match(self, fasta, matrix_code, matrix_taxon, dictionnary_level):
         if dictionnary_level:
             name = str(matrix_taxon[self.taxonomy_level]).rstrip()
@@ -359,13 +357,14 @@ class SCGsDataBase():
             name = (name+"\t"+matrix_taxon[0]+"\n")
             return(index, name)
 
-    def make_correpondance_dictonnary_SCG(self):
 
+    def make_correpondance_dictonnary_SCG(self):
         self.diamonddb(self.hmms)
         number_genes_files = len(self.genes_files)
-        self.progress.new('Searching for corresponding SCG with Anvio reference',
-                          progress_total_items=number_genes_files)
+
+        self.progress.new('Searching for corresponding SCG with Anvio reference', progress_total_items=number_genes_files)
         self.progress.update('...')
+
         genes_files_number = 0
 
         manager = multiprocessing.Manager()
@@ -415,6 +414,7 @@ class SCGsDataBase():
         with open(self.pathpickle_dictionary_correspondance_SCGs, 'wb') as handle:
             pickle.dump(self.dictionary_correspondance_SCGs,
                         handle, protocol=pickle.HIGHEST_PROTOCOL)
+
 
     def do_taxonomy_dictionary_with_tsv(self, path_tsv_taxonomy, filter=False):
         """Format TSV in dictonary with code as key and list for taxonomy for value"""
@@ -467,34 +467,36 @@ class SCGsDataBase():
                       int(number_individues_selected))
         return(self.matrix)
 
-    def diamonddb(self, pathgdb):
 
-        diamond = Diamond(run=run_quiet, progress=progress_quiet,
-                          num_threads=self.num_threads)
+    def diamonddb(self, pathgdb):
+        diamond = Diamond(run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
         diamond.query_fasta = pathgdb
         diamond.makedb(pathgdb)
 
+
     def diamondblast_stdin(self, sequencetoblast, path_reference):
-        diamond = Diamond(run=run_quiet, progress=progress_quiet,
-                          num_threads=self.num_threads)
+        diamond = Diamond(run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
         diamond.target_fasta = path_reference+".dmnd"
         diamond.blastp_stdin(sequencetoblast)
 
+
     def diamonddb_stdin(self, sequencetoblast, path_reference):
-        diamond = Diamond(run=run_quiet, progress=progress_quiet,
-                          num_threads=self.num_threads)
+        diamond = Diamond(run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
         diamond.makedb_stdin(sequencetoblast, output_file_path=path_reference)
 
+
     def diamondblast_stdou(self, path_fasta_db, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
-        pathdb = path_fasta_db+".dmnd"
-        diamond = Diamond(pathdb, run=run_quiet,
-                          progress=progress_quiet, num_threads=self.num_threads)
-        diamond_output = diamond.blastp_stdout(
-            query_fasta=self.path_refund_genes, max_target_seqs=max_target_seqs, min_pct_id=min_pct_id)
+        pathdb = path_fasta_db + ".dmnd"
+        diamond = Diamond(pathdb, run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
+        diamond_output = diamond.blastp_stdout(query_fasta=self.path_refund_genes,
+                                               max_target_seqs=max_target_seqs,
+                                               min_pct_id=min_pct_id)
         return(diamond_output)
+
 
     def refund_genes(self, percent_gap=0.5):
         """Use only the sequence with less than percent_gap"""
+
         fasta = u.ReadFasta(self.path_original_genes, quiet=True)
 
         i = 0
@@ -504,22 +506,25 @@ class SCGsDataBase():
                 sequence_to_blast = sequence_to_blast+">" + \
                     fasta.ids[i]+"\n"+fasta.sequences[i]+"\n"
             i += 1
+
         return(sequence_to_blast)
 
     def trie_blast(self, out_put_path, dictionary_correspondance_SCGs):  # FIXME useless
-        """ return dictonnary with the name of Genes from given sequence corresponding with the one from anvi'o"""
+        """Return dictonnary with the name of Genes from given sequence corresponding with the one from anvi'o"""
 
         pathblastfile = os.path.join(outpath, blastfile)
+
         if os.stat(pathblastfile).st_size == 0:
             os.remove(pathblastfile)
+
         hmm_gene, bacgene = self.corre(pathblastfile)
         dictionary_correspondance_SCGs[bacgene] = hmm_gene
+
         return dictionary_correspondance_SCGs
 
 
 class lowident():
     def __init__(self, args, run=run, progress=progress):
-
         self.args = args
         self.run = run
         self.progress = progress
@@ -560,8 +565,8 @@ class lowident():
 
         self.dicolevel = {}
 
-    def process(self):
 
+    def process(self):
         self.output_directory = filesnpaths.get_temp_directory_path()
         self.pathpickle_dico_taxo = os.path.join(
             self.output_directory, 'dico_taxo_code_species.pickle')
@@ -598,6 +603,7 @@ class lowident():
             pickle.dump(dico_low_ident, handle,
                         protocol=pickle.HIGHEST_PROTOCOL)
 
+
     def make_dicolevel(self, path_tsv_taxonomy):
         with open(path_tsv_taxonomy, 'r') as taxotsv:
             linestaxo = taxotsv.readlines()
@@ -615,6 +621,7 @@ class lowident():
                     else:
                         self.dicolevel[leveltaxo] = self.dicolevel[leveltaxo] + [code]
 
+
     def match_ident(self, fasta, codes, listindex):
         for code in codes:
             if code in fasta.ids:
@@ -622,6 +629,7 @@ class lowident():
                 if index:
                     listindex.append(index)
         return(listindex)
+
 
     def multidiamond(self, listeprocess, dico_low_ident):
         manager = multiprocessing.Manager()
@@ -670,8 +678,8 @@ class lowident():
 
         return dico_low_ident
 
-    def creatsubfa_ident(self, path_fasta, genes, dico_low_ident):
 
+    def creatsubfa_ident(self, path_fasta, genes, dico_low_ident):
         try:
             fasta = u.ReadFasta(path_fasta, quiet=True)
         except:
@@ -709,6 +717,7 @@ class lowident():
             dico_low_ident = {}
             return(dico_low_ident)
 
+
     def diamond(self, input_queue, output_queue):
         while True:
             pathquery = input_queue.get(True)
@@ -721,25 +730,26 @@ class lowident():
                 ouputdiamond = self.run_diamond(pathquery, pathdb)
 
                 os.remove(pathdb)
-                os.remove(pathquery+'log_file')
+                os.remove(pathquery + 'log_file')
+
             low_ident = self.select_low_ident(ouputdiamond)
             os.remove(pathquery)
             output = {'taxonomy': taxonomy, 'cutoff': low_ident}
             output_queue.put(output)
 
-    def diamonddb(self, pathquery, pathdb):
 
-        diamond = Diamond(query_fasta=pathquery, run=run_quiet,
-                          progress=progress_quiet, num_threads=self.num_threads)
+    def diamonddb(self, pathquery, pathdb):
+        diamond = Diamond(query_fasta=pathquery, run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
+
         diamond.query_fasta = pathquery
-        diamond.run.log_file_path = pathquery+'log_file'
+        diamond.run.log_file_path = pathquery + 'log_file'
         diamond.target_fasta = pathquery
         diamond.num_threads = self.num_threads
+
         diamond.makedb()
 
     def run_diamond(self, pathquery, pathdb):
-        diamond = Diamond(run=run_quiet, progress=progress_quiet,
-                          num_threads=self.num_threads)
+        diamond = Diamond(run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
 
         diamond.evalue = None
         diamond.run.log_file_path = pathquery+'log_file'
@@ -748,15 +758,19 @@ class lowident():
         diamond.max_target_seqs = None
         diamond.search_output_path = pathquery
         diamond.tabular_output_path = pathquery + '.txt'
+
         output = diamond.blastp_stdout()
 
         return output
 
+
     def select_low_ident(self, str_diamond_output, lowest_ident=100):
         "Select the lowest percent identity on aligment output"
+
         for line in str_diamond_output.split('\n'):
             if line:
                 ident = line.strip().split('\t')[2]
                 if float(ident) < float(lowest_ident):
                     lowest_ident = ident
+
         return(lowest_ident)
