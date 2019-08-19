@@ -397,50 +397,52 @@ class SCGsDataBase():
             pickle.dump(self.dictionary_correspondance_SCGs, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-    def do_taxonomy_dictonnrary_with_tsv(self, path_tsv_taxonomy, filter=False):
-        """format tsv in dictonnary with code as key and liste for taxonomy for value"""
-        self.run.info("Correspondance taxonomy file",path_tsv_taxonomy)
+    def do_taxonomy_dictionary_with_tsv(self, path_tsv_taxonomy, filter=False):
+        """Format TSV in dictonary with code as key and list for taxonomy for value"""
 
-        self.matrix={}
-        individues_filterd=[]
-        number_individues_filterd=0
-        number_individues_selected=0
-        linestaxo= [line for line in open(path_tsv_taxonomy).readlines()]
-        self.run.info("Total Indivues"," %d"% len(linestaxo))
+        self.run.info("Correspondance taxonomy file", path_tsv_taxonomy)
+
+        self.matrix = {}
+        individues_filterd = []
+        number_individues_filterd = 0
+        number_individues_selected = 0
+        linestaxo = [line for line in open(path_tsv_taxonomy).readlines()]
+
+        self.run.info("Total Indivues", " %d" % len(linestaxo))
         self.progress.new('Parse tsv file')
         self.progress.update('...')
         for line in linestaxo:
-            taxo=[]
+            taxo = []
             for taxonomy in line.split("\t")[1].split(";"):
                 if filter:
-                    level_taxo=taxonomy.rstrip()
-                    level_taxo=re.sub(r'(\\*[a-z])\_[A-Z]', r'\1',level_taxo)
-                    level_taxo=re.sub(r"sp[0-9]*","",level_taxo)
-                    level_taxo=re.sub(" ","_",level_taxo)
-                    if re.match(r'[a-z]{3,}__[A-Z][a-z]*_[a-z]{3,}',level_taxo) or re.match(r'[a-z]__[A-Z][a-z]{3,}',level_taxo):
+                    level_taxo = taxonomy.rstrip()
+                    level_taxo = re.sub(r'(\\*[a-z])\_[A-Z]', r'\1', level_taxo)
+                    level_taxo = re.sub(r"sp[0-9]*", "", level_taxo)
+                    level_taxo = re.sub(" ", "_", level_taxo)
+                    if re.match(r'[a-z]{3,}__[A-Z][a-z]*_[a-z]{3,}', level_taxo) or re.match(r'[a-z]__[A-Z][a-z]{3,}', level_taxo):
                         taxo.append(level_taxo)
                     if not len(taxo):
-                        number_individues_filterd+=1
+                        number_individues_filterd += 1
                         continue
 
                 else:
-                    level_taxo=re.sub(r'[a-z]__', '',taxonomy).rstrip()
-                    level_taxo=re.sub(r' ', '_',level_taxo).rstrip()
+                    level_taxo = re.sub(r'[a-z]__', '',taxonomy).rstrip()
+                    level_taxo = re.sub(r' ', '_', level_taxo).rstrip()
                     taxo.append(level_taxo)
 
-            number_individues_selected+=1
+            number_individues_selected += 1
             self.progress.update('Number of indivues selected %s' % number_individues_selected)
 
-            self.matrix[str(line.split("\t")[0])]=taxo
+            self.matrix[str(line.split("\t")[0])] = taxo
 
-            #.replace(r'_[A-Z]*$','').replace(r"_[A-Z] ","")
         self.progress.end()
-        if number_individues_selected==0:
+
+        if number_individues_selected == 0:
             raise ConfigError("There's a problem with the file '%s'. Anvi'o couldn't use it. \
                               If you are sure that the file is not empty and in the right format try the option '--no-filter'."\
                                % self.path_tsv_taxonomy)
 
-        self.run.info("Indivues Selected"," %d"% int(number_individues_selected))
+        self.run.info("Indivues Selected"," %d" % int(number_individues_selected))
         return(self.matrix)
 
 
