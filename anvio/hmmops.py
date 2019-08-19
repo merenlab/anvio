@@ -60,6 +60,7 @@ class SequencesForHMMHits:
            not accessing a large fraction of a given contigs database.
         """
 
+        utils.is_contigs_db(contigs_db_path)
         contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
         self.hmm_hits_info = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
 
