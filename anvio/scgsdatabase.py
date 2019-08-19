@@ -374,7 +374,6 @@ class SCGsDataBase():
             self.diamond_output=self.diamondblast_stdin(self.sequence_to_blast,self.hmms)
 
             if not self.diamond_output:
-                #run.info("no match", self.name)
                 continue
 
             self.hmm_gene=str(self.diamond_output).split('\n')[0].split('\t')[1]
@@ -526,14 +525,12 @@ class lowident():
         if not self.num_process:
             self.num_process=1
 
-
         if not self.scgs_directory:
-            self.scgs_directory = os.path.join(self.classic_input_directory,'msa_individual_genes')
+            self.scgs_directory = os.path.join(self.classic_input_directory,'mergedb/SCG_diamond_db/')
 
 
         if not self.output_file:
             self.output_file = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG/mergedb/dico_low_ident.pickle')
-
 
 
         self.genes_files = [files for files in os.listdir(
@@ -621,7 +618,7 @@ class lowident():
             input_queue.put(pathquery)
 
         workers = []
-        for i in range(0, self.num_process):
+        for i in range(0, int(self.num_process)):
             worker = multiprocessing.Process(target=self.diamond,
                 args=(input_queue,output_queue))
 
