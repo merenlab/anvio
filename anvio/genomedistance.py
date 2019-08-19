@@ -9,6 +9,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.genomedescriptions as genomedescriptions
 
+from itertools import combinations
 
 from anvio.drivers import pyani
 from anvio.errors import ConfigError
@@ -64,18 +65,16 @@ class GenomeDictionary:
         return False
 
     def dereplicate(self):
-        names = list(self.genome_names)
-        for i in range(len(names))
-            for j in range(i+, len(names))
-                genome1 = names[i]
-                genome2 = names[j]
-                if genome1 == genome2 or self.are_redundant(genome1, genome2):
-                    continue
-
-                if float(self.data['correlations'][genome1][genome2]) >= self.correlation_threshold:
-                    if float(self.data['percent_alignment'][genome1][genome2]) >= self.percent_alignment_threshold:
-                        if float(self.data['percentage_identity'][genome1][genome2]) >= self.average_identity_threshold:
-                            self.group_genomes(genome1, genome2)
+        genome_pairs = combinations(self.genome_names, 2)
+        for pair in genome_pairs:
+            genome1 = pair[0]
+            genome2 = pair[1]
+            if genome1 == genome2 or self.are_redundant(genome1, genome2):
+                continue
+            if float(self.data['correlations'][genome1][genome2]) >= self.correlation_threshold:
+                if float(self.data['percent_alignment'][genome1][genome2]) >= self.percent_alignment_threshold:
+                    if float(self.data['percentage_identity'][genome1][genome2]) >= self.average_identity_threshold:
+                        self.group_genomes(genome1, genome2)
         return
 
     def pick_best_of_two(self, one, two):
@@ -132,6 +131,12 @@ class GenomeDictionary:
             names.append(self.pick_representative(group))
         return names
 
+    def get_all_redundant_groups(self, names):
+        dict = {}
+        for name in names:
+            hash = self.hash[genome]
+            dict[name] = self.groups[hash]
+        return dict
 
 class GenomeDistance:
     def __init__(self, args):
@@ -145,10 +150,11 @@ class GenomeDistance:
         self.fasta_txt = None
         self.hash_to_name = {}
         self.genome_names = set([])
+        self.dict = {}
 
     def get_fasta_sequences_dir(self):
         if self.genome_desc is not None:
-            self.genome_desc.load_genomes_descriptions(skip_functions=True) #we want a full init
+            self.genome_desc.load_genomes_descriptions(skip_functions=True)
         temp_dir, hash_to_name, genome_names = utils.create_fasta_dir_from_sequence_sources(self.genome_desc)
         self.hash_to_name = hash_to_name
         self.genome_names = genome_names
@@ -179,14 +185,17 @@ class GenomeDistance:
     def remove_redundant_genomes(self, data):
         self.progress.new('Dereplication')
         self.progress.update('Identifying redundant genomes...')
-        dict = GenomeDictionary(self.args, self.genome_names, self.genome_desc, data)
-        dict.dereplicate()
+        self.dict = GenomeDictionary(self.args, self.genome_names, self.genome_desc, data)
+        self.dict.dereplicate()
 
         self.progress.update('Removing redundant genomes...')
-        names = dict.get_dereplicated_genome_names()
+        names = self.dict.get_dereplicated_genome_names()
         self.progress.end()
 
         return names
+
+    def retrieve_genome_groups(self, names):
+        return self.dict.get_all_redundant_groups(names)
 
 class ANI(GenomeDistance):
     def __init__(self, args):
