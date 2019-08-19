@@ -360,8 +360,6 @@ class SCGsTaxomy:
 
         self.cut_off_methode = args.cut_off_methode
 
-        self.methode = args.methode
-
         self.hits_per_gene={}
 
         self.pident_level_path=os.path.join(os.path.dirname(
@@ -619,13 +617,10 @@ class SCGsTaxomy:
 
         consensus_taxonomy=self.solo_hits(SCGs_hit_per_gene)
         if consensus_taxonomy:
-
             return(consensus_taxonomy)
 
         else:
-
-            if self.methode == "friedman":
-                consensus_taxonomy = self.rank_assignement(SCGs_hit_per_gene, name)
+            consensus_taxonomy = self.rank_assignement(SCGs_hit_per_gene, name)
             return(consensus_taxonomy)
 
     def get_matching_gene(self, SCGs_hit_per_gene):
