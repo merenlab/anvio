@@ -11,7 +11,6 @@ import argparse
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.genomedistance as genomedistance
 
@@ -77,8 +76,6 @@ def main(args):
 				output_path_for_report = os.path.join(args.ani_output_dir, args.method + '_' + report_name)
 
 				utils.store_dict_as_TAB_delimited_file(results[report_name], output_path_for_report + '.txt')
-				with open(output_path_for_report + '.newick', 'w') as f:
-					f.write(clusterings[report_name])
 			run.info_single('ANI results stored in %s' % args.ani_output_dir)
 	except:
 		run.warning("Something went wrong while storing ANI results :/ This is probably not your fault, but\
@@ -153,7 +150,7 @@ if __name__ == '__main__':
                          Finally, 'TETRA': calculates tetranucleotide frequencies of each input sequence",\
                          choices=['ANIm', 'ANIb', 'ANIblastall', 'TETRA'])
     groupD.add_argument('--keep-ani-results', default=False, action='store_true', help="If you wish, you can store the results\
-    					of the ANI computation. You must provide a separate directory for ANI results using `--ani-output-dir`")
+    					of the ANI computation as text files. You must provide a separate directory for ANI results using `--ani-output-dir`")
     groupD.add_argument('--ani-output-dir', type=str, metavar='PATH',help="output directory for storing ANI results. Can only be\
     					used in conjunction with '--keep-ani-results'")
 

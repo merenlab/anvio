@@ -66,7 +66,7 @@ class GenomeDictionary:
 
     def dereplicate(self):
         genome_pairs = combinations(self.genome_names, 2)
-        for pair in genome_names:
+        for pair in genome_pairs:
             genome1 = pair[0]
             genome2 = pair[1]
             if genome1 == genome2 or self.are_redundant(genome1, genome2):
