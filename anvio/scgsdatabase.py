@@ -85,8 +85,8 @@ class SCGsSetup(object):
 
     def is_database_exists(self):
         if os.path.exists(os.path.join(self.SCG_data_dir, 'SCG-A.hmm.gz')):
-            raise ConfigError(
-                "It seems you already have SCG database installed in '%s', please use --reset flag if you want to re-download it." % self.SCG_data_dir)
+            raise ConfigError("It seems you already have SCG database installed in '%s', please\
+                               use --reset flag if you want to re-download it." % self.SCG_data_dir)
 
     def get_remote_version(self):
         content = read_remote_file(
@@ -213,18 +213,18 @@ class SCGsDataBase():
         if not filesnpaths.is_file_exists(self.genes_files_directory, dont_raise=True):
             raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
                                anvi'o looks in '%s'. You can download file by using the commande 'anvi-setup-scgs'."
-                              % (self.genes_files_directory, self.classic_input_directory))
+                                                        % (self.genes_files_directory, self.classic_input_directory))
 
         self.genes_files = os.listdir(self.genes_files_directory)
 
         if not filesnpaths.is_file_exists(self.path_tsv_taxonomy, dont_raise=True):
             raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
                                anvi'o looks in '%s'. You can download file by using the commande 'anvi-setup-scgs'."
-                              % (self.path_tsv_taxonomy, self.classic_input_directory))
+                                                            % (self.path_tsv_taxonomy, self.classic_input_directory))
 
         if not filesnpaths.is_file_exists(self.hmms, dont_raise=True):
-            raise ConfigError("Anvi'o could not find gene list file '%s'. You must declare one before continue."
-                              % self.hmms)
+            raise ConfigError("Anvi'o could not find gene list file '%s'. You must declare one before\
+                               continue." % self.hmms)
 
         if filesnpaths.is_output_dir_writable(self.output_directory):
             filesnpaths.gen_output_directory(self.output_directory)
