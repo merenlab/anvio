@@ -21,6 +21,13 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db', 'genomes-storage-db',]
 __provides__ = ['functions-txt',]
+__description__ = ("Search functions in an anvi'o contigs database or genomes storage. Basically, this program searches for one "
+                   "or more search terms you define in functional annotations of genes in an anvi'o contigs database, and generates "
+                   "multiple reports. The simpler report (which also is the default one) simply tells you which contigs contain genes "
+                   "with functions matching to serach terms you used. This file is only useful to quickly highlight matching contigs "
+                   "in the interface by providing it to the anvi-interactive with the `--additional-layer` parameter. You can also "
+                   "request a much more comprehensive report, which gives you anything you might need to know, including the matching "
+                   "gene caller id, functional annotation source, and full function name for each hit and serach term.")
 
 
 run = terminal.Run()
@@ -155,13 +162,7 @@ class SearchResultReporter(object):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="Search functions in an anvi'o contigs database or genomes storage. Basically, this program searches for one \
-                                                  or more search terms you define in functional annotations of genes in an anvi'o contigs database, and generates \
-                                                  multiple reports. The simpler report (which also is the default one) simply tells you which contigs contain genes \
-                                                  with functions matching to serach terms you used. This file is only useful to quickly highlight matching contigs \
-                                                  in the interface by providing it to the anvi-interactive with the `--additional-layer` parameter. You can also \
-                                                  request a much more comprehensive report, which gives you anything you might need to know, including the matching\
-                                                  gene caller id, functional annotation source, and full function name for each hit and serach term.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('SEARCH IN', 'Relevant source databases')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
@@ -178,7 +179,7 @@ if __name__ == '__main__':
                                                   TAB-delimited output that is compatible with anvi'o additional data format (so you can give\
                                                   it to the `anvi-interactive` to see which splits contained genes that were matching to your\
                                                   search terms). You can also ask anvi'o to generate a full-report, that contains much more and\
-                                                  much helpful information about each hit. Optionally you can even ask the gene seqeunces to\
+                                                  much helpful information about each hit. Optionally you can even ask the gene sequences to\
                                                   appear in this report.")
     groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     groupC.add_argument(*anvio.A('full-report'), **anvio.K('full-report'))

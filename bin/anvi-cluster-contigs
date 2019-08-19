@@ -1,0 +1,208 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""A script to run automatic binning algorithms on a merged anvi'o profile"""
+import os
+import sys
+import random
+import argparse
+
+import anvio
+import anvio.dbops as dbops
+import anvio.utils as utils
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+
+from anvio.drivers import driver_modules
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.collections import TablesForCollections
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = ["Christopher Quince"]
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__resources__ = []
+__tags__ = ["profile_db", "clustering", "collections"]
+__requires__ = ['profile-db', 'contigs-db']
+__provides__ = ['collection', 'bin']
+__description__ = "A program to cluster items in a merged anvi'o profile using automatic binning algorithms."
+
+run = terminal.Run()
+
+def store_clusters_in_db(contigs_db_path, profile_db_path, clusters, collection_name, source, splits_mode=False):
+    if not splits_mode:
+        contigs_db = dbops.ContigsDatabase(contigs_db_path)
+        splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name, string_the_key = True)
+
+        parent_to_split_map = {}
+        for split in splits_basic_info:
+            parent = splits_basic_info[split]['parent']
+
+            if parent not in parent_to_split_map:
+                parent_to_split_map[parent] = []
+
+            parent_to_split_map[parent].append(split)
+
+        cluster_splits = {}
+        for bin_id in clusters:
+            cluster_splits[bin_id] = []
+            for contig_name in clusters[bin_id]:
+                cluster_splits[bin_id] += parent_to_split_map[contig_name]
+
+        clusters = cluster_splits
+
+    bin_info_dict = {}
+
+    for bin_id in clusters:
+        bin_info_dict[bin_id] = {'html_color': '#' + ''.join(['%02X' % random.randint(50, 230) for i in range(0, 3)]), 'source': source}
+                                                                # ^
+                                                                #  \
+                                                                #    poor man's random color generator
+
+    c = TablesForCollections(profile_db_path)
+    c.append(collection_name, clusters, bin_info_dict)
+
+    run.info('%s results in db' % source, profile_db_path, display_only=True)
+
+
+def prepare_input_files(profile_db, contigs_db, splits_mode=False):
+    input_files = argparse.Namespace()
+    temp_path = filesnpaths.get_temp_directory_path()
+    
+    P = lambda x: os.path.join(temp_path, x)
+    
+    input_files = argparse.Namespace()
+    input_files.contigs_db = os.path.realpath(contigs_db.db.db_path)
+    input_files.profile_db = os.path.realpath(profile_db.db.db_path)
+    input_files.coverage = P('coverages.txt')
+    input_files.fasta = P('sequence.fa')
+
+    split_coverages = profile_db.db.get_table_as_dict('mean_coverage_contigs')
+
+    if splits_mode:
+        utils.store_dict_as_TAB_delimited_file(split_coverages, input_files.coverage, ['contig'] + sorted(list(profile_db.samples)))
+    else:
+        contig_coverages = {}
+        contig_names = set([x['__parent__'] for x in split_coverages.values()])
+
+        for entry in split_coverages.values():
+            c = entry['__parent__']
+            if c in contig_names and c not in contig_coverages:
+                contig_coverages[c] = entry
+
+        utils.store_dict_as_TAB_delimited_file(contig_coverages, input_files.coverage, ['contig'] + sorted(list(profile_db.samples)))
+
+    utils.export_sequences_from_contigs_db(contigs_db.db_path,
+                                           input_files.fasta, 
+                                           splits_mode=splits_mode)
+
+    return input_files
+
+
+if __name__ == '__main__':
+    show_help = ('--help' in sys.argv) or ('-h' in sys.argv)
+    modules = driver_modules['binning']
+
+    parent_parser = argparse.ArgumentParser(description=__description__)
+
+    parent_parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
+    parent_parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    parent_parser.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode'))
+    parent_parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
+    parent_parser.add_argument(*anvio.A('driver'), **anvio.K('driver', 
+        {'choices': list(driver_modules['binning'].keys()), 'type': str.lower}))
+    parent_parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+
+    if show_help:
+        parent_parser.print_help()
+
+    subparsers = {}
+    for name, module in modules.items():
+        subparser = argparse.ArgumentParser(usage=argparse.SUPPRESS, add_help=False)
+
+        try:
+            # test if __init__() will raise ConfigError with is_program_exists
+            module()
+
+            subparser._optionals.title = '%s options' % name.upper()
+            for arg_name, definiton in module.arguments.items():
+                subparser.add_argument(*definiton[0], **definiton[1])
+
+            if show_help:
+                subparser.print_help()
+        except ConfigError:
+            if show_help:
+                print("%s [ Not installed ]" % name.upper())
+
+            continue
+        finally:
+            subparsers[name] = subparser
+
+    if show_help:
+        sys.exit()
+
+    try:
+        args, unknown = parent_parser.parse_known_args()
+        splits_mode = not args.contigs_mode
+
+        collection_name = args.collection_name.strip()
+        if not len(collection_name):
+            raise ConfigError('Nice try. Collection name cannot be emtpy')
+        try:
+            utils.check_sample_id(collection_name)
+        except:
+            raise ConfigError('"%s" is not a proper collection name. A proper one should be a single word and not contain\
+                                ANY characters but digits, ASCII letters and underscore character(s). There should not be\
+                                any space characters, and the collection name should not start with a digit.' % collection_name)
+
+        utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+
+        merged_profile_db = dbops.ProfileDatabase(args.profile_db)
+
+        if(merged_profile_db.meta['merged'] != True):
+            raise ConfigError("'%s' does not seem to be a merged profile database :/" % args.profile_db)
+
+        contigs_db = dbops.ContigsDatabase(args.contigs_db)
+
+        # Here we parse not sys.argv but unknown parameters 
+        # that is not recognized by parent parser.
+        driver = args.driver
+        sub_args, sub_unknown = subparsers[driver].parse_known_args(unknown)
+
+        # --debug handled by anvio/__init__.py can be in args
+        if '--debug' in sub_unknown:
+            sub_unknown.remove('--debug')
+
+        if len(sub_unknown):
+            raise ConfigError("Unrecognized parameters %s" % ' '.join(sub_unknown))
+
+        binning_module = modules[driver]()
+
+        run.info("Contigs DB", args.contigs_db)
+        run.info("Profile DB", args.profile_db)
+        run.info("Contigs Mode", args.contigs_mode)
+
+        input_files = prepare_input_files(merged_profile_db, contigs_db, splits_mode=splits_mode)
+
+        if anvio.DEBUG:
+            for name, path in input_files.__dict__.items():
+                run.info('Input file [%s]' % name, path)
+
+        clusters = binning_module.cluster(input_files, sub_args, threads=args.num_threads, splits_mode=splits_mode)
+
+        if not anvio.DEBUG:
+            os.remove(input_files.fasta)
+            os.remove(input_files.coverage)
+
+        store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver, splits_mode=splits_mode)
+
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)

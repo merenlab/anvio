@@ -849,7 +849,7 @@ class Pangenome(object):
                                   anvi'o will generate a FASTA file in a temporary directory with the contents of the\
                                   gene cluster, and will not attempt to delete them later)."
 
-                run.warning("VERY BAD NEWS. The alignment of seqeunces with '%s' in the gene cluster '%s' failed\
+                run.warning("VERY BAD NEWS. The alignment of sequences with '%s' in the gene cluster '%s' failed\
                              for some reason. Since the real answer to 'why' is too deep in the matrix, there is\
                              no reliable solution for anvi'o to find it for you, BUT THIS WILL AFFECT YOUR SCIENCE\
                              GOING FORWARD, SO YOU SHOULD CONSIDER ADDRESSING THIS ISSUE FIRST. %s" % \

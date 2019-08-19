@@ -172,6 +172,30 @@ def rev_comp_gene_calls_dict(gene_calls_dict, contig_sequence):
     return reverse_complemented_gene_calls, gene_caller_id_conversion_dict
 
 
+def serialize_args(args, single_dash=False, use_underscore=False, skip_keys=None, translate=None):
+    cmdline = []
+    for param, value in args.__dict__.items():
+        if isinstance(skip_keys, list):
+            if param in skip_keys:
+                continue
+
+        if param in translate:
+            param = translate[param]
+        
+        dash = '-' if single_dash else '--'
+
+        if not use_underscore:
+            param = param.replace('_', '-')
+
+        if value is True:
+            cmdline.append('%s%s' % (dash, param))
+        elif value is not False and value is not None:
+            cmdline.append('%s%s' % (dash, param))
+            cmdline.append(str(value))
+
+    return cmdline
+
+
 def get_predicted_type_of_items_in_a_dict(d, key):
     """Gets a dictionary `d` and a `key` in it, and returns a type function.
 
@@ -708,7 +732,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     sample_to_id_dict = {}
 
     input_matrix = open(file_path, 'rU')
-    columns = input_matrix.readline().strip().split('\t')[1:]
+    columns = input_matrix.readline().strip('\n').split('\t')[1:]
 
     fields_of_interest = []
     if cols_to_return:
@@ -1797,8 +1821,11 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
             entry_name = line_fields[indexing_field]
 
         if entry_name in d:
-            raise ConfigError("The entry name %s appears twice in the TAB-delimited file '%s'. We don't think that you did that purposefully \
-                               (if you think this should be Ok, then feel free to contact us)." % (entry_name, file_path))
+            raise ConfigError("The entry name %s appears more than once in the TAB-delimited file '%s'. We assume that you\
+                               did not do it that purposefully, but if you need this file in this form, then feel free to\
+                               contact us so we can try to find a solution for you. But if you have gotten this error while\
+                               working with HMMs, do not contact us since helping you in that case is beyond us (see the issue\
+                               #1206 for details))." % (entry_name, file_path))
 
         d[entry_name] = {}
 

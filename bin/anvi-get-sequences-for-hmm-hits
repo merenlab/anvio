@@ -59,6 +59,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db', 'profile-db', 'external-genomes', 'internal-genomes', 'hmm-profile']
 __provides__ = ['genes-fasta', 'concatenated-gene-alignment-fasta']
+__description__ = "Get sequences for HMM hits from many inputs."
 
 
 run = terminal.Run()
@@ -216,15 +217,16 @@ def main(args):
                                      separator=separator,
                                      wrap=None if args.no_wrap else 120,
                                      genes_order=list(gene_names) if len(gene_names) else None,
-                                     align_with=args.align_with)
+                                     align_with=args.align_with,
+                                     just_do_it=args.just_do_it)
 
-    run.info('Mode', 'AA seqeunces' if args.get_aa_sequences else 'DNA seqeunces', mc='green')
+    run.info('Mode', 'AA sequences' if args.get_aa_sequences else 'DNA sequences', mc='green')
     run.info('Genes are concatenated', args.concatenate_genes)
     run.info('Output', args.output_file)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Get sequences for HMM hits from many inputs.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT OPTION #1: CONTIGS DB', "There are multiple ways to access to sequences. Your first option is to\
                                         provide a contigs database, and call it a day. In this case the program will return you\
@@ -280,6 +282,7 @@ if __name__ == '__main__':
 
     groupG = parser.add_argument_group('OPTIONAL', "Everything is optional, but some options are more optional than others.")
     groupG.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))
+    groupG.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = anvio.get_args(parser)
 

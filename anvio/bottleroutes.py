@@ -208,7 +208,7 @@ class BottleApplication(Bottle):
         elif self.interactive.mode == 'structure':
             homepage = 'structure.html'
         elif self.interactive.mode == 'inspect':
-            redirect('/app/charts.html?id=%s&rand=%s' % (self.interactive.inspect_split_name, self.random_hash(8)))
+            redirect('/app/charts.html?id=%s&show_snvs=true&rand=%s' % (self.interactive.inspect_split_name, self.random_hash(8)))
 
         redirect('/app/%s?rand=%s' % (homepage, self.random_hash(8)))
 
@@ -334,14 +334,15 @@ class BottleApplication(Bottle):
                         item_lengths[gene_cluster] += len(self.interactive.gene_clusters[gene_cluster][genome])
 
             functions_sources = []
-            if self.interactive.mode == 'full' or self.interactive.mode == 'gene':
+            if self.interactive.mode == 'full' or self.interactive.mode == 'gene' or self.interactive.mode == 'refine':
                 functions_sources = list(self.interactive.gene_function_call_sources)
             elif self.interactive.mode == 'pan':
                 functions_sources = list(self.interactive.gene_clusters_function_sources)
 
             inspection_available = self.interactive.auxiliary_profile_data_available
 
-            return json.dumps( { "title":                              self.interactive.title,
+            return json.dumps( { "version":                            anvio.anvio_version,
+                                 "title":                              self.interactive.title,
                                  "description":                        self.interactive.p_meta['description'],
                                  "item_orders":                        (default_order, self.interactive.p_meta['item_orders'][default_order], list(self.interactive.p_meta['item_orders'].keys())),
                                  "views":                              (default_view, self.interactive.views[default_view], list(self.interactive.views.keys())),
@@ -988,6 +989,9 @@ class BottleApplication(Bottle):
 
         if not self.interactive.collection:
             return json.dumps({'error': "You are in 'collection' mode, but your collection is empty. You are killing me."})
+
+        if self.interactive.hmm_access is None:
+            return json.dumps({'error': "HMMs for single-copy core genes were not run for this contigs database. "})            
 
         hmm_sequences_dict = self.interactive.hmm_access.get_sequences_dict_for_hmm_hits_in_splits({bin_name: set(self.interactive.collection[bin_name])})
         gene_sequences = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set([gene_name]))

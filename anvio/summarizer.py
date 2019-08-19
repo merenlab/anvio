@@ -668,7 +668,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                     output_file_obj.write(('\t'.join([str(e) if e not in [None, 'UNKNOWN'] else '' for e in entry]) + '\n').encode('utf-8'))
                     unique_id += 1
 
-
         # we're done here.
         output_file_obj.close()
 

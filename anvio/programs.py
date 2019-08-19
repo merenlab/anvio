@@ -3,8 +3,10 @@
 """A library to build vignettes and networks of anvi'o programs"""
 
 import os
+import sys
 import glob
 import json
+import importlib
 
 from collections import Counter
 
@@ -40,6 +42,7 @@ ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'short-reads-fasta': {'name': 'SHORT READS', 'type': 'FASTA', 'internal': False},
                'genes-fasta': {'name': 'GENES', 'type': 'FASTA', 'internal': False},
                'bam-file': {'name': 'BAM FILE', 'type': 'BAM', 'internal': False},
+               'protein-structure': {'name': 'PDB FILE', 'type': 'TXT', 'internal': False},
                'raw-bam-file': {'name': 'RAW BAM FILE', 'type': 'BAM', 'internal': False},
                'locus-fasta': {'name': 'LOCUS', 'type': 'FASTA', 'internal': False},
                'structure-db': {'name': 'STRUCTURE', 'type': 'DB', 'internal': True},
@@ -87,6 +90,7 @@ ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'variability-profile': {'name': 'VARIABILITY PROFILE', 'type': 'CONCEPT', 'internal': False},
                'codon-frequencies-txt': {'name': 'CODON FREQUENCIES', 'type': 'TXT', 'internal': False},
                'aa-frequencies-txt': {'name': 'AA FREQUENCIES', 'type': 'TXT', 'internal': False},
+               'fixation-index-matrix': {'name': 'FIXATION INDEX MATRIX', 'type': 'TXT', 'internal': False},
                'summary': {'name': 'STATIC SUMMARY', 'type': 'SUMMARY', 'internal': False},
                'split-bins': {'name': 'SPLIT BINS', 'type': 'CONCEPT', 'internal': False},
                'state': {'name': 'INTERACTIVE STATE', 'type': 'CONCEPT', 'internal': True},
@@ -214,43 +218,144 @@ class AnvioPrograms:
         self.program_names_to_focus = A("program_names_to_focus")
 
         try:
-            self.main_programs = M('anvi-interactive')
-            self.scripts = S('anvi-script-gen-programs-vignette')
+            self.main_program_filepaths = M('anvi-interactive')
+            self.script_filepaths = S('anvi-script-gen-programs-vignette')
 
-            self.all_programs = sorted(list(set(self.main_programs + self.scripts)))
+            self.all_program_filepaths = sorted(list(set(self.main_program_filepaths + self.script_filepaths)))
         except:
             raise ConfigError("Something is wrong. Either your installation or anvi'o setup on this computer is missing some of\
                                the fundamental programs, or your configuration is broken :/")
 
-        if not len(self.main_programs) or not len(self.scripts):
+        if not len(self.main_program_filepaths) or not len(self.script_filepaths):
             raise ConfigError("Somethings fishy is happening. This script is unable to find things that want to be found :(")
 
-        self.run.info("Main anvi'o programs found", len(self.main_programs))
-        self.run.info("Anvi'o ad hoc scripts found", len(self.scripts))
+        self.run.info("Main anvi'o programs found", len(self.main_program_filepaths))
+        self.run.info("Anvi'o ad hoc scripts found", len(self.script_filepaths))
 
         if self.program_names_to_focus:
             self.program_names_to_focus = [p.strip() for p in self.program_names_to_focus.split(',')]
             run.info("Program names to focus", len(self.program_names_to_focus))
 
-            self.all_programs = [p for p in self.all_programs if os.path.basename(p) in self.program_names_to_focus]
+            self.all_program_filepaths = [p for p in self.all_program_filepaths if os.path.basename(p) in self.program_names_to_focus]
 
-            if not len(self.all_programs):
+            if not len(self.all_program_filepaths):
                 raise ConfigError("No anvi'o programs left to analyze after changing the focus to your list of program names.\
                                    Probably there is a typo or something :/")
 
 
+    def create_program_classes(self, okay_if_no_meta=False, quiet=False):
+        programs_dict = {}
+        num_all_programs = len(self.all_program_filepaths)
+
+        meta_count = 0
+        self.programs = []
+        self.progress.new('Characterizing program', progress_total_items=num_all_programs)
+
+        for program_filepath in self.all_program_filepaths:
+            self.progress.update(os.path.basename(program_filepath))
+            self.progress.increment()
+
+            program = Program(program_filepath)
+
+            if program.meta_info['provides']['value'] or program.meta_info['requires']['value']:
+                meta_count += 1
+
+            if not (program.meta_info['provides']['value'] or program.meta_info['requires']['value']) and not okay_if_no_meta:
+                pass
+            else:
+                self.programs.append(program)
+
+        self.progress.end()
+
+        if not meta_count and not okay_if_no_meta:
+            raise ConfigError("None of the %d anvi'o programs found contained any provides or\
+                               requires statements :/" % len(self.all_program_filepaths))
+
+        if not quiet:
+            self.run.info_single("Of %d programs found, %d did contain provides and/or requires \
+                                  statements." % (len(self.all_program_filepaths), meta_count),
+                                  nl_after=1, nl_before=1)
+        if anvio.DEBUG:
+            absentees = ', '.join(list(set([os.path.basename(p) for p in self.all_program_filepaths]) - set([p.name for p in self.programs])))
+            self.run.info_single("Here is a list of programs that do not contain any information\
+                                  about themselves: %s" % (absentees), nl_after=1, nl_before=1, mc="red")
+
+
+
 class Program:
-    def __init__(self, name, program_data):
-        self.name = name
+    def __init__(self, program_path):
+        self.program_path = program_path
+        self.name = os.path.basename(program_path)
 
-        self.provides = []
-        self.requires = []
+        self.meta_info = {
+            'requires': {
+                'object_name': '__requires__',
+                'null_object': []
+            },
+            'provides': {
+                'object_name': '__provides__',
+                'null_object': []
+            },
+            'tags': {
+                'object_name': '__tags__',
+                'null_object': []
+            },
+            'resources': {
+                'object_name': '__resources__',
+                'null_object': []
+            },
+            'description': {
+                'object_name': '__description__',
+                'null_object': ''
+            },
+            'status': {
+                'object_name': '__status__',
+                'null_object': ''
+            },
+        }
 
-        factory = {'requires': self.requires,
-                   'provides': self.provides}
+        self.module = self.load_as_module(self.program_path)
+        self.get_meta_info()
 
-        for x in factory:
-            [factory[x].append(Item(item_name)) for item_name in program_data[x]]
+
+    def get_meta_info(self):
+        for info_type in self.meta_info.keys():
+            try:
+                info = getattr(self.module, self.meta_info[info_type]['object_name'])
+            except AttributeError:
+                info = self.meta_info[info_type]['null_object']
+
+            if info_type == 'requires' or info_type == 'provides':
+                # these info_types have their items cast as Item types
+                info = [Item(item_name) for item_name in info]
+
+            if type(info) == str:
+                info = info.replace('\n', ' ')
+
+            self.meta_info[info_type]['value'] = info
+
+
+    def load_as_module(self, path):
+        """
+        Importing the program as a module has the advantage of grabbing the meta info as python
+        objects directly instead of parsing the file lines as a string object. if is not a Python
+        file, self.module is None.
+
+        Taken from stackoverflow user Ciro Santilli:
+        https://stackoverflow.com/questions/2601047/import-a-python-module-without-the-py-extension/56090741#56090741
+        """
+        try:
+            module_name = os.path.basename(path).replace('-', '_')
+            spec = importlib.util.spec_from_loader(
+                module_name,
+                importlib.machinery.SourceFileLoader(module_name, path)
+            )
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            sys.modules[module_name] = module
+            return module
+        except:
+            return None
 
 
 class Item:
@@ -286,39 +391,7 @@ class ProgramsNetwork(AnvioPrograms):
 
 
     def generate(self):
-        programs_dict = {}
-        num_all_programs = len(self.all_programs)
-
-        self.progress.new('Bleep bloop')
-        for i in range(0, num_all_programs):
-            program_path = self.all_programs[i]
-            program_name = os.path.basename(program_path)
-
-            self.progress.update('%s (%d of %d)' % (program_name, i+1, num_all_programs))
-
-            requires = get_meta_information_from_file(program_path, '__requires__')
-            provides = get_meta_information_from_file(program_path, '__provides__')
-
-            if requires or provides:
-                programs_dict[program_name] = {'requires': requires,
-                                               'provides': provides}
-
-        progress.end()
-
-        if len(programs_dict):
-            self.run.info_single("Of %d programs found, %d did contain provides and requires \
-                                  statements." % (len(self.all_programs), len(programs_dict)),
-                                  nl_after=1, nl_before=1)
-            if anvio.DEBUG:
-                absentees = ', '.join(list(set([os.path.basename(p) for p in self.all_programs]) - set(programs_dict.keys())))
-                self.run.info_single("Here is a list of programs that do not contain any information\
-                                      about themselves: %s" % (absentees), nl_after=1, nl_before=1, mc="red")
-        else:
-            raise ConfigError("None of the %d anvi'o programs found contained any provides or\
-                               requires statements :/" % len(self.all_programs))
-
-        self.programs = [Program(p, programs_dict[p]) for p in programs_dict]
-
+        self.create_program_classes()
         self.report_network()
 
 
@@ -327,7 +400,7 @@ class ProgramsNetwork(AnvioPrograms):
         items_seen = Counter({})
         all_items = []
         for program in self.programs:
-            for item in program.provides + program.requires:
+            for item in program.meta_info['provides']['value'] + program.meta_info['requires']['value']:
                 items_seen[item.id] += 1
                 if not item.id in item_names_seen:
                     all_items.append(item)
@@ -336,7 +409,7 @@ class ProgramsNetwork(AnvioPrograms):
         programs_seen = Counter({})
         for item in all_items:
             for program in self.programs:
-                for program_item in program.provides + program.requires:
+                for program_item in program.meta_info['provides']['value'] + program.meta_info['requires']['value']:
                     if item.name == program_item.name:
                         programs_seen[program.name] += 1
 
@@ -370,10 +443,10 @@ class ProgramsNetwork(AnvioPrograms):
 
         for item in all_items:
             for program in self.programs:
-                for item_provided in program.provides:
+                for item_provided in program.meta_info['provides']['value']:
                     if item_provided.id == item.id:
                         network_dict["links"].append({"source": node_indices[program.name], "target": node_indices[item.id]})
-                for item_needed in program.requires:
+                for item_needed in program.meta_info['requires']['value']:
                     if item_needed.id == item.id:
                         network_dict["links"].append({"target": node_indices[program.name], "source": node_indices[item.id]})
 
@@ -398,21 +471,18 @@ class ProgramsVignette(AnvioPrograms):
 
 
     def generate(self):
+        self.create_program_classes(okay_if_no_meta = True, quiet = True)
+
         d = {}
-
         log_file = filesnpaths.get_temp_file_path()
-        num_all_programs = len(self.all_programs)
-        for i in range(0, num_all_programs):
-            program_path = self.all_programs[i]
-            program_name = os.path.basename(program_path)
-
-            if program_name in self.programs_to_skip:
-                run.warning("Someone doesn't want %s to be in the output :/ Fine. Skipping." % (program_name))
+        for i, program in enumerate(self.programs):
+            if program.name in self.programs_to_skip:
+                run.warning("Someone doesn't want %s to be in the output :/ Fine. Skipping." % (program.name))
 
             progress.new('Bleep bloop')
-            progress.update('%s (%d of %d)' % (program_name, i+1, num_all_programs))
+            progress.update('%s (%d of %d)' % (program.name, i+1, len(self.programs)))
 
-            output = utils.run_command_STDIN('%s --help' % (program_path), log_file, '').split('\n')
+            output = utils.run_command_STDIN('%s --help' % (program.program_path), log_file, '').split('\n')
 
             if anvio.DEBUG:
                     usage, description, params, output = parse_help_output(output)
@@ -422,14 +492,14 @@ class ProgramsVignette(AnvioPrograms):
                 except Exception as e:
                     progress.end()
                     run.warning("The program '%s' does not seem to have the expected help menu output. Skipping to the next.\
-                                 For the curious, this was the error message: '%s'" % (program_name, str(e).strip()))
+                                 For the curious, this was the error message: '%s'" % (program.name, str(e).strip()))
                     continue
 
-            d[program_name] = {'usage': usage,
+            d[program.name] = {'usage': usage,
                                'description': description,
                                'params': params,
-                               'tags': get_meta_information_from_file(program_path, '__tags__'),
-                               'resources': get_meta_information_from_file(program_path, '__resources__')}
+                               'tags': program.meta_info['tags']['value'],
+                               'resources': program.meta_info['resources']['value']}
 
             progress.end()
 

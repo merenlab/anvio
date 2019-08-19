@@ -609,6 +609,18 @@ D = {
              'action': 'store_true',
              'help': "List available functional annotation sources."}
                 ),
+    'include-gc-identity-as-function': (
+            ['--include-gc-identity-as-function'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "This is an option that asks anvi'o to treat gene cluster names as functions. By\
+                      doing so, you are in fact creating an opportunity to study functional enrichment\
+                      statistics for each gene cluster independently. For instance, multiple gene\
+                      clusters may have the same COG function. But if you wish to use the same enrichment\
+                      analysis in your pangenome without collapsing multiple gene clusters into a single\
+                      function name, you can use this flag, and ask for 'IDENTITY' as the functional\
+                      annotation source."}
+                ),
     'gene-names': (
             ['--gene-names'],
             {'metavar': 'HMM HIT NAME',
@@ -1211,6 +1223,13 @@ D = {
              'type': str,
              'help': "Varaibility engine. The default is '%(default)s'."}
                 ),
+    'driver': (
+            ['--driver'],
+            {'metavar': 'DRIVER',
+             'type': str,
+             'required': True,
+             'help': "Automatic binning drivers. Available options '%(choices)s'."}
+                ),
     'skip-synonymity': (
             ['--skip-synonymity'],
             {'default': False,
@@ -1542,15 +1561,6 @@ D = {
                       behavior is to not cluster contigs for individual runs. However, if you are\
                       planning to do binning on one sample, you must use this flag to tell anvio to\
                       run cluster configurations for single runs on your sample."}
-                ),
-    'skip-concoct-binning': (
-            ['--skip-concoct-binning'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "Anvi'o uses CONCOCT (Alneberg et al.) by default for unsupervised genome binning\
-                      for merged runs. CONCOCT results are stored in the profile database, which then\
-                      can be used from within appropriate interfaces (i.e., anvi-interactive, anvi-summary,\
-                      etc). Use this flag if you would like to skip this step"}
                 ),
     'num-clusters-requested': (
             ['--num-clusters-requested'],
@@ -1921,7 +1931,7 @@ D = {
             ['--compute-gene-coverage-stats'],
             {'required': False,
              'action': 'store_true',
-             'help': "If provided, gene coverage statistics will be appended for each entry in variability reoprt.\
+             'help': "If provided, gene coverage statistics will be appended for each entry in variability report.\
                       This is very useful information, but will not be included by default because it is an expensive\
                       operation, and may take some additional time."}
                 ),
@@ -1930,6 +1940,14 @@ D = {
             {'default': 'merenlab/anvio',
              'type': str,
              'help': "Source repository to download releases, currently only Github is supported. Enter in 'merenlab/anvio' format."}
+                ),
+    'inseq-stats': (
+            ['--inseq-stats'],
+            {'required': False,
+             'action': 'store_true',
+             'default': False,
+             'help': "Provide if working with INSeq/Tn-Seq genomic data. With this, all gene level \
+                      coverage stats will be calculated using INSeq/Tn-Seq statistical methods."}
                 ),
 }
 

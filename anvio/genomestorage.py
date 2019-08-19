@@ -338,7 +338,8 @@ class GenomeStorage(object):
             raise ConfigError("Functions are not available in this genome storage ('%s'). " % self.storage_path)
 
         if self.skip_init_functions:
-            raise ConfigError("Functions are not initialized for this genome storage ('%s'). " % self.storage_path)
+            raise ConfigError("Initialization of functions were skipped when the GenomeStorage\
+                              class was called for '%s'. " % self.storage_path)
 
         self.is_known_genome(genome_name)
         self.is_known_gene_call(genome_name, gene_callers_id)

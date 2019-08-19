@@ -18,6 +18,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db', 'cogs-data',]
 __provides__ = ['functions',]
+__description__ = "Run NCBI COGs on stuff."
 
 
 run = terminal.Run()
@@ -41,7 +42,7 @@ if __name__ == '__main__':
         print(e)
         sys.exit(-1)
 
-    parser = argparse.ArgumentParser(description='Run NCBI COGs on stuff.')
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('cog-data-dir'), **anvio.K('cog-data-dir'))
