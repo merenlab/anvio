@@ -70,8 +70,181 @@ def timer(function):
         return x
     return timed_function
 
+class TaxonomyEstimation:
 
-class SCGsdiamond:
+    def __init__(self, taxonomy_dict, dicolevel=None, run=run, progress=progress):
+
+        if not dicolevel:
+            self.pident_level_path = os.path.join(os.path.dirname(
+                anvio.__file__), 'data/misc/SCG/mergedb/dico_low_ident.pickle')
+
+        with open(self.pident_level_path, 'rb') as handle:
+            self.dicolevel = pickle.load(handle)
+
+        self.taxonomy_dict = taxonomy_dict
+
+        self.taxonomic_levels_parser = {'t_domain': 'd__',
+                                        "t_phylum": 'p__',
+                                        "t_class": 'c__',
+                                        "t_order": 'o__',
+                                        "t_family": 'f__',
+                                        "t_genus": 'g__',
+                                        "t_species": 's__'}
+
+        self.taxonomic_levels = [
+            't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+
+    def show_table_score(self, name, selected_entrys_by_score):
+        self.run.warning(None, header='%s' % (name), lc="yellow")
+        header = ['Average bitscore', 'taxonomy']
+        table = []
+
+        for code, score in sorted(selected_entrys_by_score.items(), key=lambda x: (-x[1], x[0])):
+            table.append(
+                [score, ' / '.join(self.taxonomy_dict[code].values())])
+
+        print(tabulate(table, headers=header,
+                       tablefmt="fancy_grid", numalign="right"))
+
+
+    def show_matrix_rank(self, name, matrix, list_position_entry, list_position_ribosomal):
+        headers = list(matrix.keys())
+
+        self.run.warning(None, header='%s' % (name), lc="blue")
+        print(tabulate(matrix, headers=headers,
+                       tablefmt="fancy_grid", numalign="right"))
+
+    def get_consensus_taxonomy(self, SCGs_hit_per_gene, name):
+        """Different methode for assignation"""
+        taxonomy_dict=self.taxonomy_dict
+
+        consensus_taxonomy = self.solo_hits(SCGs_hit_per_gene)
+        if consensus_taxonomy:
+            print(SCGs_hit_per_gene)
+            for SCG, entry in SCGs_hit_per_gene.items():
+                taxonomy={"bestSCG": SCG, "bestident": entry[0]['pident'],
+                                 "code": entry[0]['accession']}
+            return(consensus_taxonomy,taxonomy)
+
+        else:
+            consensus_taxonomy,taxonomy = self.rank_assignement(SCGs_hit_per_gene, name)
+            return(consensus_taxonomy,taxonomy)
+
+    def get_matching_gene(self, SCGs_hit_per_gene):
+        matching_genes = [
+            gene for gene in SCGs_hit_per_gene if len(SCGs_hit_per_gene[gene])]
+        number_of_matching_genes = len(matching_genes)
+        return matching_genes
+
+
+    def fill_matrix(self, name, emptymatrix_ident, SCGs_hit_per_gene, list_position_entry,
+                    list_position_ribosomal, matchinggenes):
+
+        for SCG in list_position_ribosomal:
+            for entry in SCGs_hit_per_gene[SCG]:
+                if entry['accession'] in list_position_entry:
+                    emptymatrix_ident.at[entry['accession'], SCG] = float(
+                        entry['pident'])
+
+        return(emptymatrix_ident)
+
+    def make_liste_individue(self, SCGs_hit_per_gene, matchinggenes):
+        liste_individue = []
+        liste_ribo = []
+        for SCG in matchinggenes:
+            if SCG not in liste_ribo:
+                liste_ribo += [SCG]
+            for entry in SCGs_hit_per_gene[SCG]:
+                if entry['accession'] not in liste_individue:
+                    liste_individue += [entry['accession']]
+        return(liste_individue, liste_ribo)
+
+    def make_rank_matrix(self, name, SCGs_hit_per_gene):
+        matchinggenes = self.get_matching_gene(SCGs_hit_per_gene)
+
+        list_position_entry, list_position_ribosomal = self.make_liste_individue(
+            SCGs_hit_per_gene, matchinggenes)
+
+        emptymatrix = pd.DataFrame(
+            columns=list_position_ribosomal, index=list_position_entry)
+
+        matrix_pident = self.fill_matrix(name, emptymatrix, SCGs_hit_per_gene, list_position_entry,
+                                         list_position_ribosomal, matchinggenes)
+
+        if anvio.DEBUG:
+            self.show_matrix_rank(
+                name, matrix_pident, list_position_entry, list_position_ribosomal)
+
+        return(matrix_pident)
+
+    def rank_assignement(self, SCGs_hit_per_gene, name):
+        try:
+            matrix_pident = self.make_rank_matrix(name, SCGs_hit_per_gene)
+
+            taxonomy = self.make_list_taxonomy(matrix_pident)
+
+            assignation_reduce = self.reduce_assignation_level(taxonomy)
+            assignation = self.assign_taxonomie_solo_hit(assignation_reduce)
+
+        except:
+            traceback.print_exc()
+            self.run.warning(SCGs_hit_per_gene, header='Fail matrix')
+            assignation = []
+
+        finally:
+            return(assignation,taxonomy)
+
+    def assign_taxonomie_solo_hit(self, taxonomy):
+        if not taxonomy or not taxonomy[0]:
+            return 0
+        assignation = taxonomy[0]
+        for taxon in taxonomy[1:]:
+            for level in taxon:
+                if taxon[level] not in assignation.values():
+                    assignation[level] = 'NA'
+        return(assignation)
+
+    def make_list_taxonomy(self, matrix_pident):
+        taxonomy = []
+        matrix_rank = matrix_pident.rank(
+            method='min', ascending=False, na_option='bottom')
+        series_sum_rank = matrix_rank.sum(axis=1)
+        minimum_rank = series_sum_rank.min()
+        top_series = series_sum_rank.loc[series_sum_rank[:] == minimum_rank]
+        for individue, row in top_series.items():
+            bestSCG = pd.to_numeric(matrix_pident.loc[individue, :]).idxmax()
+            bestident = matrix_pident.loc[individue, bestSCG]
+            taxonomy.append({"bestSCG": bestSCG, "bestident": bestident,
+                             "code": individue})
+        return(taxonomy)
+
+    def reduce_assignation_level(self, taxonomy):
+        reduce_taxonomy = []
+        for possibilitie in taxonomy:
+            print(self.taxonomy_dict[possibilitie["code"]])
+            for level, value in reversed(OrderedDict(self.taxonomy_dict[possibilitie["code"]]).items()):
+                if possibilitie["bestident"] < float(self.dicolevel[possibilitie["bestSCG"]]\
+                                                     [self.taxonomic_levels_parser[level] + value]):
+                    possibilitie["code"][level] = ''
+                else:
+                    break
+            reduce_taxonomy.append(OrderedDict(self.taxonomy_dict[possibilitie["code"]]))
+
+        return(reduce_taxonomy)
+
+    def solo_hits(self, SCGs_hit_per_gene, cutoff_solo_hit=0.90):
+        consensus_taxonomy = []
+        for SCG, entry in SCGs_hit_per_gene.items():
+            if len(entry) == 1 and entry[0]['pident'] > cutoff_solo_hit:
+                consensus_taxonomy.append(self.taxonomy_dict[entry[0]['accession']])
+        if consensus_taxonomy:
+            assignation = self.assign_taxonomie_solo_hit(consensus_taxonomy)
+            return assignation
+        else:
+            return False
+
+
+class SCGsdiamond(TaxonomyEstimation):
     def __init__(self, args, run=run, progress=progress):
         self.args = args
         self.run = run
@@ -110,7 +283,8 @@ class SCGsdiamond:
         if not self.taxonomy_file_path:
             self.taxonomy_file_path = os.path.join(os.path.dirname(
                 anvio.__file__), 'data/misc/SCG/mergedb/matching_taxonomy.tsv')
-            self.source = "https://gtdb.ecogenomic.org/"
+
+        self.source = "https://gtdb.ecogenomic.org/"
 
         if not self.taxonomy_database_path:
             self.taxonomy_database_path = os.path.join(os.path.dirname(
@@ -188,6 +362,8 @@ class SCGsdiamond:
                 self.progress.increment()
 
         self.progress.end()
+
+        TaxonomyEstimation.__init__(self, self.taxonomy_dict)
         self.initialized = True
 
     def get_hmm_sequences_dict_into_type_multi(self, hmm_sequences_dict):
@@ -312,6 +488,20 @@ class SCGsdiamond:
         progress.end()
         self.run.info('Number of match selected', match_id)
 
+
+    def show_hits(self, name, gene_name, hits):
+        self.run.warning(None, header='%s / %s' %
+                         (name, gene_name), lc="green")
+        header = ['%id', 'bitscore', 'taxonomy']
+        table = []
+
+        for hit in hits:
+            table.append([hit['pident'], hit['bitscore'],
+                          ' / '.join(self.taxonomy_dict[hit['accession']].values())])
+
+        print(tabulate(table, headers=header,
+                       tablefmt="fancy_grid", numalign="right"))
+
     def get_raw_blast_hits_multi(self, input_queue, output_queue):
 
         while True:
@@ -323,12 +513,30 @@ class SCGsdiamond:
             diamond.min_pct_id = self.min_pct_id
             diamond.num_process = self.core
 
+            SCG = d[0]
             diamond_output = diamond.blastp_stdin_multi(d[1])
+            hits_per_gene={}
 
+            for line_hit_to_split in diamond_output.split('\n'):
+                if len(line_hit_to_split) and not line_hit_to_split.startswith('Query'):
+                    line_hit=line_hit_to_split.split('\t')
+                    gene_callers_id = line_hit[0]
+                    hit = [dict(zip(['accession', 'pident', 'bitscore'], [
+                        line_hit[1], float(line_hit[2]), float(line_hit[11])]))]
+                    print(hit)
+
+
+                    if SCG not in hits_per_gene:
+                        hits_per_gene[SCG] = []
+
+                    hits_per_gene[SCG] += hit
+
+            consensus_taxonomy,taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,hits_per_gene, gene_callers_id)
+            print(consensus_taxonomy,taxonomy)
             output_queue.put([d[0], diamond_output])
 
 
-class SCGsTaxomy:
+class SCGsTaxonomy(TaxonomyEstimation):
 
     def __init__(self, args, run=run, progress=progress):
         self.args = args
@@ -396,13 +604,6 @@ class SCGsTaxomy:
                                genes for which we are missing databases: '%s'." % (', '.join(missing_databases)))
 
     def init(self):
-        """if filesnpaths.is_file_exists(self.output_file_path) and not filesnpaths.is_file_empty(self.output_file_path):
-            run.warning('The existing files "%s" is about to be over overwrite... (You have \
-                         20 seconds to press CTRL + C).' % self.output_file_path,
-                         header = '!!! READ THIS NOW !!!')
-            time.sleep(20)
-        else:
-            filesnpaths.is_output_file_writable(self.output_file_path)"""
 
         self.tables_for_taxonomy = TablesForTaxoestimation(
             self.db_path, run, progress, self.profile_db_path)
@@ -455,6 +656,7 @@ class SCGsTaxomy:
 
             self.hits_per_gene[var][query['gene_name']
                                     ] = self.hits_per_gene[var][query['gene_name']] + hit
+
             self.progress.increment()
         self.progress.end()
 
@@ -479,29 +681,29 @@ class SCGsTaxomy:
             [self.identifier, 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
 
         for name, SCGs_hit_per_gene in self.hits_per_gene.items():
-            # print(SCGs_hit_per_gene)
 
-            taxonomy = self.get_consensus_taxonomy(
+            # print(SCGs_hit_per_gene)
+            taxonomy = TaxonomyEstimation.get_consensus_taxonomy(
                 SCGs_hit_per_gene, name)
 
             if not taxonomy:
                 self.run.info('taxonomy estimation not possible for:', name)
-                possibles_taxonomy.append([name]+["NA"]*7)
+                possibles_taxonomy.append([name] + ["NA"] * 7)
                 continue
 
             if self.metagenome or not self.profile_db_path:
                 if str(list(taxonomy.values())[-1]) not in stdout_taxonomy and str(list(taxonomy.values())[-1]):
                     stdout_taxonomy.append(str(list(taxonomy.values())[-1]))
 
-                possibles_taxonomy.append([name]+list(taxonomy.values()))
+                possibles_taxonomy.append([name] + list(taxonomy.values()))
 
                 self.entries_db_contigs += [
-                    (tuple([name, list(SCGs_hit_per_gene.keys())[0], source]+list(taxonomy.values())))]
+                    (tuple([name, list(SCGs_hit_per_gene.keys())[0], source] + list(taxonomy.values())))]
                 # output_taxonomy+=name+'\t'+'\t'.join(list(taxonomy.values()))+'\n'
 
             if self.profile_db_path and not self.metagenome:
 
-                possibles_taxonomy.append([name]+list(taxonomy.values()))
+                possibles_taxonomy.append([name] + list(taxonomy.values()))
 
                 self.run.info('Bin name',
                               name, nl_before=1)
@@ -509,7 +711,7 @@ class SCGsTaxomy:
                               '/'.join(list(taxonomy.values())))
 
                 self.entries_db_profile += [
-                    (tuple([entry_id, self.collection_name, name, source]+list(taxonomy.values())))]
+                    (tuple([entry_id, self.collection_name, name, source] + list(taxonomy.values())))]
                 entry_id += 1
 
         if self.metagenome or not self.profile_db_path:
@@ -543,200 +745,3 @@ class SCGsTaxomy:
             by=['domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'], ascending=False)
         print(tabulate(possibles_taxonomy_dataframe, headers="firstrow",
                        tablefmt="fancy_grid", numalign="right"))
-
-    def show_hits(self, name, gene_name, hits):
-        self.run.warning(None, header='%s / %s' %
-                         (name, gene_name), lc="green")
-        header = ['%id', 'bitscore', 'taxonomy']
-        table = []
-
-        for hit in hits:
-            table.append([hit['pident'], hit['bitscore'],
-                          ' / '.join(self.taxonomy_dict[hit['accession']].values())])
-
-        print(tabulate(table, headers=header,
-                       tablefmt="fancy_grid", numalign="right"))
-
-    def show_table_score(self, name, selected_entrys_by_score):
-        self.run.warning(None, header='%s' % (name), lc="yellow")
-        header = ['Average bitscore', 'taxonomy']
-        table = []
-
-        for code, score in sorted(selected_entrys_by_score.items(), key=lambda x: (-x[1], x[0])):
-            table.append(
-                [score, ' / '.join(self.taxonomy_dict[code].values())])
-
-        print(tabulate(table, headers=header,
-                       tablefmt="fancy_grid", numalign="right"))
-
-    def show_matrix_rank_orginal(self, name, matrix, list_position_entry, list_position_ribosomal):
-        show_matrix = [sublist[:6] for sublist in matrix]
-        show_list_position_ribosomal = list_position_ribosomal[:6]
-        header = show_list_position_ribosomal
-        table = []
-        i = 0
-
-        for individue in show_matrix:
-            taxonomyindividue = list(
-                self.taxonomy_dict[list_position_entry[i]].values())
-            line = [taxonomyindividue[-1]] + individue
-            table.append(line)
-            i += 1
-
-        self.run.warning(None, header='%s' % (name), lc="blue")
-        print(tabulate(table, headers=header,
-                       tablefmt="fancy_grid", numalign="right"))
-        if len(show_list_position_ribosomal[6:]):
-            show_matrix = [sublist[6:] for sublist in show_matrix]
-            show_list_position_ribosomal = show_list_position_ribosomal[6:]
-            self.show_matrix_rank(name, matrix, show_matrix,
-                                  show_list_position_ribosomal)
-
-    def show_matrix_rank(self, name, matrix, list_position_entry, list_position_ribosomal):
-        headers = list(matrix.keys())
-
-        self.run.warning(None, header='%s' % (name), lc="blue")
-        print(tabulate(matrix, headers=headers,
-                       tablefmt="fancy_grid", numalign="right"))
-
-    def get_consensus_taxonomy(self, SCGs_hit_per_gene, name):
-        """Different methode for assignation"""
-
-        consensus_taxonomy = self.solo_hits(SCGs_hit_per_gene)
-        if consensus_taxonomy:
-            return(consensus_taxonomy)
-
-        else:
-            consensus_taxonomy = self.rank_assignement(SCGs_hit_per_gene, name)
-            return(consensus_taxonomy)
-
-    def get_matching_gene(self, SCGs_hit_per_gene):
-        matching_genes = [
-            gene for gene in SCGs_hit_per_gene if len(SCGs_hit_per_gene[gene])]
-        number_of_matching_genes = len(matching_genes)
-        return matching_genes
-
-    def get_consensus_taxonomy_with_score_by_entry(self, score_by_entry, name, cut_off_methode):
-        try:
-            maxscore = max(score_by_entry.values())
-        except:
-            self.run.info("Estimate Taxonomy of " + str(name), "N/A")
-            return
-        selected_entrys_by_score = {
-            code: score for code, score in score_by_entry.items() if score > (float(maxscore) * float(cut_off_methode))}
-
-        self.run.info("Number of taxonomy use for the consensus",
-                      len(selected_entrys_by_score))
-
-        if anvio.DEBUG:
-            self.show_table_score(name, selected_entrys_by_score)
-
-        taxonomy = []
-        for code, score in sorted(selected_entrys_by_score.items()):
-            taxonomy.append(self.taxonomy_dict[code])
-
-        self.assign_taxonomie_solo_hit(taxonomy)
-
-    def fill_matrix(self, name, emptymatrix_ident, SCGs_hit_per_gene, list_position_entry,
-                    list_position_ribosomal, matchinggenes):
-
-        for SCG in list_position_ribosomal:
-            for entry in SCGs_hit_per_gene[SCG]:
-                if entry['accession'] in list_position_entry:
-                    emptymatrix_ident.at[entry['accession'], SCG] = float(
-                        entry['pident'])
-
-        return(emptymatrix_ident)
-
-    def make_liste_individue(self, SCGs_hit_per_gene, matchinggenes):
-        liste_individue = []
-        liste_ribo = []
-        for SCG in matchinggenes:
-            if SCG not in liste_ribo:
-                liste_ribo += [SCG]
-            for entry in SCGs_hit_per_gene[SCG]:
-                if entry['accession'] not in liste_individue:
-                    liste_individue += [entry['accession']]
-        return(liste_individue, liste_ribo)
-
-    def make_rank_matrix(self, name, SCGs_hit_per_gene):
-        matchinggenes = self.get_matching_gene(SCGs_hit_per_gene)
-
-        list_position_entry, list_position_ribosomal = self.make_liste_individue(
-            SCGs_hit_per_gene, matchinggenes)
-
-        emptymatrix = pd.DataFrame(
-            columns=list_position_ribosomal, index=list_position_entry)
-
-        matrix_pident = self.fill_matrix(name, emptymatrix, SCGs_hit_per_gene, list_position_entry,
-                                         list_position_ribosomal, matchinggenes)
-
-        if anvio.DEBUG:
-            self.show_matrix_rank(
-                name, matrix_pident, list_position_entry, list_position_ribosomal)
-
-        return(matrix_pident)
-
-    def rank_assignement(self, SCGs_hit_per_gene, name):
-        try:
-            matrix_pident = self.make_rank_matrix(name, SCGs_hit_per_gene)
-
-            taxonomy = self.make_list_taxonomy(matrix_pident)
-
-            assignation_reduce = self.reduce_assignation_level(taxonomy)
-            assignation = self.assign_taxonomie_solo_hit(assignation_reduce)
-
-        except:
-            traceback.print_exc()
-            self.run.warning(SCGs_hit_per_gene, header='Fail matrix')
-            assignation = []
-
-        finally:
-            return(assignation)
-
-    def assign_taxonomie_solo_hit(self, taxonomy):
-        if not taxonomy or not taxonomy[0]:
-            return 0
-        assignation = taxonomy[0]
-        for taxon in taxonomy[1:]:
-            for level in taxon:
-                if taxon[level] not in assignation.values():
-                    assignation[level] = 'NA'
-        return(assignation)
-
-    def make_list_taxonomy(self, matrix_pident):
-        taxonomy = []
-        matrix_rank = matrix_pident.rank(
-            method='min', ascending=False, na_option='bottom')
-        series_sum_rank = matrix_rank.sum(axis=1)
-        minimum_rank = series_sum_rank.min()
-        topseries = series_sum_rank.loc[series_sum_rank[:] == minimum_rank]
-        for individue, row in topseries.items():
-            bestSCG = pd.to_numeric(matrix_pident.loc[individue, :]).idxmax()
-            bestident = matrix_pident.loc[individue, bestSCG]
-            taxonomy.append({"bestSCG": bestSCG, "bestident": bestident,
-                             "taxo": OrderedDict(self.taxonomy_dict[individue])})
-        return(taxonomy)
-
-    def reduce_assignation_level(self, taxonomy):
-        reduce_taxonomy = []
-        for possibilitie in taxonomy:
-            for level, value in reversed(possibilitie["taxo"].items()):
-                if possibilitie["bestident"] < float(self.dicolevel[possibilitie["bestSCG"]][self.taxonomic_levels_parser[level]+value]):
-                    possibilitie["taxo"][level] = ''
-                else:
-                    break
-            reduce_taxonomy.append(possibilitie["taxo"])
-
-        return(reduce_taxonomy)
-
-    def solo_hits(self, SCGs_hit_per_gene, cutoff_solo_hit=0.90):
-        taxonomy = []
-        for entry in SCGs_hit_per_gene.values():
-            if len(entry) == 1 and entry[0]['pident'] > cutoff_solo_hit:
-                taxonomy.append(self.taxonomy_dict[entry[0]['accession']])
-        if taxonomy:
-            assignation = self.assign_taxonomie_solo_hit(taxonomy)
-            return assignation
-        else:
-            return False
