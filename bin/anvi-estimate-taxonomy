@@ -40,7 +40,7 @@ def main(args):
         utils.is_profile_db_and_contigs_db_compatible(
             args.profile_db, args.contigs_db)
 
-    t = taxoestimation.SCGsTaxomy(args)
+    t = taxoestimation.SCGsTaxonomy(args)
     t.estimate_taxonomy()
 
 if __name__ == '__main__':
