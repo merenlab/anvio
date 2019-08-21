@@ -91,7 +91,6 @@ class TablesForTaxoestimation(Table):
 
 
     def alignment_result_to_congigs(self,diamond_output):
-
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         entries=[]
@@ -103,7 +102,7 @@ class TablesForTaxoestimation(Table):
             gene_callers_id=result[0]
             if not len(result[3]):
                 continue
-            entries+=[tuple([gene_callers_id, SCG, "Anvio", estimation_id, " "]+list(result[2].values()))]
+            #entries+=[tuple([gene_callers_id, SCG, "Anvio", estimation_id, " "]+list(result[2].values()))]
             for consider_taxonomy in result[3]:
                 estimation_id+=1
                 if len(list(consider_taxonomy["taxonomy"].values())):

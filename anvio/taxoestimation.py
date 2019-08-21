@@ -607,49 +607,29 @@ class SCGsTaxonomy(TaxonomyEstimation):
             self.run.info(
                 'taxonomy estimation not possible for:', self.db_path)
 
-        if self.profile_db_path and not self.metagenome:
-            self.identifier = "Bin_id"
-            self.entries_db_profile = []
 
-            self.dic_id_bin = self.tables_for_taxonomy.get_dic_id_bin(
-                self.args)
+        contigs_db = db.DB(self.db_path, anvio.__contigs__version__)
 
-        else:
-            self.entries_db_contigs = []
-            self.identifier = "Gene_id"
+        collection_to_split = ccollections.GetSplitNamesInBins(self.args).get_dict()
 
-        self.progress.new('Association alimgent result by %s' %
-                          self.identifier, progress_total_items=len(self.dic_blast_hits))
+        split_to_gene_callers_id = dict()
+        bin_to_gene_callers_id = dict()
 
-        for query in self.dic_blast_hits.values():
+        for row in contigs_db.get_all_rows_from_table('genes_in_splits'):
+            split_name, gene_callers_id = row[1], row[2]
 
-            if self.profile_db_path and not self.metagenome:
-                for bin_id, bin_gene_callers_id in self.dic_id_bin.items():
-                    if int(query['gene_callers_id']) in bin_gene_callers_id:
-                        var = bin_id
-                        break
-                    else:
-                        var = None
+            if split_name not in split_to_gene_callers_id:
+                split_to_gene_callers_id[split_name] = set()
 
-                if var == None:
-                    continue
+            split_to_gene_callers_id[split_name].add(gene_callers_id)
 
-            else:
-                var = query['gene_callers_id']
+        for bin_name in collection_to_split:
+            for split in collection_to_split[bin_name]:
+                if bin_name not in bin_to_gene_callers_id:
+                    bin_to_gene_callers_id[bin_name] = set()
 
-            hit = [{'accession': query['taxon_id'], 'pident':float(
-                query['pourcentage_identity']), 'bitscore': float(query['bitscore'])}]
-
-            if var not in self.hits_per_gene:
-                self.hits_per_gene[var] = {}
-            if query['gene_name'] not in self.hits_per_gene[var]:
-                self.hits_per_gene[var][query['gene_name']] = []
-
-            self.hits_per_gene[var][query['gene_name']
-                                    ] = self.hits_per_gene[var][query['gene_name']] + hit
-
-            self.progress.increment()
-        self.progress.end()
+                if split in split_to_gene_callers_id:
+                    bin_to_gene_callers_id[bin_name].update(split_to_gene_callers_id[split])
 
         self.initialized = True
 
@@ -662,14 +642,13 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.run.info('HMM PROFILE', "Bacteria 71")
         self.run.info('Source', source)
         self.run.info('Minimun level assigment', "species")
-        self.run.info('Taxonomy assignment for', self.identifier)
         self.run.info('output file for taxonomy', self.output_file_path)
 
         possibles_taxonomy = []
         entry_id = 0
         stdout_taxonomy = []
         possibles_taxonomy.append(
-            [self.identifier, 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
+            ['bin_id', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
 
         for name, SCGs_hit_per_gene in self.hits_per_gene.items():
 
