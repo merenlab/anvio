@@ -23,9 +23,9 @@ taxon_names_table_name_taxonomy                   = 'taxon_names_taxonomy'
 taxon_names_table_structure_taxonomy              = ['taxon_id', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 taxon_names_table_types_taxonomy                  = [ 'numeric',   'text'  ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
 
-taxonomy_estimation_metagenome_name      = 'taxonomy_estimation_metagenome'
-taxonomy_estimation_metagenome_structure = ['gene_caller_id',      'gene_name',  'source' , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-taxonomy_estimation_metagenome_types     = [ 'numeric',             'text'    ,  'text',      'text'  ,   'text'  ,  'text'  ,  'text'   ,  'text'  ,  'text'  ,   'text'   ]
+scg_taxonomy_estimation_name      = 'scg_taxonomy_estimation'
+scg_taxonomy_estimation_structure = ['gene_caller_id',      'gene_name',  'source' ,  'accession' , 'pourcentage_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+scg_taxonomy_estimation_types     = [ 'numeric',             'text'    ,  'text'   ,  'text'   ,       'text'          ,    'text'  ,   'text' ,  'text'  ,  'text'   ,  'text'  ,  'text'  ,   'text'   ]
 
 
 
@@ -47,7 +47,7 @@ def migrate(db_path):
 
     contigs_db.create_table(blast_hits_table_name, blast_hits_table_structure, blast_hits_table_types)
     contigs_db.create_table(taxon_names_table_name_taxonomy, taxon_names_table_structure_taxonomy, taxon_names_table_types_taxonomy)
-    contigs_db.create_table(taxonomy_estimation_metagenome_name, taxonomy_estimation_metagenome_structure, taxonomy_estimation_metagenome_types)
+    contigs_db.create_table(scg_taxonomy_estimation_name, scg_taxonomy_estimation_structure, scg_taxonomy_estimation_types)
 
     progress.update("Updating version")
     contigs_db.remove_meta_key_value_pair('version')

@@ -3,6 +3,7 @@
 
 import os
 import hashlib
+import traceback
 from collections import OrderedDict
 
 
@@ -39,18 +40,34 @@ blast_hits_table_structure               = ['match_id' , 'gene_callers_id', 'gen
 blast_hits_table_types                   = ['text'     ,       'text'    ,      'text'   ,   'text'   ,     'text'   ,         'text']
 
 
-taxonomy_estimation_bin_name             = 'taxonomy_estimation_bin'
-taxonomy_estimation_bin_structure        = ['entry_id', 'collection_name', 'bin_name', 'source'  , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-taxonomy_estimation_bin_types            = [ 'numeric',   'text'   ,        'text'  ,  'text',      'text',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
+collection_taxonomy_estimation_name             = 'collection_taxonomy_estimation'
+collection_taxonomy_estimation_structure        = ['entry_id', 'collection_name', 'bin_name', 'source'  , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+collection_taxonomy_estimation_types            = [ 'numeric',   'text'   ,        'text'  ,  'text',      'text',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
 
-taxonomy_estimation_metagenome_name      = 'taxonomy_estimation_metagenome'
-taxonomy_estimation_metagenome_structure = ['gene_caller_id',      'gene_name',  'source' , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-taxonomy_estimation_metagenome_types     = [ 'numeric',             'text'    ,  'text',      'text'  ,   'text'  ,  'text'  ,  'text'   ,  'text'  ,  'text'  ,   'text'   ]
+scg_taxonomy_estimation_name      = 'scg_taxonomy_estimation'
+scg_taxonomy_estimation_structure = ['gene_caller_id',      'gene_name',  'source' , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+scg_taxonomy_estimation_types     = [ 'numeric',             'text'    ,  'text',      'text'  ,   'text'  ,  'text'  ,  'text'   ,  'text'  ,  'text'  ,   'text'   ]
 
 
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
+
+def timer(function):
+    import time
+
+    def timed_function(*args, **kwargs):
+        n = 1
+        start = time.time()
+        for i in range(n):
+            x = function(*args, **kwargs)
+        end = time.time()
+        print('Average time per call over {} calls for function \'{}\': {:6f} seconds'.format(
+            n, function.__name__, (end - start) / n))
+        return x
+    return timed_function
+
+
 
 class TablesForTaxoestimation(Table):
     def __init__(self, db_path, run=run, progress=progress,profile_db_path=False):
@@ -73,45 +90,33 @@ class TablesForTaxoestimation(Table):
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
 
 
-    def alignment_result_to_congigs(self,diamond_output,taxonomy_dict,match_id):
+    def alignment_result_to_congigs(self,diamond_output):
 
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        taxonomy_dictonnary=self.database.get_table_as_dict(t.taxon_names_table_name_taxonomy)
 
-        list_taxo=[]
         entries=[]
 
+
         for result in diamond_output :
-            SCG=result[0]
-            for line_hit_to_split in result[1].split('\n')[1:-2]:
-                if not line_hit_to_split.startswith('Query') or len(line_hit_to_split):
-                    line_hit=line_hit_to_split.split('\t')
+            estimation_id=0
+            SCG=result[1]
+            gene_callers_id=result[0]
+            if not len(result[3]):
+                continue
+            entries+=[tuple([gene_callers_id, SCG, "Anvio", estimation_id, " "]+list(result[2].values()))]
+            for consider_taxonomy in result[3]:
+                estimation_id+=1
+                if len(list(consider_taxonomy["taxonomy"].values())):
+                    entries+=[tuple([gene_callers_id, SCG, "GTDB", consider_taxonomy["code"], consider_taxonomy["bestident"]]+ list(consider_taxonomy["taxonomy"].values()))]
 
-                    try:
-                        entries+=[tuple([match_id,line_hit[0],SCG,line_hit[1],line_hit[2],line_hit[11]])]
-                    except:
-                        print("error parsing output aligment: %s" % (' '.join(line_hit)))
-                        continue
-
-
-
-                match_id+=1
-
-                if line_hit[1] not in list_taxo and line_hit[1] not in taxonomy_dictonnary:
-                    list_taxo+=[line_hit[1]]
-
-        taxo_entries=[tuple([t_name_id]+list(taxonomy_dict[t_name_id].values())) for t_name_id in list_taxo]
-        self.database.insert_many(t.blast_hits_table_name, entries)
-        self.database.insert_many(t.taxon_names_table_name_taxonomy, taxo_entries)
-
+        self.database.insert_many(t.scg_taxonomy_estimation_name, entries)
         self.database.disconnect()
-        return match_id
 
     def taxonomy_estimation_to_congis(self,possibles_taxonomy):
 
         try:
             self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-            self.database.insert_many(t.taxonomy_estimation_metagenome_name, possibles_taxonomy)
+            self.database.insert_many(t.scg_taxonomy_estimation_name, possibles_taxonomy)
         except:
             self.run.warning(traceback.print_exc(), header='Anvi\'o fail the enter the result in %s' % self.db_pat, lc="red")
         finally:
@@ -120,12 +125,13 @@ class TablesForTaxoestimation(Table):
     def taxonomy_estimation_to_profile(self,possibles_taxonomy):
         try:
             self.bin_database = db.DB(self.profile_db_path, utils.get_required_version_for_db(self.profile_db_path))
-            self.bin_database.insert_many(t.taxonomy_estimation_bin_name, possibles_taxonomy)
+            self.bin_database.insert_many(t.collection_taxonomy_estimation_name, possibles_taxonomy)
         except:
             self.run.warning(traceback.print_exc(), header='Anvi\'o fail the enter the result in %s' % self.profile_db_path, lc="red")
         finally:
             self.bin_database.disconnect()
 
+    @timer
     def get_dic_id_bin(self,args):
 
         self.bin_database = db.DB(self.profile_db_path, utils.get_required_version_for_db(self.profile_db_path))
@@ -170,20 +176,12 @@ class TablesForTaxoestimation(Table):
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         try:
-            dic_blast_hits=self.database.get_table_as_dict(t.blast_hits_table_name)
-            taxonomy_dict =OrderedDict(self.database.get_table_as_dict(t.taxon_names_table_name_taxonomy))
+            dic_blast_hits=self.database.get_table_as_list_of_tuples(t.scg_taxonomy_estimation_name)
         except:
+            traceback.print_exc()
             raise ConfigError("Anvi'o could not find the data for the taxonomic estimation,\
                                you should try to run 'anvi-diamond-for-taxonomy'")
 
-        taxon_id_missing_taxonomy=[]
-        for blast_hit in dic_blast_hits.values():
-            if blast_hit['taxon_id'] not in taxonomy_dict:
-                taxon_id_missing_taxonomy+=blast_hit['taxon_id']
-        if len(taxon_id_missing_taxonomy):
-            print(taxon_id_missing_taxonomy)
-            raise ConfigError("it seams , some taxon id of blast hit are not linked to any phylogenie,\
-                               you should run 'anvi-diamond-for-taxonomy'.%d" % (','.join(taxon_id_missing_taxonomy)))
-
+        print(dic_blast_hits)
         self.database.disconnect()
-        return(dic_blast_hits,taxonomy_dict)
+        return(dic_blast_hits)

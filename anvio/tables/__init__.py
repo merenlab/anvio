@@ -116,13 +116,13 @@ taxon_names_table_name_taxonomy          = 'taxon_names_taxonomy'
 taxon_names_table_structure_taxonomy     = ['taxon_id', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 taxon_names_table_types_taxonomy         = [ 'numeric',   'text'  ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
 
-taxonomy_estimation_bin_name             = 'taxonomy_estimation_bin'
-taxonomy_estimation_bin_structure        = ['entry_id', 'collection_name', 'bin_name', 'source'  , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-taxonomy_estimation_bin_types            = [ 'numeric',   'text'   ,        'text'  ,  'text',      'text',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
+collection_taxonomy_estimation_name             = 'collection_taxonomy_estimation'
+collection_taxonomy_estimation_structure        = ['entry_id', 'collection_name', 'bin_name', 'source'  , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+collection_taxonomy_estimation_types            = [ 'numeric',   'text'   ,        'text'  ,  'text',      'text',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
 
-taxonomy_estimation_metagenome_name      = 'taxonomy_estimation_metagenome'
-taxonomy_estimation_metagenome_structure = ['gene_caller_id',      'gene_name',  'source' , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-taxonomy_estimation_metagenome_types     = [ 'numeric',             'text'    ,  'text',      'text'  ,   'text'  ,  'text'  ,  'text'   ,  'text'  ,  'text'  ,   'text'   ]
+scg_taxonomy_estimation_name      = 'scg_taxonomy_estimation'
+scg_taxonomy_estimation_structure = ['gene_caller_id',      'gene_name',  'source' ,  'accession' , 'pourcentage_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+scg_taxonomy_estimation_types     = [ 'numeric',             'text'    ,  'text'   ,  'text'   ,       'text'          ,    'text'  ,   'text' ,  'text'  ,  'text'   ,  'text'  ,  'text'  ,   'text'   ]
 
 
 # following table keeps nt poisition info

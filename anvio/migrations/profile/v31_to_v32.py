@@ -15,9 +15,9 @@ progress = terminal.Progress()
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
 
-taxonomy_estimation_bin_name             = 'taxonomy_estimation_bin'
-taxonomy_estimation_bin_structure        = ['entry_id', 'collection_name', 'bin_name', 'source'  , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-taxonomy_estimation_bin_types            = [ 'numeric',   'text'   ,        'text'  ,  'text',      'text',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
+collection_taxonomy_estimation_name             = 'collection_taxonomy_estimation'
+collection_taxonomy_estimation_structure        = ['entry_id', 'collection_name', 'bin_name', 'source'  , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+collection_taxonomy_estimation_types            = [ 'numeric',   'text'   ,        'text'  ,  'text',      'text',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
 
 def migrate(db_path):
     if db_path is None:
@@ -30,7 +30,7 @@ def migrate(db_path):
     profile_db = db.DB(db_path, None, ignore_version = True)
 
 
-    profile_db.create_table(taxonomy_estimation_bin_name, taxonomy_estimation_bin_structure,taxonomy_estimation_bin_types)
+    profile_db.create_table(collection_taxonomy_estimation_name, collection_taxonomy_estimation_structure,collection_taxonomy_estimation_types)
 
     # set the version
     profile_db.remove_meta_key_value_pair('version')
