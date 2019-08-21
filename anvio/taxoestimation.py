@@ -2,43 +2,35 @@
 # -*- coding: utf-8
 
 import argparse
+import copy
+import multiprocessing
 import os
+import pickle
 import re
 import sys
 import time
-import copy
 import traceback
-
-
-import multiprocessing
-from collections import Counter
+from collections import Counter, OrderedDict
 
 import anvio
-import pickle
-from anvio.drivers.diamond import Diamond
-import pandas as pd
-from collections import OrderedDict
-
-from tabulate import tabulate
-import anvio.db as db
-import pandas as pd
-import numpy as np
-
 import anvio.ccollections as ccollections
+import anvio.db as db
 import anvio.fastalib as f
 import anvio.filesnpaths as filesnpaths
 import anvio.hmmops as hmmops
 import anvio.hmmopswrapper as hmmopswrapper
+import anvio.tables as t
 import anvio.terminal as terminal
 import anvio.utils as utils
-
-from anvio.tables.tableops import Table
-from anvio.tables.taxoestimation import TablesForTaxoestimation
-import anvio.tables as t
+import numpy as np
+import pandas as pd
 from anvio.dbops import ContigsSuperclass
 from anvio.drivers import Aligners, driver_modules
+from anvio.drivers.diamond import Diamond
 from anvio.errors import ConfigError, FilesNPathsError
-
+from anvio.tables.tableops import Table
+from anvio.tables.taxoestimation import TablesForTaxoestimation
+from tabulate import tabulate
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -69,6 +61,7 @@ def timer(function):
             n, function.__name__, (end - start) / n))
         return x
     return timed_function
+
 
 class TaxonomyEstimation:
 
@@ -106,7 +99,6 @@ class TaxonomyEstimation:
         print(tabulate(table, headers=header,
                        tablefmt="fancy_grid", numalign="right"))
 
-
     def show_matrix_rank(self, name, matrix, list_position_entry, list_position_ribosomal):
         headers = list(matrix.keys())
 
@@ -116,26 +108,26 @@ class TaxonomyEstimation:
 
     def get_consensus_taxonomy(self, SCGs_hit_per_gene, name):
         """Different methode for assignation"""
-        taxonomy_dict=self.taxonomy_dict
+        taxonomy_dict = self.taxonomy_dict
 
         consensus_taxonomy = self.solo_hits(SCGs_hit_per_gene)
         if consensus_taxonomy:
-            print(SCGs_hit_per_gene)
             for SCG, entry in SCGs_hit_per_gene.items():
-                taxonomy={"bestSCG": SCG, "bestident": entry[0]['pident'],
-                                 "code": entry[0]['accession']}
-            return(consensus_taxonomy,taxonomy)
+                taxonomy = [{"bestSCG": SCG, "bestident": entry[0]['pident'],
+                            "code": entry[0]['accession'], "taxonomy":OrderedDict(self.taxonomy_dict[entry[0]['accession']])}]
+
+            return(consensus_taxonomy, taxonomy)
 
         else:
-            consensus_taxonomy,taxonomy = self.rank_assignement(SCGs_hit_per_gene, name)
-            return(consensus_taxonomy,taxonomy)
+            consensus_taxonomy, taxonomy = self.rank_assignement(
+                SCGs_hit_per_gene, name)
+            return(consensus_taxonomy, taxonomy)
 
     def get_matching_gene(self, SCGs_hit_per_gene):
         matching_genes = [
             gene for gene in SCGs_hit_per_gene if len(SCGs_hit_per_gene[gene])]
         number_of_matching_genes = len(matching_genes)
         return matching_genes
-
 
     def fill_matrix(self, name, emptymatrix_ident, SCGs_hit_per_gene, list_position_entry,
                     list_position_ribosomal, matchinggenes):
@@ -192,7 +184,7 @@ class TaxonomyEstimation:
             assignation = []
 
         finally:
-            return(assignation,taxonomy)
+            return(assignation, taxonomy)
 
     def assign_taxonomie_solo_hit(self, taxonomy):
         if not taxonomy or not taxonomy[0]:
@@ -215,20 +207,19 @@ class TaxonomyEstimation:
             bestSCG = pd.to_numeric(matrix_pident.loc[individue, :]).idxmax()
             bestident = matrix_pident.loc[individue, bestSCG]
             taxonomy.append({"bestSCG": bestSCG, "bestident": bestident,
-                             "code": individue})
+                             "code": individue, "taxonomy":OrderedDict(self.taxonomy_dict[individue])})
         return(taxonomy)
 
     def reduce_assignation_level(self, taxonomy):
         reduce_taxonomy = []
         for possibilitie in taxonomy:
-            print(self.taxonomy_dict[possibilitie["code"]])
-            for level, value in reversed(OrderedDict(self.taxonomy_dict[possibilitie["code"]]).items()):
-                if possibilitie["bestident"] < float(self.dicolevel[possibilitie["bestSCG"]]\
+            for level, value in reversed(possibilitie["taxonomy"].items()):
+                if possibilitie["bestident"] < float(self.dicolevel[possibilitie["bestSCG"]]
                                                      [self.taxonomic_levels_parser[level] + value]):
-                    possibilitie["code"][level] = ''
+                    possibilitie["taxonomy"][level] = 'NA'
                 else:
                     break
-            reduce_taxonomy.append(OrderedDict(self.taxonomy_dict[possibilitie["code"]]))
+            reduce_taxonomy.append(possibilitie["taxonomy"])
 
         return(reduce_taxonomy)
 
@@ -236,7 +227,8 @@ class TaxonomyEstimation:
         consensus_taxonomy = []
         for SCG, entry in SCGs_hit_per_gene.items():
             if len(entry) == 1 and entry[0]['pident'] > cutoff_solo_hit:
-                consensus_taxonomy.append(self.taxonomy_dict[entry[0]['accession']])
+                consensus_taxonomy.append(
+                    self.taxonomy_dict[entry[0]['accession']])
         if consensus_taxonomy:
             assignation = self.assign_taxonomie_solo_hit(consensus_taxonomy)
             return assignation
@@ -434,7 +426,6 @@ class SCGsdiamond(TaxonomyEstimation):
         output_queue = manager.Queue()
 
         diamond_output = []
-        match_id = 0
 
         for SCG in hmm_sequences_dict_per_type:
 
@@ -445,8 +436,9 @@ class SCGsdiamond(TaxonomyEstimation):
                                        does not look like the way we expected it. This function\
                                        expects a dictionary that contains keys `gene_name` and `sequence`.")
 
-                sequence = sequence+">" + \
-                    str(entry['gene_callers_id'])+"\n"+entry['sequence']+"\n"
+                sequence = sequence + ">" + \
+                    str(entry['gene_callers_id']) + \
+                    "\n" + entry['sequence'] + "\n"
                 entry['hits'] = []
             input_queue.put([SCG, sequence])
 
@@ -467,7 +459,7 @@ class SCGsdiamond(TaxonomyEstimation):
                 if self.write_buffer_size > 0 and len(diamond_output) % self.write_buffer_size == 0:
 
                     match_id = self.tables_for_taxonomy.alignment_result_to_congigs(
-                        diamond_output, self.taxonomy_dict, match_id)
+                        diamond_output)
                     diamond_output = []
 
                 finish_process += 1
@@ -483,15 +475,13 @@ class SCGsdiamond(TaxonomyEstimation):
         for worker in workers:
             worker.terminate()
 
-        match_id = self.tables_for_taxonomy.alignment_result_to_congigs(
-            diamond_output, self.taxonomy_dict, match_id)
+        self.tables_for_taxonomy.alignment_result_to_congigs(
+            diamond_output)
         progress.end()
-        self.run.info('Number of match selected', match_id)
 
-
-    def show_hits(self, name, gene_name, hits):
-        self.run.warning(None, header='%s / %s' %
-                         (name, gene_name), lc="green")
+    def show_hits(self, hits, name):
+        self.run.warning(None, header='%s' %
+                         name, lc="green")
         header = ['%id', 'bitscore', 'taxonomy']
         table = []
 
@@ -515,25 +505,26 @@ class SCGsdiamond(TaxonomyEstimation):
 
             SCG = d[0]
             diamond_output = diamond.blastp_stdin_multi(d[1])
-            hits_per_gene={}
+            hits_per_gene = {}
 
             for line_hit_to_split in diamond_output.split('\n'):
                 if len(line_hit_to_split) and not line_hit_to_split.startswith('Query'):
-                    line_hit=line_hit_to_split.split('\t')
+                    line_hit = line_hit_to_split.split('\t')
                     gene_callers_id = line_hit[0]
                     hit = [dict(zip(['accession', 'pident', 'bitscore'], [
                         line_hit[1], float(line_hit[2]), float(line_hit[11])]))]
-                    print(hit)
-
 
                     if SCG not in hits_per_gene:
                         hits_per_gene[SCG] = []
 
                     hits_per_gene[SCG] += hit
 
-            consensus_taxonomy,taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,hits_per_gene, gene_callers_id)
-            print(consensus_taxonomy,taxonomy)
-            output_queue.put([d[0], diamond_output])
+
+            if anvio.DEBUG:
+                self.show_hits(hits_per_gene[SCG], SCG)
+            consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(
+                self, hits_per_gene, gene_callers_id)
+            output_queue.put([gene_callers_id, SCG, consensus_taxonomy, taxonomy])
 
 
 class SCGsTaxonomy(TaxonomyEstimation):
@@ -608,7 +599,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.tables_for_taxonomy = TablesForTaxoestimation(
             self.db_path, run, progress, self.profile_db_path)
 
-        self.dic_blast_hits, self.taxonomy_dict = self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
+        self.dic_blast_hits= self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
 
         if not (self.dic_blast_hits):
             raise ConfigError(
