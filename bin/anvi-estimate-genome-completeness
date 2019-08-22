@@ -72,8 +72,8 @@ def print_improper(args, collection, completeness, run, progress):
     list_collections = A('list_collections')
     output_file_path = A('output_file')
 
-    run.info_single("Since domain estimates do not seem to be working, for your contigs database, anvi'o will show you the raw\
-                     C/R estimates altogether.")
+    run.info_single("Hi. I am the function that is called when the completion class is not initialized properly, and the best I can\
+                     do is to dump all the raw the raw C/R estimates from all domains altogether.")
 
     contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
