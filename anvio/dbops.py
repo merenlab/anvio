@@ -3161,7 +3161,6 @@ class PanDatabase:
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
-        self.db.create_table(t.blast_hits_table_name, t.blast_hits_table_structure, t.blast_hits_table_types)
         self.db.create_table(t.scg_taxonomy_estimation_name, t.scg_taxonomy_estimation_structure, t.scg_taxonomy_estimation_types)
 
 
@@ -3267,7 +3266,6 @@ class ContigsDatabase:
         self.db.create_table(t.genes_in_splits_table_name, t.genes_in_splits_table_structure, t.genes_in_splits_table_types)
         self.db.create_table(t.splits_taxonomy_table_name, t.splits_taxonomy_table_structure, t.splits_taxonomy_table_types)
         self.db.create_table(t.taxon_names_table_name, t.taxon_names_table_structure, t.taxon_names_table_types)
-        self.db.create_table(t.taxon_names_table_name_taxonomy, t.taxon_names_table_structure_taxonomy, t.taxon_names_table_types_taxonomy)
         self.db.create_table(t.genes_taxonomy_table_name, t.genes_taxonomy_table_structure, t.genes_taxonomy_table_types)
         self.db.create_table(t.contig_sequences_table_name, t.contig_sequences_table_structure, t.contig_sequences_table_types)
         self.db.create_table(t.gene_function_calls_table_name, t.gene_function_calls_table_structure, t.gene_function_calls_table_types)
@@ -3275,7 +3273,6 @@ class ContigsDatabase:
         self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
         self.db.create_table(t.nt_position_info_table_name, t.nt_position_info_table_structure, t.nt_position_info_table_types)
-        self.db.create_table(t.blast_hits_table_name, t.blast_hits_table_structure, t.blast_hits_table_types)
         self.db.create_table(t.scg_taxonomy_estimation_name, t.scg_taxonomy_estimation_structure, t.scg_taxonomy_estimation_types)
 
 

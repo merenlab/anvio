@@ -10,6 +10,7 @@ import re
 import sys
 import time
 import traceback
+
 from collections import Counter, OrderedDict
 
 import anvio
@@ -24,6 +25,7 @@ import anvio.terminal as terminal
 import anvio.utils as utils
 import numpy as np
 import pandas as pd
+from copy import deepcopy
 from anvio.dbops import ContigsSuperclass
 from anvio.drivers import Aligners, driver_modules
 from anvio.drivers.diamond import Diamond
@@ -65,7 +67,7 @@ def timer(function):
 
 class TaxonomyEstimation:
 
-    def __init__(self, taxonomy_dict, dicolevel=None, run=run, progress=progress):
+    def __init__(self, taxonomy_dict, dicolevel=None, reduction=False, run=run, progress=progress):
 
         if not dicolevel:
             self.pident_level_path = os.path.join(os.path.dirname(
@@ -73,6 +75,11 @@ class TaxonomyEstimation:
 
         with open(self.pident_level_path, 'rb') as handle:
             self.dicolevel = pickle.load(handle)
+
+        if reduction:
+            self.reduction=True
+        else:
+            self.reduction=False
 
         self.taxonomy_dict = taxonomy_dict
 
@@ -109,7 +116,8 @@ class TaxonomyEstimation:
     def get_consensus_taxonomy(self, SCGs_hit_per_gene, name):
         """Different methode for assignation"""
         taxonomy_dict = self.taxonomy_dict
-
+        consensus_taxonomy=list()
+        taxonomy=list()
         consensus_taxonomy = self.solo_hits(SCGs_hit_per_gene)
         if consensus_taxonomy:
             for SCG, entry in SCGs_hit_per_gene.items():
@@ -169,15 +177,14 @@ class TaxonomyEstimation:
 
         return(matrix_pident)
 
-    def rank_assignement(self, SCGs_hit_per_gene, name):
+    def rank_assignement(self, SCGs_hit_per_gene, name, reduction=False):
         try:
             matrix_pident = self.make_rank_matrix(name, SCGs_hit_per_gene)
 
             taxonomy = self.make_list_taxonomy(matrix_pident)
-
-            assignation_reduce = self.reduce_assignation_level(taxonomy)
+            taxonomy_to_reduction = deepcopy(taxonomy)
+            assignation_reduce = self.reduce_assignation_level(taxonomy_to_reduction)
             assignation = self.assign_taxonomie_solo_hit(assignation_reduce)
-
         except:
             traceback.print_exc()
             self.run.warning(SCGs_hit_per_gene, header='Fail matrix')
@@ -190,10 +197,14 @@ class TaxonomyEstimation:
         if not taxonomy or not taxonomy[0]:
             return 0
         assignation = taxonomy[0]
-        for taxon in taxonomy[1:]:
-            for level in taxon:
-                if taxon[level] not in assignation.values():
-                    assignation[level] = 'NA'
+        if taxonomy[1:]:
+            for taxon in taxonomy[1:]:
+                for level in taxon:
+                    #print(taxon[level],assignation.values())
+                    if taxon[level] not in list(assignation.values()):
+                        assignation[level] = 'NA'
+                        #assignation=taxon
+
         return(assignation)
 
     def make_list_taxonomy(self, matrix_pident):
@@ -414,9 +425,10 @@ class SCGsdiamond(TaxonomyEstimation):
         self.tables_for_taxonomy = TablesForTaxoestimation(
             self.db_path, run, progress)
         self.tables_for_taxonomy.delete_contents_of_table(
-            t.blast_hits_table_name)
+            t.scg_taxonomy_estimation_name)
 
         self.progress.new('Computing SCGs aligments',
+
                           progress_total_items=num_listeprocess)
         self.progress.update('Initializing %d process...' %
                              int(self.num_process))
@@ -426,6 +438,7 @@ class SCGsdiamond(TaxonomyEstimation):
         output_queue = manager.Queue()
 
         diamond_output = []
+        table_index=0
 
         for SCG in hmm_sequences_dict_per_type:
 
@@ -458,8 +471,8 @@ class SCGsdiamond(TaxonomyEstimation):
 
                 if self.write_buffer_size > 0 and len(diamond_output) % self.write_buffer_size == 0:
 
-                    match_id = self.tables_for_taxonomy.alignment_result_to_congigs(
-                        diamond_output)
+                    table_index = self.tables_for_taxonomy.alignment_result_to_congigs(
+                        table_index,diamond_output)
                     diamond_output = []
 
                 finish_process += 1
@@ -475,8 +488,7 @@ class SCGsdiamond(TaxonomyEstimation):
         for worker in workers:
             worker.terminate()
 
-        self.tables_for_taxonomy.alignment_result_to_congigs(
-            diamond_output)
+        table_index = self.tables_for_taxonomy.alignment_result_to_congigs(table_index,diamond_output)
         progress.end()
 
     def show_hits(self, hits, name):
@@ -604,8 +616,9 @@ class SCGsTaxonomy(TaxonomyEstimation):
         if not (self.dic_blast_hits):
             raise ConfigError(
                 "Anvi'o can't make a taxonomy estimation because aligment didn't return any match or you forgot to run 'anvi-diamond-for-taxonomy'.")
-            self.run.info(
-                'taxonomy estimation not possible for:', self.db_path)
+        
+        self.run.info(
+            'taxonomy estimation not possible for:', self.db_path)
 
 
         contigs_db = db.DB(self.db_path, anvio.__contigs__version__)
@@ -631,7 +644,36 @@ class SCGsTaxonomy(TaxonomyEstimation):
                 if split in split_to_gene_callers_id:
                     bin_to_gene_callers_id[bin_name].update(split_to_gene_callers_id[split])
 
+        self.taxonomy_dict=dict()
+        for gene_estimation in self.dic_blast_hits.values():
+
+            if gene_estimation['gene_caller_id'] not in self.taxonomy_dict:
+                self.taxonomy_dict[gene_estimation['accession']]= {"t_domain": gene_estimation['t_domain'],
+                                                            "t_phylum": gene_estimation['t_phylum'],
+                                                            "t_class": gene_estimation['t_class'],
+                                                            "t_order": gene_estimation['t_order'],
+                                                            "t_family": gene_estimation['t_family'],
+                                                            "t_genus": gene_estimation['t_genus'],
+                                                            "t_species": gene_estimation['t_species']}
+
+            for bin_id, gene_callers_id in bin_to_gene_callers_id.items():
+                if gene_estimation['gene_caller_id'] in gene_callers_id:
+
+
+
+                    hit = [{'accession': gene_estimation['accession'], 'pident':float(
+                        gene_estimation['pourcentage_identity'])}]
+
+                    if bin_id not in self.hits_per_gene:
+                        self.hits_per_gene[bin_id] = {}
+                    if gene_estimation['gene_name'] not in self.hits_per_gene[bin_id]:
+                        self.hits_per_gene[bin_id][gene_estimation['gene_name']] = []
+
+                    self.hits_per_gene[bin_id][gene_estimation['gene_name']] += hit
+
+
         self.initialized = True
+        taxonomyestimation=TaxonomyEstimation.__init__(self,self.taxonomy_dict)
 
     def estimate_taxonomy(self, source="GTDB"):
 
@@ -653,8 +695,9 @@ class SCGsTaxonomy(TaxonomyEstimation):
         for name, SCGs_hit_per_gene in self.hits_per_gene.items():
 
             # print(SCGs_hit_per_gene)
-            taxonomy = TaxonomyEstimation.get_consensus_taxonomy(
+            consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,
                 SCGs_hit_per_gene, name)
+            continue
 
             if not taxonomy:
                 self.run.info('taxonomy estimation not possible for:', name)
