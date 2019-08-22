@@ -1545,8 +1545,14 @@ def store_dict_as_FASTA_file(d, output_file_path, wrap_from=200):
     return True
 
 
-def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_names_to_export=None, splits_mode=False, rna_alphabet=False, truncate=True):
-    """Export sequences from a contigs database."""
+def export_sequences_from_contigs_db(contigs_db_path, output_file_path, 
+                                     seq_names_to_export=None, splits_mode=False, 
+                                     rna_alphabet=False, truncate=True, split_parts=1):
+    """Export sequences from a contigs database.
+       
+       If split_parts greater than 1 given, output will be split to parts and 
+       part number will be added to output_file_path as a suffix.
+    """
     filesnpaths.is_output_file_writable(output_file_path)
 
     contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
@@ -1554,7 +1560,6 @@ def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_name
     splits_info_dict = contigs_db.get_table_as_dict(t.splits_info_table_name)
     contigs_db.disconnect()
 
-    output_fasta = u.FastaOutput(output_file_path)
 
     FORMAT = lambda seq: seq.replace('T', 'U') if rna_alphabet else seq
 
@@ -1564,15 +1569,34 @@ def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_name
         else:
             seq_names_to_export = sorted(contig_sequences_dict.keys())
 
-    for seq_name in seq_names_to_export:
-        if splits_mode:
-            s = splits_info_dict[seq_name]
-            sequence = FORMAT(contig_sequences_dict[s['parent']]['sequence'][s['start']:s['end']])
-        else:
-            sequence = FORMAT(contig_sequences_dict[seq_name]['sequence'])
+    chunk_size = len(seq_names_to_export) // split_parts
 
-        output_fasta.write_id(seq_name)
-        output_fasta.write_seq(sequence, split=truncate)
+    for part in range(split_parts):
+        if split_parts > 1:
+            part_file_path = output_file_path + str(part)
+        else:
+            part_file_path = output_file_path
+
+        output_fasta = u.FastaOutput(part_file_path)
+
+        chunk_start = chunk_size * part
+        chunk_end   = chunk_start + chunk_size
+
+        if (part + 1 == split_parts):
+            # if this is the last chunk make sure it contains everything till end.
+            chunk_end = len(seq_names_to_export)
+
+        for seq_name in seq_names_to_export[chunk_start:chunk_end]:
+            if splits_mode:
+                s = splits_info_dict[seq_name]
+                sequence = FORMAT(contig_sequences_dict[s['parent']]['sequence'][s['start']:s['end']])
+            else:
+                sequence = FORMAT(contig_sequences_dict[seq_name]['sequence'])
+
+            output_fasta.write_id(seq_name)
+            output_fasta.write_seq(sequence, split=truncate)
+
+        output_fasta.close()
 
     return True
 
