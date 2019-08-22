@@ -15,17 +15,12 @@ from anvio.errors import ConfigError
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
 
 
-blast_hits_table_name                    = 'blast_hits'
-blast_hits_table_structure               = ['match_id' , 'gene_callers_id', 'gene_name', 'taxon_id', 'pourcentage_identity', 'bitscore']
-blast_hits_table_types                   = ['text'     ,       'text'    ,      'text'   ,   'text'   ,     'text'   ,         'text']
 
-taxon_names_table_name_taxonomy                   = 'taxon_names_taxonomy'
-taxon_names_table_structure_taxonomy              = ['taxon_id', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-taxon_names_table_types_taxonomy                  = [ 'numeric',   'text'  ,   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
 
 scg_taxonomy_estimation_name      = 'scg_taxonomy_estimation'
-scg_taxonomy_estimation_structure = ['gene_caller_id',      'gene_name',  'source' ,  'accession' , 'pourcentage_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-scg_taxonomy_estimation_types     = [ 'numeric',             'text'    ,  'text'   ,  'text'   ,       'text'          ,    'text'  ,   'text' ,  'text'  ,  'text'   ,  'text'  ,  'text'  ,   'text'   ]
+scg_taxonomy_estimation_structure = ['id'  ,    'gene_caller_id',      'gene_name',  'source' ,  'accession' , 'pourcentage_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+scg_taxonomy_estimation_types     = ['numeric', 'numeric' ,             'text'    ,  'text'   ,  'text'   ,       'text'          ,    'text'  ,   'text' ,  'text'  ,  'text'   ,  'text'  ,  'text'  ,   'text'   ]
+
 
 
 
@@ -45,8 +40,6 @@ def migrate(db_path):
     progress.new("Actualyse databases ")
     progress.update("...")
 
-    contigs_db.create_table(blast_hits_table_name, blast_hits_table_structure, blast_hits_table_types)
-    contigs_db.create_table(taxon_names_table_name_taxonomy, taxon_names_table_structure_taxonomy, taxon_names_table_types_taxonomy)
     contigs_db.create_table(scg_taxonomy_estimation_name, scg_taxonomy_estimation_structure, scg_taxonomy_estimation_types)
 
     progress.update("Updating version")

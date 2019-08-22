@@ -4,6 +4,8 @@
 import os
 import hashlib
 import traceback
+import random
+import string
 from collections import OrderedDict
 
 
@@ -35,18 +37,6 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
-blast_hits_table_name                    = 'blast_hits'
-blast_hits_table_structure               = ['match_id' , 'gene_callers_id', 'gene_name', 'taxon_id', 'pourcentage_identity', 'bitscore']
-blast_hits_table_types                   = ['text'     ,       'text'    ,      'text'   ,   'text'   ,     'text'   ,         'text']
-
-
-collection_taxonomy_estimation_name             = 'collection_taxonomy_estimation'
-collection_taxonomy_estimation_structure        = ['entry_id', 'collection_name', 'bin_name', 'source'  , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-collection_taxonomy_estimation_types            = [ 'numeric',   'text'   ,        'text'  ,  'text',      'text',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
-
-scg_taxonomy_estimation_name      = 'scg_taxonomy_estimation'
-scg_taxonomy_estimation_structure = ['gene_caller_id',      'gene_name',  'source' , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-scg_taxonomy_estimation_types     = [ 'numeric',             'text'    ,  'text',      'text'  ,   'text'  ,  'text'  ,  'text'   ,  'text'  ,  'text'  ,   'text'   ]
 
 
 run = terminal.Run()
@@ -89,27 +79,31 @@ class TablesForTaxoestimation(Table):
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
 
+    def randomStringDigits(self,stringLength=6):
+        """Generate a random string of letters and digits """
+        lettersAndDigits = string.ascii_letters + string.digits
+        return ''.join(random.choice(lettersAndDigits) for i in range(stringLength))
 
-    def alignment_result_to_congigs(self,diamond_output):
+
+    def alignment_result_to_congigs(self, table_index, diamond_output, source="GTDB"):
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         entries=[]
-
-
         for result in diamond_output :
-            estimation_id=0
+            #table_index+=1
             SCG=result[1]
             gene_callers_id=result[0]
             if not len(result[3]):
                 continue
-            #entries+=[tuple([gene_callers_id, SCG, "Anvio", estimation_id, " "]+list(result[2].values()))]
+           # entries+=[tuple([table_index, gene_callers_id, SCG, "Anvio", self.randomStringDigits(8), result[3][0]["bestident"]]+list(result[2].values()))]
             for consider_taxonomy in result[3]:
-                estimation_id+=1
+                table_index+=1
                 if len(list(consider_taxonomy["taxonomy"].values())):
-                    entries+=[tuple([gene_callers_id, SCG, "GTDB", consider_taxonomy["code"], consider_taxonomy["bestident"]]+ list(consider_taxonomy["taxonomy"].values()))]
-
+                    entries+=[tuple([table_index, gene_callers_id, SCG, source, consider_taxonomy["code"], consider_taxonomy["bestident"]]+ list(consider_taxonomy["taxonomy"].values()))]
+                   
         self.database.insert_many(t.scg_taxonomy_estimation_name, entries)
         self.database.disconnect()
+
 
     def taxonomy_estimation_to_congis(self,possibles_taxonomy):
 
@@ -175,12 +169,11 @@ class TablesForTaxoestimation(Table):
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         try:
-            dic_blast_hits=self.database.get_table_as_list_of_tuples(t.scg_taxonomy_estimation_name)
+            dic_blast_hits=self.database.get_table_as_dict(t.scg_taxonomy_estimation_name)
         except:
             traceback.print_exc()
             raise ConfigError("Anvi'o could not find the data for the taxonomic estimation,\
                                you should try to run 'anvi-diamond-for-taxonomy'")
 
-        print(dic_blast_hits)
         self.database.disconnect()
         return(dic_blast_hits)
