@@ -14,15 +14,9 @@ from anvio.errors import ConfigError
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
 
-
-
-
 scg_taxonomy_estimation_name      = 'scg_taxonomy_estimation'
 scg_taxonomy_estimation_structure = ['id'  ,    'gene_caller_id',      'gene_name',  'source' ,  'accession' , 'pourcentage_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 scg_taxonomy_estimation_types     = ['numeric', 'numeric' ,             'text'    ,  'text'   ,  'text'   ,       'text'          ,    'text'  ,   'text' ,  'text'  ,  'text'   ,  'text'  ,  'text'  ,   'text'   ]
-
-
-
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -50,6 +44,9 @@ def migrate(db_path):
     contigs_db.disconnect()
 
     progress.end()
+    run.info_single("The contigs database is now %s. This upgrade added one more table to your contigs database\
+                     so it can store additional information about the taxonomic composition of SCGs\
+                     in it." % (next_version), nl_after=1, nl_before=1, mc='green')
 
 
 if __name__ == '__main__':
