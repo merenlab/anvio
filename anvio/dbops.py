@@ -3161,7 +3161,7 @@ class PanDatabase:
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
-        self.db.create_table(t.scg_taxonomy_estimation_name, t.scg_taxonomy_estimation_structure, t.scg_taxonomy_estimation_types)
+        self.db.create_table(t.scg_taxonomy_table_name, t.scg_taxonomy_structure, t.scg_taxonomy_types)
 
 
         return self.db
@@ -3273,7 +3273,7 @@ class ContigsDatabase:
         self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
         self.db.create_table(t.nt_position_info_table_name, t.nt_position_info_table_structure, t.nt_position_info_table_types)
-        self.db.create_table(t.scg_taxonomy_estimation_name, t.scg_taxonomy_estimation_structure, t.scg_taxonomy_estimation_types)
+        self.db.create_table(t.scg_taxonomy_table_name, t.scg_taxonomy_structure, t.scg_taxonomy_types)
 
 
         return self.db

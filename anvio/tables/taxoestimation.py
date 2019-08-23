@@ -32,8 +32,8 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__maintainer__ = "Quentin Clayssen"
+__email__ = "quentin.clayssen@gmail.com"
 __status__ = "Development"
 
 
@@ -89,19 +89,23 @@ class TablesForTaxoestimation(Table):
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         entries=[]
-        
+        #FIXME source problem if to much hit
         for result in diamond_output :
             table_index+=1
             SCG=result[1]
             gene_callers_id=result[0]
             if not len(result[3]):
                 continue
-            entries+=[tuple([table_index, gene_callers_id, SCG, "Anvio", self.randomStringDigits(8), result[3][0]["bestident"]]+list(result[2].values()))]
-            for consider_taxonomy in result[3]:
-                table_index+=1
-                entries+=[tuple([table_index, gene_callers_id, SCG, source, consider_taxonomy["code"], consider_taxonomy["bestident"]]+ list(consider_taxonomy["taxonomy"].values()))]
-                   
-        self.database.insert_many(t.scg_taxonomy_estimation_name, entries)
+            if len(result[3]) < 5:
+                entries+=[tuple([table_index, gene_callers_id, SCG, "Consensus", self.randomStringDigits(8), result[3][0]["bestident"]]+list(result[2].values()))]
+                for consider_taxonomy in result[3]:
+                    table_index+=1
+                    entries+=[tuple([table_index, gene_callers_id, SCG, source, consider_taxonomy["code"], consider_taxonomy["bestident"]]+ list(consider_taxonomy["taxonomy"].values()))]
+            else:
+                entries+=[tuple([table_index, gene_callers_id, SCG, source, self.randomStringDigits(8), result[3][0]["bestident"]]+list(result[2].values()))]
+
+                       
+        self.database.insert_many(t.scg_taxonomy_table_name, entries)
         self.database.disconnect()
 
 
@@ -109,7 +113,7 @@ class TablesForTaxoestimation(Table):
 
         try:
             self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-            self.database.insert_many(t.scg_taxonomy_estimation_name, possibles_taxonomy)
+            self.database.insert_many(t.scg_taxonomy_table_name, possibles_taxonomy)
         except:
             self.run.warning(traceback.print_exc(), header='Anvi\'o fail the enter the result in %s' % self.db_pat, lc="red")
         finally:
@@ -124,7 +128,6 @@ class TablesForTaxoestimation(Table):
         finally:
             self.bin_database.disconnect()
 
-    @timer
     def get_dic_id_bin(self,args):
 
         self.bin_database = db.DB(self.profile_db_path, utils.get_required_version_for_db(self.profile_db_path))
@@ -168,12 +171,13 @@ class TablesForTaxoestimation(Table):
     def get_data_for_taxonomy_estimation(self):
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
-        try:
-            dic_blast_hits=self.database.get_table_as_dict(t.scg_taxonomy_estimation_name)
-        except:
+        #FIXME Argument for select return genes
+
+        dictonnary_taxonomy_by_index=self.database.get_table_as_dict(t.scg_taxonomy_table_name)
+        self.database.disconnect()
+        if not len(dictonnary_taxonomy_by_index):
             traceback.print_exc()
             raise ConfigError("Anvi'o could not find the data for the taxonomic estimation,\
                                you should try to run 'anvi-diamond-for-taxonomy'")
-
-        self.database.disconnect()
-        return(dic_blast_hits)
+        else:
+            return(dictonnary_taxonomy_by_index)
