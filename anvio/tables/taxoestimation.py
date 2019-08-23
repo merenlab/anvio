@@ -89,17 +89,17 @@ class TablesForTaxoestimation(Table):
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         entries=[]
+        
         for result in diamond_output :
-            #table_index+=1
+            table_index+=1
             SCG=result[1]
             gene_callers_id=result[0]
             if not len(result[3]):
                 continue
-           # entries+=[tuple([table_index, gene_callers_id, SCG, "Anvio", self.randomStringDigits(8), result[3][0]["bestident"]]+list(result[2].values()))]
+            entries+=[tuple([table_index, gene_callers_id, SCG, "Anvio", self.randomStringDigits(8), result[3][0]["bestident"]]+list(result[2].values()))]
             for consider_taxonomy in result[3]:
                 table_index+=1
-                if len(list(consider_taxonomy["taxonomy"].values())):
-                    entries+=[tuple([table_index, gene_callers_id, SCG, source, consider_taxonomy["code"], consider_taxonomy["bestident"]]+ list(consider_taxonomy["taxonomy"].values()))]
+                entries+=[tuple([table_index, gene_callers_id, SCG, source, consider_taxonomy["code"], consider_taxonomy["bestident"]]+ list(consider_taxonomy["taxonomy"].values()))]
                    
         self.database.insert_many(t.scg_taxonomy_estimation_name, entries)
         self.database.disconnect()

@@ -256,7 +256,7 @@ class SCGsdiamond(TaxonomyEstimation):
         self.taxonomy_file_path = A('taxonomy_file')
         self.taxonomy_database_path = A('taxonomy_database')
         self.write_buffer_size = int(A('write_buffer_size') if A(
-            'write_buffer_size') is not None else 500)
+            'write_buffer_size') is not None else 1000)
         self.db_path = A('contigs_db')
         self.core = A('num_threads')
         self.num_process = A('contigs_db')
@@ -271,7 +271,7 @@ class SCGsdiamond(TaxonomyEstimation):
             self.core = "1"
 
         if not args.num_process:
-            self.num_process = "2"
+            self.num_process = "1"
 
         self.initialized = False
 
@@ -474,7 +474,7 @@ class SCGsdiamond(TaxonomyEstimation):
         finish_process = 0
         while finish_process < num_listeprocess:
             try:
-                diamond_output += [output_queue.get()]
+                diamond_output+=output_queue.get()
 
                 if self.write_buffer_size > 0 and len(diamond_output) % self.write_buffer_size == 0:
 
@@ -547,8 +547,8 @@ class SCGsdiamond(TaxonomyEstimation):
             for gene_callers_id, SCGs_hit_per_gene in hits_per_gene.items():
                 consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,
                     SCGs_hit_per_gene, gene_callers_id)
-                 
-                output_queue.put([gene_callers_id, SCG, consensus_taxonomy, taxonomy])
+                genes_estimation_output.append([gene_callers_id, SCG, consensus_taxonomy, taxonomy])
+            output_queue.put(genes_estimation_output)
 
 
 class SCGsTaxonomy(TaxonomyEstimation):
@@ -658,6 +658,9 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
         self.taxonomy_dict=dict()
         for gene_estimation in self.dic_blast_hits.values():
+            if gene_estimation["source"]=="Anvio":
+                continue
+
 
             if gene_estimation['gene_caller_id'] not in self.taxonomy_dict:
                 self.taxonomy_dict[gene_estimation['accession']]= {"t_domain": gene_estimation['t_domain'],
@@ -700,64 +703,43 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
         possibles_taxonomy = []
         entry_id = 0
-        stdout_taxonomy = []
+        entries_db_profile = []
+        dictionary_bin_taxonomy_estimation=dict()
         possibles_taxonomy.append(
             ['bin_id', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
 
         for bin_id, SCGs_hit_per_gene in self.hits_per_gene.items():
+            dictionary_bin_taxonomy_estimation[bin_id]={"consensus_taxonomy":consensus_taxonomy, "taxonomy_use_for_consensus":taxonomy}
 
             consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,
                 SCGs_hit_per_gene, bin_id)
-            print(bin_id, consensus_taxonomy)
-            continue
+           
+            dictionary_bin_taxonomy_estimation[bin_id]={"consensus_taxonomy":consensus_taxonomy, "taxonomy_use_for_consensus":taxonomy}
 
-            if not taxonomy:
-                self.run.info('taxonomy estimation not possible for:', bin_id)
-                possibles_taxonomy.append([bin_id] + ["NA"] * 7)
-                continue
+            possibles_taxonomy.append([bin_id] + list(consensus_taxonomy.values()))
 
-            if self.metagenome or not self.profile_db_path:
-                if str(list(taxonomy.values())[-1]) not in stdout_taxonomy and str(list(taxonomy.values())[-1]):
-                    stdout_taxonomy.append(str(list(taxonomy.values())[-1]))
 
-                possibles_taxonomy.append([bin_id] + list(taxonomy.values()))
 
-                self.entries_db_contigs += [
-                    (tuple([bin_id, list(SCGs_hit_per_gene.keys())[0], source] + list(taxonomy.values())))]
-                # output_taxonomy+=bin_id+'\t'+'\t'.join(list(taxonomy.values()))+'\n'
+            self.run.info('Bin name',
+                          bin_id, nl_before=1)
+            self.run.info('estimate taxonomy',
+                          '/'.join(list(consensus_taxonomy.values())))
 
-            if self.profile_db_path and not self.metagenome:
+            entries_db_profile += [
+                (tuple([entry_id, self.collection_name, bin_id, source] + list(consensus_taxonomy.values())))]
+            entry_id += 1
 
-                possibles_taxonomy.append([bin_id] + list(taxonomy.values()))
-
-                self.run.info('Bin name',
-                              bin_id, nl_before=1)
-                self.run.info('estimate taxonomy',
-                              '/'.join(list(taxonomy.values())))
-
-                self.entries_db_profile += [
-                    (tuple([entry_id, self.collection_name, bin_id, source] + list(taxonomy.values())))]
-                entry_id += 1
-
-        if self.metagenome or not self.profile_db_path:
-            if len(possibles_taxonomy):
-                self.run.info('Possible presence ',
-                              '|'.join(list(stdout_taxonomy)))
-                self.tables_for_taxonomy.taxonomy_estimation_to_congis(
-                    self.entries_db_contigs)
-
-        if self.profile_db_path and not self.metagenome:
             self.tables_for_taxonomy.taxonomy_estimation_to_profile(
-                self.entries_db_profile)
+                entries_db_profile)
 
-        try:
-            with open(self.output_file_path, "a") as output:
-                output_taxonomy = ['\t'.join(line)
-                                   for line in possibles_taxonomy]
-                output.write('\n'.join(output_taxonomy))
-        except:
-            self.run.warning(traceback.print_exc(
-            ), header='Anvi\'o to creat the file for taxonomy result %s' % self.output_file_path, lc="red")
+            try:
+                with open(self.output_file_path, "a") as output:
+                    output_taxonomy = ['\t'.join(line)
+                                       for line in possibles_taxonomy]
+                    output.write('\n'.join(output_taxonomy))
+            except:
+                self.run.warning(traceback.print_exc(
+                ), header='Anvi\'o to creat the file for taxonomy result %s' % self.output_file_path, lc="red")
 
         self.show_taxonomy_estimation(possibles_taxonomy)
 
@@ -765,7 +747,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.run.warning(None, header='Taxonomy estimation', lc="yellow")
         possibles_taxonomy_dataframe = pd.DataFrame(
             possibles_taxonomy, columns=possibles_taxonomy[0])
-        possibles_taxonomy_dataframe.set_index(self.identifier, inplace=True)
+        possibles_taxonomy_dataframe.set_index("bin_id", inplace=True)
         possibles_taxonomy_dataframe = possibles_taxonomy_dataframe.sort_values(
             by=['domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'], ascending=False)
         print(tabulate(possibles_taxonomy_dataframe, headers="firstrow",
