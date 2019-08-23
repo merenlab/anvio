@@ -72,8 +72,7 @@ class TaxonomyEstimation:
     def __init__(self, taxonomy_dict, dicolevel=None, reduction=False, run=run, progress=progress):
 
         if not dicolevel:
-            self.pident_level_path = os.path.join(os.path.dirname(
-                anvio.__file__), 'data/misc/SCG/mergedb/dico_low_ident.pickle')
+            self.pident_level_path = os.path.join(os.path.dirname(anvio.__file__), '/data/misc/SCG_TAXONOMY/GTDB/MIN_PCT_ID_PER_TAXONOMIC_LEVEL.pickle')
 
         with open(self.pident_level_path, 'rb') as handle:
             self.dicolevel = pickle.load(handle)
@@ -224,6 +223,8 @@ class TaxonomyEstimation:
         reduce_taxonomy = []
         for possibilitie in taxonomy:
             for level, value in reversed(possibilitie["taxonomy"].items()):
+                if possibilitie["taxonomy"][level] == 'NA':
+                    continue
                 if possibilitie["bestident"] < float(self.dicolevel[possibilitie["bestSCG"]]
                                                      [self.taxonomic_levels_parser[level] + value]):
                     possibilitie["taxonomy"][level] = 'NA'
@@ -284,7 +285,7 @@ class SCGsdiamond(TaxonomyEstimation):
 
         if not self.taxonomy_file_path or not self.taxonomy_database_path:
             scg_ref_path = os.path.join(os.path.dirname(
-                anvio.__file__), 'data/misc/SCG/')
+                anvio.__file__), 'data/misc/SCG_TAXONOMY/GTDB/')
             scg_compres_path = os.path.join(os.path.dirname(
                 anvio.__file__), 'data/misc/SCG.tar.gz')
             if not filesnpaths.is_file_exists(scg_ref_path, dont_raise=True) and \
@@ -292,12 +293,12 @@ class SCGsdiamond(TaxonomyEstimation):
                 shutil.unpack_archive(scg_compres_path, scg_compres_path[:-10])
 
         if not self.taxonomy_file_path:
-            self.taxonomy_file_path = os.path.join(scg_ref_path, 'mergedb/matching_taxonomy.tsv')
+            self.taxonomy_file_path = os.path.join(scg_ref_path, 'ACCESSION_TO_TAXONOMY.txt')
 
         self.source = "https://gtdb.ecogenomic.org/"
 
         if not self.taxonomy_database_path:
-            self.taxonomy_database_path = os.path.join(scg_ref_path, 'mergedb/species/')
+            self.taxonomy_database_path = os.path.join(scg_ref_path, 'SCGs')
 
         self.database = db.DB(
             self.db_path, utils.get_required_version_for_db(self.db_path))
@@ -402,7 +403,6 @@ class SCGsdiamond(TaxonomyEstimation):
 
         aligners = "Diamond"
 
-        #self.run.warning('', header='Aligment for %s ' % self.db_path, lc='green')
         self.run.info('HMM PROFILE', "Bacteria 71")
         self.run.info('Taxonomy', self.taxonomy_file_path)
         self.run.info('Database reference', self.taxonomy_database_path)
@@ -423,15 +423,10 @@ class SCGsdiamond(TaxonomyEstimation):
         self.run.info(
             'Number of CPUs will be used for each aligment', self.core)
 
-        """tmp_dir = filesnpaths.get_temp_directory_path()
-
-        self.hmm_scan_output = os.path.join(tmp_dir, 'hmm.output')
-        self.hmm_scan_hits = os.path.join(tmp_dir, 'hmm.hits')"""
-
         self.tables_for_taxonomy = TablesForTaxoestimation(
             self.db_path, run, progress)
         self.tables_for_taxonomy.delete_contents_of_table(
-            t.scg_taxonomy_estimation_name)
+            t.scg_taxonomy_table_name)
 
         self.progress.new('Computing SCGs aligments',
 
@@ -623,9 +618,9 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.tables_for_taxonomy = TablesForTaxoestimation(
             self.db_path, run, progress, self.profile_db_path)
 
-        self.dic_blast_hits= self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
+        self.dictonnary_taxonomy_by_index= self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
 
-        if not (self.dic_blast_hits):
+        if not (self.dictonnary_taxonomy_by_index):
             raise ConfigError(
                 "Anvi'o can't make a taxonomy estimation because aligment didn't return any match or you forgot to run 'anvi-diamond-for-taxonomy'.")
         
@@ -657,8 +652,8 @@ class SCGsTaxonomy(TaxonomyEstimation):
                     bin_to_gene_callers_id[bin_name].update(split_to_gene_callers_id[split])
 
         self.taxonomy_dict=dict()
-        for gene_estimation in self.dic_blast_hits.values():
-            if gene_estimation["source"]=="Anvio":
+        for gene_estimation in self.dictonnary_taxonomy_by_index.values():
+            if gene_estimation["source"]=="Consensus":
                 continue
 
 
