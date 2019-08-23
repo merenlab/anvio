@@ -257,7 +257,7 @@ class Predict(SCGDomainClassifier):
         features_vector = []
         for domain in self.SCG_domains:
             for gene_name in self.features:
-                if gene_name in observed_genes_per_domain[domain]:
+                if domain in observed_genes_per_domain and gene_name in observed_genes_per_domain[domain]:
                     features_vector.append(1)
                 else:
                     features_vector.append(0)
