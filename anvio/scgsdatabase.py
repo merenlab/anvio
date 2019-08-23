@@ -71,7 +71,7 @@ class SCGsSetup(object):
 
         if not self.SCG_data_dir:
             self.SCG_data_dir = os.path.join(
-                os.path.dirname(anvio.__file__), 'data/misc/SCG')
+                os.path.dirname(anvio.__file__), 'data/misc/SCG_TAXONOMY/GTDB')
 
         if not args.reset:
             self.is_database_exists()
@@ -169,11 +169,11 @@ class SCGsDataBase():
         self.database_url = A('taxonomy_level') or "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
 
         self.classic_input_directory = os.path.join(
-            os.path.dirname(anvio.__file__), 'data/misc/SCG/')
+            os.path.dirname(anvio.__file__), 'data/misc/SCG_TAXONOMY/GTDB')
 
         if not self.path_tsv_taxonomy:
             self.path_tsv_taxonomy = os.path.join(
-                self.classic_input_directory, 'merge_taxonomy.tsv')
+                self.classic_input_directory, 'ACCESSION_TO_TAXONOMY_FULL_ARCHEA_AND_BACTERIA.txt')
 
         self.num_threads = args.num_threads
 
@@ -185,11 +185,10 @@ class SCGsDataBase():
                 self.classic_input_directory, 'msa_individual_genes')
 
         if not self.output_directory:
-            self.output_directory = os.path.join(
-                os.path.dirname(anvio.__file__), 'data/misc/SCG/mergedb')
+            self.output_directory = classic_input_directory
 
         self.tsv_output = os.path.join(
-            self.output_directory, 'matching_taxonomy.tsv')
+            self.output_directory, 'ACCESSION_TO_TAXONOMY.txt')
 
         self.SCGs_fasta = [files for files in os.listdir(
             self.scgs_directory) if not files.endswith(".dmnd")]  # FIXME useless?
@@ -538,7 +537,7 @@ class lowident():
         self.num_process = A('num_process')
 
         self.classic_input_directory = os.path.join(
-            os.path.dirname(anvio.__file__), 'data/misc/SCG/')
+            os.path.dirname(anvio.__file__), 'data/misc/SCG_TAXONOMY/GTDB')
 
         if not self.path_tsv_taxonomy:
             self.path_tsv_taxonomy = os.path.join(
@@ -557,8 +556,8 @@ class lowident():
                 self.classic_input_directory, 'mergedb/SCG_diamond_db/')
 
         if not self.output_file:
-            self.output_file = os.path.join(os.path.dirname(
-                anvio.__file__), 'data/misc/SCG/mergedb/dico_low_ident.pickle')
+            self.output_file = os.path.join(self.classic_input_directory,
+             'data/misc/SCG/mergedb/MIN_PCT_ID_PER_TAXONOMIC_LEVEL.pickle')
 
         self.genes_files = [files for files in os.listdir(
             self.scgs_directory) if not files.endswith(".dmnd")]
@@ -682,12 +681,8 @@ class lowident():
 
 
     def creatsubfa_ident(self, path_fasta, genes, dico_low_ident):
-        try:
-            fasta = u.ReadFasta(path_fasta, quiet=True)
-        except:
-            self.run.warning(
-                '%s does not seem to be a FASTA file.' % path_fasta)
 
+        fasta = u.ReadFasta(path_fasta, quiet=True)
         listeprocess = []
         for taxonomy, codes in self.dicolevel.items():
             if taxonomy.startswith("Archaea") or taxonomy.startswith("Bacteria"):
