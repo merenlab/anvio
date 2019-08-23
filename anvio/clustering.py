@@ -64,7 +64,7 @@ def is_distance_and_linkage_compatible(distance, linkage):
     is_distance_metric_OK(distance)
 
     if distance == 'yule' and linkage != 'single':
-        raise ConfigError("The cistance metric 'yule' will only work with the linkage 'single' :/")
+        raise ConfigError("The distance metric 'yule' will only work with the linkage 'single' :/")
 
     try:
         hierarchy.linkage([(1, 0), (0, 1), (1, 1)], metric=distance, method=linkage)

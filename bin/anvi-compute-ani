@@ -62,6 +62,8 @@ def restore_names_in_dict(input_dict, conversion_dict):
 
 def main(args):
     # some quick checks
+    clustering.is_distance_and_linkage_compatible(args.distance, args.linkage)
+
     if args.min_alignment_fraction < 0 or args.min_alignment_fraction > 1:
         raise ConfigError("The minimum alignment fraction must be a value between 0.0 and 1.0. %.2f does\
                            not work for anvi'o :/" % args.min_alignment_fraction)
