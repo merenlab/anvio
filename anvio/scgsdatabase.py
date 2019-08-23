@@ -84,7 +84,7 @@ class SCGsSetup(object):
                       'bac120_msa_individual_genes.tar.gz', 'bac120_taxonomy.tsv']
 
     def is_database_exists(self):
-        if os.path.exists(os.path.join(self.SCG_data_dir, 'SCG-A.hmm.gz')):
+        if os.path.exists(os.path.join(self.SCG_data_dir, 'SCG.tar.gz.')):
             raise ConfigError("It seems you already have SCG database installed in '%s', please\
                                use --reset flag if you want to re-download it." % self.SCG_data_dir)
 
