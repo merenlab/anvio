@@ -772,9 +772,7 @@ class ContigsSuperclass(object):
         return (gene_caller_ids_list, sequences_dict)
 
 
-    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, 
-                                                        simple_headers=False, rna_alphabet=False, report_aa_sequences=False, 
-                                                        split_parts=1):
+    def gen_FASTA_file_of_sequences_for_gene_caller_ids(self, gene_caller_ids_list=[], output_file_path=None, wrap=120, simple_headers=False, rna_alphabet=False, report_aa_sequences=False):
         if not output_file_path:
             raise ConfigError("We need an explicit output file path. Anvi'o does not know how you managed to come \
                                here, but please go back and come again.")
@@ -789,56 +787,40 @@ class ContigsSuperclass(object):
             raise ConfigError('Value for wrap must be larger than 20. Yes. Rules.')
 
         gene_caller_ids_list, sequences_dict = self.get_sequences_for_gene_callers_ids(gene_caller_ids_list, include_aa_sequences=report_aa_sequences)
-        chunk_size = len(gene_caller_ids_list) // split_parts
         skipped_gene_calls = []
+
+        output = open(output_file_path, 'w')
 
         self.progress.new('Storing sequences')
         self.progress.update('...')
+        for gene_callers_id in gene_caller_ids_list:
+            entry = sequences_dict[gene_callers_id]
 
-        for part in range(split_parts):
-            if split_parts > 1:
-                part_file_path = output_file_path + str(part)
+            if simple_headers:
+                header = '%d' % (gene_callers_id)
             else:
-                part_file_path = output_file_path
+                header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
 
-            output = open(part_file_path, 'w')
+            if report_aa_sequences and rna_alphabet:
+                raise ConfigError("You can not request AA sequences repored in RNA alphabet.")
+            elif rna_alphabet:
+                sequence = entry['sequence'].replace('T', 'U')
+            elif report_aa_sequences:
+                sequence = entry['aa_sequence']
+            else:
+                sequence = entry['sequence']
 
-            chunk_start = chunk_size * part
-            chunk_end   = chunk_start + chunk_size
+            if wrap:
+                sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
 
-            if (part + 1 == split_parts):
-                # if this is the last chunk make sure it contains everything till end.
-                chunk_end = len(gene_caller_ids_list)
+            if not len(sequence):
+                skipped_gene_calls.append(gene_callers_id)
+                continue
 
-            for gene_callers_id in gene_caller_ids_list[chunk_start:chunk_end]:
-                entry = sequences_dict[gene_callers_id]
+            output.write('>%s\n' % header)
+            output.write('%s\n' % sequence)
 
-                if simple_headers:
-                    header = '%d' % (gene_callers_id)
-                else:
-                    header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
-
-                if report_aa_sequences and rna_alphabet:
-                    raise ConfigError("You can not request AA sequences repored in RNA alphabet.")
-                elif rna_alphabet:
-                    sequence = entry['sequence'].replace('T', 'U')
-                elif report_aa_sequences:
-                    sequence = entry['aa_sequence']
-                else:
-                    sequence = entry['sequence']
-
-                if wrap:
-                    sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
-
-                if not len(sequence):
-                    skipped_gene_calls.append(gene_callers_id)
-                    continue
-
-                output.write('>%s\n' % header)
-                output.write('%s\n' % sequence)
-
-            output.close()
-
+        output.close()
         self.progress.end()
 
         if len(skipped_gene_calls):
