@@ -512,7 +512,6 @@ class SCGsdiamond(TaxonomyEstimation):
                        tablefmt="fancy_grid", numalign="right"))
 
     def get_raw_blast_hits_multi(self, input_queue, output_queue):
-
         while True:
             d = input_queue.get(True)
             db_path = self.SCG_DB_PATH(d[0])
@@ -526,7 +525,7 @@ class SCGsdiamond(TaxonomyEstimation):
             diamond_output = diamond.blastp_stdin_multi(d[1])
             hits_per_gene = {}
             genes_estimation_output=[]
-            
+
             for line_hit_to_split in diamond_output.split('\n'):
                 if len(line_hit_to_split) and not line_hit_to_split.startswith('Query'):
                     line_hit = line_hit_to_split.split('\t')
@@ -618,20 +617,18 @@ class SCGsTaxonomy(TaxonomyEstimation):
                                with the current genes configuration of this class. Here are the list of\
                                genes for which we are missing databases: '%s'." % (', '.join(missing_databases)))
 
-    def init(self):
 
+    def init(self):
         self.tables_for_taxonomy = TablesForTaxoestimation(
             self.db_path, run, progress, self.profile_db_path)
 
         self.dic_blast_hits= self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
 
         if not (self.dic_blast_hits):
-            raise ConfigError(
-                "Anvi'o can't make a taxonomy estimation because aligment didn't return any match or you forgot to run 'anvi-diamond-for-taxonomy'.")
-        
-        self.run.info(
-            'taxonomy estimation not possible for:', self.db_path)
+            raise ConfigError("Anvi'o can't make a taxonomy estimation because aligment didn't return any\
+                               match or you forgot to run 'anvi-diamond-for-taxonomy'.")
 
+        self.run.info('Taxonomy estimation not possible for:', self.db_path)
 
         contigs_db = db.DB(self.db_path, anvio.__contigs__version__)
 
@@ -709,11 +706,9 @@ class SCGsTaxonomy(TaxonomyEstimation):
             ['bin_id', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
 
         for bin_id, SCGs_hit_per_gene in self.hits_per_gene.items():
-            dictionary_bin_taxonomy_estimation[bin_id]={"consensus_taxonomy":consensus_taxonomy, "taxonomy_use_for_consensus":taxonomy}
-
             consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,
                 SCGs_hit_per_gene, bin_id)
-           
+
             dictionary_bin_taxonomy_estimation[bin_id]={"consensus_taxonomy":consensus_taxonomy, "taxonomy_use_for_consensus":taxonomy}
 
             possibles_taxonomy.append([bin_id] + list(consensus_taxonomy.values()))
@@ -732,6 +727,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
             self.tables_for_taxonomy.taxonomy_estimation_to_profile(
                 entries_db_profile)
 
+            # FIX
             try:
                 with open(self.output_file_path, "a") as output:
                     output_taxonomy = ['\t'.join(line)
