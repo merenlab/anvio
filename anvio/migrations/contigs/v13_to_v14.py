@@ -14,9 +14,9 @@ from anvio.errors import ConfigError
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
 
-scg_taxonomy_estimation_name      = 'scg_taxonomy_estimation'
-scg_taxonomy_estimation_structure = ['id'  ,    'gene_caller_id',      'gene_name',  'source' ,  'accession' , 'pourcentage_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-scg_taxonomy_estimation_types     = ['numeric', 'numeric' ,             'text'    ,  'text'   ,  'text'   ,       'text'          ,    'text'  ,   'text' ,  'text'  ,  'text'   ,  'text'  ,  'text'  ,   'text'   ]
+scg_taxonomy_table_name      = 'scg_taxonomy'
+scg_taxonomy_structure = ['id'  ,    'gene_caller_id',      'gene_name',  'source' ,  'accession' , 'pourcentage_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+scg_taxonomy_types     = ['numeric', 'numeric' ,             'text'    ,  'text'   ,  'text'   ,       'text'          ,    'text'  ,   'text' ,  'text'  ,  'text'   ,  'text'  ,  'text'  ,   'text'   ]
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -34,7 +34,7 @@ def migrate(db_path):
     progress.new("Actualyse databases ")
     progress.update("...")
 
-    contigs_db.create_table(scg_taxonomy_estimation_name, scg_taxonomy_estimation_structure, scg_taxonomy_estimation_types)
+    contigs_db.create_table(scg_taxonomy_table_name, scg_taxonomy_structure, scg_taxonomy_types)
 
     progress.update("Updating version")
     contigs_db.remove_meta_key_value_pair('version')
