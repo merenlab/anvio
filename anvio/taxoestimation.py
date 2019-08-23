@@ -10,6 +10,8 @@ import re
 import sys
 import time
 import traceback
+import tarfile
+import shutil
 
 from collections import Counter, OrderedDict
 
@@ -115,9 +117,6 @@ class TaxonomyEstimation:
 
     def get_consensus_taxonomy(self, SCGs_hit_per_gene, name):
         """Different methode for assignation"""
-        taxonomy_dict = self.taxonomy_dict
-        consensus_taxonomy=list()
-        taxonomy=list()
         consensus_taxonomy = self.solo_hits(SCGs_hit_per_gene)
         if consensus_taxonomy:
             for SCG, entry in SCGs_hit_per_gene.items():
@@ -283,15 +282,22 @@ class SCGsdiamond(TaxonomyEstimation):
 
         self.source = "unknow"
 
+        if not self.taxonomy_file_path or not self.taxonomy_database_path:
+            scg_ref_path = os.path.join(os.path.dirname(
+                anvio.__file__), 'data/misc/SCG/')
+            scg_compres_path = os.path.join(os.path.dirname(
+                anvio.__file__), 'data/misc/SCG.tar.gz')
+            if not filesnpaths.is_file_exists(scg_ref_path, dont_raise=True) and \
+             filesnpaths.is_file_exists(scg_compres_path, dont_raise=True) and filesnpaths.is_output_dir_writable(scg_ref_path):
+                shutil.unpack_archive(scg_compres_path, scg_compres_path[:-10])
+
         if not self.taxonomy_file_path:
-            self.taxonomy_file_path = os.path.join(os.path.dirname(
-                anvio.__file__), 'data/misc/SCG/mergedb/matching_taxonomy.tsv')
+            self.taxonomy_file_path = os.path.join(scg_ref_path, 'mergedb/matching_taxonomy.tsv')
 
         self.source = "https://gtdb.ecogenomic.org/"
 
         if not self.taxonomy_database_path:
-            self.taxonomy_database_path = os.path.join(os.path.dirname(
-                anvio.__file__), 'data/misc/SCG/mergedb/species/')
+            self.taxonomy_database_path = os.path.join(scg_ref_path, 'mergedb/species/')
 
         self.database = db.DB(
             self.db_path, utils.get_required_version_for_db(self.db_path))
@@ -439,6 +445,7 @@ class SCGsdiamond(TaxonomyEstimation):
 
         diamond_output = []
         table_index=0
+        self.genes_estimation_output=[]
 
         for SCG in hmm_sequences_dict_per_type:
 
@@ -518,7 +525,8 @@ class SCGsdiamond(TaxonomyEstimation):
             SCG = d[0]
             diamond_output = diamond.blastp_stdin_multi(d[1])
             hits_per_gene = {}
-
+            genes_estimation_output=[]
+            
             for line_hit_to_split in diamond_output.split('\n'):
                 if len(line_hit_to_split) and not line_hit_to_split.startswith('Query'):
                     line_hit = line_hit_to_split.split('\t')
@@ -526,17 +534,21 @@ class SCGsdiamond(TaxonomyEstimation):
                     hit = [dict(zip(['accession', 'pident', 'bitscore'], [
                         line_hit[1], float(line_hit[2]), float(line_hit[11])]))]
 
-                    if SCG not in hits_per_gene:
-                        hits_per_gene[SCG] = []
+                    if gene_callers_id not in hits_per_gene:
+                        hits_per_gene[gene_callers_id] = {}
+                    if SCG not in hits_per_gene[gene_callers_id]:
+                        hits_per_gene[gene_callers_id][SCG] = []
 
-                    hits_per_gene[SCG] += hit
+                    hits_per_gene[gene_callers_id][SCG] += hit
 
 
             if anvio.DEBUG:
                 self.show_hits(hits_per_gene[SCG], SCG)
-            consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(
-                self, hits_per_gene, gene_callers_id)
-            output_queue.put([gene_callers_id, SCG, consensus_taxonomy, taxonomy])
+            for gene_callers_id, SCGs_hit_per_gene in hits_per_gene.items():
+                consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,
+                    SCGs_hit_per_gene, gene_callers_id)
+                 
+                output_queue.put([gene_callers_id, SCG, consensus_taxonomy, taxonomy])
 
 
 class SCGsTaxonomy(TaxonomyEstimation):
@@ -692,39 +704,39 @@ class SCGsTaxonomy(TaxonomyEstimation):
         possibles_taxonomy.append(
             ['bin_id', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
 
-        for name, SCGs_hit_per_gene in self.hits_per_gene.items():
+        for bin_id, SCGs_hit_per_gene in self.hits_per_gene.items():
 
-            # print(SCGs_hit_per_gene)
             consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,
-                SCGs_hit_per_gene, name)
+                SCGs_hit_per_gene, bin_id)
+            print(bin_id, consensus_taxonomy)
             continue
 
             if not taxonomy:
-                self.run.info('taxonomy estimation not possible for:', name)
-                possibles_taxonomy.append([name] + ["NA"] * 7)
+                self.run.info('taxonomy estimation not possible for:', bin_id)
+                possibles_taxonomy.append([bin_id] + ["NA"] * 7)
                 continue
 
             if self.metagenome or not self.profile_db_path:
                 if str(list(taxonomy.values())[-1]) not in stdout_taxonomy and str(list(taxonomy.values())[-1]):
                     stdout_taxonomy.append(str(list(taxonomy.values())[-1]))
 
-                possibles_taxonomy.append([name] + list(taxonomy.values()))
+                possibles_taxonomy.append([bin_id] + list(taxonomy.values()))
 
                 self.entries_db_contigs += [
-                    (tuple([name, list(SCGs_hit_per_gene.keys())[0], source] + list(taxonomy.values())))]
-                # output_taxonomy+=name+'\t'+'\t'.join(list(taxonomy.values()))+'\n'
+                    (tuple([bin_id, list(SCGs_hit_per_gene.keys())[0], source] + list(taxonomy.values())))]
+                # output_taxonomy+=bin_id+'\t'+'\t'.join(list(taxonomy.values()))+'\n'
 
             if self.profile_db_path and not self.metagenome:
 
-                possibles_taxonomy.append([name] + list(taxonomy.values()))
+                possibles_taxonomy.append([bin_id] + list(taxonomy.values()))
 
                 self.run.info('Bin name',
-                              name, nl_before=1)
+                              bin_id, nl_before=1)
                 self.run.info('estimate taxonomy',
                               '/'.join(list(taxonomy.values())))
 
                 self.entries_db_profile += [
-                    (tuple([entry_id, self.collection_name, name, source] + list(taxonomy.values())))]
+                    (tuple([entry_id, self.collection_name, bin_id, source] + list(taxonomy.values())))]
                 entry_id += 1
 
         if self.metagenome or not self.profile_db_path:
