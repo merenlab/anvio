@@ -28,8 +28,9 @@ pp = terminal.pretty_print
 
 
 class HMMer:
-    def __init__(self, target_files_dict, num_threads_to_use=1, progress=progress, run=run):
+    def __init__(self, target_files_dict, num_threads_to_use=1, progress=progress, run=run, quiet=False):
         """A class to streamline HMM runs."""
+        self.quiet = quiet
         self.num_threads_to_use = num_threads_to_use
         self.progress = progress
         self.run = run
@@ -80,16 +81,20 @@ class HMMer:
         self.run.info('HMM scan hits', self.hmm_scan_hits)
         self.run.info('Log file', log_file_path)
 
-        self.progress.new('Unpacking the model into temporary work directory')
-        self.progress.update('...')
+        if not self.quiet:
+            self.progress.new('Unpacking the model into temporary work directory')
+            self.progress.update('...')
+
         hmm_file_path = os.path.join(tmp_dir, 'hmm.txt')
         hmm_file = open(hmm_file_path, 'wb')
         hmm_file.write(gzip.open(hmm, 'rb').read())
         hmm_file.close()
-        self.progress.end()
 
-        self.progress.new('Processing')
-        self.progress.update('Compressing the pfam model')
+        if not self.quiet:
+            self.progress.end()
+
+            self.progress.new('Processing')
+            self.progress.update('Compressing the pfam model')
 
         cmd_line = ['hmmpress', hmm_file_path]
         ret_val = utils.run_command(cmd_line, log_file_path)
@@ -101,10 +106,11 @@ class HMMer:
                                is the latest version availalbe if you think updating HMMER can resolve it. You can\
                                learn which version of HMMER you have on your system by typing 'hmmpress -h'."\
                                        % (log_file_path, 'http://hmmer.janelia.org/download.html'))
-        self.progress.end()
+        if not self.quiet:
+            self.progress.end()
 
-        self.progress.new('Processing')
-        self.progress.update('Performing HMM scan ...')
+            self.progress.new('Processing')
+            self.progress.update('Performing HMM scan ...')
 
         cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else 'hmmscan',
                     '-o', self.hmm_scan_output, *noise_cutoff_terms.split(),
@@ -120,8 +126,8 @@ class HMMer:
                                 expected output :/ Fortunately, this log file should tell you what\
                                 might be the problem: '%s'. Please do not forget to include this\
                                 file if you were to ask for help." % log_file_path)
-
-        self.progress.end()
+        if not self.quiet:
+            self.progress.end()
 
         # thank you, hmmscan, for not generating a simple TAB-delimited, because we programmers
         # love to write little hacks like this into our code:

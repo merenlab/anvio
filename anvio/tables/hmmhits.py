@@ -2,7 +2,9 @@
 # pylint: disable=line-too-long
 
 import os
+import copy
 import hashlib
+from threading import Thread, Lock
 
 import anvio
 import anvio.db as db
@@ -103,7 +105,8 @@ class TablesForHMMHits(Table):
                 contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['%s:GENE' % alphabet],
                                                                            simple_headers=True,
                                                                            rna_alphabet=True if alphabet=='RNA' else False,
-                                                                           report_aa_sequences=True if alphabet=='AA' else False)
+                                                                           report_aa_sequences=True if alphabet=='AA' else False,
+                                                                           split_parts=self.num_threads_to_use)
             elif context == 'CONTIG':
                 if alphabet == 'AA':
                     raise ConfigError("You are somewhere you shouldn't be. You came here because you thought it would be OK\
@@ -113,11 +116,19 @@ class TablesForHMMHits(Table):
                     target_files_dict['%s:CONTIG' % alphabet] = os.path.join(tmp_directory_path, '%s_contig_sequences.fa' % alphabet)
                     utils.export_sequences_from_contigs_db(self.db_path,
                                                            target_files_dict['%s:CONTIG' % alphabet],
-                                                           rna_alphabet=True if alphabet=='RNA' else False)
+                                                           rna_alphabet=True if alphabet=='RNA' else False,
+                                                           split_parts=self.num_threads_to_use)
 
-        commander = HMMer(target_files_dict, num_threads_to_use=self.num_threads_to_use)
+        table_write_lock = Lock()
 
-        for source in sources:
+        def hmm_worker(part_no, source):
+            copy_target_files_dict = copy.deepcopy(target_files_dict)
+
+            if self.num_threads_to_use > 1:
+                for key in copy_target_files_dict:
+                    copy_target_files_dict[key] = copy_target_files_dict[key] + str(part_no)
+
+            commander = HMMer(copy_target_files_dict, quiet=True)
             alphabet, context = utils.anvio_hmm_target_term_to_alphabet_and_context(sources[source]['target'])
 
             kind_of_search = sources[source]['kind']
@@ -126,6 +137,7 @@ class TablesForHMMHits(Table):
             hmm_model = sources[source]['model']
             reference = sources[source]['ref']
             noise_cutoff_terms = sources[source]['noise_cutoff_terms']
+
 
             hmm_scan_hits_txt = commander.run_hmmscan(source,
                                                       alphabet,
@@ -145,7 +157,6 @@ class TablesForHMMHits(Table):
 
             if not len(search_results_dict):
                 run.info_single("The HMM source '%s' returned 0 hits. SAD (but it's stil OK)." % source, nl_before=1)
-
 
             if context == 'CONTIG':
                 # we are in trouble here. because our search results dictionary contains no gene calls, but contig
@@ -184,7 +195,19 @@ class TablesForHMMHits(Table):
                                                                                                            search_results_dict,
                                                                                                            skip_amino_acid_sequences=True)
 
+
             self.append(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
+
+
+        for source in sources:
+            threads = []
+            for i in range(self.num_threads_to_use):
+                new_thread = Thread(target=hmm_worker, args=(i, source))
+                new_thread.start()
+                threads.append(new_thread)
+
+            for t in threads:
+                t.join()
 
         # FIXME: I have no clue why importing the anvio module is necessary at this point,
         #        but without this, mini test fails becasue "`anvio.DEBUG` is being used
