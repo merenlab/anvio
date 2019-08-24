@@ -405,7 +405,7 @@ class GenbankToAnvio:
 
         for genbank_record in genbank_file_object:
             num_genbank_records_processed += 1
-
+            #print(genbank_record)
             output_fasta[genbank_record.name] = str(genbank_record.seq)
 
             genes = [gene for gene in genbank_record.features if gene.type =="CDS"] # focusing on features annotated as "CDS" by NCBI's PGAP
@@ -413,7 +413,8 @@ class GenbankToAnvio:
             for gene in genes:
                 num_genes_found += 1
                 location = str(gene.location)
-
+                #print(gene)
+                #print(gene.qualifiers)
                 # dumping gene if "location" section contains any of these terms set above: "join" means the gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
                 if any(exclusion_term in location for exclusion_term in self.location_terms_to_exclude):
                     continue
@@ -430,7 +431,7 @@ class GenbankToAnvio:
                     continue
 
                 # dumping if gene declared a pseudogene
-                if "pseudo" in gene.qualifiers:
+                if "pseudo" in gene.qualifiers or "pseudogene" in gene.qualifiers:
                     continue
 
                 # cleaning up gene coordinates to more easily parse:
