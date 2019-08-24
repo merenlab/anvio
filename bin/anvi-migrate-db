@@ -69,9 +69,9 @@ class Migrater(object):
             target = int(args.target_version)
 
             if target <= self.db_version:
-                raise ConfigError("Target version ('%s') can not be lower than db version ('%s'). " (target, self.db_version))
+                raise ConfigError("Target version ('%s') can not be lower than db version ('%s')." % (target, self.db_version))
             elif target > version:
-                raise ConfigError("Target version ('%s') can not be higher than highest available version ('%s') for this type. " (target, version))
+                raise ConfigError("Target version ('%s') can not be higher than highest available version ('%s') for this type." % (target, version))
 
             version = target
 
