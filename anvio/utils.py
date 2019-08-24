@@ -1439,7 +1439,7 @@ def check_contig_names(contig_names, dont_raise=False):
 
 def move_fasta_files_from_fasta_dir(temp_dir, names, output_dir, fasta_txt=False):
     #names is a dictionary of type {name: hash}
-    fasta=None
+    fasta=None #This may seem unnecessary but anvi'o may blow up if this line is removed
     if fasta_txt:
         fasta = open(os.path.join(output_dir, "dereplicated-fasta.txt"), 'w')
         fasta.write("name\tpath\n")
@@ -1454,7 +1454,7 @@ def move_fasta_files_from_fasta_dir(temp_dir, names, output_dir, fasta_txt=False
 
 
 def create_fasta_dir_from_sequence_sources(genome_desc):
-    #where genome_desc is an instance of Genome_Descriptions
+    #where genome_desc is an instance of GenomeDescriptions
     if genome_desc is None :
         raise ConfigError("Anvi'o was given no internal genomes and no external genomes. Although\ anvi'o can technically go ahead and create a temporary FASTA directory, what's\
             the point if there's nothing to do?")
