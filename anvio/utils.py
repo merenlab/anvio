@@ -594,7 +594,7 @@ def transpose_tab_delimited_file(input_file_path, output_file_path):
 
 def split_fasta(input_file_path, parts=1):
     filesnpaths.is_file_exists(input_file_path)
-    filesnpaths.is_file_exists(is_file_fasta_formatted)
+    filesnpaths.is_file_fasta_formatted(input_file_path)
 
     source = u.ReadFasta(input_file_path, quiet=True)
     length = len(source.ids)
@@ -605,18 +605,18 @@ def split_fasta(input_file_path, parts=1):
     for part_no in range(parts):
         output_file = input_file_path + '_' + str(part_no)
         
-        output_fasta = u.FastaOutput(part_file_path)
+        output_fasta = u.FastaOutput(output_file)
 
-        chunk_start = chunk_size * part
+        chunk_start = chunk_size * part_no
         chunk_end   = chunk_start + chunk_size
 
-        if (part + 1 == parts):
+        if (part_no + 1 == parts):
             # if this is the last chunk make sure it contains everything till end.
             chunk_end = length
 
         for i in range(chunk_start, chunk_end):
             output_fasta.write_id(source.ids[i])
-            output_fasta.write_seq(sequence.sequences[i])
+            output_fasta.write_seq(source.sequences[i])
 
         output_fasta.close()
         output_files.append(output_file)
