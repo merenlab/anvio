@@ -79,11 +79,6 @@ class TablesForTaxoestimation(Table):
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
 
-    def randomStringDigits(self,stringLength=6):
-        """Generate a random string of letters and digits """
-        lettersAndDigits = string.ascii_letters + string.digits
-        return ''.join(random.choice(lettersAndDigits) for i in range(stringLength))
-
 
     def alignment_result_to_congigs(self, table_index, diamond_output, source="GTDB"):
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
@@ -97,16 +92,29 @@ class TablesForTaxoestimation(Table):
             if not len(result[3]):
                 continue
             if len(result[3]) < 5:
-                entries+=[tuple([table_index, gene_callers_id, SCG, "Consensus", self.randomStringDigits(8), result[3][0]["bestident"]]+list(result[2].values()))]
+                accession=self.get_accession(result[2])
+                entries+=[tuple([table_index, gene_callers_id, SCG, "Consensus", accession, result[3][0]["bestident"]]+list(result[2].values()))]
                 for consider_taxonomy in result[3]:
                     table_index+=1
-                    entries+=[tuple([table_index, gene_callers_id, SCG, source, consider_taxonomy["code"], consider_taxonomy["bestident"]]+ list(consider_taxonomy["taxonomy"].values()))]
+                    entries+=[tuple([table_index, gene_callers_id, SCG, source, consider_taxonomy["accession"], consider_taxonomy["bestident"]]+ list(consider_taxonomy["taxonomy"].values()))]
             else:
-                entries+=[tuple([table_index, gene_callers_id, SCG, source, self.randomStringDigits(8), result[3][0]["bestident"]]+list(result[2].values()))]
-
-                       
+                accession=self.get_accession(result[2])
+                entries+=[tuple([table_index, gene_callers_id, SCG, source+"_simplified", accession, result[3][0]["bestident"]]+list(result[2].values()))]
+        
         self.database.insert_many(t.scg_taxonomy_table_name, entries)
         self.database.disconnect()
+
+
+    def get_accession(self,taxonomy):
+        for taxon in reversed(list(result[2].values())taxonomy):
+            if taxon == "NA" :
+                continue
+            code=abs(hash(taxon)) % (10 ** 8)
+            accession=taxon+"_"+str(code)
+            break
+        return(accession)
+
+
 
 
     def taxonomy_estimation_to_congis(self,possibles_taxonomy):
