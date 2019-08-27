@@ -2,6 +2,7 @@
 """Interface to HMMer."""
 
 import os
+import io
 import gzip
 import shutil
 from threading import Thread, Lock
@@ -40,11 +41,6 @@ class HMMer:
             self.target_files_dict[source] = utils.split_fasta(target_files_dict[source], 
                                                                parts=self.num_threads_to_use)
 
-        # hmm_scan_hits is the file to access later on for parsing:
-        self.hmm_scan_output = None
-        self.hmm_scan_hits = None
-        self.genes_in_contigs = None
-
 
     def run_hmmscan(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms):
         target = ':'.join([alphabet, context])
@@ -75,12 +71,12 @@ class HMMer:
         # self.hmm_scan_output = os.path.join(tmp_dir, 'hmm.output')
         # self.hmm_scan_hits = os.path.join(tmp_dir, 'hmm.hits')
         # self.hmm_scan_hits_shitty = os.path.join(tmp_dir, 'hmm.hits.shitty')
-        # log_file_path = os.path.join(tmp_dir, '00_log.txt')
+        log_file_path = os.path.join(tmp_dir, '00_log.txt')
 
         self.run.info('Temporary work dir', tmp_dir)
         # self.run.info('HMM scan output', self.hmm_scan_output)
         # self.run.info('HMM scan hits', self.hmm_scan_hits)
-        # self.run.info('Log file', log_file_path)
+        self.run.info('Log file', log_file_path)
 
         self.progress.new('Unpacking the model into temporary work directory')
         self.progress.update('...')
@@ -109,6 +105,9 @@ class HMMer:
         self.progress.update('Performing HMM scan ...')
 
         workers = []
+        merged_file_buffer = io.StringIO()
+        buffer_write_lock = Lock()
+
         for part_file in self.target_files_dict[target]:
             def worker(self, part_file):
                 log_file = part_file + '_log'
@@ -123,10 +122,6 @@ class HMMer:
                             hmm_file_path, part_file]
 
                 utils.run_command(cmd_line, log_file)
-
-                # thank you, hmmscan, for not generating a simple TAB-delimited, because we programmers
-                # love to write little hacks like this into our code:
-                parseable_output = open(pretty_file, 'w')
 
                 detected_non_ascii = False
                 lines_with_non_ascii = []
@@ -144,9 +139,8 @@ class HMMer:
                         if line.startswith('#'):
                             continue
 
-                        parseable_output.write('\t'.join(line.split()[0:18]) + '\n')
-
-                parseable_output.close()
+                        with buffer_write_lock:
+                            merged_file_buffer.write('\t'.join(line.split()[0:18]) + '\n')
 
                 if detected_non_ascii:
                     self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii charachters while processing \
@@ -163,15 +157,22 @@ class HMMer:
         for worker in workers:
             worker.join()
 
-        if not os.path.exists(self.hmm_scan_hits_shitty):
-            self.progress.end()
-            raise ConfigError("Something went wrong with hmmscan, and it failed to generate the\
-                                expected output :/ Fortunately, this log file should tell you what\
-                                might be the problem: '%s'. Please do not forget to include this\
-                                file if you were to ask for help." % log_file_path)
+        output_file_path = os.path.join(tmp_dir, 'hmm.hits')
+
+        with open(output_file_path, 'w') as out:
+            merged_file_buffer.seek(0)
+            out.write(merged_file_buffer.read())
 
         self.progress.end()
 
+        return output_file_path
+
+        # if not os.path.exists(self.hmm_scan_hits_shitty):
+        #     self.progress.end()
+        #     raise ConfigError("Something went wrong with hmmscan, and it failed to generate the\
+        #                         expected output :/ Fortunately, this log file should tell you what\
+        #                         might be the problem: '%s'. Please do not forget to include this\
+        #                         file if you were to ask for help." % log_file_path)
 
 
     def clean_tmp_dirs(self):
