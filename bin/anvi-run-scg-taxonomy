@@ -17,8 +17,6 @@ import anvio.hmmopswrapper as hmmopswrapper
 import anvio.taxoestimation as taxoestimation
 import anvio.terminal as terminal
 import anvio.utils as utils
-# from sklearn.datasets as sd
-# from scipy.stats import friedmanchisquare
 import scipy.stats as ss
 from anvio.dbops import ContigsSuperclass
 from anvio.drivers import Aligners, driver_modules
@@ -26,15 +24,13 @@ from anvio.drivers.diamond import Diamond
 from anvio.errors import ConfigError, FilesNPathsError
 from tabulate import tabulate
 
-#import scikit_posthocs as sp
-
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__maintainer__ = "Quentin Clayssen"
+__email__ = "quentin.clayssen@gmail.com"
 __requires__ = ['contigs-db', 'profile-db',
                 'external-genomes', 'internal-genomes', 'hmm-profile']
 __provides__ = ['genes-fasta', 'concatenated-gene-alignment-fasta']
@@ -53,6 +49,7 @@ def main(args):
     if not args.gene_names:
         args.gene_names = "Ribosomal_L1,Ribosomal_L13,Ribosomal_L16,Ribosomal_L17,Ribosomal_L2,Ribosomal_L20,Ribosomal_L21p,Ribosomal_L22,Ribosomal_L27A,Ribosomal_L3,Ribosomal_L4,Ribosomal_L6,Ribosomal_L9_C,Ribosomal_S11,Ribosomal_S2,Ribosomal_S20p,Ribosomal_S3_C,Ribosomal_S6,Ribosomal_S7,Ribosomal_S9,ribosomal_L24"
 
+    
     hmm_sources = set(["Bacteria_71"])
 
     gene_names = [g.strip() for g in args.gene_names.split(',')] if args.gene_names else []
@@ -64,19 +61,21 @@ def main(args):
 
     s = hmmops.SequencesForHMMHits(args.contigs_db, sources=hmm_sources)
 
-    def CHK(): return exec('raise ConfigError("Your selections returned an empty list of genes to work with :/")') if not len(hmm_sequences_dict) else None
 
     hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=True)
     hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(gene_names))
 
-    CHK()
+    if not len(hmm_sequences_dict):
+        raise ConfigError("Your selections returned an empty list of genes to work with :/")
 
-    run.info('Hits', '%d hits for %d source(s)' %
-             (len(hmm_sequences_dict), len(s.sources)))
 
+    run.info('Hits', '%d hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
+
+    start = time.perf_counter()
     t = taxoestimation.SCGsdiamond(args)
     t.predict_from_SCGs_dict_multiseq(hmm_sequences_dict)
-
+    end = time.perf_counter()
+    run.info_single("The SCG taxonomy table is now populated with taxonomy (which took %.2f minutes)" % ((end - start) / 60))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -91,15 +90,12 @@ if __name__ == '__main__':
 
     groupH = parser.add_argument_group('Taxonomy', "Taxomy assignation Argument\
                                         /!\.")
-    # , help="taxo file", nargs='?')
     groupH.add_argument(*anvio.A('taxonomy-file'), **anvio.K('taxonomy-file'))
-    # , help="db ribosomal prot", nargs='?')
     groupH.add_argument(*anvio.A('taxonomy-database'),** anvio.K('taxonomy-database'))
-    # , help="cutoff for consider taxonomie to the best taxonomie score . Default value 0.98")
 
-    groupH.add_argument('--metagenome', default=False, action="store_true", help="metagenomes")
+    groupH.add_argument('--metagenome', action="store_true", help="metagenomes")
     groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    groupH.add_argument('--num-process', default=2, help="num-process")
+    groupH.add_argument('--num-process', help="num-process")
 
     groupH.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size'))
     groupH.add_argument(*anvio.A('gene-names'), **anvio.K('gene-names'))
@@ -107,10 +103,7 @@ if __name__ == '__main__':
     args = anvio.get_args(parser)
 
     try:
-        start = time.perf_counter()
         main(args)
-        end = time.perf_counter()
-        print("total time : ", end - start)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

@@ -71,11 +71,13 @@ class TaxonomyEstimation:
 
     def __init__(self, taxonomy_dict, dicolevel=None, reduction=False, run=run, progress=progress):
 
+        
         if not dicolevel:
-            self.pident_level_path = os.path.join(os.path.dirname(anvio.__file__), '/data/misc/SCG_TAXONOMY/GTDB/MIN_PCT_ID_PER_TAXONOMIC_LEVEL.pickle')
+            self.pident_level_path = os.path.join(
+                    os.path.dirname(anvio.__file__), 'data/misc/SCG_TAXONOMY/GTDB/MIN_PCT_ID_PER_TAXONOMIC_LEVEL.pickle')
 
-        with open(self.pident_level_path, 'rb') as handle:
-            self.dicolevel = pickle.load(handle)
+            with open(self.pident_level_path, 'rb') as handle:
+                self.dicolevel = pickle.load(handle)
 
         if reduction:
             self.reduction=True
@@ -120,7 +122,7 @@ class TaxonomyEstimation:
         if consensus_taxonomy:
             for SCG, entry in SCGs_hit_per_gene.items():
                 taxonomy = [{"bestSCG": SCG, "bestident": entry[0]['pident'],
-                            "code": entry[0]['accession'], "taxonomy":OrderedDict(self.taxonomy_dict[entry[0]['accession']])}]
+                            "accession": entry[0]['accession'], "taxonomy":OrderedDict(self.taxonomy_dict[entry[0]['accession']])}]
 
             return(consensus_taxonomy, taxonomy)
 
@@ -216,7 +218,7 @@ class TaxonomyEstimation:
             bestSCG = pd.to_numeric(matrix_pident.loc[individue, :]).idxmax()
             bestident = matrix_pident.loc[individue, bestSCG]
             taxonomy.append({"bestSCG": bestSCG, "bestident": bestident,
-                             "code": individue, "taxonomy":OrderedDict(self.taxonomy_dict[individue])})
+                             "accession": individue, "taxonomy":OrderedDict(self.taxonomy_dict[individue])})
         return(taxonomy)
 
     def reduce_assignation_level(self, taxonomy):
@@ -480,7 +482,7 @@ class SCGsdiamond(TaxonomyEstimation):
                 finish_process += 1
 
                 self.progress.increment(increment_to=finish_process)
-                progress.update("Processed %s of %s SGCs aligment in %s threads with %s cores." % (
+                progress.update("Processed %s of %s SGCs aligment in %s processus with %s cores." % (
                     finish_process, num_listeprocess, int(self.num_process), self.core))
 
             except KeyboardInterrupt:
@@ -572,19 +574,15 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
         self.hits_per_gene = {}
 
-        self.pident_level_path = os.path.join(os.path.dirname(
-            anvio.__file__), 'data/misc/SCG/mergedb/dico_low_ident.pickle')
 
-        with open(self.pident_level_path, 'rb') as handle:
-            self.dicolevel = pickle.load(handle)
-
-        self.taxonomic_levels_parser = {'t_domain': 'd__',
+        self.taxonomic_levels_parser = {"t_domain": 'd__',
                                         "t_phylum": 'p__',
                                         "t_class": 'c__',
                                         "t_order": 'o__',
                                         "t_family": 'f__',
                                         "t_genus": 'g__',
                                         "t_species": 's__'}
+        self.taxonomy_dict=dict()
 
     def sanity_check(self):
         filesnpaths.is_file_exists(self.db_path)
@@ -623,68 +621,77 @@ class SCGsTaxonomy(TaxonomyEstimation):
             raise ConfigError(
                 "Anvi'o can't make a taxonomy estimation because aligment didn't return any match or you forgot to run 'anvi-diamond-for-taxonomy'.")
 
-        self.run.info('Taxonomy estimation not possible for:', self.db_path)
-
-        contigs_db = db.DB(self.db_path, anvio.__contigs__version__)
-
-        collection_to_split = ccollections.GetSplitNamesInBins(self.args).get_dict()
-
-        split_to_gene_callers_id = dict()
-        bin_to_gene_callers_id = dict()
-
-        for row in contigs_db.get_all_rows_from_table('genes_in_splits'):
-            split_name, gene_callers_id = row[1], row[2]
-
-            if split_name not in split_to_gene_callers_id:
-                split_to_gene_callers_id[split_name] = set()
-
-            split_to_gene_callers_id[split_name].add(gene_callers_id)
-
-        for bin_name in collection_to_split:
-            for split in collection_to_split[bin_name]:
-                if bin_name not in bin_to_gene_callers_id:
-                    bin_to_gene_callers_id[bin_name] = set()
-
-                if split in split_to_gene_callers_id:
-                    bin_to_gene_callers_id[bin_name].update(split_to_gene_callers_id[split])
-
-        self.taxonomy_dict=dict()
-        for gene_estimation in self.dictonnary_taxonomy_by_index.values():
-            if gene_estimation["source"]=="Consensus":
-                continue
-
-
-            if gene_estimation['gene_caller_id'] not in self.taxonomy_dict:
-                self.taxonomy_dict[gene_estimation['accession']]= {"t_domain": gene_estimation['t_domain'],
-                                                            "t_phylum": gene_estimation['t_phylum'],
-                                                            "t_class": gene_estimation['t_class'],
-                                                            "t_order": gene_estimation['t_order'],
-                                                            "t_family": gene_estimation['t_family'],
-                                                            "t_genus": gene_estimation['t_genus'],
-                                                            "t_species": gene_estimation['t_species']}
-
-            for bin_id, gene_callers_id in bin_to_gene_callers_id.items():
-                if gene_estimation['gene_caller_id'] in gene_callers_id:
+        if self.metagenome or not self.profile_db_path:
+             self.initialized = True
+             return
 
 
 
-                    hit = [{'accession': gene_estimation['accession'], 'pident':float(
-                        gene_estimation['pourcentage_identity'])}]
+        else:
+            self.hits_per_gene={}
 
-                    if bin_id not in self.hits_per_gene:
-                        self.hits_per_gene[bin_id] = {}
-                    if gene_estimation['gene_name'] not in self.hits_per_gene[bin_id]:
-                        self.hits_per_gene[bin_id][gene_estimation['gene_name']] = []
+            contigs_db = db.DB(self.db_path, anvio.__contigs__version__)
 
-                    self.hits_per_gene[bin_id][gene_estimation['gene_name']] += hit
+            collection_to_split = ccollections.GetSplitNamesInBins(self.args).get_dict()
 
+            split_to_gene_callers_id = dict()
+            bin_to_gene_callers_id = dict()
+
+            for row in contigs_db.get_all_rows_from_table('genes_in_splits'):
+                split_name, gene_callers_id = row[1], row[2]
+
+                if split_name not in split_to_gene_callers_id:
+                    split_to_gene_callers_id[split_name] = set()
+
+                split_to_gene_callers_id[split_name].add(gene_callers_id)
+
+            for bin_name in collection_to_split:
+                for split in collection_to_split[bin_name]:
+                    if bin_name not in bin_to_gene_callers_id:
+                        bin_to_gene_callers_id[bin_name] = set()
+
+                    if split in split_to_gene_callers_id:
+                        bin_to_gene_callers_id[bin_name].update(split_to_gene_callers_id[split])
+
+            
+
+            for gene_estimation in self.dictonnary_taxonomy_by_index.values():
+                if gene_estimation["source"]=="Consensus":
+                    continue
+
+
+                if gene_estimation['accession'] not in self.taxonomy_dict:
+                    self.taxonomy_dict[gene_estimation['accession']]= {"t_domain": gene_estimation['t_domain'],
+                                                                "t_phylum": gene_estimation['t_phylum'],
+                                                                "t_class": gene_estimation['t_class'],
+                                                                "t_order": gene_estimation['t_order'],
+                                                                "t_family": gene_estimation['t_family'],
+                                                                "t_genus": gene_estimation['t_genus'],
+                                                                "t_species": gene_estimation['t_species']}
+
+                for bin_id, gene_callers_id in bin_to_gene_callers_id.items():
+                    if gene_estimation['gene_caller_id'] in gene_callers_id:
+
+
+
+                        hit = [{'accession': gene_estimation['accession'], 'pident':float(
+                            gene_estimation['pourcentage_identity'])}]
+
+                        if bin_id not in self.hits_per_gene:
+                            self.hits_per_gene[bin_id] = {}
+                        if gene_estimation['gene_name'] not in self.hits_per_gene[bin_id]:
+                            self.hits_per_gene[bin_id][gene_estimation['gene_name']] = []
+
+                        self.hits_per_gene[bin_id][gene_estimation['gene_name']] += hit
+
+            taxonomyestimation=TaxonomyEstimation.__init__(self,self.taxonomy_dict)
 
         self.initialized = True
-        taxonomyestimation=TaxonomyEstimation.__init__(self,self.taxonomy_dict)
+        
 
-    def estimate_taxonomy(self, source="GTDB"):
+    def estimate_taxonomy(self, source="GTDB",number_scg=21):
 
-        self.init()
+        
 
         self.run.warning('', header='Taxonomy estimation for %s' %
                          self.db_path, lc='green')
@@ -693,46 +700,132 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.run.info('Minimun level assigment', "species")
         self.run.info('output file for taxonomy', self.output_file_path)
 
-        possibles_taxonomy = []
-        entry_id = 0
-        entries_db_profile = []
-        dictionary_bin_taxonomy_estimation=dict()
-        possibles_taxonomy.append(
-            ['bin_id', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
-
-        for bin_id, SCGs_hit_per_gene in self.hits_per_gene.items():
-            consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,
-                SCGs_hit_per_gene, bin_id)
-
-            dictionary_bin_taxonomy_estimation[bin_id]={"consensus_taxonomy":consensus_taxonomy, "taxonomy_use_for_consensus":taxonomy}
-
-            possibles_taxonomy.append([bin_id] + list(consensus_taxonomy.values()))
+        self.init()
 
 
+        if self.metagenome or not self.profile_db_path:
+            output_genes_estimation = []
+            estimate_taxonomy_presences=[]
+            dictonarry_presence={}
+            dictonnary_number_appear=dict()
+            estimate_taxonomy_presences = [{"t_domain": "NA",
+                                            "t_phylum": "NA",
+                                            "t_class": "NA",
+                                            "t_order": "NA",
+                                            "t_family": "NA",
+                                            "t_genus": "NA",
+                                            "t_species": "NA"}]
 
-            self.run.info('Bin name',
-                          bin_id, nl_before=1)
-            self.run.info('estimate taxonomy',
-                          '/'.join(list(consensus_taxonomy.values())))
+            output_genes_estimation.append(
+                ['genes_id', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
 
-            entries_db_profile += [
-                (tuple([entry_id, self.collection_name, bin_id, source] + list(consensus_taxonomy.values())))]
-            entry_id += 1
+            for gene_estimation in self.dictonnary_taxonomy_by_index.values():
+                if gene_estimation["source"] == "GTDB" :
+                    continue
+                
+                if gene_estimation['accession'] not in self.taxonomy_dict:
+                    taxonomy = {"t_domain": gene_estimation['t_domain'],
+                                                                "t_phylum": gene_estimation['t_phylum'],
+                                                                "t_class": gene_estimation['t_class'],
+                                                                "t_order": gene_estimation['t_order'],
+                                                                "t_family": gene_estimation['t_family'],
+                                                                "t_genus": gene_estimation['t_genus'],
+                                                                "t_species": gene_estimation['t_species']}
+                    self.taxonomy_dict[gene_estimation['accession']]=taxonomy
 
-            self.tables_for_taxonomy.taxonomy_estimation_to_profile(
-                entries_db_profile)
+                output_genes_estimation.append([gene_estimation['gene_caller_id']] + list(taxonomy.values()))
+                not_same=False
+                for estimate_taxonomy_presence in estimate_taxonomy_presences:
+                    if estimate_taxonomy_presence == taxonomy :
+                        not_same=False
+                        break
+                    share = { level : taxonomy[level] for level, taxon  in estimate_taxonomy_presence.items() & taxonomy.items() if taxon!="NA" and taxon!="Bacteria" and taxon!="Archea"}
+                    difference = { level : taxonomy[level] for level, taxon  in estimate_taxonomy_presence.items() - taxonomy.items() if taxon=="NA" }
+                    
+                    if difference and share:
+                        for taxon_presente in taxonomy.values():
+                            if taxon_presente not in dictonarry_presence:
+                                dictonarry_presence[taxon_presente]={gene_estimation['gene_name']: [gene_estimation['accession']]}
+                            else:
+                                if gene_estimation['gene_name'] not in dictonarry_presence[taxon_presente]:
+                                 dictonarry_presence[taxon_presente][gene_estimation['gene_name']]=[gene_estimation['accession']]
+                                else:
+                                    dictonarry_presence[taxon_presente][gene_estimation['gene_name']]+=[gene_estimation['accession']]
+                        estimate_taxonomy_presence.clear()
+                        estimate_taxonomy_presence.update(taxonomy)
+                        not_same=False
+                        break
+                    if difference and not share:
+                        not_same=True
+                if not_same:
+                    for taxon_presente in taxonomy.values():
+                        if taxon_presente not in dictonarry_presence:
+                            dictonarry_presence[taxon_presente]={gene_estimation['gene_name']: [gene_estimation['accession']]}
+                        else:
+                            if gene_estimation['gene_name'] not in dictonarry_presence[taxon_presente]:
+                             dictonarry_presence[taxon_presente][gene_estimation['gene_name']]=[gene_estimation['accession']]
+                            else:
+                                dictonarry_presence[taxon_presente][gene_estimation['gene_name']]+=[gene_estimation['accession']]
+                    estimate_taxonomy_presences+=[taxonomy]
 
-            # FIX
-            try:
-                with open(self.output_file_path, "a") as output:
-                    output_taxonomy = ['\t'.join(line)
-                                       for line in possibles_taxonomy]
-                    output.write('\n'.join(output_taxonomy))
-            except:
-                self.run.warning(traceback.print_exc(
-                ), header='Anvi\'o to creat the file for taxonomy result %s' % self.output_file_path, lc="red")
+            for estimate_taxonomy_presence in estimate_taxonomy_presences:
+                for level in estimate_taxonomy_presence.values():
+                    if level not in dictonnary_number_appear:
+                        dictonnary_number_appear[level]=1
+                    else:
+                        dictonnary_number_appear[level]+=1
 
-        self.show_taxonomy_estimation(possibles_taxonomy)
+            for taxon, list_scgs in dictonarry_presence.items():
+                len_max_scg=("NA",0)
+                for SCG, list_appear_scg in list_scgs.items():
+                    if len(list_appear_scg) > len_max_scg[1]:
+                        len_max_scg=(SCG,len(list_appear_scg))
+                if dictonnary_number_appear[taxon] > len_max_scg[1]:
+                    self.run.warning()
+
+
+
+            print("estimate_taxonomy_presences",estimate_taxonomy_presences)
+            print("dictonarry_presence",dictonarry_presence)
+
+
+
+
+        else:
+            possibles_taxonomy = []
+            entry_id = 0
+            entries_db_profile = []
+            dictionary_bin_taxonomy_estimation=dict()
+            possibles_taxonomy.append(
+                ['bin_id', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
+
+            for bin_id, SCGs_hit_per_gene in self.hits_per_gene.items():
+                consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,
+                    SCGs_hit_per_gene, bin_id)
+
+                dictionary_bin_taxonomy_estimation[bin_id]={"consensus_taxonomy":consensus_taxonomy, "taxonomy_use_for_consensus":taxonomy}
+
+                possibles_taxonomy.append([bin_id] + list(consensus_taxonomy.values()))
+
+
+                entries_db_profile += [
+                    (tuple([entry_id, self.collection_name, bin_id, source] + list(consensus_taxonomy.values())))]
+                entry_id += 1
+
+                self.tables_for_taxonomy.taxonomy_estimation_to_profile(
+                    entries_db_profile)
+
+                # FIX
+                try:
+                    with open(self.output_file_path, "a") as output:
+                        output_taxonomy = ['\t'.join(line)
+                                           for line in possibles_taxonomy]
+                        output.write('\n'.join(output_taxonomy))
+                except:
+                    self.run.warning(traceback.print_exc(
+                    ), header='Anvi\'o to creat the file for taxonomy result %s' % self.output_file_path, lc="red")
+
+            self.show_taxonomy_estimation(possibles_taxonomy)
 
     def show_taxonomy_estimation(self, possibles_taxonomy):
         self.run.warning(None, header='Taxonomy estimation', lc="yellow")
