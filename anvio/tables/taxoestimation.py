@@ -106,10 +106,10 @@ class TablesForTaxoestimation(Table):
 
 
     def get_accession(self,taxonomy):
-        for taxon in reversed(list(result[2].values())taxonomy):
+        for level, taxon in reversed(list(taxonomy.items())):
             if taxon == "NA" :
                 continue
-            code=abs(hash(taxon)) % (10 ** 8)
+            code=abs(hash(level+taxon)) % (10 ** 8)
             accession=taxon+"_"+str(code)
             break
         return(accession)
