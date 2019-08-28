@@ -544,8 +544,7 @@ class SCGsdiamond(TaxonomyEstimation):
             if anvio.DEBUG:
                 self.show_hits(hits_per_gene[SCG], SCG)
             for gene_callers_id, SCGs_hit_per_gene in hits_per_gene.items():
-                consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,
-                    SCGs_hit_per_gene, gene_callers_id)
+                consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(SCGs_hit_per_gene, gene_callers_id)
                 genes_estimation_output.append([gene_callers_id, SCG, consensus_taxonomy, taxonomy])
             output_queue.put(genes_estimation_output)
 
@@ -586,6 +585,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
                                         "t_genus": 'g__',
                                         "t_species": 's__'}
         self.taxonomy_dict=dict()
+        self.init()
 
     def sanity_check(self):
         filesnpaths.is_file_exists(self.db_path)
@@ -720,10 +720,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.initialized = True
         
 
-    def estimate_taxonomy(self, source="GTDB",number_scg=21):
-
-        
-
+    def estimate_taxonomy(self, source="GTDB", number_scg=21):
         self.run.warning('', header='Taxonomy estimation for %s' %
                          self.db_path, lc='green')
         self.run.info('HMM PROFILE', "Bacteria 71")
@@ -731,29 +728,19 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.run.info('Minimun level assigment', "species")
         self.run.info('output file for taxonomy', self.output_file_path)
 
-        self.init()
-
 
         if self.metagenome:
             self.estimate_taxonomy_for_metagenome()
 
-
         if self.profile_db_path:
-            possibles_taxonomy = []
             entry_id = 0
             entries_db_profile = []
             dictionary_bin_taxonomy_estimation=dict()
-            possibles_taxonomy.append(
-                ['Genome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
 
             for bin_id, SCGs_hit_per_gene in self.hits_per_gene.items():
-                consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,
-                    SCGs_hit_per_gene, bin_id)
-
-                dictionary_bin_taxonomy_estimation[bin_id]={"consensus_taxonomy":consensus_taxonomy, "taxonomy_use_for_consensus":taxonomy}
-
-                possibles_taxonomy.append([bin_id] + list(consensus_taxonomy.values()))
-
+                consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(SCGs_hit_per_gene, bin_id)
+                dictionary_bin_taxonomy_estimation[bin_id]={"consensus_taxonomy":consensus_taxonomy, 
+                                                            "taxonomy_use_for_consensus":taxonomy}
 
                 entries_db_profile += [
                     (tuple([entry_id, self.collection_name, bin_id, source] + list(consensus_taxonomy.values())))]
@@ -762,8 +749,8 @@ class SCGsTaxonomy(TaxonomyEstimation):
                 self.tables_for_taxonomy.taxonomy_estimation_to_profile(
                     entries_db_profile)
 
-            self.show_taxonomy_estimation(possibles_taxonomy)
-            self.generate_outpu_file(possibles_taxonomy)
+            return dictionary_bin_taxonomy_estimation
+
 
     def estimate_taxonomy_for_metagenome(self):
         output_genes_estimation = []
@@ -875,7 +862,15 @@ class SCGsTaxonomy(TaxonomyEstimation):
                 output_data='\n'.join(output_data)
                 output_file.write(output_data)
 
-    def show_taxonomy_estimation(self, possibles_taxonomy):
+    def show_taxonomy_estimation(self):
+        possibles_taxonomy = []
+        possibles_taxonomy.append(
+            ['Genome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
+
+        for bin_id, SCGs_hit_per_gene in self.hits_per_gene.items():
+            consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(SCGs_hit_per_gene, bin_id)
+            possibles_taxonomy.append([bin_id] + list(consensus_taxonomy.values()))
+
         self.run.warning(None, header='Taxonomy estimation', lc="yellow")
         print(tabulate(possibles_taxonomy, headers="firstrow",
                        tablefmt="fancy_grid", numalign="right"))
