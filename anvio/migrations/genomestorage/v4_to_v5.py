@@ -7,13 +7,14 @@ import time
 import argparse
 
 import anvio.db as db
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
-with terminal.SuppressAllOutput():
-    import h5py
+utils.check_h5py_module()
+import h5py
 
 current_version = '4'
 next_version    = '5'
