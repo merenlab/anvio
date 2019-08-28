@@ -633,12 +633,15 @@ class SCGsTaxonomy(TaxonomyEstimation):
         if self.profile_db_path:
             self.hits_per_gene={}
 
+
             contigs_db = db.DB(self.db_path, anvio.__contigs__version__)
 
             collection_to_split = ccollections.GetSplitNamesInBins(self.args).get_dict()
 
             split_to_gene_callers_id = dict()
             bin_to_gene_callers_id = dict()
+
+
 
             for row in contigs_db.get_all_rows_from_table('genes_in_splits'):
                 split_name, gene_callers_id = row[1], row[2]
@@ -694,22 +697,24 @@ class SCGsTaxonomy(TaxonomyEstimation):
         else:
             self.SCGs_hit_per_gene={}
             for gene_estimation in self.dictonnary_taxonomy_by_index.values():
-                if gene_estimation['gene_caller_id'].endswith("best_hit"):
-                    self.taxonomy_dict[gene_estimation['accession']]= {"t_domain": gene_estimation['t_domain'],
-                                                                "t_phylum": gene_estimation['t_phylum'],
-                                                                "t_class": gene_estimation['t_class'],
-                                                                "t_order": gene_estimation['t_order'],
-                                                                "t_family": gene_estimation['t_family'],
-                                                                "t_genus": gene_estimation['t_genus'],
-                                                                "t_species": gene_estimation['t_species']}
+                self.taxonomy_dict[gene_estimation['accession']]= {"t_domain": gene_estimation['t_domain'],
+                                                            "t_phylum": gene_estimation['t_phylum'],
+                                                            "t_class": gene_estimation['t_class'],
+                                                            "t_order": gene_estimation['t_order'],
+                                                            "t_family": gene_estimation['t_family'],
+                                                            "t_genus": gene_estimation['t_genus'],
+                                                            "t_species": gene_estimation['t_species']}
 
-                    hit = [{'accession': gene_estimation['accession'], 'pident':float(gene_estimation['pourcentage_identity'])}]
-                    if gene_estimation['gene_name'] not in self.SCGs_hit_per_gene:
-                        self.SCGs_hit_per_gene[gene_estimation['gene_name']] = []
-                    self.SCGs_hit_per_gene[gene_estimation['gene_name']] += hit
+                hit = [{'accession': gene_estimation['accession'], 'pident':float(gene_estimation['pourcentage_identity'])}]
+                if gene_estimation['gene_name'] not in self.SCGs_hit_per_gene:
+                    self.SCGs_hit_per_gene[gene_estimation['gene_name']] = []
+                self.SCGs_hit_per_gene[gene_estimation['gene_name']] += hit
             taxonomyestimation=TaxonomyEstimation.__init__(self,self.taxonomy_dict)
             consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,
                     self.SCGs_hit_per_gene, self.db_path)
+            output_full_genome=[['Genome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'],[self.db_path.replace(".db","")]+list(consensus_taxonomy.values())]
+            self.show_taxonomy_estimation(output_full_genome)
+            self.generate_outpu_file(output_full_genome)
 
 
         self.initialized = True
@@ -739,7 +744,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
             entries_db_profile = []
             dictionary_bin_taxonomy_estimation=dict()
             possibles_taxonomy.append(
-                ['bin_id', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
+                ['Genome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
 
             for bin_id, SCGs_hit_per_gene in self.hits_per_gene.items():
                 consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,
@@ -819,17 +824,8 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
 
         estimate_taxonomy_presences.pop(0)
-        output=[]
+        output=[['metagenome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species','number of SCG']]
         num_metagenome=1
-        for estimate_taxonomy_presence in estimate_taxonomy_presences:
-            self.run.info('Possible presence ',
-                          '/'.join(list(estimate_taxonomy_presence.values())))
-            if num_metagenome > 1:
-                output+=[[self.db_path.replace(".db","")+"_metagenome_"+str(num_metagenome)]+list(estimate_taxonomy_presence.values())]
-            else:
-                output+=[[self.db_path.replace(".db","")]+list(estimate_taxonomy_presence.values())]
-            num_metagenome+=1
-        self.generate_outpu_file(output,append=True)
 
         for estimate_taxonomy_presence in estimate_taxonomy_presences:
             for level in estimate_taxonomy_presence.values():
@@ -838,6 +834,26 @@ class SCGsTaxonomy(TaxonomyEstimation):
                 else:
                     dictonnary_number_appear[level]+=1
 
+        if len(estimate_taxonomy_presences)>1:
+            for estimate_taxonomy_presence in estimate_taxonomy_presences:
+                output+=[[self.db_path.replace(".db","")+"_genome_"+str(num_metagenome)]+list(estimate_taxonomy_presence.values())+[dictonnary_number_appear[list(estimate_taxonomy_presence.values())[-1]]]]
+                num_metagenome+=1
+        else:
+            output+=[[self.db_path.replace(".db","")]+list(estimate_taxonomy_presence.values())]
+        
+
+
+
+        self.show_taxonomy_estimation(output)
+        
+
+        outpu_appear=[["taxon","number of scg"]]
+        for level, appear in dictonnary_number_appear.items():
+            outpu_appear+=[[level],[appear]]
+
+        self.show_taxonomy_estimation(outpu_appear)
+
+        self.generate_outpu_file(output,append=True)
         for taxon, list_scgs in dictonarry_presence.items():
             if taxon=="NA":
                 continue
@@ -854,11 +870,19 @@ class SCGsTaxonomy(TaxonomyEstimation):
     def generate_outpu_file(self,output_data,header=False,append=False):
         if filesnpaths.is_output_file_writable(self.output_file_path,ok_if_exists=append):
             with open(self.output_file_path, "a") as output_file:
-                output_taxonomy = ['\t'.join(line)
+                output_data = ['\t'.join(line)
                                    for line in output_data]
-                output_file.write('\n'.join(output_taxonomy))
+                output_data='\n'.join(output_data)
+                output_file.write(output_data)
 
     def show_taxonomy_estimation(self, possibles_taxonomy):
+        self.run.warning(None, header='Taxonomy estimation', lc="yellow")
+        print(tabulate(possibles_taxonomy, headers="firstrow",
+                       tablefmt="fancy_grid", numalign="right"))
+
+
+
+    def show_taxonomy_estimation_genes(self, possibles_taxonomy):
         self.run.warning(None, header='Taxonomy estimation', lc="yellow")
         possibles_taxonomy_dataframe = pd.DataFrame(
             possibles_taxonomy, columns=possibles_taxonomy[0])
