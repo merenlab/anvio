@@ -2584,6 +2584,22 @@ def open_url_in_browser(url, browser_path=None, run=run):
         webbrowser.open_new(url)
 
 
+def check_h5py_module():
+    """To make sure we do have the h5py module.
+
+       The reason this function is here is becasue we removed h5py from anvi'o dependencies,
+       but some migration scripts may still need it if the user has very old databases. In
+       those cases the user must install it manually."""
+
+    try:
+        import h5py
+    except:
+        raise ConfigError("Please install the Python module `h5py` manually for this migration task to continue.\
+                           The reason why the standard anvi'o installation did not install module is complicated,\
+                           and really unimportant. If you run `pip install h5py` in your Python virtual environmnet\
+                           for anvi'o, and try running the migration program again things should be alright.")
+
+
 def RepresentsInt(s):
     try:
         int(s)
