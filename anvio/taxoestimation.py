@@ -715,7 +715,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.initialized = True
         
 
-    def estimate_taxonomy_bin(self, source="GTDB",number_scg=21):
+    def estimate_taxonomy(self, source="GTDB",number_scg=21):
 
         
 
@@ -731,7 +731,6 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
         if self.metagenome:
             self.estimate_taxonomy_for_metagenome()
-
 
 
         if self.profile_db_path:
