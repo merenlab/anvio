@@ -846,7 +846,8 @@ class SCGsTaxonomy(TaxonomyEstimation):
                 if len(list_appear_scg) > len_max_scg[1]:
                     len_max_scg=(SCG,len(list_appear_scg))
             if dictonnary_number_appear[taxon] < len_max_scg[1]:
-                self.run.warning("%s appear %d but it seams that the SCG %s have %d appear "\
+                continue
+                self.run.warning("%s is estimate %d time but it seams that the SCG %s have %d appear for this taxons, it could mean you have "\
                  % (taxon , dictonnary_number_appear[taxon], len_max_scg[0], len_max_scg[1]))
 
 
