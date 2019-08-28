@@ -64,6 +64,8 @@ def main(args):
 
     hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=True)
     hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(gene_names))
+    #hmm_sequences_best_hit_dict = s.filter_hmm_sequences_dict_for_splits_to_keep_only_best_hits(hmm_sequences_dict)
+    hmm_sequences_best_hit_dict={}
 
     if not len(hmm_sequences_dict):
         raise ConfigError("Your selections returned an empty list of genes to work with :/")
@@ -73,7 +75,7 @@ def main(args):
 
     start = time.perf_counter()
     t = taxoestimation.SCGsdiamond(args)
-    t.predict_from_SCGs_dict_multiseq(hmm_sequences_dict)
+    t.predict_from_SCGs_dict_multiseq(hmm_sequences_dict,hmm_sequences_best_hit_dict)
     end = time.perf_counter()
     run.info_single("The SCG taxonomy table is now populated with taxonomy (which took %.2f minutes)" % ((end - start) / 60))
 
