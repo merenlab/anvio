@@ -693,10 +693,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['available_item_orders'].append('alphabetical')
 
         if not self.inspect_split_name or self.inspect_split_name not in self.displayed_item_names_ordered:
-            self.inspect_split_name = alphabetical_order['data'][0]
-            self.run.warning("Either you forgot to provide split name to inspect or the split name\
-                             you have provided does not exist. So anvi'o decided to show you the split: \
-                             %s" % self.inspect_split_name)
+            raise ConfigError("Either you forgot to provide split name to inspect or the split name\
+                             you have provided does not exist.")
 
 
     def load_refine_mode(self):
