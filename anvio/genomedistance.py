@@ -11,8 +11,8 @@ import anvio.genomedescriptions as genomedescriptions
 
 from itertools import combinations
 
-from anvio.drivers import pyani
 from anvio.errors import ConfigError
+from anvio.drivers import pyani, sourmash
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.miscdata import TableForLayerOrders
 
@@ -30,9 +30,8 @@ progress = terminal.Progress()
 class GenomeDictionary:
     def __init__(self, args, genome_names, genome_desc, data):
         self.args = args
-        self.percent_alignment_threshold = args.percent_alignment_threshold
-        self.correlation_threshold = args.correlation_threshold
-        self.average_identity_threshold = args.average_identity_threshold
+        self.distance_threshold = args.distance_threshold
+        self.method = args.representative_method
         self.genome_names = genome_names
         self.genomes_dict = genome_desc.genomes
         self.data = data
@@ -63,19 +62,18 @@ class GenomeDictionary:
         if hash1 == hash2:
             return True
         return False
-
-    def dereplicate(self):
+                    
+    def dereplicate(self): 
         genome_pairs = combinations(self.genome_names, 2)
         for pair in genome_pairs:
             genome1 = pair[0]
             genome2 = pair[1]
             if genome1 == genome2 or self.are_redundant(genome1, genome2):
                 continue
-            if float(self.data['correlations'][genome1][genome2]) >= self.correlation_threshold:
-                if float(self.data['percent_alignment'][genome1][genome2]) >= self.percent_alignment_threshold:
-                    if float(self.data['percentage_identity'][genome1][genome2]) >= self.average_identity_threshold:
-                        self.group_genomes(genome1, genome2)
-        return
+
+            distance = float(self.data[genome1][genome2])
+            if distance > self.distance_threshold:
+                self.group_genomes(genome1, genome2)
 
     def pick_best_of_two(self, one, two):
         if (one is None or one == []) and (two is None or two == []):
@@ -122,13 +120,43 @@ class GenomeDictionary:
         best = self.pick_best_of_two(group[:medium], group[medium:])
         return best
 
+    def pick_longest_rep(self, group):
+        max_name = group[0]
+        max_val = self.genomes_dict[max_name]['total_length']
+
+        for name in group[1:]:
+            val = self.genome_desc[name]['total_length']
+            if val > max_val:
+                max_name = name
+                max_val = val
+
+        return val
+
+    def pick_closest_distance(self, group):
+        dict = {}
+        for name in group:
+            dict[name] = 0
+            for target in group:
+                dict[name] += self.data[name][target]
+        new_dict = {}
+        for name, val in dict.items():
+            new_dict[val] = name
+        max_val = max(new_dict.keys())
+        return new_dict[max_val]
+
     def get_dereplicated_genome_names(self):
         names = []
         for hash in self.groups.keys():
             group = self.groups[hash]
             if group == []:
                 continue
-            names.append(self.pick_representative(group))
+            if self.method == "Qscore":
+                name = self.pick_representative(group)
+            elif self.method == "length":
+                name = self.pick_longest_rep(group)
+            elif self.method == "distance":
+                name = self.pick_closest_distance(group)
+            names.append(name)
         return names
 
     def get_all_redundant_groups(self, names):
@@ -147,17 +175,19 @@ class GenomeDistance:
             self.genome_desc = None
         else:
             self.genome_desc = genomedescriptions.GenomeDescriptions(args, run = terminal.Run(verbose=False))
-        self.fasta_txt = None
+        self.fasta_txt = args.fasta_text_file if 'fasta_text_file' in vars(args) else None
         self.hash_to_name = {}
         self.genome_names = set([])
+        self.temp_paths = set([])
         self.dict = {}
 
     def get_fasta_sequences_dir(self):
         if self.genome_desc is not None:
             self.genome_desc.load_genomes_descriptions(skip_functions=True)
-        temp_dir, hash_to_name, genome_names = utils.create_fasta_dir_from_sequence_sources(self.genome_desc)
+        temp_dir, hash_to_name, genomes = utils.create_fasta_dir_from_sequence_sources(self.genome_desc, fasta_txt=self.fasta_txt)
         self.hash_to_name = hash_to_name
-        self.genome_names = genome_names
+        self.genome_names = genomes[0]
+        self.temp_paths = genomes[1]
         return temp_dir
 
     def restore_names_in_dict(self, input_dict):
@@ -201,6 +231,23 @@ class ANI(GenomeDistance):
     def __init__(self, args):
         GenomeDistance.__init__(self, args)
         self.program = pyani.PyANI(args)
+        self.min_coverage = args.min_alignment_coverage if 'min_alignment_coverage' in vars(args) else 0
+    
+    def collapse_results(self, results):
+        self.progress.new('PyANI')
+        self.progress.update('Collapsing results into distance matrix...')
+        matrix = {}
+        for name in self.genome_names:
+            matrix[name] = {}
+            for target in self.genome_names:
+                if float(results['alignment_coverage'][name][target]) < self.min_coverage:
+                    matrix[name][target] = 0
+                else:
+                    matrix[name][target] = results['percentage_identity'][name][target]
+
+        self.progress.end()
+        return matrix
+
 
     def process(self, temp=None):
         temp_dir=temp
@@ -208,35 +255,46 @@ class ANI(GenomeDistance):
             temp_dir = self.get_fasta_sequences_dir()
         results = self.program.run_command(temp_dir)
         results = self.restore_names_in_dict(results)
+        results = self.collapse_results(results)
         if temp is None:
             shutil.rmtree(temp_dir)
         return results
 
-    def add_default_correlation(self):
-        dict = {}
-        for name in self.genome_names:
-            dict[name] = {}
-            for target in self.genome_names:
-                dict[name][target] = 1
-        return dict
-    
-    def gen_additional_stats(self, results):
-        self.progress.new('Analysis Extension')
-        self.progress.update('Generating additional pairwise genome statistics...')
-        if 'correlations' not in results.keys():
-            self.run.warning("Correlation values were not calculated for your genomes. Please\
-                             refer to the log file for more information. Meanwhile, anvi'o\
-                             will bypass correlation checking for dereplication")
-            results['correlations'] = self.add_default_correlation()
-        results['percent_alignment'] = {}
-        for name in self.genome_names:
-            results['percent_alignment'][name] = {}
-            for target in self.genome_names:
-                alignment = min(float(results['alignment_lengths'][name][target]),
-                                float(results['alignment_lengths'][target][name]))
-                len1 = int(self.genome_desc.genomes[name]['total_length'])
-                len2 = int(self.genome_desc.genomes[target]['total_length'])
-                results['percent_alignment'][name][target] = 100 * alignment / min(len1, len2)
-        self.progress.end()
 
+class SourMash(GenomeDistance):
+    def __init__(self, args):
+        GenomeDistance.__init__(self, args)
+        self.program = sourmash.Sourmash(args)
+        self.min_distance = args.min_mash_distance if 'min_mash_distance' in vars(args) else 0
+    
+    def reformat_results(self, dict):
+        file_hash = {}
+        lines = list(dict.keys())
+        files = list(dict[lines[0]].keys())
+        for file in files:
+            hash = file[::-1].split(".")[1].split("/")[0]
+            hash = hash[::-1]
+            file_hash[file] = self.hash_to_name[hash]
+        results = {}
+        for num, file1 in enumerate(files):
+            name1 = file_hash[file1]
+            key = lines[num]
+            results[name1] = {}
+            for file2 in files:
+                name2 = file_hash[file2]
+                val = dict[key][file2]
+                if val < self.min_distance:
+                    results[name1][name2] = 0
+                else:
+                    results[name1][name2] = val
+        return results
+
+    def process(self, temp=None):
+        temp_dir=temp
+        if temp is None:
+            temp_dir = self.get_fasta_sequences_dir()
+        results = self.program.process(temp_dir, list(self.temp_paths))
+        results = self.reformat_results(results)
+        if temp is None:
+            shutil.rmtree(temp_dir)
         return results
