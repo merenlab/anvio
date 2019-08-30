@@ -28,16 +28,17 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 class GenomeDictionary:
-    def __init__(self, args, genome_names, genome_desc, data):
+    def __init__(self, args, genome_names, genome_desc, fasta_txt, data):
         self.args = args
         self.distance_threshold = args.distance_threshold
         self.method = args.representative_method
         self.genome_names = genome_names
-        self.genomes_dict = genome_desc.genomes
+        self.genomes_dict = {}
         self.data = data
         self.hash = {}
         self.groups = {}
         self.init_groups()
+        self.init_full_genome_dict(genome_desc, fasta_txt)
 
     def init_groups(self):
         hash = 0
@@ -45,6 +46,23 @@ class GenomeDictionary:
             self.hash[name] = hash
             self.groups[hash] = [name]
             hash = hash + 1
+
+    def init_full_genome_dict(self, genome_desc, fasta_txt):
+        full_dict = {}
+        if genome_desc is not None:
+            full_dict = genome_desc.genomes
+        if fasta_txt is not None:
+            fastas = utils.get_TAB_delimited_file_as_dictionary(fasta_txt, expected_fields=['name', 'path'], only_expected_fields=True)
+            for name in fastas:
+                if name in full_dict.keys(): #redundant name
+                    continue
+                full_dict[name] = {}
+                full_dict[name]['percent_completion'] = 0
+                full_dict[name]['percent_redundancy'] = 0
+                full_dict[name]['total_length'] = 0
+        self.genomes_dict = full_dict
+
+
 
     def group_genomes(self, genome1, genome2):
         from_hash = self.hash[genome1]
@@ -215,7 +233,7 @@ class GenomeDistance:
     def remove_redundant_genomes(self, data):
         self.progress.new('Dereplication')
         self.progress.update('Identifying redundant genomes...')
-        self.dict = GenomeDictionary(self.args, self.genome_names, self.genome_desc, data)
+        self.dict = GenomeDictionary(self.args, self.genome_names, self.genome_desc, self.fasta_txt, data)
         self.dict.dereplicate()
 
         self.progress.update('Removing redundant genomes...')
@@ -243,7 +261,7 @@ class ANI(GenomeDistance):
                 if float(results['alignment_coverage'][name][target]) < self.min_coverage:
                     matrix[name][target] = 0
                 else:
-                    matrix[name][target] = results['percentage_identity'][name][target]
+                    matrix[name][target] = float(results['percentage_identity'][name][target])
 
         self.progress.end()
         return matrix
@@ -282,7 +300,7 @@ class SourMash(GenomeDistance):
             results[name1] = {}
             for file2 in files:
                 name2 = file_hash[file2]
-                val = dict[key][file2]
+                val = float(dict[key][file2])
                 if val < self.min_distance:
                     results[name1][name2] = 0
                 else:
