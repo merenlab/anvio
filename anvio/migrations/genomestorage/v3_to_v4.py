@@ -4,12 +4,13 @@
 import sys
 import argparse
 
+import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 
-with terminal.SuppressAllOutput():
-    import h5py
+utils.check_h5py_module()
+import h5py
 
 current_version = '3'
 next_version    = '4'
