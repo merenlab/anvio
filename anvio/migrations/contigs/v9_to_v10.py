@@ -12,8 +12,8 @@ import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 
-with terminal.SuppressAllOutput():
-    import h5py
+utils.check_h5py_module()
+import h5py
 
 current_version = "9"
 next_version = "10"
