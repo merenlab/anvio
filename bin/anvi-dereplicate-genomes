@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""A script to remove replicated genomes from a list of internal and external genome databases"""
+"""A script to remove replicated genomes from a list of internal and external genome databases or fasta files"""
 
 
 import os
@@ -24,102 +24,162 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Mahmoud Yousef"
 __email__ = "mahmoudyousef@uchicago.edu"
-__requires__ = ['external-genomes', 'internal-genomes']
+__requires__ = ['external-genomes', 'internal-genomes', 'fasta-text-file']
 __provides__ = ['fasta-files']
-__description__ = ("Export sequences from external genomes and dereplicate them. Outputs genomes as fasta files")
+__description__ = ("Export genome sequences and dereplicate them. Output genomes as fasta files")
 
 run = terminal.Run()
 
-def main(args):
-	#sanity checks
-	if args.percent_alignment_threshold < 1 or args.percent_alignment_threshold > 100:
-		if args.percent_alignment_threshold == 0 and args.just_do_it:
-			self.run.warning("You asked to dereplicate all genomes that have a percent alignment of at least 0%.\
-							 Clearly you know what you're doing, so enjoy :)")
-		else:
-			raise ConfigError("The percent alignment threshold must be an integer (not decimal) value between 0\
-							  and 100. The value of %f does not work" % args.percent_alignment_threshold)
 
-	if args.correlation_threshold < 0 or args.correlation_threshold > 1:
-		raise ConfigError("Correlation is a value between 0 and 1. Please double- and triple- check your value")
+def determine_run_mode(args):
+    if args.ani_dir and args.mash_dir:
+        raise ConfigError("Anvi'o cannot currently dereplicate using both ANI and mash distance results at\
+                          the same time. Please pick one to use for dereplication")
+    if args.program:
+        choice = args.program.lower()
+        if choice != "pyani" and choice != "sourmash":
+            raise ConfigError("Anvi'o is impressed by your dedication to dereplicate your genomes through %s, but\
+                             %s is not compatible with `anvi-dereplicate-genomes`. Anvi'o can only work with pyANI\
+                             and sourmash separately." % (args.program, args.program))
 
-	if args.average_identity_threshold < 0 or args.average_identity_threshold > 1:
-		raise ConfigError("Average identity is the percent identity of two genomes to each other.\
-						  It cannot be less than 0 or greater than 1. Please try again")
+        if choice == "pyani" and args.mash_dir:
+            raise ConfigError("You asked anvi'o to use pyANI to dereplicate your genomes but provided a mash results\
+                              directory. Anvi'o doesn't know how to proceed")
 
-	if args.keep_ani_results and not args.ani_output_dir:
-		raise ConfigError("You asked anvio to keep ANI calculation results but did not provide a location to store\
-						  them :/ anvi'o is confused")
+        elif choice == "sourmash" and args.ani_dir:
+            raise ConfigError("You asked anvi'o to use sourmash to dereplicate your genomes but provided an ani results\
+                              directory. Anvi'o doesn't know how to proceed")
+
+        if choice == "pyani" and args.ani_dir:
+            return ("pyANI", True)
+        elif choice == "pyani":
+            return ("pyANI", False)
+        elif choice == "sourmash" and args.mash_dir:
+            return ("sourmash", True)
+        else: #choice == "sourmash" and no mash_dir
+            return ("sourmash", False)
+
+    else:
+        if args.ani_dir:
+            return ("pyANI", True)
+        elif args.mash_dir:
+            return ("sourmash", True)
+        else:
+            raise ConfigError("Anvi'o could not determine whether you want to run pyANI or sourmash to dereplicate\
+                              your genomes. Please take a close look at your parameters: either --program needs to be\
+                              set, or an importable ANI or mash directory needs to be provided")
 
 
-	if args.ani_output_dir is not None and not args.keep_ani_results:
-		if args.just_do_it:
-			self.run.warning("You provided a location to store ANI results but did not ask anvi'o to store them. Anvi'o\
-						 will go ahead and create the path but nothing will happen")
-		else:
-			raise ConfigError("You provided a location to store ANI results but did not ask anvi'o to store them. This\
-							  doesn't make sense to us")
+def run_sanity_checks(args, choice):
+    mode = choice[0]
+    if args.min_alignment_coverage < 0 or args.min_alignment_coverage > 1:
+        if mode == "pyANI":
+            raise ConfigError("Alignment coverage is a value between 0 and 1. Your cutoff alignment coverage\
+                             value of %.2f doesn't fit in these boundaries" % args.min_alignment_coverage)
 
-	filesnpaths.check_output_directory(args.output_dir, ok_if_exists=False)
-	os.mkdir(args.output_dir)
-	if args.ani_output_dir:
-		filesnpaths.check_output_directory(args.ani_output_dir, ok_if_exists=False)
-		os.mkdir(args.ani_output_dir)
+    if args.min_mash_distance < 0 or args.min_mash_distance > 1:
+        if mode == "sourmash":
+            raise ConfigError("A mash distance of 0 implies no similarity between two genomes. A mash distance\
+                             of 1 indicates the two genomes are exactly the same. Anvi'o doesn't understand your\
+                             threshold value of %.2f" % args.min_mash_distance)
 
-	program = genomedistance.ANI(args)
+    if args.distance_threshold < 0 or args.distance_threshold > 1:
+        raise ConfigError("When anvi'o collapses %s's output into a distance matrix, all values are reported as\
+                          distances between 0 and 1. %.2f can't be used to determine redundant genomes"\
+                          % (mode, args.distance_threshold))
 
-	temp_dir = program.get_fasta_sequences_dir()
-	results = program.process(temp_dir)
-	try:
-		if args.keep_ani_results and args.ani_output_dir:
-			for report_name in results:
-				output_path_for_report = os.path.join(args.ani_output_dir, args.method + '_' + report_name)
+    if (args.representative_method == "Qscore" or args.representative_method == "length") and args.fasta_text_file:
+        run.warning("You asked anvi'o to choose representative genomes by %s, but also provided a fasta text\
+                    file. Fasta files do not include estimates on completion and redundancy or legnth. Anvi'o\
+                    will be forced to switch over to 'distance'" % args.representative_method)
+        args.representative_method = "distance"
 
-				utils.store_dict_as_TAB_delimited_file(results[report_name], output_path_for_report + '.txt')
-			run.info_single('ANI results stored in %s' % args.ani_output_dir)
-	except:
-		run.warning("Something went wrong while storing ANI results :/ This is probably not your fault, but\
-					please look at the log file for more information")
-		if anvio.DEBUG:
-			run.warning("The ANI output directory is kept. Please don't forget to clean it up once you're\
-							done with it")
-		else:
-			run.info_single("Cleaning up the faulty ANI output directory (you can use `--debug` if you would\
-							like to keep it for testing or debugging purposes)", nl_before=1, nl_after=1)
-			shutil.rmtree(args.ani_output_dir)
-		
-	results = program.gen_additional_stats(results)
-	if anvio.DEBUG:
-		import json
-		for report in results:
-			run.warning(None, header=report)
-			print(json.dumps(results[report], indent=2))
-	genomes = program.retrieve_genome_names()
-	run.info('Number of genomes retrieved', len(genomes))
 
-	genome_names = program.remove_redundant_genomes(results)
-	num_redundant = len(genomes) - len(genome_names)
-	run.info('Number of redundant genomes', num_redundant)
-	run.info('Final number of dereplicated genomes', len(genome_names))
+def main(args, choice):
+    mode = choice[0]
+    prev = choice[1]
+    if prev:
+        additional = "using the imported directory you provided"
+    else:
+        additional = "running the program and analyzing the results in real time"
+    run.warning("After looking through your parameters, anvi'o has concluded that you intend to dereplicate your genomes\
+                through the program %s by %s. If this is not what you intended, please quit this program and re-analyze\
+                your parameters" % (str(mode), additional))
 
-	if anvio.DEBUG:
-		import json
-		all_groups = program.retrieve_genome_groups(genome_names)
-		for name in all_groups.keys():
-			run.warning(None, header=name)
-			print(json.dumps(all_groups[name], indent=2))
+    filesnpaths.check_output_directory(args.output_dir, ok_if_exists=False)
+    os.mkdir(args.output_dir)
 
-	hashes = program.rehash_names(genome_names)
-	utils.move_fasta_files_from_fasta_dir(temp_dir, hashes, args.output_dir, fasta_txt=args.provide_fasta_txt)
-	run.info_single('Dereplicated fasta files stored in %s' % args.output_dir)
+    if mode == "pyANI":
+        program = genomedistance.ANI(args)
+    else:
+        assert mode == "sourmash", "Fatal error in mode assertion in initialization. Please inform the devlopers."
+        program = genomedistance.SourMash(args)
 
-	if anvio.DEBUG:
-		run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
+    temp_dir = program.get_fasta_sequences_dir()
+    
+    if not prev:
+        results = program.process(temp_dir)
+        if mode == "pyANI":
+            if anvio.DEBUG:
+                import json
+                for report in results:
+                    run.warning(None, header=report)
+                    print(json.dumps(results[report], indent=2))
+        else:
+            assert mode == "sourmash", "Fatal error in mode assertion in generating results. Please inform the devlopers."
+            if anvio.DEBUG:
+                import json
+                run.warning(None,header="Mash Distances")
+                print(json.dumps(results, indent=2))
+
+    else:
+        if mode == "pyANI":
+            results = {}
+            necessary_reports = ['alignment_coverage', 'percentage_identity']
+            files_in_dir = os.listdir(args.ani_dir)
+            for report in necessary_reports:
+                report_name = report + ".txt"
+                file = [f for f in files_in_dir if report_name in f]
+                if len(file) > 1:
+                    raise ConfigError("Your ANI results directory contains multiple text files for the matrix %s.\
+                                     Please clean up your directory and make sure that only one text file of this\
+                                     report exists" % report)
+                elif len(file) == 0:
+                    raise ConfigError("Your ANI results directory does not have a text file for the report %s.\
+                                          Anvi'o cannot dereplicate genomes through pyANI without this report" % report)
+                results[report] = utils.get_TAB_delimited_file_as_dictionary(os.path.join(args.ani_dir, file[0]))
+            results = program.collapse_results(results)
+        else:
+            assert mode == "sourmash", "Fatal error in mode assertion in importing file. Please inform the devlopers."
+            results = utils.get_TAB_delimited_file_as_dictionary(os.path.join(args.mash_dir, "distance_matrix.txt"))
+        
+    genomes = program.retrieve_genome_names()
+    run.info('Number of genomes retrieved', len(genomes))
+
+    genome_names = program.remove_redundant_genomes(results)
+    num_redundant = len(genomes) - len(genome_names)
+    run.info('Number of redundant genomes', num_redundant)
+    run.info('Final number of dereplicated genomes', len(genome_names))
+
+    if anvio.DEBUG:
+        import json
+        all_groups = program.retrieve_genome_groups(genome_names)
+        for name in all_groups.keys():
+            run.warning(None, header=name)
+            print(json.dumps(all_groups[name], indent=2))
+
+    hashes = program.rehash_names(genome_names)
+    utils.move_fasta_files_from_fasta_dir(temp_dir, hashes, args.output_dir, fasta_txt=args.provide_fasta_txt)
+    run.info_single('Dereplicated fasta files stored in %s' % args.output_dir)
+
+    if anvio.DEBUG:
+        run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
                      later" % temp_dir, header="Debug")
-	else:
-		run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
+    else:
+        run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
                          like to keep it for testing purposes)', nl_before=1, nl_after=1)
-		shutil.rmtree(temp_dir)
+        shutil.rmtree(temp_dir)
+        temp_dir = None
 
 
 if __name__ == '__main__':
@@ -128,41 +188,78 @@ if __name__ == '__main__':
     groupA = parser.add_argument_group('INPUT OPTIONS', "Tell anvi'o what you want.")
     groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+    groupA.add_argument(*anvio.A('fasta-text-file'), **anvio.K('fasta-text-file'))
 
     groupB = parser.add_argument_group('OUTPUT OPTIONS', "Tell anvi'o where to store your results.")
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True }))
     groupB.add_argument('--provide-fasta-txt', default=False, action='store_true', help="If you would like anvi'o to provide\
-    					a -fasta.txt file with all of the dereplicated fasta file outputs, you can use this option\
-    					to tell it to do so. The file will be called 'dereplicated-fasta.txt' and will be located\
-    					in the output directory.")
+                        a -fasta.txt file with all of the dereplicated fasta file outputs, you can use this option\
+                        to tell it to do so. The file will be called 'dereplicated-fasta.txt' and will be located\
+                        in the output directory.")
 
-    groupC = parser.add_argument_group('Cut-offs', "Cut-off values during dereplication.")
-    groupC.add_argument(*anvio.A('percent-alignment-threshold'), **anvio.K('percent-alignment-threshold'))
-    groupC.add_argument(*anvio.A('correlation-threshold'), **anvio.K('correlation-threshold'))
-    groupC.add_argument(*anvio.A('average-identity-threshold'), **anvio.K('average-identity-threshold'))
+    groupC = parser.add_argument_group('Program', "Tell anvi'o which similarity program to run.")
+    groupC.add_argument('--program', type=str, help="Tell anvi'o which program to run to process genome similarity.\
+                        You can either use pyANI for ANI calculations or sourmash for mash distance. You must have\
+                        the necessary binary in path for the program you choose.",\
+                        choices=['pyANI','sourmash'])
 
-    groupD = parser.add_argument_group('pyANI METHOD', "Tell anvi'o to tell pyANI what method you wish to use. Required for ANI analysis")
-    groupD.add_argument('--method', default='ANIb', type=str, help="Method for pyANI. The default is %(default)s.\
+    groupD = parser.add_argument_group('Import results', "Alternatively, if you have previous ANI or mash distance\
+                                        computations on your genomes, you can import the result directory here to use")
+    groupD.add_argument('--ani-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-ani`\
+                        and use it for dereplication")
+    groupD.add_argument('--mash-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-mash-distance`\
+                        and use it for dereplication")
+
+    groupE = parser.add_argument_group('pyANI Settings', "Tell anvi'o to tell pyANI what method you wish to use and what settings to set.\
+                        Only if `--program` is set to `pyANI`")
+    groupE.add_argument('--method', default='ANIb', type=str, help="Method for pyANI. The default is %(default)s.\
                          You must have the necessary binary in path for whichever method you choose. According to\
                          the pyANI help for v0.2.7 at https://github.com/widdowquinn/pyani, the method 'ANIm' uses\
                          MUMmer (NUCmer) to align the input sequences. 'ANIb' uses BLASTN+ to align 1020nt fragments\
                          of the input sequences. 'ANIblastall': uses the legacy BLASTN to align 1020nt fragments\
                          Finally, 'TETRA': calculates tetranucleotide frequencies of each input sequence",\
                          choices=['ANIm', 'ANIb', 'ANIblastall', 'TETRA'])
-    groupD.add_argument('--keep-ani-results', default=False, action='store_true', help="If you wish, you can store the results\
-    					of the ANI computation as text files. You must provide a separate directory for ANI results using `--ani-output-dir`")
-    groupD.add_argument('--ani-output-dir', type=str, metavar='PATH',help="output directory for storing ANI results. Can only be\
-    					used in conjunction with '--keep-ani-results'")
+    groupE.add_argument('--min-alignment-coverage', type=float, default=0.50, help="You can tell anvi'o to\
+                         automatically consider genomes as non-redundant if they have an alignment coverage\
+                         below a specific value. The default is 0.5")
 
-    groupE = parser.add_argument_group('OTHER IMPORTANT STUFF', "Yes. You're almost done.")
-    groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
-    groupE.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
+    groupF = parser.add_argument_group('sourmash settings', "Tell anvi'o to run sourmash with specific settings. Only\
+                        if `--program` is set to `sourmash`")
+    groupF.add_argument('--kmer-size', type=int, default=51, metavar='INT', help="Set the k-mer size for mash\
+                        duistance checks. sourmash recommends a size of 51, which is the default option. For\
+                        relatively shorter or longer genomes, you may want to decrease or increase this size\
+                        respectively")
+    groupF.add_argument('--scale', type=int, default=1000, metavar='INT', help='Set the compression ratio for\
+                        fasta signature file computations. The default is 1000. Smaller ratios decrease sensitivity,\
+                        while larger ratios will lead to large fasta signatures.')
+    groupF.add_argument('--min-mash-distance', type=float, default=0.30, help="You can tell anvi'o to\
+                        automatically consider genomes as non-redundant if they have a mash distance\
+                        below a specific value. The default is 0.3")
+
+    groupG = parser.add_argument_group('Dereplication Parameters', "Some parameters to guide your dereplication")
+    groupG.add_argument('--distance-threshold', type=float, default=0.97, help="For dereplication, anvi'o collapses\
+                        all results into a single distance matrix and refers to it for dereplication. Using\
+                        this parameter, you can define the threshold for declaring genomes redundant. The default\
+                        is 0.97")
+    groupG.add_argument('--representative-method', default='Qscore', type=str, help="After genomes are grouped into\
+                        redundancy clusters, you can define how anvi'o picks the representative genome from the\
+                        cluster. 'Qscore' computes the genome with the highest completion and lowest redundancy as\
+                        the representative. 'length' returns the longest genome. 'distance' returns the genome with\
+                        the highest average distance to everything in the cluster. The default is %(default)s",\
+                        choices=['Qscore', 'length', 'distance'])
+    
+
+    groupH = parser.add_argument_group('OTHER IMPORTANT STUFF', "Yes. You're almost done.")
+    groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupH.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    groupH.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
 
     args = anvio.get_args(parser) 
 
     try:
-        main(args)
+        mode = determine_run_mode(args)
+        run_sanity_checks(args, mode)
+        main(args, mode)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

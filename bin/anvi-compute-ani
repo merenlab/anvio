@@ -19,7 +19,6 @@ import anvio.genomedistance as genomedistance
 import anvio.genomedescriptions as genomedescriptions
 
 
-from anvio.drivers import pyani
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.miscdata import TableForLayerOrders
 
@@ -178,12 +177,12 @@ def main(args):
         found_only_in_results = genome_names.difference(db_genome_names)
 
         if len(found_only_in_results) > 0:
-            raise ConfigError("Some genome names found in ANI result, does not seem to be exists in the pan database. \
+            raise ConfigError("Some genome names found in ANI results do not seem to be exist in the pan database. \
                 Here are the list of them: " + ", ".join(list(found_only_in_results)))
 
         if len(found_only_in_db) > 0:
-            run.warning("Some genome names found in pan database, does not seem to be exists in the ANI report. \
-                anvi'o will add the ones that found in database anyway, but here is the list of missing ones: \
+            run.warning("Some genome names found in pan database do not seem to be exist in the ANI report. \
+                anvi'o will add the ones that are found in database anyway, but here is the list of missing ones: \
                 " + ", ".join(list(found_only_in_db)))
 
         run.warning(None, header="MISC DATA MAGIC FOR YOUR PAN DB", lc='green')
@@ -211,7 +210,6 @@ if __name__ == '__main__':
     groupA = parser.add_argument_group('INPUT OPTIONS', "Tell anvi'o what you want.")
     groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
-    #groupA.add_argument(*anvio.A('fasta-text-file'), **anvio.K('fasta-text-file'))
 
     groupB = parser.add_argument_group('OUTPUT OPTIONS', "Tell anvi'o where to store your results.")
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True }))
