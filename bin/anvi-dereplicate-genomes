@@ -31,6 +31,15 @@ __description__ = ("Export genome sequences and dereplicate them. Output genomes
 run = terminal.Run()
 
 
+def is_compatible(results, genome_names):
+    matrix_names = results.keys()
+    for name in genome_names:
+        if name not in matrix_names:
+            raise ConfigError("At least one of your genomes, %s, does not appear in the results matrix. This could be due\
+                               to many different reasons. Probably, the results matrix that was generated or imported is\
+                               incomplete or has been changed/corrupted by this point. Anvi'o suggests taking a closer look\
+                               at all of your input parameters." % name)
+
 def determine_run_mode(args):
     if args.ani_dir and args.mash_dir:
         raise ConfigError("Anvi'o cannot currently dereplicate using both ANI and mash distance results at\
@@ -98,13 +107,7 @@ def run_sanity_checks(args, choice):
 def main(args, choice):
     mode = choice[0]
     prev = choice[1]
-    if prev:
-        additional = "using the imported directory you provided"
-    else:
-        additional = "running the program and analyzing the results in real time"
-    run.warning("After looking through your parameters, anvi'o has concluded that you intend to dereplicate your genomes\
-                through the program %s by %s. If this is not what you intended, please quit this program and re-analyze\
-                your parameters" % (str(mode), additional))
+    run.info('Run mode', mode)
 
     filesnpaths.check_output_directory(args.output_dir, ok_if_exists=False)
     os.mkdir(args.output_dir)
@@ -120,6 +123,7 @@ def main(args, choice):
     if not prev:
         results = program.process(temp_dir)
         if mode == "pyANI":
+            run.info('pyANI process', 'completed')
             if anvio.DEBUG:
                 import json
                 for report in results:
@@ -127,6 +131,7 @@ def main(args, choice):
                     print(json.dumps(results[report], indent=2))
         else:
             assert mode == "sourmash", "Fatal error in mode assertion in generating results. Please inform the devlopers."
+            run.info('sourmash process', 'completed')
             if anvio.DEBUG:
                 import json
                 run.warning(None,header="Mash Distances")
@@ -136,7 +141,11 @@ def main(args, choice):
         if mode == "pyANI":
             results = {}
             necessary_reports = ['alignment_coverage', 'percentage_identity']
-            files_in_dir = os.listdir(args.ani_dir)
+            try:
+                    files_in_dir = os.listdir(args.ani_dir)
+            except:
+                    raise ConfigError("The ANI directory to import, %s, seems to be an invalid directory. Where are\
+                                                      you pointing us to?" % args.ani_dir)
             for report in necessary_reports:
                 report_name = report + ".txt"
                 file = [f for f in files_in_dir if report_name in f]
@@ -149,11 +158,14 @@ def main(args, choice):
                                           Anvi'o cannot dereplicate genomes through pyANI without this report" % report)
                 results[report] = utils.get_TAB_delimited_file_as_dictionary(os.path.join(args.ani_dir, file[0]))
             results = program.collapse_results(results)
+            run.info('PyANI results directory imported', args.ani_dir)
         else:
             assert mode == "sourmash", "Fatal error in mode assertion in importing file. Please inform the devlopers."
             results = utils.get_TAB_delimited_file_as_dictionary(os.path.join(args.mash_dir, "distance_matrix.txt"))
+            run.info('sourmash results directory imported', args.mash_dir)
         
     genomes = program.retrieve_genome_names()
+    is_compatible(results, genomes)
     run.info('Number of genomes retrieved', len(genomes))
 
     genome_names = program.remove_redundant_genomes(results)
@@ -171,6 +183,8 @@ def main(args, choice):
     hashes = program.rehash_names(genome_names)
     utils.move_fasta_files_from_fasta_dir(temp_dir, hashes, args.output_dir, fasta_txt=args.provide_fasta_txt)
     run.info_single('Dereplicated fasta files stored in %s' % args.output_dir)
+    if args.provide_fasta_txt:
+            run.info_single('FASTA text file `dereplcated-fasta.txt` stored in %s' % args.output_dir)
 
     if anvio.DEBUG:
         run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
@@ -204,7 +218,8 @@ if __name__ == '__main__':
                         choices=['pyANI','sourmash'])
 
     groupD = parser.add_argument_group('Import results', "Alternatively, if you have previous ANI or mash distance\
-                                        computations on your genomes, you can import the result directory here to use")
+                                        computations on your genomes, you can import the result directory here to use. Please note\
+                                        that file names must remain unchanged for anvi'o to find them")
     groupD.add_argument('--ani-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-ani`\
                         and use it for dereplication")
     groupD.add_argument('--mash-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-mash-distance`\
@@ -226,7 +241,7 @@ if __name__ == '__main__':
     groupF = parser.add_argument_group('sourmash settings', "Tell anvi'o to run sourmash with specific settings. Only\
                         if `--program` is set to `sourmash`")
     groupF.add_argument('--kmer-size', type=int, default=51, metavar='INT', help="Set the k-mer size for mash\
-                        duistance checks. sourmash recommends a size of 51, which is the default option. For\
+                        distance checks. sourmash recommends a size of 51, which is the default option. For\
                         relatively shorter or longer genomes, you may want to decrease or increase this size\
                         respectively")
     groupF.add_argument('--scale', type=int, default=1000, metavar='INT', help='Set the compression ratio for\
@@ -241,7 +256,7 @@ if __name__ == '__main__':
                         all results into a single distance matrix and refers to it for dereplication. Using\
                         this parameter, you can define the threshold for declaring genomes redundant. The default\
                         is 0.97")
-    groupG.add_argument('--representative-method', default='Qscore', type=str, help="After genomes are grouped into\
+    groupG.add_argument('--representative-method', default='distance', type=str, help="After genomes are grouped into\
                         redundancy clusters, you can define how anvi'o picks the representative genome from the\
                         cluster. 'Qscore' computes the genome with the highest completion and lowest redundancy as\
                         the representative. 'length' returns the longest genome. 'distance' returns the genome with\
