@@ -97,10 +97,15 @@ def run_sanity_checks(args, choice):
                           distances between 0 and 1. %.2f can't be used to determine redundant genomes"\
                           % (mode, args.distance_threshold))
 
-    if (args.representative_method == "Qscore" or args.representative_method == "length") and args.fasta_text_file:
-        run.warning("You asked anvi'o to choose representative genomes by %s, but also provided a fasta text\
-                    file. Fasta files do not include estimates on completion and redundancy or legnth. Anvi'o\
-                    will be forced to switch over to 'distance'" % args.representative_method)
+    if args.representative_method == "Qscore" and args.fasta_text_file:
+        if args.just_do_it:
+            run.warning("You asked anvi'o to choose representative genomes by Qscore, but also provided a fasta text\
+                        file. Fasta files do not include estimates on completion and redundancy. So be it. Be warned that\
+                        the representative genomes you receive may not be biologically significant in any way.")
+        else:
+            run.warning("You asked anvi'o to choose representative genomes by Qscore, but also provided a fasta text\
+                        file. Fasta files do not include estimates on completion and redundancy. Anvi'o will switch\
+                        over to 'distance'")
         args.representative_method = "distance"
 
 
