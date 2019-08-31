@@ -505,7 +505,7 @@ anvi-get-short-reads-mapping-to-a-gene -c $output_dir/CONTIGS.db \
                                        --gene-caller-id 38 \
                                        --leeway 100 \
                                        -i $output_dir/*bam \
-                                       -o $output_dir/reads-mapping-to-gene-id-38.fa
+                                       -O $output_dir/reads-mapping-to
 
 INFO "Get AA counts for the entire contigs database"
 anvi-get-aa-counts -c $output_dir/CONTIGS.db \
