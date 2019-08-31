@@ -143,19 +143,19 @@ class GenomeDictionary:
         max_val = self.genomes_dict[max_name]['total_length']
 
         for name in group[1:]:
-            val = self.genome_desc[name]['total_length']
+            val = self.genomes_dict[name]['total_length']
             if val > max_val:
                 max_name = name
                 max_val = val
 
-        return val
+        return max_name
 
     def pick_closest_distance(self, group):
         dict = {}
         for name in group:
             dict[name] = 0
             for target in group:
-                dict[name] += self.data[name][target]
+                dict[name] += float(self.data[name][target])
         new_dict = {}
         for name, val in dict.items():
             new_dict[val] = name
