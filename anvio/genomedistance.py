@@ -59,7 +59,7 @@ class GenomeDictionary:
                 full_dict[name] = {}
                 full_dict[name]['percent_completion'] = 0
                 full_dict[name]['percent_redundancy'] = 0
-                full_dict[name]['total_length'] = 0
+                full_dict[name]['total_length'] = sum(utils.get_read_lengths_from_fasta(fastas[name]['path']).values())
         self.genomes_dict = full_dict
 
 
