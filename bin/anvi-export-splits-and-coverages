@@ -18,7 +18,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -102,3 +102,6 @@ if __name__ == '__main__':
     except ConfigError as e:
         print(e)
         sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
