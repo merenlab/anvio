@@ -585,7 +585,6 @@ class SCGsTaxonomy(TaxonomyEstimation):
                                         "t_genus": 'g__',
                                         "t_species": 's__'}
         self.taxonomy_dict=dict()
-        self.init()
 
     def sanity_check(self):
 
