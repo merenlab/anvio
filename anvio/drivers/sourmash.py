@@ -34,11 +34,11 @@ class Sourmash:
         self.num_threads = A('num_threads') or 1
         self.kmer_size = A('kmer_size') or 51
         self.scale = A('scale') or 1000
-        
+
         self.run.warning("Anvi'o will use 'sourmash' by Brown et al. (DOI: 10.21105/joss.00027) to compute kmer sequences and determine mash distances.\
                          If you publish your findings, please do not forget to properly credit their work",
                          lc='green', header="CITATION")
-    
+
         if self.num_threads != 1:
             self.run.warning("Anvi'o speaking: sourmash currently doesn't support multithreading.\
                              Anvi'o will have to reduce your number of threads to one :(")
@@ -46,7 +46,7 @@ class Sourmash:
         self.run.info('[sourmash] Kmer size', self.kmer_size)
         self.run.info('[sourmash] Compression ratio', self.scale)
         self.run.info('[sourmash] Log file path', self.log_file_path, nl_after=1)
-    
+
     def check_program(self):
         utils.is_program_exists(self.program_name)
 
@@ -55,7 +55,7 @@ class Sourmash:
         # backup the old working directory before changing the directory
         old_wd = os.getcwd()
         os.chdir(input_path)
-        
+
         self.progress.new('Sourmash')
         self.progress.update('Computing fasta signatures...')
 
@@ -75,9 +75,9 @@ class Sourmash:
         compare_command = [self.program_name, 'compare',
                            '-k', self.kmer_size,
                            '--csv', 'matrix.csv']
-        for file in fasta_files:
-            compare_command.append(file + ".sig")
-        
+        for f in fasta_files:
+            compare_command.append(f + ".sig")
+
         exit_code = utils.run_command(compare_command, self.log_file_path)
         if int(exit_code):
             raise ConfigError("sourmash returned with non-zero exit code, there may be some errors.\

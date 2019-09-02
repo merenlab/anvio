@@ -1454,11 +1454,12 @@ def move_fasta_files_from_fasta_dir(temp_dir, names, output_dir, fasta_txt=False
 
 
 def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
-    #where genome_desc is an instance of GenomeDescriptions
+    """genome_desc is an instance of GenomeDescriptions"""
     if genome_desc is None and fasta_txt is None:
         raise ConfigError("Anvi'o was given no internal genomes, no external genomes, and no fasta\
                           files. Although anvi'o can technically go ahead and create a temporary\
                           FASTA directory, what's the point if there's nothing to do?")
+
     temp_dir = filesnpaths.get_temp_directory_path()
     hash_to_name = {}
     genome_names = set([])
@@ -1469,34 +1470,35 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
             contigs_db_path = genome_desc.genomes[genome_name]['contigs_db_path']
             hash_for_output_file = hashlib.sha256(genome_name.encode('utf-8')).hexdigest()
             hash_to_name[hash_for_output_file] = genome_name
-            
+
             path = os.path.join(temp_dir, hash_for_output_file + '.fa')
             file_paths.add(path)
-            
+
             if 'bin_id' in genome_desc.genomes[genome_name]:
                 # Internal genome
                 bin_id = genome_desc.genomes[genome_name]['bin_id']
                 collection_id = genome_desc.genomes[genome_name]['collection_id']
                 profile_db_path = genome_desc.genomes[genome_name]['profile_db_path']
-                
+
                 class Args: None
                 summary_args = Args()
-                
+
                 summary_args.profile_db = profile_db_path
                 summary_args.contigs_db = contigs_db_path
                 summary_args.collection_name = collection_id
                 summary_args.quick = True
-                
+
                 summary = summarizer.ProfileSummarizer(summary_args, r=terminal.Run(verbose=False))
                 summary.init()
-                
+
                 bin_summary = summarizer.Bin(summary, bin_id)
-                
+
                 with open(path, 'w') as fasta:
                     fasta.write(bin_summary.get_bin_sequence())
             else:
                 # External genome
                 export_sequences_from_contigs_db(contigs_db_path, path)
+
     if fasta_txt is not None:
         fastas = get_TAB_delimited_file_as_dictionary(fasta_txt, expected_fields=['name', 'path'], only_expected_fields=True)
         for name in fastas.keys():
@@ -1514,6 +1516,7 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
 
     genomes = (genome_names, file_paths)
     return temp_dir, hash_to_name, genomes
+
 
 def get_FASTA_file_as_dictionary(file_path):
     filesnpaths.is_file_exists(file_path)

@@ -152,7 +152,7 @@ D = {
             ['-f', '--fasta-text-file'],
             {'metavar': 'FASTA_TEXT_FILE',
             'dest': 'fasta_text_file',
-            'help': "A two-columb TAB-delimited file that lists multiple FASTA files to import\
+            'help': "A two-column TAB-delimited file that lists multiple FASTA files to import\
                      for analysis. The first item in the header line should read 'name',\
                      and the second item should read 'fasta_path'. Each line in the field should\
                      describe a single entry, where the first column is the name of the FASTA\
