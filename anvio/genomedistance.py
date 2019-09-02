@@ -82,9 +82,7 @@ class GenomeDictionary:
     def are_redundant(self, genome1, genome2):
         hash1 = self.hash[genome1]
         hash2 = self.hash[genome2]
-        if hash1 == hash2:
-            return True
-        return False
+        return True if hash1 == hash2 else False
 
 
     def dereplicate(self): 

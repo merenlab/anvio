@@ -138,7 +138,6 @@ def main(args):
                                                 (args.min_alignment_fraction, those_that_anvio_wanted_to_remove, len(d),
                                                  args.significant_alignment_length))
 
-
         # time to zero those values out:
         for report_name in results:
             for g1, g2 in genome_hits_to_zero:
@@ -203,6 +202,7 @@ def main(args):
         run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
                          like to keep it for testing purposes)', nl_before=1, nl_after=1)
         shutil.rmtree(temp_dir)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__description__)
