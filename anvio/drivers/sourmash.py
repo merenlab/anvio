@@ -43,9 +43,11 @@ class Sourmash:
             self.run.warning("Anvi'o speaking: sourmash currently doesn't support multithreading.\
                              Anvi'o will have to reduce your number of threads to one :(")
             self.num_threads = 1
+
         self.run.info('[sourmash] Kmer size', self.kmer_size)
         self.run.info('[sourmash] Compression ratio', self.scale)
         self.run.info('[sourmash] Log file path', self.log_file_path, nl_after=1)
+
 
     def check_program(self):
         utils.is_program_exists(self.program_name)
@@ -67,9 +69,10 @@ class Sourmash:
 
         exit_code = utils.run_command(compute_command, self.log_file_path)
         if int(exit_code):
+            self.progress.end()
             raise ConfigError("sourmash returned with non-zero exit code, there may be some errors.\
-                              Please check the log file for details. Offending command: \
-                              `%s`" % ' '.join(compute_command[:7] + "..."))
+                              Please check the log file `%s` for details. Offending command: \
+                              `%s` ..." % (self.log_file_path, ' '.join([str(x) for x in compute_command[:7]])))
 
         self.progress.update('Computing distance matrix...')
         compare_command = [self.program_name, 'compare',
@@ -80,14 +83,16 @@ class Sourmash:
 
         exit_code = utils.run_command(compare_command, self.log_file_path)
         if int(exit_code):
+            self.progress.end()
             raise ConfigError("sourmash returned with non-zero exit code, there may be some errors.\
-                      Please check the log file for details. Offending command: \
-                      `%s`" % ' '.join(compare_command[:7] + "..."))
+                              Please check the log file `%s` for details. Offending command: \
+                              `%s` ..." % (self.log_file_path, ' '.join([str(x) for x in compute_command[:7]])))
 
         matrix = utils.get_TAB_delimited_file_as_dictionary('matrix.csv', indexing_field=-1, separator=',')
-                              
+
         self.progress.end()
 
         # restore old working directory
         os.chdir(old_wd)
+
         return matrix
