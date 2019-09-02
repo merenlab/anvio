@@ -24,9 +24,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Mahmoud Yousef"
 __email__ = "mahmoudyousef@uchicago.edu"
-__requires__ = ['external-genomes', 'internal-genomes', 'fasta-text-file']
-__provides__ = ['fasta-files']
-__description__ = ("Export genome sequences and dereplicate them. Output genomes as fasta files")
+__requires__ = ['external-genomes', 'internal-genomes', 'contigs-fasta']
+__provides__ = ['contigs-fasta']
+__description__ = ("Identify redundant (highly similar) genomes. Export non-redundant genomes as fasta files")
 
 run = terminal.Run()
 
@@ -120,11 +120,11 @@ def main(args, choice):
     if mode == "pyANI":
         program = genomedistance.ANI(args)
     else:
-        assert mode == "sourmash", "Fatal error in mode assertion in initialization. Please inform the devlopers."
+        assert mode == "sourmash", "Fatal error in mode assertion in initialization. Please inform the developers."
         program = genomedistance.SourMash(args)
 
     temp_dir = program.get_fasta_sequences_dir()
-    
+
     if not prev:
         results = program.process(temp_dir)
         if mode == "pyANI":
@@ -135,7 +135,7 @@ def main(args, choice):
                     run.warning(None, header=report)
                     print(json.dumps(results[report], indent=2))
         else:
-            assert mode == "sourmash", "Fatal error in mode assertion in generating results. Please inform the devlopers."
+            assert mode == "sourmash", "Fatal error in mode assertion in generating results. Please inform the developers."
             run.info('sourmash process', 'completed')
             if anvio.DEBUG:
                 import json
@@ -147,18 +147,18 @@ def main(args, choice):
             results = {}
             necessary_reports = ['alignment_coverage', 'percentage_identity']
             try:
-                    files_in_dir = os.listdir(args.ani_dir)
+                files_in_dir = os.listdir(args.ani_dir)
             except:
-                    raise ConfigError("The ANI directory to import, %s, seems to be an invalid directory. Where are\
-                                                      you pointing us to?" % args.ani_dir)
+                raise ConfigError("The ANI directory to import, %s, seems to be an invalid directory. Where are\
+                                                  you pointing us to?" % args.ani_dir)
             for report in necessary_reports:
                 report_name = report + ".txt"
-                file = [f for f in files_in_dir if report_name in f]
-                if len(file) > 1:
+                files = [f for f in files_in_dir if report_name in f]
+                if len(files) > 1:
                     raise ConfigError("Your ANI results directory contains multiple text files for the matrix %s.\
                                      Please clean up your directory and make sure that only one text file of this\
                                      report exists" % report)
-                elif len(file) == 0:
+                elif len(files) == 0:
                     raise ConfigError("Your ANI results directory does not have a text file for the report %s.\
                                           Anvi'o cannot dereplicate genomes through pyANI without this report" % report)
                 results[report] = utils.get_TAB_delimited_file_as_dictionary(os.path.join(args.ani_dir, file[0]))
@@ -227,6 +227,9 @@ if __name__ == '__main__':
                                         that file names must remain unchanged for anvi'o to find them")
     groupD.add_argument('--ani-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-ani`\
                         and use it for dereplication")
+
+    # FIXME anvi-compute-mash-distance does not exist. Ideally, we rename anvi-compute-ani to
+    # anvi-compute-genome-distance and can calculate either ANI or mash
     groupD.add_argument('--mash-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-mash-distance`\
                         and use it for dereplication")
 
@@ -267,7 +270,7 @@ if __name__ == '__main__':
                         the representative. 'length' returns the longest genome. 'distance' returns the genome with\
                         the highest average distance to everything in the cluster. The default is %(default)s",\
                         choices=['Qscore', 'length', 'distance'])
-    
+
 
     groupH = parser.add_argument_group('OTHER IMPORTANT STUFF', "Yes. You're almost done.")
     groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
