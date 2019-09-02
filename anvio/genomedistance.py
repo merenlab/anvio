@@ -52,17 +52,22 @@ class GenomeDictionary:
 
     def init_full_genome_dict(self, genome_desc, fasta_txt):
         full_dict = {}
+
         if genome_desc is not None:
             full_dict = genome_desc.genomes
+
         if fasta_txt is not None:
             fastas = utils.get_TAB_delimited_file_as_dictionary(fasta_txt, expected_fields=['name', 'path'], only_expected_fields=True)
+
             for name in fastas:
                 if name in full_dict.keys(): #redundant name
                     continue
+
                 full_dict[name] = {}
                 full_dict[name]['percent_completion'] = 0
                 full_dict[name]['percent_redundancy'] = 0
                 full_dict[name]['total_length'] = sum(utils.get_read_lengths_from_fasta(fastas[name]['path']).values())
+
         self.genomes_dict = full_dict
 
 
@@ -90,6 +95,7 @@ class GenomeDictionary:
         for pair in genome_pairs:
             genome1 = pair[0]
             genome2 = pair[1]
+
             if genome1 == genome2 or self.are_redundant(genome1, genome2):
                 continue
 
@@ -108,6 +114,7 @@ class GenomeDictionary:
 
         best_one = self.pick_representative(one)
         best_two = self.pick_representative(two)
+
         if (best_one is None or best_one == []) and best_two != [] and best_two is not None:
             return best_two
         elif best_two is None or best_two == [] and best_one != [] and best_one is not None:
@@ -129,6 +136,7 @@ class GenomeDictionary:
         else:
             len1 = self.genomes_dict[best_one]['total_length']
             len2 = self.genomes_dict[best_two]['total_length']
+
             if len2 > len1:
                 return best_two
             else:
@@ -140,8 +148,10 @@ class GenomeDictionary:
             return None
         elif len(group)== 1:
             return group[0]
+
         medium = int(len(group) / 2)
         best = self.pick_best_of_two(group[:medium], group[medium:])
+
         return best
 
 
@@ -151,6 +161,7 @@ class GenomeDictionary:
 
         for name in group[1:]:
             val = self.genomes_dict[name]['total_length']
+
             if val > max_val:
                 max_name = name
                 max_val = val
@@ -159,31 +170,39 @@ class GenomeDictionary:
 
 
     def pick_closest_distance(self, group):
-        dict = {}
+        d = {}
         for name in group:
-            dict[name] = 0
+            d[name] = 0
+
             for target in group:
-                dict[name] += float(self.data[name][target])
+                d[name] += float(self.data[name][target])
+
         new_dict = {}
-        for name, val in dict.items():
+        for name, val in d.items():
             new_dict[val] = name
+
         max_val = max(new_dict.keys())
+
         return new_dict[max_val]
 
 
     def get_dereplicated_genome_names(self):
         names = []
-        for hash in self.groups.keys():
-            group = self.groups[hash]
+        for key in self.groups.keys():
+            group = self.groups[key]
+
             if group == []:
                 continue
+
             if self.method == "Qscore":
                 name = self.pick_representative(group)
             elif self.method == "length":
                 name = self.pick_longest_rep(group)
             elif self.method == "distance":
                 name = self.pick_closest_distance(group)
+
             names.append(name)
+
         return names
 
 
@@ -211,6 +230,7 @@ class GenomeDistance:
         self.temp_paths = set([])
         self.dict = {}
 
+
     def get_fasta_sequences_dir(self):
         if self.genome_desc is not None:
             self.genome_desc.load_genomes_descriptions(skip_functions=True)
@@ -220,18 +240,27 @@ class GenomeDistance:
         self.temp_paths = genomes[1]
         return temp_dir
 
+
     def restore_names_in_dict(self, input_dict):
+        """
+        Takes dictionary that contains hashes as keys
+        and replaces it back to genome names using conversion_dict.
+
+        If value is dict, it calls itself.
+        """
         new_dict = {}
         for key, value in input_dict.items():
             if isinstance(value, dict):
                 value = self.restore_names_in_dict(value)
-            
+
             if key in self.hash_to_name:
                 new_dict[self.hash_to_name[key]] = value
             else:
                 new_dict[key] = value
+
         return new_dict
-    
+
+
     def rehash_names(self, names):
         new_dict = dict((a, b) for b, a in self.hash_to_name.items())
         hashes = {}
@@ -239,8 +268,10 @@ class GenomeDistance:
             hashes[name] = new_dict[name]
         return hashes
 
+
     def retrieve_genome_names(self):
         return self.genome_names
+
 
     def remove_redundant_genomes(self, data):
         self.progress.new('Dereplication')
@@ -254,77 +285,96 @@ class GenomeDistance:
 
         return names
 
+
     def retrieve_genome_groups(self, names):
         return self.dict.get_all_redundant_groups(names)
+
+
 
 class ANI(GenomeDistance):
     def __init__(self, args):
         GenomeDistance.__init__(self, args)
+
+        self.results = {}
         self.program = pyani.PyANI(args)
-        self.min_coverage = args.min_alignment_coverage if 'min_alignment_coverage' in vars(args) else 0
-    
-    def collapse_results(self, results):
+        self.min_alignment_coverage = args.min_alignment_coverage if 'min_alignment_coverage' in vars(args) else 0
+
+
+    def get_proper_percent_identity(self, results, min_alignment_coverage=None):
+        """
+        proper_percent_identity is the percentage identity of the aligned region multiplied by the
+        alignment length divided by the shortest length of the two genomes
+        """
         self.progress.new('PyANI')
-        self.progress.update('Collapsing results into distance matrix...')
+        self.progress.update('Calculating proper percent identity')
+
+        if not min_alignment_coverage:
+            min_alignment_coverage = self.min_alignment_coverage
+
         matrix = {}
         for name in self.genome_names:
             matrix[name] = {}
+
             for target in self.genome_names:
-                if float(results['alignment_coverage'][name][target]) < self.min_coverage:
+                if float(results['alignment_coverage'][name][target]) < min_alignment_coverage:
                     matrix[name][target] = 0
                 else:
                     matrix[name][target] = float(results['percentage_identity'][name][target])
 
         self.progress.end()
+
         return matrix
 
 
     def process(self, temp=None):
-        temp_dir=temp
-        if temp is None:
-            temp_dir = self.get_fasta_sequences_dir()
-        results = self.program.run_command(temp_dir)
-        results = self.restore_names_in_dict(results)
-        results = self.collapse_results(results)
+        temp_dir = temp if temp else self.get_fasta_sequences_dir()
+
+        self.results = self.program.run_command(temp_dir)
+        self.results = self.restore_names_in_dict(self.results)
+
         if temp is None:
             shutil.rmtree(temp_dir)
-        return results
+
 
 
 class SourMash(GenomeDistance):
     def __init__(self, args):
         GenomeDistance.__init__(self, args)
+
+        self.results = {}
         self.program = sourmash.Sourmash(args)
         self.min_distance = args.min_mash_distance if 'min_mash_distance' in vars(args) else 0
-    
-    def reformat_results(self, dict):
-        file_hash = {}
-        lines = list(dict.keys())
-        files = list(dict[lines[0]].keys())
-        for file in files:
-            hash = file[::-1].split(".")[1].split("/")[0]
-            hash = hash[::-1]
-            file_hash[file] = self.hash_to_name[hash]
-        results = {}
+
+
+    def reformat_results(self, results):
+        file_to_name = {}
+        lines = list(results.keys())
+        files = list(results[lines[0]].keys())
+
+        for genome_fasta_path in files:
+            genome_fasta_hash = genome_fasta_path[::-1].split(".")[1].split("/")[0]
+            genome_fasta_hash = genome_fasta_hash[::-1]
+            file_to_name[genome_fasta_path] = self.hash_to_name[genome_fasta_hash]
+
+        reformatted_results = {}
         for num, file1 in enumerate(files):
-            name1 = file_hash[file1]
+            genome_name_1 = file_to_name[file1]
+            reformatted_results[genome_name_1] = {}
             key = lines[num]
-            results[name1] = {}
+
             for file2 in files:
-                name2 = file_hash[file2]
-                val = float(dict[key][file2])
-                if val < self.min_distance:
-                    results[name1][name2] = 0
-                else:
-                    results[name1][name2] = val
-        return results
+                genome_name_2 = file_to_name[file2]
+                val = float(results[key][file2])
+                reformatted_results[genome_name_1][genome_name_2] = val if val >= self.min_distance else 0
+
+        return reformatted_results
+
 
     def process(self, temp=None):
-        temp_dir=temp
-        if temp is None:
-            temp_dir = self.get_fasta_sequences_dir()
-        results = self.program.process(temp_dir, list(self.temp_paths))
-        results = self.reformat_results(results)
+        temp_dir = temp if temp else self.get_fasta_sequences_dir()
+
+        self.results = self.program.process(temp_dir, list(self.temp_paths))
+        self.results = self.reformat_results(self.results)
+
         if temp is None:
             shutil.rmtree(temp_dir)
-        return results

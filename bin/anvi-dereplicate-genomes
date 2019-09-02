@@ -111,8 +111,7 @@ def run_sanity_checks(args, choice):
 
 
 def main(args, choice):
-    mode = choice[0]
-    prev = choice[1]
+    mode, prev = choice
     run.info('Run mode', mode)
 
     filesnpaths.check_output_directory(args.output_dir, ok_if_exists=False)
@@ -127,9 +126,13 @@ def main(args, choice):
     temp_dir = program.get_fasta_sequences_dir()
 
     if not prev:
-        results = program.process(temp_dir)
+        program.process(temp_dir)
+
         if mode == "pyANI":
+            distance_matrix = program.get_proper_percent_identity(program.results)
+
             run.info('pyANI process', 'completed')
+
             if anvio.DEBUG:
                 import json
                 for report in results:
@@ -137,7 +140,11 @@ def main(args, choice):
                     print(json.dumps(results[report], indent=2))
         else:
             assert mode == "sourmash", "Fatal error in mode assertion in generating results. Please inform the developers."
+
+            distance_matrix = program.results
+
             run.info('sourmash process', 'completed')
+
             if anvio.DEBUG:
                 import json
                 run.warning(None,header="Mash Distances")
@@ -145,39 +152,38 @@ def main(args, choice):
 
     else:
         if mode == "pyANI":
-            results = {}
+            filesnpaths.is_dir_empty(args.ani_dir)
+
             necessary_reports = ['alignment_coverage', 'percentage_identity']
-
-            try:
-                files_in_dir = os.listdir(args.ani_dir)
-            except:
-                raise ConfigError("The ANI directory to import, %s, seems to be an invalid directory. Where are\
-                                                  you pointing us to?" % args.ani_dir)
-
             for report in necessary_reports:
                 report_name = report + ".txt"
-                files = [f for f in files_in_dir if report_name in f]
-                if len(files) > 1:
+                matching_filepaths = [f for f in files_in_dir if report_name in f]
+
+                if len(matching_filepaths) > 1:
                     raise ConfigError("Your ANI results directory contains multiple text files for the matrix %s.\
                                      Please clean up your directory and make sure that only one text file of this\
                                      report exists" % report)
-                elif len(files) == 0:
+                elif len(matching_filepaths) == 0:
                     raise ConfigError("Your ANI results directory does not have a text file for the report %s.\
-                                          Anvi'o cannot dereplicate genomes through pyANI without this report" % report)
-                results[report] = utils.get_TAB_delimited_file_as_dictionary(os.path.join(args.ani_dir, files[0]))
-            results = program.collapse_results(results)
+                                      Anvi'o cannot dereplicate genomes through pyANI without this report" % report)
+
+                program.results[report] = utils.get_TAB_delimited_file_as_dictionary(os.path.join(args.ani_dir, matching_filepaths[0]))
+
+            distance_matrix = program.get_proper_percent_identity(program.results)
 
             run.info('PyANI results directory imported', args.ani_dir)
         else:
             assert mode == "sourmash", "Fatal error in mode assertion in importing file. Please inform the devlopers."
-            results = utils.get_TAB_delimited_file_as_dictionary(os.path.join(args.mash_dir, "distance_matrix.txt"))
+
+            distance_matrix = utils.get_TAB_delimited_file_as_dictionary(os.path.join(args.mash_dir, "distance_matrix.txt"))
+
             run.info('sourmash results directory imported', args.mash_dir)
 
     genomes = program.retrieve_genome_names()
-    is_compatible(results, genomes)
+    is_compatible(distance_matrix, genomes)
     run.info('Number of genomes retrieved', len(genomes))
 
-    genome_names = program.remove_redundant_genomes(results)
+    genome_names = program.remove_redundant_genomes(distance_matrix)
     num_redundant = len(genomes) - len(genome_names)
     run.info('Number of redundant genomes', num_redundant)
     run.info('Final number of dereplicated genomes', len(genome_names))
