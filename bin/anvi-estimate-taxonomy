@@ -41,7 +41,13 @@ def main(args):
             args.profile_db, args.contigs_db)
 
     t = taxoestimation.SCGsTaxonomy(args)
-    t.show_taxonomy_estimation()
+
+    if args.metagenome:
+        t.estimate_taxonomy_for_metagenome()
+    if args.profile_db and not args.metagenome:
+        t.show_taxonomy_estimation_bin()
+    else:
+        t.show_taxonomy_estimation_single_genome()
 
 
 if __name__ == '__main__':
