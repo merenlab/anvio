@@ -28,21 +28,21 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__description__ = "Export sequences and mean coverages across samples for splits or contigs"
+__requires__ = ['profile-db', 'contigs-db']
+__provides__ = ['contigs-fasta', 'coverages-txt']
+__description__ = """Export sequences and coverages across samples for splits or contigs in an anvi'o
+                     profile database. This program is especially useful if you would like to bin your
+                     splits or contigs outside of anvi'o and import the binning results into anvi'o
+                     using `anvi-import-collection` program."""
 
 
 run = terminal.Run()
+progress = terminal.Progress()
+
 
 def main(args):
-    utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
-
-    merged_profile_db = dbops.ProfileDatabase(args.profile_db)
-
-    if(merged_profile_db.meta['merged'] != True):
-        raise ConfigError("'%s' does not seem to be a merged profile database :/" % args.profile_db)
-
-    if args.splits_mode and args.report_contigs:
-        raise ConfigError("--splits-mode and --report-contigs flags are incompatible. Pick one.")
+    profile_db = dbops.ProfileSuperclass(args)
+    samples = profile_db.p_meta['samples']
 
     if args.output_dir:
         filesnpaths.gen_output_directory(args.output_dir)
@@ -50,42 +50,31 @@ def main(args):
         args.output_dir = os.path.dirname(os.path.abspath(args.profile_db))
 
     if not args.output_file_prefix:
-        args.output_file_prefix = merged_profile_db.meta['sample_id']
+        args.output_file_prefix = profile_db.p_meta['sample_id']
 
-    coverage_table_name_prefix = 'mean_coverage_Q2Q3' if args.use_Q2Q3_coverages else 'mean_coverage'
+    run.info('Output directory', args.output_dir)
+    run.info('Filename prefix', args.output_file_prefix)
+    run.info('Splits mode', args.splits_mode)
+    run.info('Report Q2Q3 coverages', args.use_Q2Q3_coverages)
+    run.info('Report contigs and not splits', args.report_contigs)
 
-    if args.report_contigs:
-        sequences_output = os.path.join(args.output_dir, args.output_file_prefix + '-CONTIGS.fa')
-        coverages_output = os.path.join(args.output_dir, args.output_file_prefix + '-COVs.txt')
+    coverages_output = os.path.join(args.output_dir, args.output_file_prefix + '-COVs.txt')
+    sequences_output = os.path.join(args.output_dir, args.output_file_prefix + ('-CONTIGS.fa' if args.report_contigs else '-SPLITS.fa'))
+ 
+    progress.new('Bleep bloop')
 
-        split_coverages = merged_profile_db.db.get_table_as_dict(coverage_table_name_prefix + '_contigs')
-        contig_coverages = {}
-        contig_names = set([x['__parent__'] for x in split_coverages.values()])
+    progress.update('Gathering coverage data...')
+    coverages = profile_db.get_split_coverages_dict(use_Q2Q3_coverages=args.use_Q2Q3_coverages, splits_mode=args.splits_mode, report_contigs=args.report_contigs)
+    utils.store_dict_as_TAB_delimited_file(coverages, coverages_output, ['contig'] + sorted(list(samples)))
 
-        for entry in split_coverages.values():
-            c = entry['__parent__']
-            if c in contig_names and c not in contig_coverages:
-                contig_coverages[c] = entry
+    progress.update('Dealing with sequences...')
+    progress.update('Gathering coverage data')
+    utils.export_sequences_from_contigs_db(args.contigs_db, sequences_output, seq_names_to_export=sorted(list(coverages.keys())), splits_mode=(not args.report_contigs))
 
-        utils.export_sequences_from_contigs_db(args.contigs_db, sequences_output, seq_names_to_export=sorted(list(contig_names)), splits_mode=False)
-        utils.store_dict_as_TAB_delimited_file(contig_coverages, coverages_output, ['contig'] + sorted(list(merged_profile_db.samples)))
+    progress.end()
 
-    else:
-        sequences_output = os.path.join(args.output_dir, args.output_file_prefix + '-SPLITS.fa')
-        coverages_output = os.path.join(args.output_dir, args.output_file_prefix + '-COVs.txt')
-
-        if args.splits_mode:
-            coverages = merged_profile_db.db.get_table_as_dict(coverage_table_name_prefix + '_splits')
-        else:
-            coverages = merged_profile_db.db.get_table_as_dict(coverage_table_name_prefix + '_contigs')
-
-        utils.export_sequences_from_contigs_db(args.contigs_db, sequences_output, seq_names_to_export=sorted(coverages.keys()), splits_mode=True)
-        utils.store_dict_as_TAB_delimited_file(coverages, coverages_output, ['contig'] + sorted(list(merged_profile_db.samples)))
-
-    merged_profile_db.disconnect()
-
-    run.info('Coverages file', coverages_output)
-    run.info('Sequences file', sequences_output)
+    run.info('Coverages file', coverages_output, mc="green", nl_before=1)
+    run.info('Sequences file', sequences_output, mc="green")
 
 
 if __name__ == '__main__':
