@@ -62,7 +62,8 @@ def main(args):
 
     program = genomedistance.ANI(args)
     temp_dir = program.get_fasta_sequences_dir()
-    results = program.process(temp_dir)
+    program.process(temp_dir)
+    results = program.results
     genome_names = program.retrieve_genome_names()
 
     if anvio.DEBUG:
