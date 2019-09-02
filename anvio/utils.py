@@ -1488,10 +1488,10 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
                 summary_args.collection_name = collection_id
                 summary_args.quick = True
 
-                summary = summarizer.ProfileSummarizer(summary_args, r=terminal.Run(verbose=False))
+                summary = anvio.summarizer.ProfileSummarizer(summary_args, r=Run(verbose=False))
                 summary.init()
 
-                bin_summary = summarizer.Bin(summary, bin_id)
+                bin_summary = anvio.summarizer.Bin(summary, bin_id)
 
                 with open(path, 'w') as fasta:
                     fasta.write(bin_summary.get_bin_sequence())
