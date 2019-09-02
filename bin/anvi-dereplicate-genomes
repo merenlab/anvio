@@ -35,23 +35,24 @@ def is_compatible(results, genome_names):
     matrix_names = results.keys()
     for name in genome_names:
         if name not in matrix_names:
-            raise ConfigError("At least one of your genomes, %s, does not appear in the results matrix. This could be due\
+            raise ConfigError("At least one of your genomes (one being %s) does not appear in the results matrix. This could be due\
                                to many different reasons. Probably, the results matrix that was generated or imported is\
-                               incomplete or has been changed/corrupted by this point. Anvi'o suggests taking a closer look\
-                               at all of your input parameters." % name)
+                               incomplete or has been changed/corrupted by this point. If you imported your results with --ani-dir\
+                               or --mash-dir, we recommend re-running with standard inputs. See `INPUT OPTIONS` within the help menu" % name)
+
 
 def determine_run_mode(args):
     if args.ani_dir and args.mash_dir:
         raise ConfigError("Anvi'o cannot currently dereplicate using both ANI and mash distance results at\
                           the same time. Please pick one to use for dereplication")
     if args.program:
-        choice = args.program.lower()
-        if choice != "pyani" and choice != "sourmash":
+        choice = args.program
+        if choice != "pyANI" and choice != "sourmash":
             raise ConfigError("Anvi'o is impressed by your dedication to dereplicate your genomes through %s, but\
                              %s is not compatible with `anvi-dereplicate-genomes`. Anvi'o can only work with pyANI\
                              and sourmash separately." % (args.program, args.program))
 
-        if choice == "pyani" and args.mash_dir:
+        if choice == "pyANI" and args.mash_dir:
             raise ConfigError("You asked anvi'o to use pyANI to dereplicate your genomes but provided a mash results\
                               directory. Anvi'o doesn't know how to proceed")
 
@@ -59,13 +60,13 @@ def determine_run_mode(args):
             raise ConfigError("You asked anvi'o to use sourmash to dereplicate your genomes but provided an ani results\
                               directory. Anvi'o doesn't know how to proceed")
 
-        if choice == "pyani" and args.ani_dir:
+        if choice == "pyANI" and args.ani_dir:
             return ("pyANI", True)
-        elif choice == "pyani":
+        elif choice == "pyANI":
             return ("pyANI", False)
         elif choice == "sourmash" and args.mash_dir:
             return ("sourmash", True)
-        else: #choice == "sourmash" and no mash_dir
+        else:
             return ("sourmash", False)
 
     else:
@@ -146,11 +147,13 @@ def main(args, choice):
         if mode == "pyANI":
             results = {}
             necessary_reports = ['alignment_coverage', 'percentage_identity']
+
             try:
                 files_in_dir = os.listdir(args.ani_dir)
             except:
                 raise ConfigError("The ANI directory to import, %s, seems to be an invalid directory. Where are\
                                                   you pointing us to?" % args.ani_dir)
+
             for report in necessary_reports:
                 report_name = report + ".txt"
                 files = [f for f in files_in_dir if report_name in f]
@@ -161,14 +164,15 @@ def main(args, choice):
                 elif len(files) == 0:
                     raise ConfigError("Your ANI results directory does not have a text file for the report %s.\
                                           Anvi'o cannot dereplicate genomes through pyANI without this report" % report)
-                results[report] = utils.get_TAB_delimited_file_as_dictionary(os.path.join(args.ani_dir, file[0]))
+                results[report] = utils.get_TAB_delimited_file_as_dictionary(os.path.join(args.ani_dir, files[0]))
             results = program.collapse_results(results)
+
             run.info('PyANI results directory imported', args.ani_dir)
         else:
             assert mode == "sourmash", "Fatal error in mode assertion in importing file. Please inform the devlopers."
             results = utils.get_TAB_delimited_file_as_dictionary(os.path.join(args.mash_dir, "distance_matrix.txt"))
             run.info('sourmash results directory imported', args.mash_dir)
-        
+
     genomes = program.retrieve_genome_names()
     is_compatible(results, genomes)
     run.info('Number of genomes retrieved', len(genomes))
@@ -271,13 +275,12 @@ if __name__ == '__main__':
                         the highest average distance to everything in the cluster. The default is %(default)s",\
                         choices=['Qscore', 'length', 'distance'])
 
-
     groupH = parser.add_argument_group('OTHER IMPORTANT STUFF', "Yes. You're almost done.")
     groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupH.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     groupH.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
 
-    args = anvio.get_args(parser) 
+    args = anvio.get_args(parser)
 
     try:
         mode = determine_run_mode(args)

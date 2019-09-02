@@ -27,6 +27,7 @@ __email__ = "mahmoudyousef@uchicago.edu"
 run = terminal.Run()
 progress = terminal.Progress()
 
+
 class GenomeDictionary:
     def __init__(self, args, genome_names, genome_desc, fasta_txt, data):
         self.args = args
@@ -40,12 +41,14 @@ class GenomeDictionary:
         self.init_groups()
         self.init_full_genome_dict(genome_desc, fasta_txt)
 
+
     def init_groups(self):
-        hash = 0
+        h = 0
         for name in self.genome_names:
-            self.hash[name] = hash
-            self.groups[hash] = [name]
-            hash = hash + 1
+            self.hash[name] = h
+            self.groups[h] = [name]
+            h += 1
+
 
     def init_full_genome_dict(self, genome_desc, fasta_txt):
         full_dict = {}
@@ -63,16 +66,18 @@ class GenomeDictionary:
         self.genomes_dict = full_dict
 
 
-
     def group_genomes(self, genome1, genome2):
         from_hash = self.hash[genome1]
         to_hash = self.hash[genome2]
+
         if from_hash == to_hash:
             return
+
         for genome in self.groups[from_hash]:
             self.groups[to_hash].append(genome)
             self.hash[genome] = to_hash
             self.groups[from_hash].remove(genome)
+
 
     def are_redundant(self, genome1, genome2):
         hash1 = self.hash[genome1]
@@ -80,7 +85,8 @@ class GenomeDictionary:
         if hash1 == hash2:
             return True
         return False
-                    
+
+
     def dereplicate(self): 
         genome_pairs = combinations(self.genome_names, 2)
         for pair in genome_pairs:
@@ -93,6 +99,7 @@ class GenomeDictionary:
             if distance > self.distance_threshold:
                 self.group_genomes(genome1, genome2)
 
+
     def pick_best_of_two(self, one, two):
         if (one is None or one == []) and (two is None or two == []):
             return None
@@ -100,7 +107,7 @@ class GenomeDictionary:
             return two[0]
         elif (two is None or two == []) and len(one) == 1:
             return one[0]
-        
+
         best_one = self.pick_representative(one)
         best_two = self.pick_representative(two)
         if (best_one is None or best_one == []) and best_two != [] and best_two is not None:
@@ -129,6 +136,7 @@ class GenomeDictionary:
             else:
                 return best_one
 
+
     def pick_representative(self, group):
         if group is None or group == []:
             return None
@@ -137,6 +145,7 @@ class GenomeDictionary:
         medium = int(len(group) / 2)
         best = self.pick_best_of_two(group[:medium], group[medium:])
         return best
+
 
     def pick_longest_rep(self, group):
         max_name = group[0]
@@ -150,6 +159,7 @@ class GenomeDictionary:
 
         return max_name
 
+
     def pick_closest_distance(self, group):
         dict = {}
         for name in group:
@@ -161,6 +171,7 @@ class GenomeDictionary:
             new_dict[val] = name
         max_val = max(new_dict.keys())
         return new_dict[max_val]
+
 
     def get_dereplicated_genome_names(self):
         names = []
@@ -177,12 +188,15 @@ class GenomeDictionary:
             names.append(name)
         return names
 
+
     def get_all_redundant_groups(self, names):
-        dict = {}
+        d = {}
         for name in names:
-            hash = self.hash[genome]
-            dict[name] = self.groups[hash]
-        return dict
+            genome_hash = self.hash[name]
+            d[name] = self.groups[genome_hash]
+        return d
+
+
 
 class GenomeDistance:
     def __init__(self, args):
