@@ -734,6 +734,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
         estimate_taxonomy_presences=[]
         dictonarry_presence={}
         dictonnary_number_appear=dict()
+        collection_to_split=self.init() 
         estimate_taxonomy_presences = [{"t_domain": "Unknow",
                                         "t_phylum": "NA",
                                         "t_class": "NA",
@@ -796,10 +797,13 @@ class SCGsTaxonomy(TaxonomyEstimation):
                     dictonnary_number_appear[level]=1
                 else:
                     dictonnary_number_appear[level]+=1
+        print(dictonarry_presence)
 
+        print(dictonnary_number_appear)
         if len(estimate_taxonomy_presences)>1:
             for estimate_taxonomy_presence in estimate_taxonomy_presences:
-                output+=[[self.db_path.replace(".db","")+"_genome_"+str(num_metagenome)]+list(estimate_taxonomy_presence.values())+[dictonnary_number_appear[list(estimate_taxonomy_presence.values())[-1]]]]
+                print(len(dictonarry_presence[list(estimate_taxonomy_presence.values())[-1]].values()))
+                #output+=[[self.db_path.replace(".db","")+"_genome_"+str(num_metagenome)]+list(estimate_taxonomy_presence.values())+[len(dictonarry_presence[list(estimate_taxonomy_presence.values())[-1]].values()]
                 num_metagenome+=1
         else:
             output+=[[self.db_path.replace(".db","")]+list(estimate_taxonomy_presence.values())]
@@ -822,9 +826,9 @@ class SCGsTaxonomy(TaxonomyEstimation):
                 self.run.warning("%s is estimate %d time but it seams that the SCG %s have %d appear for this taxons, it could mean you have "\
                  % (taxon , dictonnary_number_appear[taxon], len_max_scg[0], len_max_scg[1]))
 
-        self.show_taxonomy(outpu_appear)
+        #self.show_taxonomy(outpu_appear)
         self.show_taxonomy(output)
-        self.generate_output_file(output,append=True)
+        #self.generate_output_file(output,append=True)
 
 
     def generate_output_file(self,output_data,header=False,append=False):
