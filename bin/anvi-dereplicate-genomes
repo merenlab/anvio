@@ -82,6 +82,7 @@ def determine_run_mode(args):
 
 def run_sanity_checks(args, choice):
     mode = choice[0]
+
     if args.min_alignment_fraction < 0 or args.min_alignment_fraction > 1:
         if mode == "pyANI":
             raise ConfigError("Alignment coverage is a value between 0 and 1. Your cutoff alignment coverage\
@@ -111,7 +112,7 @@ def run_sanity_checks(args, choice):
 
 
 def main(args, choice):
-    mode, prev = choice
+    mode, import_previous_results = choice
     run.info('Run mode', mode)
 
     filesnpaths.check_output_directory(args.output_dir, ok_if_exists=False)
@@ -123,9 +124,8 @@ def main(args, choice):
         assert mode == "sourmash", "Fatal error in mode assertion in initialization. Please inform the developers."
         program = genomedistance.SourMash(args)
 
-    temp_dir = program.get_fasta_sequences_dir()
-
-    if not prev:
+    if not import_previous_results:
+        temp_dir = program.get_fasta_sequences_dir()
         program.process(temp_dir)
 
         if mode == "pyANI":
@@ -154,6 +154,7 @@ def main(args, choice):
         if mode == "pyANI":
             if filesnpaths.is_dir_empty(args.ani_dir):
                 raise ConfigError("The --ani-dir you provided is empty. What kind of game are you playing?")
+            files_in_dir = os.listdir(args.ani_dir)
 
             necessary_reports = ['alignment_coverage', 'percentage_identity']
             for report in necessary_reports:
@@ -162,14 +163,15 @@ def main(args, choice):
 
                 if len(matching_filepaths) > 1:
                     raise ConfigError("Your ANI results directory contains multiple text files for the matrix %s.\
-                                     Please clean up your directory and make sure that only one text file of this\
-                                     report exists" % report)
+                                      Please clean up your directory and make sure that only one text file of this\
+                                      report exists" % report)
                 elif len(matching_filepaths) == 0:
                     raise ConfigError("Your ANI results directory does not have a text file for the report %s.\
                                       Anvi'o cannot dereplicate genomes through pyANI without this report" % report)
 
                 program.results[report] = utils.get_TAB_delimited_file_as_dictionary(os.path.join(args.ani_dir, matching_filepaths[0]))
 
+            program.genome_names = list(program.results['alignment_coverage'].keys())
             distance_matrix = program.get_proper_percent_identity(program.results)
 
             run.info('PyANI results directory imported', args.ani_dir)
@@ -196,8 +198,10 @@ def main(args, choice):
             run.warning(None, header=name)
             print(json.dumps(all_groups[name], indent=2))
 
-    hashes = program.rehash_names(genome_names)
-    utils.move_fasta_files_from_fasta_dir(temp_dir, hashes, args.output_dir, fasta_txt=args.provide_fasta_txt)
+    if not import_previous_results:
+        hashes = program.rehash_names(genome_names)
+        utils.move_fasta_files_from_fasta_dir(temp_dir, hashes, args.output_dir, fasta_txt=args.provide_fasta_txt)
+
     run.info_single('Dereplicated fasta files stored in %s' % args.output_dir)
     if args.provide_fasta_txt:
             run.info_single('FASTA text file `dereplcated-fasta.txt` stored in %s' % args.output_dir)
@@ -205,7 +209,7 @@ def main(args, choice):
     if anvio.DEBUG:
         run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
                      later" % temp_dir, header="Debug")
-    else:
+    elif not import_previous_results:
         run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
                          like to keep it for testing purposes)', nl_before=1, nl_after=1)
         shutil.rmtree(temp_dir)
@@ -259,7 +263,7 @@ if __name__ == '__main__':
     groupF = parser.add_argument_group('sourmash settings', "Tell anvi'o to run sourmash with specific settings. Only\
                         if `--program` is set to `sourmash`")
     groupF.add_argument('--kmer-size', type=int, default=51, metavar='INT', help="Set the k-mer size for mash\
-                        distance checks. sourmash recommends a size of 51, which is the default option. For\
+                        distance checks. The sourmash default is 51, which is the default option. For\
                         relatively shorter or longer genomes, you may want to decrease or increase this size\
                         respectively")
     groupF.add_argument('--scale', type=int, default=1000, metavar='INT', help='Set the compression ratio for\
