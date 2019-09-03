@@ -306,6 +306,8 @@ class ANI(GenomeDistance):
 
     def get_proper_percent_identity(self, results, min_alignment_fraction=None):
         """
+        FIXME I don't know if this is essentially taken care of by remove_weak_hits
+
         proper_percent_identity is the percentage identity of the aligned region multiplied by the
         alignment length divided by the shortest length of the two genomes
         """
