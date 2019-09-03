@@ -1469,7 +1469,7 @@ D = {
     'min-full-percent-identity': (
             ['--min-percent-identity'],
             {'metavar': 'PERCENT_IDENTITY',
-             'default': 40.0,
+             'default': 0.0,
              'type': float,
              'help': "In some cases you may get high raw ANI estimates between two genomes that have\
                       nothing to do with each other simply because only a small fraction of their content may\
