@@ -30,6 +30,7 @@ class PyANI:
         self.num_threads = A('num_threads') or 1
         self.method = A('method') or 'ANIb'
         self.log_file_path = os.path.abspath(A('log_file') or filesnpaths.get_temp_file_path())
+        self.quiet = A('quiet')
 
         self.check_programs()
 
@@ -87,9 +88,10 @@ class PyANI:
             raise ConfigError("None of the output matrices pyANI was supposed to generate was found in the\
                                output directory :( You may find some clues in the log file?")
 
-        self.run.info_single("Output matrices for the following items are stored in the output\
-                              directory: %s <success kid meme.png>." % \
-                                        (', '.join(["'%s'" % m.replace('_', ' ') for m in matrices])), nl_before=1, mc='green')
+        if not self.quiet:
+            self.run.info_single("Output matrices for the following items are stored in the output\
+                                  directory: %s <success kid meme.png>." % \
+                                            (', '.join(["'%s'" % m.replace('_', ' ') for m in matrices])), nl_before=1, mc='green')
 
         # restore old working directory
         os.chdir(old_wd)

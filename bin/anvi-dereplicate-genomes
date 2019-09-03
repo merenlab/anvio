@@ -259,6 +259,7 @@ if __name__ == '__main__':
                          choices=['ANIm', 'ANIb', 'ANIblastall', 'TETRA'])
     groupE.add_argument(*anvio.A('min-alignment-fraction'), **anvio.K('min-alignment-fraction', params_dict={'default':0.25}))
     groupE.add_argument(*anvio.A('significant-alignment-length'), **anvio.K('significant-alignment-length'))
+    groupE.add_argument(*anvio.A('min-full-percent-identity'), **anvio.K('min-full-percent-identity'))
 
     groupF = parser.add_argument_group('sourmash settings', "Tell anvi'o to run sourmash with specific settings. Only\
                         if `--program` is set to `sourmash`")
