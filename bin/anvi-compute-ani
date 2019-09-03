@@ -64,7 +64,7 @@ def main(args):
     temp_dir = program.get_fasta_sequences_dir()
     program.process(temp_dir)
     results = program.results
-    genome_names = program.retrieve_genome_names()
+    genome_names = program.genome_names
 
     if anvio.DEBUG:
         import json
@@ -84,12 +84,14 @@ def main(args):
                                the temporary output directory '%s'." % (report_name, os.path.join(temp_dir, 'output')))
 
     os.mkdir(args.output_dir)
+    run.warning(None, header="ANI RESULTS", lc='green')
     for report_name in results:
         output_path_for_report = os.path.join(args.output_dir, args.method + '_' + report_name)
 
         utils.store_dict_as_TAB_delimited_file(results[report_name], output_path_for_report + '.txt')
         with open(output_path_for_report + '.newick', 'w') as f:
             f.write(clusterings[report_name])
+        run.info_single('Matrix and clustering of \'%s\' written to output directory' % report_name.replace('_',' '), mc='green')
 
     if args.pan_db:
         utils.is_pan_db(args.pan_db)
@@ -142,7 +144,7 @@ if __name__ == '__main__':
     groupB = parser.add_argument_group('OUTPUT OPTIONS', "Tell anvi'o where to store your results.")
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True }))
     groupB.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False, 'help': "This is\
-                        totally ooptional, but very useful when applicable. If you are running ANI for\
+                        totally optional, but very useful when applicable. If you are running ANI for\
                         genomes for which you already have an anvi'o pangeome, then you can show where\
                         the pan database is and anvi'o would automatically add the results into the\
                         misc data tables of your pangenome. Those data can then be shown as ANI heatmaps\

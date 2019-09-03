@@ -3,6 +3,7 @@
 """Code for genome distance calculation"""
 
 import shutil
+import pandas as pd
 
 import anvio
 import anvio.utils as utils
@@ -286,10 +287,13 @@ class GenomeDistance:
 
 class ANI(GenomeDistance):
     def __init__(self, args):
+        self.args = args
+        self.results = {}
+
         GenomeDistance.__init__(self, args)
 
-        self.results = {}
-        self.program = pyani.PyANI(args)
+        self.args.quiet = True
+        self.program = pyani.PyANI(self.args)
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
@@ -326,7 +330,7 @@ class ANI(GenomeDistance):
         return matrix
 
 
-    def decouple_weak_hits(self):
+    def decouple_weak_associations(self):
         if not self.min_alignment_fraction:
             return
 
@@ -408,10 +412,19 @@ class ANI(GenomeDistance):
 
         self.results = self.program.run_command(temp_dir)
         self.results = self.restore_names_in_dict(self.results)
+        self.results = self.calculate_additional_matrices(self.results)
         self.decouple_weak_associations()
 
         if temp is None:
             shutil.rmtree(temp_dir)
+
+
+    def calculate_additional_matrices(self, results):
+        # percentage_full_identity
+        df = lambda matrix_name: pd.DataFrame(results[matrix_name]).astype(float)
+        results['percentage_full_identity'] = (df('percentage_identity') * df('alignment_coverage')).to_dict()
+
+        return results
 
 
 
