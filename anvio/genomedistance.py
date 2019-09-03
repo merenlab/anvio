@@ -299,6 +299,7 @@ class ANI(GenomeDistance):
         null = lambda x: x
         self.min_alignment_fraction = A('min_alignment_fraction', null)
         self.significant_alignment_length = A('significant_alignment_length', null)
+        self.min_full_percent_identity = A('min_full_percent_identity', null)
 
 
     def get_proper_percent_identity(self, results, min_alignment_fraction=None):
@@ -331,8 +332,37 @@ class ANI(GenomeDistance):
 
 
     def decouple_weak_associations(self):
-        if not self.min_alignment_fraction:
-            return
+        """
+        potentially modifies:
+            percentage_identity using:
+                {self.min_alignment_fraction, self.significant_alignment_length}
+            percentage_full_identity using:
+                {self.min_full_percent_identity}
+        """
+        if self.min_full_percent_identity:
+            if 'percentage_full_identity' not in self.results:
+                raise ConfigError("You asked anvi'o to remove weak hits through the --min-alignment-fraction\
+                                   parameter, but the results dictionary does not contain any information about\
+                                   alignment fractions :/ These are the items anvi'o found instead: '%s'. Please let a\
+                                   developer know about this if this doesn't make any sense." % (', '.join(self.results.keys())))
+
+            p = self.results['percentage_full_identity']
+            genome_hits_to_zero = []
+            for g1 in p:
+                for g2 in p:
+                    if g1 == g2:
+                        continue
+
+                    if float(p[g1][g2]) < self.min_full_percent_identity or float(p[g2][g1]) < self.min_full_percent_identity:
+                        genome_hits_to_zero.append((g1, g2), )
+
+            for report_name in self.results:
+                for g1, g2 in genome_hits_to_zero:
+                    self.results['percentage_full_identity'][g1][g2] = 0
+                    self.results['percentage_full_identity'][g2][g1] = 0
+
+            # reset for rest of method
+            genome_hits_to_zero = []
 
         if self.min_alignment_fraction:
             if 'alignment_coverage' not in self.results:
