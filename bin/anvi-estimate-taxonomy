@@ -46,8 +46,8 @@ def main(args):
         t.estimate_taxonomy_for_metagenome()
     if args.profile_db and not args.metagenome:
         t.show_taxonomy_estimation_bin()
-    else:
-        t.show_taxonomy_estimation_single_genome()
+    if not args.profile_db and not args.metagenome:
+       t.show_taxonomy_estimation_single_genome()
 
 
 if __name__ == '__main__':
