@@ -769,61 +769,6 @@ D = {
                       every gene cluster with a combined homogeneity index greater than 0.5 will be removed from your analysis. This \
                       can be useful if you only want to look at gene clusters that have many not be as conserved overall as others"}
                 ),
-    'percent-alignment-threshold': (
-            ['--percent-alignment-threshold'],
-            {'default': 75,
-             'metavar': 'INT',
-             'type': int,
-             'help': "The cutoff value for percent alignment to use for dereplication purposes. Percent alignemnt \
-                 is the ratio between the alignment length and the shorter genome's length. The\
-                 default value is 75"}
-                ),
-    'correlation-threshold': (
-            ['--correlation-threshold'],
-            {'default': 0.9,
-             'metavar': 'NUM',
-             'type': float,
-             'help': "The cutoff value for correlation to use for dereplication purposes. The\
-                default value is 0.9"}
-                ),
-    'average-identity-threshold': (
-            ['--average-identity-threshold'],
-            {'default': 0.985,
-             'metavar': 'NUM',
-             'type': float,
-             'help': "The cutoff value for ani to use for dereplication purposes. The\
-                      default value is 0.985"}
-                ),
-    'min-alignment-fraction': (
-            ['--min-alignment-fraction'],
-            {'default': 0.0,
-             'metavar': 'NUM',
-             'type': float,
-             'help': "In some cases you may get\
-                      high raw ANI estimates between two genomes that have nothing to do with each other\
-                      simply because only a small fraction of their content may be aligned. This filter will\
-                      eliminate ANI scores between two genomes if the alignment fraction is less than you\
-                      deem trustable. When you set a value, anvi'o will go through the ANI results, and set\
-                      percent identity scores between two genomes to 0 if the alignment fraction *between either\
-                      of them* is less than the parameter described here. The default is definitely 0.0, (but if\
-                      you are using anvi-dereplicate-genomes the default is 0.25 because anvi'o is annoying)."}
-                ),
-    'significant-alignment-length': (
-            ['--significant-alignment-length'],
-            {'default': None,
-             'metavar': 'INT',
-             'type': int,
-             'help': "So --min-alignment-fraction\
-                      discards any hit that is coming from alignments that represent shorter fractions of genomes,\
-                      but what if you still don't want to miss an alignment that is longer than an X number of\
-                      nucleotides regardless of what fraction of the genome it represents? Well, this parameter is\
-                      to recover things that may be lost due to --min-alignment-fraction parameter. Let's say,\
-                      if you set --min-alignment-fraction to '0.05', and this parameter to '5000', anvi'o will keep\
-                      hits from alignments that are longer than 5000 nts, EVEN IF THEY REPRESENT less than 5%% of \
-                      a given genome pair. Basically if --min-alignment-fraction is your shield to protect yourself\
-                      from incoming garbage, --significant-alignment-length is your chopstick to pick out those that\
-                      may be interesting, and you are a true warrior here."}
-                ),
     'add-into-items-additional-data-table': (
             ['--add-into-items-additional-data-table'],
             {'default': None,
@@ -1520,6 +1465,51 @@ D = {
              'default': 80.0,
              'type': float,
              'help': "Minimum percent identity. The default is %(default)g."}
+                ),
+    'min-full-percent-identity': (
+            ['--min-percent-identity'],
+            {'metavar': 'PERCENT_IDENTITY',
+             'default': 40.0,
+             'type': float,
+             'help': "In some cases you may get high raw ANI estimates between two genomes that have\
+                      nothing to do with each other simply because only a small fraction of their content may\
+                      be aligned. This filter will eliminate ANI scores between two genomes if the *full*\
+                      percentage identity is less than you deem trustable. *full* percentage identity is the\
+                      same as percentage identity, except that regions that did not align are counted\
+                      against. So if P is the percentage identity calculated in aligned regions, L is the\
+                      length of the genome, and A is the fraction of the genome that aligned to a compared\
+                      genome, the full percent identity is P * (A/L). When you set a value, anvi'o will go\
+                      through the ANI results, and set the full percent identity scores between two genomes\
+                      to 0 if they are less than the parameter described here. The default is %(default)g."}
+                ),
+    'min-alignment-fraction': (
+            ['--min-alignment-fraction'],
+            {'default': 0.0,
+             'metavar': 'NUM',
+             'type': float,
+             'help': "In some cases you may get\
+                      high raw ANI estimates between two genomes that have nothing to do with each other\
+                      simply because only a small fraction of their content may be aligned. This filter will\
+                      eliminate ANI scores between two genomes if the alignment fraction is less than you\
+                      deem trustable. When you set a value, anvi'o will go through the ANI results, and set\
+                      percent identity scores between two genomes to 0 if the alignment fraction *between either\
+                      of them* is less than the parameter described here. The default is %(default)g."}
+                ),
+    'significant-alignment-length': (
+            ['--significant-alignment-length'],
+            {'default': None,
+             'metavar': 'INT',
+             'type': int,
+             'help': "So --min-alignment-fraction\
+                      discards any hit that is coming from alignments that represent shorter fractions of genomes,\
+                      but what if you still don't want to miss an alignment that is longer than an X number of\
+                      nucleotides regardless of what fraction of the genome it represents? Well, this parameter is\
+                      to recover things that may be lost due to --min-alignment-fraction parameter. Let's say,\
+                      if you set --min-alignment-fraction to '0.05', and this parameter to '5000', anvi'o will keep\
+                      hits from alignments that are longer than 5000 nts, EVEN IF THEY REPRESENT less than 5%% of\
+                      a given genome pair. Basically if --min-alignment-fraction is your shield to protect yourself\
+                      from incoming garbage, --significant-alignment-length is your chopstick to pick out those that\
+                      may be interesting, and you are a true warrior here."}
                 ),
     'bins-info': (
             ['--bins-info'],
