@@ -525,7 +525,6 @@ class SCGsdiamond(TaxonomyEstimation):
             diamond_output = diamond.blastp_stdin_multi(d[1])
             hits_per_gene = {}
             genes_estimation_output=[]
-
             for line_hit_to_split in diamond_output.split('\n'):
                 if len(line_hit_to_split) and not line_hit_to_split.startswith('Query'):
                     line_hit = line_hit_to_split.split('\t')
@@ -797,13 +796,10 @@ class SCGsTaxonomy(TaxonomyEstimation):
                     dictonnary_number_appear[level]=1
                 else:
                     dictonnary_number_appear[level]+=1
-        print(dictonarry_presence)
 
-        print(dictonnary_number_appear)
         if len(estimate_taxonomy_presences)>1:
             for estimate_taxonomy_presence in estimate_taxonomy_presences:
-                print(len(dictonarry_presence[list(estimate_taxonomy_presence.values())[-1]].values()))
-                #output+=[[self.db_path.replace(".db","")+"_genome_"+str(num_metagenome)]+list(estimate_taxonomy_presence.values())+[len(dictonarry_presence[list(estimate_taxonomy_presence.values())[-1]].values()]
+                output+=[[self.db_path.replace(".db","")+"_genome_"+str(num_metagenome)]+list(estimate_taxonomy_presence.values())+[len(dictonarry_presence[list(estimate_taxonomy_presence.values())[-1]].values())]]
                 num_metagenome+=1
         else:
             output+=[[self.db_path.replace(".db","")]+list(estimate_taxonomy_presence.values())]
