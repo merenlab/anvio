@@ -53,7 +53,7 @@ class Dereplicate:
         self.min_mash_distance = A('min_mash_distance', null)
         self.distance_threshold = A('distance_threshold', null)
         # output
-        self.fasta_text_file = A('fasta_text_file', null)
+        self.provide_fasta_txt = A('provide_fasta_txt', null)
         self.output_dir = A('output_dir', null)
         self.just_do_it = A('just_do_it', null)
 
@@ -142,7 +142,7 @@ class Dereplicate:
             program.process(temp_dir)
 
             if self.program_name == "pyANI":
-                distance_matrix = program.get_proper_percent_identity(program.results)
+                self.distance_matrix = program.get_proper_percent_identity(program.results)
 
                 run.info('pyANI process', 'completed')
 
@@ -154,7 +154,7 @@ class Dereplicate:
             else:
                 assert self.program_name == "sourmash", "Fatal error in self.program_name assertion in generating results. Please inform the developers."
 
-                distance_matrix = program.results
+                self.distance_matrix = program.results
 
                 run.info('sourmash process', 'completed')
 
@@ -185,21 +185,21 @@ class Dereplicate:
                     program.results[report] = utils.get_TAB_delimited_file_as_dictionary(os.path.join(self.ani_dir, matching_filepaths[0]))
 
                 program.genome_names = list(program.results['alignment_coverage'].keys())
-                distance_matrix = program.get_proper_percent_identity(program.results)
+                self.distance_matrix = program.get_proper_percent_identity(program.results)
 
                 run.info('PyANI results directory imported from', self.ani_dir)
             else:
                 assert self.program_name == "sourmash", "Fatal error in self.program_name assertion in importing file. Please inform the devlopers."
 
-                distance_matrix = utils.get_TAB_delimited_file_as_dictionary(os.path.join(self.mash_dir, "distance_matrix.txt"))
+                self.distance_matrix = utils.get_TAB_delimited_file_as_dictionary(os.path.join(self.mash_dir, "distance_matrix.txt"))
 
                 run.info('sourmash results directory imported from', self.mash_dir)
 
         all_genome_names = program.genome_names
-        self.is_compatible(distance_matrix, all_genome_names)
+        self.is_compatible(self.distance_matrix, all_genome_names)
         run.info('Number of genomes retrieved', len(all_genome_names))
 
-        nonredundant_genome_names = program.remove_redundant_genomes(distance_matrix)
+        nonredundant_genome_names = program.remove_redundant_genomes(self.distance_matrix)
         num_redundant = len(all_genome_names) - len(nonredundant_genome_names)
         run.info('Number of redundant genomes', num_redundant)
         run.info('Final number of dereplicated genomes', len(nonredundant_genome_names))

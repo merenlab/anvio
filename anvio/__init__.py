@@ -1467,8 +1467,8 @@ D = {
              'help': "Minimum percent identity. The default is %(default)g."}
                 ),
     'min-full-percent-identity': (
-            ['--min-percent-identity'],
-            {'metavar': 'PERCENT_IDENTITY',
+            ['--min-full-percent-identity'],
+            {'metavar': 'FULL_PERCENT_IDENTITY',
              'default': 0.0,
              'type': float,
              'help': "In some cases you may get high raw ANI estimates between two genomes that have\
@@ -1480,7 +1480,7 @@ D = {
                       length of the genome, and A is the fraction of the genome that aligned to a compared\
                       genome, the full percent identity is P * (A/L). When you set a value, anvi'o will go\
                       through the ANI results, and set the full percent identity scores between two genomes\
-                      to 0 if they are less than the parameter described here. The default is %(default)g."}
+                      to 0 if *either of them* are less than the parameter described here. The default is %(default)g."}
                 ),
     'min-alignment-fraction': (
             ['--min-alignment-fraction'],

@@ -151,8 +151,9 @@ if __name__ == '__main__':
                         on the pan interactive interface through the 'layers' tab."}))
 
     groupC = parser.add_argument_group('FILTERING HITS', "These filters can save lives. Ask Luke.")
-    groupC.add_argument(*anvio.A('min-alignment-fraction'), **anvio.K('min-alignment-fraction', params_dict={'default':0.25}))
+    groupC.add_argument(*anvio.A('min-alignment-fraction'), **anvio.K('min-alignment-fraction'))
     groupC.add_argument(*anvio.A('significant-alignment-length'), **anvio.K('significant-alignment-length'))
+    groupC.add_argument(*anvio.A('min-full-percent-identity'), **anvio.K('min-full-percent-identity'))
 
     groupD = parser.add_argument_group('pyANI METHOD', "Tell anvi'o to tell pyANI what method you wish to use.")
     groupD.add_argument('--method', default='ANIb', type=str, help="Method for pyANI. The default is %(default)s.\
