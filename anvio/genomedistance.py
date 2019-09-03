@@ -92,10 +92,7 @@ class GenomeDictionary:
 
     def dereplicate(self): 
         genome_pairs = combinations(self.genome_names, 2)
-        for pair in genome_pairs:
-            genome1 = pair[0]
-            genome2 = pair[1]
-
+        for genome1, genome2 in genome_pairs:
             if genome1 == genome2 or self.are_redundant(genome1, genome2):
                 continue
 
@@ -105,19 +102,19 @@ class GenomeDictionary:
 
 
     def pick_best_of_two(self, one, two):
-        if (one is None or one == []) and (two is None or two == []):
+        if not one and not two:
             return None
-        elif (one is None or one == []) and len(two) == 1:
+        elif not one and len(two) == 1:
             return two[0]
-        elif (two is None or two == []) and len(one) == 1:
+        elif not two and len(one) == 1:
             return one[0]
 
         best_one = self.pick_representative(one)
         best_two = self.pick_representative(two)
 
-        if (best_one is None or best_one == []) and best_two != [] and best_two is not None:
+        if not best_one and best_two:
             return best_two
-        elif best_two is None or best_two == [] and best_one != [] and best_one is not None:
+        elif not best_two and best_one:
             return best_one
 
         try:
@@ -144,9 +141,9 @@ class GenomeDictionary:
 
 
     def pick_representative(self, group):
-        if group is None or group == []:
+        if not group:
             return None
-        elif len(group)== 1:
+        elif len(group) == 1:
             return group[0]
 
         medium = int(len(group) / 2)
@@ -269,10 +266,6 @@ class GenomeDistance:
         return hashes
 
 
-    def retrieve_genome_names(self):
-        return self.genome_names
-
-
     def remove_redundant_genomes(self, data):
         self.progress.new('Dereplication')
         self.progress.update('Identifying redundant genomes...')
@@ -306,7 +299,8 @@ class ANI(GenomeDistance):
 
     def get_proper_percent_identity(self, results, min_alignment_fraction=None):
         """
-        FIXME I don't know if this is essentially taken care of by remove_weak_hits
+        FIXME I don't know if this is essentially taken care of by decouple_weak_hits
+        EDIT It doesn't, but it should
 
         proper_percent_identity is the percentage identity of the aligned region multiplied by the
         alignment length divided by the shortest length of the two genomes
@@ -332,7 +326,7 @@ class ANI(GenomeDistance):
         return matrix
 
 
-    def remove_weak_hits(self):
+    def decouple_weak_hits(self):
         if not self.min_alignment_fraction:
             return
 
@@ -414,7 +408,7 @@ class ANI(GenomeDistance):
 
         self.results = self.program.run_command(temp_dir)
         self.results = self.restore_names_in_dict(self.results)
-        self.remove_weak_hits()
+        self.decouple_weak_associations()
 
         if temp is None:
             shutil.rmtree(temp_dir)

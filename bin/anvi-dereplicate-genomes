@@ -174,15 +174,15 @@ def main(args, choice):
             program.genome_names = list(program.results['alignment_coverage'].keys())
             distance_matrix = program.get_proper_percent_identity(program.results)
 
-            run.info('PyANI results directory imported', args.ani_dir)
+            run.info('PyANI results directory imported from', args.ani_dir)
         else:
             assert mode == "sourmash", "Fatal error in mode assertion in importing file. Please inform the devlopers."
 
             distance_matrix = utils.get_TAB_delimited_file_as_dictionary(os.path.join(args.mash_dir, "distance_matrix.txt"))
 
-            run.info('sourmash results directory imported', args.mash_dir)
+            run.info('sourmash results directory imported from', args.mash_dir)
 
-    genomes = program.retrieve_genome_names()
+    genomes = program.genome_names
     is_compatible(distance_matrix, genomes)
     run.info('Number of genomes retrieved', len(genomes))
 
@@ -202,9 +202,9 @@ def main(args, choice):
         hashes = program.rehash_names(genome_names)
         utils.move_fasta_files_from_fasta_dir(temp_dir, hashes, args.output_dir, fasta_txt=args.provide_fasta_txt)
 
-    run.info_single('Dereplicated fasta files stored in %s' % args.output_dir)
+    run.info_single('Dereplicated fasta files stored in %s' % args.output_dir, nl_before=1)
     if args.provide_fasta_txt:
-            run.info_single('FASTA text file `dereplcated-fasta.txt` stored in %s' % args.output_dir)
+            run.info_single('FASTA text file `dereplcated-fasta.txt` stored in %s' % args.output_dir, nl_before=1)
 
     if anvio.DEBUG:
         run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
