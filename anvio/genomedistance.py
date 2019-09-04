@@ -32,13 +32,16 @@ progress = terminal.Progress()
 class GenomeDictionary:
     def __init__(self, args, genome_names, genome_desc, fasta_txt, data):
         self.args = args
-        self.distance_threshold = args.distance_threshold
-        self.method = args.representative_method
+        self.distance_threshold = self.args.distance_threshold
+        self.method = self.args.representative_method
+
         self.genome_names = genome_names
-        self.genomes_dict = {}
         self.data = data
+
         self.hash = {}
         self.groups = {}
+        self.genomes_dict = {}
+
         self.init_groups()
         self.init_full_genome_dict(genome_desc, fasta_txt)
 
@@ -218,15 +221,22 @@ class GenomeDistance:
         self.args = args
         self.run = run
         self.progress = progress
-        if args.internal_genomes is None and args.external_genomes is None:
-            self.genome_desc = None
-        else:
+
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        self.fasta_txt = A('fasta_text_file', null)
+        self.internal_genomes = A('internal_genomes', null)
+        self.external_genomes = A('external_genomes', null)
+
+        if (self.internal_genomes or self.external_genomes):
             self.genome_desc = genomedescriptions.GenomeDescriptions(args, run = terminal.Run(verbose=False))
-        self.fasta_txt = args.fasta_text_file if 'fasta_text_file' in vars(args) else None
+        else:
+            self.genome_desc = None
+
+        self.genomes_dict = {}
         self.hash_to_name = {}
-        self.genome_names = set([])
         self.temp_paths = set([])
-        self.dict = {}
+        self.genome_names = set([])
 
 
     def get_fasta_sequences_dir(self):
@@ -270,18 +280,18 @@ class GenomeDistance:
     def remove_redundant_genomes(self, data):
         self.progress.new('Dereplication')
         self.progress.update('Identifying redundant genomes...')
-        self.dict = GenomeDictionary(self.args, self.genome_names, self.genome_desc, self.fasta_txt, data)
-        self.dict.dereplicate()
+        self.genomes_dict = GenomeDictionary(self.args, self.genome_names, self.genome_desc, self.fasta_txt, data)
+        self.genomes_dict.dereplicate()
 
         self.progress.update('Removing redundant genomes...')
-        names = self.dict.get_dereplicated_genome_names()
+        names = self.genomes_dict.get_dereplicated_genome_names()
         self.progress.end()
 
         return names
 
 
     def retrieve_genome_groups(self, names):
-        return self.dict.get_all_redundant_groups(names)
+        return self.genomes_dict.get_all_redundant_groups(names)
 
 
 

@@ -105,6 +105,11 @@ class Dereplicate:
 
 
     def run_sanity_checks(self):
+        if self.import_previous_results:
+            run.warning("You chose to work with an already existing results folder. Please keep in mind that you\
+                         are now burdened with the responsibility of knowing what parameters you used to generate\
+                         these results.")
+
         if self.min_alignment_fraction < 0 or self.min_alignment_fraction > 1:
             if self.program_name == "pyANI":
                 raise ConfigError("Alignment coverage is a value between 0 and 1. Your cutoff alignment coverage\
@@ -233,8 +238,8 @@ class Dereplicate:
 
 
     def process(self):
-        self.run_sanity_checks()
         self.determine_run_mode()
+        self.run_sanity_checks()
         self.main()
 
 
