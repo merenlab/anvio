@@ -1466,30 +1466,51 @@ D = {
              'type': float,
              'help': "Minimum percent identity. The default is %(default)g."}
                 ),
+    'min-full-percent-identity': (
+            ['--min-full-percent-identity'],
+            {'metavar': 'FULL_PERCENT_IDENTITY',
+             'default': 20.0,
+             'type': float,
+             'help': "In some cases you may get high raw ANI estimates (percent identity scores)\
+                      between two genomes that have little to do with each other simply because only\
+                      a small fraction of their content may be aligned. This can be partly\
+                      alleviated by considering the *full* percent identity, which includes in its\
+                      calculation regions that did not align. For example, if the alignment is a\
+                      whopping 97 percent identity but only 8% of the genome aligned, the *full*\
+                      percent identity is 0.970 * 0.080 = 0.078 OR 7.8 percent. *full* percent\
+                      identity is always included in the report, but you can also use it as a filter\
+                      for other metrics, such as percent identity. This filter will set all ANI\
+                      measures between two genomes to 0 if the *full* percent identity is less than\
+                      you deem trustable. When you set a value, anvi'o will go through the ANI\
+                      results, and set all ANI measures between two genomes to 0 if the *full*\
+                      percent identity *between either of them* is less than the parameter described\
+                      here. The default is %(default)g."}
+                ),
     'use-full-percent-identity': (
             ['--use-full-percent-identity'],
             {'action': 'store_true',
-             'help': "Usually, percent identity is calculated only over aligned regions. With this flag,\
-                      you can instead report *full* percentage identity. It is the\
+             'help': "Usually, percent identity is calculated only over aligned regions, and this\
+                      is what is used as a distance metric by default. But with this flag,\
+                      you can instead use the *full* percent identity as the distance metric. It is the\
                       same as percent identity, except that regions that did not align are included\
                       in the calculation. This means *full* percent identity will always be less than or\
                       equal to percent identity. How is it calculated? Well if P is the percentage identity\
                       calculated in aligned regions, L is the length of the genome, and A is the fraction\
                       of the genome that aligned to a compared genome, the full percent identity is\
                       P * (A/L). In other words, it is the percent identity multiplied by the alignment\
-                      coverage. When you provide this flag, every subsequent mention or action (such as\
-                      filters like --min-percent-identity) involving percent identity will be for\
-                      *full* percent identity."}
+                      coverage. For example, if the alignment is a whopping 97 percent identity but\
+                      only 8% of the genome aligned, the *full* percent identity is 0.970 * 0.080\
+                      = 0.078, which is just 7.8 percent."}
                 ),
     'min-alignment-fraction': (
             ['--min-alignment-fraction'],
             {'default': 0.0,
              'metavar': 'NUM',
              'type': float,
-             'help': "In some cases you may get\
-                      high raw ANI estimates between two genomes that have nothing to do with each other\
+             'help': "In some cases you may get high raw ANI estimates\
+                      (percent identity scores) between two genomes that have little to do with each other\
                       simply because only a small fraction of their content may be aligned. This filter will\
-                      eliminate ANI scores between two genomes if the alignment fraction is less than you\
+                      set all ANI scores between two genomes to 0 if the alignment fraction is less than you\
                       deem trustable. When you set a value, anvi'o will go through the ANI results, and set\
                       percent identity scores between two genomes to 0 if the alignment fraction *between either\
                       of them* is less than the parameter described here. The default is %(default)g."}
