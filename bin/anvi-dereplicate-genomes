@@ -62,13 +62,24 @@ class Dereplicate:
 
         self.import_previous_results = False
 
+        self.determine_run_mode()
+        self.run_sanity_checks()
+        self.distance_metric_name = self.get_distance_metric_name()
 
-    def is_compatible(self, results, genome_names):
-        matrix_names = results.keys()
+
+    def get_distance_metric_name(self):
+        if self.program_name in ['pyANI']:
+            self.distance_metric_name = 'percentage_identity' if not self.use_full_percent_identity else 'full_percentage_identity'
+        elif self.program_name in ['sourmash']:
+            self.distance_metric_name = 'mash_distance'
+
+
+    def is_genome_names_compatible_with_distance_matrix(self, distance_matrix, genome_names):
+        matrix_names = distance_matrix.keys()
         for name in genome_names:
             if name not in matrix_names:
-                raise ConfigError("At least one of your genomes (one being %s) does not appear in the results matrix. This could be due\
-                                   to many different reasons. Probably, the results matrix that was generated or imported is\
+                raise ConfigError("At least one of your genomes (one being %s) does not appear in the distance matrix. This could be due\
+                                   to many different reasons. Probably, the distance matrix that was generated or imported is\
                                    incomplete or has been changed/corrupted by this point. If you imported your results with --ani-dir\
                                    or --mash-dir, we recommend re-running with standard inputs. See `INPUT OPTIONS` within the help menu" % name)
 
@@ -133,94 +144,96 @@ class Dereplicate:
                         over to 'distance'")
 
 
+    def init_genome_distance(self):
+        if self.program_name == "pyANI":
+            self.distance = genomedistance.ANI(self.args)
+        else:
+            assert self.program_name == "sourmash", "Fatal error in self.program_name assertion in initialization. Please inform the developers."
+            self.distance = genomedistance.SourMash(self.args)
+
+
+    def get_distance_matrix(self):
+        distance_matrix = self.import_distance_matrix() if self.import_previous_results else self.calculate_distance_matrix()
+        self.is_genome_names_compatible_with_distance_matrix(self.distance_matrix, self.distance.genome_names)
+        run.info('Number of genomes considered', len(distance_matrix))
+
+        return distance_matrix
+
+
+    def calculate_distance_matrix(self):
+        temp_dir = self.distance.get_fasta_sequences_dir()
+        self.distance.process(temp_dir)
+
+        distance_matrix = self.distance.results[self.distance_metric_name]
+
+        run.info('%s distance metric' % self.program_name, 'calculated')
+
+        if anvio.DEBUG:
+            import json
+            for report in self.distance.results:
+                run.warning(None, header=report)
+                print(json.dumps(self.distance.results[report], indent=2))
+
+        return distance_matrix
+
+
+    def import_distance_matrix(self):
+        dir_name, dir_path = ('--ani-dir', self.ani_dir) if self.program_name in ['pyANI'] else ('--mash-dir', self.mash_dir)
+
+        necessary_reports = [self.distance_metric_name] + (['alignment_coverage'] if self.program_name in ['pyANI'] else [])
+
+        if filesnpaths.is_dir_empty(dir_path):
+            raise ConfigError("The %s you provided is empty. What kind of game are you playing?" % dir_name)
+        files_in_dir = os.listdir(self.ani_dir)
+
+        for report in necessary_reports:
+            report_name = report + ".txt"
+            matching_filepaths = [f for f in files_in_dir if report_name in f]
+
+            if len(matching_filepaths) > 1:
+                raise ConfigError("Your results directory contains multiple text files for the matrix %s.\
+                                  Please clean up your directory and make sure that only one text file of this\
+                                  report exists" % report)
+            elif len(matching_filepaths) == 0:
+                raise ConfigError("Your results directory does not have a text file for the report %s.\
+                                  Anvi'o cannot dereplicate genomes from prevous results without this report" % report)
+
+            self.distance.results[report] = utils.get_TAB_delimited_file_as_dictionary(os.path.join(dir_path, matching_filepaths[0]))
+
+        # self.distance does not know genome_names because these results are imported. we populate it manually here
+        self.distance.genome_names = list(self.distance.results['alignment_coverage'].keys())
+
+        run.info('%s results directory imported from' % self.program_name, dir_path)
+
+        return self.distance.results[self.distance_metric_name]
+
+
     def main(self):
         run.info('Run mode', self.program_name)
 
         filesnpaths.check_output_directory(self.output_dir, ok_if_exists=False)
         os.mkdir(self.output_dir)
 
-        if self.program_name == "pyANI":
-            program = genomedistance.ANI(self.args)
-        else:
-            assert self.program_name == "sourmash", "Fatal error in self.program_name assertion in initialization. Please inform the developers."
-            program = genomedistance.SourMash(self.args)
+        # inits self.distance
+        self.init_genome_distance()
 
-        if not self.import_previous_results:
-            temp_dir = program.get_fasta_sequences_dir()
-            program.process(temp_dir)
+        self.distance_matrix = self.get_distance_matrix()
 
-            if self.program_name == "pyANI":
-                self.distance_matrix = program.results['percentage_identity']
 
-                run.info('pyANI process', 'completed')
-
-                if anvio.DEBUG:
-                    import json
-                    for report in results:
-                        run.warning(None, header=report)
-                        print(json.dumps(results[report], indent=2))
-            else:
-                assert self.program_name == "sourmash", "Fatal error in self.program_name assertion in generating results. Please inform the developers."
-
-                self.distance_matrix = program.results
-
-                run.info('sourmash process', 'completed')
-
-                if anvio.DEBUG:
-                    import json
-                    run.warning(None,header="Mash Distances")
-                    print(json.dumps(results, indent=2))
-
-        else:
-            if self.program_name == "pyANI":
-                if filesnpaths.is_dir_empty(self.ani_dir):
-                    raise ConfigError("The --ani-dir you provided is empty. What kind of game are you playing?")
-                files_in_dir = os.listdir(self.ani_dir)
-
-                necessary_reports = ['alignment_coverage', 'percentage_identity']
-                for report in necessary_reports:
-                    report_name = report + ".txt"
-                    matching_filepaths = [f for f in files_in_dir if report_name in f]
-
-                    if len(matching_filepaths) > 1:
-                        raise ConfigError("Your ANI results directory contains multiple text files for the matrix %s.\
-                                          Please clean up your directory and make sure that only one text file of this\
-                                          report exists" % report)
-                    elif len(matching_filepaths) == 0:
-                        raise ConfigError("Your ANI results directory does not have a text file for the report %s.\
-                                          Anvi'o cannot dereplicate genomes through pyANI without this report" % report)
-
-                    program.results[report] = utils.get_TAB_delimited_file_as_dictionary(os.path.join(self.ani_dir, matching_filepaths[0]))
-
-                program.genome_names = list(program.results['alignment_coverage'].keys())
-                self.distance_matrix = program.results['percentage_identity']
-
-                run.info('PyANI results directory imported from', self.ani_dir)
-            else:
-                assert self.program_name == "sourmash", "Fatal error in self.program_name assertion in importing file. Please inform the devlopers."
-
-                self.distance_matrix = utils.get_TAB_delimited_file_as_dictionary(os.path.join(self.mash_dir, "distance_matrix.txt"))
-
-                run.info('sourmash results directory imported from', self.mash_dir)
-
-        all_genome_names = program.genome_names
-        self.is_compatible(self.distance_matrix, all_genome_names)
-        run.info('Number of genomes retrieved', len(all_genome_names))
-
-        nonredundant_genome_names = program.remove_redundant_genomes(self.distance_matrix)
+        nonredundant_genome_names = self.distance.remove_redundant_genomes(self.distance_matrix)
         num_redundant = len(all_genome_names) - len(nonredundant_genome_names)
         run.info('Number of redundant genomes', num_redundant)
         run.info('Final number of dereplicated genomes', len(nonredundant_genome_names))
 
         if anvio.DEBUG:
             import json
-            all_groups = program.retrieve_genome_groups(nonredundant_genome_names)
+            all_groups = self.distance.retrieve_genome_groups(nonredundant_genome_names)
             for name in all_groups.keys():
                 run.warning(None, header=name)
                 print(json.dumps(all_groups[name], indent=2))
 
         if not self.import_previous_results:
-            hashes = program.rehash_names(nonredundant_genome_names)
+            hashes = self.distance.rehash_names(nonredundant_genome_names)
             utils.move_fasta_files_from_fasta_dir(temp_dir, hashes, self.output_dir, fasta_txt=self.provide_fasta_txt)
 
         run.info_single('Dereplicated fasta files stored in %s' % self.output_dir, nl_before=1)
@@ -238,8 +251,6 @@ class Dereplicate:
 
 
     def process(self):
-        self.determine_run_mode()
-        self.run_sanity_checks()
         self.main()
 
 

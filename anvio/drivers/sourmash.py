@@ -77,7 +77,7 @@ class Sourmash:
         self.progress.update('Computing distance matrix...')
         compare_command = [self.program_name, 'compare',
                            '-k', self.kmer_size,
-                           '--csv', 'matrix.csv']
+                           '--csv', 'mash_distance.txt']
         for f in fasta_files:
             compare_command.append(f + ".sig")
 
@@ -88,7 +88,7 @@ class Sourmash:
                               Please check the log file `%s` for details. Offending command: \
                               `%s` ..." % (self.log_file_path, ' '.join([str(x) for x in compute_command[:7]])))
 
-        matrix = utils.get_TAB_delimited_file_as_dictionary('matrix.csv', indexing_field=-1, separator=',')
+        matrix = utils.get_TAB_delimited_file_as_dictionary('mash_distance.txt', indexing_field=-1, separator=',')
 
         self.progress.end()
 

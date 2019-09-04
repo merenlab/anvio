@@ -74,7 +74,7 @@ class PyANI:
                               please check the log file for details.")
 
         output_matrix_names = ['alignment_coverage', 'alignment_lengths', 'hadamard', \
-                              'percentage_identity', 'similarity_errors', 'correlations']
+                               'percentage_identity', 'similarity_errors', 'correlations']
 
         full_matrix_path = lambda name: os.path.join(input_path, 'output', self.method + '_' + name + '.tab')
 
