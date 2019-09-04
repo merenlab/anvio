@@ -1466,21 +1466,20 @@ D = {
              'type': float,
              'help': "Minimum percent identity. The default is %(default)g."}
                 ),
-    'min-full-percent-identity': (
-            ['--min-full-percent-identity'],
-            {'metavar': 'FULL_PERCENT_IDENTITY',
-             'default': 0.0,
-             'type': float,
-             'help': "In some cases you may get high raw ANI estimates between two genomes that have\
-                      nothing to do with each other simply because only a small fraction of their content may\
-                      be aligned. This filter will eliminate ANI scores between two genomes if the *full*\
-                      percentage identity is less than you deem trustable. *full* percentage identity is the\
-                      same as percentage identity, except that regions that did not align are counted\
-                      against. So if P is the percentage identity calculated in aligned regions, L is the\
-                      length of the genome, and A is the fraction of the genome that aligned to a compared\
-                      genome, the full percent identity is P * (A/L). When you set a value, anvi'o will go\
-                      through the ANI results, and set the full percent identity scores between two genomes\
-                      to 0 if *either of them* are less than the parameter described here. The default is %(default)g."}
+    'use-full-percent-identity': (
+            ['--use-full-percent-identity'],
+            {'action': 'store_true',
+             'help': "Usually, percent identity is calculated only over aligned regions. With this flag,\
+                      you can instead report *full* percentage identity. It is the\
+                      same as percent identity, except that regions that did not align are included\
+                      in the calculation. This means *full* percent identity will always be less than or\
+                      equal to percent identity. How is it calculated? Well if P is the percentage identity\
+                      calculated in aligned regions, L is the length of the genome, and A is the fraction\
+                      of the genome that aligned to a compared genome, the full percent identity is\
+                      P * (A/L). In other words, it is the percent identity multiplied by the alignment\
+                      coverage. When you provide this flag, every subsequent mention or action (such as\
+                      filters like --min-percent-identity) involving percent identity will be for\
+                      *full* percent identity."}
                 ),
     'min-alignment-fraction': (
             ['--min-alignment-fraction'],

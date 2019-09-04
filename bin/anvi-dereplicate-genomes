@@ -49,6 +49,9 @@ class Dereplicate:
         self.representative_method = A('representative_method', null)
         # pyANI specific
         self.min_alignment_fraction = A('min_alignment_fraction', null)
+        self.significant_alignment_length = A('significant_alignment_length', null)
+        self.min_percent_identity = A('min_percent_identity', null)
+        self.use_full_percent_identity = A('use_full_percent_identity', null)
         # sourmash specific
         self.min_mash_distance = A('min_mash_distance', null)
         self.distance_threshold = A('distance_threshold', null)
@@ -142,7 +145,7 @@ class Dereplicate:
             program.process(temp_dir)
 
             if self.program_name == "pyANI":
-                self.distance_matrix = program.get_proper_percent_identity(program.results)
+                self.distance_matrix = program.results['percentage_identity']
 
                 run.info('pyANI process', 'completed')
 
@@ -185,7 +188,7 @@ class Dereplicate:
                     program.results[report] = utils.get_TAB_delimited_file_as_dictionary(os.path.join(self.ani_dir, matching_filepaths[0]))
 
                 program.genome_names = list(program.results['alignment_coverage'].keys())
-                self.distance_matrix = program.get_proper_percent_identity(program.results)
+                self.distance_matrix = program.results['percentage_identity']
 
                 run.info('PyANI results directory imported from', self.ani_dir)
             else:
@@ -243,6 +246,16 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
     groupA.add_argument(*anvio.A('fasta-text-file'), **anvio.K('fasta-text-file'))
 
+    groupD = parser.add_argument_group('Import results', "Alternatively, if you have previous ANI or mash distance\
+                                        computations on your genomes, you can import the result directory here to use. Please note\
+                                        that file names must remain unchanged for anvi'o to find them")
+    groupD.add_argument('--ani-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-ani`\
+                        and use it for dereplication")
+    # FIXME anvi-compute-mash-distance does not exist. Ideally, we rename anvi-compute-ani to
+    # anvi-compute-genome-distance and can calculate either ANI or mash
+    groupD.add_argument('--mash-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-mash-distance`\
+                        and use it for dereplication")
+
     groupB = parser.add_argument_group('OUTPUT OPTIONS', "Tell anvi'o where to store your results.")
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
     groupB.add_argument('--provide-fasta-txt', default=False, action='store_true', help="If you would like anvi'o to provide\
@@ -256,17 +269,6 @@ if __name__ == '__main__':
                         the necessary binary in path for the program you choose.",\
                         choices=['pyANI','sourmash'])
 
-    groupD = parser.add_argument_group('Import results', "Alternatively, if you have previous ANI or mash distance\
-                                        computations on your genomes, you can import the result directory here to use. Please note\
-                                        that file names must remain unchanged for anvi'o to find them")
-    groupD.add_argument('--ani-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-ani`\
-                        and use it for dereplication")
-
-    # FIXME anvi-compute-mash-distance does not exist. Ideally, we rename anvi-compute-ani to
-    # anvi-compute-genome-distance and can calculate either ANI or mash
-    groupD.add_argument('--mash-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-mash-distance`\
-                        and use it for dereplication")
-
     groupE = parser.add_argument_group('pyANI Settings', "Tell anvi'o to tell pyANI what method you wish to use and what settings to set.\
                         Only if `--program` is set to `pyANI`")
     groupE.add_argument('--method', default='ANIb', type=str, help="Method for pyANI. The default is %(default)s.\
@@ -278,7 +280,11 @@ if __name__ == '__main__':
                          choices=['ANIm', 'ANIb', 'ANIblastall', 'TETRA'])
     groupE.add_argument(*anvio.A('min-alignment-fraction'), **anvio.K('min-alignment-fraction', params_dict={'default':0.25}))
     groupE.add_argument(*anvio.A('significant-alignment-length'), **anvio.K('significant-alignment-length'))
-    groupE.add_argument(*anvio.A('min-full-percent-identity'), **anvio.K('min-full-percent-identity'))
+    groupE.add_argument(*anvio.A('use-full-percent-identity'), **anvio.K('use-full-percent-identity'))
+    groupE.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', params_dict = {'default': 0.0,
+                        'help': "When you set a value, anvi'o will go through the ANI results, and set\
+                                 percent identity scores between genomes to 0 if *either* of the percent\
+                                 identity values fall below this value. The default value is %(default)g."}))
 
     groupF = parser.add_argument_group('sourmash settings', "Tell anvi'o to run sourmash with specific settings. Only\
                         if `--program` is set to `sourmash`")

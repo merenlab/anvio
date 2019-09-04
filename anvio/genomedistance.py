@@ -299,70 +299,55 @@ class ANI(GenomeDistance):
         null = lambda x: x
         self.min_alignment_fraction = A('min_alignment_fraction', null)
         self.significant_alignment_length = A('significant_alignment_length', null)
-        self.min_full_percent_identity = A('min_full_percent_identity', null)
-
-
-    def get_proper_percent_identity(self, results, min_alignment_fraction=None):
-        """
-        FIXME I don't know if this is essentially taken care of by decouple_weak_hits
-        EDIT It doesn't, but it should
-
-        proper_percent_identity is the percentage identity of the aligned region multiplied by the
-        alignment length divided by the shortest length of the two genomes
-        """
-        self.progress.new('PyANI')
-        self.progress.update('Calculating proper percent identity')
-
-        if not min_alignment_fraction:
-            min_alignment_fraction = self.min_alignment_fraction
-
-        matrix = {}
-        for name in self.genome_names:
-            matrix[name] = {}
-
-            for target in self.genome_names:
-                if float(results['alignment_coverage'][name][target]) < min_alignment_fraction:
-                    matrix[name][target] = 0
-                else:
-                    matrix[name][target] = float(results['percentage_identity'][name][target])
-
-        self.progress.end()
-
-        return matrix
+        self.min_percent_identity = A('min_percent_identity', null)
+        self.use_full_percent_identity = A('use_full_percent_identity', null)
 
 
     def decouple_weak_associations(self):
         """
-        potentially modifies:
-            percentage_identity using:
-                {self.min_alignment_fraction, self.significant_alignment_length}
-            percentage_full_identity using:
-                {self.min_full_percent_identity}
+        potentially modifies results dict using any of:
+            {self.min_alignment_fraction, self.significant_alignment_length, self.min_percent_identity}
         """
-        if self.min_full_percent_identity:
-            if 'percentage_full_identity' not in self.results:
-                raise ConfigError("You asked anvi'o to remove weak hits through the --min-alignment-fraction\
+        # in this list we will keep the tuples of genome-genome associations
+        # that need to be set to zero in all result dicts:
+        genome_hits_to_zero = []
+        num_anvio_will_remove_via_percent_identity = 0
+        num_anvio_wants_to_remove_via_alignment_fraction = 0
+        num_saved_by_significant_length_param = 0
+
+        if self.min_percent_identity:
+            p = self.results.get('percentage_identity')
+            if not p:
+                raise ConfigError("You asked anvi'o to remove weak hits through the --min-percent-identity\
                                    parameter, but the results dictionary does not contain any information about\
-                                   alignment fractions :/ These are the items anvi'o found instead: '%s'. Please let a\
+                                   percent identity :/ These are the items anvi'o found instead: '%s'. Please let a\
                                    developer know about this if this doesn't make any sense." % (', '.join(self.results.keys())))
 
-            p = self.results['percentage_full_identity']
-            genome_hits_to_zero = []
             for g1 in p:
                 for g2 in p:
                     if g1 == g2:
                         continue
 
-                    if float(p[g1][g2]) < self.min_full_percent_identity or float(p[g2][g1]) < self.min_full_percent_identity:
+                    if float(p[g1][g2]) < self.min_percent_identity or float(p[g2][g1]) < self.min_percent_identity:
+                        num_anvio_will_remove_via_percent_identity += 1
                         genome_hits_to_zero.append((g1, g2), )
 
-            for report_name in self.results:
-                for g1, g2 in genome_hits_to_zero:
-                    self.results['percentage_full_identity'][g1][g2] = 0
-                    self.results['percentage_full_identity'][g2][g1] = 0
+            if len(genome_hits_to_zero):
+                g1, g2 = genome_hits_to_zero[0]
 
-            # reset for rest of method
-            genome_hits_to_zero = []
+                run.warning("THIS IS VERY IMPORTANT! You asked anvi'o to remove any hits between\
+                             two genomes if they had a percent identity less than '%.2f'. Anvi'o found %d\
+                             such instances between the pairwise comparisons of your %d genomes, and is about\
+                             to set percent identity estimates emerging from those weak hits to 0 in all\
+                             results. For instance, one of your genomes, '%s', was %.3f identical to '%s',\
+                             another one of your genomes, which is below your threshold, and so the\
+                             percent identity between them will be ignored (set to 0) for all downstream\
+                             reports you will find in anvi'o tables and visualizations. Anvi'o\
+                             kindly invites you to carefully think about potential implications of\
+                             discarding hits based on an arbitrary alignment fraction, but does not\
+                             judge you because it is not perfect either." % (self.min_percent_identity,
+                                                                             num_anvio_will_remove_via_percent_identity,
+                                                                             len(p), g1, float(p[g1][g2]), g2))
 
         if self.min_alignment_fraction:
             if 'alignment_coverage' not in self.results:
@@ -379,62 +364,61 @@ class ANI(GenomeDistance):
             d = self.results['alignment_coverage']
             l = self.results['alignment_lengths']
 
-            # in this list we will keep the tuples of genome-genome associations
-            # that need to be set to zero in all result dicts:
-            genome_hits_to_zero = []
-            those_that_anvio_wanted_to_remove = 0
-            those_that_saved_by_significant_length_param = 0
             for g1 in d:
                 for g2 in d:
                     if g1 == g2:
                         continue
 
                     if float(d[g1][g2]) < self.min_alignment_fraction or float(d[g2][g1]) < self.min_alignment_fraction:
-                        those_that_anvio_wanted_to_remove += 1
+                        num_anvio_wants_to_remove_via_alignment_fraction += 1
 
                         if self.significant_alignment_length and min(float(l[g1][g2]), float(l[g2][g1])) > self.significant_alignment_length:
-                            those_that_saved_by_significant_length_param += 1
+                            num_saved_by_significant_length_param += 1
                             continue
                         else:
                             genome_hits_to_zero.append((g1, g2), )
 
-            if len(genome_hits_to_zero):
-                g1, g2 = genome_hits_to_zero[0]
+            if num_anvio_wants_to_remove_via_alignment_fraction - num_saved_by_significant_length_param > 0:
+                g1, g2 = genome_hits_to_zero[num_anvio_will_remove_via_percent_identity]
 
-                if those_that_saved_by_significant_length_param:
+                if num_saved_by_significant_length_param:
                     additional_msg = "By the way, anvi'o saved %d weak hits becasue they were longer than the length of %d nts you\
                                       specified using the --significant-alignment-length parameter. " % \
-                                            (those_that_saved_by_significant_length_param, self.significant_alignment_length)
+                                            (num_saved_by_significant_length_param, self.significant_alignment_length)
                 else:
                     additional_msg = ""
 
                 run.warning("THIS IS VERY IMPORTANT! You asked anvi'o to remove any hits between two genomes if the hit\
-                             was produced by a weak alignment (which you defined as alignment fraction less than '%.2f').\
-                             Anvi'o found %d hits between your %d genomes, and is about to set percent identity estimates emerging\
-                             from those weak hits to 0 in all results. For instance, one of your genomes, '%s', was %.3f\
-                             identical to '%s', another one of your genomes, but the aligned fraction of %s to %s was only %.3f\
+                             was produced by a weak alignment (which you defined as alignment fraction less than '%.2f'). Anvi'o\
+                             found %d such instances between the pairwise comparisons of your %d genomes, and is about to set percent\
+                             identity estimates emerging from those weak hits to 0 in all results. For instance, one of your genomes, '%s',\
+                             was %.3f identical to '%s', another one of your genomes, but the aligned fraction of %s to %s was only %.3f\
                              and was below your threshold, and so the percent identity between them will be ignored for all\
                              downstream reports you will find in anvi'o tables and visualizations. %sAnvi'o kindly invites you\
                              to carefully think about potential implications of discarding hits based on an arbitrary alignment\
                              fraction, but does not judge you because it is not perfect either." % \
-                                                    (self.min_alignment_fraction, those_that_anvio_wanted_to_remove, len(d), g1, \
-                                                     float(self.results['percentage_identity'][g1][g2]), g2, g1, g2, \
+                                                    (self.min_alignment_fraction,
+                                                     num_anvio_wants_to_remove_via_alignment_fraction,
+                                                     len(d), g1, float(self.results['percentage_identity'][g1][g2]), g2, g1, g2,
                                                      float(self.results['alignment_coverage'][g1][g2]), additional_msg))
 
-            elif those_that_saved_by_significant_length_param:
+            elif num_saved_by_significant_length_param:
                  run.warning("THIS IS VERY IMPORTANT! You asked anvi'o to remove any hits between two genomes if the hit\
-                              was produced by a weak alignment (which you defined as an alignment fraction less than '%.2f').\
-                              Anvi'o found %d hits between your %d genomes, but the --significant-alignment-length parameter\
+                              was produced by a weak alignment (which you defined as an alignment fraction less\
+                              than '%.2f'). Anvi'o found %d such instances between the pairwise\
+                              comparisons of your %d genomes, but the --significant-alignment-length parameter\
                               saved them all, because each one of them were longer than %d nts. So your filters kinda cancelled\
                               each other out. Just so you know." % \
-                                                    (self.min_alignment_fraction, those_that_anvio_wanted_to_remove, len(d),
+                                                    (self.min_alignment_fraction,
+                                                     num_anvio_wants_to_remove_via_alignment_fraction, len(d),
                                                      self.significant_alignment_length))
 
-            # time to zero those values out:
-            for report_name in self.results:
-                for g1, g2 in genome_hits_to_zero:
-                    self.results[report_name][g1][g2] = 0
-                    self.results[report_name][g2][g1] = 0
+        # time to zero those values out:
+        genome_hits_to_zero = set(genome_hits_to_zero)
+        for report_name in self.results:
+            for g1, g2 in genome_hits_to_zero:
+                self.results[report_name][g1][g2] = 0
+                self.results[report_name][g2][g1] = 0
 
 
     def process(self, temp=None):
@@ -442,17 +426,19 @@ class ANI(GenomeDistance):
 
         self.results = self.program.run_command(temp_dir)
         self.results = self.restore_names_in_dict(self.results)
-        self.results = self.calculate_additional_matrices(self.results)
+        self.results = self.get_full_percent_identity(self.results)
         self.decouple_weak_associations()
 
         if temp is None:
             shutil.rmtree(temp_dir)
 
 
-    def calculate_additional_matrices(self, results):
-        # percentage_full_identity
-        df = lambda matrix_name: pd.DataFrame(results[matrix_name]).astype(float)
-        results['percentage_full_identity'] = (df('percentage_identity') * df('alignment_coverage')).to_dict()
+    def get_full_percent_identity(self, results):
+        """Currently overwrites percent_identity"""
+
+        if self.use_full_percent_identity:
+            df = lambda matrix_name: pd.DataFrame(results[matrix_name]).astype(float)
+            results['percentage_identity'] = (df('percentage_identity') * df('alignment_coverage')).to_dict()
 
         return results
 
