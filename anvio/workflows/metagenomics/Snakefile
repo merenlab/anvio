@@ -255,8 +255,8 @@ def uncompress_fastqs_if_needed(r1, r2, log):
     if need_to_uncompress_fastqs(r1, r2):
         r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
         r2_unzipped = r2.replace('.fastq.gz', '_temp.fastq')
-        shell("gunzip < %s > %s 2> %s" % (r1, r1_unzipped, log))
-        shell("gunzip < %s > %s 2> %s" % (r2, r2_unzipped, log))
+        shell("gunzip < %s > %s 2>> %s" % (r1, r1_unzipped, log))
+        shell("gunzip < %s > %s 2>> %s" % (r2, r2_unzipped, log))
         r1 = r1_unzipped
         r2 = r2_unzipped
     return r1, r2
@@ -296,7 +296,7 @@ rule remove_short_reads_based_on_references:
         references = M.references_for_removal.keys()
         for bam in input.bam:
             # merge the ids from matching any reference
-            shell('samtools view %s | cut -f 1 >> %s 2>{log}' % (bam, output.ids_to_remove))
+            shell('samtools view %s | cut -f 1 >> %s 2>>{log}' % (bam, output.ids_to_remove))
         ids_to_remove = set(open(output.ids_to_remove).read().splitlines())
         with open(output.ids_to_remove, 'w') as f:
             for item in ids_to_remove:
@@ -443,15 +443,15 @@ rule merge_fastas_for_co_assembly:
 
             if need_to_uncompress:
                 # if we had to unzip the fastq files then now we delete the unzipped file
-                shell("rm %s %s 2>%s" % (r1, r2, log))
+                shell("rm %s %s 2>>%s" % (r1, r2, log))
 
             if concatenate:
                 # concatenate
-                shell("cat %s >> %s 2>%s" % (fq2fa_output, output, log))
+                shell("cat %s >> %s 2>>%s" % (fq2fa_output, output, log))
                 # delete individual fasta file
-                shell("rm %s 2>%s" % (fq2fa_output, log))
+                shell("rm %s 2>>%s" % (fq2fa_output, log))
             else:
-                shell("mv %s %s 2>%s" % (fq2fa_output, output, log))
+                shell("mv %s %s 2>>%s" % (fq2fa_output, output, log))
 
 
 rule merge_fastqs_for_co_assembly:
@@ -469,12 +469,12 @@ rule merge_fastqs_for_co_assembly:
             r1, r2 = uncompress_fastqs_if_needed(r1, r2, log)
 
             # concatenate
-            shell("cat %s >> %s 2>%s" % (r1, output.r1, log))
-            shell("cat %s >> %s 2>%s" % (r2, output.r2, log))
+            shell("cat %s >> %s 2>>%s" % (r1, output.r1, log))
+            shell("cat %s >> %s 2>>%s" % (r2, output.r2, log))
 
             if need_to_uncompress:
                 # if we had to unzip the fastq files then now we delete the unzipped file
-                shell("rm %s %s 2>%s" % (r1, r2, log))
+                shell("rm %s %s 2>>%s" % (r1, r2, log))
 
 gzip_fastq_output = os.path.join(dirs_dict["QC_DIR"],\
                                  "{sample}-QUALITY_PASSED_{R}.fastq.gz")
@@ -905,7 +905,7 @@ rule gen_readme_file_for_unmerged_groups:
         """
             echo -e 'The group {wildcards.group} has only one sample. Hence, there is nothing to merge, but you can find\n\
                      the profile database here: {input.profiles}. Also, just so you know, profile was done using\n\
-                     --cluster-contigs so you can visualize this profile database using anvi-interactive.' > {output} 2>{log}
+                     --cluster-contigs so you can visualize this profile database using anvi-interactive.' > {output} 2>>{log}
         """
 
 
@@ -1163,7 +1163,7 @@ rule krakenuniq_mpa_report:
             krakenuniq-mpa-report {params.db} \
                                   --header-line \
                                   {input} \
-                                  > {output} 2> {log}
+                                  > {output} 2>> {log}
         """
 
 
