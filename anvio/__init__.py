@@ -1476,7 +1476,7 @@ D = {
                       a small fraction of their content may be aligned. This can be partly\
                       alleviated by considering the *full* percent identity, which includes in its\
                       calculation regions that did not align. For example, if the alignment is a\
-                      whopping 97 percent identity but only 8% of the genome aligned, the *full*\
+                      whopping 97 percent identity but only 8 percent of the genome aligned, the *full*\
                       percent identity is 0.970 * 0.080 = 0.078 OR 7.8 percent. *full* percent\
                       identity is always included in the report, but you can also use it as a filter\
                       for other metrics, such as percent identity. This filter will set all ANI\
@@ -1499,7 +1499,7 @@ D = {
                       of the genome that aligned to a compared genome, the full percent identity is\
                       P * (A/L). In other words, it is the percent identity multiplied by the alignment\
                       coverage. For example, if the alignment is a whopping 97 percent identity but\
-                      only 8% of the genome aligned, the *full* percent identity is 0.970 * 0.080\
+                      only 8 percent of the genome aligned, the *full* percent identity is 0.970 * 0.080\
                       = 0.078, which is just 7.8 percent."}
                 ),
     'min-alignment-fraction': (
@@ -1526,7 +1526,7 @@ D = {
                       nucleotides regardless of what fraction of the genome it represents? Well, this parameter is\
                       to recover things that may be lost due to --min-alignment-fraction parameter. Let's say,\
                       if you set --min-alignment-fraction to '0.05', and this parameter to '5000', anvi'o will keep\
-                      hits from alignments that are longer than 5000 nts, EVEN IF THEY REPRESENT less than 5%% of\
+                      hits from alignments that are longer than 5000 nts, EVEN IF THEY REPRESENT less than 5 percent of\
                       a given genome pair. Basically if --min-alignment-fraction is your shield to protect yourself\
                       from incoming garbage, --significant-alignment-length is your chopstick to pick out those that\
                       may be interesting, and you are a true warrior here."}

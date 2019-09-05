@@ -62,6 +62,7 @@ class Dereplicate:
 
         self.import_previous_results = False
 
+
         self.determine_run_mode()
         self.run_sanity_checks()
         self.distance_metric_name = self.get_distance_metric_name()
@@ -69,9 +70,9 @@ class Dereplicate:
 
     def get_distance_metric_name(self):
         if self.program_name in ['pyANI']:
-            self.distance_metric_name = 'percentage_identity' if not self.use_full_percent_identity else 'full_percentage_identity'
+            return 'percentage_identity' if not self.use_full_percent_identity else 'full_percentage_identity'
         elif self.program_name in ['sourmash']:
-            self.distance_metric_name = 'mash_distance'
+            return 'mash_distance'
 
 
     def is_genome_names_compatible_with_distance_matrix(self, distance_matrix, genome_names):
@@ -154,15 +155,14 @@ class Dereplicate:
 
     def get_distance_matrix(self):
         distance_matrix = self.import_distance_matrix() if self.import_previous_results else self.calculate_distance_matrix()
-        self.is_genome_names_compatible_with_distance_matrix(self.distance_matrix, self.distance.genome_names)
+        self.is_genome_names_compatible_with_distance_matrix(distance_matrix, self.distance.genome_names)
         run.info('Number of genomes considered', len(distance_matrix))
 
         return distance_matrix
 
 
     def calculate_distance_matrix(self):
-        temp_dir = self.distance.get_fasta_sequences_dir()
-        self.distance.process(temp_dir)
+        self.distance.process(self.temp_dir)
 
         distance_matrix = self.distance.results[self.distance_metric_name]
 
@@ -208,7 +208,35 @@ class Dereplicate:
         return self.distance.results[self.distance_metric_name]
 
 
-    def main(self):
+    def get_genome_groups(self):
+        self.nonredundant_genome_names = self.distance.remove_redundant_genomes(self.distance_matrix)
+
+        run.info('Number of redundant genomes', num_redundant)
+        run.info('Final number of dereplicated genomes', len(self.nonredundant_genome_names))
+
+        genome_groups = self.distance.retrieve_genome_groups(nonredundant_genome_names)
+
+        if anvio.DEBUG:
+            import json
+            for name in all_groups.keys():
+                run.warning(None, header=name)
+                print(json.dumps(all_groups[name], indent=2))
+
+        return all_groups
+
+
+    def clean(self):
+        if anvio.DEBUG:
+            run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
+                         later" % self.temp_dir, header="Debug")
+        elif not self.import_previous_results:
+            run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
+                             like to keep it for testing purposes)', nl_before=1, nl_after=1)
+            shutil.rmtree(self.temp_dir)
+            self.temp_dir = None
+
+
+    def process(self):
         run.info('Run mode', self.program_name)
 
         filesnpaths.check_output_directory(self.output_dir, ok_if_exists=False)
@@ -217,41 +245,23 @@ class Dereplicate:
         # inits self.distance
         self.init_genome_distance()
 
+        # will hold a directory of fasta files to calculate distance matrix
+        self.temp_dir = self.distance.get_fasta_sequences_dir() if not self.import_previous_results else None
+
         self.distance_matrix = self.get_distance_matrix()
 
-
-        nonredundant_genome_names = self.distance.remove_redundant_genomes(self.distance_matrix)
-        num_redundant = len(all_genome_names) - len(nonredundant_genome_names)
-        run.info('Number of redundant genomes', num_redundant)
-        run.info('Final number of dereplicated genomes', len(nonredundant_genome_names))
-
-        if anvio.DEBUG:
-            import json
-            all_groups = self.distance.retrieve_genome_groups(nonredundant_genome_names)
-            for name in all_groups.keys():
-                run.warning(None, header=name)
-                print(json.dumps(all_groups[name], indent=2))
+        self.all_groups = self.get_genome_groups()
 
         if not self.import_previous_results:
             hashes = self.distance.rehash_names(nonredundant_genome_names)
-            utils.move_fasta_files_from_fasta_dir(temp_dir, hashes, self.output_dir, fasta_txt=self.provide_fasta_txt)
+            utils.move_fasta_files_from_fasta_dir(self.temp_dir, hashes, self.output_dir, fasta_txt=self.provide_fasta_txt)
 
         run.info_single('Dereplicated fasta files stored in %s' % self.output_dir, nl_before=1)
         if self.provide_fasta_txt:
                 run.info_single('FASTA text file `dereplcated-fasta.txt` stored in %s' % self.output_dir, nl_before=1)
 
-        if anvio.DEBUG:
-            run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
-                         later" % temp_dir, header="Debug")
-        elif not self.import_previous_results:
-            run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
-                             like to keep it for testing purposes)', nl_before=1, nl_after=1)
-            shutil.rmtree(temp_dir)
-            temp_dir = None
+        self.clean()
 
-
-    def process(self):
-        self.main()
 
 
 if __name__ == '__main__':
@@ -297,10 +307,7 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('min-alignment-fraction'), **anvio.K('min-alignment-fraction', params_dict={'default':0.25}))
     groupE.add_argument(*anvio.A('significant-alignment-length'), **anvio.K('significant-alignment-length'))
     groupE.add_argument(*anvio.A('use-full-percent-identity'), **anvio.K('use-full-percent-identity'))
-    groupE.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', params_dict = {'default': 0.0,
-                        'help': "When you set a value, anvi'o will go through the ANI results, and set\
-                                 percent identity scores between genomes to 0 if *either* of the percent\
-                                 identity values fall below this value. The default value is %(default)g."}))
+    groupE.add_argument(*anvio.A('min-full-percent-identity'), **anvio.K('min-full-percent-identity'))
 
     groupF = parser.add_argument_group('sourmash settings', "Tell anvi'o to run sourmash with specific settings. Only\
                         if `--program` is set to `sourmash`")
