@@ -1,0 +1,196 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""A script to use sourmash to compute mash distance """
+
+import sys
+import shutil
+import argparse
+
+import anvio
+import anvio.db as db
+import anvio.utils as utils
+import anvio.terminal as terminal
+import anvio.clustering as clustering
+import anvio.filesnpaths as filesnpaths
+import anvio.genomedistance as genomedistance
+
+
+from anvio.tables.miscdata import TableForLayerAdditionalData
+from anvio.tables.miscdata import TableForLayerOrders
+
+from anvio.errors import ConfigError, FilesNPathsError
+import anvio.errors
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Mahmoud Yousef"
+__email__ = "mahmoudyousef@uchicago.edu"
+__requires__ = ['external-genomes', 'internal-genomes', 'pandb']
+__provides__ = ['kmer', 'mash distance']
+__description__ = ("Run sourmash on sequences to compute mash distance matrix")
+
+
+run = terminal.Run()
+
+
+def main(args):
+    if args.min_distance < 0 or args.min_distance > 1:
+        raise ConfigError("The minimum mash distance must be a value between 0.0 and 1.0. %.2f does\
+                           not work for anvi'o :/" % args.min_distance)
+
+    clustering.is_distance_and_linkage_compatible(args.distance, args.linkage)
+
+    program = genomedistance.SourMash(args)
+    temp_dir = program.get_fasta_sequences_dir()
+    results = program.process(temp_dir)
+    genome_names = program.retrieve_genome_names()
+
+    if args.save_plots:
+        program.generate_plots(temp_dir)
+
+    if anvio.DEBUG:
+        import json
+        run.warning(None,header="Mash Distance")
+        print(json.dumps(results, indent=2))
+
+    if args.min_distance > 0:
+        genome_hits_to_zero = []
+        number_removed = 0
+        for g1 in results:
+            for g2 in results:
+                if g1 == g2:
+                    continue
+
+                if float(results[g1][g2]) < args.min_distance or float(results[g2][g1]) < args.min_distance:
+                    genome_hits_to_zero.append((g1, g2), )
+                    number_removed += 1
+
+        if len(genome_hits_to_zero):
+
+            run.warning("THIS IS VERY IMPORTANT! You asked anvi'o to remove any hits between two genomes\
+                        if their mash distance is considered negligible (which you defined as a minimum\
+                        mash distance of %.2f. Anvi'o found %d such hits between your %d genomes, and is about to set\
+                        mash distance between them to 0. Anvi'o kindly invites you to carefully think about the\
+                        potential implications of discarding hits based on arbitrary values, but does not judge you\
+                        because it is not perfect either." %
+                        (args.min_distance, len(genome_hits_to_zero), len(results)))
+
+        for g1, g2 in genome_hits_to_zero:
+            results[g1][g2] = 0
+            results[g2][g1] = 0
+
+    utils.store_dict_as_TAB_delimited_file(results, args.output_file)
+
+    try:
+    	cluster = clustering.get_newick_tree_data_for_dict(results, linkage=args.linkage, distance=args.distance)
+    except:
+           keep_temp = True
+           raise ConfigError("Bad news :/ Something went wrong while anvi'o was processing the distance matrix. Try\
+           					 looking in the temporary directory for more information")
+
+    with open(args.output_file.split(".")[0] + '.newick', 'w') as f:
+    	f.write(cluster)
+
+    if args.pan_db:
+    	utils.is_pan_db(args.pan_db)
+    	pan = db.DB(args.pan_db, anvio.__pan__version__)
+
+    	db_genome_names = set([])
+        G = lambda g: pan.get_meta_value(g).strip().split(',')
+        for genome_name in G('external_genome_names') + G('internal_genome_names'):
+            db_genome_names.add(genome_name) if len(genome_name) else None
+
+        found_only_in_db = db_genome_names.difference(genome_names)
+        found_only_in_results = genome_names.difference(db_genome_names)
+
+        if len(found_only_in_results) > 0:
+            raise ConfigError("Some genome names found in sourmash result, do not seem to exist in the pan database. \
+                Here are the list of them: " + ", ".join(list(found_only_in_results)))
+
+        if len(found_only_in_db) > 0:
+            run.warning("Some genome names found in pan database do not seem to be exist in the sourmash result. \
+                anvi'o will add the ones that are found in database anyway, but here is the list of missing ones: \
+                " + ", ".join(list(found_only_in_db)))
+
+        run.warning(None, header="MISC DATA MAGIC FOR YOUR PAN DB", lc='green')
+        target_data_group = "K-mer_Similarity"
+        l_args = argparse.Namespace(pan_db=args.pan_db, just_do_it=True, target_data_group=target_data_group)
+        TableForLayerAdditionalData(l_args, r=terminal.Run(verbose=False)).add(results, list(results.keys()))
+
+        TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({'Mash_Distance': {'data_type': 'newick',
+                                                                  'data_value': cluster}})
+
+        run.info_single("Additional data and order for %s are now in pan db" % target_data_group.replace('_', ' '), mc='green')
+
+    if anvio.DEBUG:
+        run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
+                     later" % temp_dir, header="Debug")
+    else:
+        run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
+                         like to keep it for testing purposes)', nl_before=1, nl_after=1)
+        shutil.rmtree(temp_dir)
+        temp_dir = None
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('INPUT OPTIONS', "Tell anvi'o what you want.")
+    groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
+    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+
+    groupB = parser.add_argument_group('OUTPUT OPTIONS', "Tell anvi'o where and what to store.")
+    groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True }))
+    groupB.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False, 'help': "This is\
+                        totally optional, but very useful when applicable. If you are running sourmash for\
+                        genomes for which you already have an anvi'o pangeome, then you can show where\
+                        the pan database is and anvi'o would automatically add the results into the\
+                        misc data tables of your pangenome. Those data can then be shown as heatmaps\
+                        on the pan interactive interface through the 'layers' tab."}))
+    groupB.add_argument('--save-plots', default=False, action='store_true', help="After the computation\
+                        of the distance matrix, you have the option to generate plots of your results.\
+                        These will be saved as .png files")
+    groupB.add_argument('--min-distance', type=float, default=0.0, help="In some cases, you may get\
+                        large mash distances between two genomes that are completely unrelated\
+                        simply because a small fraction of k-mers align with each other. This filter\
+                        will eliminate mash distances between two genomes if the score is less than\
+                        what you deem trustable. When you set a value, anvi'o will parse through the\
+                        distance matrix and set the mash distance to 0 if it is less than the parameter\
+                        described here. The default is 0.0")
+
+    groupC = parser.add_argument_group('Sourmash settings', "Tell anvi'o how to run sourmash")
+    groupC.add_argument('--kmer-size', type=int, default=51, metavar='INT', help="Set the k-mer size for k-mer\
+                        distance checks. sourmash recommends a size of 51, which is the default option. For\
+                        relatively shorter or longer genomes, you may want to decrease or increase this size\
+                        respectively")
+    groupC.add_argument('--scale', type=int, default=1000, metavar='INT', help='Set the compression ratio for\
+                        fasta signature file computations. The default is 1000. Smaller ratios decrease sensitivity,\
+                        while larger ratios will lead to large fasta signatures.')
+
+    groupE = parser.add_argument_group('HIERARCHICAL CLUSTERING', "Once sourmash is done with its magic, it reports\
+    					 mash distances as a distance matrix, which can be clustered into nice looking dendrograms\
+                         to display the relationships between genomes nicely (in the anvi'o interface and elsewhere).\
+                         Here you can set the distance metric and the linkage algorithm for that.")
+    groupE.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help': 'The distance metric for the hierarchical \
+                         clustering. The default is "%(default)s".'}))
+    groupE.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'help': 'The linkage method for the hierarchical \
+                         clustering. The default is "%(default)s".'}))
+
+    groupE = parser.add_argument_group('OTHER IMPORTANT STUFF', "Yes. You're almost done.")
+    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    groupE.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
+

@@ -422,7 +422,7 @@ class Timer:
         return checkpoint
 
 
-    def calculate_time_remaining(self, infinite_default = 'inf'):
+    def calculate_time_remaining(self, infinite_default = '∞'):
         if self.complete:
             return datetime.timedelta(seconds = 0)
         if not self.required_completion_score:
@@ -442,7 +442,7 @@ class Timer:
         # eta was called within the last half second, the previous ETA is returned without further
         # calculation.
         eta_timestamp = self.timestamp()
-        if eta_timestamp - self.last_eta_timestamp < datetime.timedelta(seconds = 0.5):
+        if eta_timestamp - self.last_eta_timestamp < datetime.timedelta(seconds = 0.5) and self.num_checkpoints > 0:
             return self.last_eta
 
         eta = self.calculate_time_remaining()
