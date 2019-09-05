@@ -37,8 +37,6 @@ run = terminal.Run()
 
 
 def main(args):
-	temp_dir = None
-	keep_temp = False
     if args.min_distance < 0 or args.min_distance > 1:
         raise ConfigError("The minimum mash distance must be a value between 0.0 and 1.0. %.2f does\
                            not work for anvi'o :/" % args.min_distance)
@@ -55,10 +53,10 @@ def main(args):
 
     if anvio.DEBUG:
         import json
-        run.warning(None,header="K-mer Similarity Scores")
+        run.warning(None,header="Mash Distance")
         print(json.dumps(results, indent=2))
 
-    if args.min_similarity > 0:
+    if args.min_distance > 0:
         genome_hits_to_zero = []
         number_removed = 0
         for g1 in results:
@@ -66,7 +64,7 @@ def main(args):
                 if g1 == g2:
                     continue
 
-                if float(results[g1][g2]) < args.min_similarity or float(results[g2][g1]) < args.min_similarity:
+                if float(results[g1][g2]) < args.min_distance or float(results[g2][g1]) < args.min_distance:
                     genome_hits_to_zero.append((g1, g2), )
                     number_removed += 1
 
@@ -78,7 +76,7 @@ def main(args):
                         mash distance between them to 0. Anvi'o kindly invites you to carefully think about the\
                         potential implications of discarding hits based on arbitrary values, but does not judge you\
                         because it is not perfect either." %
-                        {args.min_similarity, len(genome_hits_to_zero), len(results)})
+                        (args.min_distance, len(genome_hits_to_zero), len(results)))
 
         for g1, g2 in genome_hits_to_zero:
             results[g1][g2] = 0
@@ -191,22 +189,8 @@ if __name__ == '__main__':
         main(args)
     except ConfigError as e:
         print(e)
-        if temp_dir is not None:
-            if anvio.DEBUG or keep_temp:
-                run.warning("NOTICE: anvi'o is keeping the temporary directory intact here: %s. You may be able\
-                            to figure out what went wrong by looking at it. Don't forget to clean it up once\
-                            you're done" % temp_dir)
-            else:
-                shutil.rmtree(temp_dir)
         sys.exit(-1)
     except FilesNPathsError as e:
         print(e)
-        if temp_dir is not None:
-            if anvio.DEBUG or keep_temp:
-                run.warning("NOTICE: anvi'o is keeping the temporary directory intact here: %s. You may be able\
-                            to figure out what went wrong by looking at it. Don't forget to clean it up once\
-                            you're done" % temp_dir)
-            else:
-                shutil.rmtree(temp_dir)
         sys.exit(-1)
 
