@@ -35,6 +35,7 @@ import anvio.drivers as drivers
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
+import anvio.taxoestimation as taxoestimation
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.serverAPI import AnviServerAPI
@@ -164,6 +165,7 @@ class BottleApplication(Bottle):
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
         self.route('/data/check_homogeneity_info',             callback=self.check_homogeneity_info, method='POST')
         self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
+        self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
 
 
     def run_application(self, ip, port):
@@ -1285,3 +1287,14 @@ class BottleApplication(Bottle):
         new_newick = re.sub(r"base32(\w*)", lambda m: base64.b32decode(m.group(1).replace('_','=')).decode('utf-8'), new_newick)
 
         return json.dumps({'newick': new_newick})
+
+
+    def get_taxonomy(self):
+        data = json.loads(request.forms.get('data'))
+
+        args = argparse.Namespace(contigs_db=self.interactive.contigs_db_path)
+        estimate = taxoestimation.SCGsTaxonomy(args)
+
+        hits = estimate.get_hits_per_bin(data)
+        print(hits)
+

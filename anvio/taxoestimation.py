@@ -560,18 +560,15 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.profile_db_path = A('profile_db')
         self.output_file_path = A('output_file')
 
-        self.collection_name = args.collection_name
+        self.collection_name = A('collection_name')
 
         self.initialized = False
 
-        self.bin_id = args.bin_id
+        self.bin_id = A('bin_id')
 
-        self.metagenome = False
+        self.metagenome = True if A('metagenome') else False
 
-        if args.metagenome:
-            self.metagenome = True
-
-        self.cut_off_methode = args.cut_off_methode
+        self.cut_off_methode = A('cut_off_methode')
 
         self.hits_per_gene = {}
 
@@ -626,7 +623,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.tables_for_taxonomy = TablesForTaxoestimation(
             self.db_path, run, progress, self.profile_db_path)
 
-        self.dictonnary_taxonomy_by_index= self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
+        self.dictonnary_taxonomy_by_index = self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
 
         if not (self.dictonnary_taxonomy_by_index):
             raise ConfigError(
@@ -636,7 +633,6 @@ class SCGsTaxonomy(TaxonomyEstimation):
         if self.profile_db_path:
             
             collection_to_split = ccollections.GetSplitNamesInBins(self.args).get_dict()
-
             taxonomyestimation=TaxonomyEstimation.__init__(self,self.taxonomy_dict)
 
             self.initialized = True
@@ -648,7 +644,8 @@ class SCGsTaxonomy(TaxonomyEstimation):
     
 
     def get_hits_per_bin(self,collection_to_split):
-
+        self.tables_for_taxonomy = TablesForTaxoestimation(self.db_path, run, progress)
+        self.dictonnary_taxonomy_by_index = self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
         self.hits_per_gene={}
         split_to_gene_callers_id = dict()
         bin_to_gene_callers_id = dict()
