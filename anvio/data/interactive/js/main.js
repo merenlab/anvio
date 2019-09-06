@@ -2501,3 +2501,23 @@ function shutdownServer()
         }
     });
 }
+
+function showTaxonomy()
+{
+    let collection_info = bins.ExportCollection();
+
+    $.ajax({
+        type: 'POST',
+        url: '/data/get_taxonomy',
+        data: {
+            data: JSON.stringify(collection_info['data'], null, 4),
+        },
+        success: (response) => {
+            toastr.info(response, "Server");
+
+            $(this.dialog).modal('hide');
+            this.dialog.remove();
+        }
+    });
+
+}
