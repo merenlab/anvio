@@ -1295,6 +1295,6 @@ class BottleApplication(Bottle):
         args = argparse.Namespace(contigs_db=self.interactive.contigs_db_path)
         estimate = taxoestimation.SCGsTaxonomy(args)
 
-        hits = estimate.get_hits_per_bin(data)
+        hits = estimate.assignation_by_bin(data)
         print(hits)
 
