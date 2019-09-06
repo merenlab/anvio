@@ -1437,22 +1437,6 @@ def check_contig_names(contig_names, dont_raise=False):
     return True
 
 
-def move_fasta_files_from_fasta_dir(temp_dir, names, output_dir, fasta_txt=False):
-    #names is a dictionary of type {name: hash}
-    fasta=None #This seems unnecessary but anvi'o may blow up if this line is removed
-    if fasta_txt:
-        fasta = open(os.path.join(output_dir, "dereplicated-fasta.txt"), 'w')
-        fasta.write("name\tpath\n")
-    for name in names.keys():
-        with open(os.path.join(temp_dir, names[name] + ".fa"), 'r') as original:
-            with open(os.path.join(output_dir, name + ".fa"), 'w') as dest:
-                dest.write(original.read())
-                if fasta_txt:
-                    fasta.write(name + "\t" + name + ".fa" + "\n")
-    if fasta_txt:
-        fasta.close()
-
-
 def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
     """genome_desc is an instance of GenomeDescriptions"""
     if genome_desc is None and fasta_txt is None:
