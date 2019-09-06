@@ -570,7 +570,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
         self.cut_off_methode = A('cut_off_methode')
 
-        self.hits_per_gene = {}
+        hits_per_gene = {}
 
 
         self.taxonomic_levels_parser = {"t_domain": 'd__',
@@ -646,11 +646,10 @@ class SCGsTaxonomy(TaxonomyEstimation):
     def get_hits_per_bin(self,collection_to_split):
         self.tables_for_taxonomy = TablesForTaxoestimation(self.db_path, run, progress)
         self.dictonnary_taxonomy_by_index = self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
-        self.hits_per_gene={}
+        hits_per_gene={}
         split_to_gene_callers_id = dict()
         bin_to_gene_callers_id = dict()
         contigs_db = db.DB(self.db_path, anvio.__contigs__version__)
-
 
 
         for row in contigs_db.get_all_rows_from_table('genes_in_splits'):
@@ -691,12 +690,14 @@ class SCGsTaxonomy(TaxonomyEstimation):
                     hit = [{'accession': gene_estimation['accession'], 'pident':float(
                         gene_estimation['pourcentage_identity'])}]
 
-                    if bin_id not in self.hits_per_gene:
-                        self.hits_per_gene[bin_id] = {}
-                    if gene_estimation['gene_name'] not in self.hits_per_gene[bin_id]:
-                        self.hits_per_gene[bin_id][gene_estimation['gene_name']] = []
+                    if bin_id not in hits_per_gene:
+                        hits_per_gene[bin_id] = {}
+                    if gene_estimation['gene_name'] not in hits_per_gene[bin_id]:
+                        hits_per_gene[bin_id][gene_estimation['gene_name']] = []
 
-                    self.hits_per_gene[bin_id][gene_estimation['gene_name']] += hit
+                    hits_per_gene[bin_id][gene_estimation['gene_name']] += hit
+
+        return hits_per_gene
 
 
     def estimate_taxonomy(self):
@@ -710,7 +711,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
             entries_db_profile = []
             dictionary_bin_taxonomy_estimation=dict()
 
-            for bin_id, SCGs_hit_per_gene in self.hits_per_gene.items():
+            for bin_id, SCGs_hit_per_gene in hits_per_gene.items():
                 consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(SCGs_hit_per_gene, bin_id)
                 dictionary_bin_taxonomy_estimation[bin_id]={"consensus_taxonomy":consensus_taxonomy, 
                                                             "taxonomy_use_for_consensus":taxonomy}
@@ -834,17 +835,28 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
     def show_taxonomy_estimation_bin(self):
         collection_to_split=self.init()
-        self.get_hits_per_bin(collection_to_split)
+        
         possibles_taxonomy = []
         possibles_taxonomy.append(
             ['Genome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
+        taxonomy_bin=self.assignation_by_bin(collection_to_split)
+        print(taxonomy_bin)
 
-        for bin_id, SCGs_hit_per_gene in self.hits_per_gene.items():
-            consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(SCGs_hit_per_gene, bin_id)
-            possibles_taxonomy.append([bin_id] + list(consensus_taxonomy.values()))
+        self.get_hits_per_bin(collection_to_split)
+        """for bin_id, SCGs_hit_per_gene in hits_per_gene.items():
+                                    consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(SCGs_hit_per_gene, bin_id)
+                                    possibles_taxonomy.append([bin_id] + list(consensus_taxonomy.values()))"""
 
         self.show_taxonomy(possibles_taxonomy)
         self.generate_output_file(possibles_taxonomy)
+
+    def assignation_by_bin(self,collection_to_split):
+        taxonomy_bin=dict()
+        hits_per_gene=self.get_hits_per_bin(collection_to_split)
+        for bin_id, SCGs_hit_per_gene in hits_per_gene.items():
+            consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(SCGs_hit_per_gene, bin_id)
+            taxonomy_bin[bin_id]={"taxonomy":consensus_taxonomy,"taxonomy_use":taxonomy}
+        return(taxonomy_bin)
 
 
     def show_taxonomy_estimation_single_genome(self):
