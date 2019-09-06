@@ -2,12 +2,14 @@
 # -*- coding: utf-8
 """Code for genome distance calculation"""
 
+import os
 import shutil
 import pandas as pd
 
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 import anvio.genomedescriptions as genomedescriptions
 
 from itertools import combinations
@@ -28,15 +30,43 @@ __email__ = "mahmoudyousef@uchicago.edu"
 run = terminal.Run()
 progress = terminal.Progress()
 
+J = lambda *args: os.path.join(*args)
 
-class GenomeDictionary:
-    def __init__(self, args, genome_names, genome_desc, fasta_txt, distance_matrix):
+
+class Dereplicate:
+    def __init__(self, args):
         self.args = args
-        self.distance_threshold = self.args.distance_threshold
-        self.method = self.args.representative_method
 
-        self.genome_names = genome_names
-        self.distance_matrix = distance_matrix
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+
+        # input
+        self.internal_genomes = A('internal_genomes', null)
+        self.external_genomes = A('external_genomes', null)
+        self.fasta_text_file = A('fasta_text_file', null)
+        self.ani_dir = A('ani_dir', null)
+        self.mash_dir = A('mash_dir', null)
+        # mode
+        self.program_name = A('program', null) or 'pyANI'
+        self.representative_method = A('representative_method', null)
+        self.distance_threshold = A('distance_threshold', null)
+        # pyANI specific
+        self.min_alignment_fraction = A('min_alignment_fraction', null)
+        self.significant_alignment_length = A('significant_alignment_length', null)
+        self.min_percent_identity = A('min_percent_identity', null)
+        self.use_full_percent_identity = A('use_full_percent_identity', null)
+        # sourmash specific
+        self.distance_threshold = A('distance_threshold', null)
+        # output
+        self.output_dir = A('output_dir', null)
+        self.report_all = A('report_all', null)
+        self.just_do_it = A('just_do_it', null)
+
+        self.import_previous_results = False
+
+        self.determine_run_mode()
+        self.run_sanity_checks()
+        self.distance_metric_name = self.get_distance_metric_name()
 
         self.clusters = {}
         self.cluster_report = {}
@@ -44,8 +74,239 @@ class GenomeDictionary:
         self.representative_names = {}
         self.genome_name_to_cluster_name = {}
 
+
+    def get_distance_metric_name(self):
+        if self.program_name in ['pyANI']:
+            return 'percentage_identity' if not self.use_full_percent_identity else 'full_percentage_identity'
+        elif self.program_name in ['sourmash']:
+            return 'mash_distance'
+
+
+    def is_genome_names_compatible_with_distance_matrix(self, distance_matrix, genome_names):
+        matrix_names = distance_matrix.keys()
+        for name in genome_names:
+            if name not in matrix_names:
+                raise ConfigError("At least one of your genomes (one being %s) does not appear in the distance matrix. This could be due\
+                                   to many different reasons. Probably, the distance matrix that was generated or imported is\
+                                   incomplete or has been changed/corrupted by this point. If you imported your results with --ani-dir\
+                                   or --mash-dir, we recommend re-running with standard inputs. See `INPUT OPTIONS` within the help menu" % name)
+
+
+    def determine_run_mode(self):
+        if not any([self.program_name, self.ani_dir, self.mash_dir]):
+            raise ConfigError("Anvi'o could not determine how you want to dereplicate\
+                              your genomes. Please take a close look at your parameters: either --program needs to be\
+                              set, or an importable directory (e.g. --ani-dir, --mash-dir, etc) needs to be provided.")
+
+        if self.program_name not in ['pyANI', 'sourmash']:
+            raise ConfigError("Anvi'o is impressed by your dedication to dereplicate your genomes through %s, but\
+                              %s is not compatible with `anvi-dereplicate-genomes`. Anvi'o can only work with pyANI\
+                              and sourmash separately." % (self.program_name, self.program_name))
+
+        if self.ani_dir and self.mash_dir:
+            raise ConfigError("Anvi'o cannot currently dereplicate using both ANI and mash distance results at\
+                              the same time. Please pick one to use for dereplication")
+
+        if self.ani_dir or self.mash_dir:
+            self.import_previous_results = True
+
+        if self.ani_dir and not self.program_name in ['pyANI']:
+            run.warning("You provided a pre-existing directory of ANI results (--ani-dir), but also provided a program\
+                        name ('%s') that was not compatible with ANI. Anvi'o knows that you want to use the pre-existing\
+                        results, so she cunningly ignores this slip-up." % self.program_name)
+            self.program_name = 'pyANI'
+
+        if self.mash_dir and not self.program_name in ['sourmash']:
+            run.warning("You provided a pre-existing directory of mash results (--mash-dir), but also provided a program\
+                        name ('%s') that was not compatible with mash. Anvi'o knows that you want to use the pre-existing\
+                        results, so she cunningly ignores this slip-up." % self.program_name)
+            self.program_name = 'sourmash'
+
+
+    def run_sanity_checks(self):
+        if self.import_previous_results:
+            run.warning("You chose to work with an already existing results folder. Please keep in mind that you\
+                         are now burdened with the responsibility of knowing what parameters you used to generate\
+                         these results.")
+
+        if self.min_alignment_fraction < 0 or self.min_alignment_fraction > 1:
+            if self.program_name == "pyANI":
+                raise ConfigError("Alignment coverage is a value between 0 and 1. Your cutoff alignment coverage\
+                                  value of %.2f doesn't fit in these boundaries" % self.min_alignment_fraction)
+
+        if self.distance_threshold < 0 or self.distance_threshold > 1:
+            raise ConfigError("When anvi'o collapses %s's output into a distance matrix, all values are reported as\
+                              distances between 0 and 1. %.2f can't be used to determine redundant genomes"\
+                              % (self.program_name, self.distance_threshold))
+
+        if self.representative_method == "Qscore" and self.fasta_text_file:
+            self.representative_method = "distance"
+            run.warning("You asked anvi'o to choose representative genomes by Qscore, but also provided a fasta text\
+                        file. Fasta files do not include estimates on completion and redundancy. Anvi'o will switch\
+                        over to 'distance'")
+
+
+    def init_genome_distance(self):
+        if self.program_name == "pyANI":
+            self.distance = ANI(self.args)
+        else:
+            assert self.program_name == "sourmash", "Fatal error in self.program_name assertion in initialization. Please inform the developers."
+            self.distance = SourMash(self.args)
+
+
+    def get_distance_matrix(self):
+        distance_matrix = self.import_distance_matrix() if self.import_previous_results else self.gen_distance_matrix()
+
+        # FIXME doesn't really fit here, but this is where Dereplicate learns the genome names
+        self.genome_names = self.distance.genome_names
+
+        self.is_genome_names_compatible_with_distance_matrix(distance_matrix, self.genome_names)
+        run.info('Number of genomes considered', len(distance_matrix))
+
+        return distance_matrix
+
+
+    def gen_distance_matrix(self):
+        self.distance.process(self.temp_dir)
+
+        distance_matrix = self.distance.results[self.distance_metric_name]
+
+        run.info('%s distance metric' % self.program_name, 'calculated')
+
+        if anvio.DEBUG:
+            import json
+            for report in self.distance.results:
+                run.warning(None, header=report)
+                print(json.dumps(self.distance.results[report], indent=2))
+
+        return distance_matrix
+
+
+    def import_distance_matrix(self):
+        dir_name, dir_path = ('--ani-dir', self.ani_dir) if self.program_name in ['pyANI'] else ('--mash-dir', self.mash_dir)
+
+        necessary_reports = [self.distance_metric_name] + (['alignment_coverage'] if self.program_name in ['pyANI'] else [])
+
+        if filesnpaths.is_dir_empty(dir_path):
+            raise ConfigError("The %s you provided is empty. What kind of game are you playing?" % dir_name)
+        files_in_dir = os.listdir(self.ani_dir)
+
+        for report in necessary_reports:
+            report_name = report + ".txt"
+            matching_filepaths = [f for f in files_in_dir if report_name in f]
+
+            if self.distance_metric_name == 'percentage_identity':
+                # FIXME very very bad block of code here. Why should this method know about
+                # percentage_identity or full_percentage_identity?
+                matching_filepaths = [f for f in matching_filepaths if 'full_percentage_identity' not in f]
+
+            if len(matching_filepaths) > 1:
+                raise ConfigError("Your results directory contains multiple text files for the matrix %s.\
+                                  Please clean up your directory and make sure that only one text file of this\
+                                  report exists" % report)
+            elif not len(matching_filepaths):
+                raise ConfigError("Your results directory does not have a text file for the report %s.\
+                                  Anvi'o cannot dereplicate genomes from prevous results without this report" % report)
+
+            self.distance.results[report] = utils.get_TAB_delimited_file_as_dictionary(J(dir_path, matching_filepaths[0]))
+
+        # self.distance does not know genome_names because these results are imported. we populate it manually here
+        self.distance.genome_names = list(self.distance.results[list(self.distance.results.keys())[0]].keys())
+
+        run.info('%s results directory imported from' % self.program_name, dir_path)
+
+        return self.distance.results[self.distance_metric_name]
+
+
+    def clean(self):
+        if not self.import_previous_results:
+            if anvio.DEBUG:
+                run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
+                             later" % self.temp_dir, header="Debug")
+            else:
+                run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
+                                 like to keep it for testing purposes)', nl_before=1, nl_after=1)
+
+                shutil.rmtree(self.temp_dir)
+                self.temp_dir = None
+
+
+    def report(self):
+        if not self.import_previous_results:
+            self.populate_genomes_dir()
+            self.populate_distance_scores_dir()
+
+        # FIXME df.to_csv(self.GENOME_GROUPS_path, sep='\t', index=False)
+
+
+    def populate_genomes_dir(self):
+        if self.report_all:
+            paths = {name: path for name, path in self.distance.name_to_temp_path.items()}
+        else:
+            paths = {name: path for name, path in self.distance.name_to_temp_path.items() if name in self.cluster_report.keys()}
+
+        for name, path in paths.items():
+            shutil.copy(src = path, dst = J(self.GENOMES_dir, name + '.fa'))
+
+
+    def populate_distance_scores_dir(self):
+        for f in os.listdir(J(self.temp_dir, 'output')):
+            shutil.copy(src = J(self.temp_dir, 'output', f),
+                        dst = J(self.DISTANCE_SCORES_dir, f))
+
+
+    def init_output_dir(self):
+        """
+        DIRECTORY STRUCTURE:
+        ===================
+            output_dir/
+            ├── GENOMES/
+            ├── DISTANCE_SCORES/
+            └── GENOME_GROUPS.txt
+
+        GENOMES/
+            A folder with genomes. Each genome is a fasta file.
+            Not provided if previous distance scores are imported (e.g. --ani-dir, --mash-dir, etc).
+        DISTANCE_SCORES/
+            A folder containing the output of distance scores. Not provided if previous distance
+            scores are imported.
+        GENOME_GROUPS.txt
+            A text file detailing which genomes were determined to be redundant with one another.
+            Headers: `genome_name`, `group`, `path`. If previous distance scores are imported, `path` is
+            not included.
+        """
+        filesnpaths.check_output_directory(self.output_dir, ok_if_exists=False)
+        os.mkdir(self.output_dir)
+
+        self.GENOME_GROUPS_path = J(self.output_dir, 'GENOME_GROUPS.txt')
+
+        if not self.import_previous_results:
+            self.GENOMES_dir = J(self.output_dir, 'GENOMES')
+            self.DISTANCE_SCORES_dir = J(self.output_dir, 'DISTANCE_SCORES')
+
+            os.mkdir(self.GENOMES_dir)
+            os.mkdir(self.DISTANCE_SCORES_dir)
+        else:
+            self.GENOMES_dir = None
+            self.DISTANCE_SCORES_dir = None
+
+
+    def process(self):
+        run.info('Run mode', self.program_name)
+
+        self.init_output_dir()
+
+        # inits self.distance
+        self.init_genome_distance()
+
+        # will hold a directory of fasta files to calculate distance matrix
+        self.temp_dir = self.distance.get_fasta_sequences_dir() if not self.import_previous_results else None
+
+        self.distance_matrix = self.get_distance_matrix()
+
         self.init_clusters()
-        self.populate_genomes_info_dict(genome_desc, fasta_txt)
+        self.populate_genomes_info_dict()
+        self.dereplicate()
 
 
     def init_clusters(self):
@@ -56,14 +317,14 @@ class GenomeDictionary:
             self.clusters[cluster_name] = [genome_name]
 
 
-    def populate_genomes_info_dict(self, genome_desc, fasta_txt):
+    def populate_genomes_info_dict(self):
         full_dict = {}
 
-        if genome_desc:
-            full_dict = genome_desc.genomes
+        if self.distance.genome_desc:
+            full_dict = self.distance.genome_desc.genomes
 
-        if fasta_txt:
-            fastas = utils.get_TAB_delimited_file_as_dictionary(fasta_txt, expected_fields=['name', 'path'], only_expected_fields=True)
+        if self.distance.fasta_txt:
+            fastas = utils.get_TAB_delimited_file_as_dictionary(self.distance.fasta_txt, expected_fields=['name', 'path'], only_expected_fields=True)
 
             for name in fastas:
                 if name in full_dict.keys(): #redundant name
@@ -115,6 +376,10 @@ class GenomeDictionary:
 
     def dereplicate(self):
         genome_pairs = combinations(self.genome_names, 2)
+
+        progress.new('Dereplication')
+        progress.update('Generating cluster info report')
+
         for genome1, genome2 in genome_pairs:
             if genome1 == genome2 or self.are_redundant(genome1, genome2):
                 continue
@@ -130,7 +395,16 @@ class GenomeDictionary:
         self.representative_names = self.get_representative_for_each_cluster()
         self.gen_cluster_report()
 
-        return self.cluster_report
+        progress.end()
+
+        run.info('Number of redundant genomes', len(self.genome_names) - len(self.cluster_report))
+        run.info('Final number of dereplicated genomes', len(self.cluster_report))
+
+        if anvio.DEBUG:
+            import json
+            for name in self.cluster_report.keys():
+                run.warning(None, header=name)
+                print(json.dumps(self.cluster_report[name], indent=2))
 
 
     def pick_best_of_two(self, one, two):
@@ -217,20 +491,20 @@ class GenomeDictionary:
 
     def get_representative_for_each_cluster(self):
         representative_names = {}
-        for h in self.clusters.keys():
-            cluster = self.clusters[h]
+        for cluster_name in self.clusters.keys():
+            cluster = self.clusters[cluster_name]
 
             if cluster == []:
                 continue
 
-            if self.method == "Qscore":
-                name = self.pick_representative(cluster)
-            elif self.method == "length":
-                name = self.pick_longest_representative(cluster)
-            elif self.method == "distance":
-                name = self.pick_closest_distance(cluster)
+            if self.representative_method == "Qscore":
+                representative_name = self.pick_representative(cluster)
+            elif self.representative_method == "length":
+                representative_name = self.pick_longest_representative(cluster)
+            elif self.representative_method == "distance":
+                representative_name = self.pick_closest_distance(cluster)
 
-            representative_names[h] = name
+            representative_names[cluster_name] = representative_name
 
         return representative_names
 
@@ -239,8 +513,6 @@ class GenomeDictionary:
 class GenomeDistance:
     def __init__(self, args):
         self.args = args
-        self.run = run
-        self.progress = progress
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
@@ -288,18 +560,6 @@ class GenomeDistance:
                 new_dict[key] = value
 
         return new_dict
-
-
-    def remove_redundant_genomes(self, distance_matrix):
-        self.progress.new('Dereplication')
-        self.progress.update('Generating cluster info report')
-
-        genomes_dict = GenomeDictionary(self.args, self.genome_names, self.genome_desc, self.fasta_txt, distance_matrix)
-        cluster_report = genomes_dict.dereplicate()
-
-        self.progress.end()
-
-        return cluster_report
 
 
 
