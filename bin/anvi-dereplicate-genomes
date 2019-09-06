@@ -59,6 +59,7 @@ class Dereplicate:
         self.distance_threshold = A('distance_threshold', null)
         # output
         self.output_dir = A('output_dir', null)
+        self.report_all = A('report_all', null)
         self.just_do_it = A('just_do_it', null)
 
         self.import_previous_results = False
@@ -245,16 +246,21 @@ class Dereplicate:
 
     def report(self):
         if not self.import_previous_results:
-            self.populate_nonredundant_genomes_dir()
+            self.populate_genomes_dir()
             self.populate_distance_scores_dir()
 
+        df = self.gen_genome_groups_dataframe()
+        df.to_csv(self.GENOME_GROUPS_path, sep='\t', index=False)
 
-    def populate_nonredundant_genomes_dir(self):
-        """names is a dictionary of type {genome_name: genome_fasta_basename_path}:"""
-        names = self.distance.rehash_names(self.nonredundant_genome_names)
-        for name in names:
-            shutil.copy(src = J(self.temp_dir, names[name] + ".fa"),
-                        dst = J(self.NONREDUNDANT_GENOMES_dir, name + ".fa"))
+
+    def populate_genomes_dir(self):
+        if self.report_all:
+            paths = {name: path for name, path in self.distance.name_to_temp_path.items()}
+        else:
+            paths = {name: path for name, path in self.distance.name_to_temp_path.items() if name in self.genome_groups.keys()}
+
+        for name, path in paths.items():
+            shutil.copy(src = path, dst = J(self.GENOMES_dir, name + '.fa'))
 
 
     def populate_distance_scores_dir(self):
@@ -263,17 +269,20 @@ class Dereplicate:
                         dst = J(self.DISTANCE_SCORES_dir, f))
 
 
+    def gen_genome_groups_dataframe(self):
+        pass
+
     def init_output_dir(self):
         """
         DIRECTORY STRUCTURE:
         ===================
             output_dir/
-            ├── NONREDUNDANT_GENOMES/
+            ├── GENOMES/
             ├── DISTANCE_SCORES/
             └── GENOME_GROUPS.txt
 
-        NONREDUNDANT_GENOMES/
-            A folder with dereplicated (non-redundant) genomes. Each genome is a fasta file.
+        GENOMES/
+            A folder with genomes. Each genome is a fasta file.
             Not provided if previous distance scores are imported (e.g. --ani-dir, --mash-dir, etc).
         DISTANCE_SCORES/
             A folder containing the output of distance scores. Not provided if previous distance
@@ -289,13 +298,13 @@ class Dereplicate:
         self.GENOME_GROUPS_path = J(self.output_dir, 'GENOME_GROUPS.txt')
 
         if not self.import_previous_results:
-            self.NONREDUNDANT_GENOMES_dir = J(self.output_dir, 'NONREDUNDANT_GENOMES')
+            self.GENOMES_dir = J(self.output_dir, 'GENOMES')
             self.DISTANCE_SCORES_dir = J(self.output_dir, 'DISTANCE_SCORES')
 
-            os.mkdir(self.NONREDUNDANT_GENOMES_dir)
+            os.mkdir(self.GENOMES_dir)
             os.mkdir(self.DISTANCE_SCORES_dir)
         else:
-            self.NONREDUNDANT_GENOMES_dir = None
+            self.GENOMES_dir = None
             self.DISTANCE_SCORES_dir = None
 
 
@@ -311,7 +320,7 @@ class Dereplicate:
         self.temp_dir = self.distance.get_fasta_sequences_dir() if not self.import_previous_results else None
 
         self.distance_matrix = self.get_distance_matrix()
-        self.all_groups = self.get_genome_groups()
+        self.genome_groups = self.get_genome_groups()
         self.report()
         self.clean()
 
@@ -337,6 +346,9 @@ if __name__ == '__main__':
 
     groupB = parser.add_argument_group('OUTPUT OPTIONS', "Tell anvi'o where to store your results.")
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
+    groupB.add_argument('--report-all', action='store_true', help='By default, only FASTA files of non-redundant\
+                        genomes are reported, i.e. single representatives from each cluster. With this flag, all\
+                        genome FASTAS will be reported.')
 
     groupC = parser.add_argument_group('Program', "Tell anvi'o which similarity program to run.")
     groupC.add_argument('--program', type=str, help="Tell anvi'o which program to run to process genome similarity.\

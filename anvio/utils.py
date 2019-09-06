@@ -1498,8 +1498,9 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
                 with open(source, 'r') as src:
                     dest.write(src.read())
 
-    genomes = (genome_names, file_paths)
-    return temp_dir, hash_to_name, genomes
+    path_dict = dict(zip(genome_names, file_paths))
+
+    return temp_dir, hash_to_name, genome_names, path_dict
 
 
 def get_FASTA_file_as_dictionary(file_path):
