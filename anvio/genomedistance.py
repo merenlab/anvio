@@ -30,37 +30,39 @@ progress = terminal.Progress()
 
 
 class GenomeDictionary:
-    def __init__(self, args, genome_names, genome_desc, fasta_txt, data):
+    def __init__(self, args, genome_names, genome_desc, fasta_txt, distance_matrix):
         self.args = args
         self.distance_threshold = self.args.distance_threshold
         self.method = self.args.representative_method
 
         self.genome_names = genome_names
-        self.data = data
+        self.distance_matrix = distance_matrix
 
-        self.hash = {}
-        self.groups = {}
-        self.genomes_dict = {}
+        self.clusters = {}
+        self.cluster_report = {}
+        self.genomes_info_dict = {}
+        self.representative_names = {}
+        self.genome_name_to_cluster_name = {}
 
-        self.init_groups()
-        self.init_full_genome_dict(genome_desc, fasta_txt)
-
-
-    def init_groups(self):
-        h = 0
-        for name in self.genome_names:
-            self.hash[name] = h
-            self.groups[h] = [name]
-            h += 1
+        self.init_clusters()
+        self.populate_genomes_info_dict(genome_desc, fasta_txt)
 
 
-    def init_full_genome_dict(self, genome_desc, fasta_txt):
+    def init_clusters(self):
+        """Each genome starts in its own cluster, i.e. as many clusters as genomes"""
+        for count, genome_name in enumerate(self.genome_names, start=1):
+            cluster_name = 'cluster_%05d' % count
+            self.genome_name_to_cluster_name[genome_name] = cluster_name
+            self.clusters[cluster_name] = [genome_name]
+
+
+    def populate_genomes_info_dict(self, genome_desc, fasta_txt):
         full_dict = {}
 
-        if genome_desc is not None:
+        if genome_desc:
             full_dict = genome_desc.genomes
 
-        if fasta_txt is not None:
+        if fasta_txt:
             fastas = utils.get_TAB_delimited_file_as_dictionary(fasta_txt, expected_fields=['name', 'path'], only_expected_fields=True)
 
             for name in fastas:
@@ -72,37 +74,63 @@ class GenomeDictionary:
                 full_dict[name]['percent_redundancy'] = 0
                 full_dict[name]['total_length'] = sum(utils.get_read_lengths_from_fasta(fastas[name]['path']).values())
 
-        self.genomes_dict = full_dict
+        self.genomes_info_dict = full_dict
 
 
-    def group_genomes(self, genome1, genome2):
-        from_hash = self.hash[genome1]
-        to_hash = self.hash[genome2]
+    def update_clusters(self, genome1, genome2):
+        from_cluster = self.genome_name_to_cluster_name[genome1]
+        to_cluster = self.genome_name_to_cluster_name[genome2]
 
-        if from_hash == to_hash:
+        if from_cluster == to_cluster:
             return
 
-        for genome in self.groups[from_hash]:
-            self.groups[to_hash].append(genome)
-            self.hash[genome] = to_hash
-            self.groups[from_hash].remove(genome)
+        for genome in self.clusters[from_cluster]:
+            self.clusters[to_cluster].append(genome)
+            self.genome_name_to_cluster_name[genome] = to_cluster
+            self.clusters[from_cluster].remove(genome)
 
 
     def are_redundant(self, genome1, genome2):
-        hash1 = self.hash[genome1]
-        hash2 = self.hash[genome2]
-        return True if hash1 == hash2 else False
+        cluster1 = self.genome_name_to_cluster_name[genome1]
+        cluster2 = self.genome_name_to_cluster_name[genome2]
+        return True if cluster1 == cluster2 else False
 
 
-    def dereplicate(self): 
+    def gen_cluster_report(self):
+        if not any([self.clusters, self.representative_names]):
+            raise ConfigError("gen_cluster_report :: Run dereplicate() before trying to generate a cluster report")
+
+        self.cluster_report = {
+            cluster_name: {
+                'representative': self.representative_names[cluster_name],
+                'genomes': self.clusters[cluster_name]
+            } for cluster_name in self.clusters
+        }
+
+
+    def rename_clusters(self):
+        new_cluster_names = ['cluster_%05d' % count for count in range(1, len(self.clusters) + 1)]
+        self.clusters = {new_cluster_name: genomes for new_cluster_name, genomes in zip(new_cluster_names, self.clusters.values())}
+
+
+    def dereplicate(self):
         genome_pairs = combinations(self.genome_names, 2)
         for genome1, genome2 in genome_pairs:
             if genome1 == genome2 or self.are_redundant(genome1, genome2):
                 continue
 
-            distance = float(self.data[genome1][genome2])
+            distance = float(self.distance_matrix[genome1][genome2])
             if distance > self.distance_threshold:
-                self.group_genomes(genome1, genome2)
+                self.update_clusters(genome1, genome2)
+
+        # remove empty clusters and rename so that names are sequential
+        self.clusters = {cluster: genomes for cluster, genomes in self.clusters.items() if genomes}
+        self.rename_clusters()
+
+        self.representative_names = self.get_representative_for_each_cluster()
+        self.gen_cluster_report()
+
+        return self.cluster_report
 
 
     def pick_best_of_two(self, one, two):
@@ -122,11 +150,11 @@ class GenomeDictionary:
             return best_one
 
         try:
-            score1 = self.genomes_dict[best_one]['percent_completion'] - self.genomes_dict[best_one]['percent_redundancy']
+            score1 = self.genomes_info_dict[best_one]['percent_completion'] - self.genomes_info_dict[best_one]['percent_redundancy']
         except:
             raise ConfigError("At least one of your genomes does not contain completion or redundancy estimates. Here is an example: %s." % best_one)
         try:
-            score2 = self.genomes_dict[best_two]['percent_completion'] - self.genomes_dict[best_two]['percent_redundancy']
+            score2 = self.genomes_info_dict[best_two]['percent_completion'] - self.genomes_info_dict[best_two]['percent_redundancy']
         except:
             raise ConfigError("At least one of your genomes does not contain completion or redundancy estimates. Here is an example: %s." % best_two)
 
@@ -135,8 +163,8 @@ class GenomeDictionary:
         elif score2 > score1:
             return best_two
         else:
-            len1 = self.genomes_dict[best_one]['total_length']
-            len2 = self.genomes_dict[best_two]['total_length']
+            len1 = self.genomes_info_dict[best_one]['total_length']
+            len2 = self.genomes_info_dict[best_two]['total_length']
 
             if len2 > len1:
                 return best_two
@@ -144,24 +172,24 @@ class GenomeDictionary:
                 return best_one
 
 
-    def pick_representative(self, group):
-        if not group:
+    def pick_representative(self, cluster):
+        if not cluster:
             return None
-        elif len(group) == 1:
-            return group[0]
+        elif len(cluster) == 1:
+            return cluster[0]
 
-        medium = int(len(group) / 2)
-        best = self.pick_best_of_two(group[:medium], group[medium:])
+        medium = int(len(cluster) / 2)
+        best = self.pick_best_of_two(cluster[:medium], cluster[medium:])
 
         return best
 
 
-    def pick_longest_rep(self, group):
-        max_name = group[0]
-        max_val = self.genomes_dict[max_name]['total_length']
+    def pick_longest_representative(self, cluster):
+        max_name = cluster[0]
+        max_val = self.genomes_info_dict[max_name]['total_length']
 
-        for name in group[1:]:
-            val = self.genomes_dict[name]['total_length']
+        for name in cluster[1:]:
+            val = self.genomes_info_dict[name]['total_length']
 
             if val > max_val:
                 max_name = name
@@ -170,13 +198,13 @@ class GenomeDictionary:
         return max_name
 
 
-    def pick_closest_distance(self, group):
+    def pick_closest_distance(self, cluster):
         d = {}
-        for name in group:
+        for name in cluster:
             d[name] = 0
 
-            for target in group:
-                d[name] += float(self.data[name][target])
+            for target in cluster:
+                d[name] += float(self.distance_matrix[name][target])
 
         new_dict = {}
         for name, val in d.items():
@@ -187,32 +215,24 @@ class GenomeDictionary:
         return new_dict[max_val]
 
 
-    def get_dereplicated_genome_names(self):
-        names = []
-        for key in self.groups.keys():
-            group = self.groups[key]
+    def get_representative_for_each_cluster(self):
+        representative_names = {}
+        for h in self.clusters.keys():
+            cluster = self.clusters[h]
 
-            if group == []:
+            if cluster == []:
                 continue
 
             if self.method == "Qscore":
-                name = self.pick_representative(group)
+                name = self.pick_representative(cluster)
             elif self.method == "length":
-                name = self.pick_longest_rep(group)
+                name = self.pick_longest_representative(cluster)
             elif self.method == "distance":
-                name = self.pick_closest_distance(group)
+                name = self.pick_closest_distance(cluster)
 
-            names.append(name)
+            representative_names[h] = name
 
-        return names
-
-
-    def get_all_redundant_groups(self, names):
-        d = {}
-        for name in names:
-            genome_hash = self.hash[name]
-            d[name] = self.groups[genome_hash]
-        return d
+        return representative_names
 
 
 
@@ -233,7 +253,6 @@ class GenomeDistance:
         else:
             self.genome_desc = None
 
-        self.genomes_dict = {}
         self.hash_to_name = {}
         self.name_to_temp_path = {}
         self.genome_names = set([])
@@ -271,21 +290,16 @@ class GenomeDistance:
         return new_dict
 
 
-    def remove_redundant_genomes(self, data):
+    def remove_redundant_genomes(self, distance_matrix):
         self.progress.new('Dereplication')
-        self.progress.update('Identifying redundant genomes...')
-        self.genomes_dict = GenomeDictionary(self.args, self.genome_names, self.genome_desc, self.fasta_txt, data)
-        self.genomes_dict.dereplicate()
+        self.progress.update('Generating cluster info report')
 
-        self.progress.update('Removing redundant genomes...')
-        names = self.genomes_dict.get_dereplicated_genome_names()
+        genomes_dict = GenomeDictionary(self.args, self.genome_names, self.genome_desc, self.fasta_txt, distance_matrix)
+        cluster_report = genomes_dict.dereplicate()
+
         self.progress.end()
 
-        return names
-
-
-    def retrieve_genome_groups(self, names):
-        return self.genomes_dict.get_all_redundant_groups(names)
+        return cluster_report
 
 
 

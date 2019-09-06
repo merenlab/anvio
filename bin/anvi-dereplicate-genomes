@@ -55,7 +55,6 @@ class Dereplicate:
         self.min_percent_identity = A('min_percent_identity', null)
         self.use_full_percent_identity = A('use_full_percent_identity', null)
         # sourmash specific
-        self.min_mash_distance = A('min_mash_distance', null)
         self.distance_threshold = A('distance_threshold', null)
         # output
         self.output_dir = A('output_dir', null)
@@ -127,12 +126,6 @@ class Dereplicate:
             if self.program_name == "pyANI":
                 raise ConfigError("Alignment coverage is a value between 0 and 1. Your cutoff alignment coverage\
                                   value of %.2f doesn't fit in these boundaries" % self.min_alignment_fraction)
-
-        if self.min_mash_distance < 0 or self.min_mash_distance > 1:
-            if self.program_name == "sourmash":
-                raise ConfigError("A mash distance of 0 implies no similarity between two genomes. A mash distance\
-                                 of 1 indicates the two genomes are exactly the same. Anvi'o doesn't understand your\
-                                 threshold value of %.2f" % self.min_mash_distance)
 
         if self.distance_threshold < 0 or self.distance_threshold > 1:
             raise ConfigError("When anvi'o collapses %s's output into a distance matrix, all values are reported as\
@@ -214,21 +207,19 @@ class Dereplicate:
         return self.distance.results[self.distance_metric_name]
 
 
-    def get_genome_groups(self):
-        self.nonredundant_genome_names = self.distance.remove_redundant_genomes(self.distance_matrix)
+    def get_genome_clusters(self):
+        cluster_report = self.distance.remove_redundant_genomes(self.distance_matrix)
 
-        run.info('Number of redundant genomes', len(self.distance.genome_names) - len(self.nonredundant_genome_names))
-        run.info('Final number of dereplicated genomes', len(self.nonredundant_genome_names))
-
-        genome_groups = self.distance.retrieve_genome_groups(self.nonredundant_genome_names)
+        run.info('Number of redundant genomes', len(self.distance.genome_names) - len(cluster_report))
+        run.info('Final number of dereplicated genomes', len(cluster_report))
 
         if anvio.DEBUG:
             import json
-            for name in genome_groups.keys():
+            for name in cluster_report.keys():
                 run.warning(None, header=name)
-                print(json.dumps(genome_groups[name], indent=2))
+                print(json.dumps(cluster_report[name], indent=2))
 
-        return genome_groups
+        return cluster_report
 
 
     def clean(self):
@@ -257,7 +248,7 @@ class Dereplicate:
         if self.report_all:
             paths = {name: path for name, path in self.distance.name_to_temp_path.items()}
         else:
-            paths = {name: path for name, path in self.distance.name_to_temp_path.items() if name in self.genome_groups.keys()}
+            paths = {name: path for name, path in self.distance.name_to_temp_path.items() if name in self.cluster_report.keys()}
 
         for name, path in paths.items():
             shutil.copy(src = path, dst = J(self.GENOMES_dir, name + '.fa'))
@@ -320,7 +311,8 @@ class Dereplicate:
         self.temp_dir = self.distance.get_fasta_sequences_dir() if not self.import_previous_results else None
 
         self.distance_matrix = self.get_distance_matrix()
-        self.genome_groups = self.get_genome_groups()
+        self.cluster_report = self.get_genome_clusters()
+        print(self.cluster_report)
         self.report()
         self.clean()
 
@@ -379,9 +371,6 @@ if __name__ == '__main__':
     groupF.add_argument('--scale', type=int, default=1000, metavar='INT', help='Set the compression ratio for\
                         fasta signature file computations. The default is 1000. Smaller ratios decrease sensitivity,\
                         while larger ratios will lead to large fasta signatures.')
-    groupF.add_argument('--min-mash-distance', type=float, default=0.30, help="You can tell anvi'o to\
-                        automatically consider genomes as non-redundant if they have a mash distance\
-                        below a specific value. The default is 0.3")
 
     groupG = parser.add_argument_group('Dereplication Parameters', "Some parameters to guide your dereplication")
     groupG.add_argument('--distance-threshold', type=float, default=0.97, help="For dereplication, anvi'o collapses\
