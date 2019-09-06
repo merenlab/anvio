@@ -30,6 +30,8 @@ __description__ = ("Identify redundant (highly similar) genomes. Export non-redu
 
 run = terminal.Run()
 
+J = lambda *args: os.path.join(*args)
+
 
 class Dereplicate:
     def __init__(self, args):
@@ -56,12 +58,10 @@ class Dereplicate:
         self.min_mash_distance = A('min_mash_distance', null)
         self.distance_threshold = A('distance_threshold', null)
         # output
-        self.provide_fasta_txt = A('provide_fasta_txt', null)
         self.output_dir = A('output_dir', null)
         self.just_do_it = A('just_do_it', null)
 
         self.import_previous_results = False
-
 
         self.determine_run_mode()
         self.run_sanity_checks()
@@ -154,14 +154,14 @@ class Dereplicate:
 
 
     def get_distance_matrix(self):
-        distance_matrix = self.import_distance_matrix() if self.import_previous_results else self.calculate_distance_matrix()
+        distance_matrix = self.import_distance_matrix() if self.import_previous_results else self.gen_distance_matrix()
         self.is_genome_names_compatible_with_distance_matrix(distance_matrix, self.distance.genome_names)
         run.info('Number of genomes considered', len(distance_matrix))
 
         return distance_matrix
 
 
-    def calculate_distance_matrix(self):
+    def gen_distance_matrix(self):
         self.distance.process(self.temp_dir)
 
         distance_matrix = self.distance.results[self.distance_metric_name]
@@ -190,15 +190,20 @@ class Dereplicate:
             report_name = report + ".txt"
             matching_filepaths = [f for f in files_in_dir if report_name in f]
 
+            if self.distance_metric_name == 'percentage_identity':
+                # FIXME very very bad block of code here. Why should this method know about
+                # percentage_identity or full_percentage_identity?
+                matching_filepaths = [f for f in matching_filepaths if 'full_percentage_identity' not in f]
+
             if len(matching_filepaths) > 1:
                 raise ConfigError("Your results directory contains multiple text files for the matrix %s.\
                                   Please clean up your directory and make sure that only one text file of this\
                                   report exists" % report)
-            elif len(matching_filepaths) == 0:
+            elif not len(matching_filepaths):
                 raise ConfigError("Your results directory does not have a text file for the report %s.\
                                   Anvi'o cannot dereplicate genomes from prevous results without this report" % report)
 
-            self.distance.results[report] = utils.get_TAB_delimited_file_as_dictionary(os.path.join(dir_path, matching_filepaths[0]))
+            self.distance.results[report] = utils.get_TAB_delimited_file_as_dictionary(J(dir_path, matching_filepaths[0]))
 
         # self.distance does not know genome_names because these results are imported. we populate it manually here
         self.distance.genome_names = list(self.distance.results['alignment_coverage'].keys())
@@ -211,36 +216,93 @@ class Dereplicate:
     def get_genome_groups(self):
         self.nonredundant_genome_names = self.distance.remove_redundant_genomes(self.distance_matrix)
 
-        run.info('Number of redundant genomes', num_redundant)
+        run.info('Number of redundant genomes', len(self.distance.genome_names) - len(self.nonredundant_genome_names))
         run.info('Final number of dereplicated genomes', len(self.nonredundant_genome_names))
 
-        genome_groups = self.distance.retrieve_genome_groups(nonredundant_genome_names)
+        genome_groups = self.distance.retrieve_genome_groups(self.nonredundant_genome_names)
 
         if anvio.DEBUG:
             import json
-            for name in all_groups.keys():
+            for name in genome_groups.keys():
                 run.warning(None, header=name)
-                print(json.dumps(all_groups[name], indent=2))
+                print(json.dumps(genome_groups[name], indent=2))
 
-        return all_groups
+        return genome_groups
 
 
     def clean(self):
-        if anvio.DEBUG:
-            run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
-                         later" % self.temp_dir, header="Debug")
-        elif not self.import_previous_results:
-            run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
-                             like to keep it for testing purposes)', nl_before=1, nl_after=1)
-            shutil.rmtree(self.temp_dir)
-            self.temp_dir = None
+        if not self.import_previous_results:
+            if anvio.DEBUG:
+                run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
+                             later" % self.temp_dir, header="Debug")
+            else:
+                run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
+                                 like to keep it for testing purposes)', nl_before=1, nl_after=1)
+
+                shutil.rmtree(self.temp_dir)
+                self.temp_dir = None
+
+
+    def report(self):
+        if not self.import_previous_results:
+            self.populate_nonredundant_genomes_dir()
+            self.populate_distance_scores_dir()
+
+
+    def populate_nonredundant_genomes_dir(self):
+        """names is a dictionary of type {genome_name: genome_fasta_basename_path}:"""
+        names = self.distance.rehash_names(self.nonredundant_genome_names)
+        for name in names:
+            shutil.copy(src = J(self.temp_dir, names[name] + ".fa"),
+                        dst = J(self.NONREDUNDANT_GENOMES_dir, name + ".fa"))
+
+
+    def populate_distance_scores_dir(self):
+        for f in os.listdir(J(self.temp_dir, 'output')):
+            shutil.copy(src = J(self.temp_dir, 'output', f),
+                        dst = J(self.DISTANCE_SCORES_dir, f))
+
+
+    def init_output_dir(self):
+        """
+        DIRECTORY STRUCTURE:
+        ===================
+            output_dir/
+            ├── NONREDUNDANT_GENOMES/
+            ├── DISTANCE_SCORES/
+            └── GENOME_GROUPS.txt
+
+        NONREDUNDANT_GENOMES/
+            A folder with dereplicated (non-redundant) genomes. Each genome is a fasta file.
+            Not provided if previous distance scores are imported (e.g. --ani-dir, --mash-dir, etc).
+        DISTANCE_SCORES/
+            A folder containing the output of distance scores. Not provided if previous distance
+            scores are imported.
+        GENOME_GROUPS.txt
+            A text file detailing which genomes were determined to be redundant with one another.
+            Headers: `genome_name`, `group`, `path`. If previous distance scores are imported, `path` is
+            not included.
+        """
+        filesnpaths.check_output_directory(self.output_dir, ok_if_exists=False)
+        os.mkdir(self.output_dir)
+
+        self.GENOME_GROUPS_path = J(self.output_dir, 'GENOME_GROUPS.txt')
+
+        if not self.import_previous_results:
+            self.NONREDUNDANT_GENOMES_dir = J(self.output_dir, 'NONREDUNDANT_GENOMES')
+            self.DISTANCE_SCORES_dir = J(self.output_dir, 'DISTANCE_SCORES')
+
+            os.mkdir(self.NONREDUNDANT_GENOMES_dir)
+            os.mkdir(self.DISTANCE_SCORES_dir)
+        else:
+            self.NONREDUNDANT_GENOMES_dir = None
+            self.DISTANCE_SCORES_dir = None
 
 
     def process(self):
         run.info('Run mode', self.program_name)
 
-        filesnpaths.check_output_directory(self.output_dir, ok_if_exists=False)
-        os.mkdir(self.output_dir)
+        self.init_output_dir()
 
         # inits self.distance
         self.init_genome_distance()
@@ -249,17 +311,8 @@ class Dereplicate:
         self.temp_dir = self.distance.get_fasta_sequences_dir() if not self.import_previous_results else None
 
         self.distance_matrix = self.get_distance_matrix()
-
         self.all_groups = self.get_genome_groups()
-
-        if not self.import_previous_results:
-            hashes = self.distance.rehash_names(nonredundant_genome_names)
-            utils.move_fasta_files_from_fasta_dir(self.temp_dir, hashes, self.output_dir, fasta_txt=self.provide_fasta_txt)
-
-        run.info_single('Dereplicated fasta files stored in %s' % self.output_dir, nl_before=1)
-        if self.provide_fasta_txt:
-                run.info_single('FASTA text file `dereplcated-fasta.txt` stored in %s' % self.output_dir, nl_before=1)
-
+        self.report()
         self.clean()
 
 
@@ -272,7 +325,7 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
     groupA.add_argument(*anvio.A('fasta-text-file'), **anvio.K('fasta-text-file'))
 
-    groupD = parser.add_argument_group('Import results', "Alternatively, if you have previous ANI or mash distance\
+    groupD = parser.add_argument_group('IMPORT RESULTS', "Alternatively, if you have previous ANI or mash distance\
                                         computations on your genomes, you can import the result directory here to use. Please note\
                                         that file names must remain unchanged for anvi'o to find them")
     groupD.add_argument('--ani-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-ani`\
@@ -284,10 +337,6 @@ if __name__ == '__main__':
 
     groupB = parser.add_argument_group('OUTPUT OPTIONS', "Tell anvi'o where to store your results.")
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
-    groupB.add_argument('--provide-fasta-txt', default=False, action='store_true', help="If you would like anvi'o to provide\
-                        a fasta.txt file with all of the dereplicated fasta filepaths, you can use this option\
-                        to tell it to do so. The file will be called 'dereplicated-fasta.txt' and will be located\
-                        in the output directory.")
 
     groupC = parser.add_argument_group('Program', "Tell anvi'o which similarity program to run.")
     groupC.add_argument('--program', type=str, help="Tell anvi'o which program to run to process genome similarity.\

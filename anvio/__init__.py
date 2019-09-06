@@ -153,7 +153,8 @@ D = {
             {'metavar': 'FASTA_TEXT_FILE',
             'dest': 'fasta_text_file',
             'help': "A two-column TAB-delimited file that lists multiple FASTA files to import\
-                     for analysis. The first item in the header line should read 'name',\
+                     for analysis. If using for `anvi-dereplicate-genomes`, each FASTA is assumed\
+                     to be a genome. The first item in the header line should read 'name',\
                      and the second item should read 'fasta_path'. Each line in the field should\
                      describe a single entry, where the first column is the name of the FASTA\
                      file or corresponding sequence, and the second column is the path to the\
