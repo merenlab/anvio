@@ -235,17 +235,19 @@ class GenomeDistance:
 
         self.genomes_dict = {}
         self.hash_to_name = {}
-        self.temp_paths = set([])
+        self.name_to_temp_path = {}
         self.genome_names = set([])
 
 
     def get_fasta_sequences_dir(self):
         if self.genome_desc is not None:
             self.genome_desc.load_genomes_descriptions(skip_functions=True)
-        temp_dir, hash_to_name, genomes = utils.create_fasta_dir_from_sequence_sources(self.genome_desc, fasta_txt=self.fasta_txt)
+
+        temp_dir, hash_to_name, genome_names, name_to_temp_path = utils.create_fasta_dir_from_sequence_sources(self.genome_desc, fasta_txt=self.fasta_txt)
+
         self.hash_to_name = hash_to_name
-        self.genome_names = genomes[0]
-        self.temp_paths = genomes[1]
+        self.genome_names = genome_names
+        self.name_to_temp_path = name_to_temp_path
         return temp_dir
 
 
@@ -267,14 +269,6 @@ class GenomeDistance:
                 new_dict[key] = value
 
         return new_dict
-
-
-    def rehash_names(self, names):
-        new_dict = dict((a, b) for b, a in self.hash_to_name.items())
-        hashes = {}
-        for name in names:
-            hashes[name] = new_dict[name]
-        return hashes
 
 
     def remove_redundant_genomes(self, data):
@@ -487,7 +481,7 @@ class SourMash(GenomeDistance):
     def process(self, temp=None):
         temp_dir = temp if temp else self.get_fasta_sequences_dir()
 
-        self.results['mash_distance'] = self.program.process(temp_dir, list(self.temp_paths))
+        self.results['mash_distance'] = self.program.process(temp_dir, self.name_to_temp_path.values())
         self.results['mash_distance'] = self.reformat_results(self.results['mash_distance'])
 
         if temp is None:
