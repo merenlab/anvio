@@ -63,6 +63,7 @@ class Dereplicate:
         self.just_do_it = A('just_do_it', null)
 
         self.import_previous_results = False
+        self.sequence_source_provided = False
 
         self.sanity_check()
         self.distance_metric_name = self.get_distance_metric_name()
@@ -70,7 +71,7 @@ class Dereplicate:
         self.clusters = {}
         self.cluster_report = {}
         self.genomes_info_dict = {}
-        self.representative_names = {}
+        self.cluster_to_representative = {}
         self.genome_name_to_cluster_name = {}
 
 
@@ -83,16 +84,32 @@ class Dereplicate:
 
     def is_genome_names_compatible_with_distance_matrix(self, distance_matrix, genome_names):
         matrix_names = distance_matrix.keys()
-        for name in genome_names:
-            if name not in matrix_names:
-                raise ConfigError("At least one of your genomes (one being %s) does not appear in the distance matrix. This could be due\
-                                   to many different reasons. Probably, the imported distance results were generated from sequence sources\
-                                   that are somehow different from the ones you provided here. If you imported your results (e.g\
-                                   with --ani-dir, --mash-dir, etc), we recommend re-running with standard inputs.\
-                                   See `INPUT OPTIONS` within the help menu" % name)
+
+        missing_in_matrix = [n for n in genome_names if n not in distance_matrix]
+        missing_in_names = [n for n in distance_matrix if n not in genome_names]
+
+        should_raise = False
+        if len(missing_in_matrix):
+            should_raise = True
+            raise_info = ('sequence source names', 'distance matrix',
+                          missing_in_matrix[:5] if len(missing_in_matrix) < 6 else missing_in_matrix)
+        elif len(missing_in_names):
+            should_raise = True
+            raise_info = ('distance matrix names', 'sequence sources',
+                          missing_in_names[:5] if len(missing_in_names) < 6 else missing_in_names)
+
+        if should_raise:
+            raise ConfigError("At least one of your %s does not appear in the %s. This could be due\
+                               to many different reasons. Probably, the imported distance results were generated from sequence sources\
+                               that are somehow different from the ones you provided here. If you imported your results (e.g\
+                               with --ani-dir, --mash-dir, etc), we recommend re-running with standard inputs.\
+                               See `INPUT OPTIONS` within the help menu. Here are some that are missing: %s." % (*raise_info, ))
 
 
     def sanity_check(self):
+        if any([self.fasta_text_file, self.external_genomes, self.internal_genomes]):
+            self.sequence_source_provided = True
+
         if not any([self.program_name, self.ani_dir, self.mash_dir]):
             raise ConfigError("Anvi'o could not determine how you want to dereplicate\
                               your genomes. Please take a close look at your parameters: either --program needs to be\
@@ -110,7 +127,7 @@ class Dereplicate:
         if self.ani_dir or self.mash_dir:
             self.import_previous_results = True
 
-            if any([self.fasta_text_file, self.external_genomes, self.internal_genomes]):
+            if self.sequence_source_provided:
                 additional_msg = ''
 
                 if not self.just_do_it:
@@ -172,13 +189,11 @@ class Dereplicate:
         in this fringe case we grab genome names from the results matrix
         """
         return self.distance.genome_names if self.distance.genome_names \
-                                          else list(self.distance_matrix.keys())
+                                          else set(self.distance_matrix.keys())
 
 
     def get_distance_matrix(self):
-        distance_matrix = self.import_distance_matrix() if self.import_previous_results else self.gen_distance_matrix()
-
-        return distance_matrix
+        return self.import_distance_matrix() if self.import_previous_results else self.gen_distance_matrix()
 
 
     def gen_distance_matrix(self):
@@ -231,7 +246,7 @@ class Dereplicate:
 
 
     def clean(self):
-        if not self.import_previous_results:
+        if self.temp_dir:
             if anvio.DEBUG:
                 run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
                              later" % self.temp_dir, header="Debug")
@@ -244,8 +259,9 @@ class Dereplicate:
 
 
     def report(self):
-        if not self.import_previous_results:
+        if self.sequence_source_provided:
             self.populate_genomes_dir()
+        if not self.import_previous_results:
             self.populate_distance_scores_dir()
 
         # FIXME df.to_csv(self.GENOME_GROUPS_path, sep='\t', index=False)
@@ -255,7 +271,7 @@ class Dereplicate:
         if self.report_all:
             paths = {name: path for name, path in self.distance.name_to_temp_path.items()}
         else:
-            paths = {name: path for name, path in self.distance.name_to_temp_path.items() if name in self.cluster_report.keys()}
+            paths = {name: path for name, path in self.distance.name_to_temp_path.items() if name in self.cluster_to_representative.values()}
 
         for name, path in paths.items():
             shutil.copy(src = path, dst = J(self.GENOMES_dir, name + '.fa'))
@@ -277,8 +293,8 @@ class Dereplicate:
             └── GENOME_GROUPS.txt
 
         GENOMES/
-            A folder with genomes. Each genome is a fasta file.
-            Not provided if previous distance scores are imported (e.g. --ani-dir, --mash-dir, etc).
+            A folder with genomes. Each genome is a fasta file. Not provided if no sequence sources
+            are provided.
         DISTANCE_SCORES/
             A folder containing the output of distance scores. Not provided if previous distance
             scores are imported.
@@ -292,14 +308,16 @@ class Dereplicate:
 
         self.GENOME_GROUPS_path = J(self.output_dir, 'GENOME_GROUPS.txt')
 
-        if not self.import_previous_results:
+        if self.sequence_source_provided:
             self.GENOMES_dir = J(self.output_dir, 'GENOMES')
-            self.DISTANCE_SCORES_dir = J(self.output_dir, 'DISTANCE_SCORES')
-
             os.mkdir(self.GENOMES_dir)
-            os.mkdir(self.DISTANCE_SCORES_dir)
         else:
             self.GENOMES_dir = None
+
+        if not self.import_previous_results:
+            self.DISTANCE_SCORES_dir = J(self.output_dir, 'DISTANCE_SCORES')
+            os.mkdir(self.DISTANCE_SCORES_dir)
+        else:
             self.DISTANCE_SCORES_dir = None
 
 
@@ -312,7 +330,7 @@ class Dereplicate:
         self.init_genome_distance()
 
         # will hold a directory of fasta files to calculate distance matrix
-        self.temp_dir = self.distance.get_fasta_sequences_dir() if not self.import_previous_results else None
+        self.temp_dir = self.distance.get_fasta_sequences_dir() if self.sequence_source_provided else None
 
         self.distance_matrix = self.get_distance_matrix()
         self.genome_names = self.get_genome_names()
@@ -376,12 +394,12 @@ class Dereplicate:
 
 
     def gen_cluster_report(self):
-        if not any([self.clusters, self.representative_names]):
+        if not any([self.clusters, self.cluster_to_representative]):
             raise ConfigError("gen_cluster_report :: Run dereplicate() before trying to generate a cluster report")
 
         self.cluster_report = {
             cluster_name: {
-                'representative': self.representative_names[cluster_name],
+                'representative': self.cluster_to_representative[cluster_name],
                 'genomes': self.clusters[cluster_name]
             } for cluster_name in self.clusters
         }
@@ -411,7 +429,7 @@ class Dereplicate:
         self.clusters = {cluster: genomes for cluster, genomes in self.clusters.items() if genomes}
         self.rename_clusters()
 
-        self.representative_names = self.get_representative_for_each_cluster()
+        self.cluster_to_representative = self.get_representative_for_each_cluster()
         self.gen_cluster_report()
 
         progress.end()
@@ -509,7 +527,7 @@ class Dereplicate:
 
 
     def get_representative_for_each_cluster(self):
-        representative_names = {}
+        cluster_to_representative = {}
         for cluster_name in self.clusters.keys():
             cluster = self.clusters[cluster_name]
 
@@ -523,9 +541,9 @@ class Dereplicate:
             elif self.representative_method == "distance":
                 representative_name = self.pick_closest_distance(cluster)
 
-            representative_names[cluster_name] = representative_name
+            cluster_to_representative[cluster_name] = representative_name
 
-        return representative_names
+        return cluster_to_representative
 
 
 
