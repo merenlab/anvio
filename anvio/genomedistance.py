@@ -127,7 +127,8 @@ class Dereplicate:
         if self.import_previous_results:
             run.warning("You chose to work with an already existing results folder. Please keep in mind that you\
                          are now burdened with the responsibility of knowing what parameters you used to generate\
-                         these results.")
+                         these results. In addition, distance scores will not be regenerated; FASTA files will not\
+                         be generated.")
 
         if self.min_alignment_fraction < 0 or self.min_alignment_fraction > 1:
             if self.program_name == "pyANI":
@@ -154,14 +155,26 @@ class Dereplicate:
             self.distance = SourMash(self.args)
 
 
-    def get_distance_matrix(self):
-        distance_matrix = self.import_distance_matrix() if self.import_previous_results else self.gen_distance_matrix()
-
-        # FIXME doesn't really fit here, but this is where Dereplicate learns the genome names
+    def get_genome_names(self):
+        """
+        genome_names are learned from the GenomeDistance class (instantiation self.distance). If
+        they are unknown to self.distance, they are unknown to self. Calling self.get_distance_matrix
+        guarantees self.distance.genome_names is set.
+        """
         self.genome_names = self.distance.genome_names
 
-        self.is_genome_names_compatible_with_distance_matrix(distance_matrix, self.genome_names)
-        run.info('Number of genomes considered', len(distance_matrix))
+        try:
+            self.is_genome_names_compatible_with_distance_matrix(self.distance_matrix, self.genome_names)
+        except AttributeError:
+            run.warning("Compatibility of distance matrix with genome names will not be tested. Bring your compass.")
+
+        run.info('Number of genomes considered', len(self.genome_names))
+
+        return self.distance.genome_names
+
+
+    def get_distance_matrix(self):
+        distance_matrix = self.import_distance_matrix() if self.import_previous_results else self.gen_distance_matrix()
 
         return distance_matrix
 
@@ -303,6 +316,7 @@ class Dereplicate:
         self.temp_dir = self.distance.get_fasta_sequences_dir() if not self.import_previous_results else None
 
         self.distance_matrix = self.get_distance_matrix()
+        self.genome_names = self.get_genome_names()
 
         self.init_clusters()
         self.populate_genomes_info_dict()
@@ -312,7 +326,7 @@ class Dereplicate:
     def init_clusters(self):
         """Each genome starts in its own cluster, i.e. as many clusters as genomes"""
         for count, genome_name in enumerate(self.genome_names, start=1):
-            cluster_name = 'cluster_%05d' % count
+            cluster_name = 'cluster_%06d' % count
             self.genome_name_to_cluster_name[genome_name] = cluster_name
             self.clusters[cluster_name] = [genome_name]
 
@@ -370,17 +384,18 @@ class Dereplicate:
 
 
     def rename_clusters(self):
-        new_cluster_names = ['cluster_%05d' % count for count in range(1, len(self.clusters) + 1)]
+        new_cluster_names = ['cluster_%06d' % count for count in range(1, len(self.clusters) + 1)]
         self.clusters = {new_cluster_name: genomes for new_cluster_name, genomes in zip(new_cluster_names, self.clusters.values())}
 
 
     def dereplicate(self):
+        progress.new('Dereplication', progress_total_items = sum(1 for _ in combinations(self.genome_names, 2)))
+
         genome_pairs = combinations(self.genome_names, 2)
-
-        progress.new('Dereplication')
-        progress.update('Generating cluster info report')
-
         for genome1, genome2 in genome_pairs:
+            progress.increment()
+            progress.update('Comparing %s with %s' % (genome1, genome2))
+
             if genome1 == genome2 or self.are_redundant(genome1, genome2):
                 continue
 
