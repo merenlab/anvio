@@ -64,8 +64,7 @@ class Dereplicate:
 
         self.import_previous_results = False
 
-        self.determine_run_mode()
-        self.run_sanity_checks()
+        self.sanity_check()
         self.distance_metric_name = self.get_distance_metric_name()
 
         self.clusters = {}
@@ -87,12 +86,13 @@ class Dereplicate:
         for name in genome_names:
             if name not in matrix_names:
                 raise ConfigError("At least one of your genomes (one being %s) does not appear in the distance matrix. This could be due\
-                                   to many different reasons. Probably, the distance matrix that was generated or imported is\
-                                   incomplete or has been changed/corrupted by this point. If you imported your results with --ani-dir\
-                                   or --mash-dir, we recommend re-running with standard inputs. See `INPUT OPTIONS` within the help menu" % name)
+                                   to many different reasons. Probably, the imported distance results were generated from sequence sources\
+                                   that are somehow different from the ones you provided here. If you imported your results (e.g\
+                                   with --ani-dir, --mash-dir, etc), we recommend re-running with standard inputs.\
+                                   See `INPUT OPTIONS` within the help menu" % name)
 
 
-    def determine_run_mode(self):
+    def sanity_check(self):
         if not any([self.program_name, self.ani_dir, self.mash_dir]):
             raise ConfigError("Anvi'o could not determine how you want to dereplicate\
                               your genomes. Please take a close look at your parameters: either --program needs to be\
@@ -110,6 +110,24 @@ class Dereplicate:
         if self.ani_dir or self.mash_dir:
             self.import_previous_results = True
 
+            if any([self.fasta_text_file, self.external_genomes, self.internal_genomes]):
+                additional_msg = ''
+
+                if not self.just_do_it:
+                    raise ConfigError("You provided any of {--external-genomes, --internal-genomes, --fasta-text-file}\
+                                       *alongside* a results directory. This requires that the external, internal,\
+                                       and fasta inputs are exactly those used to generate the results directory.\
+                                       This is sketchy and anvi'o doesn't recommend it. If you insist, re-run with\
+                                       --just-do-it. Otherwise, have the results regenerated here by removing '%s'\
+                                       as an input." % (self.ani_dir or self.mash_dir))
+            else:
+                additional_msg = (' In addition, no FASTAs will be generated since you did not provide any sequence '
+                                  'sources for anvi\'o.')
+
+            run.warning("You chose to work with an already existing results folder. Please keep in mind that you\
+                         are now burdened with the responsibility of knowing what parameters you used to generate\
+                         these results.%s" % additional_msg)
+
         if self.ani_dir and not self.program_name in ['pyANI']:
             run.warning("You provided a pre-existing directory of ANI results (--ani-dir), but also provided a program\
                         name ('%s') that was not compatible with ANI. Anvi'o knows that you want to use the pre-existing\
@@ -122,14 +140,6 @@ class Dereplicate:
                         results, so she cunningly ignores this slip-up." % self.program_name)
             self.program_name = 'sourmash'
 
-
-    def run_sanity_checks(self):
-        if self.import_previous_results:
-            run.warning("You chose to work with an already existing results folder. Please keep in mind that you\
-                         are now burdened with the responsibility of knowing what parameters you used to generate\
-                         these results. In addition, distance scores will not be regenerated; FASTA files will not\
-                         be generated.")
-
         if self.min_alignment_fraction < 0 or self.min_alignment_fraction > 1:
             if self.program_name == "pyANI":
                 raise ConfigError("Alignment coverage is a value between 0 and 1. Your cutoff alignment coverage\
@@ -140,11 +150,11 @@ class Dereplicate:
                               distances between 0 and 1. %.2f can't be used to determine redundant genomes"\
                               % (self.program_name, self.distance_threshold))
 
-        if self.representative_method == "Qscore" and self.fasta_text_file:
-            self.representative_method = "distance"
-            run.warning("You asked anvi'o to choose representative genomes by Qscore, but also provided a fasta text\
-                        file. Fasta files do not include estimates on completion and redundancy. Anvi'o will switch\
-                        over to 'distance'")
+        if self.representative_method == "Qscore" and not (self.external_genomes or self.internal_genomes):
+                self.representative_method = "distance"
+                run.warning("Anvi'o must be provided either an external or internal genome collection (or both) to be\
+                             used with Qscore, since this is the only way for anvi'o to learn about completion and\
+                             redundancy scores. Anvi'o will switch to 'distance'")
 
 
     def init_genome_distance(self):
@@ -157,20 +167,12 @@ class Dereplicate:
 
     def get_genome_names(self):
         """
-        genome_names are learned from the GenomeDistance class (instantiation self.distance). If
-        they are unknown to self.distance, they are unknown to self. Calling self.get_distance_matrix
-        guarantees self.distance.genome_names is set.
+        genome_names are learned from the GenomeDistance class in self.distance.__init__. But if distance scores are
+        imported and sequence sources were not provided, GenomeDistance obviously knows nothing of the genome_names. So
+        in this fringe case we grab genome names from the results matrix
         """
-        self.genome_names = self.distance.genome_names
-
-        try:
-            self.is_genome_names_compatible_with_distance_matrix(self.distance_matrix, self.genome_names)
-        except AttributeError:
-            run.warning("Compatibility of distance matrix with genome names will not be tested. Bring your compass.")
-
-        run.info('Number of genomes considered', len(self.genome_names))
-
-        return self.distance.genome_names
+        return self.distance.genome_names if self.distance.genome_names \
+                                          else list(self.distance_matrix.keys())
 
 
     def get_distance_matrix(self):
@@ -222,9 +224,6 @@ class Dereplicate:
                                   Anvi'o cannot dereplicate genomes from prevous results without this report" % report)
 
             self.distance.results[report] = utils.get_TAB_delimited_file_as_dictionary(J(dir_path, matching_filepaths[0]))
-
-        # self.distance does not know genome_names because these results are imported. we populate it manually here
-        self.distance.genome_names = list(self.distance.results[list(self.distance.results.keys())[0]].keys())
 
         run.info('%s results directory imported from' % self.program_name, dir_path)
 
@@ -317,6 +316,11 @@ class Dereplicate:
 
         self.distance_matrix = self.get_distance_matrix()
         self.genome_names = self.get_genome_names()
+
+        self.is_genome_names_compatible_with_distance_matrix(self.distance_matrix, self.genome_names)
+
+        run.info('Number of genomes considered', len(self.genome_names))
+
 
         self.init_clusters()
         self.populate_genomes_info_dict()
@@ -542,14 +546,43 @@ class GenomeDistance:
 
         self.hash_to_name = {}
         self.name_to_temp_path = {}
-        self.genome_names = set([])
+
+        self.genome_names = self.get_genome_names()
+
+
+    def get_genome_names(self):
+        def get_names(f):
+            d = utils.get_TAB_delimited_file_as_dictionary(f, expected_fields=['name'], indexing_field=-1) if f else {}
+            return [line['name'] for line in d.values()]
+
+        names = {
+            '--fasta-text-file': get_names(self.fasta_txt),
+            '--internal-genomes': get_names(self.internal_genomes),
+            '--external-genomes': get_names(self.external_genomes),
+        }
+
+        for source1, source2 in combinations(names, 2):
+            names_in_both = [n for n in names[source1] if n in names[source2]]
+            if len(names_in_both):
+                raise ConfigError("Ok, so you provided %s and %s as sequence sources, but some names from these sources are shared\
+                                   so anvi'o doesn't know how these names should be treated. Here is the list of names that are shared\
+                                   by both: [%s]" % (source1, source2, ', '.join([str(n) for n in names_in_both])))
+
+        self.genome_names = []
+        for _, names in names.items():
+            self.genome_names += names
+
+        return set(self.genome_names)
 
 
     def get_fasta_sequences_dir(self):
-        if self.genome_desc is not None:
+        if self.genome_desc:
             self.genome_desc.load_genomes_descriptions(skip_functions=True)
 
-        temp_dir, hash_to_name, genome_names, name_to_temp_path = utils.create_fasta_dir_from_sequence_sources(self.genome_desc, fasta_txt=self.fasta_txt)
+        temp_dir,\
+        hash_to_name,\
+        genome_names,\
+        name_to_temp_path = utils.create_fasta_dir_from_sequence_sources(self.genome_desc, self.fasta_txt)
 
         self.hash_to_name = hash_to_name
         self.genome_names = genome_names
