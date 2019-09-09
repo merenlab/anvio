@@ -350,7 +350,7 @@ class Dereplicate:
         for count, genome_name in enumerate(self.genome_names, start=1):
             cluster_name = 'cluster_%06d' % count
             self.genome_name_to_cluster_name[genome_name] = cluster_name
-            self.clusters[cluster_name] = [genome_name]
+            self.clusters[cluster_name] = set([genome_name])
 
 
     def populate_genomes_info_dict(self):
@@ -447,14 +447,13 @@ class Dereplicate:
             return
 
         # empty the smaller cluster
-        from_cluster = cluster1 if len(self.clusters[cluster1]) < len(self.clusters[cluster2]) else cluster2
-        to_cluster = cluster2 if cluster1 == from_cluster else cluster1
+        from_cluster, to_cluster = (cluster1, cluster2) \
+                                   if len(self.clusters[cluster1]) < len(self.clusters[cluster2]) \
+                                   else (cluster2, cluster1)
 
-        for genome in self.clusters[from_cluster]:
-            self.clusters[to_cluster].append(genome)
-            self.genome_name_to_cluster_name[genome] = to_cluster
-
-        self.clusters[from_cluster] = []
+        self.genome_name_to_cluster_name.update({g: to_cluster for g in self.clusters[from_cluster]})
+        self.clusters[to_cluster] |= self.clusters[from_cluster]
+        self.clusters[from_cluster] = set([])
 
 
     def pick_best_of_two(self, one, two):
