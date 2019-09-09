@@ -140,6 +140,7 @@ if __name__ == '__main__':
     groupA = parser.add_argument_group('INPUT OPTIONS', "Tell anvi'o what you want.")
     groupA.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
+    groupA.add_argument(*anvio.A('fasta-text-file'), **anvio.K('fasta-text-file'))
 
     groupB = parser.add_argument_group('OUTPUT OPTIONS', "Tell anvi'o where to store your results.")
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True }))
