@@ -371,19 +371,6 @@ class Dereplicate:
         self.genomes_info_dict = full_dict
 
 
-    def update_clusters(self, genome1, genome2):
-        from_cluster = self.genome_name_to_cluster_name[genome1]
-        to_cluster = self.genome_name_to_cluster_name[genome2]
-
-        if from_cluster == to_cluster:
-            return
-
-        for genome in self.clusters[from_cluster]:
-            self.clusters[to_cluster].append(genome)
-            self.genome_name_to_cluster_name[genome] = to_cluster
-            self.clusters[from_cluster].remove(genome)
-
-
     def are_redundant(self, genome1, genome2):
         cluster1 = self.genome_name_to_cluster_name[genome1]
         cluster2 = self.genome_name_to_cluster_name[genome2]
@@ -422,6 +409,17 @@ class Dereplicate:
             if distance > self.distance_threshold:
                 self.update_clusters(genome1, genome2)
 
+                # FIXME print statements for current development
+                print('distance: {}'.format(distance))
+                for k in self.clusters:
+                    print(k)
+                    print('=' * len(k))
+                    print(self.clusters[k])
+                    print('')
+            else:   
+                print('distance: {}'.format(distance))
+                print('no change')
+
         # remove empty clusters and rename so that names are sequential
         self.clusters = {cluster: genomes for cluster, genomes in self.clusters.items() if genomes}
         self.rename_clusters()
@@ -439,6 +437,24 @@ class Dereplicate:
             for name in self.cluster_report.keys():
                 run.warning(None, header=name)
                 print(json.dumps(self.cluster_report[name], indent=2))
+
+
+    def update_clusters(self, genome1, genome2):
+        cluster1 = self.genome_name_to_cluster_name[genome1]
+        cluster2 = self.genome_name_to_cluster_name[genome2]
+
+        if cluster1 == cluster2:
+            return
+
+        # empty the smaller cluster
+        from_cluster = cluster1 if len(self.clusters[cluster1]) < len(self.clusters[cluster2]) else cluster2
+        to_cluster = cluster2 if cluster1 == from_cluster else cluster1
+
+        for genome in self.clusters[from_cluster]:
+            self.clusters[to_cluster].append(genome)
+            self.genome_name_to_cluster_name[genome] = to_cluster
+
+        self.clusters[from_cluster] = []
 
 
     def pick_best_of_two(self, one, two):
