@@ -261,20 +261,27 @@ class Dereplicate:
     def report(self):
         if self.sequence_source_provided:
             self.populate_genomes_dir()
+            utils.store_dataframe_as_TAB_delimited_file(self.gen_fasta_report_output(), self.FASTA_REPORT_path)
+
         if not self.import_previous_results:
             self.populate_distance_scores_dir()
 
-        # FIXME df.to_csv(self.GENOME_GROUPS_path, sep='\t', index=False)
+        utils.store_dataframe_as_TAB_delimited_file(self.gen_cluster_report_output(), self.CLUSTER_REPORT_path)
 
 
     def populate_genomes_dir(self):
         if self.report_all:
-            paths = {name: path for name, path in self.distance.name_to_temp_path.items()}
+            temp_paths = {name: path for name, path in self.distance.name_to_temp_path.items()}
         else:
-            paths = {name: path for name, path in self.distance.name_to_temp_path.items() if name in self.cluster_to_representative.values()}
+            temp_paths = {name: path for name, path in self.distance.name_to_temp_path.items() if name in self.cluster_to_representative.values()}
 
-        for name, path in paths.items():
-            shutil.copy(src = path, dst = J(self.GENOMES_dir, name + '.fa'))
+        # populate a path dictionary for gen_fasta_report_output
+        self.output_fasta_paths = {}
+
+        for name, temp_path in temp_paths.items():
+            output_path = J(self.GENOMES_dir, name + '.fa')
+            shutil.copy(src = temp_path, dst = output_path)
+            self.output_fasta_paths[name] = output_path.lstrip(self.output_dir + '/')
 
 
     def populate_distance_scores_dir(self):
@@ -290,7 +297,8 @@ class Dereplicate:
             output_dir/
             ├── GENOMES/
             ├── DISTANCE_SCORES/
-            └── GENOME_GROUPS.txt
+            ├── FASTA_REPORT.txt
+            └── CLUSTER_REPORT.txt
 
         GENOMES/
             A folder with genomes. Each genome is a fasta file. Not provided if no sequence sources
@@ -298,18 +306,20 @@ class Dereplicate:
         DISTANCE_SCORES/
             A folder containing the output of distance scores. Not provided if previous distance
             scores are imported.
-        GENOME_GROUPS.txt
+        FASTA_REPORT.txt
+            A text file detailing the fasta paths of the output. Not provided if no sequence sources
+            are provided.
+        CLUSTER_REPORT.txt
             A text file detailing which genomes were determined to be redundant with one another.
-            Headers: `genome_name`, `group`, `path`. If previous distance scores are imported, `path` is
-            not included.
         """
         filesnpaths.check_output_directory(self.output_dir, ok_if_exists=False)
         os.mkdir(self.output_dir)
 
-        self.GENOME_GROUPS_path = J(self.output_dir, 'GENOME_GROUPS.txt')
+        self.CLUSTER_REPORT_path = J(self.output_dir, 'CLUSTER_REPORT.txt')
 
         if self.sequence_source_provided:
             self.GENOMES_dir = J(self.output_dir, 'GENOMES')
+            self.FASTA_REPORT_path = J(self.output_dir, 'FASTA_REPORT.txt')
             os.mkdir(self.GENOMES_dir)
         else:
             self.GENOMES_dir = None
@@ -384,14 +394,41 @@ class Dereplicate:
         self.cluster_report = {
             cluster_name: {
                 'representative': self.cluster_to_representative[cluster_name],
-                'genomes': self.clusters[cluster_name]
+                'genomes': self.clusters[cluster_name],
+                'size': len(self.clusters[cluster_name]),
             } for cluster_name in self.clusters
         }
 
 
+    def gen_cluster_report_output(self):
+        cluster_report_output = pd.DataFrame(self.cluster_report).T.reset_index().rename(columns={'index': 'cluster'})
+        cluster_report_output['genomes'] = cluster_report_output['genomes'].apply(lambda s: ','.join(s))
+        return cluster_report_output[['cluster', 'size', 'representative', 'genomes']]
+
+
+    def gen_fasta_report_output(self):
+        fasta_report_output = {
+            'name': [],
+            'cluster': [],
+            'representative': [],
+            'path': [],
+        }
+
+        for name, path in self.output_fasta_paths.items():
+            cluster = self.genome_name_to_cluster_name[name]
+
+            fasta_report_output['name'].append(name)
+            fasta_report_output['cluster'].append(cluster)
+            fasta_report_output['representative'].append(True if self.cluster_report[cluster]['representative'] == name else False)
+            fasta_report_output['path'].append(path)
+
+        return pd.DataFrame(fasta_report_output).sort_values(by=['cluster', 'name'])
+
+
     def rename_clusters(self):
-        new_cluster_names = ['cluster_%06d' % count for count in range(1, len(self.clusters) + 1)]
-        self.clusters = {new_cluster_name: genomes for new_cluster_name, genomes in zip(new_cluster_names, self.clusters.values())}
+        conversion = {key: 'cluster_%06d' % count for count, key in enumerate(self.clusters.keys(), start=1)}
+        self.clusters = {conversion[key]: self.clusters[key] for key in self.clusters}
+        self.genome_name_to_cluster_name = {k: conversion[v] for k, v in self.genome_name_to_cluster_name.items()}
 
 
     def dereplicate(self):
@@ -408,17 +445,6 @@ class Dereplicate:
             distance = float(self.distance_matrix[genome1][genome2])
             if distance > self.distance_threshold:
                 self.update_clusters(genome1, genome2)
-
-                # FIXME print statements for current development
-                print('distance: {}'.format(distance))
-                for k in self.clusters:
-                    print(k)
-                    print('=' * len(k))
-                    print(self.clusters[k])
-                    print('')
-            else:   
-                print('distance: {}'.format(distance))
-                print('no change')
 
         # remove empty clusters and rename so that names are sequential
         self.clusters = {cluster: genomes for cluster, genomes in self.clusters.items() if genomes}
