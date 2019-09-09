@@ -452,8 +452,8 @@ class Dereplicate:
                                    else (cluster2, cluster1)
 
         self.genome_name_to_cluster_name.update({g: to_cluster for g in self.clusters[from_cluster]})
-        self.clusters[to_cluster] |= self.clusters[from_cluster]
-        self.clusters[from_cluster] = set([])
+        self.clusters[to_cluster]   |= self.clusters[from_cluster]
+        self.clusters[from_cluster] -= self.clusters[from_cluster]
 
 
     def pick_best_of_two(self, one, two):
