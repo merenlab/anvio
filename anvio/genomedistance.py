@@ -363,9 +363,6 @@ class Dereplicate:
             fastas = utils.get_TAB_delimited_file_as_dictionary(self.distance.fasta_txt, expected_fields=['name', 'path'], only_expected_fields=True)
 
             for name in fastas:
-                if name in full_dict.keys(): #redundant name
-                    continue
-
                 full_dict[name] = {}
                 full_dict[name]['percent_completion'] = 0
                 full_dict[name]['percent_redundancy'] = 0
@@ -800,8 +797,7 @@ class SourMash(GenomeDistance):
         files = list(results[lines[0]].keys())
 
         for genome_fasta_path in files:
-            genome_fasta_hash = genome_fasta_path[::-1].split(".")[1].split("/")[0]
-            genome_fasta_hash = genome_fasta_hash[::-1]
+            genome_fasta_hash = genome_fasta_path[::-1].split(".")[1].split("/")[0][::-1]
             file_to_name[genome_fasta_path] = self.hash_to_name[genome_fasta_hash]
 
         reformatted_results = {}
