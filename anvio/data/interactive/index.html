@@ -1150,6 +1150,11 @@
         if (ev.keyCode === 84) { // T = 84
             $('#title-panel').toggle();
         }
+
+        if (ev.keyCode === 90 && (ev.metaKey || ev.ctrlKey)) {
+            bins.Undo();
+        }
+
     });
 
     document.body.addEventListener('keyup', function(ev) {

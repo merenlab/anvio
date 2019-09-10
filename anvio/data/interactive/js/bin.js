@@ -18,6 +18,8 @@
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
 
+ const MAX_HISTORY_SIZE = 20;
+
 
 function Bins(prefix, container) {
     this.selections = {}
@@ -29,6 +31,10 @@ function Bins(prefix, container) {
     this.cache = {
         'completeness': {}
     };
+
+    this.keepHistory = true;
+    this.history = [];
+    this.future = [];
 
     document.body.addEventListener('bin-settings-changed', (event) => this.RedrawBins());
 };
@@ -96,8 +102,22 @@ Bins.prototype.NewBin = function(id, binState) {
 
             if (!bySetColor) $(el).val(hex);
         },
-        onHide: function() {
-            emit('bin-settings-changed');
+        onShow: function() {
+            $(this).attr('color-before', $(this).attr('color'));
+        },
+        onHide: function(picker) {
+            let el = $(picker).data('colpick').el;
+            let current_color = $(el).attr('color');
+            let previous_color = $(el).attr('color-before');
+
+            if (current_color != previous_color) {
+                emit('bin-settings-changed');
+
+                bins.PushHistory([{'type': 'ChangeColor', 
+                                   'bin_id': id,
+                                   'color-before': previous_color,
+                                   'color': current_color}]);
+            }
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
@@ -160,6 +180,48 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
 };
 
 
+Bins.prototype.PushHistory = function(operation) {
+    if (!this.keepHistory)
+        return;
+
+    this.history.push(operation);
+
+    if (this.history.length > HISTORY_LENGTH) {
+        this.history.shift();
+    }
+
+    this.future = [];
+}
+
+Bins.prototype.Undo = function() {
+    let transaction = this.history.pop();
+
+    if (transaction) {
+        this.future.push(transaction);
+        
+        for (const operation of transaction) {
+            this.keepHistory = false;
+            
+            switch (operation.type) {
+                case 'AppendNode':
+                    this.RemoveNode(operation.node);
+                    break;
+                case 'RemoveNode':
+                    this.AppendNode(operation.node);
+                    break;
+                case 'ChangeColor':
+                    $('#bin_color_' + operation.bin_id).attr('color', operation['color-before']);
+                    $('#bin_color_' + operation.bin_id).css('background-color', operation['color-before']);
+                    this.RedrawBins();
+                    break;
+            }
+
+            this.keepHistory = true;
+        }
+    }
+};
+
+
 Bins.prototype.DeleteAllBins = function() {
     if (!confirm('Are you sure you want to remove all bins?')) {
         return;
@@ -180,6 +242,8 @@ Bins.prototype.AppendNode = function(targets) {
         targets = [targets];
     }
 
+    let transaction = [];
+
     for (const target of targets) {
         if (target.collapsed)
             continue;
@@ -188,6 +252,10 @@ Bins.prototype.AppendNode = function(targets) {
             if (!this.selections[bin_id].has(node)) {
                 this.selections[bin_id].add(node);
                 bins_to_update.add(bin_id);
+
+                transaction.push({'type': 'AppendNode', 
+                                  'bin_id': bin_id,
+                                  'node': node});
             }
 
             for (let other_bin_id in this.selections) {
@@ -199,6 +267,10 @@ Bins.prototype.AppendNode = function(targets) {
                 if (this.selections[other_bin_id].has(node)) {
                     this.selections[other_bin_id].delete(node);
                     bins_to_update.add(other_bin_id);
+
+                    transaction.push({'type': 'RemoveNode', 
+                                      'bin_id': other_bin_id,
+                                      'node': node});
                 }
             }
 
@@ -207,6 +279,7 @@ Bins.prototype.AppendNode = function(targets) {
     }
     
     bins_to_update = Array.from(bins_to_update);
+    this.PushHistory(transaction);
     this.RedrawBins();
     this.UpdateBinsWindow(bins_to_update);
 };
@@ -215,6 +288,7 @@ Bins.prototype.AppendNode = function(targets) {
 Bins.prototype.RemoveNode = function(targets) {
     var bin_id = this.GetSelectedBinId();
     var bins_to_update = new Set();
+    let transaction = [];
 
     if (!Array.isArray(targets)) {
         targets = [targets];
@@ -229,6 +303,10 @@ Bins.prototype.RemoveNode = function(targets) {
                 if (this.selections[bin_id].has(node)) {
                     this.selections[bin_id].delete(node);
                     bins_to_update.add(bin_id);
+
+                    transaction.push({'type': 'RemoveNode', 
+                                      'bin_id': bin_id,
+                                      'node': node});
                 }
             }
 
@@ -237,6 +315,7 @@ Bins.prototype.RemoveNode = function(targets) {
     }
 
     bins_to_update = Array.from(bins_to_update);
+    this.PushHistory(transaction);
     this.RedrawBins();
     this.UpdateBinsWindow(bins_to_update);
 };
@@ -423,13 +502,14 @@ Bins.prototype.ImportCollection = function(collection, threshold = 1000) {
             }
         }
 
-        if ((mode != 'full' || sum_length >= threshold) && nodes.length > 0)
+        if ((mode != 'full' || threshold == 0 || sum_length >= threshold) && nodes.length > 0)
         {
             if (!bins_cleared)
             {
                 this.bin_counter = 0;
                 this.selections = {};
                 this.container.innerHTML = '';
+                this.history = [];
                 bins_cleared = true;
             }
 
