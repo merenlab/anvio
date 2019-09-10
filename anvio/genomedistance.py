@@ -638,7 +638,7 @@ class GenomeDistance:
 
             run.warning(None, header="MISC DATA MAGIC FOR YOUR PAN DB", lc='green')
             for report_name in self.results:
-                target_data_group = 'ANI_%s' % (report_name)
+                target_data_group = '%s_%s' % (self.distance_type, report_name)
                 l_args = argparse.Namespace(pan_db=self.pan_db, just_do_it=True, target_data_group=target_data_group)
                 TableForLayerAdditionalData(l_args, r=terminal.Run(verbose=False)).add(self.results[report_name], list(self.results[report_name].keys()))
 
@@ -656,7 +656,7 @@ class GenomeDistance:
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
 
-        run.warning(None, header="%s RESULTS" % self.program_name.upper(), lc='green')
+        run.warning(None, header="%s RESULTS" % self.distance_type.upper(), lc='green')
         for report_name in self.results:
             output_path_for_report = J(output_dir, self.method + '_' + report_name)
 
@@ -724,7 +724,7 @@ class ANI(GenomeDistance):
 
         GenomeDistance.__init__(self, args)
 
-        self.program_name = 'pyANI'
+        self.distance_type = 'ANI'
 
         self.args.quiet = True
         self.program = pyani.PyANI(self.args)
@@ -918,13 +918,13 @@ class SourMash(GenomeDistance):
     def __init__(self, args):
         GenomeDistance.__init__(self, args)
 
-        self.program_name = 'sourmash'
+        self.distance_type = 'SourMash'
 
         self.results = {}
         self.clusterings = {}
         self.program = sourmash.Sourmash(args)
         self.min_distance = args.min_mash_distance if 'min_mash_distance' in vars(args) else 0
-        self.method = 'SourMash'
+        self.method = 'sourmash'
 
 
     def reformat_results(self, results):
