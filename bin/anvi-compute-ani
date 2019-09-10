@@ -71,7 +71,7 @@ if __name__ == '__main__':
                         on the pan interactive interface through the 'layers' tab."}))
 
     group_PROGRAM = parser.add_argument_group('Program', "Tell anvi'o which similarity program to run.")
-    group_PROGRAM.add_argument('--program', type=str, required=True, help="Tell anvi'o which program to run to process genome similarity.\
+    group_PROGRAM.add_argument('--program', type=str, default='pyANI', help="Tell anvi'o which program to run to process genome similarity.\
                         You can either use pyANI for ANI calculations or sourmash for mash distance. You must have\
                         the necessary binary in path for the program you choose.",\
                         choices=['pyANI','sourmash'])
