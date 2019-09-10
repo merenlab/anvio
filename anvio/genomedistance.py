@@ -4,11 +4,15 @@
 
 import os
 import shutil
+import argparse
 import pandas as pd
 
 import anvio
+import anvio.db as db
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.constants as constants
+import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.genomedescriptions as genomedescriptions
 
@@ -175,11 +179,14 @@ class Dereplicate:
 
 
     def init_genome_distance(self):
+        args = self.args
+        args.output_dir_exists = True
+
         if self.program_name == "pyANI":
-            self.distance = ANI(self.args)
+            self.distance = ANI(args)
         else:
             assert self.program_name == "sourmash", "Fatal error in self.program_name assertion in initialization. Please inform the developers."
-            self.distance = SourMash(self.args)
+            self.distance = SourMash(args)
 
 
     def get_genome_names(self):
@@ -264,7 +271,7 @@ class Dereplicate:
             utils.store_dataframe_as_TAB_delimited_file(self.gen_fasta_report_output(), self.FASTA_REPORT_path)
 
         if not self.import_previous_results:
-            self.populate_distance_scores_dir()
+            self.distance.report(self.DISTANCE_SCORES_dir, ok_if_exists=True)
 
         utils.store_dataframe_as_TAB_delimited_file(self.gen_cluster_report_output(), self.CLUSTER_REPORT_path)
 
@@ -282,12 +289,6 @@ class Dereplicate:
             output_path = J(self.GENOMES_dir, name + '.fa')
             shutil.copy(src = temp_path, dst = output_path)
             self.output_fasta_paths[name] = output_path.lstrip(self.output_dir + '/')
-
-
-    def populate_distance_scores_dir(self):
-        for f in os.listdir(J(self.temp_dir, 'output')):
-            shutil.copy(src = J(self.temp_dir, 'output', f),
-                        dst = J(self.DISTANCE_SCORES_dir, f))
 
 
     def init_output_dir(self):
@@ -348,7 +349,6 @@ class Dereplicate:
         self.is_genome_names_compatible_with_distance_matrix(self.distance_matrix, self.genome_names)
 
         run.info('Number of genomes considered', len(self.genome_names))
-
 
         self.init_clusters()
         self.populate_genomes_info_dict()
@@ -457,12 +457,6 @@ class Dereplicate:
 
         run.info('Number of redundant genomes', len(self.genome_names) - len(self.cluster_report))
         run.info('Final number of dereplicated genomes', len(self.cluster_report))
-
-        if anvio.DEBUG:
-            import json
-            for name in self.cluster_report.keys():
-                run.warning(None, header=name)
-                print(json.dumps(self.cluster_report[name], indent=2))
 
 
     def update_clusters(self, genome1, genome2):
@@ -594,16 +588,95 @@ class GenomeDistance:
         self.fasta_txt = A('fasta_text_file', null)
         self.internal_genomes = A('internal_genomes', null)
         self.external_genomes = A('external_genomes', null)
+        self.clustering_distance = A('distance', null) or constants.distance_metric_default
+        self.clustering_linkage = A('linkage', null) or constants.linkage_method_default
+        self.output_dir = A('output_dir', null)
+        self.pan_db = A('pan_db', null)
+        self.output_dir_exists = A('output_dir_exists', null)
 
         if (self.internal_genomes or self.external_genomes):
             self.genome_desc = genomedescriptions.GenomeDescriptions(args, run = terminal.Run(verbose=False))
         else:
             self.genome_desc = None
 
+        self.clusterings = {}
         self.hash_to_name = {}
         self.name_to_temp_path = {}
 
+        self.sanity_check(ok_if_exists=self.output_dir_exists)
         self.genome_names = self.get_genome_names()
+
+
+    def sanity_check(self, ok_if_exists):
+        clustering.is_distance_and_linkage_compatible(self.clustering_distance, self.clustering_linkage)
+        filesnpaths.check_output_directory(self.output_dir, ok_if_exists=ok_if_exists)
+        if self.pan_db:
+            utils.is_pan_db(self.pan_db)
+
+
+    def add_to_pan_db(self):
+        if self.pan_db:
+            utils.is_pan_db(self.pan_db)
+            pan = db.DB(self.pan_db, anvio.__pan__version__)
+
+            db_genome_names = set([])
+            G = lambda g: pan.get_meta_value(g).strip().split(',')
+            for genome_name in G('external_genome_names') + G('internal_genome_names'):
+                db_genome_names.add(genome_name) if len(genome_name) else None
+
+            found_only_in_db = db_genome_names.difference(self.genome_names)
+            found_only_in_results = self.genome_names.difference(db_genome_names)
+
+            if len(found_only_in_results) > 0:
+                raise ConfigError("Some genome names found in your results do not seem to be exist in the pan database. \
+                    Here are the list of them: " + ", ".join(list(found_only_in_results)))
+
+            if len(found_only_in_db) > 0:
+                run.warning("Some genome names found in pan database do not seem to be exist in the distance report. \
+                    anvi'o will add the ones that are found in the database anyway, but here is the list of missing ones: \
+                    " + ", ".join(list(found_only_in_db)))
+
+            run.warning(None, header="MISC DATA MAGIC FOR YOUR PAN DB", lc='green')
+            for report_name in self.results:
+                target_data_group = 'ANI_%s' % (report_name)
+                l_args = argparse.Namespace(pan_db=self.pan_db, just_do_it=True, target_data_group=target_data_group)
+                TableForLayerAdditionalData(l_args, r=terminal.Run(verbose=False)).add(self.results[report_name], list(self.results[report_name].keys()))
+
+                TableForLayerOrders(self.args, r=terminal.Run(verbose=False)).add({self.method + '_' + report_name: {'data_type': 'newick',
+                                                                                   'data_value': self.clusterings[report_name]}})
+
+                run.info_single("Additional data and order for %s are now in pan db" % target_data_group.replace('_', ' '), mc='green')
+
+
+
+    def report(self, output_dir = None, ok_if_exists = False):
+        output_dir = output_dir if output_dir else self.output_dir
+
+        filesnpaths.check_output_directory(output_dir, ok_if_exists=ok_if_exists)
+        if not os.path.isdir(output_dir):
+            os.mkdir(output_dir)
+
+        run.warning(None, header="%s RESULTS" % self.program_name.upper(), lc='green')
+        for report_name in self.results:
+            output_path_for_report = J(output_dir, self.method + '_' + report_name)
+
+            utils.store_dict_as_TAB_delimited_file(self.results[report_name], output_path_for_report + '.txt')
+            with open(output_path_for_report + '.newick', 'w') as f:
+                f.write(self.clusterings[report_name])
+
+            run.info_single('Matrix and clustering of \'%s\' written to output directory' % report_name.replace('_',' '), mc='green')
+
+
+    def cluster(self):
+        for report_name in self.results:
+            try:
+                self.clusterings[report_name] = clustering.get_newick_tree_data_for_dict(self.results[report_name],
+                                                                                         linkage=self.clustering_linkage,
+                                                                                         distance=self.clustering_distance)
+            except:
+                raise ConfigError("Bad news :/ Something went wrong while anvi'o was processing the output for\
+                                   '%s'. You can find the offending file if you search for the output file in\
+                                   the temporary output directory '%s'." % (report_name, os.path.join(self.temp_dir, 'output')))
 
 
     def get_genome_names(self):
@@ -626,7 +699,7 @@ class GenomeDistance:
 
         self.genome_names = []
         for _, names in names.items():
-            self.genome_names += names
+            self.genome_names.extend(names)
 
         return set(self.genome_names)
 
@@ -635,15 +708,49 @@ class GenomeDistance:
         if self.genome_desc:
             self.genome_desc.load_genomes_descriptions(skip_functions=True)
 
-        temp_dir,\
-        hash_to_name,\
-        genome_names,\
-        name_to_temp_path = utils.create_fasta_dir_from_sequence_sources(self.genome_desc, self.fasta_txt)
+        self.temp_dir,\
+        self.hash_to_name,\
+        self.genome_names,\
+        self.name_to_temp_path = utils.create_fasta_dir_from_sequence_sources(self.genome_desc, self.fasta_txt)
 
-        self.hash_to_name = hash_to_name
-        self.genome_names = genome_names
-        self.name_to_temp_path = name_to_temp_path
-        return temp_dir
+        return self.temp_dir
+
+
+
+class ANI(GenomeDistance):
+    def __init__(self, args):
+        self.args = args
+        self.results = {}
+
+        GenomeDistance.__init__(self, args)
+
+        self.program_name = 'pyANI'
+
+        self.args.quiet = True
+        self.program = pyani.PyANI(self.args)
+
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        self.min_alignment_fraction = A('min_alignment_fraction', null)
+        self.min_full_percent_identity = A('min_full_percent_identity', null)
+        self.significant_alignment_length = A('significant_alignment_length', null)
+        self.method = A('method', null)
+
+        self.ANI_sanity_check()
+
+
+    def ANI_sanity_check(self):
+        if self.min_alignment_fraction < 0 or self.min_alignment_fraction > 1:
+            raise ConfigError("The minimum alignment fraction must be a value between 0.0 and 1.0. %.2f does\
+                               not work for anvi'o :/" % self.min_alignment_fraction)
+
+        if self.significant_alignment_length and self.significant_alignment_length < 0:
+            raise ConfigError("You missed concept :/ Alignment length can't be smaller than 0.")
+
+        if self.significant_alignment_length and not self.min_alignment_fraction:
+            raise ConfigError("Using the --significant-alignment-length parameter Without the --min-alignment-fraction\
+                               parameter does not make any sense. But how could you know that unless you read the help\
+                               menu? Yep. Anvi'o is calling the bioinformatics police on you :(")
 
 
     def restore_names_in_dict(self, input_dict):
@@ -664,24 +771,6 @@ class GenomeDistance:
                 new_dict[key] = value
 
         return new_dict
-
-
-
-class ANI(GenomeDistance):
-    def __init__(self, args):
-        self.args = args
-        self.results = {}
-
-        GenomeDistance.__init__(self, args)
-
-        self.args.quiet = True
-        self.program = pyani.PyANI(self.args)
-
-        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
-        null = lambda x: x
-        self.min_alignment_fraction = A('min_alignment_fraction', null)
-        self.min_full_percent_identity = A('min_full_percent_identity', null)
-        self.significant_alignment_length = A('significant_alignment_length', null)
 
 
     def decouple_weak_associations(self):
@@ -803,15 +892,17 @@ class ANI(GenomeDistance):
 
 
     def process(self, temp=None):
-        temp_dir = temp if temp else self.get_fasta_sequences_dir()
+        self.temp_dir = temp if temp else self.get_fasta_sequences_dir()
 
-        self.results = self.program.run_command(temp_dir)
+        self.results = self.program.run_command(self.temp_dir)
         self.results = self.restore_names_in_dict(self.results)
         self.results = self.compute_additonal_matrices(self.results)
         self.decouple_weak_associations()
 
+        self.cluster()
+
         if temp is None:
-            shutil.rmtree(temp_dir)
+            shutil.rmtree(self.temp_dir)
 
 
     def compute_additonal_matrices(self, results):
@@ -827,9 +918,13 @@ class SourMash(GenomeDistance):
     def __init__(self, args):
         GenomeDistance.__init__(self, args)
 
+        self.program_name = 'sourmash'
+
         self.results = {}
+        self.clusterings = {}
         self.program = sourmash.Sourmash(args)
         self.min_distance = args.min_mash_distance if 'min_mash_distance' in vars(args) else 0
+        self.method = 'SourMash'
 
 
     def reformat_results(self, results):
@@ -856,10 +951,18 @@ class SourMash(GenomeDistance):
 
 
     def process(self, temp=None):
-        temp_dir = temp if temp else self.get_fasta_sequences_dir()
+        self.temp_dir = temp if temp else self.get_fasta_sequences_dir()
 
-        self.results['mash_distance'] = self.program.process(temp_dir, self.name_to_temp_path.values())
+        self.results['mash_distance'] = self.program.process(self.temp_dir, self.name_to_temp_path.values())
         self.results['mash_distance'] = self.reformat_results(self.results['mash_distance'])
 
+        self.cluster()
+
         if temp is None:
-            shutil.rmtree(temp_dir)
+            shutil.rmtree(self.temp_dir)
+
+
+program_class_dictionary = {
+    'pyANI': ANI,
+    'sourmash': SourMash,
+}

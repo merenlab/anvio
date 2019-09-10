@@ -5,25 +5,13 @@
 import os
 import sys
 import shutil
-import hashlib
 import argparse
 
 import anvio
-import anvio.db as db
-import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.clustering as clustering
-import anvio.summarizer as summarizer
-import anvio.filesnpaths as filesnpaths
 import anvio.genomedistance as genomedistance
-import anvio.genomedescriptions as genomedescriptions
-
-
-from anvio.tables.miscdata import TableForLayerAdditionalData
-from anvio.tables.miscdata import TableForLayerOrders
 
 from anvio.errors import ConfigError, FilesNPathsError
-import anvio.errors
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -43,95 +31,30 @@ run = terminal.Run()
 
 
 def main(args):
-    # some quick checks
-    clustering.is_distance_and_linkage_compatible(args.distance, args.linkage)
 
-    if args.min_alignment_fraction < 0 or args.min_alignment_fraction > 1:
-        raise ConfigError("The minimum alignment fraction must be a value between 0.0 and 1.0. %.2f does\
-                           not work for anvi'o :/" % args.min_alignment_fraction)
+    # FIXME
+    program_name = 'pyANI'
 
-    if args.significant_alignment_length and args.significant_alignment_length < 0:
-        raise ConfigError("You missed concept :/ Alignment length can't be smaller than 0.")
-
-    if args.significant_alignment_length and not args.min_alignment_fraction:
-        raise ConfigError("Using the --significant-alignment-length parameter Without the --min-alignment-fraction\
-                           parameter does not make any sense. But how could you know that unless you read the help\
-                           menu? Yep. Anvi'o is calling the bioinformatics police on you :(")
-
-    filesnpaths.check_output_directory(args.output_dir, ok_if_exists=False)
-
-    program = genomedistance.ANI(args)
-    temp_dir = program.get_fasta_sequences_dir()
-    program.process(temp_dir)
-    results = program.results
-    genome_names = program.genome_names
+    d = genomedistance.program_class_dictionary[program_name](args)
+    d.process()
 
     if anvio.DEBUG:
         import json
-        for report in results:
+        for report in d.results:
             run.warning(None, header=report)
-            print(json.dumps(results[report], indent=2))
+            print(json.dumps(d.results[report], indent=2))
 
-    clusterings = {}
-    for report_name in results:
-        try:
-            clusterings[report_name] = clustering.get_newick_tree_data_for_dict(results[report_name],
-                                                                                linkage=args.linkage,
-                                                                                distance=args.distance)
-        except:
-            raise ConfigError("Bad news :/ Something went wrong while anvi'o was processing the output for\
-                               '%s'. You can find the offending file if you search for the output file in\
-                               the temporary output directory '%s'." % (report_name, os.path.join(temp_dir, 'output')))
-
-    os.mkdir(args.output_dir)
-    run.warning(None, header="ANI RESULTS", lc='green')
-    for report_name in results:
-        output_path_for_report = os.path.join(args.output_dir, args.method + '_' + report_name)
-
-        utils.store_dict_as_TAB_delimited_file(results[report_name], output_path_for_report + '.txt')
-        with open(output_path_for_report + '.newick', 'w') as f:
-            f.write(clusterings[report_name])
-        run.info_single('Matrix and clustering of \'%s\' written to output directory' % report_name.replace('_',' '), mc='green')
-
-    if args.pan_db:
-        utils.is_pan_db(args.pan_db)
-        pan = db.DB(args.pan_db, anvio.__pan__version__)
-
-        db_genome_names = set([])
-        G = lambda g: pan.get_meta_value(g).strip().split(',')
-        for genome_name in G('external_genome_names') + G('internal_genome_names'):
-            db_genome_names.add(genome_name) if len(genome_name) else None
-
-        found_only_in_db = db_genome_names.difference(genome_names)
-        found_only_in_results = genome_names.difference(db_genome_names)
-
-        if len(found_only_in_results) > 0:
-            raise ConfigError("Some genome names found in ANI results do not seem to be exist in the pan database. \
-                Here are the list of them: " + ", ".join(list(found_only_in_results)))
-
-        if len(found_only_in_db) > 0:
-            run.warning("Some genome names found in pan database do not seem to be exist in the ANI report. \
-                anvi'o will add the ones that are found in database anyway, but here is the list of missing ones: \
-                " + ", ".join(list(found_only_in_db)))
-
-        run.warning(None, header="MISC DATA MAGIC FOR YOUR PAN DB", lc='green')
-        for report_name in results:
-            target_data_group = 'ANI_%s' % (report_name)
-            l_args = argparse.Namespace(pan_db=args.pan_db, just_do_it=True, target_data_group=target_data_group)
-            TableForLayerAdditionalData(l_args, r=terminal.Run(verbose=False)).add(results[report_name], list(results[report_name].keys()))
-
-            TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({'ANI_' + report_name: {'data_type': 'newick',
-                                                                  'data_value': clusterings[report_name]}})
-
-            run.info_single("Additional data and order for %s are now in pan db" % target_data_group.replace('_', ' '), mc='green')
+    d.cluster()
+    d.report()
+    d.add_to_pan_db()
 
     if anvio.DEBUG:
         run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
-                     later" % temp_dir, header="Debug")
+                     later" % d.temp_dir, header="Debug")
     else:
         run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
                          like to keep it for testing purposes)', nl_before=1, nl_after=1)
-        shutil.rmtree(temp_dir)
+        shutil.rmtree(d.temp_dir)
 
 
 if __name__ == '__main__':
@@ -145,10 +68,10 @@ if __name__ == '__main__':
     groupB = parser.add_argument_group('OUTPUT OPTIONS', "Tell anvi'o where to store your results.")
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True }))
     groupB.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False, 'help': "This is\
-                        totally optional, but very useful when applicable. If you are running ANI for\
+                        totally optional, but very useful when applicable. If you are running this for\
                         genomes for which you already have an anvi'o pangeome, then you can show where\
                         the pan database is and anvi'o would automatically add the results into the\
-                        misc data tables of your pangenome. Those data can then be shown as ANI heatmaps\
+                        misc data tables of your pangenome. Those data can then be shown as heatmaps\
                         on the pan interactive interface through the 'layers' tab."}))
 
     groupC = parser.add_argument_group('FILTERING HITS', "These filters can save lives. Ask Luke.")
@@ -165,9 +88,9 @@ if __name__ == '__main__':
                          Finally, 'TETRA': calculates tetranucleotide frequencies of each input sequence",\
                          choices=['ANIm', 'ANIb', 'ANIblastall', 'TETRA'])
 
-    groupE = parser.add_argument_group('HIERARCHICAL CLUSTERING', "Once pyANI is done with its magic, it reports ANI\
-                         between genomes as distance matrix files, which can be clustered into nice looking dendrograms\
-                         to display the relationships between genomes nicely (in the anvi'o interface and elsewhere).\
+    groupE = parser.add_argument_group('HIERARCHICAL CLUSTERING', "anvi-compute-genome-distance outputs distance\
+                         matrix files, which can be clustered into nice looking dendrograms to display the\
+                         relationships between genomes nicely (in the anvi'o interface and elsewhere).\
                          Here you can set the distance metric and the linkage algorithm for that.")
     groupE.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help': 'The distance metric for the hierarchical \
                          clustering. The default is "%(default)s".'}))
