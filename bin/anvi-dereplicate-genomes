@@ -8,7 +8,7 @@ import argparse
 import anvio
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.genomedistance import Dereplicate
+from anvio.genomesimilarity import Dereplicate
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
@@ -30,13 +30,13 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
     groupA.add_argument(*anvio.A('fasta-text-file'), **anvio.K('fasta-text-file'))
 
-    groupD = parser.add_argument_group('IMPORT RESULTS', "Alternatively, if you have previous ANI or mash distance\
+    groupD = parser.add_argument_group('IMPORT RESULTS', "Alternatively, if you have previous ANI or mash similarity\
                                         computations on your genomes, you can import the result directory here to use. Please note\
                                         that file names must remain unchanged for anvi'o to find them")
-    groupD.add_argument('--ani-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-ani`\
-                        and use it for dereplication")
-    groupD.add_argument('--mash-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-mash-distance`\
-                        and use it for dereplication")
+    groupD.add_argument('--ani-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-genome-similarity`\
+                        if `--program` parameter was set to `pyANI` (which is the default) and use it for dereplication")
+    groupD.add_argument('--mash-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-genome-similarity`\
+                        if `--program` parameter was set to `sourmash` and use it for dereplication")
 
     groupB = parser.add_argument_group('OUTPUT OPTIONS', "Tell anvi'o where to store your results.")
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     groupC = parser.add_argument_group('Program', "Tell anvi'o which similarity program to run.")
     groupC.add_argument('--program', type=str, help="Tell anvi'o which program to run to process genome similarity.\
-                        You can either use pyANI for ANI calculations or sourmash for mash distance. You must have\
+                        You can either use pyANI for ANI calculations or sourmash for mash similarity. You must have\
                         the necessary binary in path for the program you choose.",\
                         choices=['pyANI','sourmash'])
 
@@ -67,22 +67,22 @@ if __name__ == '__main__':
     groupF = parser.add_argument_group('sourmash settings', "Tell anvi'o to run sourmash with specific settings. Only\
                         if `--program` is set to `sourmash`")
     groupF.add_argument('--kmer-size', type=int, default=51, metavar='INT', help="Set the k-mer size for mash\
-                        distance checks. The sourmash default is 51. See the sourmash documentation for details.")
+                        similarity checks. The sourmash default is 51. See the sourmash documentation for details.")
     groupF.add_argument('--scale', type=int, default=1000, metavar='INT', help='Set the compression ratio for\
                         fasta signature file computations. The default is 1000. Smaller ratios decrease sensitivity,\
                         while larger ratios will lead to large fasta signatures.')
 
     groupG = parser.add_argument_group('Dereplication Parameters', "Some parameters to guide your dereplication")
-    groupG.add_argument('--distance-threshold', type=float, default=0.97, help="For dereplication, anvi'o collapses\
-                        all results into a single distance matrix and refers to it for dereplication. Using\
+    groupG.add_argument('--similarity-threshold', type=float, default=0.97, help="For dereplication, anvi'o collapses\
+                        all results into a single similarity matrix and refers to it for dereplication. Using\
                         this parameter, you can define the threshold for declaring genomes redundant. The default\
                         is 0.97")
-    groupG.add_argument('--representative-method', default='distance', type=str, help="After genomes are grouped into\
+    groupG.add_argument('--representative-method', default='centrality', type=str, help="After genomes are grouped into\
                         redundancy clusters, you can define how anvi'o picks the representative genome from the\
                         cluster. 'Qscore' computes the genome with the highest completion and lowest redundancy as\
-                        the representative. 'length' returns the longest genome. 'distance' returns the genome with\
-                        the highest average distance to everything in the cluster. The default is %(default)s",\
-                        choices=['Qscore', 'length', 'distance'])
+                        the representative. 'length' returns the longest genome. 'centrality' returns the genome with\
+                        the highest average similarity to everything in the cluster, i.e. the most central. The\
+                        default is %(default)s", choices=['Qscore', 'length', 'centrality'])
 
     groupH = parser.add_argument_group('OTHER IMPORTANT STUFF', "Yes. You're almost done.")
     groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
