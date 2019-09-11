@@ -374,9 +374,16 @@ class Dereplicate:
 
             for name in fastas:
                 full_dict[name] = {}
-                full_dict[name]['percent_completion'] = 0
-                full_dict[name]['percent_redundancy'] = 0
+                full_dict[name]['percent_completion'] = None
+                full_dict[name]['percent_redundancy'] = None
                 full_dict[name]['total_length'] = sum(utils.get_read_lengths_from_fasta(fastas[name]['path']).values())
+
+        if self.representative_method == 'Qscore':
+            for genome in full_dict:
+                if not full_dict[genome].get('percent_completion') or not full_dict[genome].get('percent_redundancy'):
+                    run.warning('At least one of your genomes does not have completion and/or redundancy scores, which makes\
+                                 it impossible to use Qscore to pick best representatives from each cluster. One of these\
+                                 genomes is %s. Anvi\'o will switch you to the \'distance\' method for picking representatives.')
 
         self.genomes_info_dict = full_dict
 
@@ -706,7 +713,8 @@ class GenomeDistance:
 
     def get_fasta_sequences_dir(self):
         if self.genome_desc:
-            self.genome_desc.load_genomes_descriptions(skip_functions=True)
+            # init=False so that no complaint if there are no SCGs
+            self.genome_desc.load_genomes_descriptions(skip_functions=True, init=False)
 
         self.temp_dir,\
         self.hash_to_name,\

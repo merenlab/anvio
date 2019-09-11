@@ -35,8 +35,6 @@ if __name__ == '__main__':
                                         that file names must remain unchanged for anvi'o to find them")
     groupD.add_argument('--ani-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-ani`\
                         and use it for dereplication")
-    # FIXME anvi-compute-mash-distance does not exist. Ideally, we rename anvi-compute-ani to
-    # anvi-compute-genome-distance and can calculate either ANI or mash
     groupD.add_argument('--mash-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-mash-distance`\
                         and use it for dereplication")
 
@@ -69,9 +67,7 @@ if __name__ == '__main__':
     groupF = parser.add_argument_group('sourmash settings', "Tell anvi'o to run sourmash with specific settings. Only\
                         if `--program` is set to `sourmash`")
     groupF.add_argument('--kmer-size', type=int, default=51, metavar='INT', help="Set the k-mer size for mash\
-                        distance checks. The sourmash default is 51, which is the default option. For\
-                        relatively shorter or longer genomes, you may want to decrease or increase this size\
-                        respectively")
+                        distance checks. The sourmash default is 51. See the sourmash documentation for details.")
     groupF.add_argument('--scale', type=int, default=1000, metavar='INT', help='Set the compression ratio for\
                         fasta signature file computations. The default is 1000. Smaller ratios decrease sensitivity,\
                         while larger ratios will lead to large fasta signatures.')
