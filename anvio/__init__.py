@@ -148,6 +148,18 @@ D = {
             {'metavar': 'FASTA',
              'help': "A FASTA-formatted input file"}
                 ),
+    'fasta-text-file': (
+            ['-f', '--fasta-text-file'],
+            {'metavar': 'FASTA_TEXT_FILE',
+            'dest': 'fasta_text_file',
+            'help': "A two-column TAB-delimited file that lists multiple FASTA files to import\
+                     for analysis. If using for `anvi-dereplicate-genomes` or `anvi-compute-distance`,\
+                     each FASTA is assumed to be a genome. The first item in the header line\
+                     should read 'name', and the second item should read 'fasta_path'. Each line\
+                     in the field should describe a single entry, where the first column is\
+                     the name of the FASTA file or corresponding sequence, and the second column\
+                     is the path to the FASTA file itself."}
+                ),
     'layers-information-file': (
             ['-D', '--layers-information-file'],
             {'metavar': 'FILE',
@@ -1454,6 +1466,71 @@ D = {
              'default': 80.0,
              'type': float,
              'help': "Minimum percent identity. The default is %(default)g."}
+                ),
+    'min-full-percent-identity': (
+            ['--min-full-percent-identity'],
+            {'metavar': 'FULL_PERCENT_IDENTITY',
+             'default': 20.0,
+             'type': float,
+             'help': "In some cases you may get high raw ANI estimates (percent identity scores)\
+                      between two genomes that have little to do with each other simply because only\
+                      a small fraction of their content may be aligned. This can be partly\
+                      alleviated by considering the *full* percent identity, which includes in its\
+                      calculation regions that did not align. For example, if the alignment is a\
+                      whopping 97 percent identity but only 8 percent of the genome aligned, the *full*\
+                      percent identity is 0.970 * 0.080 = 0.078 OR 7.8 percent. *full* percent\
+                      identity is always included in the report, but you can also use it as a filter\
+                      for other metrics, such as percent identity. This filter will set all ANI\
+                      measures between two genomes to 0 if the *full* percent identity is less than\
+                      you deem trustable. When you set a value, anvi'o will go through the ANI\
+                      results, and set all ANI measures between two genomes to 0 if the *full*\
+                      percent identity *between either of them* is less than the parameter described\
+                      here. The default is %(default)g."}
+                ),
+    'use-full-percent-identity': (
+            ['--use-full-percent-identity'],
+            {'action': 'store_true',
+             'help': "Usually, percent identity is calculated only over aligned regions, and this\
+                      is what is used as a distance metric by default. But with this flag,\
+                      you can instead use the *full* percent identity as the distance metric. It is the\
+                      same as percent identity, except that regions that did not align are included\
+                      in the calculation. This means *full* percent identity will always be less than or\
+                      equal to percent identity. How is it calculated? Well if P is the percentage identity\
+                      calculated in aligned regions, L is the length of the genome, and A is the fraction\
+                      of the genome that aligned to a compared genome, the full percent identity is\
+                      P * (A/L). In other words, it is the percent identity multiplied by the alignment\
+                      coverage. For example, if the alignment is a whopping 97 percent identity but\
+                      only 8 percent of the genome aligned, the *full* percent identity is 0.970 * 0.080\
+                      = 0.078, which is just 7.8 percent."}
+                ),
+    'min-alignment-fraction': (
+            ['--min-alignment-fraction'],
+            {'default': 0.0,
+             'metavar': 'NUM',
+             'type': float,
+             'help': "In some cases you may get high raw ANI estimates\
+                      (percent identity scores) between two genomes that have little to do with each other\
+                      simply because only a small fraction of their content may be aligned. This filter will\
+                      set all ANI scores between two genomes to 0 if the alignment fraction is less than you\
+                      deem trustable. When you set a value, anvi'o will go through the ANI results, and set\
+                      percent identity scores between two genomes to 0 if the alignment fraction *between either\
+                      of them* is less than the parameter described here. The default is %(default)g."}
+                ),
+    'significant-alignment-length': (
+            ['--significant-alignment-length'],
+            {'default': None,
+             'metavar': 'INT',
+             'type': int,
+             'help': "So --min-alignment-fraction\
+                      discards any hit that is coming from alignments that represent shorter fractions of genomes,\
+                      but what if you still don't want to miss an alignment that is longer than an X number of\
+                      nucleotides regardless of what fraction of the genome it represents? Well, this parameter is\
+                      to recover things that may be lost due to --min-alignment-fraction parameter. Let's say,\
+                      if you set --min-alignment-fraction to '0.05', and this parameter to '5000', anvi'o will keep\
+                      hits from alignments that are longer than 5000 nts, EVEN IF THEY REPRESENT less than 5 percent of\
+                      a given genome pair. Basically if --min-alignment-fraction is your shield to protect yourself\
+                      from incoming garbage, --significant-alignment-length is your chopstick to pick out those that\
+                      may be interesting, and you are a true warrior here."}
                 ),
     'bins-info': (
             ['--bins-info'],
