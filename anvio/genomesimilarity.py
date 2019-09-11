@@ -615,6 +615,7 @@ class GenomeSimilarity:
     def sanity_check(self, ok_if_exists):
         clustering.is_distance_and_linkage_compatible(self.clustering_distance, self.clustering_linkage)
         filesnpaths.check_output_directory(self.output_dir, ok_if_exists=ok_if_exists)
+
         if self.pan_db:
             utils.is_pan_db(self.pan_db)
 
@@ -757,6 +758,12 @@ class ANI(GenomeSimilarity):
             raise ConfigError("Using the --significant-alignment-length parameter Without the --min-alignment-fraction\
                                parameter does not make any sense. But how could you know that unless you read the help\
                                menu? Yep. Anvi'o is calling the bioinformatics police on you :(")
+
+        if len(self.genome_names) > 50:
+            run.warning("You are comparing %d genomes. That's no small task. For context, 10 Prochlorococcus genomes\
+                         using 4 threads took 2m20s on a 2016 Macbook Pro. And 50 genomes took 49m53s. Consider\
+                         instead using sourmash (--program sourmash). On the same Macbook with 1 thread using\
+                         sourmash, these times were 12s and 42s, respectively." % len(self.genome_names))
 
 
     def restore_names_in_dict(self, input_dict):
