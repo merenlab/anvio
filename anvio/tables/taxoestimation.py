@@ -185,7 +185,8 @@ class TablesForTaxoestimation(Table):
         self.database.disconnect()
         if not len(dictonnary_taxonomy_by_index):
             traceback.print_exc()
-            raise ConfigError("Anvi'o could not find the data for the taxonomic estimation,\
-                               you should try to run 'anvi-diamond-for-taxonomy'")
+            raise ConfigError("Your contigs database does not seem to contain any information anvi'o can use to\
+                               estimate taxonomy of anything. Please try running the program 'anvi-run-scg-taxonomy'\
+                               first.")
         else:
             return(dictonnary_taxonomy_by_index)
