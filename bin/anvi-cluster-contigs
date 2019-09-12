@@ -14,6 +14,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.drivers import driver_modules
+from anvio.ttycolors import color_text as c
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.collections import TablesForCollections
 
@@ -128,7 +129,7 @@ if __name__ == '__main__':
             # test if __init__() will raise ConfigError with is_program_exists
             module()
 
-            subparser._optionals.title = '%s options' % name.upper()
+            subparser._optionals.title = " \n%s\n%s" % (c(name.upper(), "green"), ':' * 79)
             for arg_name, definiton in module.arguments.items():
                 subparser.add_argument(*definiton[0], **definiton[1])
 
@@ -136,7 +137,7 @@ if __name__ == '__main__':
                 subparser.print_help()
         except ConfigError:
             if show_help:
-                print("%s [ Not installed ]" % name.upper())
+                print("\n%s %s" % (c(name.upper(), "green"), c("[NOT FOUND]", "red")))
 
             continue
         finally:

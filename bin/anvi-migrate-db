@@ -2,13 +2,13 @@
 # -*- coding: utf-8
 
 import sys
-import h5py
 import copy
 import argparse
 
 import anvio
 import anvio.db as db
 import anvio.tables as t
+import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -38,6 +38,7 @@ class Migrater(object):
         run.info('Current Version', self.db_version)
         run.info('Target Version', self.target_version)
 
+
     def get_db_meta(self):
         try:
             if self.db_path.endswith('.db'):
@@ -48,6 +49,8 @@ class Migrater(object):
 
                 db_conn.disconnect()
             elif self.db_path.endswith('GENOMES.h5'):
+                utils.check_h5py_module()
+                import h5py
                 fp = h5py.File(self.db_path, 'r')
 
                 self.db_type = 'genomestorage'

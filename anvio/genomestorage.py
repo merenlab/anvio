@@ -128,10 +128,19 @@ class GenomeStorage(object):
         where_clause = """genome_name IN (%s)""" % ",".join('"' + item + '"' for item in self.genome_names)
         self.genomes_info = self.db.get_some_rows_from_table_as_dict(t.genome_info_table_name, where_clause)
 
+        self.progress.end()
+
         self.gene_info = {}
-        self.progress.update('Loading genes info for %s genomes...' % len(self.genomes_info))
-        for gene_info_tuple in self.db.get_some_rows_from_table(t.gene_info_table_name, where_clause):
+        num_genes = self.db.get_row_counts_from_table(t.gene_info_table_name, where_clause)
+        self.progress.new('Loading gene info', progress_total_items=num_genes)
+
+        for gene_num, gene_info_tuple in enumerate(self.db.get_some_rows_from_table(t.gene_info_table_name, where_clause)):
             genome_name, gene_caller_id, aa_sequence, dna_sequence, partial, length = gene_info_tuple
+
+            if gene_num % 100 == 0:
+                self.progress.increment(increment_to = gene_num)
+                self.progress.update('Completed %d/%d' % (gene_num, num_genes))
+
             if genome_name not in self.gene_info:
                 self.gene_info[genome_name] = {}
 
