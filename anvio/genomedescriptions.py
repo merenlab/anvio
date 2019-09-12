@@ -161,7 +161,8 @@ class GenomeDescriptions(object):
         self.full_init = init
 
         # convert relative paths to absolute paths and MERGE internal and external genomes into self.genomes:
-        for source, input_file in [(self.external_genomes_dict, self.input_file_for_external_genomes), (self.internal_genomes_dict, self.input_file_for_internal_genomes)]:
+        for source, input_file in [(self.external_genomes_dict, self.input_file_for_external_genomes),
+                                   (self.internal_genomes_dict, self.input_file_for_internal_genomes)]:
             for genome_name in source:
                 self.genomes[genome_name] = source[genome_name]
                 for db_path_var in ['contigs_db_path', 'profile_db_path']:

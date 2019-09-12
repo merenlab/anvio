@@ -3,9 +3,12 @@
 
 """Return short reads from BAM files mapping to gene."""
 
+import os
 import sys
 
 import anvio
+import anvio.utils as utils
+import anvio.filesnpaths as filesnpaths
 import anvio.terminal as terminal
 
 from anvio.dbops import ContigsSuperclass
@@ -22,36 +25,64 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db', 'bam-file',]
 __provides__ = ['short-reads-fasta',]
-__description__ = "Access reads in contigs and positions in a BAM file"
+__tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "clustering"]
+__description__ = "Recover short reads from BAM files that were mapped to genes you are\
+                   interested in. It is possible to work with a single gene call, or a\
+                   bunch of them. Similarly, you can also get short reads from a single\
+                   BAM file, or from multiple of them."
 
 
 run = terminal.Run()
+progress = terminal.Progress()
 
 
 def main(args):
     c = ContigsSuperclass(args)
 
-    if args.gene_caller_id not in c.genes_in_contigs_dict:
-        raise ConfigError("The gene id you provided does not seem to be in the contigs\
-                            database.")
+    if args.gene_caller_id and args.genes_of_interest:
+        raise ConfigError("You either should define a single gene caller id, or a list of\
+                           gene callers of interest. Not both")
 
-    gene_call = c.genes_in_contigs_dict[args.gene_caller_id]
-    mapping_range_start = gene_call['start'] + args.leeway
-    mapping_range_stop = gene_call['stop'] - args.leeway
+    if args.genes_of_interest:
+        genes_of_interest = set([int(g) for g in utils.get_column_data_from_TAB_delim_file(args.genes_of_interest, column_indices=[0], expected_number_of_fields=1)[0] if g])
+    else:
+        genes_of_interest = set([int(args.gene_caller_id)])
 
-    gene_length = gene_call['stop'] - gene_call['start']
-    run.info('Contig', gene_call['contig'])
-    run.info('Gene id', args.gene_caller_id)
-    run.info('Gene length', gene_length)
+    output_file_prefix = os.path.abspath(args.output_file_prefix or "SHORT_READS")
+    filesnpaths.is_output_dir_writable(os.path.dirname(output_file_prefix))
+
+    run.info('Num genes of interest', len(genes_of_interest))
     run.info('Leeway', args.leeway)
-    run.info('Mapping range start in contig', mapping_range_start)
-    run.info('Mapping range end in contig', mapping_range_stop)
-    run.info('Actual length of mapping window', mapping_range_stop - mapping_range_start)
+    run.info('Output file prefix', output_file_prefix)
 
+    missing_gene_caller_ids = [g for g in genes_of_interest if g not in c.genes_in_contigs_dict]
+    if missing_gene_caller_ids:
+        msg = "Some of the unique gene caller IDs you are interested in (precisely %d of %d), are missing\
+               from the contigs database you are using. " % (len(missing_gene_caller_ids), len(genes_of_interest))
 
-    r = ReadsMappingToARange()
-    r.process_range(args.input_files, gene_call['contig'], mapping_range_start, mapping_range_stop)
-    r.report(args.output_file)
+        if anvio.DEBUG:
+            raise ConfigError(msg + "Here are the list of gene caller IDs that's making anvi'o upset: %s" % \
+                                    (", ".join([str(g) for g in missing_gene_caller_ids])))
+        else:
+            raise ConfigError(msg + "Since this can be a long list in some cases, anvi'o\
+                              will not show you what they are. Unless you use the `--debug` flag.")
+
+    r = ReadsMappingToARange(run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
+
+    progress.new("Processing gene calls", progress_total_items=len(genes_of_interest))
+    progress.update("...")
+    for gene_caller_id in genes_of_interest:
+        gene_call = c.genes_in_contigs_dict[gene_caller_id]
+        mapping_range_start = gene_call['start'] + args.leeway
+        mapping_range_stop = gene_call['stop'] - args.leeway
+        gene_length = gene_call['stop'] - gene_call['start']
+
+        progress.increment()
+        progress.update("Working on gene call '%d' (%d nts) in contig '%s'.." % (gene_caller_id, gene_length, gene_call['contig']))
+
+        r.process_range(args.input_files, gene_call['contig'], mapping_range_start, mapping_range_stop)
+        r.report(output_file_prefix + '_GENE_CALL_%d.txt' % gene_caller_id)
+    progress.end()
 
 
 if __name__ == '__main__':
@@ -59,14 +90,19 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description=__description__)
 
-    parser.add_argument('-i', '--input-files', metavar = 'INPUT_BAM(S)', nargs='+', default = None, required = True,
+    groupA = parser.add_argument_group('INPUT FILES', "An anvi'o contigs database and one or more BAM files.")
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': True}))
+    groupA.add_argument('-i', '--input-files', metavar = 'INPUT_BAM(S)', nargs='+', default = None, required = True,
                         help = 'Sorted and indexed BAM files to analyze. It is essential that all BAM files must be\
                                 the result of mappings against the same contigs.')
 
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': True}))
-    parser.add_argument(*anvio.A('gene-caller-id'), **anvio.K('gene-caller-id', {'required': True}))
-    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
-    parser.add_argument(*anvio.A('leeway'), **anvio.K('leeway'))
+    groupB = parser.add_argument_group('GENES', "Gene calls you want to work with")
+    groupB.add_argument(*anvio.A('gene-caller-id'), **anvio.K('gene-caller-id'))
+    groupB.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
+    groupB.add_argument(*anvio.A('leeway'), **anvio.K('leeway'))
+
+    groupB = parser.add_argument_group('OUTPUT', "How should results be stored.")
+    parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
 
     args = anvio.get_args(parser)
 
