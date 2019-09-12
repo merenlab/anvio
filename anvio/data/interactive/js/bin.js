@@ -27,7 +27,8 @@ function Bins(prefix, container) {
     this.container = container || document.createElement("div");
 
     this.cache = {
-        'completeness': {}
+        'completeness': {},
+        'taxonomy': {},
     };
 
     document.body.addEventListener('bin-settings-changed', (event) => this.RedrawBins());
@@ -68,7 +69,11 @@ Bins.prototype.NewBin = function(id, binState) {
     var template = `<tr bin-id="${id}">
                        <td><input type="radio" name="active_bin" value="${id}"></td>
                        <td><div id="bin_color_${id}" class="colorpicker" color="${color}" style="background-color: ${color}"></td>
-                       <td data-value="${name}"><input type="text" class="bin-name" onChange="emit('bin-settings-changed');" size="21" id="bin_name_${id}" value="${name}"></td>
+                       <td data-value="${name}">
+                            <input type="text" class="bin-name" onChange="emit('bin-settings-changed');" size="21" id="bin_name_${id}" value="${name}">
+                            <br>
+                            <span class="label label-primary taxonomy-level">N/A</span>&nbsp;<span class="taxonomy-name"></span>
+                        </td>
                        ${mode != 'pan' ? `
                            <td data-value="${contig_count}" class="num-items"><input type="button" value="${contig_count}" title="Click for contig names" onClick="showContigNames(${id});"></td>
                            <td data-value="${contig_length}" class="length-sum"><span>${contig_length}</span></td>
@@ -270,6 +275,7 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
             }
 
             let bin_row = this.container.querySelector(`tr[bin-id="${bin_id}"]`);
+            let bin_name = bin_row.querySelector('.bin-name').valie
 
             bin_row.querySelector('td.num-gene-clusters').setAttribute('data-value', num_gene_clusters);
             bin_row.querySelector('td.num-gene-clusters>input').value = num_gene_clusters;
@@ -293,6 +299,7 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
             }
 
             let bin_row = this.container.querySelector(`tr[bin-id="${bin_id}"]`);
+            let bin_name = bin_row.querySelector('.bin-name').value;
 
             bin_row.querySelector('td.num-items').setAttribute('data-value', num_items);
             bin_row.querySelector('td.num-items>input').value = num_items;
@@ -368,6 +375,34 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                         showCompleteness(bin_id, true);
                         showRedundants(bin_id, true);
                     },
+                });
+
+                $.ajax({
+                    type: "POST",
+                    url: "/data/get_taxonomy",
+                    cache: false,
+                    data: {
+                        'bin_name': bin_name,
+                        'collection_data': JSON.stringify(this.ExportCollection(false)['data'][bin_name])
+                    },
+                    success: (data) => {
+                        data.forEach((key, taxonomy_data) => {
+                            if (key == bin_name) {
+                                let order = ["t_domain", "t_phylum", "t_class",
+                                             "t_order", "t_family", "t_genus", "t_species"];
+
+                                for (let i=order.length-1; i >= 0; i--) {
+                                    let level = order[i];
+
+                                    if (taxonomy_data[bin_name][level] !== 'NA') {
+                                        bin_row.querySelector('span.taxonomy-level').html(level);
+                                        bin_row.querySelector('span.taxonomy-name').html("&nsbp;" + taxonomy_data[bin_name][level]);
+                                        break;
+                                    }
+                                }
+                            }
+                        });
+                    }
                 });
             }
         }
