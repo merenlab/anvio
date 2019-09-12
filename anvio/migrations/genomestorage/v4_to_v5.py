@@ -13,8 +13,6 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
-utils.check_h5py_module()
-import h5py
 
 current_version = '4'
 next_version    = '5'
@@ -45,6 +43,9 @@ genome_gene_function_calls_table_types     = [    'str'    , ] + gene_function_c
 def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
+
+    utils.check_h5py_module()
+    import h5py
 
     fp = h5py.File(db_path, 'r')
 
