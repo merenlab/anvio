@@ -72,7 +72,7 @@ Bins.prototype.NewBin = function(id, binState) {
                        <td data-value="${name}">
                             <input type="text" class="bin-name" onChange="emit('bin-settings-changed');" size="21" id="bin_name_${id}" value="${name}">
                             <br>
-                            <span class="label label-primary taxonomy-level">N/A</span>&nbsp;<span class="taxonomy-name"></span>
+                            <span class="label label-primary taxonomy-level" style="text-transform: capitalize;">N/A</span>&nbsp;<span class="taxonomy-name"></span>
                         </td>
                        ${mode != 'pan' ? `
                            <td data-value="${contig_count}" class="num-items"><input type="button" value="${contig_count}" title="Click for contig names" onClick="showContigNames(${id});"></td>
@@ -386,22 +386,23 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                         'collection_data': JSON.stringify(this.ExportCollection(false)['data'][bin_name])
                     },
                     success: (data) => {
-                        data.forEach((key, taxonomy_data) => {
-                            if (key == bin_name) {
-                                let order = ["t_domain", "t_phylum", "t_class",
-                                             "t_order", "t_family", "t_genus", "t_species"];
+                        if (data.hasOwnProperty(bin_name)) {
+                            let order = ["t_domain", "t_phylum", "t_class",
+                                         "t_order", "t_family", "t_genus", "t_species"];
 
-                                for (let i=order.length-1; i >= 0; i--) {
-                                    let level = order[i];
+                            for (let i=order.length-1; i >= 0; i--) {
+                                let level = order[i];
 
-                                    if (taxonomy_data[bin_name][level] !== 'NA') {
-                                        bin_row.querySelector('span.taxonomy-level').html(level);
-                                        bin_row.querySelector('span.taxonomy-name').html("&nsbp;" + taxonomy_data[bin_name][level]);
-                                        break;
-                                    }
+                                if (data[bin_name]['taxonomy'][level] !== 'NA') {
+                                    bin_row.querySelector('span.taxonomy-level').innerHTML = level.split('_')[1];
+                                    bin_row.querySelector('span.taxonomy-name').innerHTML = " " + data[bin_name]['taxonomy'][level];
+                                    return;
                                 }
                             }
-                        });
+                        }
+
+                        bin_row.querySelector('span.taxonomy-level').innerHTML = 'N/A';
+                        bin_row.querySelector('span.taxonomy-name').innerHTML = " N/A";
                     }
                 });
             }

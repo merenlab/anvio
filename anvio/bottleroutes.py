@@ -1291,8 +1291,7 @@ class BottleApplication(Bottle):
 
     def get_taxonomy(self):
         bin_name = request.forms.get('bin_name')
-        bin_data = request.forms.getAll('collection_name[]')
-        print(bin_data)
+        bin_data = set(json.loads(request.forms.get('collection_data')))
 
         args = argparse.Namespace(contigs_db=self.interactive.contigs_db_path)
         estimate = taxoestimation.SCGsTaxonomy(args)
