@@ -604,33 +604,19 @@ class SCGsTaxonomy(TaxonomyEstimation):
                                         "t_species": 's__'}
         self.taxonomy_dict=dict()
 
+
+        self.initialized = False
+        self.sanity_check()
+
+
     def sanity_check(self):
-
-
-        filesnpaths.is_file_exists(self.db_path)
-        filesnpaths.is_file_exists(self.taxonomy_database_path)
+        if not self.db_path:
+            raise ConfigError("This class needs an anvi'o contigs database to work with.")
 
         utils.is_contigs_db(self.db_path)
 
         if self.profile_db_path:
-            utils.is_profile_db(self.profile_db_path)
-
-        if not len(self.SCGs):
-            raise ConfigError(
-                "This class can't be used with out a list of single-copy core genes.")
-
-        if not len(self.SCGs) == len(set(self.SCGs)):
-            raise ConfigError("Each member of the list of SCGs you wish to use with this class must\
-                               be unique and yes, you guessed right. You have some repeated gene\
-                               names.")
-
-        SCGs_missing_databases = [
-            SCG for SCG in self.SCGs if not filesnpaths.is_file_exists(self.SCG_DB_PATH(SCG))]
-        if len(SCGs_missing_databases):
-            raise ConfigError("Even though anvi'o found the directory for databases for taxonomy stuff,\
-                               your setup seems to be missing %d databases required for everything to work\
-                               with the current genes configuration of this class. Here are the list of\
-                               genes for which we are missing databases: '%s'." % (', '.join(missing_databases)))
+            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.db_path)
 
 
     def init(self, source="GTDB", number_scg=21):
