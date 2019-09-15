@@ -116,13 +116,22 @@ class TaxonomyEstimation:
         print(tabulate(matrix, headers=headers,
                        tablefmt="fancy_grid", numalign="right"))
 
+
     def get_consensus_taxonomy(self, SCGs_hit_per_gene, name):
-        """Different methode for assignation"""
         consensus_taxonomy = self.solo_hits(SCGs_hit_per_gene)
+        SCG_hits_info = {}
+
         if consensus_taxonomy:
-            for SCG, entry in SCGs_hit_per_gene.items():
-                taxonomy = [{"bestSCG": SCG, "bestident": entry[0]['pident'],
-                            "accession": entry[0]['accession'], "taxonomy":OrderedDict(self.taxonomy_dict[entry[0]['accession']])}]
+            for SCG, hits in SCGs_hit_per_gene.items():
+                SCG_hits_info[SCG] = []
+                for hit in hits:
+                    SCG_hits_info[SCG].append({'identity': hit['pident'],
+                                               'accession': hit['accession'],
+                                               'taxonomy': self.taxonomy_dict[hit['accession']],
+                                               })
+            return(consensus_taxonomy, SCG_hits_info)
+        else:
+            consensus_taxonomy, taxonomy = self.rank_assignement(SCGs_hit_per_gene, name)
 
             return(consensus_taxonomy, taxonomy)
 
