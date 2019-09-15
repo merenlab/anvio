@@ -4,6 +4,7 @@
 """Lots of under-the-rug, operational garbage in here. Run. Run away.."""
 
 import sys
+import json
 import copy
 import platform
 
@@ -16,6 +17,15 @@ anvio_codename = 'margaret'
 
 DEBUG = '--debug' in sys.argv
 FORCE = '--force' in sys.argv
+
+def P(d, dont_exit=False):
+    """Poor man's debug output printer during debugging."""
+
+    print(json.dumps(d, indent=2))
+
+    if not dont_exit:
+        sys.exit()
+
 
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
 # on systems working with multiple Python installations that are managed through modules):
