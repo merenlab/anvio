@@ -35,11 +35,6 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 def main(args):
-
-    if args.profile_db:
-        utils.is_profile_db_and_contigs_db_compatible(
-            args.profile_db, args.contigs_db)
-
     t = taxoestimation.SCGsTaxonomy(args)
     if args.get_taxonomy_by_scg:
         t.get_assignement_genes()
@@ -78,9 +73,6 @@ if __name__ == '__main__':
                         **anvio.K('collection-name'))
     groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
-
-
-    #parser.add_argument(*anvio.A('list-states'), **anvio.K('list-states'))
 
     args = anvio.get_args(parser)
 

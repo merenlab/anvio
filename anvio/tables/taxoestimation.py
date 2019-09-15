@@ -8,7 +8,6 @@ import random
 import string
 from collections import OrderedDict
 
-
 import anvio
 import anvio.db as db
 import anvio.tables as t
@@ -34,14 +33,12 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Quentin Clayssen"
 __email__ = "quentin.clayssen@gmail.com"
-__status__ = "Development"
-
-
 
 
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
+
 
 def timer(function):
     import time
@@ -58,10 +55,8 @@ def timer(function):
     return timed_function
 
 
-
 class TablesForTaxoestimation(Table):
     def __init__(self, db_path, run=run, progress=progress,profile_db_path=False):
-
         self.db_path = db_path
         self.run = run
         self.progress = progress
@@ -75,7 +70,6 @@ class TablesForTaxoestimation(Table):
 
             utils.is_profile_db_and_contigs_db_compatible(
                 self.profile_db_path, self.db_path)
-
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
 
@@ -104,6 +98,8 @@ class TablesForTaxoestimation(Table):
         self.database.insert_many(t.scg_taxonomy_table_name, entries)
         self.database.disconnect()
 
+        return table_index
+
 
     def get_accession(self,taxonomy):
         for level, taxon in reversed(list(taxonomy.items())):
@@ -112,13 +108,11 @@ class TablesForTaxoestimation(Table):
             code=abs(hash(level+taxon)) % (10 ** 8)
             accession=taxon+"_"+str(code)
             break
+
         return(accession)
 
 
-
-
     def taxonomy_estimation_to_congis(self,possibles_taxonomy):
-
         try:
             self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
             self.database.insert_many(t.scg_taxonomy_table_name, possibles_taxonomy)
@@ -126,6 +120,7 @@ class TablesForTaxoestimation(Table):
             self.run.warning(traceback.print_exc(), header='Anvi\'o fail the enter the result in %s' % self.db_pat, lc="red")
         finally:
             self.database.disconnect()
+
 
     def taxonomy_estimation_to_profile(self,possibles_taxonomy):
         try:
@@ -136,8 +131,8 @@ class TablesForTaxoestimation(Table):
         finally:
             self.bin_database.disconnect()
 
-    def get_dic_id_bin(self,args):
 
+    def get_dic_id_bin(self,args):
         self.bin_database = db.DB(self.profile_db_path, utils.get_required_version_for_db(self.profile_db_path))
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         dic_id_bin={}
@@ -148,7 +143,6 @@ class TablesForTaxoestimation(Table):
 
         self.progress.new('Load HMM resulst')
 
-
         s = hmmops.SequencesForHMMHits(self.db_path)
 
         hits_in_splits, split_name_to_bin_id = s.get_hmm_hits_in_splits(splits_dict)
@@ -158,8 +152,6 @@ class TablesForTaxoestimation(Table):
         self.progress.end()
 
         self.progress.new('Aligment result by Bin', progress_total_items=len(dic_genes_in_splits))
-
-
 
         for split in dic_genes_in_splits.values():
             if split['split'] in split_name_to_bin_id:
@@ -175,6 +167,7 @@ class TablesForTaxoestimation(Table):
         self.database.disconnect()
 
         return(dic_id_bin)
+
 
     def get_data_for_taxonomy_estimation(self):
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
