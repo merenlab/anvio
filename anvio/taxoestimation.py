@@ -849,15 +849,15 @@ class SCGsTaxonomy(TaxonomyEstimation):
         possibles_taxonomy.append(
             ['Genome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
         taxonomy_bin=self.assignation_by_bin(collection_to_split)
-        print(taxonomy_bin)
 
-        self.get_hits_per_bin(collection_to_split)
-        """for bin_id, SCGs_hit_per_gene in hits_per_gene.items():
+        hits_per_gene = self.get_hits_per_bin(collection_to_split)
+        for bin_id, SCGs_hit_per_gene in hits_per_gene.items():
                                     consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(SCGs_hit_per_gene, bin_id)
-                                    possibles_taxonomy.append([bin_id] + list(consensus_taxonomy.values()))"""
+                                    possibles_taxonomy.append([bin_id] + list(consensus_taxonomy.values()))
 
         self.show_taxonomy(possibles_taxonomy)
         self.generate_output_file(possibles_taxonomy)
+
 
     def assignation_by_bin(self,collection_to_split):
         taxonomy_bin=dict()
