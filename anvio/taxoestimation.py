@@ -487,8 +487,7 @@ class SCGsdiamond(TaxonomyEstimation):
 
                 if self.write_buffer_size > 0 and len(diamond_output) % self.write_buffer_size == 0:
 
-                    table_index = self.tables_for_taxonomy.alignment_result_to_congigs(
-                        table_index,diamond_output)
+                    table_index = self.tables_for_taxonomy.alignment_result_to_congigs(table_index,diamond_output)
                     diamond_output = []
 
                 finish_process += 1
