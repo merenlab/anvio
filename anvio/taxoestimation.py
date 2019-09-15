@@ -87,13 +87,7 @@ class TaxonomyEstimation:
 
         self.taxonomy_dict = taxonomy_dict
 
-        self.taxonomic_levels_parser = {'t_domain': 'd__',
-                                        "t_phylum": 'p__',
-                                        "t_class": 'c__',
-                                        "t_order": 'o__',
-                                        "t_family": 'f__',
-                                        "t_genus": 'g__',
-                                        "t_species": 's__'}
+        taxonomic_levels_parser = dict([(l, l.split('_')[1][0] + "__") for l in levels_of_taxonomy])
 
 
     def show_table_score(self, name, selected_entrys_by_score):
@@ -320,17 +314,6 @@ class SCGsdiamond(TaxonomyEstimation):
 
         self.SCGs = [db for db in os.listdir(
             self.taxonomy_database_path) if db.endswith(".dmnd")]
-
-        self.taxonomic_levels_parser = {'d': 't_domain',
-                                        'p': "t_phylum",
-                                        'c': "t_class",
-                                        'o': "t_order",
-                                        'f': "t_family",
-                                        'g': "t_genus",
-                                        's': "t_species"}
-
-        self.taxonomic_levels = [
-            't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 
         self.SCG_DB_PATH = lambda SCG: os.path.join(
             self.taxonomy_database_path, SCG)
