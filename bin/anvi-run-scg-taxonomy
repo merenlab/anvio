@@ -45,10 +45,8 @@ aligners = Aligners()
 
 
 def main(args):
-
     if not args.gene_names:
         args.gene_names = "Ribosomal_L1,Ribosomal_L13,Ribosomal_L16,Ribosomal_L17,Ribosomal_L2,Ribosomal_L20,Ribosomal_L21p,Ribosomal_L22,Ribosomal_L27A,Ribosomal_L3,Ribosomal_L4,Ribosomal_L6,Ribosomal_L9_C,Ribosomal_S11,Ribosomal_S2,Ribosomal_S20p,Ribosomal_S3_C,Ribosomal_S6,Ribosomal_S7,Ribosomal_S9,ribosomal_L24"
-
     
     hmm_sources = set(["Bacteria_71"])
 
@@ -58,13 +56,11 @@ def main(args):
     contigs_db_name = os.path.basename(args.contigs_db[:-3])
     splits_dict = {contigs_db_name: list(contigs_db.splits_basic_info.keys())}
 
-
     s = hmmops.SequencesForHMMHits(args.contigs_db, sources=hmm_sources)
-
 
     hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=True)
     hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(gene_names))
-    #hmm_sequences_best_hit_dict = s.filter_hmm_sequences_dict_for_splits_to_keep_only_best_hits(hmm_sequences_dict)
+
     hmm_sequences_best_hit_dict={}
 
     if not len(hmm_sequences_dict):
@@ -77,11 +73,12 @@ def main(args):
     t = taxoestimation.SCGsdiamond(args)
     t.predict_from_SCGs_dict_multiseq(hmm_sequences_dict,hmm_sequences_best_hit_dict)
     end = time.perf_counter()
+
     run.info_single("The SCG taxonomy table is now populated with taxonomy (which took %.2f minutes)" % ((end - start) / 60))
 
+
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description="Get estimation taxonomy from many inputs.")
+    parser = argparse.ArgumentParser(description="Get estimation taxonomy from many inputs.")
 
     groupA = parser.add_argument_group('INPUT OPTION #1: CONTIGS DB', "There are multiple ways to access to sequences. Your first option is to\
                                         provide a contigs database, and call it a day. In this case the program will return you\
