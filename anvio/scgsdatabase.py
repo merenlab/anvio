@@ -140,7 +140,7 @@ class SCGsSetup(object):
     def merge_tsv_files(self):
         file_to_dextract = [
             file_name for file_name in self.files if file_name.endswith(".tsv")]
-        full_path = os.path.join(self.SCG_data_dir, "merge_taxonomy.tsv")
+        full_path = os.path.join(self.SCG_data_dir, "ACCESSION_TO_TAXONOMY.txt")
         self.run.info("Mergin tsv file ", ','.join(file_to_dextract))
         with open(full_path, 'w') as outfile:
             for fname in file_to_dextract:
@@ -185,7 +185,7 @@ class SCGsDataBase():
                 self.classic_input_directory, 'msa_individual_genes')
 
         if not self.output_directory:
-            self.output_directory = classic_input_directory
+            self.output_directory = self.classic_input_directory
 
         self.tsv_output = os.path.join(
             self.output_directory, 'ACCESSION_TO_TAXONOMY.txt')
@@ -541,7 +541,7 @@ class lowident():
 
         if not self.path_tsv_taxonomy:
             self.path_tsv_taxonomy = os.path.join(
-                self.classic_input_directory, 'merge_taxonomy.tsv')
+                self.classic_input_directory, 'ACCESSION_TO_TAXONOMY.txt')
 
         self.num_threads = args.num_threads
 
@@ -553,11 +553,11 @@ class lowident():
 
         if not self.scgs_directory:
             self.scgs_directory = os.path.join(
-                self.classic_input_directory, 'mergedb/SCG_diamond_db/')
+                self.classic_input_directory, 'SCGs/')
 
         if not self.output_file:
             self.output_file = os.path.join(self.classic_input_directory,
-             'data/misc/SCG/mergedb/MIN_PCT_ID_PER_TAXONOMIC_LEVEL.pickle')
+             'MIN_PCT_ID_PER_TAXONOMIC_LEVEL.pickle')
 
         self.genes_files = [files for files in os.listdir(
             self.scgs_directory) if not files.endswith(".dmnd")]
