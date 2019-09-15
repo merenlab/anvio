@@ -38,10 +38,10 @@ progress = terminal.Progress()
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="Create diamond database matching with match between import fasta of SCGs with taxonomy and HMM from anvi'o.")
+    parser = argparse.ArgumentParser(description="Create diamond file, with common protein between import fasta of SCGs with taxonomy and HMM from anvi'o.")
 
     parser.add_argument('-hm', '--hmms', default = None,
-                        help = "fasta file of hmm from anvi'o")
+                        help = "fasta file of hmm from anvi'o HMM profiling ")
     parser.add_argument('-g', '--genes_files_directory', default = None,
                         help = "directory with fasta file for import SCGs")
     parser.add_argument('-o', '--out_put_directory', default = None,
@@ -49,13 +49,12 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--taxonomy_files', default = None,
                         help = "tsv file with taxonomy")
     parser.add_argument('-s', '--scgs_directory', default = None,
-                        help = "scgs_directory")
+                        help = "directory where is are mutisequence aligment of SCGs you want use for taxonomy assignation")
     parser.add_argument('-tl', '--taxonomy_level', default = None,
                         help = "taxonomy_level")
     parser.add_argument('-f', '--no-filter', default = None,
                         help = "filter for tsv file")
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    #parser.add_argument(*anvio.A('list-states'), **anvio.K('list-states'))
 
     args = anvio.get_args(parser)
 
