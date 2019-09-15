@@ -573,15 +573,6 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.taxonomy_dict = {}
         hits_per_gene = {}
 
-        self.taxonomic_levels_parser = {"t_domain": 'd__',
-                                        "t_phylum": 'p__',
-                                        "t_class": 'c__',
-                                        "t_order": 'o__',
-                                        "t_family": 'f__',
-                                        "t_genus": 'g__',
-                                        "t_species": 's__'}
-
-
         self.initialized = False
         self.sanity_check()
 
