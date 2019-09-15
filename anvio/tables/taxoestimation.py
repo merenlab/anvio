@@ -104,6 +104,8 @@ class TablesForTaxoestimation(Table):
         self.database.insert_many(t.scg_taxonomy_table_name, entries)
         self.database.disconnect()
 
+        return table_index
+
 
     def get_accession(self,taxonomy):
         for level, taxon in reversed(list(taxonomy.items())):
