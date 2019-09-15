@@ -71,7 +71,7 @@ class TaxonomyEstimation:
 
     def __init__(self, taxonomy_dict, dicolevel=None, reduction=False, run=run, progress=progress):
 
-        
+
         if not dicolevel:
             self.pident_level_path = os.path.join(
                     os.path.dirname(anvio.__file__), 'data/misc/SCG_TAXONOMY/GTDB/MIN_PCT_ID_PER_TAXONOMIC_LEVEL.pickle')
@@ -343,6 +343,7 @@ class SCGsdiamond(TaxonomyEstimation):
 
         self.taxonomy_dict = OrderedDict()
 
+
     def sanity_check(self):
         if not filesnpaths.is_file_exists(self.taxonomy_file_path, dont_raise=True):
             raise ConfigError("Anvi'o could not find taxonomy file '%s'. You must declare one before continue."
@@ -394,8 +395,8 @@ class SCGsdiamond(TaxonomyEstimation):
 
     def get_hmm_sequences_dict_into_type_multi(self, hmm_sequences_dict,hmm_sequences_best_hit_dict):
         hmm_sequences_dict_per_type = {}
-        
-        
+
+
         for entry_id in hmm_sequences_dict:
             entry = hmm_sequences_dict[entry_id]
 
@@ -577,23 +578,18 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.run = run
         self.progress = progress
 
-        def A(x): return args.__dict__[x] if x in args.__dict__ else None
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.db_path = A('contigs_db')
         self.profile_db_path = A('profile_db')
         self.output_file_path = A('output_file')
-
         self.collection_name = A('collection_name')
-
-        self.initialized = False
-
         self.bin_id = A('bin_id')
-
+        self.cut_off_methode = A('cut_off_methode')
         self.metagenome = True if A('metagenome') else False
 
-        self.cut_off_methode = A('cut_off_methode')
 
+        self.taxonomy_dict = {}
         hits_per_gene = {}
-
 
         self.taxonomic_levels_parser = {"t_domain": 'd__',
                                         "t_phylum": 'p__',
@@ -602,7 +598,6 @@ class SCGsTaxonomy(TaxonomyEstimation):
                                         "t_family": 'f__',
                                         "t_genus": 'g__',
                                         "t_species": 's__'}
-        self.taxonomy_dict=dict()
 
 
         self.initialized = False
@@ -620,7 +615,6 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
 
     def init(self, source="GTDB", number_scg=21):
-
         self.run.warning('', header='Taxonomy estimation for %s' %
             self.db_path, lc='green')
         self.run.info('HMM PROFILE', "Bacteria 71")
@@ -639,17 +633,15 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
 
         if self.profile_db_path:
-            
             collection_to_split = ccollections.GetSplitNamesInBins(self.args).get_dict()
-            taxonomyestimation=TaxonomyEstimation.__init__(self,self.taxonomy_dict)
+            taxonomyestimation = TaxonomyEstimation.__init__(self, self.taxonomy_dict)
 
             self.initialized = True
             return(collection_to_split)
-
         else:
             self.initialized = True
             return
-    
+
 
     def get_hits_per_bin(self,collection_to_split):
         self.tables_for_taxonomy = TablesForTaxoestimation(self.db_path, run, progress)
@@ -676,7 +668,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
                 if split in split_to_gene_callers_id:
                     bin_to_gene_callers_id[bin_name].update(split_to_gene_callers_id[split])
 
-        
+
         for gene_estimation in self.dictonnary_taxonomy_by_index.values():
             if gene_estimation["source"]=="Consensus":
                 continue
@@ -709,8 +701,6 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
 
     def estimate_taxonomy(self):
-
-
         if self.metagenome:
             self.estimate_taxonomy_for_metagenome()
 
@@ -721,7 +711,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
             for bin_id, SCGs_hit_per_gene in hits_per_gene.items():
                 consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(SCGs_hit_per_gene, bin_id)
-                dictionary_bin_taxonomy_estimation[bin_id]={"consensus_taxonomy":consensus_taxonomy, 
+                dictionary_bin_taxonomy_estimation[bin_id]={"consensus_taxonomy":consensus_taxonomy,
                                                             "taxonomy_use_for_consensus":taxonomy}
 
                 entries_db_profile += [
@@ -739,7 +729,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
         estimate_taxonomy_presences=[]
         dictonarry_presence={}
         dictonnary_number_appear=dict()
-        collection_to_split=self.init() 
+        collection_to_split=self.init()
         estimate_taxonomy_presences = [{"t_domain": "Unknow",
                                         "t_phylum": "NA",
                                         "t_class": "NA",
@@ -754,7 +744,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
         for gene_estimation in self.dictonnary_taxonomy_by_index.values():
             if gene_estimation["source"] == "GTDB" :
                 continue
-            
+
             if gene_estimation['accession'] not in self.taxonomy_dict:
                 taxonomy = {"t_domain": gene_estimation['t_domain'],
                                                             "t_phylum": gene_estimation['t_phylum'],
@@ -845,7 +835,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
     def show_taxonomy_estimation_bin(self):
         collection_to_split=self.init()
-        
+
         possibles_taxonomy = []
         possibles_taxonomy.append(
             ['Genome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
