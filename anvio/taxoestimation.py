@@ -1,40 +1,41 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8
 
-import argparse
-import copy
-import multiprocessing
 import os
-import pickle
 import re
 import sys
+import copy
 import time
-import traceback
-import tarfile
 import shutil
+import pickle
+import tarfile
+import argparse
+import traceback
+import multiprocessing
+import pandas as pd
 
+from copy import deepcopy
+from tabulate import tabulate
 from collections import Counter, OrderedDict
 
 import anvio
-import anvio.ccollections as ccollections
 import anvio.db as db
-import anvio.fastalib as f
-import anvio.filesnpaths as filesnpaths
-import anvio.hmmops as hmmops
-import anvio.hmmopswrapper as hmmopswrapper
 import anvio.tables as t
-import anvio.terminal as terminal
+import anvio.fastalib as f
 import anvio.utils as utils
-import numpy as np
-import pandas as pd
-from copy import deepcopy
+import anvio.hmmops as hmmops
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+import anvio.ccollections as ccollections
+import anvio.hmmopswrapper as hmmopswrapper
+
 from anvio.dbops import ContigsSuperclass
 from anvio.drivers import Aligners, driver_modules
 from anvio.drivers.diamond import Diamond
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.tableops import Table
 from anvio.tables.taxoestimation import TablesForTaxoestimation
-from tabulate import tabulate
+from anvio.constants import levels_of_taxonomy
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
