@@ -95,8 +95,6 @@ class TaxonomyEstimation:
                                         "t_genus": 'g__',
                                         "t_species": 's__'}
 
-        self.taxonomic_levels = [
-            't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 
     def show_table_score(self, name, selected_entrys_by_score):
         self.run.warning(None, header='%s' % (name), lc="yellow")
