@@ -274,7 +274,7 @@ class SCGsdiamond(TaxonomyEstimation):
         self.taxonomy_database_path = A('taxonomy_database')
         self.write_buffer_size = int(A('write_buffer_size') if A(
             'write_buffer_size') is not None else 1000)
-        self.db_path = A('contigs_db')
+        self.contigs_db_path = A('contigs_db')
         self.core = A('num_threads')
         self.num_process = A('contigs_db')
 
@@ -317,7 +317,7 @@ class SCGsdiamond(TaxonomyEstimation):
             self.taxonomy_database_path = os.path.join(scg_ref_path, 'SCGs')
 
         self.database = db.DB(
-            self.db_path, utils.get_required_version_for_db(self.db_path))
+            self.contigs_db_path, utils.get_required_version_for_db(self.contigs_db_path))
 
         self.SCGs = [db for db in os.listdir(
             self.taxonomy_database_path) if db.endswith(".dmnd")]
@@ -444,7 +444,7 @@ class SCGsdiamond(TaxonomyEstimation):
             'Number of CPUs will be used for each aligment', self.core)
 
         self.tables_for_taxonomy = TablesForTaxoestimation(
-            self.db_path, run, progress)
+            self.contigs_db_path, run, progress)
         self.tables_for_taxonomy.delete_contents_of_table(
             t.scg_taxonomy_table_name)
 
@@ -534,8 +534,8 @@ class SCGsdiamond(TaxonomyEstimation):
     def get_raw_blast_hits_multi(self, input_queue, output_queue):
         while True:
             d = input_queue.get(True)
-            db_path = self.SCG_DB_PATH(d[0])
-            diamond = Diamond(db_path, run=run_quiet, progress=progress_quiet)
+            contigs_db_path = self.SCG_DB_PATH(d[0])
+            diamond = Diamond(contigs_db_path, run=run_quiet, progress=progress_quiet)
             diamond.max_target_seqs = self.max_target_seqs
             diamond.evalue = self.evalue
             diamond.min_pct_id = self.min_pct_id
@@ -579,7 +579,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.db_path = A('contigs_db')
+        self.contigs_db_path = A('contigs_db')
         self.profile_db_path = A('profile_db')
         self.output_file_path = A('output_file')
         self.collection_name = A('collection_name')
@@ -605,25 +605,25 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
 
     def sanity_check(self):
-        if not self.db_path:
+        if not self.contigs_db_path:
             raise ConfigError("This class needs an anvi'o contigs database to work with.")
 
-        utils.is_contigs_db(self.db_path)
+        utils.is_contigs_db(self.contigs_db_path)
 
         if self.profile_db_path:
-            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.db_path)
+            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
 
     def init(self, source="GTDB", number_scg=21):
         self.run.warning('', header='Taxonomy estimation for %s' %
-            self.db_path, lc='green')
+            self.contigs_db_path, lc='green')
         self.run.info('HMM PROFILE', "Bacteria 71")
         self.run.info('Source', source)
         self.run.info('Minimun level assigment', "species")
         self.run.info('output file for taxonomy', self.output_file_path)
 
         self.tables_for_taxonomy = TablesForTaxoestimation(
-            self.db_path, run, progress, self.profile_db_path)
+            self.contigs_db_path, run, progress, self.profile_db_path)
 
         self.dictonnary_taxonomy_by_index = self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
 
@@ -644,13 +644,14 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
 
     def get_hits_per_bin(self,collection_to_split):
-        self.tables_for_taxonomy = TablesForTaxoestimation(self.db_path, run, progress)
+        self.tables_for_taxonomy = TablesForTaxoestimation(self.contigs_db_path, run, progress)
         self.dictonnary_taxonomy_by_index = self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
+
         hits_per_gene={}
         split_to_gene_callers_id = dict()
         bin_to_gene_callers_id = dict()
-        contigs_db = db.DB(self.db_path, anvio.__contigs__version__)
 
+        contigs_db = db.DB(self.contigs_db_path, anvio.__contigs__version__)
 
         for row in contigs_db.get_all_rows_from_table('genes_in_splits'):
             split_name, gene_callers_id = row[1], row[2]
@@ -795,10 +796,10 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
         if len(estimate_taxonomy_presences)>1:
             for estimate_taxonomy_presence in estimate_taxonomy_presences:
-                output+=[[self.db_path.replace(".db","")+"_genome_"+str(num_metagenome)]+list(estimate_taxonomy_presence.values())+[len(dictonarry_presence[list(estimate_taxonomy_presence.values())[-1]].values())]]
+                output+=[[self.contigs_db_path.replace(".db","")+"_genome_"+str(num_metagenome)]+list(estimate_taxonomy_presence.values())+[len(dictonarry_presence[list(estimate_taxonomy_presence.values())[-1]].values())]]
                 num_metagenome+=1
         else:
-            output+=[[self.db_path.replace(".db","")]+list(estimate_taxonomy_presence.values())]
+            output+=[[self.contigs_db_path.replace(".db","")]+list(estimate_taxonomy_presence.values())]
 
         outpu_appear=[["taxon","number of scg"]]
         for level, appear in dictonnary_number_appear.items():
@@ -882,9 +883,9 @@ class SCGsTaxonomy(TaxonomyEstimation):
         taxonomyestimation=TaxonomyEstimation.__init__(self,self.taxonomy_dict)
 
         consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,
-                self.SCGs_hit_per_gene, self.db_path)
+                self.SCGs_hit_per_gene, self.contigs_db_path)
 
-        output_full_genome=[['Genome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'],[self.db_path.replace(".db","")]+list(consensus_taxonomy.values())]
+        output_full_genome=[['Genome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'],[self.contigs_db_path.replace(".db","")]+list(consensus_taxonomy.values())]
 
         self.show_taxonomy(output_full_genome)
         self.generate_output_file(output_full_genome)
