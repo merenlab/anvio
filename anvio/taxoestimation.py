@@ -109,6 +109,7 @@ class TaxonomyEstimation:
         print(tabulate(table, headers=header,
                        tablefmt="fancy_grid", numalign="right"))
 
+
     def show_matrix_rank(self, name, matrix, list_position_entry, list_position_ribosomal):
         headers = list(matrix.keys())
 
@@ -135,10 +136,6 @@ class TaxonomyEstimation:
 
             return(consensus_taxonomy, taxonomy)
 
-        else:
-            consensus_taxonomy, taxonomy = self.rank_assignement(
-                SCGs_hit_per_gene, name)
-            return(consensus_taxonomy, taxonomy)
 
     def get_matching_gene(self, SCGs_hit_per_gene):
         matching_genes = [
@@ -146,8 +143,8 @@ class TaxonomyEstimation:
         number_of_matching_genes = len(matching_genes)
         return matching_genes
 
-    def fill_matrix(self, name, emptymatrix_ident, SCGs_hit_per_gene, list_position_entry,
-                    list_position_ribosomal, matchinggenes):
+
+    def fill_matrix(self, name, emptymatrix_ident, SCGs_hit_per_gene, list_position_entry, list_position_ribosomal, matchinggenes):
 
         for SCG in list_position_ribosomal:
             for entry in SCGs_hit_per_gene[SCG]:
@@ -156,6 +153,7 @@ class TaxonomyEstimation:
                         entry['pident'])
 
         return(emptymatrix_ident)
+
 
     def make_liste_individue(self, SCGs_hit_per_gene, matchinggenes):
         liste_individue = []
@@ -167,6 +165,7 @@ class TaxonomyEstimation:
                 if entry['accession'] not in liste_individue:
                     liste_individue += [entry['accession']]
         return(liste_individue, liste_ribo)
+
 
     def make_rank_matrix(self, name, SCGs_hit_per_gene):
         matchinggenes = self.get_matching_gene(SCGs_hit_per_gene)
@@ -186,6 +185,7 @@ class TaxonomyEstimation:
 
         return(matrix_pident)
 
+
     def rank_assignement(self, SCGs_hit_per_gene, name, reduction=False):
         try:
             matrix_pident = self.make_rank_matrix(name, SCGs_hit_per_gene)
@@ -202,6 +202,7 @@ class TaxonomyEstimation:
         finally:
             return(assignation, taxonomy)
 
+
     def assign_taxonomie_solo_hit(self, taxonomy):
         if not taxonomy or not taxonomy[0]:
             return 0
@@ -209,12 +210,11 @@ class TaxonomyEstimation:
         if taxonomy[1:]:
             for taxon in taxonomy[1:]:
                 for level in taxon:
-                    #print(taxon[level],assignation.values())
                     if taxon[level] not in list(assignation.values()) and taxon[level]!='NA':
                         assignation[level] = 'NA'
-                       
 
         return(assignation)
+
 
     def make_list_taxonomy(self, matrix_pident):
         taxonomy = []
@@ -228,10 +228,12 @@ class TaxonomyEstimation:
             bestident = matrix_pident.loc[individue, bestSCG]
             taxonomy.append({"bestSCG": bestSCG, "bestident": bestident,
                              "accession": individue, "taxonomy":OrderedDict(self.taxonomy_dict[individue])})
-        return(taxonomy)
+        return taxonomy
+
 
     def reduce_assignation_level(self, taxonomy):
         reduce_taxonomy = []
+
         for possibilitie in taxonomy:
             for level, value in reversed(possibilitie["taxonomy"].items()):
                 if possibilitie["taxonomy"][level] == 'NA':
@@ -243,14 +245,17 @@ class TaxonomyEstimation:
                     break
             reduce_taxonomy.append(possibilitie["taxonomy"])
 
-        return(reduce_taxonomy)
+        return reduce_taxonomy
+
 
     def solo_hits(self, SCGs_hit_per_gene, cutoff_solo_hit=0.90):
         consensus_taxonomy = []
+
         for SCG, entry in SCGs_hit_per_gene.items():
             if len(entry) == 1 and entry[0]['pident'] > cutoff_solo_hit:
                 consensus_taxonomy.append(
                     self.taxonomy_dict[entry[0]['accession']])
+
         if consensus_taxonomy:
             assignation = self.assign_taxonomie_solo_hit(consensus_taxonomy)
             return assignation
@@ -539,6 +544,7 @@ class SCGsdiamond(TaxonomyEstimation):
             diamond_output = diamond.blastp_stdin_multi(d[1])
             hits_per_gene = {}
             genes_estimation_output=[]
+
             for line_hit_to_split in diamond_output.split('\n'):
                 if len(line_hit_to_split) and not line_hit_to_split.startswith('Query'):
                     line_hit = line_hit_to_split.split('\t')
@@ -548,6 +554,7 @@ class SCGsdiamond(TaxonomyEstimation):
 
                     if gene_callers_id not in hits_per_gene:
                         hits_per_gene[gene_callers_id] = {}
+
                     if SCG not in hits_per_gene[gene_callers_id]:
                         hits_per_gene[gene_callers_id][SCG] = []
 
@@ -565,7 +572,6 @@ class SCGsdiamond(TaxonomyEstimation):
 
 
 class SCGsTaxonomy(TaxonomyEstimation):
-
     def __init__(self, args, run=run, progress=progress):
         self.args = args
         self.run = run
@@ -817,9 +823,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
                 num_metagenome+=1
         else:
             output+=[[self.db_path.replace(".db","")]+list(estimate_taxonomy_presence.values())]
-        
-        
-        
+
         outpu_appear=[["taxon","number of scg"]]
         for level, appear in dictonnary_number_appear.items():
             outpu_appear+=[[level],[appear]]
@@ -842,12 +846,16 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
 
     def generate_output_file(self,output_data,header=False,append=False):
-        if filesnpaths.is_output_file_writable(self.output_file_path,ok_if_exists=append):
+        if not self.output_file_path:
+            return
+
+        if filesnpaths.is_output_file_writable(self.output_file_path, ok_if_exists=append):
             with open(self.output_file_path, "a") as output_file:
                 output_data = ['\t'.join(line)
                                    for line in output_data]
                 output_data='\n'.join(output_data)
                 output_file.write(output_data)
+
 
     def show_taxonomy_estimation_bin(self):
         collection_to_split=self.init()
@@ -867,11 +875,14 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
 
     def assignation_by_bin(self,collection_to_split):
-        taxonomy_bin=dict()
-        hits_per_gene=self.get_hits_per_bin(collection_to_split)
+        taxonomy_bin = {}
+
+        hits_per_gene = self.get_hits_per_bin(collection_to_split)
+
         for bin_id, SCGs_hit_per_gene in hits_per_gene.items():
             consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(SCGs_hit_per_gene, bin_id)
-            taxonomy_bin[bin_id]={"taxonomy":consensus_taxonomy,"taxonomy_use":taxonomy}
+            taxonomy_bin[bin_id]={"taxonomy": consensus_taxonomy, "taxonomy_use": taxonomy}
+
         return(taxonomy_bin)
 
 
@@ -901,6 +912,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
         self.show_taxonomy(output_full_genome)
         self.generate_output_file(output_full_genome)
+
 
     def show_taxonomy(self,possibles_taxonomy):
         self.run.warning(None, header='Taxonomy estimation', lc="yellow")
