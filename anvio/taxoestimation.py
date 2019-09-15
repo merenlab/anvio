@@ -69,10 +69,7 @@ def timer(function):
 
 
 class TaxonomyEstimation:
-
     def __init__(self, taxonomy_dict, dicolevel=None, reduction=False, run=run, progress=progress):
-
-
         if not dicolevel:
             self.pident_level_path = os.path.join(
                     os.path.dirname(anvio.__file__), 'data/misc/SCG_TAXONOMY/GTDB/MIN_PCT_ID_PER_TAXONOMIC_LEVEL.pickle')
@@ -262,14 +259,13 @@ class SCGsdiamond(TaxonomyEstimation):
         self.run = run
         self.progress = progress
 
-        def A(x): return args.__dict__[x] if x in args.__dict__ else None
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.taxonomy_file_path = A('taxonomy_file')
         self.taxonomy_database_path = A('taxonomy_database')
-        self.write_buffer_size = int(A('write_buffer_size') if A(
-            'write_buffer_size') is not None else 1000)
+        self.write_buffer_size = int(A('write_buffer_size') if A('write_buffer_size') is not None else 1000)
         self.contigs_db_path = A('contigs_db')
-        self.core = A('num_threads')
         self.num_process = A('contigs_db')
+        self.core = A('num_threads')
 
         self.max_target_seqs = 20
         self.evalue = 1e-05
@@ -309,15 +305,11 @@ class SCGsdiamond(TaxonomyEstimation):
         if not self.taxonomy_database_path:
             self.taxonomy_database_path = os.path.join(scg_ref_path, 'SCGs')
 
-        self.database = db.DB(
-            self.contigs_db_path, utils.get_required_version_for_db(self.contigs_db_path))
+        self.SCGs = [db for db in os.listdir(self.taxonomy_database_path) if db.endswith(".dmnd")]
 
-        self.SCGs = [db for db in os.listdir(
-            self.taxonomy_database_path) if db.endswith(".dmnd")]
+        self.taxonomic_levels_parser = dict([(l.split('_')[1][0], l) for l in levels_of_taxonomy])
 
-        self.SCG_DB_PATH = lambda SCG: os.path.join(
-            self.taxonomy_database_path, SCG)
-
+        self.SCG_DB_PATH = lambda SCG: os.path.join(self.taxonomy_database_path, SCG)
         self.SCG_FASTA_DB_PATH = lambda SCG: os.path.join(self.taxonomy_database_path,
                                                           [db for db in os.listdir(self.taxonomy_database_path) if db.endwith(".dmnd")])
 
@@ -328,21 +320,19 @@ class SCGsdiamond(TaxonomyEstimation):
 
     def sanity_check(self):
         if not filesnpaths.is_file_exists(self.taxonomy_file_path, dont_raise=True):
-            raise ConfigError("Anvi'o could not find taxonomy file '%s'. You must declare one before continue."
-                              % self.taxonomy_file_path)
+            raise ConfigError("Anvi'o could not find taxonomy file '%s'. You must declare one before continue." % self.taxonomy_file_path)
+
         filesnpaths.is_file_exists(self.taxonomy_database_path)
 
         if not len(self.SCGs):
-            raise ConfigError(
-                "This class can't be used with out a list of single-copy core genes.")
+            raise ConfigError("This class can't be used with out a list of single-copy core genes.")
 
         if not len(self.SCGs) == len(set(self.SCGs)):
             raise ConfigError("Each member of the list of SCGs you wish to use with this class must\
                                be unique and yes, you guessed right. You have some repeated gene\
                                names.")
 
-        SCGs_missing_databases = [
-            SCG for SCG in self.SCGs if not filesnpaths.is_file_exists(self.SCG_DB_PATH(SCG))]
+        SCGs_missing_databases = [SCG for SCG in self.SCGs if not filesnpaths.is_file_exists(self.SCG_DB_PATH(SCG))]
         if len(SCGs_missing_databases):
             raise ConfigError("Even though anvi'o found the directory for databases for taxonomy stuff,\
                                your setup seems to be missing %d databases required for everything to work\
@@ -375,9 +365,9 @@ class SCGsdiamond(TaxonomyEstimation):
         TaxonomyEstimation.__init__(self, self.taxonomy_dict)
         self.initialized = True
 
+
     def get_hmm_sequences_dict_into_type_multi(self, hmm_sequences_dict,hmm_sequences_best_hit_dict):
         hmm_sequences_dict_per_type = {}
-
 
         for entry_id in hmm_sequences_dict:
             entry = hmm_sequences_dict[entry_id]
@@ -392,6 +382,7 @@ class SCGsdiamond(TaxonomyEstimation):
                 hmm_sequences_dict_per_type[SCG] = {entry_id: entry}
 
         return hmm_sequences_dict_per_type
+
 
     def predict_from_SCGs_dict_multiseq(self, hmm_sequences_dict,hmm_sequences_best_hit_dict):
         """Takes an HMMs dictionary, and yields predictions"""
@@ -461,7 +452,6 @@ class SCGsdiamond(TaxonomyEstimation):
 
         workers = []
         for i in range(0, int(self.num_process)):
-
             worker = multiprocessing.Process(target=self.get_raw_blast_hits_multi,
                                              args=(input_queue, output_queue))
 
