@@ -41,13 +41,16 @@ def main(args):
             args.profile_db, args.contigs_db)
 
     t = taxoestimation.SCGsTaxonomy(args)
+    if args.get_taxonomy_by_scg:
+        t.get_assignement_genes()
 
-    if args.metagenome:
-        t.estimate_taxonomy_for_metagenome()
-    if args.profile_db and not args.metagenome:
-        t.show_taxonomy_estimation_bin()
-    if not args.profile_db and not args.metagenome:
-       t.show_taxonomy_estimation_single_genome()
+    else:
+        if args.metagenome:
+            t.estimate_taxonomy_for_metagenome()
+        if args.profile_db and not args.metagenome:
+            t.show_taxonomy_estimation_bin()
+        if not args.profile_db and not args.metagenome:
+           t.show_taxonomy_estimation_single_genome()
 
 
 if __name__ == '__main__':
@@ -63,7 +66,8 @@ if __name__ == '__main__':
     groupH.add_argument(*anvio.A('taxonomy-database'),** anvio.K('taxonomy-database'))
     groupH.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     groupH.add_argument(*anvio.A('cut_off_methode'), **anvio.K('cut_off_methode'))
-    parser.add_argument('--metagenome', default=False, action="store_true", help="metagenomes")
+    parser.add_argument('--get-taxonomy-by-scg', action="store_true", help="return a tables of estimation by Gene id")
+    parser.add_argument('-m','--metagenome', action="store_true", help="make estimation taxons present in the metagenome")
     groupB = parser.add_argument_group('INPUT OPTION #2: CONTIGS DB + PROFLIE DB', "You can also work with anvi'o profile databases and collections\
                                         stored in them. If you go this way, you still will need to provide a contigs database. If you\
                                         just specify a collection name, you will get hits from every bin in it. You can also use\
