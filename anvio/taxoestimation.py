@@ -507,18 +507,24 @@ class SCGsdiamond(TaxonomyEstimation):
         table_index = self.tables_for_taxonomy.alignment_result_to_congigs(table_index,diamond_output)
         progress.end()
 
-    def show_hits(self, hits, name):
+
+    def show_hits(self, hits_per_gene, SCG):
         self.run.warning(None, header='%s' %
-                         name, lc="green")
-        header = ['%id', 'bitscore', 'taxonomy']
-        table = []
+                         SCG, lc="green")
 
-        for hit in hits:
-            table.append([hit['pident'], hit['bitscore'],
-                          ' / '.join(self.taxonomy_dict[hit['accession']].values())])
+        if SCG in hits_per_gene:
+            header = ['%id', 'bitscore', 'taxonomy']
+            table = []
 
-        print(tabulate(table, headers=header,
-                       tablefmt="fancy_grid", numalign="right"))
+            for hit in hits:
+                table.append([hit['pident'], hit['bitscore'],
+                              ' / '.join(self.taxonomy_dict[hit['accession']].values())])
+
+            print(tabulate(table, headers=header,
+                           tablefmt="fancy_grid", numalign="right"))
+        else:
+            self.run.info_single("No hits :/")
+
 
     def get_raw_blast_hits_multi(self, input_queue, output_queue):
         while True:
@@ -548,12 +554,14 @@ class SCGsdiamond(TaxonomyEstimation):
 
                     hits_per_gene[gene_callers_id][SCG] += hit
 
-
             if anvio.DEBUG:
-                self.show_hits(hits_per_gene[SCG], SCG)
+                self.progress.reset()
+                self.show_hits(hits_per_gene, SCG)
+
             for gene_callers_id, SCGs_hit_per_gene in hits_per_gene.items():
                 consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(SCGs_hit_per_gene, gene_callers_id)
                 genes_estimation_output.append([gene_callers_id, SCG, consensus_taxonomy, taxonomy])
+
             output_queue.put(genes_estimation_output)
 
 
