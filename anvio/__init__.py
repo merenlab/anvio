@@ -558,12 +558,6 @@ D = {
                       genes. You will almost never need to use this parameter unless you are\
                       trying something very fancy. Anvi'o will know where its database files are."}
                 ),
-    'cut_off_methode': (
-            ['--cut_off_methode'],
-            {'default': 0.98,
-             'type': float,
-             'help':  "cut off for the methode. Default '%(default)s'."}
-                ),
     'cog-data-dir': (
             ['--cog-data-dir'],
             {'default': None,
