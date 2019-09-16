@@ -556,9 +556,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.output_file_path = A('output_file')
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
-        self.cut_off_methode = A('cut_off_methode')
         self.metagenome = True if A('metagenome') else False
-
 
         self.taxonomy_dict = {}
         hits_per_gene = {}
