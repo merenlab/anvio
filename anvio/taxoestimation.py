@@ -858,12 +858,12 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
     def get_assignement_genes(self, source="GTDB"):
         self.run.warning('', header='Taxonomy estimation for %s' %
-        self.db_path, lc='green')
+        self.contigs_db_path, lc='green')
         self.run.info('HMM PROFILE', "Bacteria 71")
         self.run.info('Source', source)
         self.run.info('Minimun level assigment', "species")
         self.run.info('output file for taxonomy', self.output_file_path)
-        self.tables_for_taxonomy = TablesForTaxoestimation(self.db_path, run, progress)
+        self.tables_for_taxonomy = TablesForTaxoestimation(self.contigs_db_path, run, progress)
         self.dictonnary_taxonomy_by_index = self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
         possibles_taxonomy = []
         possibles_taxonomy.append(
