@@ -112,7 +112,6 @@ Bins.prototype.NewBin = function(id, binState) {
 
             if (current_color != previous_color) {
                 emit('bin-settings-changed');
-
                 bins.PushHistory([{'type': 'ChangeColor', 
                                    'bin_id': id,
                                    'color-before': previous_color,
@@ -122,6 +121,9 @@ Bins.prototype.NewBin = function(id, binState) {
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
     });
+
+    this.PushHistory([{'type': 'NewBin', 
+                       'bin_id': id}]);
 };
 
 
@@ -161,6 +163,23 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
         return;
     }
 
+    let transaction = [];
+
+    for (const node of this.selections[bin_id].values()) {
+        node.ResetColor();
+        transaction.push({'type': 'RemoveNode', 
+                          'bin_id': other_bin_id,
+                          'node': node});
+    }
+
+    transaction.push({'type': 'DeleteBin', 
+                       'bin_id': bin_id,
+                       'name': 'Test',
+                       'color': '#FF0000'});
+
+    this.selections[bin_id].clear();
+    this.PushHistory(transaction);
+
     this.container.querySelector(`tr[bin-id='${bin_id}']`).remove();
     if (!this.container.querySelectorAll('*').length) {
         // No bins left
@@ -170,36 +189,34 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
     if (!this.container.querySelector('input[name=active_bin]:checked')) {
         this.SelectLastRadio();
     }
-
-    for (const node of this.selections[bin_id].values()) {
-        node.ResetColor();
-    }
-
-    this.selections[bin_id].clear();
+    
     this.RedrawBins();
 };
 
 
-Bins.prototype.PushHistory = function(operation) {
+Bins.prototype.PushHistory = function(transaction) {
     if (!this.keepHistory)
         return;
 
-    this.history.push(operation);
+    this.history.push(transaction);
 
-    if (this.history.length > HISTORY_LENGTH) {
+    if (this.history.length > MAX_HISTORY_SIZE) {
         this.history.shift();
     }
 
+    // adding something to history always clears the future
     this.future = [];
 }
 
-Bins.prototype.Undo = function() {
+Bins.prototype.Undo = function(reverse=false) {
     let transaction = this.history.pop();
 
     if (transaction) {
         this.future.push(transaction);
         
-        for (const operation of transaction) {
+        for (var i = transaction.length - 1; i >= 0; --i) {
+            let operation = transaction[i];
+
             this.keepHistory = false;
             
             switch (operation.type) {
@@ -213,6 +230,13 @@ Bins.prototype.Undo = function() {
                     $('#bin_color_' + operation.bin_id).attr('color', operation['color-before']);
                     $('#bin_color_' + operation.bin_id).css('background-color', operation['color-before']);
                     this.RedrawBins();
+                    break;
+                case 'DeleteBin':
+                    this.NewBin(operation.bin_id, {'name': operation.name, 
+                                                  'color': operation.color});
+                    break;
+                case 'NewBin':
+                    this.DeleteBin(operation.bin_id, show_confirm=true);
                     break;
             }
 
