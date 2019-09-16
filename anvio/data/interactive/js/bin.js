@@ -177,8 +177,8 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
 
     transaction.push({'type': 'DeleteBin', 
                        'bin_id': bin_id,
-                       'name': 'Test',
-                       'color': '#FF0000'});
+                       'name': document.getElementById('bin_name_' + bin_id).getAttribute('color'),
+                       'color': document.getElementById('bin_color_' + bin_id).getAttribute('color')});
 
     this.selections[bin_id].clear();
     this.PushHistory(transaction);
