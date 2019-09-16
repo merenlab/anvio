@@ -29,6 +29,13 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Quentin Clayssen"
 __email__ = "quentin.clayssen@gmail.com"
+__tags__ = ["metagenomics", "profile_db", "contigs_db", "taxonomy"]
+__requires__ = ['profile-db', 'contigs-db']
+__provides__ = ['taxonomy']
+__description__ = "Estimates taxonomy at genome and metagenome level. This program is the entry point to \
+                   estimate taxonomy for a given set of contigs (i.e., all contigs in a contigs database,\
+                   or contigs described in collections as bins). For this, it uses single-copy core\
+                   gene sequences and the GTDB database." 
 
 
 run = terminal.Run()
@@ -51,28 +58,39 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="Create diamond database matching with match between import fasta of SCGs with taxonomy and HMM from anvi'o.")
-    groupH = parser.add_argument_group('Taxonomy', "Taxomy assignation Argument\
-                                        /!\.")
+    parser = argparse.ArgumentParser(description=__description__)
 
-    groupH.add_argument(*anvio.A('contigs-db'), **
-                        anvio.K('contigs-db', {'required': True}))
-    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    groupH.add_argument(*anvio.A('taxonomy-database'),** anvio.K('taxonomy-database'))
-    groupH.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
-    groupH.add_argument(*anvio.A('cut_off_methode'), **anvio.K('cut_off_methode'))
-    parser.add_argument('--get-taxonomy-by-scg', action="store_true", help="return a tables of estimation by Gene id")
-    parser.add_argument('-m','--metagenome', action="store_true", help="make estimation taxons present in the metagenome")
-    groupB = parser.add_argument_group('INPUT OPTION #2: CONTIGS DB + PROFLIE DB', "You can also work with anvi'o profile databases and collections\
-                                        stored in them. If you go this way, you still will need to provide a contigs database. If you\
-                                        just specify a collection name, you will get hits from every bin in it. You can also use\
-                                        the bin name or bin ids file parameters to specify your interest more precisely.")
-    groupB.add_argument(*anvio.A('profile-db'), **anvio
-                        .K('profile-db', {'required': False}))
-    groupB.add_argument(*anvio.A('collection-name'),
-                        **anvio.K('collection-name'))
+    groupA = parser.add_argument_group('INPUT #1', "The minimum you must provide this program is a contigs database. In which case\
+                                                    anvi'o will attempt to estimate taxonomy for all contigs in it, assuming that\
+                                                    the contigs database represents a single genome. If the contigs database is actually\
+                                                    a metagenome, you should use the `--metagenome` flag to excplicitly declare that.")
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': True}))
+    groupA.add_argument('-m','--metagenome', action="store_true", help="Treat a given contigs database as a metagenome, instead of a single\
+                                                    genome.")
+
+    groupB = parser.add_argument_group('INPUT #2', "In addition, you can also point out a profile databse. In which case you also must\
+                                                    provide a collection name. When you do that anvi'o will offer taxonomy estimates for\
+                                                    each bin in your collection. You can also limit those estimates to a single bin using\
+                                                    the parameters `--bin-id` or `--bin-ids-file`.")
+    groupB.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+    groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
+
+    groupC = parser.add_argument_group('OUTPUT', "Anvi'o will offer you table for your viewing pleasure by default. In addition to that,\
+                                                  you can ask the information it produces to be stored in a TAB-delimited file (which is\
+                                                  a better way to go about it if you wish to add it to your study as supplementary information).")
+    groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+
+    groupD = parser.add_argument_group('PERFORMANCE', "We are not sure if allocating more threads for this operation will change anything.\
+                                                       But hey. One can try.")
+    groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+
+    groupE = parser.add_argument_group('ADVANCED', "Options that you will likely never need.")
+    groupE.add_argument(*anvio.A('taxonomy-database'), **anvio.K('taxonomy-database'))
+    groupE.add_argument(*anvio.A('cut_off_methode'), **anvio.K('cut_off_methode'))
+    groupE.add_argument('--get-taxonomy-by-scg', action="store_true", help="return a tables of estimation by Gene id")
+
 
     args = anvio.get_args(parser)
 
