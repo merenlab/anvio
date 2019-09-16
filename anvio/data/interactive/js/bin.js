@@ -123,7 +123,8 @@ Bins.prototype.NewBin = function(id, binState) {
     });
 
     this.PushHistory([{'type': 'NewBin', 
-                       'bin_id': id}]);
+                       'bin_id': id,
+                       'color': color}]);
 };
 
 
@@ -211,17 +212,34 @@ Bins.prototype.PushHistory = function(transaction) {
     this.future = [];
 }
 
-Bins.prototype.Undo = function(reverse=false) {
+
+Bins.prototype.Undo = function() {
     let transaction = this.history.pop();
 
     if (transaction) {
+        this.keepHistory = false;
+        this.ProcessTransaction(transaction, reversed=true);
         this.future.push(transaction);
-        
-        for (var i = transaction.length - 1; i >= 0; --i) {
-            let operation = transaction[i];
+        this.keepHistory = true;
+    }
+}
 
-            this.keepHistory = false;
-            
+Bins.prototype.Redo = function() {
+    let transaction = this.history.pop();
+
+    if (transaction) {
+        this.keepHistory = false;
+        this.ProcessTransaction(transaction);
+        this.future.push(transaction);
+        this.keepHistory = true;
+    }
+}
+
+Bins.prototype.ProcessTransaction = function(transaction, reversed=false) {    
+    for (var i = transaction.length - 1; i >= 0; --i) {
+        let operation = transaction[i];
+        
+        if (reversed) {
             switch (operation.type) {
                 case 'AppendNode':
                     this.RemoveNode(operation.node);
@@ -239,11 +257,31 @@ Bins.prototype.Undo = function(reverse=false) {
                                                   'color': operation.color});
                     break;
                 case 'NewBin':
-                    this.DeleteBin(operation.bin_id, show_confirm=true);
+                    this.DeleteBin(operation.bin_id, show_confirm=false);
                     break;
             }
-
-            this.keepHistory = true;
+        }
+        else {
+            switch (operation.type) {
+                case 'AppendNode':
+                    this.AppendNode(operation.node);
+                    break;
+                case 'RemoveNode':
+                    this.RemoveNode(operation.node);
+                    break;
+                case 'ChangeColor':
+                    $('#bin_color_' + operation.bin_id).attr('color', operation.color);
+                    $('#bin_color_' + operation.bin_id).css('background-color', operation.color);
+                    this.RedrawBins();
+                    break;
+                case 'DeleteBin':
+                    this.DeleteBin(operation.bin_id, show_confirm=false);
+                    break;
+                case 'NewBin':
+                    this.NewBin(operation.bin_id, {'name': operation.name, 
+                                                  'color': operation.color});
+                    break;
+            }
         }
     }
 };
