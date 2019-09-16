@@ -1051,6 +1051,7 @@ rule anvi_import_default_collection:
     shell:
         """
            anvi-script-add-default-collection -p {input.profile} \
+                                              -b {wildcards.group} \
                                               -c {input.contigs} >> {log} 2>&1
         """
 
