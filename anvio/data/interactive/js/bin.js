@@ -18,7 +18,7 @@
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
 
- const MAX_HISTORY_SIZE = 20;
+ const MAX_HISTORY_SIZE = 50;
 
 
 function Bins(prefix, container) {
@@ -217,27 +217,30 @@ Bins.prototype.Undo = function() {
     let transaction = this.history.pop();
 
     if (transaction) {
-        this.keepHistory = false;
         this.ProcessTransaction(transaction, reversed=true);
         this.future.push(transaction);
-        this.keepHistory = true;
+    }
+    else {
+        toastr.warning('Can\'t do undo, history is empty.');
     }
 }
 
 Bins.prototype.Redo = function() {
-    let transaction = this.history.pop();
+    let transaction = this.future.pop();
 
     if (transaction) {
-        this.keepHistory = false;
         this.ProcessTransaction(transaction);
-        this.future.push(transaction);
-        this.keepHistory = true;
+        this.history.push(transaction);
+    } else {
+        toastr.warning('Can\'t do redo, future is empty.');
     }
 }
 
 Bins.prototype.ProcessTransaction = function(transaction, reversed=false) {    
     for (var i = transaction.length - 1; i >= 0; --i) {
         let operation = transaction[i];
+        
+        this.keepHistory = false;
         
         if (reversed) {
             switch (operation.type) {
@@ -283,6 +286,7 @@ Bins.prototype.ProcessTransaction = function(transaction, reversed=false) {
                     break;
             }
         }
+        this.keepHistory = true;
     }
 };
 

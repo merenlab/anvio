@@ -1152,7 +1152,12 @@
         }
 
         if (ev.keyCode === 90 && (ev.metaKey || ev.ctrlKey)) {
-            bins.Undo();
+            if (ev.shiftKey) {
+                bins.Redo();
+            }
+            else {
+                bins.Undo();
+            }
         }
 
     });
