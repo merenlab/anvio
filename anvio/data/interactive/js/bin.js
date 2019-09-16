@@ -557,6 +557,7 @@ Bins.prototype.MigrateCollection = function() {
 
 
 Bins.prototype.ImportCollection = function(collection, threshold = 1000) {
+    this.keepHistory = false;
     let bins_cleared = false;
 
     for (let bin_name of Object.keys(collection['data']).sort())
@@ -602,6 +603,8 @@ Bins.prototype.ImportCollection = function(collection, threshold = 1000) {
         this.UpdateBinsWindow();
         this.RedrawBins();
     }
+    
+    this.keepHistory = true;
 };
 
 
