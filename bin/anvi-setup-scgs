@@ -14,7 +14,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Quentin Clayssen"
 __email__ = "quentin.clayssen@gmail.com"
-__provides__ = ['scgs-data']
+__provides__ = ['scgs-taxonomy-db']
 
 
 run = terminal.Run()
@@ -36,14 +36,12 @@ if __name__ == '__main__':
                         downloaded files in your SCGs data directory if there are any. If something is wrong for some reason you\
                         can use this to tell anvi'o to remove everything, and start over.")
 
-
     args = anvio.get_args(parser)
 
     try:
         setup = scgsdatabase.SCGsSetup(args)
         setup.get_remote_version()
         setup.download()
-
     except ConfigError as e:
         print(e)
         sys.exit(-1)

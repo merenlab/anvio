@@ -30,8 +30,8 @@ __version__ = anvio.__version__
 __maintainer__ = "Quentin Clayssen"
 __email__ = "quentin.clayssen@gmail.com"
 __tags__ = ["metagenomics", "profile_db", "contigs_db", "taxonomy"]
-__requires__ = ['profile-db', 'contigs-db']
-__provides__ = ['taxonomy']
+__requires__ = ['profile-db', 'contigs-db', 'scgs-taxonomy-db']
+__provides__ = ['genome-taxonomy']
 __description__ = "Estimates taxonomy at genome and metagenome level. This program is the entry point to \
                    estimate taxonomy for a given set of contigs (i.e., all contigs in a contigs database,\
                    or contigs described in collections as bins). For this, it uses single-copy core\
@@ -45,7 +45,6 @@ def main(args):
     t = taxoestimation.SCGsTaxonomy(args)
     if args.get_taxonomy_by_scg:
         t.get_assignement_genes()
-
     else:
         if args.metagenome:
             t.estimate_taxonomy_for_metagenome()
@@ -90,12 +89,10 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('taxonomy-database'), **anvio.K('taxonomy-database'))
     groupE.add_argument('--get-taxonomy-by-scg', action="store_true", help="return a tables of estimation by Gene id")
 
-
     args = anvio.get_args(parser)
 
     try:
         main(args)
-
     except ConfigError as e:
         print(e)
         sys.exit(-1)
