@@ -167,9 +167,12 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
 
     for (const node of this.selections[bin_id].values()) {
         node.ResetColor();
-        transaction.push({'type': 'RemoveNode', 
-                          'bin_id': other_bin_id,
-                          'node': node});
+
+        if (this.keepHistory) {
+            transaction.push({'type': 'RemoveNode', 
+                             'bin_id': other_bin_id,
+                             'node': node});
+        }
     }
 
     transaction.push({'type': 'DeleteBin', 
@@ -277,9 +280,11 @@ Bins.prototype.AppendNode = function(targets) {
                 this.selections[bin_id].add(node);
                 bins_to_update.add(bin_id);
 
-                transaction.push({'type': 'AppendNode', 
-                                  'bin_id': bin_id,
-                                  'node': node});
+                if (this.keepHistory) {
+                    transaction.push({'type': 'AppendNode', 
+                                      'bin_id': bin_id,
+                                      'node': node});
+                }
             }
 
             for (let other_bin_id in this.selections) {
@@ -292,9 +297,11 @@ Bins.prototype.AppendNode = function(targets) {
                     this.selections[other_bin_id].delete(node);
                     bins_to_update.add(other_bin_id);
 
-                    transaction.push({'type': 'RemoveNode', 
-                                      'bin_id': other_bin_id,
-                                      'node': node});
+                    if (this.keepHistory) {
+                        transaction.push({'type': 'RemoveNode', 
+                                          'bin_id': other_bin_id,
+                                          'node': node});
+                    }
                 }
             }
 
@@ -328,9 +335,11 @@ Bins.prototype.RemoveNode = function(targets) {
                     this.selections[bin_id].delete(node);
                     bins_to_update.add(bin_id);
 
-                    transaction.push({'type': 'RemoveNode', 
-                                      'bin_id': bin_id,
-                                      'node': node});
+                    if (this.keepHistory) {
+                        transaction.push({'type': 'RemoveNode', 
+                                          'bin_id': bin_id,
+                                          'node': node});
+                    }
                 }
             }
 
