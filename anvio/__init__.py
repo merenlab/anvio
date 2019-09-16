@@ -553,7 +553,10 @@ D = {
             ['-r', '--taxonomy-database'],
             {'default': None,
              'type': str,
-             'help': "Path to The directory containe Diamond database for SCGs."}
+             'metavar': 'PATH',
+             'help': "Path to the directory that contains the BLAST databases for single-copy core\
+                      genes. You will almost never need to use this parameter unless you are\
+                      trying something very fancy. Anvi'o will know where its database files are."}
                 ),
     'cut_off_methode': (
             ['--cut_off_methode'],
