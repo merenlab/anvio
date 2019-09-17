@@ -174,7 +174,7 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
 
         if (this.keepHistory) {
             transaction.push({'type': 'RemoveNode', 
-                             'bin_id': other_bin_id,
+                             'bin_id': bin_id,
                              'node': node});
         }
     }
@@ -275,7 +275,6 @@ Bins.prototype.ProcessTransaction = function(transaction, reversed=false) {
             }
         }
         else {
-            console.log(operation);
             switch (operation.type) {
                 case 'AppendNode':
                     this.AppendNode(operation.node, operation.bin_id);
