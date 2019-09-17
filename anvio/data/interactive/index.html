@@ -1153,6 +1153,16 @@
         if (ev.keyCode === 84) { // T = 84
             $('#title-panel').toggle();
         }
+
+        if (ev.keyCode === 90 && (ev.metaKey || ev.ctrlKey)) {
+            if (ev.shiftKey) {
+                bins.Redo();
+            }
+            else {
+                bins.Undo();
+            }
+        }
+
     });
 
     document.body.addEventListener('keyup', function(ev) {
