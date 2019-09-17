@@ -353,7 +353,7 @@ Bins.prototype.AppendNode = function(targets, bin_id) {
                     this.selections[other_bin_id].delete(node);
                     bins_to_update.add(other_bin_id);
 
-                    if (this.keepHistory) {
+                    if (this.keepHistory && node.IsLeaf()) {
                         transaction.push({'type': 'RemoveNode', 
                                           'bin_id': other_bin_id,
                                           'node': node});
@@ -365,7 +365,7 @@ Bins.prototype.AppendNode = function(targets, bin_id) {
                 this.selections[bin_id].add(node);
                 bins_to_update.add(bin_id);
 
-                if (this.keepHistory) {
+                if (this.keepHistory && node.IsLeaf()) {
                     transaction.push({'type': 'AppendNode', 
                                       'bin_id': bin_id,
                                       'node': node});
@@ -404,7 +404,7 @@ Bins.prototype.RemoveNode = function(targets, bin_id) {
                     this.selections[bin_id].delete(node);
                     bins_to_update.add(bin_id);
 
-                    if (this.keepHistory) {
+                    if (this.keepHistory && node.IsLeaf()) {
                         transaction.push({'type': 'RemoveNode', 
                                           'bin_id': bin_id,
                                           'node': node});
