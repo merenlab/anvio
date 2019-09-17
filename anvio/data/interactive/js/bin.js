@@ -181,7 +181,7 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
 
     transaction.push({'type': 'DeleteBin', 
                        'bin_id': bin_id,
-                       'name': document.getElementById('bin_name_' + bin_id).getAttribute('color'),
+                       'name': document.getElementById('bin_name_' + bin_id).value,
                        'color': document.getElementById('bin_color_' + bin_id).getAttribute('color')});
 
     this.selections[bin_id].clear();
@@ -245,10 +245,6 @@ Bins.prototype.ProcessTransaction = function(transaction, reversed=false) {
 
     let updated_bins = new Set();
     let removed_bins = new Set();
-
-    if (reversed) {
-        transaction = transaction.reverse();
-    }
     
     for (var i = 0; i < transaction.length; i++) {
         let operation = transaction[i];
