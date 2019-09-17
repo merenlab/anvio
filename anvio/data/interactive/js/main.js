@@ -292,7 +292,11 @@ function initData() {
             $('.loading-screen').hide();
 
             bins = new Bins(response.bin_prefix, document.getElementById('tbody_bins'));
+
+            // redoing intiial bin causes some weird behaviors
+            bins.keepHistory = false;
             bins.NewBin();
+            bins.keepHistory = true;
 
             if (response.autodraw)
             {
