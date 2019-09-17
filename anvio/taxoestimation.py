@@ -93,29 +93,27 @@ class TaxonomyEstimation:
         table = []
 
         for code, score in sorted(selected_entrys_by_score.items(), key=lambda x: (-x[1], x[0])):
-            table.append(
-                [score, ' / '.join(self.taxonomy_dict[code].values())])
+            table.append([score, ' / '.join(self.taxonomy_dict[code].values())])
 
-        print(tabulate(table, headers=header,
-                       tablefmt="fancy_grid", numalign="right"))
+        print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
 
 
     def show_matrix_rank(self, name, matrix, list_position_entry, list_position_ribosomal):
         headers = list(matrix.keys())
 
         self.run.warning(None, header='%s' % (name), lc="blue")
-        print(tabulate(matrix, headers=headers,
-                       tablefmt="fancy_grid", numalign="right"))
+        print(tabulate(matrix, headers=headers, tablefmt="fancy_grid", numalign="right"))
 
 
     def get_consensus_taxonomy(self, SCGs_hit_per_gene, name):
         consensus_taxonomy, entry = self.solo_hits(SCGs_hit_per_gene)
         SCG_hits_info = {}
 
-
         if consensus_taxonomy and entry:
-            taxonomy=[{"bestSCG": name, "bestident": entry['pident'],
-                                 "accession": entry['accession'], "taxonomy":OrderedDict(consensus_taxonomy)}]
+            taxonomy=[{"bestSCG": name,
+                       "bestident": entry['pident'],
+                       "accession": entry['accession'],
+                       "taxonomy": OrderedDict(consensus_taxonomy)}]
             return(consensus_taxonomy, taxonomy)
         else:
             consensus_taxonomy, taxonomy = self.rank_assignement(SCGs_hit_per_gene, name)
@@ -192,11 +190,12 @@ class TaxonomyEstimation:
     def assign_taxonomie_solo_hit(self, taxonomy):
         if not taxonomy or not taxonomy[0]:
             return 0
+
         assignation = taxonomy[0]
         if taxonomy[1:]:
             for taxon in taxonomy[1:]:
                 for level in taxon:
-                    if taxon[level] not in list(assignation.values()) and taxon[level]!='NA':
+                    if taxon[level] not in list(assignation.values()) and taxon[level] != 'NA':
                         assignation[level] = 'NA'
 
         return(assignation)
@@ -204,16 +203,19 @@ class TaxonomyEstimation:
 
     def make_list_taxonomy(self, matrix_pident):
         taxonomy = []
-        matrix_rank = matrix_pident.rank(
-            method='min', ascending=False, na_option='bottom')
+        matrix_rank = matrix_pident.rank(method='min', ascending=False, na_option='bottom')
         series_sum_rank = matrix_rank.sum(axis=1)
         minimum_rank = series_sum_rank.min()
         top_series = series_sum_rank.loc[series_sum_rank[:] == minimum_rank]
+
         for individue, row in top_series.items():
             bestSCG = pd.to_numeric(matrix_pident.loc[individue, :]).idxmax()
             bestident = matrix_pident.loc[individue, bestSCG]
-            taxonomy.append({"bestSCG": bestSCG, "bestident": bestident,
-                             "accession": individue, "taxonomy":OrderedDict(self.taxonomy_dict[individue])})
+            taxonomy.append({"bestSCG": bestSCG,
+                             "bestident": bestident,
+                             "accession": individue,
+                             "taxonomy": OrderedDict(self.taxonomy_dict[individue])})
+
         return taxonomy
 
 
@@ -224,11 +226,11 @@ class TaxonomyEstimation:
             for level, value in reversed(possibilitie["taxonomy"].items()):
                 if possibilitie["taxonomy"][level] == 'NA':
                     continue
-                if possibilitie["bestident"] < float(self.dicolevel[possibilitie["bestSCG"]]
-                                                     [self.taxonomic_levels_parser[level] + value]):
+                if possibilitie["bestident"] < float(self.dicolevel[possibilitie["bestSCG"]][self.taxonomic_levels_parser[level] + value]):
                     possibilitie["taxonomy"][level] = 'NA'
                 else:
                     break
+
             reduce_taxonomy.append(possibilitie["taxonomy"])
 
         return reduce_taxonomy
@@ -385,8 +387,7 @@ class SCGsdiamond(TaxonomyEstimation):
 
         self.init()
 
-        hmm_sequences_dict_per_type = self.get_hmm_sequences_dict_into_type_multi(
-            hmm_sequences_dict,hmm_sequences_best_hit_dict)
+        hmm_sequences_dict_per_type = self.get_hmm_sequences_dict_into_type_multi(hmm_sequences_dict,hmm_sequences_best_hit_dict)
 
         num_listeprocess = len(hmm_sequences_dict_per_type)
 
@@ -396,32 +397,21 @@ class SCGsdiamond(TaxonomyEstimation):
         self.run.info('Taxonomy', self.taxonomy_file_path)
         self.run.info('Database reference', self.taxonomy_database_path)
         self.run.info('Source', self.source)
-        self.run.info('Minimun level assigment', "species")
         self.run.info('Number of SCGs', len(hmm_sequences_dict_per_type))
-        self.run.info('SCGs', ','.join(
-            list(hmm_sequences_dict_per_type.keys())))
+        self.run.info('SCGs', ','.join(list(hmm_sequences_dict_per_type.keys())))
 
-        self.run.warning(
-            '', header='Parameters for aligments with %s for taxonomy' % aligners, lc='green')
+        self.run.warning('', header='Parameters for aligments with %s for taxonomy' % aligners, lc='green')
         self.run.info('Blast type', "Blastp")
-        self.run.info('Maximum number of target sequences',
-                      self.max_target_seqs)
-        self.run.info('Minimum bit score to report alignments',
-                      self.min_pct_id)
+        self.run.info('Maximum number of target sequences', self.max_target_seqs)
+        self.run.info('Minimum bit score to report alignments', self.min_pct_id)
         self.run.info('Number aligment running in same time', self.num_process)
-        self.run.info(
-            'Number of CPUs will be used for each aligment', self.core)
+        self.run.info('Number of CPUs will be used for each aligment', self.core)
 
-        self.tables_for_taxonomy = TablesForTaxoestimation(
-            self.contigs_db_path, run, progress)
-        self.tables_for_taxonomy.delete_contents_of_table(
-            t.scg_taxonomy_table_name)
+        self.tables_for_taxonomy = TablesForTaxoestimation(self.contigs_db_path, run, progress)
+        self.tables_for_taxonomy.delete_contents_of_table(t.scg_taxonomy_table_name)
 
-        self.progress.new('Computing SCGs aligments',
-
-                          progress_total_items=num_listeprocess)
-        self.progress.update('Initializing %d process...' %
-                             int(self.num_process))
+        self.progress.new('Computing SCGs aligments', progress_total_items=num_listeprocess)
+        self.progress.update('Initializing %d process...' % int(self.num_process))
 
         manager = multiprocessing.Manager()
         input_queue = manager.Queue()
@@ -432,7 +422,6 @@ class SCGsdiamond(TaxonomyEstimation):
         self.genes_estimation_output=[]
 
         for SCG in hmm_sequences_dict_per_type:
-
             sequence = ""
             for entry in hmm_sequences_dict_per_type[SCG].values():
                 if 'sequence' not in entry or 'gene_name' not in entry:
@@ -440,16 +429,14 @@ class SCGsdiamond(TaxonomyEstimation):
                                        does not look like the way we expected it. This function\
                                        expects a dictionary that contains keys `gene_name` and `sequence`.")
 
-                sequence = sequence + ">" + \
-                    str(entry['gene_callers_id']) + \
-                    "\n" + entry['sequence'] + "\n"
+                sequence = sequence + ">" + str(entry['gene_callers_id']) + "\n" + entry['sequence'] + "\n"
                 entry['hits'] = []
+
             input_queue.put([SCG, sequence])
 
         workers = []
         for i in range(0, int(self.num_process)):
-            worker = multiprocessing.Process(target=self.get_raw_blast_hits_multi,
-                                             args=(input_queue, output_queue))
+            worker = multiprocessing.Process(target=self.get_raw_blast_hits_multi, args=(input_queue, output_queue))
 
             workers.append(worker)
             worker.start()
@@ -460,15 +447,14 @@ class SCGsdiamond(TaxonomyEstimation):
                 diamond_output+=output_queue.get()
 
                 if self.write_buffer_size > 0 and len(diamond_output) % self.write_buffer_size == 0:
-
-                    table_index = self.tables_for_taxonomy.alignment_result_to_congigs(table_index,diamond_output)
+                    table_index = self.tables_for_taxonomy.alignment_result_to_congigs(table_index, diamond_output)
                     diamond_output = []
 
                 finish_process += 1
 
                 self.progress.increment(increment_to=finish_process)
-                progress.update("Processed %s of %s SGCs aligment in %s processus with %s cores." % (
-                    finish_process, num_listeprocess, int(self.num_process), self.core))
+                progress.update("Processed %s of %s SGCs aligment in %s processus with %s cores." \
+                                        % (finish_process, num_listeprocess, int(self.num_process), self.core))
 
             except KeyboardInterrupt:
                 print("Anvi'o profiler recieved SIGINT, terminating all processes...")
@@ -482,19 +468,16 @@ class SCGsdiamond(TaxonomyEstimation):
 
 
     def show_hits(self, hits_per_gene, SCG):
-        self.run.warning(None, header='%s' %
-                         SCG, lc="green")
+        self.run.warning(None, header='%s' % SCG, lc="green")
 
         if SCG in hits_per_gene:
             header = ['%id', 'bitscore', 'taxonomy']
             table = []
 
             for hit in hits:
-                table.append([hit['pident'], hit['bitscore'],
-                              ' / '.join(self.taxonomy_dict[hit['accession']].values())])
+                table.append([hit['pident'], hit['bitscore'], ' / '.join(self.taxonomy_dict[hit['accession']].values())])
 
-            print(tabulate(table, headers=header,
-                           tablefmt="fancy_grid", numalign="right"))
+            print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
         else:
             self.run.info_single("No hits :/")
 
@@ -518,8 +501,7 @@ class SCGsdiamond(TaxonomyEstimation):
                 if len(line_hit_to_split) and not line_hit_to_split.startswith('Query'):
                     line_hit = line_hit_to_split.split('\t')
                     gene_callers_id = line_hit[0]
-                    hit = [dict(zip(['accession', 'pident', 'bitscore'], [
-                        line_hit[1], float(line_hit[2]), float(line_hit[11])]))]
+                    hit = [dict(zip(['accession', 'pident', 'bitscore'], [line_hit[1], float(line_hit[2]), float(line_hit[11])]))]
 
                     if gene_callers_id not in hits_per_gene:
                         hits_per_gene[gene_callers_id] = {}
@@ -572,8 +554,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
 
     def init(self, source="GTDB", number_scg=21):
-        self.run.warning('', header='Taxonomy estimation for %s' %
-            self.contigs_db_path, lc='green')
+        self.run.warning('', header='Taxonomy estimation for %s' % self.contigs_db_path, lc='green')
         self.run.info('HMM PROFILE', "Bacteria 71")
         self.run.info('Source', source)
         self.run.info('Minimun level assigment', "species")
@@ -585,8 +566,8 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.dictonnary_taxonomy_by_index = self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
 
         if not (self.dictonnary_taxonomy_by_index):
-            raise ConfigError(
-                "Anvi'o can't make a taxonomy estimation because aligment didn't return any match or you forgot to run 'anvi-diamond-for-taxonomy'.")
+            raise ConfigError("Anvi'o can't make a taxonomy estimation because aligment didn't return any\
+                               match or you forgot to run 'anvi-diamond-for-taxonomy'.")
 
 
         if self.profile_db_path:
@@ -594,9 +575,11 @@ class SCGsTaxonomy(TaxonomyEstimation):
             taxonomyestimation = TaxonomyEstimation.__init__(self, self.taxonomy_dict)
 
             self.initialized = True
+
             return(collection_to_split)
         else:
             self.initialized = True
+
             return
 
 
@@ -629,7 +612,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
 
         for gene_estimation in self.dictonnary_taxonomy_by_index.values():
-            if gene_estimation["source"]=="Consensus":
+            if gene_estimation["source"] == "Consensus":
                 continue
 
 
@@ -643,14 +626,12 @@ class SCGsTaxonomy(TaxonomyEstimation):
                                                             "t_species": gene_estimation['t_species']}
 
             for bin_id, gene_callers_id in bin_to_gene_callers_id.items():
-                #gene_id=int(gene_estimation['gene_caller_id'].replace("_best_hit",""))
                 if gene_estimation['gene_caller_id'] in gene_callers_id:
-
-                    hit = [{'accession': gene_estimation['accession'], 'pident':float(
-                        gene_estimation['pourcentage_identity'])}]
+                    hit = [{'accession': gene_estimation['accession'], 'pident': float(gene_estimation['pourcentage_identity'])}]
 
                     if bin_id not in hits_per_gene:
                         hits_per_gene[bin_id] = {}
+
                     if gene_estimation['gene_name'] not in hits_per_gene[bin_id]:
                         hits_per_gene[bin_id][gene_estimation['gene_name']] = []
 
@@ -670,11 +651,10 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
             for bin_id, SCGs_hit_per_gene in hits_per_gene.items():
                 consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(SCGs_hit_per_gene, bin_id)
-                dictionary_bin_taxonomy_estimation[bin_id]={"consensus_taxonomy":consensus_taxonomy,
-                                                            "taxonomy_use_for_consensus":taxonomy}
+                dictionary_bin_taxonomy_estimation[bin_id]={"consensus_taxonomy": consensus_taxonomy,
+                                                            "taxonomy_use_for_consensus": taxonomy}
 
-                entries_db_profile += [
-                    (tuple([entry_id, self.collection_name, bin_id, source] + list(consensus_taxonomy.values())))]
+                entries_db_profile += [(tuple([entry_id, self.collection_name, bin_id, source] + list(consensus_taxonomy.values())))]
                 entry_id += 1
 
                 self.tables_for_taxonomy.taxonomy_estimation_to_profile(
@@ -706,14 +686,15 @@ class SCGsTaxonomy(TaxonomyEstimation):
                                         "t_genus": "NA",
                                         "t_species": "NA"}]
 
-        output_genes_estimation.append(
-            ['genes_id', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
+        output_genes_estimation.append(['genes_id', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
 
         for gene_estimation in self.dictonnary_taxonomy_by_index.values():
             if gene_estimation["source"] == "GTDB" :
                 continue
+
             if gene_estimation["gene_name"] not in liste_SCG:
                 liste_SCG.append(gene_estimation["gene_name"])
+
             taxonomy = {"t_domain": gene_estimation['t_domain'],
                                                         "t_phylum": gene_estimation['t_phylum'],
                                                         "t_class": gene_estimation['t_class'],
@@ -721,6 +702,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
                                                         "t_family": gene_estimation['t_family'],
                                                         "t_genus": gene_estimation['t_genus'],
                                                         "t_species": gene_estimation['t_species']}
+
             self.taxonomy_dict[gene_estimation['gene_caller_id']]=taxonomy
 
             output_genes_estimation.append([gene_estimation['gene_caller_id']] + list(taxonomy.values()))
@@ -739,51 +721,59 @@ class SCGsTaxonomy(TaxonomyEstimation):
                         dictonarry_presence[taxon_presente][gene_estimation['gene_name']]+=[gene_estimation['gene_caller_id']]
             if new:
                 for estimate_taxonomy_presence in estimate_taxonomy_presences:
-                    share = { level : taxonomy[level] for level, taxon  in estimate_taxonomy_presence.items() & taxonomy.items() if taxon!="Bacteria" and taxon!="Archea" and taxon!="NA"}
+                    share = {level: taxonomy[level] for level, taxon in estimate_taxonomy_presence.items() & taxonomy.items() if taxon!="Bacteria" and taxon!="Archea" and taxon!="NA"}
                     difference = { level : taxonomy[level] for level, taxon  in estimate_taxonomy_presence.items() - taxonomy.items() if taxon=="NA"}
                     if difference and share:
                         estimate_taxonomy_presence.clear()
                         estimate_taxonomy_presence.update(taxonomy)
-                        new=False
+                        new = False
                         break
                 if new:
-                    estimate_taxonomy_presences+=[taxonomy]
+                    estimate_taxonomy_presences += [taxonomy]
 
         estimate_taxonomy_presences.pop(0)
-        output=[['metagenome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species','number of SCG\n(maximun %s)'% (len(liste_SCG))]]
-        num_metagenome=1
+
+        output=[['metagenome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species', 'number of SCG\n(maximun %s)'% (len(liste_SCG))]]
+
+        num_metagenome = 1
 
         for estimate_taxonomy_presence in estimate_taxonomy_presences:
             for level in estimate_taxonomy_presence.values():
                 if level not in dictonnary_number_appear:
-                    dictonnary_number_appear[level]=1
+                    dictonnary_number_appear[level] = 1
                 else:
-                    dictonnary_number_appear[level]+=1
-        if len(estimate_taxonomy_presences)>1:
+                    dictonnary_number_appear[level] += 1
+        if len(estimate_taxonomy_presences) > 1:
             for estimate_taxonomy_presence in estimate_taxonomy_presences:
-                output+=[[self.contigs_db_path.replace(".db","")+"_genome_"+str(num_metagenome)]+list(estimate_taxonomy_presence.values())+[len(dictonarry_presence[list(estimate_taxonomy_presence.values())[-1]].values())]]
-                num_metagenome+=1
+                output+=[[self.contigs_db_path.replace(".db", "") + "_genome_" + str(num_metagenome)] + \
+                         list(estimate_taxonomy_presence.values()) + \
+                         [len(dictonarry_presence[list(estimate_taxonomy_presence.values())[-1]].values())]]
+
+                num_metagenome += 1
         else:
-            output+=[[self.contigs_db_path.replace(".db","")]+list(estimate_taxonomy_presence.values())]
+            output += [[self.contigs_db_path.replace(".db", "")] + list(estimate_taxonomy_presence.values())]
 
         outpu_appear=[["taxon","number of scg"]]
         for level, appear in dictonnary_number_appear.items():
-            outpu_appear+=[[level],[appear]]
+            outpu_appear += [[level], [appear]]
 
         for taxon, list_scgs in dictonarry_presence.items():
             if taxon=="NA":
                 continue
-            len_max_scg=("NA",0)
+
+            len_max_scg=("NA", 0)
             for SCG, list_appear_scg in list_scgs.items():
                 if len(list_appear_scg) > len_max_scg[1]:
                     len_max_scg=(SCG,len(list_appear_scg))
+
             if dictonnary_number_appear[taxon] < len_max_scg[1]:
-                continue
+                # FIXME: what the fuck is going on here? What is this sentence supposed to mean?
                 self.run.warning("%s is estimate %d time but it seams that the SCG %s have %d appear for this taxons, it could mean you have "\
                  % (taxon , dictonnary_number_appear[taxon], len_max_scg[0], len_max_scg[1]))
 
+                continue
+
         self.show_taxonomy(output)
-        #self.generate_output_file(output,append=True)
 
 
     def generate_output_file(self,output_data,header=False,append=False):
@@ -792,8 +782,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
         if filesnpaths.is_output_file_writable(self.output_file_path, ok_if_exists=append):
             with open(self.output_file_path, "a") as output_file:
-                output_data = ['\t'.join(line)
-                                   for line in output_data]
+                output_data = ['\t'.join(line) for line in output_data]
                 output_data='\n'.join(output_data)
                 output_file.write(output_data)
 
@@ -802,14 +791,13 @@ class SCGsTaxonomy(TaxonomyEstimation):
         collection_to_split=self.init()
 
         possibles_taxonomy = []
-        possibles_taxonomy.append(
-            ['Genome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
+        possibles_taxonomy.append(['Genome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
         taxonomy_bin=self.assignation_by_bin(collection_to_split)
 
         hits_per_gene = self.get_hits_per_bin(collection_to_split)
         for bin_id, SCGs_hit_per_gene in hits_per_gene.items():
-                                    consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(SCGs_hit_per_gene, bin_id)
-                                    possibles_taxonomy.append([bin_id] + list(consensus_taxonomy.values()))
+            consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(SCGs_hit_per_gene, bin_id)
+            possibles_taxonomy.append([bin_id] + list(consensus_taxonomy.values()))
 
         self.show_taxonomy(possibles_taxonomy)
         self.generate_output_file(possibles_taxonomy)
@@ -839,17 +827,18 @@ class SCGsTaxonomy(TaxonomyEstimation):
                                                         "t_genus": gene_estimation['t_genus'],
                                                         "t_species": gene_estimation['t_species']}
 
-            hit = [{'accession': gene_estimation['accession'], 'pident':float(gene_estimation['pourcentage_identity'])}]
+            hit = [{'accession': gene_estimation['accession'], 'pident': float(gene_estimation['pourcentage_identity'])}]
+
             if gene_estimation['gene_name'] not in self.SCGs_hit_per_gene:
                 self.SCGs_hit_per_gene[gene_estimation['gene_name']] = []
+
             self.SCGs_hit_per_gene[gene_estimation['gene_name']] += hit
 
-        taxonomyestimation=TaxonomyEstimation.__init__(self,self.taxonomy_dict)
+        taxonomyestimation = TaxonomyEstimation.__init__(self, self.taxonomy_dict)
 
-        consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self,
-                self.SCGs_hit_per_gene, self.contigs_db_path)
+        consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self, self.SCGs_hit_per_gene, self.contigs_db_path)
 
-        output_full_genome=[['Genome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'],[self.contigs_db_path.replace(".db","")]+list(consensus_taxonomy.values())]
+        output_full_genome=[['Genome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'], [self.contigs_db_path.replace(".db", "")] + list(consensus_taxonomy.values())]
 
         self.show_taxonomy(output_full_genome)
         self.generate_output_file(output_full_genome)
@@ -857,8 +846,7 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
     def show_taxonomy(self,possibles_taxonomy):
         self.run.warning(None, header='Taxonomy estimation', lc="yellow")
-        print(tabulate(possibles_taxonomy, headers="firstrow",
-                       tablefmt="fancy_grid", numalign="right"))
+        print(tabulate(possibles_taxonomy, headers="firstrow", tablefmt="fancy_grid", numalign="right"))
 
 
     def get_assignement_genes(self, source="GTDB"):
@@ -871,11 +859,10 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.tables_for_taxonomy = TablesForTaxoestimation(self.contigs_db_path, run, progress)
         self.dictonnary_taxonomy_by_index = self.tables_for_taxonomy.get_data_for_taxonomy_estimation()
         possibles_taxonomy = []
-        possibles_taxonomy.append(
-            ['gene_id', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
+        possibles_taxonomy.append(['gene_id', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
+
         for gene_estimation in self.dictonnary_taxonomy_by_index.values():
             if gene_estimation['source'] != "GTDB":
-                
                 taxonomy = [ gene_estimation['t_domain'],
                             gene_estimation['t_phylum'],
                             gene_estimation['t_class'],
@@ -883,17 +870,18 @@ class SCGsTaxonomy(TaxonomyEstimation):
                             gene_estimation['t_family'],
                             gene_estimation['t_genus'],
                             gene_estimation['t_species']]
+
                 possibles_taxonomy.append([str(gene_estimation['gene_caller_id'])] + taxonomy)
+
         self.show_taxonomy(possibles_taxonomy)
         self.generate_output_file(possibles_taxonomy)
 
 
     def show_taxonomy_estimation_genes(self, possibles_taxonomy):
         self.run.warning(None, header='Taxonomy estimation', lc="yellow")
-        possibles_taxonomy_dataframe = pd.DataFrame(
-            possibles_taxonomy, columns=possibles_taxonomy[0])
+        possibles_taxonomy_dataframe = pd.DataFrame(possibles_taxonomy, columns=possibles_taxonomy[0])
         possibles_taxonomy_dataframe.set_index("bin_id", inplace=True)
-        possibles_taxonomy_dataframe = possibles_taxonomy_dataframe.sort_values(
-            by=['domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'], ascending=False)
+        possibles_taxonomy_dataframe = possibles_taxonomy_dataframe.sort_values(by=['domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'], ascending=False)
+
         print(tabulate(possibles_taxonomy_dataframe, headers="firstrow",
                        tablefmt="fancy_grid", numalign="right"))
