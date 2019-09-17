@@ -936,7 +936,33 @@ Bins.prototype.RebuildIntersections = function() {
         return;
 
     for (let bin_id in this.selections) {
+        let bin_color = this.GetBinColor(bin_id);
         let inserted = true;
+        let removed = true;
+
+        while (removed) {
+            removed = false;
+
+            for (let node of this.selections[bin_id].values()) {
+                if (node.IsLeaf()) {
+                    continue;
+                }
+
+                let any_child_in_bin = false;
+                let child = node.child;
+
+                while (child.sibling) {
+                    any_child_in_bin = any_child_in_bin || this.selections[bin_id].has(child);
+                    child = child.sibling;
+                }
+
+                if (!any_child_in_bin) {
+                    // node doesn't have any child in this bin so let's get rid of it.
+                    this.selections[bin_id].delete(node);
+                    node.ResetColor();
+                }
+            }   
+        }
 
         while (inserted) {
             inserted = false;
@@ -956,6 +982,7 @@ Bins.prototype.RebuildIntersections = function() {
                 if (node.sibling && this.selections[bin_id].has(node.sibling)) {
                     // node and its sibling in same bin, so parent should too.
                     this.selections[bin_id].add(parent);
+                    parent.SetColor(bin_color);
                     inserted = true;
                 }
             }
