@@ -124,7 +124,8 @@ Bins.prototype.NewBin = function(id, binState) {
         $(this).colpickSetColor(this.value);
     });
 
-    this.PushHistory([{'type': 'NewBin', 
+    this.PushHistory([{'type': 'NewBin',
+                       'name': name,
                        'bin_id': id,
                        'color': color}]);
 };
@@ -242,19 +243,25 @@ Bins.prototype.ProcessTransaction = function(transaction, reversed=false) {
     this.keepHistory = false;
     this.allowRedraw = false;
 
-    let bins_to_update = new Set();
+    let updated_bins = new Set();
+    let removed_bins = new Set();
+
+    if (reversed) {
+        transaction = transaction.reverse();
+    }
     
-    for (var i = transaction.length - 1; i >= 0; --i) {
+    for (var i = 0; i < transaction.length; i++) {
         let operation = transaction[i];
-        bins_to_update.add(operation.bin_id);
+
+        updated_bins.add(operation.bin_id);
 
         if (reversed) {
             switch (operation.type) {
                 case 'AppendNode':
-                    this.RemoveNode(operation.node);
+                    this.RemoveNode(operation.node, operation.bin_id);
                     break;
                 case 'RemoveNode':
-                    this.AppendNode(operation.node);
+                    this.AppendNode(operation.node, operation.bin_id);
                     break;
                 case 'ChangeColor':
                     $('#bin_color_' + operation.bin_id).attr('color', operation['color-before']);
@@ -263,19 +270,22 @@ Bins.prototype.ProcessTransaction = function(transaction, reversed=false) {
                 case 'DeleteBin':
                     this.NewBin(operation.bin_id, {'name': operation.name, 
                                                   'color': operation.color});
+                    removed_bins.delete(operation.bin_id);
                     break;
                 case 'NewBin':
                     this.DeleteBin(operation.bin_id, show_confirm=false);
+                    removed_bins.add(operation.bin_id);
                     break;
             }
         }
         else {
+            console.log(operation);
             switch (operation.type) {
                 case 'AppendNode':
-                    this.AppendNode(operation.node);
+                    this.AppendNode(operation.node, operation.bin_id);
                     break;
                 case 'RemoveNode':
-                    this.RemoveNode(operation.node);
+                    this.RemoveNode(operation.node, operation.bin_id);
                     break;
                 case 'ChangeColor':
                     $('#bin_color_' + operation.bin_id).attr('color', operation.color);
@@ -283,12 +293,21 @@ Bins.prototype.ProcessTransaction = function(transaction, reversed=false) {
                     break;
                 case 'DeleteBin':
                     this.DeleteBin(operation.bin_id, show_confirm=false);
+                    removed_bins.add(operation.bin_id);
                     break;
                 case 'NewBin':
                     this.NewBin(operation.bin_id, {'name': operation.name, 
                                                   'color': operation.color});
+                    removed_bins.delete(operation.bin_id);
                     break;
             }
+        }
+    }
+
+    let bins_to_update = [];
+    for (const bin_id of updated_bins) {
+        if (!removed_bins.has(bin_id)) {
+            bins_to_update.push(bin_id);
         }
     }
 
@@ -296,7 +315,7 @@ Bins.prototype.ProcessTransaction = function(transaction, reversed=false) {
     this.allowRedraw = true;
     this.RebuildIntersections();
     this.RedrawBins();
-    this.UpdateBinsWindow();
+    this.UpdateBinsWindow(bins_to_update);
 };
 
 
@@ -311,9 +330,11 @@ Bins.prototype.DeleteAllBins = function() {
 };
 
 
-Bins.prototype.AppendNode = function(targets) {
-    var bin_id = this.GetSelectedBinId();
-    var bin_color = this.GetSelectedBinColor();
+Bins.prototype.AppendNode = function(targets, bin_id) {
+    if (typeof bin_id === 'undefined') {
+        var bin_id = this.GetSelectedBinId();
+    }
+    var bin_color = this.GetBinColor(bin_id);
     var bins_to_update = new Set();
 
     if (!Array.isArray(targets)) {
@@ -327,17 +348,6 @@ Bins.prototype.AppendNode = function(targets) {
             continue;
 
         for (const node of target.IterateChildren()) {
-            if (!this.selections[bin_id].has(node)) {
-                this.selections[bin_id].add(node);
-                bins_to_update.add(bin_id);
-
-                if (this.keepHistory) {
-                    transaction.push({'type': 'AppendNode', 
-                                      'bin_id': bin_id,
-                                      'node': node});
-                }
-            }
-
             for (let other_bin_id in this.selections) {
                 // remove node from other bins except the current one
                 if (other_bin_id == bin_id) {
@@ -356,6 +366,17 @@ Bins.prototype.AppendNode = function(targets) {
                 }
             }
 
+            if (!this.selections[bin_id].has(node)) {
+                this.selections[bin_id].add(node);
+                bins_to_update.add(bin_id);
+
+                if (this.keepHistory) {
+                    transaction.push({'type': 'AppendNode', 
+                                      'bin_id': bin_id,
+                                      'node': node});
+                }
+            }
+
             node.SetColor(bin_color);
         }    
     }
@@ -367,8 +388,10 @@ Bins.prototype.AppendNode = function(targets) {
 };
 
 
-Bins.prototype.RemoveNode = function(targets) {
-    var bin_id = this.GetSelectedBinId();
+Bins.prototype.RemoveNode = function(targets, bin_id) {
+    if (typeof bin_id === 'undefined') {
+        var bin_id = this.GetSelectedBinId();
+    }
     var bins_to_update = new Set();
     let transaction = [];
 
