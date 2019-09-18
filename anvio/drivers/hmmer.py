@@ -133,13 +133,14 @@ class HMMer:
                                                          log_file,
                                                          merged_file_buffer,
                                                          buffer_write_lock))
+            t.start()
             workers.append(t)
 
         self.progress.new('Processing')
         self.progress.update('Performing HMM scan...')
 
+        # Wait for all workers to finish.
         for worker in workers:
-            worker.start()
             worker.join()
 
         output_file_path = os.path.join(tmp_dir, 'hmm.hits')
