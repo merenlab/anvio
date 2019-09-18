@@ -558,6 +558,28 @@ D = {
                       genes. You will almost never need to use this parameter unless you are\
                       trying something very fancy. Anvi'o will know where its database files are."}
                 ),
+    'scgs-taxonomy-data-dir': (
+            ['--scgs-taxonomy-data-dir'],
+            {'default': None,
+             'type': str,
+             'metavar': 'PATH',
+             'help': "The directory for SCGs data to be stored. If you leave it as is without\
+                      specifying anything, anvi'o will set up everything in a reasonable place.\
+                      The advantage of it is that everyone will be using a single data directory,\
+                      but then you may need to run this program with superuser privileges to do it.\
+                      Using this parameter you can choose the location of the data directory somewhere\
+                      you like. However, when it is time to run SCGs, you will need to remember that\
+                      path and provide it to the program."}
+                ),
+    'reset': (
+            ['--reset'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Remove all the previously stored files and start over. If something is feels wrong\
+                      for some reason and if you believe re-downloading files and setting them up could\
+                      address the issue, this is the flag that will tell anvi'o to act like a real comptuer\
+                      scientist challenged with a computational problem."}
+                ),
     'cog-data-dir': (
             ['--cog-data-dir'],
             {'default': None,
