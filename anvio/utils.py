@@ -875,6 +875,31 @@ def get_gene_caller_ids_from_args(gene_caller_ids, delimiter):
     return gene_caller_ids_set
 
 
+def remove_sequences_with_only_gaps_from_fasta(input_file_path, output_file_path, inplace=True):
+    filesnpaths.is_file_fasta_formatted(input_file_path)
+    filesnpaths.is_output_file_writable(output_file_path)
+
+    total_num_sequences = 0
+    num_sequences_removed = 0
+    input_fasta = u.SequenceSource(input_file_path)
+    clean_fasta = u.FastaOutput(output_file_path)
+
+    while next(input_fasta):
+        total_num_sequences += 1
+        if input_fasta.seq.count('-') == len(input_fasta.seq):
+            num_sequences_removed += 1
+        else:
+            clean_fasta.store(input_fasta, split=False)
+
+    if inplace:
+        if num_sequences_removed:
+            shutil.move(output_file_path, input_file_path)
+        else:
+            os.remove(output_file_path)
+
+    return total_num_sequences, num_sequences_removed
+
+
 def get_all_ids_from_fasta(input_file):
     fasta = u.SequenceSource(input_file)
     ids = []
@@ -2545,6 +2570,23 @@ def download_file(url, output_file_path, progress=progress, run=run):
 
     progress.end()
     run.info('Downloaded succesfully', output_file_path)
+
+
+def get_remote_file_content(url, gzipped=False):
+    import requests
+    from io import BytesIO
+
+    remote_file = requests.get(url)
+
+    if remote_file.status_code == 404:
+        raise ConfigError("Bad news. The remove file at '%s' was not found :(" % url)
+
+    if gzipped:
+        buf = BytesIO(remote_file.content)
+        fg = gzip.GzipFile(fileobj=buf)
+        return fg.read().decode('utf-8')
+
+    return remote_file.content.decode('utf-8')
 
 
 def download_protein_structures(protein_code_list, output_dir):
