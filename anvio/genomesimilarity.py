@@ -192,12 +192,15 @@ class Dereplicate:
         imported and sequence sources were not provided, GenomeSimilarity obviously knows nothing of the genome_names. So
         in this fringe case we grab genome names from the results matrix
         """
-        return self.similarity.genome_names if self.similarity.genome_names \
-                                          else set(self.similarity_matrix.keys())
+        return (self.similarity.genome_names
+                if self.similarity.genome_names
+                else set(self.similarity_matrix.keys()))
 
 
     def get_similarity_matrix(self):
-        return self.import_similarity_matrix() if self.import_previous_results else self.gen_similarity_matrix()
+        return (self.import_similarity_matrix()
+                if self.import_previous_results
+                else self.gen_similarity_matrix())
 
 
     def gen_similarity_matrix(self):
@@ -414,8 +417,9 @@ class Dereplicate:
     def gen_fasta_report_output(self):
         fasta_report_output = {
             'name': [],
+            'source': [],
             'cluster': [],
-            'representative': [],
+            'cluster_rep': [],
             'path': [],
         }
 
@@ -423,8 +427,9 @@ class Dereplicate:
             cluster = self.genome_name_to_cluster_name[name]
 
             fasta_report_output['name'].append(name)
+            fasta_report_output['source'].append(self.similarity.genome_sources[name])
             fasta_report_output['cluster'].append(cluster)
-            fasta_report_output['representative'].append(True if self.cluster_report[cluster]['representative'] == name else False)
+            fasta_report_output['cluster_rep'].append(self.cluster_report[cluster]['representative'])
             fasta_report_output['path'].append(path)
 
         return pd.DataFrame(fasta_report_output).sort_values(by=['cluster', 'name'])
@@ -609,7 +614,7 @@ class GenomeSimilarity:
         self.name_to_temp_path = {}
 
         self.sanity_check(ok_if_exists=self.output_dir_exists)
-        self.genome_names = self.get_genome_names()
+        self.genome_names, self.genome_sources = self.get_genome_names_list_and_genome_source_dict()
 
 
     def sanity_check(self, ok_if_exists):
@@ -685,29 +690,31 @@ class GenomeSimilarity:
             run.info_single('Matrix and clustering of \'%s\' written to output directory' % report_name.replace('_',' '), mc='green')
 
 
-    def get_genome_names(self):
+    def get_genome_names_list_and_genome_source_dict(self):
         def get_names(f):
             d = utils.get_TAB_delimited_file_as_dictionary(f, expected_fields=['name'], indexing_field=-1) if f else {}
             return [line['name'] for line in d.values()]
 
         names = {
-            '--fasta-text-file': get_names(self.fasta_txt),
-            '--internal-genomes': get_names(self.internal_genomes),
-            '--external-genomes': get_names(self.external_genomes),
+            'fasta': get_names(self.fasta_txt),
+            'internal': get_names(self.internal_genomes),
+            'external': get_names(self.external_genomes),
         }
 
         for source1, source2 in combinations(names, 2):
             names_in_both = [n for n in names[source1] if n in names[source2]]
             if len(names_in_both):
-                raise ConfigError("Ok, so you provided %s and %s as sequence sources, but some names from these sources are shared\
+                raise ConfigError("Ok, so you provided `%s` and `%s` as sequence sources, but some names from these sources are shared\
                                    so anvi'o doesn't know how these names should be treated. Here is the list of names that are shared\
                                    by both: [%s]" % (source1, source2, ', '.join([str(n) for n in names_in_both])))
 
-        self.genome_names = []
-        for _, names in names.items():
-            self.genome_names.extend(names)
+        self.genome_sources = {}
+        for source, names in names.items():
+            self.genome_sources.update({name: source for name in names})
 
-        return set(self.genome_names)
+        self.genome_names = set(self.genome_sources.keys())
+
+        return self.genome_names, self.genome_sources
 
 
     def get_fasta_sequences_dir(self):
