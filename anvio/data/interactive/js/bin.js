@@ -179,7 +179,7 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
 
         if (this.keepHistory) {
             transaction.push({'type': 'RemoveNode', 
-                             'bin_id': other_bin_id,
+                             'bin_id': bin_id,
                              'node': node});
         }
     }
@@ -280,7 +280,6 @@ Bins.prototype.ProcessTransaction = function(transaction, reversed=false) {
             }
         }
         else {
-            console.log(operation);
             switch (operation.type) {
                 case 'AppendNode':
                     this.AppendNode(operation.node, operation.bin_id);
@@ -359,7 +358,7 @@ Bins.prototype.AppendNode = function(targets, bin_id) {
                     this.selections[other_bin_id].delete(node);
                     bins_to_update.add(other_bin_id);
 
-                    if (this.keepHistory) {
+                    if (this.keepHistory && node.IsLeaf()) {
                         transaction.push({'type': 'RemoveNode', 
                                           'bin_id': other_bin_id,
                                           'node': node});
@@ -371,7 +370,7 @@ Bins.prototype.AppendNode = function(targets, bin_id) {
                 this.selections[bin_id].add(node);
                 bins_to_update.add(bin_id);
 
-                if (this.keepHistory) {
+                if (this.keepHistory && node.IsLeaf()) {
                     transaction.push({'type': 'AppendNode', 
                                       'bin_id': bin_id,
                                       'node': node});
@@ -410,7 +409,7 @@ Bins.prototype.RemoveNode = function(targets, bin_id) {
                     this.selections[bin_id].delete(node);
                     bins_to_update.add(bin_id);
 
-                    if (this.keepHistory) {
+                    if (this.keepHistory && node.IsLeaf()) {
                         transaction.push({'type': 'RemoveNode', 
                                           'bin_id': bin_id,
                                           'node': node});
@@ -973,7 +972,33 @@ Bins.prototype.RebuildIntersections = function() {
         return;
 
     for (let bin_id in this.selections) {
+        let bin_color = this.GetBinColor(bin_id);
         let inserted = true;
+        let removed = true;
+
+        while (removed) {
+            removed = false;
+
+            for (let node of this.selections[bin_id].values()) {
+                if (node.IsLeaf()) {
+                    continue;
+                }
+
+                let any_child_in_bin = false;
+                let child = node.child;
+
+                while (child.sibling) {
+                    any_child_in_bin = any_child_in_bin || this.selections[bin_id].has(child);
+                    child = child.sibling;
+                }
+
+                if (!any_child_in_bin) {
+                    // node doesn't have any child in this bin so let's get rid of it.
+                    this.selections[bin_id].delete(node);
+                    node.ResetColor();
+                }
+            }   
+        }
 
         while (inserted) {
             inserted = false;
@@ -993,6 +1018,7 @@ Bins.prototype.RebuildIntersections = function() {
                 if (node.sibling && this.selections[bin_id].has(node.sibling)) {
                     // node and its sibling in same bin, so parent should too.
                     this.selections[bin_id].add(parent);
+                    parent.SetColor(bin_color);
                     inserted = true;
                 }
             }
