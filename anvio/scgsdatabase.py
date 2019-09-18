@@ -7,6 +7,7 @@
 import os
 import sys
 import gzip
+import glob
 import shutil
 import requests
 import pickle
@@ -16,7 +17,6 @@ import subprocess
 import tarfile
 import multiprocessing
 
-from io import BytesIO
 
 import anvio
 import anvio.fastalib as u
@@ -31,6 +31,7 @@ from anvio.errors import ConfigError
 from anvio.errors import FilesNPathsError
 
 from anvio.drivers.diamond import Diamond
+from anvio.constants import default_scgs_taxonomy_data_dir
 
 
 run = terminal.Run()
@@ -48,105 +49,113 @@ __maintainer__ = "Quentin Clayssen"
 __email__ = "quentin.clayssen@gmail.com"
 
 
-def read_remote_file(url, is_gzip=True):
-    remote_file = requests.get(url)
 
-    if remote_file.status_code == 404:
-        raise Exception("'%s' returned 404 Not Found. " % url)
-
-    if is_gzip:
-        buf = BytesIO(remote_file.content)
-        fg = gzip.GzipFile(fileobj=buf)
-        return fg.read().decode('utf-8')
-
-    return remote_file.content.decode('utf-8')
-
-
-class SCGsSetup(object):
+class SetUpSCGTaxonomyDatabase:
     def __init__(self, args, run=run, progress=progress):
         self.args = args
         self.run = run
         self.progress = progress
-        self.SCG_data_dir = args.scgs_data_dir
 
-        if not self.SCG_data_dir:
-            self.SCG_data_dir = os.path.join(
-                os.path.dirname(anvio.__file__), 'data/misc/SCG_TAXONOMY/GTDB')
+        # hard-coded GTDB variables
+        self.target_database = "GTDB"
+        self.target_database_URL = "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
+        self.target_database_files = ['VERSION', 'ar122_msa_individual_genes.tar.gz', 'ar122_taxonomy.tsv',
+                                    'bac120_msa_individual_genes.tar.gz', 'bac120_taxonomy.tsv']
 
-        if not args.reset:
-            self.is_database_exists()
+        # user accessible variables
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.SCGs_taxonomy_data_dir = (os.path.abspath(A("scgs_taxonomy_data_dir")) if A("scgs_taxonomy_data_dir") else None) or (os.path.join(default_scgs_taxonomy_data_dir, self.target_database))
+        self.reset = A("reset")
 
-        filesnpaths.gen_output_directory(
-            self.SCG_data_dir, delete_if_exists=args.reset)
+        self.sanity_check()
 
-        self.database_url = "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
-        self.files = ['VERSION', 'ar122_msa_individual_genes.tar.gz', 'ar122_taxonomy.tsv',
-                      'bac120_msa_individual_genes.tar.gz', 'bac120_taxonomy.tsv']
+        self.run.info("Local directory to setup", self.SCGs_taxonomy_data_dir)
+        self.run.info("Reset the directory first", self.reset, mc="red")
+        self.run.info("Remote database", self.target_database, nl_before=1, mc="green")
+        self.run.info("Remote URL to download files", self.target_database_URL)
+        self.run.info("Remove files of interest", ', '.join(self.target_database_files))
 
-    def is_database_exists(self):
-        if os.path.exists(os.path.join(self.SCG_data_dir, 'SCG.tar.gz.')):
-            raise ConfigError("It seems you already have SCG database installed in '%s', please\
-                               use --reset flag if you want to re-download it." % self.SCG_data_dir)
 
-    def get_remote_version(self):
-        content = read_remote_file(
-            self.database_url + 'VERSION', is_gzip=False)
+    def sanity_check(self):
+        if not self.SCGs_taxonomy_data_dir:
+            raise ConfigError("`SetUpSCGTaxonomyDatabase` class is upset because it was inherited without\
+                               a directory for SCG taxonomy data to be stored :( This variable can't be None.")
 
-        # below we are parsing this, not so elegant.
-        # v89
-        #
-        # Released June 17th, 2019
-        version = content.strip().split('\n')[0].strip()
-        release_date = content.strip().split('\n')[2].strip()
 
-        self.run.info("Current gtdb release", "%s (%s)" %
-                      (version, release_date))
 
-    def download(self):
-        self.run.info("Database URL", self.database_url)
+    def setup(self):
+        if os.path.exists(self.SCGs_taxonomy_data_dir):
+            if self.reset:
+                shutil.rmtree(self.SCGs_taxonomy_data_dir)
+                self.run.warning('The existing directory for SCG taxonomy data dir has been removed. Just so you know.')
+                filesnpaths.gen_output_directory(self.SCGs_taxonomy_data_dir)
 
-        for file_name in self.files:
-            utils.download_file(self.database_url + '/' + file_name,
-                                os.path.join(self.SCG_data_dir, file_name), progress=self.progress, run=self.run)
+            else:
+                raise ConfigError("You already seem to have a directory where anvi'o intends to use for setup. If you wish to\
+                                   re-run the setup, please use the flag `--reset` and BE VERY CAREFUL that this\
+                                   directory does not contain anything you don't want to lose: '%s'." % self.SCGs_taxonomy_data_dir)
+        else:
+            filesnpaths.gen_output_directory(self.SCGs_taxonomy_data_dir)
 
-        self.confirm_downloaded_files()
-        self.decompress_files()
-        self.merge_tsv_files()
+        self.run.warning("Please remember that the data anvi'o attempts do download on behalf of you are\
+                          courtesy of The Genome Taxonomy Database (GTDB), an initiative to establish a \
+                          standardised microbial taxonomy based on genome phylogeny, primarly funded by\
+                          tax payers in Australia. Please don't forget to cite the original work,\
+                          doi:10.1038/nbt.4229 by Parks et al to explicitly mention the source of databases\
+                          anvi'o will use to estimate genome level taxonomy. If you are not sure how it\
+                          should look like in your methods sections, anvi'o developers will be happy to\
+                          help you if you can't find any published example to get inspiration.", lc = 'yellow')
 
-    def confirm_downloaded_files(self):
+        self.progress.new("%s setup" % self.target_database)
 
-        for file_name in self.files:
-            if not filesnpaths.is_file_exists(os.path.join(self.SCG_data_dir, file_name), dont_raise=True):
-                 # TO DO: Fix messages :(
-                raise ConfigError(
-                    "Have missing file %s, please run --reset" % file_name)
+        self.progress.update("Reading the VERSION file...")
+        content = utils.get_remote_file_content(self.target_database_URL + 'VERSION')
+        version, release_date  = content.strip().split('\n')[0].strip(), content.strip().split('\n')[2].strip()
+        self.progress.end()
 
-            hash_on_disk = utils.get_file_md5(
-                os.path.join(self.SCG_data_dir, file_name))
+        self.run.info("%s release found" % self.target_database, "%s (%s)" % (version, release_date), mc="green")
 
-    def decompress_files(self):
-        file_to_dextract = [
-            file_name for file_name in self.files if file_name.endswith(".tar.gz")]
-        for file_name in file_to_dextract:
-            full_path = os.path.join(self.SCG_data_dir, file_name)
-            tar = tarfile.open(full_path)
-            extractpaht = os.path.join(
-                self.SCG_data_dir, "msa_individual_genes")
-            self.run.info("Extracting %s" % (file_name), "%s" % (extractpaht))
-            tar.extractall(path=extractpaht)
-            tar.close()
-            # os.remove(full_path)
+        self.download_files()
 
-    def merge_tsv_files(self):
-        file_to_dextract = [
-            file_name for file_name in self.files if file_name.endswith(".tsv")]
-        full_path = os.path.join(self.SCG_data_dir, "ACCESSION_TO_TAXONOMY.txt")
-        self.run.info("Mergin tsv file ", ','.join(file_to_dextract))
-        with open(full_path, 'w') as outfile:
-            for fname in file_to_dextract:
-                with open(self.SCG_data_dir+"/"+fname) as infile:
-                    for line in infile:
-                        outfile.write(line)
+
+    def download_files(self):
+        msa_individual_genes_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'msa_individual_genes')
+        accession_to_taxonomy_file_path = os.path.join(self.SCGs_taxonomy_data_dir, 'ACCESSION_TO_TAXONOMY.txt')
+
+        # let's be 100% sure.
+        os.remove(accession_to_taxonomy_file_path) if os.path.exists(accession_to_taxonomy_file_path) else None
+
+        for remote_file_name in self.target_database_files:
+            remote_file_url = '/'.join([self.target_database_URL, remote_file_name])
+            local_file_path = os.path.join(self.SCGs_taxonomy_data_dir, remote_file_name)
+
+            utils.download_file(remote_file_url, local_file_path, progress=self.progress, run=self.run)
+
+            if local_file_path.endswith('individual_genes.tar.gz'):
+                self.progress.new("Downloaded file patrol")
+                self.progress.update("Unpacking file '%s'..." % os.path.basename(local_file_path))
+                shutil.unpack_archive(local_file_path, extract_dir=msa_individual_genes_dir_path)
+                os.remove(local_file_path)
+                self.progress.end()
+
+            if local_file_path.endswith('_taxonomy.tsv'):
+                with open(accession_to_taxonomy_file_path, 'a') as f:
+                    f.write(open(local_file_path).read())
+                    os.remove(local_file_path)
+
+        # files are done, but some of the FASTA files contain alignments solely composed of
+        # gap characters :/ we will have to remove them to avoid fuck-ups in downstream
+        # analyses
+        self.progress.new("Clean up")
+        for fasta_file_path in glob.glob(msa_individual_genes_dir_path + '/*.faa'):
+            self.progress.update("Looking for only-gap sequences from '%s'..." % os.path.basename(fasta_file_path))
+            total_num_sequences, num_sequences_removed = utils.remove_sequences_with_only_gaps_from_fasta(fasta_file_path, fasta_file_path + '_CLEAN.fa', inplace=True)
+
+            if num_sequences_removed:
+                self.progress.reset()
+                self.run.info_single('%d of %d seq in %s were all gaps and removed.' % (total_num_sequences, os.path.basename(fasta_file_path), num_sequences_removed))
+
+        self.progress.end()
 
 
 class SCGsDataBase():
@@ -173,7 +182,7 @@ class SCGsDataBase():
 
         if not self.path_tsv_taxonomy:
             self.path_tsv_taxonomy = os.path.join(
-                self.classic_input_directory, 'ACCESSION_TO_TAXONOMY_FULL_ARCHEA_AND_BACTERIA.txt')
+                self.classic_input_directory, 'ACCESSION_TO_TAXONOMY.txt')
 
         self.num_threads = args.num_threads
 
@@ -203,9 +212,6 @@ class SCGsDataBase():
 
         self.sanity_check()
 
-        if self.classic_input_directory:
-            self.check_latest_version()
-
 
     def sanity_check(self):
         if not filesnpaths.is_file_exists(self.genes_files_directory, dont_raise=True):
@@ -227,26 +233,6 @@ class SCGsDataBase():
         if filesnpaths.is_output_dir_writable(self.output_directory):
             filesnpaths.gen_output_directory(self.output_directory)
 
-
-    def check_latest_version(self):
-        with open(os.path.join(self.classic_input_directory, 'VERSION')) as f:
-            content_local = f.read()
-
-            version_local = content_local.strip().split('\n')[0].strip()
-            release_date_local = content_local.strip().split('\n')[2].strip()
-
-        content_online = read_remote_file(self.database_url + 'VERSION', is_gzip=False)
-        version_online = content_online.strip().split('\n')[0].strip()
-        release_date_online = content_online.strip().split('\n')[2].strip()
-
-        self.run.info("Your current gtdb release", "%s (%s)" %
-                      (version_local, release_date_local))
-
-        if version_local != version_online or release_date_local != release_date_online:
-            run.warning("There is a more recent version online %s (%s).\
-                         You can download it by using the commande 'anvi-setup-scgs'" % (version_online, release_date_online))
-        else:
-            self.run.info_single("and this is the lates version")
 
 
     def make_scg_db(self):
