@@ -83,7 +83,7 @@ class HMMer:
 
         self.progress.new('Unpacking the model into temporary work directory')
         self.progress.update('...')
-        hmm_file_path = os.path.join(tmp_dir, 'hmm.txt')
+        hmm_file_path = os.path.join(tmp_dir, source + '_hmm.txt')
         hmm_file = open(hmm_file_path, 'wb')
         hmm_file.write(gzip.open(hmm, 'rb').read())
         hmm_file.close()
