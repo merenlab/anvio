@@ -100,12 +100,6 @@ locally_known_HMMs_to_remote_FASTAs = {'Ribosomal_S2': ['ar122_TIGR01012.faa', '
                                        'Ribosomal_L27A': ['bac120_TIGR01071.faa']
                                        }
 
-if sorted(list(locally_known_HMMs_to_remote_FASTAs.keys())) != sorted(default_scgs_for_taxonomy):
-    raise ConfigError("Oh no. The SCGs designated to be used for all SCG taxonomy tasks in the constants.py\
-                       are not the same names described in locally known HMMs to remote FASTA files\
-                       conversion table definedd in SetUpSCGTaxonomyDatabase module. If this makes zero\
-                       sense to you please ask a developer.")
-
 
 class SetUpSCGTaxonomyDatabase:
     def __init__(self, args, run=run, progress=progress):
@@ -139,6 +133,11 @@ class SetUpSCGTaxonomyDatabase:
             raise ConfigError("`SetUpSCGTaxonomyDatabase` class is upset because it was inherited without\
                                a directory for SCG taxonomy data to be stored :( This variable can't be None.")
 
+    if sorted(list(locally_known_HMMs_to_remote_FASTAs.keys())) != sorted(default_scgs_for_taxonomy):
+        raise ConfigError("Oh no. The SCGs designated to be used for all SCG taxonomy tasks in the constants.py\
+                           are not the same names described in locally known HMMs to remote FASTA files\
+                           conversion table definedd in SetUpSCGTaxonomyDatabase module. If this makes zero\
+                           sense to you please ask a developer.")
 
 
     def setup(self):
@@ -294,9 +293,6 @@ class SCGsDataBase():
 
         self.tsv_output = os.path.join(
             self.output_directory, 'ACCESSION_TO_TAXONOMY.txt')
-
-        self.SCGs_fasta = [files for files in os.listdir(
-            self.scgs_directory) if not files.endswith(".dmnd")]  # FIXME useless?
 
 
         self.sanity_check()
