@@ -127,17 +127,13 @@ class HMMer:
             output_file = part_file + '_output'
             shitty_file = part_file + '_shitty'
 
-            self.run.info('[Worker-%s] Log file' % worker_no, log_file)
-            self.run.info('[Worker-%s] Output file' % worker_no, output_file)
-            self.run.info('[Worker-%s] Not-formatted hits file' % worker_no, shitty_file)
-
             cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else 'hmmscan',
                         '-o', output_file, *noise_cutoff_terms.split(),
                         '--cpu', cores_per_process,
                         '--tblout', shitty_file,
                         hmm_file_path, part_file]
 
-            t = Thread(target=self.hmmscan_worker, args=(part_file, 
+            t = Thread(target=self.hmmscan_worker, args=(part_file,
                                                          cmd_line,
                                                          shitty_file,
                                                          log_file,
@@ -147,7 +143,7 @@ class HMMer:
             workers.append(t)
 
         self.progress.new('Processing')
-        self.progress.update('Performing HMM scan...')
+        self.progress.update('Performing HMM scan in %d threads...' % (self.num_threads_to_use))
 
         # Wait for all workers to finish.
         for worker in workers:
