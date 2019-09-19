@@ -4,19 +4,19 @@
     This file contains SCGsSetup, SCGsDataBase, LowestIdentity classes.
 
 """
+
+import re
 import os
 import sys
 import gzip
 import glob
 import shutil
-import requests
 import pickle
-import re
 import shutil
 import subprocess
-import tarfile
 import multiprocessing
 
+from collections import Counter
 
 import anvio
 import anvio.fastalib as u
@@ -74,7 +74,7 @@ class SetUpSCGTaxonomyDatabase:
         self.run.info("Reset the directory first", self.reset, mc="red")
         self.run.info("Remote database", self.target_database, nl_before=1, mc="green")
         self.run.info("Remote URL to download files", self.target_database_URL)
-        self.run.info("Remove files of interest", ', '.join(self.target_database_files))
+        self.run.info("Remote files of interest", ', '.join(self.target_database_files))
 
 
     def sanity_check(self):
@@ -85,6 +85,10 @@ class SetUpSCGTaxonomyDatabase:
 
 
     def setup(self):
+        """This function downloads all GTDB files necessary to setup the SCG databases anvi'o will rely upon.
+
+           In addition to downloading the original files, the setup 
+        """
         if os.path.exists(self.SCGs_taxonomy_data_dir):
             if self.reset:
                 shutil.rmtree(self.SCGs_taxonomy_data_dir)
@@ -144,17 +148,25 @@ class SetUpSCGTaxonomyDatabase:
                     f.write(open(local_file_path).read())
                     os.remove(local_file_path)
 
+        fasta_file_paths = glob.glob(msa_individual_genes_dir_path + '/*.faa')
+
+        if not fasta_file_paths:
+            raise ConfigError("Something weird happened while anvi'o was trying to take care of the files\
+                               it downloaded from GTDB. Please let a developer know about this unless it is\
+                               not already reported in our issue tracker at Github :(")
+
         # files are done, but some of the FASTA files contain alignments solely composed of
         # gap characters :/ we will have to remove them to avoid fuck-ups in downstream
         # analyses
         self.progress.new("Clean up")
-        for fasta_file_path in glob.glob(msa_individual_genes_dir_path + '/*.faa'):
+        for fasta_file_path in fasta_file_paths:
             self.progress.update("Looking for only-gap sequences from '%s'..." % os.path.basename(fasta_file_path))
             total_num_sequences, num_sequences_removed = utils.remove_sequences_with_only_gaps_from_fasta(fasta_file_path, fasta_file_path + '_CLEAN.fa', inplace=True)
 
             if num_sequences_removed:
                 self.progress.reset()
-                self.run.info_single('%d of %d seq in %s were all gaps and removed.' % (total_num_sequences, os.path.basename(fasta_file_path), num_sequences_removed))
+                self.run.info_single('%d of %d seq in %s were all gaps and removed.' % (num_sequences_removed, total_num_sequences, os.path.basename(fasta_file_path)))
+
         #there is one more thing. the list of FASTA files include those that share the same
         #PFAM or TIGR domain (such as 'ar122_PF00466.15.faa' and 'bac120_PF00466.15.faa', etc).
         #they must be merged to make sure we are taking best advantage of this resource.
