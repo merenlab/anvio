@@ -65,6 +65,7 @@ class Dereplicate:
         # output
         self.output_dir = A('output_dir', null)
         self.report_all = A('report_all', null)
+        self.skip_fasta_report = A('skip_fasta_report', null)
         self.just_do_it = A('just_do_it', null)
 
         self.import_previous_results = False
@@ -114,6 +115,13 @@ class Dereplicate:
     def sanity_check(self):
         if any([self.fasta_text_file, self.external_genomes, self.internal_genomes]):
             self.sequence_source_provided = True
+
+        if not self.sequence_source_provided and self.report_all:
+            raise ConfigError("You didn't provide a sequence source, but want to `--report-all sequences`. Hmmm.")
+
+        if self.report_all and self.skip_fasta_sequences:
+            raise ConfigError("You want to report all sequences (--report-all), but you also want to skip\
+                               reporting all sequences (--skip-fasta-report). Hmmm.")
 
         if not any([self.program_name, self.ani_dir, self.mash_dir]):
             raise ConfigError("Anvi'o could not determine how you want to dereplicate\
@@ -266,7 +274,7 @@ class Dereplicate:
 
 
     def report(self):
-        if self.sequence_source_provided:
+        if self.sequence_source_provided and not self.skip_fasta_report:
             self.populate_genomes_dir()
             utils.store_dataframe_as_TAB_delimited_file(self.gen_fasta_report_output(), self.FASTA_REPORT_path)
 
@@ -303,13 +311,13 @@ class Dereplicate:
 
         GENOMES/
             A folder with genomes. Each genome is a fasta file. Not provided if no sequence sources
-            are provided.
+            are provided, or if --skip-fasta-report.
         SIMILARITY_SCORES/
             A folder containing the output of similarity scores. Not provided if previous similarity
             scores are imported.
         FASTA_REPORT.txt
             A text file detailing the fasta paths of the output. Not provided if no sequence sources
-            are provided.
+            are provided, or if --skip-fasta-report.
         CLUSTER_REPORT.txt
             A text file detailing which genomes were determined to be redundant with one another.
         """
@@ -318,7 +326,7 @@ class Dereplicate:
 
         self.CLUSTER_REPORT_path = J(self.output_dir, 'CLUSTER_REPORT.txt')
 
-        if self.sequence_source_provided:
+        if self.sequence_source_provided and not self.skip_fasta_report:
             self.GENOMES_dir = J(self.output_dir, 'GENOMES')
             self.FASTA_REPORT_path = J(self.output_dir, 'FASTA_REPORT.txt')
             os.mkdir(self.GENOMES_dir)
@@ -911,8 +919,8 @@ class ANI(GenomeSimilarity):
                 self.results[report_name][g2][g1] = 0
 
 
-    def process(self, temp=None):
-        self.temp_dir = temp if temp else self.get_fasta_sequences_dir()
+    def process(self, directory=None):
+        self.temp_dir = directory if directory else self.get_fasta_sequences_dir()
 
         self.results = self.program.run_command(self.temp_dir)
         self.results = self.restore_names_in_dict(self.results)
@@ -921,7 +929,7 @@ class ANI(GenomeSimilarity):
 
         self.cluster()
 
-        if temp is None:
+        if directory is None:
             shutil.rmtree(self.temp_dir)
 
 
@@ -938,13 +946,16 @@ class SourMash(GenomeSimilarity):
     def __init__(self, args):
         GenomeSimilarity.__init__(self, args)
 
-        self.similarity_type = 'SourMash'
-
         self.results = {}
         self.clusterings = {}
         self.program = sourmash.Sourmash(args)
-        self.min_similarity = args.min_mash_similarity if 'min_mash_similarity' in vars(args) else 0
-        self.method = 'sourmash'
+
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        self.min_similarity = A('min_mash_similarity', null) or 0
+        self.kmer_size = A('kmer_size', null)
+        self.method = 'sourmash_kmer_%d' % (self.kmer_size)
+        self.similarity_type = 'SourMash_kmer_%d' % (self.kmer_size)
 
 
     def reformat_results(self, results):
@@ -970,15 +981,15 @@ class SourMash(GenomeSimilarity):
         return reformatted_results
 
 
-    def process(self, temp=None):
-        self.temp_dir = temp if temp else self.get_fasta_sequences_dir()
+    def process(self, directory=None):
+        self.temp_dir = directory if directory else self.get_fasta_sequences_dir()
 
         self.results['mash_similarity'] = self.program.process(self.temp_dir, self.name_to_temp_path.values())
         self.results['mash_similarity'] = self.reformat_results(self.results['mash_similarity'])
 
         self.cluster()
 
-        if temp is None:
+        if directory is None:
             shutil.rmtree(self.temp_dir)
 
 

@@ -40,6 +40,9 @@ if __name__ == '__main__':
 
     groupB = parser.add_argument_group('OUTPUT OPTIONS', "Tell anvi'o where to store your results.")
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
+    groupB.add_argument('--skip-fasta-report', action='store_true', help='By default, if any sequence source is\
+                        provided, FASTA files of non-redundant genomes are reported. With this flag, no FASTA files\
+                        are reported.')
     groupB.add_argument('--report-all', action='store_true', help='By default, only FASTA files of non-redundant\
                         genomes are reported, i.e. single representatives from each cluster. With this flag, all\
                         genome FASTAS will be reported.')
