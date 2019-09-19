@@ -571,6 +571,19 @@ D = {
                       you like. However, when it is time to run SCGs, you will need to remember that\
                       path and provide it to the program."}
                 ),
+    'scgs-taxonomy-remote-database-url': (
+            ['--scgs-taxonomy-remote-database-url'],
+            {'default': None,
+             'type': str,
+             'metavar': 'URL',
+             'help': "Anvi'o will always try to download the latest release, but if there is a problem with\
+                      the latest release, feel free to run setup using a different URL. Just to note, anvi'o\
+                      will expect to find the following files in the URL provided here: 'VERSION', \
+                      'ar122_msa_individual_genes.tar.gz', 'ar122_taxonomy.tsv', 'bac120_msa_individual_genes.tar.gz', \
+                      and 'bac120_taxonomy.tsv'. If everything fails, you can give this URL, which is supposed to work\
+                      if teh server in which these databases are maintained is still online:\
+                      https://data.ace.uq.edu.au/public/gtdb/data/releases/release89/89.0/"}
+                ),
     'reset': (
             ['--reset'],
             {'default': False,

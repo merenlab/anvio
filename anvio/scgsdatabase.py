@@ -66,6 +66,7 @@ class SetUpSCGTaxonomyDatabase:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.SCGs_taxonomy_data_dir = (os.path.abspath(A("scgs_taxonomy_data_dir")) if A("scgs_taxonomy_data_dir") else None) or (os.path.join(default_scgs_taxonomy_data_dir, self.target_database))
         self.reset = A("reset")
+        self.target_database_URL = A("scgs_taxonomy_remote_database_url") or self.target_database_URL
 
         self.sanity_check()
 
