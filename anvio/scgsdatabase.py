@@ -118,6 +118,7 @@ class SetUpSCGTaxonomyDatabase:
         self.SCGs_taxonomy_data_dir = (os.path.abspath(A("scgs_taxonomy_data_dir")) if A("scgs_taxonomy_data_dir") else None) or (os.path.join(default_scgs_taxonomy_data_dir, self.target_database))
         self.reset = A("reset")
         self.target_database_URL = A("scgs_taxonomy_remote_database_url") or self.target_database_URL
+        self.num_threads = A('num_threads')
 
         self.sanity_check()
 
@@ -127,17 +128,22 @@ class SetUpSCGTaxonomyDatabase:
         self.run.info("Remote URL to download files", self.target_database_URL)
         self.run.info("Remote files of interest", ', '.join(self.target_database_files))
 
+        self.msa_individual_genes_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'MSA_OF_INDIVIDUAL_SCGs')
+        self.accession_to_taxonomy_file_path = os.path.join(self.SCGs_taxonomy_data_dir, 'ACCESSION_TO_TAXONOMY.txt')
+        self.search_databases_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'SCGs_SEARCH_DATABASES')
+
 
     def sanity_check(self):
         if not self.SCGs_taxonomy_data_dir:
             raise ConfigError("`SetUpSCGTaxonomyDatabase` class is upset because it was inherited without\
                                a directory for SCG taxonomy data to be stored :( This variable can't be None.")
 
-    if sorted(list(locally_known_HMMs_to_remote_FASTAs.keys())) != sorted(default_scgs_for_taxonomy):
-        raise ConfigError("Oh no. The SCGs designated to be used for all SCG taxonomy tasks in the constants.py\
-                           are not the same names described in locally known HMMs to remote FASTA files\
-                           conversion table definedd in SetUpSCGTaxonomyDatabase module. If this makes zero\
-                           sense to you please ask a developer.")
+        if sorted(list(locally_known_HMMs_to_remote_FASTAs.keys())) != sorted(default_scgs_for_taxonomy):
+            raise ConfigError("Oh no. The SCGs designated to be used for all SCG taxonomy tasks in the constants.py\
+                               are not the same names described in locally known HMMs to remote FASTA files\
+                               conversion table definedd in SetUpSCGTaxonomyDatabase module. If this makes zero\
+                               sense to you please ask a developer.")
+
 
 
     def setup(self):
@@ -147,18 +153,8 @@ class SetUpSCGTaxonomyDatabase:
            DIAMOND search databases are in place.
         """
 
-        if os.path.exists(self.SCGs_taxonomy_data_dir):
-            if self.reset:
-                shutil.rmtree(self.SCGs_taxonomy_data_dir)
-                self.run.warning('The existing directory for SCG taxonomy data dir has been removed. Just so you know.')
-                filesnpaths.gen_output_directory(self.SCGs_taxonomy_data_dir)
-
-            else:
-                raise ConfigError("You already seem to have a directory where anvi'o intends to use for setup. If you wish to\
-                                   re-run the setup, please use the flag `--reset` and BE VERY CAREFUL that this\
-                                   directory does not contain anything you don't want to lose: '%s'." % self.SCGs_taxonomy_data_dir)
-        else:
-            filesnpaths.gen_output_directory(self.SCGs_taxonomy_data_dir)
+        if not anvio.DEBUG:
+            self.check_initial_directory_structure()
 
         self.run.warning("Please remember that the data anvi'o attempts do download on behalf of you are\
                           courtesy of The Genome Taxonomy Database (GTDB), an initiative to establish a \
@@ -178,17 +174,31 @@ class SetUpSCGTaxonomyDatabase:
 
         self.run.info("%s release found" % self.target_database, "%s (%s)" % (version, release_date), mc="green")
 
-        self.download_and_format_files()
+        # FIXME
+        if not anvio.DEBUG:
+            self.download_and_format_files()
 
         self.create_search_databases()
 
 
-    def download_and_format_files(self):
-        msa_individual_genes_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'msa_individual_genes')
-        accession_to_taxonomy_file_path = os.path.join(self.SCGs_taxonomy_data_dir, 'ACCESSION_TO_TAXONOMY.txt')
+    def check_initial_directory_structure(self):
+        if os.path.exists(self.SCGs_taxonomy_data_dir):
+            if self.reset:
+                shutil.rmtree(self.SCGs_taxonomy_data_dir)
+                self.run.warning('The existing directory for SCG taxonomy data dir has been removed. Just so you know.')
+                filesnpaths.gen_output_directory(self.SCGs_taxonomy_data_dir)
 
+            else:
+                raise ConfigError("You already seem to have a directory where anvi'o intends to use for setup. If you wish to\
+                                   re-run the setup, please use the flag `--reset` and BE VERY CAREFUL that this\
+                                   directory does not contain anything you don't want to lose: '%s'." % self.SCGs_taxonomy_data_dir)
+        else:
+            filesnpaths.gen_output_directory(self.SCGs_taxonomy_data_dir)
+
+
+    def download_and_format_files(self):
         # let's be 100% sure.
-        os.remove(accession_to_taxonomy_file_path) if os.path.exists(accession_to_taxonomy_file_path) else None
+        os.remove(self.accession_to_taxonomy_file_path) if os.path.exists(self.accession_to_taxonomy_file_path) else None
 
         for remote_file_name in self.target_database_files:
             remote_file_url = '/'.join([self.target_database_URL, remote_file_name])
@@ -199,16 +209,16 @@ class SetUpSCGTaxonomyDatabase:
             if local_file_path.endswith('individual_genes.tar.gz'):
                 self.progress.new("Downloaded file patrol")
                 self.progress.update("Unpacking file '%s'..." % os.path.basename(local_file_path))
-                shutil.unpack_archive(local_file_path, extract_dir=msa_individual_genes_dir_path)
+                shutil.unpack_archive(local_file_path, extract_dir=self.msa_individual_genes_dir_path)
                 os.remove(local_file_path)
                 self.progress.end()
 
             if local_file_path.endswith('_taxonomy.tsv'):
-                with open(accession_to_taxonomy_file_path, 'a') as f:
+                with open(self.accession_to_taxonomy_file_path, 'a') as f:
                     f.write(open(local_file_path).read())
                     os.remove(local_file_path)
 
-        fasta_file_paths = glob.glob(msa_individual_genes_dir_path + '/*.faa')
+        fasta_file_paths = glob.glob(self.msa_individual_genes_dir_path + '/*.faa')
 
         if not fasta_file_paths:
             raise ConfigError("Something weird happened while anvi'o was trying to take care of the files\
@@ -229,14 +239,25 @@ class SetUpSCGTaxonomyDatabase:
 
         self.progress.end()
 
-        # FINALLY, checking whether downloaded FASTA files are suitable for the conversion
+
+    def create_search_databases(self):
+        self.progress.new("Creating search databases")
+        self.progress.update("Checking output directory to store files ...")
+        filesnpaths.is_output_dir_writable(os.path.dirname(self.search_databases_dir_path))
+        filesnpaths.gen_output_directory(self.search_databases_dir_path, delete_if_exists=True, dont_warn=True)
+
+        # We will be working with the files downloaded in whatever directory before. The first thing is to check
+        # whether whether FASTA files in the directory are suitable for the conversion
+        self.progress.update("Checking the conversion dict and FASTA files ...")
         msa_individual_gene_names_required = []
         [msa_individual_gene_names_required.extend(n) for n in locally_known_HMMs_to_remote_FASTAs.values()]
 
+        fasta_file_paths = glob.glob(self.msa_individual_genes_dir_path + '/*.faa')
         msa_individual_gene_names_downloaded = [os.path.basename(f) for f in fasta_file_paths]
 
         missing_msa_gene_names = [n for n in msa_individual_gene_names_required if n not in msa_individual_gene_names_downloaded]
         if missing_msa_gene_names:
+            self.progress.reset()
             raise ConfigError("Big trouble :( Anvi'o uses a hard-coded dictionary to convert locally known\
                                HMM models to FASTA files reported by GTDB project. It seems something has changed\
                                and %d of the FASTA files expected to be in the download directory are not there.\
@@ -244,341 +265,31 @@ class SetUpSCGTaxonomyDatabase:
                                appropriate documentation. If you are a user, you can't do much at this point but\
                                contacting the developers :( Anvi'o will keep the directory that contains all the\
                                downloaded files to update the conversion dictionary. Here is the full path to the\
-                               output: %s" % (len(missing_msa_gene_names), ', '.join(missing_msa_gene_names), msa_individual_genes_dir_path))
-
-
-
-    def create_search_databases(self):
-        # FIXME: this function is next.
-        pass
-
-
-class SCGsDataBase():
-    """Generate diamond databases of GTDB or import's Single Copy core genes Fasta whom matching with anvi'o HMM's"""
-
-    def __init__(self, args, run=run, progress=progress):
-        self.args = args
-        self.run = run
-        self.progress = progress
-
-        def A(x): return args.__dict__[x] if x in args.__dict__ else None
-
-        self.genes_files_directory = A('genes_files_directory')
-        self.scgs_directory = A('scgs_directory')
-        self.hmms = A('hmms')
-        self.path_tsv_taxonomy = A('taxonomy_files')
-        self.output_directory = A('out_put_directory')
-        self.num_threads = A('num_threads')
-        self.taxonomy_level = A('taxonomy_level')
-        self.database_url = A('taxonomy_level') or "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
-
-        self.classic_input_directory = os.path.join(
-            os.path.dirname(anvio.__file__), 'data/misc/SCG_TAXONOMY/GTDB')
-
-        if not self.path_tsv_taxonomy:
-            self.path_tsv_taxonomy = os.path.join(
-                self.classic_input_directory, 'ACCESSION_TO_TAXONOMY.txt')
-
-        self.num_threads = args.num_threads
-
-        if not self.num_threads:
-            self.num_threads = 2
-
-        if not self.genes_files_directory:
-            self.genes_files_directory = os.path.join(
-                self.classic_input_directory, 'msa_individual_genes')
-
-        if not self.output_directory:
-            self.output_directory = self.classic_input_directory
-
-        self.tsv_output = os.path.join(
-            self.output_directory, 'ACCESSION_TO_TAXONOMY.txt')
-
-
-        self.sanity_check()
-
-
-    def sanity_check(self):
-        if not filesnpaths.is_file_exists(self.genes_files_directory, dont_raise=True):
-            raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
-                               anvi'o looks in '%s'. You can download file by using the commande 'anvi-setup-scgs'."
-                                                        % (self.genes_files_directory, self.classic_input_directory))
-
-        self.genes_files = os.listdir(self.genes_files_directory)
-
-        if not filesnpaths.is_file_exists(self.path_tsv_taxonomy, dont_raise=True):
-            raise ConfigError("Anvi'o could not find gene list file '%s'. If you did not provided any as a parameter \
-                               anvi'o looks in '%s'. You can download file by using the commande 'anvi-setup-scgs'."
-                                                            % (self.path_tsv_taxonomy, self.classic_input_directory))
-
-        if not filesnpaths.is_file_exists(self.hmms, dont_raise=True):
-            raise ConfigError("Anvi'o could not find gene list file '%s'. You must declare one before\
-                               continue." % self.hmms)
-
-        if filesnpaths.is_output_dir_writable(self.output_directory):
-            filesnpaths.gen_output_directory(self.output_directory)
-
-
-
-    def make_scg_db(self):
-        self.run.info('SCG genes directory', self.genes_files_directory)
-        self.run.info('Taxonomy file', self.path_tsv_taxonomy)
-        self.run.info('Fasta for HMM reference', self.hmms)
-        self.run.info('Output directory', self.output_directory)
-
-        self.dictionary_correspondance_SCGs = {}
-
-        self.matrix_taxonomy = self.do_taxonomy_dictonnrary_with_tsv(
-            self.path_tsv_taxonomy)
-
-        self.pathpickle_dictionary_correspondance_SCGs = os.path.join(
-            self.output_directory, 'dictionary_correspondance_SCGs.pickle')
-
-        if not os.path.exists(self.pathpickle_dictionary_correspondance_SCGs):
-            self.make_correpondance_dictonnary_SCG()
-
+                               output: %s" % (len(missing_msa_gene_names), ', '.join(missing_msa_gene_names), self.msa_individual_genes_dir_path))
         else:
-            with open(self.pathpickle_dictionary_correspondance_SCGs, 'rb') as handle:
-                self.dictionary_correspondance_SCGs = pickle.load(handle)
+            self.progress.reset()
+            self.run.info_single("Good news! Conversion dict and FASTA files it requires seem to be all in place.\
+                                  Anvi'o will now proceed to merge %d FASTA files that correspond to %d SCGs, and\
+                                  create individual search databases for them." % \
+                                        (len(msa_individual_gene_names_required), len(locally_known_HMMs_to_remote_FASTAs)), nl_before=1, nl_after=1, mc="green")
 
-        self.dictionnary_pickel_taxo = {}
-        if not self.taxonomy_level:
-            name_out_put_final_SCG_db = "SCG_diamond_db"
-        else:
-            name_out_put_final_SCG_db = self.taxonomy_level+"SCG_diamond_db"
-        for keycorres in self.dictionary_correspondance_SCGs.keys():
+        # Merge FASTA files that should be merged. This is defined in the conversion dictionary.
+        for SCG in locally_known_HMMs_to_remote_FASTAs:
+            self.progress.update("Working on %s in %d threads" % (SCG, self.num_threads))
 
-            self.output_directory_SCG = os.path.join(
-                self.output_directory, name_out_put_final_SCG_db)
+            files_to_concatenate = [os.path.join(self.msa_individual_genes_dir_path, f) for f in locally_known_HMMs_to_remote_FASTAs[SCG]]
+            destination_file_path = os.path.join(self.search_databases_dir_path, SCG)
 
-            self.path_new_fasta_SCG = os.path.join(
-                self.output_directory_SCG, keycorres)
+            # concatenate from the dictionary into the new destination
+            utils.concatenate_files(destination_file_path, files_to_concatenate)
 
-            self.path_original_genes = os.path.join(
-                self.genes_files_directory, str(keycorres))
+            # create a diamond search database for `destination_file_path`
+            diamond = Diamond(query_fasta=destination_file_path, run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
+            diamond.makedb(output_file_path=destination_file_path + ".dmnd")
 
-            filesnpaths.gen_output_directory(self.output_directory_SCG)
-
-            self.create_SCG_db(keycorres, self.taxonomy_level)
-            path_dictionnary_pickel_taxo_anvi = os.path.join(
-                self.output_directory, 'dictionnary_msa_taxonomy_anvio.pickle')
-
-            with open(path_dictionnary_pickel_taxo_anvi, 'wb') as handle:
-                pickle.dump(self.dictionnary_pickel_taxo, handle,
-                            protocol=pickle.HIGHEST_PROTOCOL)
-
-
-    def create_SCG_db(self, keycorres, dictionnary_level=None):
-        self.listtaxo = []
-        unmatch = []
-        newfasta = ""
-        with open(self.tsv_output, 'a') as tsv:
-            for refence in self.dictionary_correspondance_SCGs[keycorres]:
-                self.path_new_fasta_SCG = os.path.join(
-                    self.output_directory_SCG, keycorres+".faa")
-                fasta = u.ReadFasta(os.path.join(
-                    self.genes_files_directory, str(refence)+".faa"), quiet=True)
-                if dictionnary_level != None:
-                    for matrix_code, matrix_taxon in self.matrix_taxonomy.items():
-                        index, name = self.match(
-                            fasta, matrix_code, matrix_taxon, dictionnary_level)
-                        if not index:
-                            unmatch.append(name)
-                            continue
-                        else:
-                            self.listtaxo.append(name)
-                            print(
-                                index, fasta.ids[index], self.matrix_taxonomy[fasta.ids[index]])
-                            newfasta = newfasta+">" + \
-                                fasta.ids[index]+"\n" + \
-                                fasta.sequences[index]+"\n"
-                            tsv.write(
-                                fasta.ids[index]+"\t"+';'.join(self.matrix_taxonomy[fasta.ids[index]])+"\n")
-                            self.dictionnary_pickel_taxo[fasta.ids[index]
-                                                         ] = self.matrix_taxonomy[fasta.ids[index]]
-                else:
-                    i = 0
-                    for fasta_id in fasta.ids:
-                        if fasta_id in self.matrix_taxonomy:
-                            newfasta = newfasta+">"+fasta_id + \
-                                "\n"+fasta.sequences[i]+"\n"
-                            if fasta_id not in self.dictionnary_pickel_taxo:
-                                self.dictionnary_pickel_taxo[fasta_id] = self.matrix_taxonomy[fasta_id]
-                                tsv.write(
-                                    fasta_id+"\t"+';'.join(self.matrix_taxonomy[fasta_id])+"\n")
-                        else:
-                            unmatch.append(fasta_id)
-                        i += 1
-            with open(self.path_new_fasta_SCG, 'a') as file:
-                file.write(newfasta)
-            self.diamonddb_stdin(newfasta, self.path_new_fasta_SCG)
-
-
-    def match(self, fasta, matrix_code, matrix_taxon, dictionnary_level):
-        if dictionnary_level:
-            name = str(matrix_taxon[self.taxonomy_level]).rstrip()
-        else:
-            name = str(matrix_taxon[-1]).rstrip()
-        if name not in self.listtaxo and matrix_code in fasta.ids:
-            index = fasta.ids.index(matrix_code)
-            return(index, name)
-        else:
-            index = False
-            name = (name+"\t"+matrix_taxon[0]+"\n")
-            return(index, name)
-
-
-    def make_correpondance_dictonnary_SCG(self):
-        self.diamonddb(self.hmms)
-        number_genes_files = len(self.genes_files)
-
-        self.progress.new('Searching for corresponding SCG with Anvio reference', progress_total_items=number_genes_files)
-        self.progress.update('...')
-
-        genes_files_number = 0
-
-        manager = multiprocessing.Manager()
-        input_queue = manager.Queue()
-        output_queue = manager.Queue()
-
-        for gene_file in self.genes_files:
-            genes_files_number += 1
-
-            self.name = gene_file.replace('.faa', '')
-            self.path_diamondb = os.path.join(
-                self.output_directory, "diamonddb")
-            self.path_refund_genes = os.path.join(
-                self.path_diamondb, gene_file)
-            self.path_original_genes = os.path.join(
-                self.genes_files_directory, gene_file)
-            filesnpaths.gen_output_directory(self.path_diamondb)
-            self.sequence_to_blast = self.refund_genes()
-
-            #self.progress.update("Reference %s : %d / %d"% self.name, genes_files_number, number_genes_files)
-            self.diamond_output = self.diamondblast_stdin(
-                self.sequence_to_blast, self.hmms)
-
-            if not self.diamond_output:
-                continue
-
-            self.hmm_gene = str(self.diamond_output).split('\n')[
-                0].split('\t')[1]
-            if self.hmm_gene not in self.dictionary_correspondance_SCGs:
-                self.dictionary_correspondance_SCGs[self.hmm_gene] = [
-                    self.name]
-
-            else:
-                self.dictionary_correspondance_SCGs[self.hmm_gene] += [
-                    self.name]
-
-            os.remove(self.path_refund_genes)
-            os.remove(self.pathrefpath_refund_genesundgenes+'.dmnd')
-
-        self.progress.end()
-        if not len(self.dictionary_correspondance_SCGs):
-            raise ConfigError(
-                "There is no match with SCGs fasta provide and anvi'o ressource")
-
-        self.run.info("Path correspondance dictonnary", path_tsv_taxonomy)
-
-        with open(self.pathpickle_dictionary_correspondance_SCGs, 'wb') as handle:
-            pickle.dump(self.dictionary_correspondance_SCGs,
-                        handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-
-    def do_taxonomy_dictionary_with_tsv(self, path_tsv_taxonomy, filter=False):
-        """Format TSV in dictonary with code as key and list for taxonomy for value"""
-
-        self.run.info("Correspondance taxonomy file", path_tsv_taxonomy)
-
-        self.matrix = {}
-        individues_filterd = []
-        number_individues_filterd = 0
-        number_individues_selected = 0
-        linestaxo = [line for line in open(path_tsv_taxonomy).readlines()]
-
-        self.run.info("Total Indivues", " %d" % len(linestaxo))
-        self.progress.new('Parse tsv file')
-        self.progress.update('...')
-        for line in linestaxo:
-            taxo = []
-            for taxonomy in line.split("\t")[1].split(";"):
-                if filter:
-                    level_taxo = taxonomy.rstrip()
-                    level_taxo = re.sub(
-                        r'(\\*[a-z])\_[A-Z]', r'\1', level_taxo)
-                    level_taxo = re.sub(r"sp[0-9]*", "", level_taxo)
-                    level_taxo = re.sub(" ", "_", level_taxo)
-                    if re.match(r'[a-z]{3,}__[A-Z][a-z]*_[a-z]{3,}', level_taxo) or re.match(r'[a-z]__[A-Z][a-z]{3,}', level_taxo):
-                        taxo.append(level_taxo)
-                    if not len(taxo):
-                        number_individues_filterd += 1
-                        continue
-
-                else:
-                    level_taxo = re.sub(r'[a-z]__', '', taxonomy).rstrip()
-                    level_taxo = re.sub(r' ', '_', level_taxo).rstrip()
-                    taxo.append(level_taxo)
-
-            number_individues_selected += 1
-            self.progress.update('Number of indivues selected %s' %
-                                 number_individues_selected)
-
-            self.matrix[str(line.split("\t")[0])] = taxo
-
-        self.progress.end()
-
-        if number_individues_selected == 0:
-            raise ConfigError("There's a problem with the file '%s'. Anvi'o couldn't use it. \
-                              If you are sure that the file is not empty and in the right format try the option '--no-filter'."
-                              % self.path_tsv_taxonomy)
-
-        self.run.info("Indivues Selected", " %d" %
-                      int(number_individues_selected))
-        return(self.matrix)
-
-
-    def diamonddb(self, pathgdb):
-        diamond = Diamond(run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
-        diamond.query_fasta = pathgdb
-        diamond.makedb(pathgdb)
-
-
-    def diamondblast_stdin(self, sequencetoblast, path_reference):
-        diamond = Diamond(run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
-        diamond.target_fasta = path_reference+".dmnd"
-        diamond.blastp_stdin(sequencetoblast)
-
-
-    def diamonddb_stdin(self, sequencetoblast, path_reference):
-        diamond = Diamond(run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
-        diamond.makedb_stdin(sequencetoblast, output_file_path=path_reference)
-
-
-    def diamondblast_stdou(self, path_fasta_db, max_target_seqs=20, evalue=1e-05, min_pct_id=90):
-        pathdb = path_fasta_db + ".dmnd"
-        diamond = Diamond(pathdb, run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
-        diamond_output = diamond.blastp_stdout(query_fasta=self.path_refund_genes,
-                                               max_target_seqs=max_target_seqs,
-                                               min_pct_id=min_pct_id)
-        return(diamond_output)
-
-
-    def refund_genes(self, percent_gap=0.5):
-        """Use only the sequence with less than percent_gap"""
-
-        fasta = u.ReadFasta(self.path_original_genes, quiet=True)
-
-        i = 0
-        sequence_to_blast = ""
-        while i < len(fasta.ids):
-            if fasta.sequences[i].count('-') < len(fasta.sequences[i])*percent_gap:
-                sequence_to_blast = sequence_to_blast+">" + \
-                    fasta.ids[i]+"\n"+fasta.sequences[i]+"\n"
-            i += 1
-
-        return(sequence_to_blast)
-
+        self.progress.reset()
+        self.run.info_single("Another good news. All FASTA files that were supposed to be merged were merged and\
+                              turned into fancy search databases.", nl_after=1, mc="green")
 
 class lowident():
     def __init__(self, args, run=run, progress=progress):
