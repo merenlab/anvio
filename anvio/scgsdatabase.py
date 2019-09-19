@@ -145,7 +145,6 @@ class SetUpSCGTaxonomyDatabase:
                                sense to you please ask a developer.")
 
 
-
     def setup(self):
         """This function downloads all GTDB files necessary to setup the SCG databases anvi'o will rely upon.
 
@@ -179,6 +178,9 @@ class SetUpSCGTaxonomyDatabase:
             self.download_and_format_files()
 
         self.create_search_databases()
+
+        if not anvio.DEBUG:
+            self.clean_up()
 
 
     def check_initial_directory_structure(self):
@@ -290,6 +292,17 @@ class SetUpSCGTaxonomyDatabase:
         self.progress.reset()
         self.run.info_single("Another good news. All FASTA files that were supposed to be merged were merged and\
                               turned into fancy search databases.", nl_after=1, mc="green")
+
+
+    def clean_up(self):
+        for file_path in [os.path.join(self.SCGs_taxonomy_data_dir, 'diamond-log-file.txt')]:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+
+        for dir_path in [self.msa_individual_genes_dir_path]:
+            if os.path.exists(dir_path):
+                shutil.rmtree(dir_path)
+
 
 class lowident():
     def __init__(self, args, run=run, progress=progress):
