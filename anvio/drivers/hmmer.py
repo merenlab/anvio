@@ -110,6 +110,16 @@ class HMMer:
         merged_file_buffer = io.StringIO()
         buffer_write_lock = Lock()
 
+        num_parts = len(self.target_files_dict[target])
+        cores_per_process = 1
+        if num_parts < self.num_threads_to_use:
+            cores_per_process = self.num_threads_to_use // num_parts
+
+            self.run.warning("You requested %s cores but there were only %s entries in the fasta for the target '%s'.\
+                             Anvi'o will use %s process with %s cores each instead. I hope thats okay for you. " %
+                             (str(self.num_threads_to_use), str(num_parts), target, str(num_parts), cores_per_process))
+
+
         for part_file in self.target_files_dict[target]:
             worker_no = str(len(workers) + 1)
 
@@ -123,7 +133,7 @@ class HMMer:
 
             cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else 'hmmscan',
                         '-o', output_file, *noise_cutoff_terms.split(),
-                        '--cpu', 1,
+                        '--cpu', cores_per_process,
                         '--tblout', shitty_file,
                         hmm_file_path, part_file]
 
