@@ -1004,14 +1004,17 @@ def get_time_to_date(local_time, fmt='%Y-%m-%d %H:%M:%S'):
     return time.strftime(fmt, time.localtime(local_time))
 
 
-def concatenate_files(dest_file, file_list):
+def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
     if not dest_file:
         raise ConfigError("Destination cannot be empty.")
+
+    filesnpaths.is_output_file_writable(dest_file)
+
     if not len(file_list):
         raise ConfigError("File list cannot be empty.")
+
     for f in file_list:
         filesnpaths.is_file_exists(f)
-    filesnpaths.is_output_file_writable(dest_file)
 
     dest_file_obj = open(dest_file, 'w')
     for chunk_path in file_list:
@@ -1019,6 +1022,11 @@ def concatenate_files(dest_file, file_list):
             dest_file_obj.write(line)
 
     dest_file_obj.close()
+
+    if remove_concatenated_files:
+        for f in file_list:
+            os.remove(f)
+
     return dest_file
 
 
