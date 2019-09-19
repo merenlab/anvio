@@ -144,8 +144,10 @@ class SetUpSCGTaxonomyDatabase:
     def setup(self):
         """This function downloads all GTDB files necessary to setup the SCG databases anvi'o will rely upon.
 
-           In addition to downloading the original files, the setup 
+           In addition to downloading the original files, the setup will make sure everything, including the
+           DIAMOND search databases are in place.
         """
+
         if os.path.exists(self.SCGs_taxonomy_data_dir):
             if self.reset:
                 shutil.rmtree(self.SCGs_taxonomy_data_dir)
