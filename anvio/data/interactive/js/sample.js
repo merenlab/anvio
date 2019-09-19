@@ -77,9 +77,9 @@ $(document).ready(function() {
             $('#tbody_layers').append(detached_row);
         }
 
-            // sort sample layers with new order, but only if they are member of a group starting with "ANI_"
+        // sort sample layers with new order, but only if they are member of a group starting with "ANI_" or "SourMash_"
         for (let group in samples_information_dict) {
-            if (group.startsWith('ANI_')) {
+            if (group.startsWith('ANI_') || group.startsWith('SourMash_')) {
                 for(var i=new_order.length - 1; i >= 0; i--) {
                     let detached_sample_row = $(`tr[samples-group-name='${group}'][samples-layer-name='${new_order[i]}']`);
                     $('#tbody_samples').append(detached_sample_row);
