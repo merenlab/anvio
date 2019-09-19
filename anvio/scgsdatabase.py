@@ -49,6 +49,63 @@ __maintainer__ = "Quentin Clayssen"
 __email__ = "quentin.clayssen@gmail.com"
 
 
+# This is the most critical part of this entire operation. The following hard-coded dict translates
+# between locally known 'HMM' names to FASTA files from GTDB. If one day you have to update this
+# list, this is what you should do:
+#
+#   - find a FASTA file for a complete bacterial genome. 
+#   - generate an anvi'o contigs database, and run all default, installed SCG HMMs.
+#   - export sequences for those HMMs that matches to the keys of the dictionary below (under all
+#     circumstances these names must match to HMM sources in anvi'o Bacteria_71). you can do
+#     something like this:
+#
+#             anvi-get-sequences-for-hmm-hits -c CONTIGS.db \
+#                                             -o Local_HMMs_export.fa \
+#                                             --hmm-source Bacteria_71 \
+#                                             --get-aa-sequences \
+#                                             --return-best-hit \
+#                                             --gene-names "Ribosomal_S2,Ribosomal_S3_C,Ribosomal_S6,Ribosomal_S7,Ribosomal_S8,Ribosomal_S9,Ribosomal_S11,Ribosomal_S20p,Ribosomal_L1,Ribosomal_L2,Ribosomal_L3,Ribosomal_L4,Ribosomal_L6,Ribosomal_L9_C,Ribosomal_L13,Ribosomal_L16,Ribosomal_L17,Ribosomal_L20,Ribosomal_L21p,Ribosomal_L22,ribosomal_L24,Ribosomal_L27A"
+#             sed -i '' 's/___.*$//g' Local_HMMs_export.fa
+#
+#   - Then, BLAST sequences in Local_HMMs_export.fa to the entire collection of individual MSA FASTA
+#     files from GTDB. For this, you could do something like this in msa_individual_genes directory
+#     anvi'o generates, and carefully survey the OUTPUT.
+#
+#             for i in *faa; do makeblastdb -in $i -dbtype prot; done
+#             for i in *faa; do echo; echo; echo $i; echo; echo; blastp -query Local_HMMs_export.fa -db $i -outfmt 6 -evalue 1e-10 -max_target_seqs 10; done > OUTPUT
+#        
+#   - Update the list carefully based on the output.
+#   - Find a FASTA file for a complete archaeal genome. Do the same :)
+locally_known_HMMs_to_remote_FASTAs = {'Ribosomal_S2': ['ar122_TIGR01012.faa', 'bac120_TIGR01011.faa'],
+                                       'Ribosomal_S3_C': ['ar122_TIGR01008.faa', 'bac120_TIGR01009.faa'],
+                                       'Ribosomal_S6': ['bac120_TIGR00166.faa'],
+                                       'Ribosomal_S7': ['ar122_TIGR01028.faa', 'bac120_TIGR01029.faa'],
+                                       'Ribosomal_S8': ['ar122_PF00410.14.faa', 'bac120_PF00410.14.faa'],
+                                       'Ribosomal_S9': ['ar122_TIGR03627.faa', 'bac120_PF00380.14.faa'],
+                                       'Ribosomal_S11': ['ar122_TIGR03628.faa', 'bac120_TIGR03632.faa'],
+                                       'Ribosomal_S20p': ['bac120_TIGR00029.faa'],
+                                       'Ribosomal_L1': ['bac120_TIGR01169.faa', 'ar122_PF00687.16.faa'],
+                                       'Ribosomal_L2': ['bac120_TIGR01171.faa'],
+                                       'Ribosomal_L3': ['ar122_TIGR03626.faa', 'bac120_TIGR03625.faa'],
+                                       'Ribosomal_L4': ['bac120_TIGR03953.faa'],
+                                       'Ribosomal_L6': ['ar122_TIGR03653.faa', 'bac120_TIGR03654.faa'],
+                                       'Ribosomal_L9_C': ['bac120_TIGR00158.faa'],
+                                       'Ribosomal_L13': ['ar122_TIGR01077.faa', 'bac120_TIGR01066.faa'],
+                                       'Ribosomal_L16': ['ar122_TIGR00279.faa', 'bac120_TIGR01164.faa'],
+                                       'Ribosomal_L17': ['bac120_TIGR00059.faa'],
+                                       'Ribosomal_L20': ['bac120_TIGR01032.faa'],
+                                       'Ribosomal_L21p': ['bac120_TIGR00061.faa'],
+                                       'Ribosomal_L22': ['ar122_TIGR01038.faa', 'bac120_TIGR01044.faa'],
+                                       'ribosomal_L24': ['bac120_TIGR01079.faa', 'ar122_TIGR01080.faa'],
+                                       'Ribosomal_L27A': ['bac120_TIGR01071.faa']
+                                       }
+
+if sorted(list(locally_known_HMMs_to_remote_FASTAs.keys())) != sorted(default_scgs_for_taxonomy):
+    raise ConfigError("Oh no. The SCGs designated to be used for all SCG taxonomy tasks in the constants.py\
+                       are not the same names described in locally known HMMs to remote FASTA files\
+                       conversion table definedd in SetUpSCGTaxonomyDatabase module. If this makes zero\
+                       sense to you please ask a developer.")
+
 
 class SetUpSCGTaxonomyDatabase:
     def __init__(self, args, run=run, progress=progress):
@@ -120,10 +177,12 @@ class SetUpSCGTaxonomyDatabase:
 
         self.run.info("%s release found" % self.target_database, "%s (%s)" % (version, release_date), mc="green")
 
-        self.download_files()
+        self.download_and_format_files()
+
+        self.create_search_databases()
 
 
-    def download_files(self):
+    def download_and_format_files(self):
         msa_individual_genes_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'msa_individual_genes')
         accession_to_taxonomy_file_path = os.path.join(self.SCGs_taxonomy_data_dir, 'ACCESSION_TO_TAXONOMY.txt')
 
@@ -169,8 +228,28 @@ class SetUpSCGTaxonomyDatabase:
 
         self.progress.end()
 
+        # FINALLY, checking whether downloaded FASTA files are suitable for the conversion
+        msa_individual_gene_names_required = []
+        [msa_individual_gene_names_required.extend(n) for n in locally_known_HMMs_to_remote_FASTAs.values()]
+
+        msa_individual_gene_names_downloaded = [os.path.basename(f) for f in fasta_file_paths]
+
+        missing_msa_gene_names = [n for n in msa_individual_gene_names_required if n not in msa_individual_gene_names_downloaded]
+        if missing_msa_gene_names:
+            raise ConfigError("Big trouble :( Anvi'o uses a hard-coded dictionary to convert locally known\
+                               HMM models to FASTA files reported by GTDB project. It seems something has changed\
+                               and %d of the FASTA files expected to be in the download directory are not there.\
+                               Here is that list: '%s'. Someone needs to update the codebase by reading the\
+                               appropriate documentation. If you are a user, you can't do much at this point but\
+                               contacting the developers :( Anvi'o will keep the directory that contains all the\
+                               downloaded files to update the conversion dictionary. Here is the full path to the\
+                               output: %s" % (len(missing_msa_gene_names), ', '.join(missing_msa_gene_names), msa_individual_genes_dir_path))
 
 
+
+    def create_search_databases(self):
+        # FIXME: this function is next.
+        pass
 
 
 class SCGsDataBase():
