@@ -31,7 +31,7 @@ from anvio.errors import ConfigError
 from anvio.errors import FilesNPathsError
 
 from anvio.drivers.diamond import Diamond
-from anvio.constants import default_scgs_taxonomy_data_dir
+from anvio.constants import default_scgs_taxonomy_data_dir, default_scgs_for_taxonomy
 
 
 run = terminal.Run()
