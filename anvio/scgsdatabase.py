@@ -298,13 +298,6 @@ class SCGsDataBase():
         self.SCGs_fasta = [files for files in os.listdir(
             self.scgs_directory) if not files.endswith(".dmnd")]  # FIXME useless?
 
-        self.tanomie_index_tsv = {"domain": 1,
-                                  "phylum": 2,
-                                  "class": 3,
-                                  "order": 4,
-                                  "family": 5,
-                                  "genus": 6,
-                                  "species": 7}
 
         self.sanity_check()
 
@@ -589,19 +582,6 @@ class SCGsDataBase():
             i += 1
 
         return(sequence_to_blast)
-
-    def trie_blast(self, out_put_path, dictionary_correspondance_SCGs):  # FIXME useless
-        """Return dictonnary with the name of Genes from given sequence corresponding with the one from anvi'o"""
-
-        pathblastfile = os.path.join(outpath, blastfile)
-
-        if os.stat(pathblastfile).st_size == 0:
-            os.remove(pathblastfile)
-
-        hmm_gene, bacgene = self.corre(pathblastfile)
-        dictionary_correspondance_SCGs[bacgene] = hmm_gene
-
-        return dictionary_correspondance_SCGs
 
 
 class lowident():
