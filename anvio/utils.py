@@ -592,6 +592,41 @@ def transpose_tab_delimited_file(input_file_path, output_file_path):
     return output_file_path
 
 
+def split_fasta(input_file_path, parts=1, prefix=None):
+    if not prefix:
+        prefix = os.path.abspath(input_file_path)
+
+    filesnpaths.is_file_exists(input_file_path)
+    filesnpaths.is_file_fasta_formatted(input_file_path)
+
+    source = u.ReadFasta(input_file_path, quiet=True)
+    length = len(source.ids)
+    chunk_size = length // parts
+
+    output_files = []
+
+    for part_no in range(parts):
+        output_file = prefix + '.' + str(part_no)
+        
+        output_fasta = u.FastaOutput(output_file)
+
+        chunk_start = chunk_size * part_no
+        chunk_end   = chunk_start + chunk_size
+
+        if (part_no + 1 == parts):
+            # if this is the last chunk make sure it contains everything till end.
+            chunk_end = length
+
+        for i in range(chunk_start, chunk_end):
+            output_fasta.write_id(source.ids[i])
+            output_fasta.write_seq(source.sequences[i])
+
+        output_fasta.close()
+        output_files.append(output_file)
+
+    return output_files
+
+
 def get_random_colors_dict(keys):
     # FIXME: someone's gotta implement this
     # keys   : set(1, 2, 3, ..)
