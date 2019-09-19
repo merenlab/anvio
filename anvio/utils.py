@@ -601,6 +601,10 @@ def split_fasta(input_file_path, parts=1, prefix=None):
 
     source = u.ReadFasta(input_file_path, quiet=True)
     length = len(source.ids)
+    
+    if length < parts:
+        parts = length
+
     chunk_size = length // parts
 
     output_files = []
