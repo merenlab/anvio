@@ -155,8 +155,26 @@ class SetUpSCGTaxonomyDatabase:
             if num_sequences_removed:
                 self.progress.reset()
                 self.run.info_single('%d of %d seq in %s were all gaps and removed.' % (total_num_sequences, os.path.basename(fasta_file_path), num_sequences_removed))
+        #there is one more thing. the list of FASTA files include those that share the same
+        #PFAM or TIGR domain (such as 'ar122_PF00466.15.faa' and 'bac120_PF00466.15.faa', etc).
+        #they must be merged to make sure we are taking best advantage of this resource.
+        self.progress.update("Looking for FASTA files to merge ...")
+        suffixes_dict = Counter()
+
+        for fasta_file_path in fasta_file_paths:
+            suffixes_dict['_'.join(os.path.basename(fasta_file_path).split('_')[1:])] += 1
+        
+        suffixes_to_merge = [s[0] for s in suffixes_dict.items() if s[1] > 1]
+        
+        for suffix in suffixes_to_merge:
+            fasta_files_to_merge = [fasta_file_path for fasta_file_path in fasta_file_paths if fasta_file_path.endswith(suffix)]
+            new_fasta_file_path = os.path.join(os.path.dirname(fasta_files_to_merge[0]), 'all_%s' % suffix)
+            utils.concatenate_files(new_fasta_file_path, fasta_files_to_merge, remove_concatenated_files=True)
 
         self.progress.end()
+
+        self.run.warning("FASTA files that end with the following suffixes are now merged because anvi'o\
+                          because anvi'o has your back: '%s'." % (', '.join(suffixes_to_merge)))
 
 
 class SCGsDataBase():
