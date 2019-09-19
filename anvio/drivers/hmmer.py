@@ -2,8 +2,10 @@
 """Interface to HMMer."""
 
 import os
+import io
 import gzip
 import shutil
+from threading import Thread, Lock
 
 import anvio
 import anvio.utils as utils
@@ -34,14 +36,19 @@ class HMMer:
         self.progress = progress
         self.run = run
 
-        self.target_files_dict = target_files_dict
-
-        # hmm_scan_hits is the file to access later on for parsing:
-        self.hmm_scan_output = None
-        self.hmm_scan_hits = None
-        self.genes_in_contigs = None
-
         self.tmp_dirs = []
+        self.target_files_dict = {}
+
+        for source in target_files_dict:
+            tmp_dir = filesnpaths.get_temp_directory_path()
+            self.tmp_dirs.append(tmp_dir)
+
+            part_file_name = os.path.join(tmp_dir, os.path.basename(target_files_dict[source]))
+
+            # create splitted fasta files inside tmp directory
+            self.target_files_dict[source] = utils.split_fasta(target_files_dict[source], 
+                                                               parts=self.num_threads_to_use,
+                                                               prefix=part_file_name)
 
 
     def run_hmmscan(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms):
@@ -67,17 +74,11 @@ class HMMer:
         self.run.info('Noise cutoff term(s)', noise_cutoff_terms)
         self.run.info('Number of CPUs will be used for search', self.num_threads_to_use)
 
-        tmp_dir = filesnpaths.get_temp_directory_path()
-        self.tmp_dirs.append(tmp_dir)
-
-        self.hmm_scan_output = os.path.join(tmp_dir, 'hmm.output')
-        self.hmm_scan_hits = os.path.join(tmp_dir, 'hmm.hits')
-        self.hmm_scan_hits_shitty = os.path.join(tmp_dir, 'hmm.hits.shitty')
+        # we want to create hmm files in the same direcotry
+        tmp_dir = os.path.dirname(self.target_files_dict[target][0])
         log_file_path = os.path.join(tmp_dir, '00_log.txt')
 
         self.run.info('Temporary work dir', tmp_dir)
-        self.run.info('HMM scan output', self.hmm_scan_output)
-        self.run.info('HMM scan hits', self.hmm_scan_hits)
         self.run.info('Log file', log_file_path)
 
         self.progress.new('Unpacking the model into temporary work directory')
@@ -103,34 +104,70 @@ class HMMer:
                                        % (log_file_path, 'http://hmmer.janelia.org/download.html'))
         self.progress.end()
 
+
+
+        workers = []
+        merged_file_buffer = io.StringIO()
+        buffer_write_lock = Lock()
+
+        for part_file in self.target_files_dict[target]:
+            worker_no = str(len(workers) + 1)
+
+            log_file = part_file + '_log'
+            output_file = part_file + '_output'
+            shitty_file = part_file + '_shitty'
+
+            self.run.info('[Worker-%s] Log file' % worker_no, log_file)
+            self.run.info('[Worker-%s] Output file' % worker_no, output_file)
+            self.run.info('[Worker-%s] Not-formatted hits file' % worker_no, shitty_file)
+
+            cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else 'hmmscan',
+                        '-o', output_file, *noise_cutoff_terms.split(),
+                        '--cpu', 1,
+                        '--tblout', shitty_file,
+                        hmm_file_path, part_file]
+
+            t = Thread(target=self.hmmscan_worker, args=(part_file, 
+                                                         cmd_line,
+                                                         shitty_file,
+                                                         log_file,
+                                                         merged_file_buffer,
+                                                         buffer_write_lock))
+            t.start()
+            workers.append(t)
+
         self.progress.new('Processing')
-        self.progress.update('Performing HMM scan ...')
+        self.progress.update('Performing HMM scan...')
 
-        cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else 'hmmscan',
-                    '-o', self.hmm_scan_output, *noise_cutoff_terms.split(),
-                    '--cpu', self.num_threads_to_use,
-                    '--tblout', self.hmm_scan_hits_shitty,
-                    hmm_file_path, self.target_files_dict[target]]
+        # Wait for all workers to finish.
+        for worker in workers:
+            worker.join()
 
-        utils.run_command(cmd_line, log_file_path)
+        output_file_path = os.path.join(tmp_dir, 'hmm.hits')
 
-        if not os.path.exists(self.hmm_scan_hits_shitty):
+        with open(output_file_path, 'w') as out:
+            merged_file_buffer.seek(0)
+            out.write(merged_file_buffer.read())
+
+        self.progress.end()
+
+        return output_file_path
+
+
+    def hmmscan_worker(self, part_file, cmd_line, shitty_output_file, log_file, merged_file_buffer, buffer_write_lock):
+        utils.run_command(cmd_line, log_file)
+
+        if not os.path.exists(shitty_output_file):
             self.progress.end()
             raise ConfigError("Something went wrong with hmmscan, and it failed to generate the\
                                 expected output :/ Fortunately, this log file should tell you what\
                                 might be the problem: '%s'. Please do not forget to include this\
-                                file if you were to ask for help." % log_file_path)
-
-        self.progress.end()
-
-        # thank you, hmmscan, for not generating a simple TAB-delimited, because we programmers
-        # love to write little hacks like this into our code:
-        parseable_output = open(self.hmm_scan_hits, 'w')
+                                file if you were to ask for help." % log_file)
 
         detected_non_ascii = False
         lines_with_non_ascii = []
 
-        with open(self.hmm_scan_hits_shitty, 'rb') as hmm_hits_file:
+        with open(shitty_output_file, 'rb') as hmm_hits_file:
             line_counter = 0
             for line_bytes in hmm_hits_file:
                 line_counter += 1
@@ -143,20 +180,15 @@ class HMMer:
                 if line.startswith('#'):
                     continue
 
-                parseable_output.write('\t'.join(line.split()[0:18]) + '\n')
-
-        parseable_output.close()
+                with buffer_write_lock:
+                    merged_file_buffer.write('\t'.join(line.split()[0:18]) + '\n')
 
         if detected_non_ascii:
             self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii charachters while processing \
                 the file '%s' and cleared them. Here are the line numbers with non-ascii charachters: %s.\
                 You may want to check those lines with a command like \"awk 'NR==<line number>' <file path> | cat -vte\"." %
-                (self.hmm_scan_hits_shitty, ", ".join(map(str, lines_with_non_ascii))))
+                (shitty_file, ", ".join(map(str, lines_with_non_ascii))))
 
-        num_raw_hits = filesnpaths.get_num_lines_in_file(self.hmm_scan_hits)
-        self.run.info('Number of raw hits', num_raw_hits)
-
-        return self.hmm_scan_hits if num_raw_hits else None
 
 
     def clean_tmp_dirs(self):
