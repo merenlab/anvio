@@ -157,7 +157,10 @@ class HMMer:
 
         self.progress.end()
 
-        return output_file_path
+        num_raw_hits = filesnpaths.get_num_lines_in_file(output_file_path)
+        self.run.info('Number of raw hits', num_raw_hits)
+
+        return output_file_path if num_raw_hits else None
 
 
     def hmmscan_worker(self, part_file, cmd_line, shitty_output_file, log_file, merged_file_buffer, buffer_write_lock):
