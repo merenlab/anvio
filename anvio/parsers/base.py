@@ -23,6 +23,9 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
+run = terminal.Run()
+
+
 class Parser(object):
     def __init__(self, annotation_source, input_file_paths, files_expected={}, files_structure={}):
         self.annotation_source = annotation_source
@@ -75,11 +78,28 @@ class Parser(object):
                 no_header = f['no_header'] if 'no_header' in f else False
                 separator = f['separator'] if 'separator' in f else '\t'
                 indexing_field = f['indexing_field'] if 'indexing_field' in f else 0
-                self.dicts[alias] = get_dict(self.paths[alias], no_header=no_header,
-                                             column_names=self.files_structure[alias]['col_names'],
-                                             column_mapping=self.files_structure[alias]['col_mapping'],
-                                             indexing_field=indexing_field, separator=separator,
-                                             ascii_only=True)
+                self.dicts[alias], failed_lines = get_dict(self.paths[alias], no_header=no_header,
+                                                           column_names=self.files_structure[alias]['col_names'],
+                                                           column_mapping=self.files_structure[alias]['col_mapping'],
+                                                           indexing_field=indexing_field, separator=separator,
+                                                           ascii_only=True, return_failed_lines=True)
+
+                if failed_lines:
+                    if len(failed_lines) > 20:
+                        failed_lines_text = '%s (... %d more ...)' % (', '.join([str(l) for l in failed_lines]), len(failed_lines) - 20)
+                    else:
+                        failed_lines_text = '%s' % (', '.join([str(l) for l in failed_lines]))
+
+                    run.warning("This is the base parser class --a part of the code you should never hear from. PLEASE\
+                                 READ THIS CAREFULLY. While anvi'o was trying to parse some files assocaited with the\
+                                 annotation source `%s`, it found that %d of the lines in this file were not able to\
+                                 made sense of. This part of the code does not know anything more than that. It doesn't\
+                                 even know what file it is. But in general this error occurs when the mapping function\
+                                 does not find what its looking for in a line. For instance, a value that was supposed to\
+                                 be an integer ends up being actually a piece of text or something. Well. Here are the\
+                                 line numbers if you care and can make sense of this information: %s" % \
+                                                        (self.annotation_source, len(failed_lines), failed_lines_text))
+
 
 class TaxonomyHelper(object):
     """This is the class that takes an annotations dictionary, and returns
