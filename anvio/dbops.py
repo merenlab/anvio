@@ -2901,7 +2901,7 @@ class ProfileSuperclass(object):
             if self.p_meta['merged']:
                 table_data = profile_db.db.get_table_as_dict('%s_splits' % table_name, omit_parent_column=True)
             else:
-                table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest=table_name, omit_parent_column=True))
+                table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest=[table_name, ], omit_parent_column=True))
 
             for bin_id in collection:
                 # populate averages per bin
@@ -2923,7 +2923,7 @@ class ProfileSuperclass(object):
         if self.p_meta['merged']:
             coverage_table_data = profile_db.db.get_table_as_dict('mean_coverage_splits', omit_parent_column=True)
         else:
-            coverage_table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest="mean_coverage", omit_parent_column=True))
+            coverage_table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest=["mean_coverage", ], omit_parent_column=True))
 
         self.bin_percent_recruitment_per_sample = {}
         if self.p_meta['blank']:
