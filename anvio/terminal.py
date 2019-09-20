@@ -613,6 +613,36 @@ class TimeCode(object):
         self.run.info(msg, self.timer.time_elapsed(), nl_before=1, lc=color, mc='yellow')
 
 
+def time_program(program_method):
+    """
+    A decorator used to time anvio programs. See below for example.
+    For a concrete example, see `anvi-compute-genome-similarity`.
+
+    EXAMPLE
+    =======
+
+    import anvio.terminal as terminal
+
+    @terminal.time_program
+    def main(args):
+        <do stuff>
+
+    if __name__ == '__main__':
+        <do stuff>
+        main(args)
+    """
+    import inspect
+    program_name = os.path.basename(inspect.getfile(program_method))
+
+    s = '✓ %s finished successfully after' % program_name
+    f = '✖ %s encountered an error after' % program_name
+
+    def wrapper(*args, **kwargs):
+        with TimeCode(success_msg=s, failure_msg=f) as t:
+            program_method(*args, **kwargs)
+    return wrapper
+
+
 def pretty_print(n):
     """Pretty print function for very big integers"""
     if not isinstance(n, int):
