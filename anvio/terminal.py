@@ -544,7 +544,7 @@ class Timer:
 class TimeCode(object):
     """
     This context manager times blocks of code, and calls run.info afterwards to report
-    the time (unless quiet = True)
+    the time (unless quiet = True). See also time_program()
 
     PARAMS
     ======
@@ -572,14 +572,15 @@ class TimeCode(object):
         with terminal.TimeCode() as t:
             time.sleep(5)
 
-        >>> Code ran succesfully in ......................: 05s
+        >>> ✓ Code finished successfully after 05s
+
 
         # EXAMPLE 2
         with terminal.TimeCode() as t:
             time.sleep(5)
             print(asdf) # undefined variable
 
-        >>> Code failed after ............................: 05s
+        >>> ✖ Code encountered error after 05s
 
         # EXAMPLE 3
         with terminal.TimeCode(quiet=True) as t:
@@ -590,12 +591,14 @@ class TimeCode(object):
     """
     def __init__(self, sc='green', success_msg = None, fc='red', failure_msg = None, run = Run(), quiet = False):
         self.run = run
+        self.run.single_line_prefixes = {0: '✓ ', 1: '✖ '}
+
         self.quiet = quiet
         self.sc, self.fc = sc, fc
         self.s_msg, self.f_msg = success_msg, failure_msg
 
-        self.s_msg = self.s_msg if self.s_msg else 'Code ran succesfully in'
-        self.f_msg = self.f_msg if self.f_msg else 'Code failed after'
+        self.s_msg = self.s_msg if self.s_msg else 'Code finished after '
+        self.f_msg = self.f_msg if self.f_msg else 'Code encountered error after '
 
 
     def __enter__(self):
@@ -609,8 +612,10 @@ class TimeCode(object):
         if self.quiet:
             return
 
-        msg, color = (self.s_msg, self.sc) if exception_type is None else (self.f_msg, self.fc)
-        self.run.info(msg, self.timer.time_elapsed(), nl_before=1, lc=color, mc='yellow')
+        return_code = 0 if exception_type is None else 1
+
+        msg, color = (self.s_msg, self.sc) if not return_code else (self.f_msg, self.fc)
+        self.run.info_single(msg + self.timer.time_elapsed(), nl_before=1, mc=color, level=return_code)
 
 
 def time_program(program_method):
@@ -634,8 +639,8 @@ def time_program(program_method):
     import inspect
     program_name = os.path.basename(inspect.getfile(program_method))
 
-    s = '✓ %s finished successfully after' % program_name
-    f = '✖ %s encountered an error after' % program_name
+    s = '%s finished after ' % program_name
+    f = '%s encountered an error after ' % program_name
 
     def wrapper(*args, **kwargs):
         with TimeCode(success_msg=s, failure_msg=f) as t:
