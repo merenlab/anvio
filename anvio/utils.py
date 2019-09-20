@@ -206,7 +206,7 @@ def get_predicted_type_of_items_in_a_dict(d, key):
              (...),
             }
 
-    This is a shitty funciton, but there was a real need for it, so here we are :/
+    This is a shitty function, but there was a real need for it, so here we are :/
     """
 
     items = [x[key] for x in d.values()]
@@ -1037,7 +1037,7 @@ def concatenate_files(dest_file, file_list):
 
 
 def get_split_start_stops(contig_length, split_length, gene_start_stops=None):
-    """Wrapper funciton for get_split_start_stops_with_gene_calls and get_split_start_stops_without_gene_calls"""
+    """Wrapper function for get_split_start_stops_with_gene_calls and get_split_start_stops_without_gene_calls"""
     if gene_start_stops:
         return get_split_start_stops_with_gene_calls(contig_length, split_length, gene_start_stops)
     else:
@@ -1891,7 +1891,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
             if field not in expected_fields:
                 raise ConfigError("There are more fields in the file '%s' than the expected fields :/\
                                    Anvi'o is telling you about this because get_TAB_delimited_file_as_dictionary\
-                                   funciton is called with `only_expected_fields` flag turned on." % (file_path))
+                                   function is called with `only_expected_fields` flag turned on." % (file_path))
 
     d = {}
     line_counter = 0
@@ -1936,7 +1936,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                         failed_lines.append(line_counter + 1)
                         column_mapping_for_line_failed = True
                     else:
-                        raise ConfigError("Mapping funciton '%s' did not like the value '%s' in column number %d\
+                        raise ConfigError("Mapping function '%s' did not like the value '%s' in column number %d\
                                            of the input matrix '%s' :/" % (column_mapping[i], line_fields[i], i + 1, file_path))
 
             line_fields = updated_line_fields
