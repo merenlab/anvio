@@ -1034,6 +1034,12 @@ class VariabilitySuper(VariabilityFilter, object):
         self.progress.update('Reading the profile database ...')
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
 
+        if not profile_db.meta['merged'] and self.quince_mode:
+            self.progress.end()
+            raise ConfigError("You have selected --quince-mode, and you're very cool for doing so. But\
+                               your profile database `%s` is not a merged profile database, so it contains\
+                               only one sample. That don't make good sense." % self.profile_db_path)
+
         if self.engine == 'NT':
             self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name,
                                                              table_structure=self.table_structure,
@@ -1041,6 +1047,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
         elif self.engine == 'CDN' or self.engine == 'AA':
             if not profile_db.meta['SCVs_profiled']:
+                self.progress.end()
                 raise ConfigError("It seems codon frequencies were not computed for this profile database,\
                                    therefore there is nothing to report here for codon or amino acid variability\
                                    profiles :(")
@@ -1055,7 +1062,7 @@ class VariabilitySuper(VariabilityFilter, object):
                 self.convert_item_coverages()
                 self.convert_reference_info()
 
-            # FIXME should this be in the variability table to begin with?
+            # FIXME this is in the NT variability table, and should bein the SCV table as well
             self.data["split_name"] = self.data["corresponding_gene_call"].apply(lambda x: self.gene_callers_id_to_split_name_dict[x])
 
         self.data["codon_number"] = utils.convert_sequence_indexing(self.data["codon_order_in_gene"], source="M0", destination="M1")
@@ -1893,6 +1900,13 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
                     new_entries[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample_id][pos]
                     next_available_entry_id += 1
 
+        if not new_entries:
+            # There was no new entries. Probably this profile database is not merged, or the region
+            # of interest is very small and variability is present across all samples
+            self.progress.end()
+            self.report_change_in_entry_number(self.data.shape[0], self.data.shape[0], reason="quince mode")
+            return
+
         # convert to pandas DataFrame (its faster to build and convert a dictionary than to build
         # DataFrame row by row).
         new_entries = pd.DataFrame(new_entries).T
@@ -1912,13 +1926,13 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
         self.data = self.data[column_order]
         entries_after = len(self.data.index)
 
-        # fill in additional fields for new entries. compute_additional_fields takes a list of
-        # entry_ids to consider for self.data, which here is provided from new_entries (what I'm
-        # saying is new_entries is not passed, only the entry_id's in new_entries
         self.progress.end()
+
+        # new entries are now in self.data, but are missing additional fields, that are calculated here
         self.compute_additional_fields(list(new_entries["entry_id"]))
 
         self.report_change_in_entry_number(entries_before, entries_after, reason="quince mode")
+
 
 
 class QuinceModeWrapperForFancyEngines(object):
