@@ -784,7 +784,7 @@ D = {
              'type': float,
              'help': "This filter will remove gene clusters from your report. If you say '--min-functional-homogeneity-index 0.3', \
                       every gene cluster with a functional homogeneity index less than 0.3 will be removed from your analysis. This \
-                      can be useful if you only want to look at gene clusters that are highly conserved in resulting funciton"}
+                      can be useful if you only want to look at gene clusters that are highly conserved in resulting function"}
                 ),
     'max-functional-homogeneity-index': (
             ['--max-functional-homogeneity-index'],

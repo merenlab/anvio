@@ -343,35 +343,35 @@ class Run:
 
 class Timer:
     """
-        The premise of the class is to build an ordered dictionary, where each key is a checkpoint
-        name and value is a timestamp.
+    The premise of the class is to build an ordered dictionary, where each key is a checkpoint
+    name and value is a timestamp.
 
-        Examples
-        ========
+    Examples
+    ========
 
-            from anvio.terminal import Timer
-            import time
-            t = Timer(); time.sleep(1)
-            t.make_checkpoint('checkpoint_name'); time.sleep(1)
-            timedelta = t.timedelta_to_checkpoint(timestamp=t.timestamp(), checkpoint_key='checkpoint_name')
-            print(t.format_time(timedelta, fmt = '{days} days, {hours} hours, {seconds} seconds', zero_padding=0))
-            print(t.time_elapsed())
+        from anvio.terminal import Timer
+        import time
+        t = Timer(); time.sleep(1)
+        t.make_checkpoint('checkpoint_name'); time.sleep(1)
+        timedelta = t.timedelta_to_checkpoint(timestamp=t.timestamp(), checkpoint_key='checkpoint_name')
+        print(t.format_time(timedelta, fmt = '{days} days, {hours} hours, {seconds} seconds', zero_padding=0))
+        print(t.time_elapsed())
 
-            >>> 0 days, 0 hours, 1 seconds
-            >>> 00:00:02
+        >>> 0 days, 0 hours, 1 seconds
+        >>> 00:00:02
 
-            t = Timer(3) # 3 checkpoints expected until completion
-            for _ in range(3):
-                time.sleep(1); t.make_checkpoint()
-                print('complete: %s' % t.complete)
-                print(t.eta(fmt='ETA: {seconds} seconds'))
+        t = Timer(3) # 3 checkpoints expected until completion
+        for _ in range(3):
+            time.sleep(1); t.make_checkpoint()
+            print('complete: %s' % t.complete)
+            print(t.eta(fmt='ETA: {seconds} seconds'))
 
-            >>> complete: False
-            >>> ETA: 02 seconds
-            >>> complete: False
-            >>> ETA: 01 seconds
-            >>> complete: True
-            >>> ETA: 00 seconds
+        >>> complete: False
+        >>> ETA: 02 seconds
+        >>> complete: False
+        >>> ETA: 01 seconds
+        >>> complete: True
+        >>> ETA: 00 seconds
     """
     def __init__(self, required_completion_score = None):
         self.timer_start = self.timestamp()
@@ -454,8 +454,8 @@ class Timer:
         return eta
 
 
-    def time_elapsed(self):
-        return self.format_time(self.timedelta_to_checkpoint(self.timestamp(), checkpoint_key = 0))
+    def time_elapsed(self, fmt=None):
+        return self.format_time(self.timedelta_to_checkpoint(self.timestamp(), checkpoint_key = 0), fmt=fmt)
 
 
     def format_time(self, timedelta, fmt = '{hours}:{minutes}:{seconds}', zero_padding = 2):
@@ -539,6 +539,113 @@ class Timer:
         formatted_time = fmt % (*[format_value for format_value in format_values],)
 
         return formatted_time
+
+
+class TimeCode(object):
+    """
+    This context manager times blocks of code, and calls run.info afterwards to report
+    the time (unless quiet = True). See also time_program()
+
+    PARAMS
+    ======
+        sc: 'green'
+            run info color with no runtime error
+        success_msg: None
+            If None, it is set to 'Code ran succesfully in'
+        fc: 'green'
+            run info color with runtime error
+        failure_msg: None
+            If None, it is set to 'Code failed within'
+        run: Run()
+            Provide a pre-existing Run instance if you want
+        quiet: False,
+            If True, run.info is not called and datetime object is stored
+            as `time` (see examples)
+
+    EXAMPLES
+    ========
+
+        import time
+        import anvio.terminal as terminal
+
+        # EXAMPLE 1
+        with terminal.TimeCode() as t:
+            time.sleep(5)
+
+        >>> ✓ Code finished successfully after 05s
+
+
+        # EXAMPLE 2
+        with terminal.TimeCode() as t:
+            time.sleep(5)
+            print(asdf) # undefined variable
+
+        >>> ✖ Code encountered error after 05s
+
+        # EXAMPLE 3
+        with terminal.TimeCode(quiet=True) as t:
+            time.sleep(5)
+        print(t.time)
+
+        >>> 0:00:05.000477
+    """
+    def __init__(self, sc='green', success_msg = None, fc='red', failure_msg = None, run = Run(), quiet = False):
+        self.run = run
+        self.run.single_line_prefixes = {0: '✓ ', 1: '✖ '}
+
+        self.quiet = quiet
+        self.sc, self.fc = sc, fc
+        self.s_msg, self.f_msg = success_msg, failure_msg
+
+        self.s_msg = self.s_msg if self.s_msg else 'Code finished after '
+        self.f_msg = self.f_msg if self.f_msg else 'Code encountered error after '
+
+
+    def __enter__(self):
+        self.timer = Timer()
+        return self
+
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.time = self.timer.timedelta_to_checkpoint(self.timer.timestamp())
+
+        if self.quiet:
+            return
+
+        return_code = 0 if exception_type is None else 1
+
+        msg, color = (self.s_msg, self.sc) if not return_code else (self.f_msg, self.fc)
+        self.run.info_single(msg + self.timer.time_elapsed(), nl_before=1, mc=color, level=return_code)
+
+
+def time_program(program_method):
+    """
+    A decorator used to time anvio programs. See below for example.
+    For a concrete example, see `anvi-compute-genome-similarity`.
+
+    EXAMPLE
+    =======
+
+    import anvio.terminal as terminal
+
+    @terminal.time_program
+    def main(args):
+        <do stuff>
+
+    if __name__ == '__main__':
+        <do stuff>
+        main(args)
+    """
+    import inspect
+    program_name = os.path.basename(inspect.getfile(program_method))
+
+    s = '%s finished after ' % program_name
+    f = '%s encountered an error after ' % program_name
+
+    def wrapper(*args, **kwargs):
+        with TimeCode(success_msg=s, failure_msg=f) as t:
+            program_method(*args, **kwargs)
+    return wrapper
 
 
 def pretty_print(n):

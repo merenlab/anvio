@@ -499,7 +499,7 @@ class SequencesForHMMHits:
 
         genes_to_keep = all_genes.difference(genes_to_remove)
 
-        self.run.info_single("Hi! The anvi'o funciton that was supposed to remove genes that were occurring in\
+        self.run.info_single("Hi! The anvi'o function that was supposed to remove genes that were occurring in\
                               less than X number of bins due to the use of `--min-num-bins-gene-occurs` is \
                               speaking. What follows is a report of what happened after anvi'o tried to remove\
                               genes that were occurring in at least %d of the %d bins you had at this point." \

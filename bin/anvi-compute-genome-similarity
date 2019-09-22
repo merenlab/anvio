@@ -31,6 +31,7 @@ __description__ = ("Export sequences from sequence sources and compute a similar
 run = terminal.Run()
 
 
+@terminal.time_program
 def main(args):
     d = genomesimilarity.program_class_dictionary[args.program](args)
     d.process()

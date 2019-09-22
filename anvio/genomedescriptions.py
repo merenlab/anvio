@@ -305,7 +305,7 @@ class GenomeDescriptions(object):
                 if len(function_annotation_sources_some_genomes_miss):
                     # some functions were missing from some genomes
                     self.run.warning("Anvi'o has good news and bad news for you (very balanced, as usual). The good news is that there are some\
-                                      funciton annotation sources that are common to all of your genomes, and they will be used whenever\
+                                      function annotation sources that are common to all of your genomes, and they will be used whenever\
                                       it will be appropriate. Here they are: '%s'. The bad news is you had more functiona annotation sources,\
                                       but they were not common to all genomes. Here they are so you can say your goodbyes to them (because\
                                       they will not be used): '%s'" % \
@@ -385,7 +385,7 @@ class GenomeDescriptions(object):
 
                 # here we are using the get_contigs_db_info_dict function WITH split names we found in the collection
                 # which returns a partial summary from the contigs database focusing only those splits. a small workaround
-                # to be able to use the same funciton for bins in collections:
+                # to be able to use the same function for bins in collections:
                 contigs_summary = summarizer.ContigSummarizer(c['contigs_db_path'])
                 summary_from_contigs_db_summary = contigs_summary.get_contigs_db_info_dict(split_names=split_names_of_interest,
                                                                                            gene_caller_to_use=self.gene_caller)

@@ -206,7 +206,7 @@ def get_predicted_type_of_items_in_a_dict(d, key):
              (...),
             }
 
-    This is a shitty funciton, but there was a real need for it, so here we are :/
+    This is a shitty function, but there was a real need for it, so here we are :/
     """
 
     items = [x[key] for x in d.values()]
@@ -1070,7 +1070,7 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
 
 
 def get_split_start_stops(contig_length, split_length, gene_start_stops=None):
-    """Wrapper funciton for get_split_start_stops_with_gene_calls and get_split_start_stops_without_gene_calls"""
+    """Wrapper function for get_split_start_stops_with_gene_calls and get_split_start_stops_without_gene_calls"""
     if gene_start_stops:
         return get_split_start_stops_with_gene_calls(contig_length, split_length, gene_start_stops)
     else:
@@ -1861,8 +1861,12 @@ def is_ascii_only(text):
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,\
                                         column_mapping=None, indexing_field=0, separator='\t', no_header=False,\
                                         ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,\
-                                        none_value=None, empty_header_columns_are_OK=False):
-    """Takes a file path, returns a dictionary."""
+                                        none_value=None, empty_header_columns_are_OK=False, return_failed_lines=False):
+    """Takes a file path, returns a dictionary.
+
+       - If `return_failed_lines` is True, it the function will not throw an exception, but instead
+         return a list of `failed_lines` along with a dictionary of final results.
+    """
 
     if expected_fields and (not isinstance(expected_fields, list) and not isinstance(expected_fields, set)):
         raise ConfigError("'expected_fields' variable must be a list (or a set).")
@@ -1875,6 +1879,9 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
 
     filesnpaths.is_file_plain_text(file_path)
     filesnpaths.is_file_tab_delimited(file_path, separator=separator)
+
+    failed_lines = []
+    column_mapping_for_line_failed = None
 
     f = open(file_path, 'rU')
 
@@ -1917,7 +1924,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
             if field not in expected_fields:
                 raise ConfigError("There are more fields in the file '%s' than the expected fields :/\
                                    Anvi'o is telling you about this because get_TAB_delimited_file_as_dictionary\
-                                   funciton is called with `only_expected_fields` flag turned on." % (file_path))
+                                   function is called with `only_expected_fields` flag turned on." % (file_path))
 
     d = {}
     line_counter = 0
@@ -1935,6 +1942,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                                seem right at all :/" % (line_counter + 1, file_path))
 
         if column_mapping:
+            column_mapping_for_line_failed = False
             updated_line_fields = []
             for i in range(0, len(line_fields)):
                 try:
@@ -1943,15 +1951,31 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                     else:
                         updated_line_fields.append(column_mapping[i](line_fields[i]))
                 except NameError:
-                    raise ConfigError("Mapping function '%s' did not work on value '%s'. These functions can be native\
-                                        Python functions, such as 'str', 'int', or 'float', or anonymous functions\
-                                        defined using lambda notation." % (column_mapping[i], line_fields[i]))
+                    if return_failed_lines:
+                        failed_lines.append(line_counter + 1)
+                        column_mapping_for_line_failed = True
+                    else:
+                        raise ConfigError("Mapping function '%s' did not work on value '%s'. These functions can be native\
+                                           Python functions, such as 'str', 'int', or 'float', or anonymous functions\
+                                           defined using lambda notation." % (column_mapping[i], line_fields[i]))
                 except TypeError:
-                    raise ConfigError("Mapping function '%s' does not seem to be a proper Python function :/" % column_mapping[i])
+                    if return_failed_lines:
+                        failed_lines.append(line_counter + 1)
+                        column_mapping_for_line_failed = True
+                    else:
+                        raise ConfigError("Mapping function '%s' does not seem to be a proper Python function :/" % column_mapping[i])
                 except ValueError:
-                    raise ConfigError("Mapping funciton '%s' did not like the value '%s' in column number %d\
-                                        of the input matrix '%s' :/" % (column_mapping[i], line_fields[i], i + 1, file_path))
+                    if return_failed_lines:
+                        failed_lines.append(line_counter + 1)
+                        column_mapping_for_line_failed = True
+                    else:
+                        raise ConfigError("Mapping function '%s' did not like the value '%s' in column number %d\
+                                           of the input matrix '%s' :/" % (column_mapping[i], line_fields[i], i + 1, file_path))
+
             line_fields = updated_line_fields
+
+        if column_mapping_for_line_failed:
+            continue
 
         if indexing_field == -1:
             entry_name = 'line__%09d__' % line_counter
@@ -1998,6 +2022,10 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                     dict_to_append[entry][key] = d[entry][key]
 
         return dict_to_append
+
+    # this is here for backward compatibility.
+    if return_failed_lines:
+        return d, failed_lines
 
     return d
 
