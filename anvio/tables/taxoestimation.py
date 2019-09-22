@@ -83,7 +83,7 @@ class TablesForTaxoestimation(Table):
             table_index+=1
             SCG=result[1]
             gene_callers_id=result[0]
-            if not len(result[3]):
+            if not result[3]:
                 continue
             if len(result[3]) < 5:
                 accession=self.get_accession(result[2])
