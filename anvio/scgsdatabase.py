@@ -108,10 +108,56 @@ class SetUpSCGTaxonomyDatabase:
         self.progress = progress
 
         # hard-coded GTDB variables
+class SCGTaxonomyContext(object):
+    """The purpose of this base class is ot define file paths and constants for all single-copy
+       core gene taxonomy operations.
+    """
+    def __init__(self, args, skip_sanity_check=False):
+        # hard-coded GTDB variables. poor design, but I don't think we are going do need an
+        # alternative to GTDB.
         self.target_database = "GTDB"
         self.target_database_URL = "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
         self.target_database_files = ['VERSION', 'ar122_msa_individual_genes.tar.gz', 'ar122_taxonomy.tsv',
                                     'bac120_msa_individual_genes.tar.gz', 'bac120_taxonomy.tsv']
+                                      'bac120_msa_individual_genes.tar.gz', 'bac120_taxonomy.tsv']
+
+        # some variables from anvi'o constants
+        self.hmm_source_for_scg_taxonomy = constants.default_hmm_source_for_scg_taxonomy
+        self.default_scgs_taxonomy_data_dir = constants.default_scgs_taxonomy_data_dir
+        self.default_scgs_for_taxonomy = constants.default_scgs_for_taxonomy
+        self.levels_of_taxonomy = constants.levels_of_taxonomy
+
+        # these are all the user accessible paths. defaults will serve well for all applications,
+        # but these can be used for debugging.
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.SCGs_taxonomy_data_dir = (os.path.abspath(A("scgs_taxonomy_data_dir")) if A("scgs_taxonomy_data_dir") else None) or (os.path.join(self.default_scgs_taxonomy_data_dir, self.target_database))
+        self.msa_individual_genes_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'MSA_OF_INDIVIDUAL_SCGs')
+        self.accession_to_taxonomy_file_path = os.path.join(self.SCGs_taxonomy_data_dir, 'ACCESSION_TO_TAXONOMY.txt')
+        self.search_databases_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'SCG_SEARCH_DATABASES')
+        self.target_database_URL = A("scgs_taxonomy_remote_database_url") or self.target_database_URL
+
+        # some dictionaries for convenience. we set them up here, but the proper place to sanity check
+        # them may be somewhere else. for instance, when this class is inheritded by SetupLocalSCGTaxonomyData
+        # the paths will not point to an actual file, but when it is inherited by SetupContigsDatabaseWithSCGTaxonomy,
+        # they better point to actual files.
+        self.SCGs = dict([(SCG, {'db': os.path.join(self.search_databases_dir_path, SCG + '.dmnd'), 'fasta': os.path.join(self.search_databases_dir_path, SCG)}) for SCG in self.default_scgs_for_taxonomy])
+
+        if not skip_sanity_check:
+            self.sanity_check()
+
+
+    def sanity_check(self):
+        if sorted(list(locally_known_HMMs_to_remote_FASTAs.keys())) != sorted(self.default_scgs_for_taxonomy):
+            raise ConfigError("Oh no. The SCGs designated to be used for all SCG taxonomy tasks in the constants.py\
+                               are not the same names described in locally known HMMs to remote FASTA files\
+                               conversion table definedd in SetupLocalSCGTaxonomyData module. If this makes zero\
+                               sense to you please ask a developer.")
+
+        if not self.SCGs_taxonomy_data_dir:
+            raise ConfigError("`SetupLocalSCGTaxonomyData` class is upset because it was inherited without\
+                               a directory for SCG taxonomy data to be stored :( This variable can't be None.")
+
+
 
         # user accessible variables
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
