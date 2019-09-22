@@ -8,6 +8,7 @@ import anvio.terminal as terminal
 
 from anvio.cogs import COGs
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import time_program
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -25,7 +26,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 
-
+@time_program
 def main(args):
     cogs = COGs(args)
     cogs.process()

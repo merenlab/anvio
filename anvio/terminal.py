@@ -561,6 +561,8 @@ class TimeCode(object):
         quiet: False,
             If True, run.info is not called and datetime object is stored
             as `time` (see examples)
+        suppress_first: 0,
+            Supress output if code finishes within this many seconds.
 
     EXAMPLES
     ========
@@ -589,11 +591,12 @@ class TimeCode(object):
 
         >>> 0:00:05.000477
     """
-    def __init__(self, sc='green', success_msg = None, fc='red', failure_msg = None, run = Run(), quiet = False):
+    def __init__(self, sc='green', success_msg = None, fc='red', failure_msg = None, run = Run(), quiet = False, suppress_first = 0):
         self.run = run
         self.run.single_line_prefixes = {0: '✓ ', 1: '✖ '}
 
         self.quiet = quiet
+        self.suppress_first = suppress_first
         self.sc, self.fc = sc, fc
         self.s_msg, self.f_msg = success_msg, failure_msg
 
@@ -609,7 +612,7 @@ class TimeCode(object):
     def __exit__(self, exception_type, exception_value, traceback):
         self.time = self.timer.timedelta_to_checkpoint(self.timer.timestamp())
 
-        if self.quiet:
+        if self.quiet or self.time <= datetime.timedelta(seconds=self.suppress_first):
             return
 
         return_code = 0 if exception_type is None else 1
@@ -621,7 +624,7 @@ class TimeCode(object):
 def time_program(program_method):
     """
     A decorator used to time anvio programs. See below for example.
-    For a concrete example, see `anvi-compute-genome-similarity`.
+    For a concrete example, see `bin/anvi-profile`.
 
     EXAMPLE
     =======
@@ -639,11 +642,14 @@ def time_program(program_method):
     import inspect
     program_name = os.path.basename(inspect.getfile(program_method))
 
-    s = '%s finished after ' % program_name
-    f = '%s encountered an error after ' % program_name
+    TimeCode_params = {
+        'success_msg': '%s finished after ' % program_name,
+        'failure_msg': '%s encountered an error after ' % program_name,
+        'suppress_first': 3, # avoid clutter when program finishes or fails within 3 seconds
+    }
 
     def wrapper(*args, **kwargs):
-        with TimeCode(success_msg=s, failure_msg=f) as t:
+        with TimeCode(**TimeCode_params):
             program_method(*args, **kwargs)
     return wrapper
 
