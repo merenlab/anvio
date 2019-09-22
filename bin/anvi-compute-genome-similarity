@@ -12,6 +12,7 @@ import anvio.terminal as terminal
 import anvio.genomesimilarity as genomesimilarity
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import time_program
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -30,8 +31,7 @@ __description__ = ("Export sequences from sequence sources and compute a similar
 
 run = terminal.Run()
 
-
-@terminal.time_program
+@time_program
 def main(args):
     d = genomesimilarity.program_class_dictionary[args.program](args)
     d.process()
