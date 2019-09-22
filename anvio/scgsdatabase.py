@@ -393,7 +393,7 @@ class lowident():
                 code = names[0]
                 leveltaxos = names[1].split(';')
                 for leveltaxo in leveltaxos:
-                    if leveltaxo.endwith("Bacteria"):
+                    if leveltaxo.endswith("Bacteria"):
                         continue
                     leveltaxo = leveltaxo.rstrip()
                     if leveltaxo not in self.dicolevel:
