@@ -37,8 +37,7 @@ if __name__ == '__main__':
     args = anvio.get_args(parser)
 
     try:
-        s = scgsdatabase.SetUpSCGTaxonomyDatabase(args)
-        s.setup()
+        s = scgsdatabase.SetupLocalSCGTaxonomyData(args)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
