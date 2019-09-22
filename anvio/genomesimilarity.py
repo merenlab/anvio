@@ -935,8 +935,13 @@ class ANI(GenomeSimilarity):
 
     def compute_additonal_matrices(self, results):
         # full percentage identity
-        df = lambda matrix_name: pd.DataFrame(results[matrix_name]).astype(float)
-        results['full_percentage_identity'] = (df('percentage_identity') * df('alignment_coverage')).to_dict()
+        try:
+            df = lambda matrix_name: pd.DataFrame(results[matrix_name]).astype(float)
+            results['full_percentage_identity'] = (df('percentage_identity') * df('alignment_coverage')).to_dict()
+        except KeyError as e:
+            # method did not produce percentage_identity score--that's okay, no full percentage
+            # identity for you
+            pass
 
         return results
 
