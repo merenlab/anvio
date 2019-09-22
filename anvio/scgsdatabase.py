@@ -53,7 +53,7 @@ __email__ = "quentin.clayssen@gmail.com"
 # between locally known 'HMM' names to FASTA files from GTDB. If one day you have to update this
 # list, this is what you should do:
 #
-#   - find a FASTA file for a complete bacterial genome. 
+#   - find a FASTA file for a complete bacterial genome.
 #   - generate an anvi'o contigs database, and run all default, installed SCG HMMs.
 #   - export sequences for those HMMs that matches to the keys of the dictionary below (under all
 #     circumstances these names must match to HMM sources in anvi'o Bacteria_71). you can do
@@ -73,7 +73,7 @@ __email__ = "quentin.clayssen@gmail.com"
 #
 #             for i in *faa; do makeblastdb -in $i -dbtype prot; done
 #             for i in *faa; do echo; echo; echo $i; echo; echo; blastp -query Local_HMMs_export.fa -db $i -outfmt 6 -evalue 1e-10 -max_target_seqs 10; done > OUTPUT
-#        
+#
 #   - Update the list carefully based on the output.
 #   - Find a FASTA file for a complete archaeal genome. Do the same :)
 locally_known_HMMs_to_remote_FASTAs = {'Ribosomal_S2': ['ar122_TIGR01012.faa', 'bac120_TIGR01011.faa'],
