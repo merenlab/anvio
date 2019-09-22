@@ -328,7 +328,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
 
 
 class lowident():
-    def __init__(self, args, run=run, progress=progress):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
         self.progress = progress
@@ -339,7 +339,7 @@ class lowident():
         self.path_tsv_taxonomy = A('taxonomy_files')
         self.output_file = A('output_file')
         self.num_threads = A('num_threads')
-        self.num_process = A('num_process')
+        self.num_parallel_processes = A('num_parallel_processes')
 
         self.classic_input_directory = os.path.join(
             os.path.dirname(anvio.__file__), 'data/misc/SCG_TAXONOMY/GTDB')
@@ -353,8 +353,8 @@ class lowident():
         if not self.num_threads:
             self.num_threads = 1
 
-        if not self.num_process:
-            self.num_process = 1
+        if not self.num_parallel_processes:
+            self.num_parallel_processes = 1
 
         if not self.scgs_directory:
             self.scgs_directory = os.path.join(
@@ -452,9 +452,8 @@ class lowident():
             input_queue.put(pathquery)
 
         workers = []
-        for i in range(0, int(self.num_process)):
-            worker = multiprocessing.Process(target=self.diamond,
-                                             args=(input_queue, output_queue))
+        for i in range(0, int(self.num_parallel_processes)):
+            worker = multiprocessing.Process(target=self.diamond, args=(input_queue, output_queue))
 
             workers.append(worker)
             worker.start()
