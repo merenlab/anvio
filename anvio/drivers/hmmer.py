@@ -194,10 +194,9 @@ class HMMer:
 
         if detected_non_ascii:
             self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii charachters while processing \
-                the file '%s' and cleared them. Here are the line numbers with non-ascii charachters: %s.\
-                You may want to check those lines with a command like \"awk 'NR==<line number>' <file path> | cat -vte\"." %
-                (shitty_file, ", ".join(map(str, lines_with_non_ascii))))
-
+                              the file '%s' and cleared them. Here are the line numbers with non-ascii charachters: %s.\
+                              You may want to check those lines with a command like \"awk 'NR==<line number>' <file path> | cat -vte\"." %
+                                                 (shitty_output_file, ", ".join(map(str, lines_with_non_ascii))))
 
 
     def clean_tmp_dirs(self):
