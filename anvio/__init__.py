@@ -563,13 +563,15 @@ D = {
             {'default': None,
              'type': str,
              'metavar': 'PATH',
-             'help': "The directory for SCGs data to be stored. If you leave it as is without\
-                      specifying anything, anvi'o will set up everything in a reasonable place.\
-                      The advantage of it is that everyone will be using a single data directory,\
-                      but then you may need to run this program with superuser privileges to do it.\
-                      Using this parameter you can choose the location of the data directory somewhere\
-                      you like. However, when it is time to run SCGs, you will need to remember that\
-                      path and provide it to the program."}
+             'help': "The directory for SCGs data to be stored (or read from, depending on the context).\
+                      If you leave it as is without specifying anything, anvi'o will set up everything in\
+                      (or try to read things from) a pre-defined default directory. The advantage of using\
+                      the default directory at the time of set up is that every user of anvi'o on a computer\
+                      system will be using a single data directory, but then you may need to run the setup\
+                      program with superuser privileges. If you don't have superuser privileges, then you can\
+                      use this parameter to tell anvi'o the location you wish to use to setup your databases.\
+                      If you are using a program (such as `anvi-run-scg-taxonomy` or `anvi-estimate-taxonomy`)\
+                      you will have to use this parameter to tell those programs where your data are."}
                 ),
     'scgs-taxonomy-remote-database-url': (
             ['--scgs-taxonomy-remote-database-url'],
