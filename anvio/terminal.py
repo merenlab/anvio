@@ -624,7 +624,7 @@ class TimeCode(object):
 def time_program(program_method):
     """
     A decorator used to time anvio programs. See below for example.
-    For a concrete example, see `anvi-compute-genome-similarity`.
+    For a concrete example, see `bin/anvi-profile`.
 
     EXAMPLE
     =======

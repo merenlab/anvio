@@ -6,6 +6,7 @@ import anvio.profiler
 
 import anvio
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import time_program
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -24,6 +25,12 @@ __description__ = "Creates a single anvi'o profile database. The default input t
                    coverage per nucleotide position (and averages them out per contig), calculates\
                    single-nucleotide, single-codon, and single-amino acid variants, and stores these data\
                    into appropriate tables. Anvi'o single profiles can be merged by the program `anvi-merge`."
+
+
+@time_program
+def main(args):
+    profiler = anvio.profiler.BAMProfiler(args)
+    profiler._run()
 
 
 if __name__ == '__main__':
@@ -82,8 +89,7 @@ if __name__ == '__main__':
     args = anvio.get_args(parser)
 
     try:
-        profiler = anvio.profiler.BAMProfiler(args)
-        profiler._run()
+        main(args)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
