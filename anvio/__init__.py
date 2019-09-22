@@ -1186,6 +1186,15 @@ D = {
                       be careful with this option if you are running your commands on a SGE --if you are clusterizing your runs,\
                       and asking for multiple threads to use, you may deplete your resources very fast."}
                 ),
+    'num-parallel-processes': (
+            ['-P', '--num-parallel-processes'],
+            {'metavar': 'NUM_PROCESSES',
+             'default': 1,
+             'type': int,
+             'help': "Maximum number of processes to run in parallel. Please note that this is different than number of threads. If you\
+                      ask for 4 parallel processes, and 5 threads, anvi'o will run four processes in parallel and assign 5 threads\
+                      to each. For resource allocation you must multiply the number of processes and threads."}
+                ),
     'variability-profile': (
             ['-V', '--variability-profile'],
             {'metavar': 'VARIABILITY_TABLE',
