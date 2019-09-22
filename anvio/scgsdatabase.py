@@ -16,22 +16,23 @@ import shutil
 import subprocess
 import multiprocessing
 
-from collections import Counter
+from collections import Counter, OrderedDict
 
 import anvio
-import anvio.fastalib as u
-import anvio.terminal as terminal
+import anvio.tables as t
 import anvio.pfam as pfam
-import anvio.dbops as dbops
+import anvio.fastalib as u
 import anvio.utils as utils
+import anvio.hmmops as hmmops
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.dbops import ContigsSuperclass
 from anvio.errors import FilesNPathsError
-
 from anvio.drivers.diamond import Diamond
-from anvio.constants import default_scgs_taxonomy_data_dir, default_scgs_for_taxonomy
+from anvio.tables.taxoestimation import TablesForTaxoestimation
 
 
 run = terminal.Run()
