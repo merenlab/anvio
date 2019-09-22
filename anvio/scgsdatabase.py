@@ -35,9 +35,6 @@ from anvio.drivers.diamond import Diamond
 from anvio.tables.taxoestimation import TablesForTaxoestimation
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 
