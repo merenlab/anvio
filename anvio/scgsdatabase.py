@@ -158,12 +158,9 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
 
         # user accessible variables
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.SCGs_taxonomy_data_dir = (os.path.abspath(A("scgs_taxonomy_data_dir")) if A("scgs_taxonomy_data_dir") else None) or (os.path.join(default_scgs_taxonomy_data_dir, self.target_database))
         self.reset = A("reset")
-        self.target_database_URL = A("scgs_taxonomy_remote_database_url") or self.target_database_URL
         self.num_threads = A('num_threads')
 
-        self.sanity_check()
         SCGTaxonomyContext.__init__(self, self.args)
 
         self.run.info("Local directory to setup", self.SCGs_taxonomy_data_dir)
@@ -171,22 +168,6 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
         self.run.info("Remote database", self.target_database, nl_before=1, mc="green")
         self.run.info("Remote URL to download files", self.target_database_URL)
         self.run.info("Remote files of interest", ', '.join(self.target_database_files))
-
-        self.msa_individual_genes_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'MSA_OF_INDIVIDUAL_SCGs')
-        self.accession_to_taxonomy_file_path = os.path.join(self.SCGs_taxonomy_data_dir, 'ACCESSION_TO_TAXONOMY.txt')
-        self.search_databases_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'SCGs_SEARCH_DATABASES')
-
-
-    def sanity_check(self):
-        if not self.SCGs_taxonomy_data_dir:
-            raise ConfigError("`SetUpSCGTaxonomyDatabase` class is upset because it was inherited without\
-                               a directory for SCG taxonomy data to be stored :( This variable can't be None.")
-
-        if sorted(list(locally_known_HMMs_to_remote_FASTAs.keys())) != sorted(default_scgs_for_taxonomy):
-            raise ConfigError("Oh no. The SCGs designated to be used for all SCG taxonomy tasks in the constants.py\
-                               are not the same names described in locally known HMMs to remote FASTA files\
-                               conversion table definedd in SetUpSCGTaxonomyDatabase module. If this makes zero\
-                               sense to you please ask a developer.")
 
 
     def setup(self):
