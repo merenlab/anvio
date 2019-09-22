@@ -168,10 +168,9 @@ class HMMer:
 
         if not os.path.exists(shitty_output_file):
             self.progress.end()
-            raise ConfigError("Something went wrong with hmmscan, and it failed to generate the\
-                                expected output :/ Fortunately, this log file should tell you what\
-                                might be the problem: '%s'. Please do not forget to include this\
-                                file if you were to ask for help." % log_file)
+            raise ConfigError("Something went wrong with hmmscan and it failed to generate the expected output :/ Fortunately\
+                               we have this log file which should clarify the problem: '%s'. Please do not forget to include this\
+                               file in your question if you were to seek help from the community." % log_file)
 
         detected_non_ascii = False
         lines_with_non_ascii = []
@@ -194,10 +193,9 @@ class HMMer:
 
         if detected_non_ascii:
             self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii charachters while processing \
-                the file '%s' and cleared them. Here are the line numbers with non-ascii charachters: %s.\
-                You may want to check those lines with a command like \"awk 'NR==<line number>' <file path> | cat -vte\"." %
-                (shitty_file, ", ".join(map(str, lines_with_non_ascii))))
-
+                              the file '%s' and cleared them. Here are the line numbers with non-ascii charachters: %s.\
+                              You may want to check those lines with a command like \"awk 'NR==<line number>' <file path> | cat -vte\"." %
+                                                 (shitty_output_file, ", ".join(map(str, lines_with_non_ascii))))
 
 
     def clean_tmp_dirs(self):

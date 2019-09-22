@@ -14,6 +14,7 @@ with terminal.SuppressAllOutput():
 available_hmm_sources = list(hmm_data.sources.keys())
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import time_program
 from anvio.tables.hmmhits import TablesForHMMHits
 
 
@@ -34,7 +35,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
-@terminal.time_program
+@time_program
 def main(args):
     # first check whether this computer is capable of doing an HMM search.
     missing_programs =  utils.get_missing_programs_for_hmm_analysis()
