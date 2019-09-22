@@ -327,6 +327,253 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
                 shutil.rmtree(dir_path)
 
 
+class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        SCGTaxonomyContext.__init__(self, self.args)
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.write_buffer_size = int(A('write_buffer_size') if A('write_buffer_size') is not None else 1000)
+        self.contigs_db_path = A('contigs_db')
+        self.num_parallel_processes = int(A('num_parallel_processes')) if A('num_parallel_processes') else 1
+        self.num_threads = int(A('num_threads')) if A('num_threads') else 1
+
+        self.max_target_seqs = 20
+        self.evalue = 1e-05
+        self.min_pct_id = 90
+
+        self.initialized = False
+
+        self.metagenome = False
+
+        self.taxonomic_levels_parser = dict([(l.split('_')[1][0], l) for l in self.levels_of_taxonomy])
+
+        self.SCG_DB_PATH = lambda SCG: os.path.join(self.search_databases_dir_path, SCG)
+        self.SCG_FASTA_DB_PATH = lambda SCG: os.path.join(self.search_databases_dir_path,
+                                                          [db for db in os.listdir(self.search_databases_dir_path) if db.endwith(".dmnd")])
+
+        self.sanity_check()
+
+        self.taxonomy_dict = OrderedDict()
+
+
+    def sanity_check(self):
+        if not os.path.exists(self.SCGs_taxonomy_data_dir):
+            raise ConfigError("Anvi'o could not find the data directory for the single-copy core genes taxonomy\
+                               setup. You may need to run `anvi-setup-scg-databases`, or provide a directory path\
+                               where SCG databases are set up. This is the current path anvi'o is considering (which\
+                               can be changed via the `--scgs-taxonomy-data-dir` parameter): '%s'" % (self.SCGs_taxonomy_data_dir))
+
+        if not os.path.exists(self.accession_to_taxonomy_file_path):
+            raise ConfigError("While your SCG taxonomy data dir seems to be in place, it is missing at least one critical\
+                               file (in this case, the file to resolve accession IDs to taxon names). You may need to run\
+                               the program `anvi-setup-scg-databases` with the `--reset` flag to set things right again.")
+
+        missing_SCG_databases = [SCG for SCG in self.SCGs if not os.path.exists(self.SCGs[SCG]['db'])]
+        if len(missing_SCG_databases):
+            raise ConfigError("Even though anvi'o found the directory for databases for taxonomy stuff,\
+                               your setup seems to be missing %d of %d databases required for everything to work\
+                               with the current genes configuration of this class. Here are the list of\
+                               genes for which we are missing databases: '%s'." % \
+                                        (len(missing_SCG_databases), len(self.SCGs), ', '.join(missing_SCG_databases)))
+
+    def init(self):
+        if self.initialized:
+            return
+
+        # initialize taxonomy dict. we should do this through a database in the long run.
+        with open(self.accession_to_taxonomy_file_path, 'r') as taxonomy_file:
+            self.progress.new("Loading taxonomy file")
+            for accession, taxonomy_text in [l.strip('\n').split('\t') for l in taxonomy_file.readlines() if not l.startswith('#') and l]:
+                # taxonomy_text kinda looks like this:
+                #
+                #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Pseudomonadales;f__Moraxellaceae;g__Acinetobacter;s__Acinetobacter sp1
+                #
+                d = {}
+                for token, taxon in [e.split('__', 1) for e in taxonomy_text.split(';')]:
+                    if token in self.taxonomic_levels_parser:
+                        d[self.taxonomic_levels_parser[token]] = taxon
+
+                self.taxonomy_dict[accession] = d
+
+                self.progress.increment()
+
+        self.progress.end()
+
+        self.initialized = True
+
+
+    def get_SCG_sequences_dict_from_contigs_db(self):
+        """Returns a dictionary of all HMM hits per SCG of interest"""
+
+        contigs_db = ContigsSuperclass(self.args, r=self.run, p=self.progress)
+        splits_dict = {contigs_db.a_meta['project_name']: list(contigs_db.splits_basic_info.keys())} 
+
+        s = hmmops.SequencesForHMMHits(self.args.contigs_db, sources=self.hmm_source_for_scg_taxonomy)
+        hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=True)
+        hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(self.default_scgs_for_taxonomy))
+
+        if not len(hmm_sequences_dict):
+            raise ConfigError("Your selections returned an empty list of genes to work with :/")
+
+        self.run.info('Hits', '%d hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
+
+        scg_sequences_dict = {}
+        for entry_id in hmm_sequences_dict:
+            entry = hmm_sequences_dict[entry_id]
+
+            scg_name = entry['gene_name']
+            if scg_name in scg_sequences_dict:
+                scg_sequences_dict[scg_name][entry_id] = entry
+            else:
+                scg_sequences_dict[scg_name] = {entry_id: entry}
+
+        return scg_sequences_dict 
+
+
+    def populate_contigs_database(self):
+        """Populates SCG taxonomy tables in a contigs database"""
+
+        self.init()
+
+        # this is the dictionary that shows all hits for each SCG of interest
+        scg_sequences_dict = self.get_SCG_sequences_dict_from_contigs_db()
+
+        num_listeprocess = len(scg_sequences_dict)
+
+        aligners = "Diamond"
+
+        self.run.info('HMM PROFILE', "Bacteria 71")
+        self.run.info('Taxonomy', self.accession_to_taxonomy_file_path)
+        self.run.info('Database reference', self.search_databases_dir_path)
+        self.run.info('Number of SCGs', len(scg_sequences_dict))
+
+        self.run.warning('', header='Parameters for aligments with %s for taxonomy' % aligners, lc='green')
+        self.run.info('Blast type', "Blastp")
+        self.run.info('Maximum number of target sequences', self.max_target_seqs)
+        self.run.info('Minimum bit score to report alignments', self.min_pct_id)
+        self.run.info('Number aligment running at same time', self.num_parallel_processes)
+        self.run.info('Number of CPUs will be used for each aligment', self.num_threads)
+
+        self.tables_for_taxonomy = TablesForTaxoestimation(self.contigs_db_path, self.run, self.progress)
+        self.tables_for_taxonomy.delete_contents_of_table(t.scg_taxonomy_table_name)
+
+        self.progress.new('Computing SCGs aligments', progress_total_items=num_listeprocess)
+        self.progress.update('Initializing %d process...' % int(self.num_parallel_processes))
+
+        manager = multiprocessing.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
+
+        blastp_search_output = []
+        table_index=0
+        self.genes_estimation_output=[]
+
+        for SCG in scg_sequences_dict:
+            sequence = ""
+            for entry in scg_sequences_dict[SCG].values():
+                if 'sequence' not in entry or 'gene_name' not in entry:
+                    raise ConfigError("The `get_filtered_dict` function got a parameter that\
+                                       does not look like the way we expected it. This function\
+                                       expects a dictionary that contains keys `gene_name` and `sequence`.")
+
+                sequence = sequence + ">" + str(entry['gene_callers_id']) + "\n" + entry['sequence'] + "\n"
+                entry['hits'] = []
+
+            input_queue.put([SCG, sequence])
+
+        workers = []
+        for i in range(0, int(self.num_parallel_processes)):
+            worker = multiprocessing.Process(target=self.get_raw_blast_hits_multi, args=(input_queue, output_queue))
+
+            workers.append(worker)
+            worker.start()
+
+        finish_process = 0
+        while finish_process < num_listeprocess:
+            try:
+                blastp_search_output += output_queue.get()
+
+                if self.write_buffer_size > 0 and len(blastp_search_output) % self.write_buffer_size == 0:
+                    table_index = self.tables_for_taxonomy.alignment_result_to_congigs(table_index, blastp_search_output)
+                    blastp_search_output = []
+
+                finish_process += 1
+
+                self.progress.increment(increment_to=finish_process)
+                self.progress.update("Processed %s of %s SGCs aligment in %s processus with %s cores." \
+                                        % (finish_process, num_listeprocess, int(self.num_parallel_processes), self.num_threads))
+
+            except KeyboardInterrupt:
+                print("Anvi'o profiler recieved SIGINT, terminating all processes...")
+                break
+
+        for worker in workers:
+            worker.terminate()
+
+        table_index = self.tables_for_taxonomy.alignment_result_to_congigs(table_index,blastp_search_output)
+        self.progress.end()
+
+
+    def show_hits(self, hits_per_gene, SCG):
+        self.run.warning(None, header='%s' % SCG, lc="green")
+
+        if SCG in hits_per_gene:
+            header = ['%id', 'bitscore', 'taxonomy']
+            table = []
+
+            for hit in hits:
+                table.append([hit['pident'], hit['bitscore'], ' / '.join(self.taxonomy_dict[hit['accession']].values())])
+
+            print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+        else:
+            self.run.info_single("No hits :/")
+
+
+    def get_raw_blast_hits_multi(self, input_queue, output_queue):
+        while True:
+            scg_name, fasta_formatted_scg_sequence = input_queue.get(True)
+            target_database_path = self.SCGs[scg_name]['db']
+
+            diamond = Diamond(target_database_path, run=run_quiet, progress=progress_quiet)
+            diamond.max_target_seqs = self.max_target_seqs
+            diamond.evalue = self.evalue
+            diamond.min_pct_id = self.min_pct_id
+            diamond.num_threads = self.num_threads
+
+            blastp_search_output = diamond.blastp_stdin_multi(fasta_formatted_scg_sequence)
+
+            hits_per_gene = {}
+            genes_estimation_output=[]
+
+            for blastp_hit in blastp_search_output.split('\n'):
+                if len(blastp_hit) and not blastp_hit.startswith('Query'):
+                    fields = blastp_hit.split('\t')
+                    gene_callers_id = int(fields[0])
+                    hit = [dict(zip(['accession', 'pident', 'bitscore'], [fields[1], float(fields[2]), float(fields[11])]))]
+
+                    if gene_callers_id not in hits_per_gene:
+                        hits_per_gene[gene_callers_id] = {}
+
+                    if scg_name not in hits_per_gene[gene_callers_id]:
+                        hits_per_gene[gene_callers_id][scg_name] = []
+
+                    hits_per_gene[gene_callers_id][scg_name] += hit
+
+            for gene_callers_id, scg_hits in hits_per_gene.items():
+                consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(scg_hits)
+                genes_estimation_output.append([gene_callers_id, scg_name, consensus_taxonomy, taxonomy])
+
+            output_queue.put(genes_estimation_output)
+
+
+    def get_consensus_taxonomy(self, scg_hits):
+        raise ConfigError("This class does not know yet how to give consensus taxonomy")
+
+
 class lowident():
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
