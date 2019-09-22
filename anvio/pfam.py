@@ -189,13 +189,16 @@ class Pfam(object):
             column_names=['accession', 'clan', 'unknown_column1', 'unknown_column2', 'function'])
 
 
-    def get_function_from_catalog(self, accession):
+    def get_function_from_catalog(self, accession, ok_if_missing_from_catalog=False):
         if '.' in accession:
             accession = accession.split('.')[0]
 
         if not accession in self.function_catalog:
-            # TO DO: messsages
-            raise ConfigError("It seems hmmscan found a accession id that does not exists in Pfam catalog, Id: %s" % accession)
+            if ok_if_missing_from_catalog:
+                return "Unkown function with PFAM accession %s" % accession
+            else:
+                raise ConfigError("It seems hmmscan found an accession id that does not exists\
+                                   in Pfam catalog: %s" % accession)
 
         return self.function_catalog[accession]['function'] # maybe merge other columns too?
 
@@ -233,7 +236,7 @@ class Pfam(object):
                 'gene_callers_id': hmm_hit['gene_callers_id'],
                 'source': 'Pfam',
                 'accession': hmm_hit['gene_hmm_id'],
-                'function': self.get_function_from_catalog(hmm_hit['gene_hmm_id']),
+                'function': self.get_function_from_catalog(hmm_hit['gene_hmm_id'], ok_if_missing_from_catalog=True),
                 'e_value': hmm_hit['e_value'],
             }
 

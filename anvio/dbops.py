@@ -1003,7 +1003,7 @@ class PanSuperclass(object):
         you specified. This looks like a shitty design, but was required to support exploratory / ad hoc user wishes through
         both command line and interactive anvi'o interfaces.
 
-        By default, this funciton will report amino acid sequences. You can ask for DNA sequences if setting
+        By default, this function will report amino acid sequences. You can ask for DNA sequences if setting
         the flag `report_DNA_sequences` True.
 
         """
@@ -1095,7 +1095,7 @@ class PanSuperclass(object):
             self.run.warning("The function `compute_homogeneity_indices_for_gene_clusters` did not receive any gene\
                               cluster names to work with. If you are a programmer, you should know that you are\
                               doing it wrong. If you are a user, please get in touch with a programmer because this\
-                              is not normal. This funciton will now return prematurely without computing anything :(")
+                              is not normal. This function will now return prematurely without computing anything :(")
             return None
 
         if self.args.quick_homogeneity:
@@ -2901,7 +2901,7 @@ class ProfileSuperclass(object):
             if self.p_meta['merged']:
                 table_data = profile_db.db.get_table_as_dict('%s_splits' % table_name, omit_parent_column=True)
             else:
-                table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest=table_name, omit_parent_column=True))
+                table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest=[table_name, ], omit_parent_column=True))
 
             for bin_id in collection:
                 # populate averages per bin
@@ -2923,7 +2923,7 @@ class ProfileSuperclass(object):
         if self.p_meta['merged']:
             coverage_table_data = profile_db.db.get_table_as_dict('mean_coverage_splits', omit_parent_column=True)
         else:
-            coverage_table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest="mean_coverage", omit_parent_column=True))
+            coverage_table_data = SINGLE_P(profile_db.db.get_table_as_dict('atomic_data_splits', columns_of_interest=["mean_coverage", ], omit_parent_column=True))
 
         self.bin_percent_recruitment_per_sample = {}
         if self.p_meta['blank']:

@@ -1344,7 +1344,7 @@ class ContigSummarizer(SummarizerSuperClass):
         if len(missing_keys):
             raise ConfigError("We have a big problem. I am reporting from get_contigs_db_info_dict. This function must\
                                 produce a dictionary that meets the requirements defined in the constants module of anvi'o\
-                                for 'essential genome info'. But when I look at the resulting dictionary this funciton is\
+                                for 'essential genome info'. But when I look at the resulting dictionary this function is\
                                 about to return, I can see it is missing some stuff :/ This is not a user error, but it needs\
                                 the attention of an anvi'o developer. Here are the keys that should have been in the results\
                                 but missing: '%s'" % (', '.join(missing_keys)))
