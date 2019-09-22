@@ -232,8 +232,6 @@ class Diamond:
         if self.evalue:
             cmd_line.extend(['--evalue', self.evalue])
 
-
-
         self.run.info('DIAMOND blastp stdin cmd', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
 
         self.progress.new('DIAMOND')
@@ -245,6 +243,7 @@ class Diamond:
 
         self.run.info('Diamond blastp results', '%d lines were returned from STDIN call' % len(output))
         return(output)
+
 
     def makedb_stdin(self, sequence, output_file_path=None):
         self.progress.new('DIAMOND')
