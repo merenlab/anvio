@@ -164,6 +164,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
         self.num_threads = A('num_threads')
 
         self.sanity_check()
+        SCGTaxonomyContext.__init__(self, self.args)
 
         self.run.info("Local directory to setup", self.SCGs_taxonomy_data_dir)
         self.run.info("Reset the directory first", self.reset, mc="red")
