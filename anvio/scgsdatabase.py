@@ -101,13 +101,6 @@ locally_known_HMMs_to_remote_FASTAs = {'Ribosomal_S2': ['ar122_TIGR01012.faa', '
                                        }
 
 
-class SetUpSCGTaxonomyDatabase:
-    def __init__(self, args, run=run, progress=progress):
-        self.args = args
-        self.run = run
-        self.progress = progress
-
-        # hard-coded GTDB variables
 class SCGTaxonomyContext(object):
     """The purpose of this base class is ot define file paths and constants for all single-copy
        core gene taxonomy operations.
@@ -118,7 +111,6 @@ class SCGTaxonomyContext(object):
         self.target_database = "GTDB"
         self.target_database_URL = "https://data.ace.uq.edu.au/public/gtdb/data/releases/latest/"
         self.target_database_files = ['VERSION', 'ar122_msa_individual_genes.tar.gz', 'ar122_taxonomy.tsv',
-                                    'bac120_msa_individual_genes.tar.gz', 'bac120_taxonomy.tsv']
                                       'bac120_msa_individual_genes.tar.gz', 'bac120_taxonomy.tsv']
 
         # some variables from anvi'o constants
@@ -158,6 +150,11 @@ class SCGTaxonomyContext(object):
                                a directory for SCG taxonomy data to be stored :( This variable can't be None.")
 
 
+class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
 
         # user accessible variables
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
