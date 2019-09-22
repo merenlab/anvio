@@ -45,6 +45,7 @@ default_scgs_for_taxonomy = ['Ribosomal_S2',
                              'Ribosomal_L22',
                              'ribosomal_L24',
                              'Ribosomal_L27A']
+default_hmm_source_for_scg_taxonomy = set(["Bacteria_71"])
 
 default_port_number = int(os.environ['ANVIO_PORT']) if 'ANVIO_PORT' in os.environ else 8080
 
