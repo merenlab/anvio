@@ -106,13 +106,6 @@ hmm_hits_splits_table_name             = 'hmm_hits_in_splits'
 hmm_hits_splits_table_structure        = ['entry_id', 'hmm_hit_entry_id', 'split', 'percentage_in_split', 'source']
 hmm_hits_splits_table_types            = [ 'numeric',      'numeric'    ,  'text',       'numeric'      ,  'text' ]
 
-# following table keeps blast hit for taxonomy estimation. they require the hmm hits to be made.
-
-
-collection_taxonomy_estimation_name             = 'collection_taxonomy_estimation'
-collection_taxonomy_estimation_structure        = ['entry_id', 'collection_name', 'bin_name', 'source'  , 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-collection_taxonomy_estimation_types            = [ 'numeric',   'text'   ,        'text'  ,  'text',      'text',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
-
 scg_taxonomy_table_name      = 'scg_taxonomy'
 scg_taxonomy_structure = ['id'  ,    'gene_caller_id',      'gene_name',  'source' ,  'accession' , 'pourcentage_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 scg_taxonomy_types     = ['numeric', 'numeric' ,             'text'    ,  'text'   ,  'text'   ,       'text'          ,    'text'  ,   'text' ,  'text'  ,  'text'   ,  'text'  ,  'text'  ,   'text'   ]

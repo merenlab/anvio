@@ -369,29 +369,6 @@ class SCGsTaxonomy(TaxonomyEstimation):
         return hits_per_gene
 
 
-    def estimate_taxonomy(self):
-        if self.metagenome:
-            self.estimate_taxonomy_for_metagenome()
-
-        if self.profile_db_path:
-            entry_id = 0
-            entries_db_profile = []
-            dictionary_bin_taxonomy_estimation=dict()
-
-            for bin_id, SCGs_hit_per_gene in hits_per_gene.items():
-                consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(SCGs_hit_per_gene, bin_id)
-                dictionary_bin_taxonomy_estimation[bin_id]={"consensus_taxonomy": consensus_taxonomy,
-                                                            "taxonomy_use_for_consensus": taxonomy}
-
-                entries_db_profile += [(tuple([entry_id, self.collection_name, bin_id, source] + list(consensus_taxonomy.values())))]
-                entry_id += 1
-
-                self.tables_for_taxonomy.taxonomy_estimation_to_profile(
-                    entries_db_profile)
-
-            return dictionary_bin_taxonomy_estimation
-
-
     def estimate_taxonomy_for_metagenome(self, source="GTDB"):
         self.run.warning('', header='Taxonomy estimation for %s' %
         self.contigs_db_path, lc='green')
