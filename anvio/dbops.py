@@ -2819,7 +2819,7 @@ class ProfileSuperclass(object):
         if self.p_meta['blank']:
             raise ConfigError("The anvi'o profile db %s seems to be a blank profile database. Blank\
                                profiles do not have any coverage values of any sorts, so whatever you\
-                               were trying to do with this database will not work :/" % (profile_db_path))
+                               were trying to do with this database will not work :/" % (self.profile_db_path))
 
         if splits_mode and report_contigs:
             raise ConfigError("--splits-mode and --report-contigs flags are incompatible. Pick one.")
