@@ -5,24 +5,18 @@
 
 """
 
-import re
 import os
-import sys
-import gzip
 import glob
 import shutil
 import pickle
-import shutil
-import subprocess
 import pandas as pd
 import multiprocessing
 
 from tabulate import tabulate
-from collections import Counter, OrderedDict
+from collections import OrderedDict
 
 import anvio
 import anvio.tables as t
-import anvio.pfam as pfam
 import anvio.fastalib as u
 import anvio.utils as utils
 import anvio.hmmops as hmmops
@@ -32,7 +26,6 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.dbops import ContigsSuperclass
-from anvio.errors import FilesNPathsError
 from anvio.drivers.diamond import Diamond
 from anvio.tables.scgtaxonomy import TableForSCGTaxonomy
 
@@ -756,9 +749,9 @@ class lowident():
 
         total_num_processes = len(listeprocess)
 
-        progress.new('Aligning amino acid sequences for genes in gene clusters',
+        self.progress.new('Aligning amino acid sequences for genes in gene clusters',
                      progress_total_items=total_num_processes)
-        progress.update('...')
+        self.progress.update('...')
 
         for pathquery in listeprocess:
             input_queue.put(pathquery)
@@ -779,8 +772,8 @@ class lowident():
                     dico_low_ident[taxo_ident_item['taxonomy']] = taxo_ident_item['cutoff']
 
                 num_finished_processes += 1
-                progress.increment()
-                progress.update("Processed %d of %d non-singleton GCs in 10 threads." % (num_finished_processes, total_num_processes))
+                self.progress.increment()
+                self.progress.update("Processed %d of %d non-singleton GCs in 10 threads." % (num_finished_processes, total_num_processes))
 
             except KeyboardInterrupt:
                 print("Anvi'o profiler recieved SIGINT, terminating all processes...")
@@ -789,7 +782,7 @@ class lowident():
         for worker in workers:
             worker.terminate()
 
-        progress.end()
+        self.progress.end()
 
         return dico_low_ident
 
@@ -804,7 +797,6 @@ class lowident():
             listindex = []
             riboname = genes.replace(".faa", "")
             path_new_fasta_SCG = os.path.join(self.output_directory, taxonomy)
-            pathpickle_dico_ident = path_new_fasta_SCG + "_dico_low_ident.pickle"
 
             if not os.path.exists(path_new_fasta_SCG):
                 listindex = self.match_ident(fasta, codes, listindex)

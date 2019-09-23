@@ -1,29 +1,14 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 
-import os
-import hashlib
-import traceback
-import random
-import string
-from collections import OrderedDict
-
 import anvio
 import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
-import anvio.ccollections as ccollections
-
-import anvio.hmmops as hmmops
 
 from anvio.errors import ConfigError
-from anvio.drivers.hmmer import HMMer
 from anvio.tables.tableops import Table
-from anvio.parsers import parser_modules
-from anvio.dbops import ContigsSuperclass
-from anvio.tables.genecalls import TablesForGeneCalls
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -94,16 +79,6 @@ class TableForSCGTaxonomy(Table):
         return(accession)
 
 
-    def taxonomy_estimation_to_congis(self,possibles_taxonomy):
-        try:
-            self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-            self.database.insert_many(t.scg_taxonomy_table_name, possibles_taxonomy)
-        except:
-            self.run.warning(traceback.print_exc(), header='Anvi\'o fail the enter the result in %s' % self.db_pat, lc="red")
-        finally:
-            self.database.disconnect()
-
-
     def get_data_for_taxonomy_estimation(self):
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
@@ -112,7 +87,6 @@ class TableForSCGTaxonomy(Table):
         dictonnary_taxonomy_by_index=self.database.get_table_as_dict(t.scg_taxonomy_table_name)
         self.database.disconnect()
         if not len(dictonnary_taxonomy_by_index):
-            traceback.print_exc()
             raise ConfigError("Your contigs database does not seem to contain any information anvi'o can use to\
                                estimate taxonomy of anything. Please try running the program 'anvi-run-scg-taxonomy'\
                                first.")
