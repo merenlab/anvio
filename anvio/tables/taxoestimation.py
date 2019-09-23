@@ -101,6 +101,14 @@ class TablesForTaxoestimation(Table):
         return table_index
 
 
+    def update_self_value(self):
+        """Updates the self table in contigs db to clarify that scg taxonomy were run"""
+
+        self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        self.database.update_meta_value("scg_taxonomy_was_run", True)
+        self.database.disconnect()
+
+
     def get_accession(self,taxonomy):
         for level, taxon in reversed(list(taxonomy.items())):
             if taxon == "NA" :
