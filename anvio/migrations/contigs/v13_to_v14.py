@@ -14,9 +14,9 @@ from anvio.errors import ConfigError
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
 
-scg_taxonomy_table_name      = 'scg_taxonomy'
-scg_taxonomy_structure = ['id'  ,    'gene_caller_id',      'gene_name',  'source' ,  'accession' , 'pourcentage_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-scg_taxonomy_types     = ['numeric', 'numeric' ,             'text'    ,  'text'   ,  'text'   ,       'text'          ,    'text'  ,   'text' ,  'text'  ,  'text'   ,  'text'  ,  'text'  ,   'text'   ]
+scg_taxonomy_table_name                = 'scg_taxonomy'
+scg_taxonomy_structure                 = ['entry_id', 'gene_callers_id', 'gene_name', 'accession', 'percent_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+scg_taxonomy_types                     = ['numeric' ,     'numeric'    ,    'text'  ,    'text'  ,      'text'       ,   'text'  ,   'text'  ,   'text' ,  'text'  ,   'text'  ,   'text' ,   'text'   ]
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -31,9 +31,21 @@ def migrate(db_path):
     if str(contigs_db.get_version()) != current_version:
         raise ConfigError("Version of this contigs database is not %s (hence, this script cannot really do anything)." % current_version)
 
-    progress.new("Actualyse databases ")
+    progress.new("Creating a new table for SCG taxonomy")
     progress.update("...")
 
+    # just to be on the safe side.
+    try:
+        contigs_db.drop_table(scg_taxonomy_table_name)
+    except:
+        pass
+
+    try:
+        contigs_db.remove_meta_key_value_pair('scg_taxonomy_was_run')
+    except:
+        pass
+
+    contigs_db.set_meta_value('scg_taxonomy_was_run', False)
     contigs_db.create_table(scg_taxonomy_table_name, scg_taxonomy_structure, scg_taxonomy_types)
 
     progress.update("Updating version")
@@ -45,7 +57,7 @@ def migrate(db_path):
 
     progress.end()
     run.info_single("The contigs database is now %s. This upgrade added one more table to your contigs database\
-                     so it can store additional information about the taxonomic composition of SCGs\
+                     so it can store additional information about the taxonomic affiliation of SCGs\
                      in it." % (next_version), nl_after=1, nl_before=1, mc='green')
 
 
