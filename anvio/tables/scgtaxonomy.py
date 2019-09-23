@@ -57,8 +57,10 @@ class TableForSCGTaxonomy(Table):
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
 
+        self.set_next_available_id(t.scg_taxonomy_table_name)
 
-    def add(self, entry_id, blastp_search_output):
+
+    def add(self, blastp_search_output):
         """Incrementally adds new hits to a contigs database.
 
            It is essential to run the member functio `update_self_value` once adding new hits are complete.
@@ -74,13 +76,10 @@ class TableForSCGTaxonomy(Table):
                 continue
 
             for scg_hit in scg_hits:
-                entry_id += 1
-                entries.append([entry_id, gene_callers_id, scg_name] + [scg_hit[f] for f in t.scg_taxonomy_structure[3:]])
+                entries.append([self.next_id(t.scg_taxonomy_table_name), gene_callers_id, scg_name] + [scg_hit[f] for f in t.scg_taxonomy_structure[3:]])
 
         self.database.insert_many(t.scg_taxonomy_table_name, entries)
         self.database.disconnect()
-
-        return entry_id
 
 
     def update_self_value(self):
