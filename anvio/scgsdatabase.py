@@ -136,6 +136,32 @@ class SCGTaxonomyContext(object):
             self.sanity_check()
 
 
+    def update_dict_with_taxonomy(self, d, mode=None):
+        """Takes a dictionary that includes a key `accession` and populates the dictionary with taxonomy"""
+
+        if not mode:
+            if not 'accession' in d:
+                raise ConfigError("`add_taxonomy_to_dict` is speaking: the dictionary sent here does not have a member\
+                                   with key `accession`.")
+
+            if d['accession'] in self.accession_to_taxonomy_dict:
+                d.update(self.accession_to_taxonomy_dict[d['accession']])
+            else:
+                d.update(self.accession_to_taxonomy_dict['unknown_accession'])
+
+        elif mode == 'list_of_dicts':
+            if len([entry for entry in d if 'accession' not in entry]):
+                raise ConfigError("`add_taxonomy_to_dict` is speaking: you have a bad formatted data here :/")
+
+            for entry in d:
+                print(self.taxonomy_dict[entry['accession']])
+
+        else:
+            raise ConfigError("An unknown mode (%s) is setn to `add_taxonomy_to_dict` :/" % (mode))
+
+        return d
+
+
     def sanity_check(self):
         if sorted(list(locally_known_HMMs_to_remote_FASTAs.keys())) != sorted(self.default_scgs_for_taxonomy):
             raise ConfigError("Oh no. The SCGs designated to be used for all SCG taxonomy tasks in the constants.py\
