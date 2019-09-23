@@ -22,8 +22,8 @@ __description__ = "Run Pfam on Contigs Database."
 
 @time_program
 def main(args):
-    pfam = pfam.Pfam(args)
-    pfam.process()
+    p = pfam.Pfam(args)
+    p.process()
 
 
 if __name__ == '__main__':
