@@ -385,6 +385,9 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
 
         self.taxonomy_dict = OrderedDict()
 
+        self.mutex = multiprocessing.Lock()
+
+
 
     def sanity_check(self):
         if not os.path.exists(self.SCGs_taxonomy_data_dir):
@@ -547,15 +550,18 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         self.progress.end()
 
 
-    def show_hits(self, hits_per_gene, SCG):
-        self.run.warning(None, header='%s' % SCG, lc="green")
+    def show_hits_gene_callers_id(self, gene_callers_id, scg_name, hits):
+        self.progress.reset()
+        self.run.warning(None, header='Hits for gene caller id %s' % gene_callers_id, lc="green")
 
-        if SCG in hits_per_gene:
-            header = ['%id', 'bitscore', 'taxonomy']
+        if len(hits):
+            header = ['%id', 'bitscore', 'accession', 'taxonomy']
             table = []
 
+            self.run.info_single("For '%s'" % scg_name, nl_before=1, nl_after=1)
+
             for hit in hits:
-                table.append([hit['pident'], hit['bitscore'], ' / '.join(self.taxonomy_dict[hit['accession']].values())])
+                table.append([hit['percent_identity'], hit['bitscore'], hit['accession'], ' / '.join([hit[l] if hit[l] else '' for l in self.levels_of_taxonomy])])
 
             print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
         else:
@@ -595,6 +601,13 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
             for gene_callers_id, scg_hits in hits_per_gene.items():
                 consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(scg_hits)
                 genes_estimation_output.append([gene_callers_id, scg_name, consensus_taxonomy, taxonomy])
+
+                if anvio.DEBUG:
+                    # avoid race conditions when priting this information when `--debug` is true:
+                    with self.mutex:
+                        self.progress.reset()
+                        self.show_hits_gene_callers_id(gene_callers_id, scg_name, scg_raw_hits)
+
 
             output_queue.put(genes_estimation_output)
 
