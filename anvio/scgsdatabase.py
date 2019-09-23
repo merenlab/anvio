@@ -14,8 +14,10 @@ import shutil
 import pickle
 import shutil
 import subprocess
+import pandas as pd
 import multiprocessing
 
+from tabulate import tabulate
 from collections import Counter, OrderedDict
 
 import anvio
@@ -465,7 +467,7 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
             else:
                 scg_sequences_dict[scg_name] = {entry_id: entry}
 
-        return scg_sequences_dict 
+        return scg_sequences_dict
 
 
     def populate_contigs_database(self):
@@ -474,16 +476,11 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         # this is the dictionary that shows all hits for each SCG of interest
         scg_sequences_dict = self.get_SCG_sequences_dict_from_contigs_db()
 
-        num_listeprocess = len(scg_sequences_dict)
-
-        aligners = "Diamond"
-
-        self.run.info('HMM PROFILE', "Bacteria 71")
         self.run.info('Taxonomy', self.accession_to_taxonomy_file_path)
         self.run.info('Database reference', self.search_databases_dir_path)
         self.run.info('Number of SCGs', len(scg_sequences_dict))
 
-        self.run.warning('', header='Parameters for aligments with %s for taxonomy' % aligners, lc='green')
+        self.run.warning('', header='Parameters for DIAMOND search', lc='green')
         self.run.info('Blast type', "Blastp")
         self.run.info('Maximum number of target sequences', self.max_target_seqs)
         self.run.info('Minimum bit score to report alignments', self.min_pct_id)
@@ -493,7 +490,9 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         self.tables_for_taxonomy = TablesForTaxoestimation(self.contigs_db_path, self.run, self.progress)
         self.tables_for_taxonomy.delete_contents_of_table(t.scg_taxonomy_table_name)
 
-        self.progress.new('Computing SCGs aligments', progress_total_items=num_listeprocess)
+        total_num_processes = len(scg_sequences_dict)
+
+        self.progress.new('Computing SCGs aligments', progress_total_items=total_num_processes)
         self.progress.update('Initializing %d process...' % int(self.num_parallel_processes))
 
         manager = multiprocessing.Manager()
@@ -501,8 +500,7 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         output_queue = manager.Queue()
 
         blastp_search_output = []
-        table_index=0
-        self.genes_estimation_output=[]
+        table_index = 0
 
         for SCG in scg_sequences_dict:
             sequence = ""
@@ -519,25 +517,25 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
 
         workers = []
         for i in range(0, int(self.num_parallel_processes)):
-            worker = multiprocessing.Process(target=self.get_raw_blast_hits_multi, args=(input_queue, output_queue))
+            worker = multiprocessing.Process(target=self.blast_search_scgs_worker, args=(input_queue, output_queue))
 
             workers.append(worker)
             worker.start()
 
-        finish_process = 0
-        while finish_process < num_listeprocess:
+        num_finished_processes = 0
+        while num_finished_processes < total_num_processes:
             try:
                 blastp_search_output += output_queue.get()
 
                 if self.write_buffer_size > 0 and len(blastp_search_output) % self.write_buffer_size == 0:
-                    table_index = self.tables_for_taxonomy.alignment_result_to_congigs(table_index, blastp_search_output)
+                    table_index = self.tables_for_taxonomy.add(table_index, blastp_search_output)
                     blastp_search_output = []
 
-                finish_process += 1
+                num_finished_processes += 1
 
-                self.progress.increment(increment_to=finish_process)
+                self.progress.increment(increment_to=num_finished_processes)
                 self.progress.update("Processed %s of %s SGCs aligment in %s processus with %s cores." \
-                                        % (finish_process, num_listeprocess, int(self.num_parallel_processes), self.num_threads))
+                                        % (num_finished_processes, total_num_processes, int(self.num_parallel_processes), self.num_threads))
 
             except KeyboardInterrupt:
                 print("Anvi'o profiler recieved SIGINT, terminating all processes...")
@@ -546,7 +544,9 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         for worker in workers:
             worker.terminate()
 
-        table_index = self.tables_for_taxonomy.alignment_result_to_congigs(table_index,blastp_search_output)
+        # finally the remaining hits are written to the database, and we are done
+        table_index = self.tables_for_taxonomy.add(table_index, blastp_search_output)
+
         # time to update the self table:
         self.tables_for_taxonomy.update_self_value()
 
@@ -571,7 +571,11 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
             self.run.info_single("No hits :/")
 
 
-    def get_raw_blast_hits_multi(self, input_queue, output_queue):
+    def blast_search_scgs_worker(self, input_queue, output_queue):
+        """BLAST each SCG identified in the contigs database against the corresopinding
+           target local database of GTDB seqeunces
+        """
+
         while True:
             scg_name, fasta_formatted_scg_sequence = input_queue.get(True)
             target_database_path = self.SCGs[scg_name]['db']
@@ -591,7 +595,8 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
                 if len(blastp_hit) and not blastp_hit.startswith('Query'):
                     fields = blastp_hit.split('\t')
                     gene_callers_id = int(fields[0])
-                    hit = [dict(zip(['accession', 'pident', 'bitscore'], [fields[1], float(fields[2]), float(fields[11])]))]
+                    hit = dict(zip(['accession', 'percent_identity', 'bitscore'], [fields[1], float(fields[2]), float(fields[11])]))
+                    hit = self.update_dict_with_taxonomy(hit)
 
                     if gene_callers_id not in hits_per_gene:
                         hits_per_gene[gene_callers_id] = {}
@@ -599,11 +604,20 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
                     if scg_name not in hits_per_gene[gene_callers_id]:
                         hits_per_gene[gene_callers_id][scg_name] = []
 
-                    hits_per_gene[gene_callers_id][scg_name] += hit
+                    hits_per_gene[gene_callers_id][scg_name].append(hit)
 
-            for gene_callers_id, scg_hits in hits_per_gene.items():
-                consensus_taxonomy, taxonomy = self.get_consensus_taxonomy(scg_hits)
-                genes_estimation_output.append([gene_callers_id, scg_name, consensus_taxonomy, taxonomy])
+            for gene_callers_id, scg_raw_hits in hits_per_gene.items():
+                if len(scg_raw_hits.keys()) > 1:
+                    self.run.warning("As crazy as it sounds, the gene callers id `%d` seems to have hit more than one SCG o_O Anvi'o will only use\
+                                      one of them almost absolutely randomly. Here are the SCGs the gene sequence matches: '%s'" % [s for s in scg_raw_hits.keys()])
+
+                scg_name = list(scg_raw_hits.keys())[0]
+                scg_raw_hits = scg_raw_hits[scg_name]
+
+                scg_consensus_hit = self.get_consensus_hit(scg_raw_hits)
+                scg_consensus_hit['accession'] = 'CONSENSUS'
+
+                scg_all_hits = scg_raw_hits + [scg_consensus_hit]
 
                 if anvio.DEBUG:
                     # avoid race conditions when priting this information when `--debug` is true:
@@ -734,10 +748,10 @@ class lowident():
         input_queue = manager.Queue()
         output_queue = manager.Queue()
 
-        num_listeprocess = len(listeprocess)
+        total_num_processes = len(listeprocess)
 
         progress.new('Aligning amino acid sequences for genes in gene clusters',
-                     progress_total_items=num_listeprocess)
+                     progress_total_items=total_num_processes)
         progress.update('...')
 
         for pathquery in listeprocess:
@@ -750,19 +764,17 @@ class lowident():
             workers.append(worker)
             worker.start()
 
-        finish_process = 0
-        while finish_process < num_listeprocess:
+        num_finished_processes = 0
+        while num_finished_processes < total_num_processes:
             try:
                 taxo_ident_item = output_queue.get()
 
                 if taxo_ident_item:
-                    dico_low_ident[taxo_ident_item['taxonomy']
-                                   ] = taxo_ident_item['cutoff']
+                    dico_low_ident[taxo_ident_item['taxonomy']] = taxo_ident_item['cutoff']
 
-                finish_process += 1
+                num_finished_processes += 1
                 progress.increment()
-                progress.update("Processed %d of %d non-singleton GCs in 10 threads." %
-                                (finish_process, num_listeprocess))
+                progress.update("Processed %d of %d non-singleton GCs in 10 threads." % (num_finished_processes, total_num_processes))
 
             except KeyboardInterrupt:
                 print("Anvi'o profiler recieved SIGINT, terminating all processes...")
