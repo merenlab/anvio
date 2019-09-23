@@ -78,8 +78,6 @@ gene_function_calls_table_name         = 'gene_functions'
 gene_function_calls_table_structure    = ['entry_id', 'gene_callers_id', 'source', 'accession', 'function', 'e_value']
 gene_function_calls_table_types        = [ 'numeric',     'numeric'    ,  'text' ,    'text'  ,   'text'  , 'numeric']
 
-# tables for taxonomy
-
 taxon_names_table_name                 = 'taxon_names'
 taxon_names_table_structure            = ['taxon_id', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 taxon_names_table_types                = [ 'numeric',   'text'  ,  'text'  ,  'text'  ,  'text'   ,  'text'  ,   'text'   ]
@@ -91,8 +89,6 @@ splits_taxonomy_table_types            = [ 'text',  'numeric',]
 genes_taxonomy_table_name              = 'genes_taxonomy'
 genes_taxonomy_table_structure         = ['gene_callers_id', 'taxon_id',]
 genes_taxonomy_table_types             = [    'numeric'    ,  'numeric',]
-
-# the followitn three tables keep hmm hits. they require the gene calls to be made.
 
 hmm_hits_info_table_name               = 'hmm_hits_info'
 hmm_hits_info_table_structure          = ['source', 'ref' , 'search_type', 'domain', 'genes']
@@ -113,9 +109,9 @@ scg_taxonomy_types     = ['numeric', 'numeric' ,             'text'    ,  'text'
 
 # following table keeps nt poisition info
 
-nt_position_info_table_name       = 'nt_position_info'
-nt_position_info_table_structure  = ['contig_name', 'position_info']
-nt_position_info_table_types      = [    'str'    ,      'blob'    ]
+nt_position_info_table_name            = 'nt_position_info'
+nt_position_info_table_structure       = ['contig_name', 'position_info']
+nt_position_info_table_types           = [    'str'    ,      'blob'    ]
 
 gene_level_coverage_stats_table_name      = 'gene_level_coverage_stats'
 gene_level_coverage_stats_table_structure = ['entry_id', 'gene_callers_id', 'sample_name', 'mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std', 'gene_coverage_values_per_nt', 'non_outlier_positions']
@@ -132,8 +128,8 @@ gene_level_inseq_stats_table_types     = [ 'numeric',     'numeric'    ,     'te
 ####################################################################################################
 
 item_orders_table_name               = 'item_orders'
-item_orders_table_structure         = ['name', 'type', 'data', 'additional']
-item_orders_table_types             = ['text', 'text', 'text',    'text'   ]
+item_orders_table_structure          = ['name', 'type', 'data', 'additional']
+item_orders_table_types              = ['text', 'text', 'text',    'text'   ]
 
 item_additional_data_table_name      = 'item_additional_data'
 item_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
