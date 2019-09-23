@@ -3279,7 +3279,7 @@ class ContigsDatabase:
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
             try:
-                for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called', 'splits_consider_gene_calls']:
+                for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called', 'splits_consider_gene_calls', 'scg_taxonomy_was_run']:
                     self.meta[key] = int(self.meta[key])
             except KeyError:
                 raise ConfigError("Oh no :( There is a contigs database here at '%s', but it seems to be broken :( It is very\
@@ -3526,6 +3526,7 @@ class ContigsDatabase:
             kmer_size = int(kmer_size)
         except:
             raise ConfigError("K-mer size must be an integer.")
+
         if kmer_size < 2 or kmer_size > 8:
             raise ConfigError("We like our k-mer sizes between 2 and 8, sorry! (but then you can always change the\
                                 source code if you are not happy to be told what you can't do, let us know how it goes!).")
@@ -3666,6 +3667,7 @@ class ContigsDatabase:
         self.db.set_meta_value('gene_function_sources', None)
         self.db.set_meta_value('genes_are_called', (not skip_gene_calling))
         self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))
+        self.db.set_meta_value('scg_taxonomy_was_run', False)
         self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 
