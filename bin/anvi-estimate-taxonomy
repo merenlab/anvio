@@ -4,11 +4,10 @@
 import sys
 
 import anvio
-import anvio.taxoestimation as taxoestimation
+import anvio.scgtaxonomyops as scgtaxonomyops
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
-
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -21,26 +20,19 @@ __email__ = "quentin.clayssen@gmail.com"
 __tags__ = ["metagenomics", "profile_db", "contigs_db", "taxonomy"]
 __requires__ = ['profile-db', 'contigs-db', 'scgs-taxonomy-db']
 __provides__ = ['genome-taxonomy']
-__description__ = "Estimates taxonomy at genome and metagenome level. This program is the entry point to \
-                   estimate taxonomy for a given set of contigs (i.e., all contigs in a contigs database,\
-                   or contigs described in collections as bins). For this, it uses single-copy core\
-                   gene sequences and the GTDB database." 
+__description__ = ("Estimates taxonomy at genome and metagenome level. This program is the entry point to"
+                   "estimate taxonomy for a given set of contigs (i.e., all contigs in a contigs database,"
+                   "or contigs described in collections as bins). For this, it uses single-copy core"
+                   "gene sequences and the GTDB database.")
 
 
 run = terminal.Run()
 progress = terminal.Progress()
 
+
 def main(args):
-    t = taxoestimation.SCGsTaxonomy(args)
-    if args.get_taxonomy_by_scg:
-        t.get_assignement_genes()
-    else:
-        if args.metagenome:
-            t.estimate_taxonomy_for_metagenome()
-        if args.profile_db and not args.metagenome:
-            t.show_taxonomy_estimation_bin()
-        if not args.profile_db and not args.metagenome:
-           t.show_taxonomy_estimation_single_genome()
+    t = scgtaxonomyops.SCGTaxonomyEstimator(args)
+    t.estimate()
 
 
 if __name__ == '__main__':

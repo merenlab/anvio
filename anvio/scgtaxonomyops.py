@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8
 """
-    This file contains SCGsSetup, SCGsDataBase, LowestIdentity classes.
-
+Classes to setup remote SCG databases in local, use local databases to affiliate SCGs in anvi'o
+contigs databases with taxon names, and estimate taxonomy for genomes and metagneomes.
 """
 
 import os
@@ -123,7 +123,7 @@ class SCGTaxonomyContext(object):
 
         # some dictionaries for convenience. we set them up here, but the proper place to sanity check
         # them may be somewhere else. for instance, when this class is inheritded by SetupLocalSCGTaxonomyData
-        # the paths will not point to an actual file, but when it is inherited by SetupContigsDatabaseWithSCGTaxonomy,
+        # the paths will not point to an actual file, but when it is inherited by PopulateContigsDatabaseWithSCGTaxonomy,
         # they better point to actual files.
         self.SCGs = dict([(SCG, {'db': os.path.join(self.search_databases_dir_path, SCG + '.dmnd'), 'fasta': os.path.join(self.search_databases_dir_path, SCG)}) for SCG in self.default_scgs_for_taxonomy])
 
@@ -382,7 +382,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
                 shutil.rmtree(dir_path)
 
 
-class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
+class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
@@ -411,7 +411,6 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         self.taxonomy_dict = OrderedDict()
 
         self.mutex = multiprocessing.Lock()
-
 
 
     def sanity_check(self):
