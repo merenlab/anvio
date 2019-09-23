@@ -2,38 +2,23 @@
 # -*- coding: utf-8
 
 import os
-import re
-import sys
-import copy
-import time
-import shutil
 import pickle
-import tarfile
-import argparse
 import traceback
-import multiprocessing
 import pandas as pd
 
 from copy import deepcopy
 from tabulate import tabulate
-from collections import Counter, OrderedDict
+from collections import OrderedDict
 
 import anvio
 import anvio.db as db
-import anvio.tables as t
-import anvio.fastalib as f
 import anvio.utils as utils
-import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
-import anvio.hmmopswrapper as hmmopswrapper
 
-from anvio.dbops import ContigsSuperclass
-from anvio.drivers import Aligners, driver_modules
-from anvio.drivers.diamond import Diamond
-from anvio.errors import ConfigError, FilesNPathsError
-from anvio.tables.tableops import Table
+from anvio.drivers import Aligners
+from anvio.errors import ConfigError
 from anvio.tables.taxoestimation import TablesForTaxoestimation
 from anvio.constants import levels_of_taxonomy
 
@@ -107,7 +92,6 @@ class TaxonomyEstimation:
 
     def get_consensus_taxonomy(self, SCGs_hit_per_gene, name):
         consensus_taxonomy, entry = self.solo_hits(SCGs_hit_per_gene)
-        SCG_hits_info = {}
 
         if consensus_taxonomy and entry:
             taxonomy=[{"bestSCG": name,
@@ -122,9 +106,8 @@ class TaxonomyEstimation:
 
 
     def get_matching_gene(self, SCGs_hit_per_gene):
-        matching_genes = [
-            gene for gene in SCGs_hit_per_gene if len(SCGs_hit_per_gene[gene])]
-        number_of_matching_genes = len(matching_genes)
+        matching_genes = [gene for gene in SCGs_hit_per_gene if len(SCGs_hit_per_gene[gene])]
+
         return matching_genes
 
 
@@ -266,7 +249,6 @@ class SCGsTaxonomy(TaxonomyEstimation):
         self.metagenome = True if A('metagenome') else False
 
         self.taxonomy_dict = {}
-        hits_per_gene = {}
 
         self.initialized = False
         self.sanity_check()
@@ -301,7 +283,6 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
         if self.profile_db_path:
             collection_to_split = ccollections.GetSplitNamesInBins(self.args).get_dict()
-            taxonomyestimation = TaxonomyEstimation.__init__(self, self.taxonomy_dict)
 
             self.initialized = True
 
@@ -498,7 +479,6 @@ class SCGsTaxonomy(TaxonomyEstimation):
 
         possibles_taxonomy = []
         possibles_taxonomy.append(['Genome', 'domain', 'phylum', 'class', 'order', 'family', 'genus', 'species'])
-        taxonomy_bin=self.assignation_by_bin(collection_to_split)
 
         hits_per_gene = self.get_hits_per_bin(collection_to_split)
         for bin_id, SCGs_hit_per_gene in hits_per_gene.items():
@@ -539,8 +519,6 @@ class SCGsTaxonomy(TaxonomyEstimation):
                 self.SCGs_hit_per_gene[gene_estimation['gene_name']] = []
 
             self.SCGs_hit_per_gene[gene_estimation['gene_name']] += hit
-
-        taxonomyestimation = TaxonomyEstimation.__init__(self, self.taxonomy_dict)
 
         consensus_taxonomy, taxonomy = TaxonomyEstimation.get_consensus_taxonomy(self, self.SCGs_hit_per_gene, self.contigs_db_path)
 
