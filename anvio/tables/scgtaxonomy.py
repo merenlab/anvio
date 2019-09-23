@@ -40,7 +40,7 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-class TablesForTaxoestimation(Table):
+class TableForSCGTaxonomy(Table):
     def __init__(self, db_path, run=run, progress=progress, profile_db_path=False):
         self.db_path = db_path
         self.run = run

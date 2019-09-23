@@ -34,7 +34,7 @@ from anvio.errors import ConfigError
 from anvio.dbops import ContigsSuperclass
 from anvio.errors import FilesNPathsError
 from anvio.drivers.diamond import Diamond
-from anvio.tables.taxoestimation import TablesForTaxoestimation
+from anvio.tables.scgtaxonomy import TableForSCGTaxonomy
 
 
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
@@ -487,7 +487,7 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         self.run.info('Number aligment running at same time', self.num_parallel_processes)
         self.run.info('Number of CPUs will be used for each aligment', self.num_threads)
 
-        self.tables_for_taxonomy = TablesForTaxoestimation(self.contigs_db_path, self.run, self.progress)
+        self.tables_for_taxonomy = TableForSCGTaxonomy(self.contigs_db_path, self.run, self.progress)
         self.tables_for_taxonomy.delete_contents_of_table(t.scg_taxonomy_table_name)
 
         total_num_processes = len(scg_sequences_dict)
