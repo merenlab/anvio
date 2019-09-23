@@ -132,6 +132,40 @@ class SCGTaxonomyContext(object):
         # they better point to actual files.
         self.SCGs = dict([(SCG, {'db': os.path.join(self.search_databases_dir_path, SCG + '.dmnd'), 'fasta': os.path.join(self.search_databases_dir_path, SCG)}) for SCG in self.default_scgs_for_taxonomy])
 
+        self.letter_to_level = dict([(l.split('_')[1][0], l) for l in self.levels_of_taxonomy])
+
+        self.accession_to_taxonomy_dict = None
+        if self.accession_to_taxonomy_file_path:
+            self.progress.new("Reading the accession to taxonomy file")
+            self.progress.update('...')
+
+            self.accession_to_taxonomy_dict = {}
+            with open(self.accession_to_taxonomy_file_path, 'r') as taxonomy_file:
+                for accession, taxonomy_text in [l.strip('\n').split('\t') for l in taxonomy_file.readlines() if not l.startswith('#') and l]:
+                    # taxonomy_text kinda looks like this:
+                    #
+                    #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Pseudomonadales;f__Moraxellaceae;g__Acinetobacter;s__Acinetobacter sp1
+                    #
+                    d = {}
+                    for letter, taxon in [e.split('__', 1) for e in taxonomy_text.split(';')]:
+                        if letter in self.letter_to_level:
+                            # if 'species' level taxon name does not include an underscore, it usually is simply the
+                            # assignment of the genus name as species name. which is not quite useful for our needs.
+                            # so the following if statement removes those species level annotations.
+                            if letter == 's' and '_' not in taxon:
+                                d[self.letter_to_level[letter]] = None
+                            else:
+                                d[self.letter_to_level[letter]] = taxon
+                        else:
+                            self.run.warning("Some weird letter found in '%s'. " % taxonomy_text)
+
+                    self.accession_to_taxonomy_dict[accession] = d
+            
+            # let's add one more accession for all those missing accessions
+            self.accession_to_taxonomy_dict['unknown_accession'] = dict([(taxon, None) for taxon in self.levels_of_taxonomy])
+
+            self.progress.end()
+
         if not skip_sanity_check:
             self.sanity_check()
 
@@ -371,11 +405,7 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         self.evalue = 1e-05
         self.min_pct_id = 90
 
-        self.initialized = False
-
         self.metagenome = False
-
-        self.taxonomic_levels_parser = dict([(l.split('_')[1][0], l) for l in self.levels_of_taxonomy])
 
         self.SCG_DB_PATH = lambda SCG: os.path.join(self.search_databases_dir_path, SCG)
         self.SCG_FASTA_DB_PATH = lambda SCG: os.path.join(self.search_databases_dir_path,
@@ -409,31 +439,6 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
                                genes for which we are missing databases: '%s'." % \
                                         (len(missing_SCG_databases), len(self.SCGs), ', '.join(missing_SCG_databases)))
 
-    def init(self):
-        if self.initialized:
-            return
-
-        # initialize taxonomy dict. we should do this through a database in the long run.
-        with open(self.accession_to_taxonomy_file_path, 'r') as taxonomy_file:
-            self.progress.new("Loading taxonomy file")
-            for accession, taxonomy_text in [l.strip('\n').split('\t') for l in taxonomy_file.readlines() if not l.startswith('#') and l]:
-                # taxonomy_text kinda looks like this:
-                #
-                #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Pseudomonadales;f__Moraxellaceae;g__Acinetobacter;s__Acinetobacter sp1
-                #
-                d = {}
-                for token, taxon in [e.split('__', 1) for e in taxonomy_text.split(';')]:
-                    if token in self.taxonomic_levels_parser:
-                        d[self.taxonomic_levels_parser[token]] = taxon
-
-                self.taxonomy_dict[accession] = d
-
-                self.progress.increment()
-
-        self.progress.end()
-
-        self.initialized = True
-
 
     def get_SCG_sequences_dict_from_contigs_db(self):
         """Returns a dictionary of all HMM hits per SCG of interest"""
@@ -465,8 +470,6 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
 
     def populate_contigs_database(self):
         """Populates SCG taxonomy tables in a contigs database"""
-
-        self.init()
 
         # this is the dictionary that shows all hits for each SCG of interest
         scg_sequences_dict = self.get_SCG_sequences_dict_from_contigs_db()
