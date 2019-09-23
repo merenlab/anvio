@@ -45,15 +45,8 @@ class TableForSCGTaxonomy(Table):
         self.db_path = db_path
         self.run = run
         self.progress = progress
-        self.profile_db_path = profile_db_path
 
         utils.is_contigs_db(self.db_path)
-
-        if profile_db_path:
-            utils.is_profile_db(self.profile_db_path)
-            self.profile_db_path = profile_db_path
-
-            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.db_path)
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
 
@@ -63,7 +56,7 @@ class TableForSCGTaxonomy(Table):
     def add(self, blastp_search_output):
         """Incrementally adds new hits to a contigs database.
 
-           It is essential to run the member functio `update_self_value` once adding new hits are complete.
+           It is essential to run the member function `update_self_value` once adding new hits are complete.
            At the time of writing this class w couldn't find a better way to do it.
         """
 
@@ -109,53 +102,6 @@ class TableForSCGTaxonomy(Table):
             self.run.warning(traceback.print_exc(), header='Anvi\'o fail the enter the result in %s' % self.db_pat, lc="red")
         finally:
             self.database.disconnect()
-
-
-    def taxonomy_estimation_to_profile(self,possibles_taxonomy):
-        try:
-            self.bin_database = db.DB(self.profile_db_path, utils.get_required_version_for_db(self.profile_db_path))
-            self.bin_database.insert_many(t.collection_taxonomy_estimation_name, possibles_taxonomy)
-        except:
-            self.run.warning(traceback.print_exc(), header='Anvi\'o fail the enter the result in %s' % self.profile_db_path, lc="red")
-        finally:
-            self.bin_database.disconnect()
-
-
-    def get_dic_id_bin(self, args):
-        self.bin_database = db.DB(self.profile_db_path, utils.get_required_version_for_db(self.profile_db_path))
-        self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        dic_id_bin={}
-
-        splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
-        run.info('Init', '%d splits in %d bin(s)' % (
-            sum([len(v) for v in list(splits_dict.values())]), len(splits_dict)))
-
-        self.progress.new('Load HMM resulst')
-
-        s = hmmops.SequencesForHMMHits(self.db_path)
-
-        hits_in_splits, split_name_to_bin_id = s.get_hmm_hits_in_splits(splits_dict)
-
-        dic_genes_in_splits=self.database.get_table_as_dict("genes_in_splits")
-
-        self.progress.end()
-
-        self.progress.new('Aligment result by Bin', progress_total_items=len(dic_genes_in_splits))
-
-        for split in dic_genes_in_splits.values():
-            if split['split'] in split_name_to_bin_id:
-                if split_name_to_bin_id[split['split']] not in dic_id_bin:
-                    dic_id_bin[split_name_to_bin_id[split['split']]]=[split['gene_callers_id']]
-                else:
-                    dic_id_bin[split_name_to_bin_id[split['split']]]+=[split['gene_callers_id']]
-            self.progress.increment()
-        self.progress.end()
-
-
-        self.bin_database.disconnect()
-        self.database.disconnect()
-
-        return(dic_id_bin)
 
 
     def get_data_for_taxonomy_estimation(self):
