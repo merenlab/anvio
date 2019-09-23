@@ -56,7 +56,7 @@ def timer(function):
 
 
 class TablesForTaxoestimation(Table):
-    def __init__(self, db_path, run=run, progress=progress,profile_db_path=False):
+    def __init__(self, db_path, run=run, progress=progress, profile_db_path=False):
         self.db_path = db_path
         self.run = run
         self.progress = progress
@@ -68,37 +68,34 @@ class TablesForTaxoestimation(Table):
             utils.is_profile_db(self.profile_db_path)
             self.profile_db_path = profile_db_path
 
-            utils.is_profile_db_and_contigs_db_compatible(
-                self.profile_db_path, self.db_path)
+            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.db_path)
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
 
 
-    def alignment_result_to_congigs(self, table_index, diamond_output, source="GTDB"):
+    def add(self, entry_id, blastp_search_output):
+        """Incrementally adds new hits to a contigs database.
+
+           It is essential to run the member functio `update_self_value` once adding new hits are complete.
+           At the time of writing this class w couldn't find a better way to do it.
+        """
+
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         entries=[]
-        #FIXME source problem if to much hit
-        for result in diamond_output :
-            table_index+=1
-            SCG=result[1]
-            gene_callers_id=result[0]
-            if not result[3]:
+        for gene_callers_id, scg_name, scg_hits in blastp_search_output:
+            # go back if there is nothing to do
+            if not len(scg_hits):
                 continue
-            if len(result[3]) < 5:
-                accession=self.get_accession(result[2])
-                entries+=[tuple([table_index, gene_callers_id, SCG, "Consensus", accession, result[3][0]["bestident"]]+list(result[2].values()))]
-                for consider_taxonomy in result[3]:
-                    table_index+=1
-                    entries+=[tuple([table_index, gene_callers_id, SCG, source, consider_taxonomy["accession"], consider_taxonomy["bestident"]]+ list(consider_taxonomy["taxonomy"].values()))]
-            else:
-                accession=self.get_accession(result[2])
-                entries+=[tuple([table_index, gene_callers_id, SCG, source+"_simplified", accession, result[3][0]["bestident"]]+list(result[2].values()))]
-        
+
+            for scg_hit in scg_hits:
+                entry_id += 1
+                entries.append([entry_id, gene_callers_id, scg_name] + [scg_hit[f] for f in t.scg_taxonomy_structure[3:]])
+
         self.database.insert_many(t.scg_taxonomy_table_name, entries)
         self.database.disconnect()
 
-        return table_index
+        return entry_id
 
 
     def update_self_value(self):
@@ -140,7 +137,7 @@ class TablesForTaxoestimation(Table):
             self.bin_database.disconnect()
 
 
-    def get_dic_id_bin(self,args):
+    def get_dic_id_bin(self, args):
         self.bin_database = db.DB(self.profile_db_path, utils.get_required_version_for_db(self.profile_db_path))
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         dic_id_bin={}
