@@ -40,21 +40,6 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-def timer(function):
-    import time
-
-    def timed_function(*args, **kwargs):
-        n = 1
-        start = time.time()
-        for i in range(n):
-            x = function(*args, **kwargs)
-        end = time.time()
-        print('Average time per call over {} calls for function \'{}\': {:6f} seconds'.format(
-            n, function.__name__, (end - start) / n))
-        return x
-    return timed_function
-
-
 class TablesForTaxoestimation(Table):
     def __init__(self, db_path, run=run, progress=progress, profile_db_path=False):
         self.db_path = db_path
