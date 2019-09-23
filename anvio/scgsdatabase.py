@@ -625,6 +625,7 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
                         self.progress.reset()
                         self.show_hits_gene_callers_id(gene_callers_id, scg_name, scg_raw_hits)
 
+                genes_estimation_output.append([gene_callers_id, scg_name, scg_all_hits])
 
             output_queue.put(genes_estimation_output)
 
