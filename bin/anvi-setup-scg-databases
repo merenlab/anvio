@@ -6,7 +6,7 @@ import sys
 import anvio
 import anvio.terminal as terminal
 from anvio.errors import ConfigError, FilesNPathsError
-import anvio.scgsdatabase as scgsdatabase
+import anvio.scgtaxonomyops as scgtaxonomyops
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -37,7 +37,7 @@ if __name__ == '__main__':
     args = anvio.get_args(parser)
 
     try:
-        s = scgsdatabase.SetupLocalSCGTaxonomyData(args)
+        s = scgtaxonomyops.SetupLocalSCGTaxonomyData(args)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
