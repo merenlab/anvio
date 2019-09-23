@@ -629,8 +629,14 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
             output_queue.put(genes_estimation_output)
 
 
-    def get_consensus_taxonomy(self, scg_hits):
-        raise ConfigError("This class does not know yet how to give consensus taxonomy")
+    def get_consensus_hit(self, scg_raw_hits):
+        df = pd.DataFrame.from_records(scg_raw_hits)
+
+        # all this does at this point is to find the top hit based on percent identity and return it.
+        # there are so many things that must be done here.
+        hit_with_max_percent_identity = (df.loc[df['percent_identity'].idxmax()])
+
+        return dict(hit_with_max_percent_identity)
 
 
 class lowident():
