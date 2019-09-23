@@ -102,12 +102,9 @@ hmm_hits_splits_table_name             = 'hmm_hits_in_splits'
 hmm_hits_splits_table_structure        = ['entry_id', 'hmm_hit_entry_id', 'split', 'percentage_in_split', 'source']
 hmm_hits_splits_table_types            = [ 'numeric',      'numeric'    ,  'text',       'numeric'      ,  'text' ]
 
-scg_taxonomy_table_name      = 'scg_taxonomy'
-scg_taxonomy_structure = ['id'  ,    'gene_caller_id',      'gene_name',  'source' ,  'accession' , 'pourcentage_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-scg_taxonomy_types     = ['numeric', 'numeric' ,             'text'    ,  'text'   ,  'text'   ,       'text'          ,    'text'  ,   'text' ,  'text'  ,  'text'   ,  'text'  ,  'text'  ,   'text'   ]
-
-
-# following table keeps nt poisition info
+scg_taxonomy_table_name                = 'scg_taxonomy'
+scg_taxonomy_structure                 = ['entry_id', 'gene_callers_id', 'gene_name', 'accession', 'percent_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+scg_taxonomy_types                     = ['numeric' ,     'numeric'    ,    'text'  ,    'text'          'text'      ,   'text'  ,   'text'  ,   'text' ,  'text'  ,   'text'  ,   'text' ,   'text'   ]
 
 nt_position_info_table_name            = 'nt_position_info'
 nt_position_info_table_structure       = ['contig_name', 'position_info']
