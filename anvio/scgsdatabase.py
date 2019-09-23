@@ -500,7 +500,6 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         output_queue = manager.Queue()
 
         blastp_search_output = []
-        table_index = 0
 
         for SCG in scg_sequences_dict:
             sequence = ""
@@ -528,7 +527,7 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
                 blastp_search_output += output_queue.get()
 
                 if self.write_buffer_size > 0 and len(blastp_search_output) % self.write_buffer_size == 0:
-                    table_index = self.tables_for_taxonomy.add(table_index, blastp_search_output)
+                    self.tables_for_taxonomy.add(blastp_search_output)
                     blastp_search_output = []
 
                 num_finished_processes += 1
@@ -545,7 +544,7 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
             worker.terminate()
 
         # finally the remaining hits are written to the database, and we are done
-        table_index = self.tables_for_taxonomy.add(table_index, blastp_search_output)
+        self.tables_for_taxonomy.add(blastp_search_output)
 
         # time to update the self table:
         self.tables_for_taxonomy.update_self_value()
