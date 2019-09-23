@@ -515,6 +515,9 @@ class SetupContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
             worker.terminate()
 
         table_index = self.tables_for_taxonomy.alignment_result_to_congigs(table_index,blastp_search_output)
+        # time to update the self table:
+        self.tables_for_taxonomy.update_self_value()
+
         self.progress.end()
 
 
