@@ -25,7 +25,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.dbops import ContigsSuperclass
+from anvio.dbops import ContigsSuperclass, ContigsDatabase
 from anvio.drivers.diamond import Diamond
 from anvio.tables.scgtaxonomy import TableForSCGTaxonomy
 
@@ -243,7 +243,7 @@ class SCGTaxonomyContext(object):
                 print(self.taxonomy_dict[entry['accession']])
 
         else:
-            raise ConfigError("An unknown mode (%s) is setn to `add_taxonomy_to_dict` :/" % (mode))
+            raise ConfigError("An unknown mode (%s) is set to `add_taxonomy_to_dict` :/" % (mode))
 
         return d
 
@@ -457,13 +457,13 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         self.run = run
         self.progress = progress
 
-        SCGTaxonomyContext.__init__(self, self.args)
-
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.write_buffer_size = int(A('write_buffer_size') if A('write_buffer_size') is not None else 1000)
         self.contigs_db_path = A('contigs_db')
         self.num_parallel_processes = int(A('num_parallel_processes')) if A('num_parallel_processes') else 1
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
+
+        SCGTaxonomyContext.__init__(self, self.args)
 
         self.max_target_seqs = 20
         self.evalue = 1e-05
@@ -595,7 +595,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
             self.run.info_single("For '%s'" % scg_name, nl_before=1, nl_after=1)
 
             for hit in hits:
-                table.append([hit['percent_identity'], hit['bitscore'], hit['accession'], ' / '.join([hit[l] if hit[l] else '' for l in self.levels_of_taxonomy])])
+                table.append([str(hit['percent_identity']), str(hit['bitscore']), hit['accession'], ' / '.join([hit[l] if hit[l] else '' for l in self.levels_of_taxonomy])])
 
             print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
         else:
@@ -648,15 +648,13 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
                 scg_consensus_hit = self.get_consensus_hit(scg_raw_hits)
                 scg_consensus_hit['accession'] = 'CONSENSUS'
 
-                scg_all_hits = scg_raw_hits + [scg_consensus_hit]
-
                 if anvio.DEBUG:
                     # avoid race conditions when priting this information when `--debug` is true:
                     with self.mutex:
                         self.progress.reset()
-                        self.show_hits_gene_callers_id(gene_callers_id, scg_name, scg_raw_hits)
+                        self.show_hits_gene_callers_id(gene_callers_id, scg_name, scg_raw_hits + [scg_consensus_hit])
 
-                genes_estimation_output.append([gene_callers_id, scg_name, scg_all_hits])
+                genes_estimation_output.append([gene_callers_id, scg_name, [scg_consensus_hit]])
 
             output_queue.put(genes_estimation_output)
 
