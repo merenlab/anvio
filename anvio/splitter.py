@@ -721,7 +721,7 @@ class LocusSplitter:
                                you must also specify a --search-term.")
 
         # Preventing user from looking for more than one search_term at a time
-        # Will improve funcitonality laster to allow user to provide more than one search term
+        # Will improve funcitonality later to allow user to provide more than one search term
 
         if self.search_term:
             self.search_term = self.search_term.split(',')
@@ -742,7 +742,7 @@ class LocusSplitter:
                 raise ConfigError("The block size you provided, \"%s\", is not valid.\
                                     The gene block size is defined by only one or two integers for either \
                                     a block following the search match or a block preceding and following \
-                                    the search match respectively." % self.num_genes)
+                                    the search match respectively (e.g., 3,2)." % self.num_genes)
 
             if len(self.num_genes_list) == 1:
                 self.num_genes_list = [0, self.num_genes_list[0]]
@@ -829,9 +829,9 @@ class LocusSplitter:
         self.contigs_db.init_functions()
 
         """
-        Here we will differentiate between being in flank mode or not. If NOT in flank mode, we will iterate through
-        the gene-caller-ids-of-interest and cut out the locus X amount of gene above and below the gene-caller-id
-        based on the --num-genes given by the user. If in flank mode, we will only export 1 locus based on the flanking
+        Here we will differentiate between being in default-mode OR flank-mode. If in default-mode, we will iterate through
+        the gene-caller-ids-of-interest and cut out the locus X amount of genes above and below the gene-caller-id
+        based on the --num-genes given by the user. If in flank-mode, we will only export 1 locus based on the flanking
         gene-caller-ids provided.
         """
         # default
@@ -855,17 +855,17 @@ class LocusSplitter:
                              nl_after=0)
 
             output_path_prefix = os.path.join(self.output_dir, self.output_file_prefix)
-            gene_caller_ids = list(self.gene_caller_ids_of_interest)
-            self.export_locus(output_path_prefix,None,gene_caller_ids)
+            gene_caller_ids_flank_pair = list(self.gene_caller_ids_of_interest)
+            self.export_locus(output_path_prefix,None,gene_caller_ids_flank_pair)
 
 
-    def export_locus(self, output_path_prefix, gene_callers_id=None, gene_caller_ids=None):
+    def export_locus(self, output_path_prefix, gene_callers_id=None, gene_caller_ids_flank_pair=None):
         """
-        Takes a list (gene_callers_id) or pair (gene_caller_ids) of gene-callers-ID, and exports a contigs database.
+        This function takes gene_callers_id or gene_caller_ids_flank_pair, and exports a contigs database.
 
-        If gene_callers_id is provided, export_locus will cut X above and below the gene_callers_id based
-        on self.num_genes_list. If gene_caller_ids is provided, export_locus will cut out the locus between
-        the pair provided. It is REQUIRED to provide a pair of gene-callers-ID for gene_caller_ids.
+        If gene_callers_id is provided, export_locus use --num-genes to  cut X above and below the
+        gene_callers_id. If gene_caller_ids_flank_pair is provided, export_locus will cut out the locus
+        between the pair provided. It is REQUIRED that gene_caller_ids_flank_pair is a pair of gen-callers-ID.
 
         Output path prefix should be unique for every export locus call. If the prefix you provide
         looks like this:
@@ -882,29 +882,29 @@ class LocusSplitter:
         then you have more then how to choose which contig to cut out?????????
         """
         # Confirming the user provided the right parameters for export_locus method
-        if gene_callers_id and gene_caller_ids:
-                raise ConfigError("You can only provide the gene_callers_id or gene_caller_ids (with a , delimiter).")
-        elif not (gene_callers_id or gene_caller_ids):
-            raise ConfigError("You must provide at least 1 of the following: gene_callers_id or gene_caller_ids (with a , delimiter).")
+        if gene_callers_id and gene_caller_ids_flank_pair:
+                raise ConfigError("You can only provide the gene_callers_id or gene_caller_id_pair (with a , delimiter).")
+        elif not (gene_callers_id or gene_caller_ids_flank_pair):
+            raise ConfigError("You must provide at least 1 of the following: gene_callers_id or gene_caller_id_pair (with a , delimiter).")
         # if gene_callers_id and not isinstance(gene_caller_id, int):
             # raise ConfigError("The gene_caller_id must be an integer.")
-        if gene_caller_ids:
-            if not isinstance(gene_caller_ids, list):
-                raise ConfigError("The gene_caller_ids must be integers.")
-            if len(gene_caller_ids) != 2:
-                raise ConfigError("You are in flank-mode and you provided either 1 or >2 gene-caller-ids... \
+        if gene_caller_ids_flank_pair:
+            if not isinstance(gene_caller_ids_flank_pair, list):
+                raise ConfigError("The gene_caller_ids_flank_pair must be integers.")
+            if len(gene_caller_ids_flank_pair) != 2:
+                raise ConfigError("You are in flank-mode, and you provided either 1 or >2 gene-caller-ids. \
                                    Anvi'o cannot handle this because flank-mode can only use 2 gene-caller_ids \
-                                   to cut out locus based on flanking genes (i.e. only a pair of flanking genes)! \
-                                   If you used --search-term one of your flanking gene inputs may have matched to more \
-                                   than one gene on the contig. Use `anvi-export-functions` on your CONTIGS.db and \
-                                   check for if one of your flanking genes is found twice in the genome. If so, then \
-                                   choose a different flanking gene :)")
-            if [g for g in gene_caller_ids if not isinstance(g, int) or g < 0]:
+                                   to cut out and locus  (i.e., only a pair of flanking genes)! If you \
+                                   used --search-term, one of your flanking gene inputs may have matched to \
+                                   more than one gene on the contig. Use `anvi-export-functions` on your \
+                                   CONTIGS.db and confirm if your flanking genes are single copies. If not, \
+                                   then choose different flanking genes :)")
+            if [g for g in gene_caller_ids_flank_pair if not isinstance(g, int) or g < 0]:
                 raise ConfigError("Both gene-caller_ids inputs must be integers!")
 
         # Get flanking first and last gene-caller-id of locus
-        if gene_caller_ids:
-            gene_caller_ids = list(gene_caller_ids)
+        if gene_caller_ids_flank_pair:
+            gene_caller_ids = list(gene_caller_ids_flank_pair)
             first_gene_of_the_block, last_gene_of_the_block = sorted(gene_caller_ids)
             gene_callers_id = first_gene_of_the_block # just for getting contig name from contigDB
 
@@ -933,7 +933,7 @@ class LocusSplitter:
         self.run.info("Target gene call", gene_callers_id)
         self.run.info("Target gene direction", "Forward" if D() == 1 else "Reverse", mc = 'green' if D() == 1 else 'red')
 
-        # Here we run the default way of cutting out the locus based on the anchor gene_callers_id and
+        # Here we run Default-mode and cut out the locus based on the anchor gene_callers_id and
         # cut + self.num_genes_list[0] and - self.num_genes_list[1] arount it
         if not self.is_in_flank_mode:
             gene_1 = gene_callers_id - self.num_genes_list[0] * D()
