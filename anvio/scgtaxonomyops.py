@@ -248,7 +248,28 @@ class SCGTaxonomyContext(object):
         return d
 
 
+class SCGTaxonomyEstimator(SCGTaxonomyContext):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
 
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
+        self.profile_db_path = A('profile_db')
+        self.output_file_path = A('output_file')
+        self.collection_name = A('collection_name')
+        self.bin_id = A('bin_id')
+        self.treat_as_metagenome = True if A('metagenome') else False
+
+        SCGTaxonomyContext.__init__(self, self.args)
+
+        self.run.info('Contigs DB', self.contigs_db_path)
+        self.run.info('Profile DB', self.profile_db_path)
+        self.run.info('Metagenome mode', self.treat_as_metagenome)
+
+    def estimate(self):
+        pass
 
 
 class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
