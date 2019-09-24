@@ -278,7 +278,21 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
 
     def estimate(self):
-        pass
+        """Function that works with taxonomic annotaion of SCGs to estimate taxonomy"""
+
+        if not self.initialized:
+            self.init()
+
+        if self.profile_db_path:
+            collection_to_split = ccollections.GetSplitNamesInBins(self.args).get_dict()
+            self.run.info_single("%s split names associated with %s bins of in collection '%s' have been \
+                                  successfuly recovered 🎊" % (pp(sum([len(v) for v in collection_to_split.values()])),
+                                                                 pp(len(collection_to_split)),
+                                                                 self.collection_name), nl_before=1)
+        else:
+            raise ConfigError("This class doesn't know how to deal with that yet :/")
+
+
     def init(self):
         self.init_scg_data()
 
@@ -733,6 +747,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         # for the level of taxonomy at `taxonomic_level` is higher than the minimum percent identity for all sequences
         # considered that are affiliated with final_hit[taxonomic_level]
     
+        # turn it into a Python dict before returning
         final_hit_dict = final_hit.to_dict('records')[0]
 
         return final_hit_dict
