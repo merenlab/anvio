@@ -1,5 +1,8 @@
 #!/usr/bin/env Rscript
 
+## START HERE:  if a split is missing from the variability table, will the offsets still be correct?
+
+
 ## Last update: 2019-06-20 (mooreryan)
 
 ## To run unit tests:
@@ -406,6 +409,12 @@ parse_split_coverages <- function(opts) {
     split_coverages$x_values <- split_coverages$nt_position
   }
 
+  ## We need to calculate offsets for each of the contigs in order to
+  ## link up the SNV data.  The first one would have no offset, the
+  ## 2nd would have to take into account the legth of the first
+  ## offset.  Etc.
+  contig_offsets <- get_contig_offsets(split_coverages)
+
   if (!opts$no_compression) {
     logger$debug("Compression is on")
     ## Check if the samples are big enough for compression
@@ -449,7 +458,8 @@ parse_split_coverages <- function(opts) {
   logger$info("Coverage will be capped at %d", opts$max_coverage)
   split_coverages$coverage <- cap_coverage(split_coverages$coverage, opts$max_coverage)
 
-  split_coverages
+  list(split_coverages = split_coverages,
+       contig_offsets = contig_offsets)
 }
 
 
@@ -496,15 +506,21 @@ parse_sample_data <- function(opts) {
 check_snv_data_header <- function(snv_data) {
   required_colnames <- c(
     "contig_name",
+    "split_name",
     "sample_id",
-    "pos_in_contig",
+    "pos", # this is position in the split
     "departure_from_reference",
     "competing_nts"
   )
 
-  if (any(required_colnames %nin% colnames(snv_data))) {
-    abort("bad header row in snv data file.  Required colnames include: %s",
-          paste(required_colnames, collapse = TRUE))
+  actual_colnames <- colnames(snv_data)
+
+  for (required_colname in required_colnames) {
+    if (required_colname %nin% actual_colnames) {
+      abort(paste0("column name '",
+                   required_colname,
+                   "'is required, but was not found in the SNV file."))
+    }
   }
 }
 
@@ -520,6 +536,16 @@ check_snv_proportions <- function(vals) {
   }
 }
 
+check_snv_contigs_and_splits <- function(snv_data) {
+  ## First, all split names must correspond to their contigs.
+  contig_name <- snv_data$contig_name
+  contig_from_split_name <- sub("_split_[0-9]+$", "", snv_data$split_name)
+
+  if (any(contig_name != contig_from_split_name)) {
+    abort("Not all the split names match up with the contig names!")
+  }
+}
+
 parse_snv_data <- function(opts) {
   if (is.null(opts$snv_data)) {
     snv_data <- NULL
@@ -532,6 +558,15 @@ parse_snv_data <- function(opts) {
     check_snv_data_header(snv_data)
     ## You could change the input depending on the input.
     check_snv_proportions(snv_data$departure_from_reference)
+
+    check_snv_contigs_and_splits(snv_data)
+
+    ## Change sample_id to sample_name to match the split cov file.
+    snv_data <- transform(snv_data, sample_name = snv_data$sample_id, sample_id = NULL)
+
+    ## Sort by contig, then by sample_name (TODO should this also be
+    ## sorted by sample data file ordering?)
+    snv_data <- snv_data[order(snv_data$split_name, snv_data$sample_name), ]
   }
 
   snv_data
@@ -584,46 +619,87 @@ add_sample_data <- function(split_coverages, sample_data) {
         all.x = TRUE)
 }
 
-## Contigs are offset by the length of all preceding contigs.
+## Contigs are offset by the length of all preceding contigs.  This is
+## done sample-by-sample.  Note: Most likely the contigs would have
+## the same lengths in all samples, but this function does NOT assume
+## that, hence it's probably more complicated than necessary.
+##
+## Important:  this must be run BEFORE any data reduction.
+##
 get_contig_offsets <- function(split_coverages) {
-  contig_length <- function(names, split_coverages) {
-    nrow(subset(split_coverages, split_name %in% names))
-  }
+  ## Get split_name lengths in each sample.  Returns a matrix with
+  ## samples as rows and split_name as columns.
+  contig_lengths <- tapply(
+    X = split_coverages$nt_position,
+    INDEX = list(
+      sample_name = split_coverages$sample_name,
+      split_name = split_coverages$split_name
+    ),
+    FUN = length
+  )
 
-  contigs <- levels(split_coverages$split_name)
+  nsamples <- nrow(contig_lengths)
 
-  ## Contigs will be sorted in the proper factor order.
-  contig_offsets <- lapply(seq_along(contigs), function(idx) {
-    ifelse(idx == 1,
-           0,
-           ## sum up all the preceding contig lengths
-           contig_length(contigs[1:(idx - 1)], split_coverages))
-  })
+  ## Rows will be contigs/splits and cols will be samples.  Entries
+  ## will be offset of contig/split for that sample.
+  contig_offsets <- apply(
+    contig_lengths,
+    1,
+    function(lengths) {
+      sapply(seq_along(lengths), function(contig_idx) {
+        ifelse(
+          contig_idx == 1,
+          ## The first contig has no offset.
+          0,
+          ## The rest need to sum the previous.
+          sum(lengths[1:(contig_idx - 1)])
+        )
+      })
+    }
+  )
 
-  names(contig_offsets) <- contigs
+  ## In the case of one sample, ensure that it is a data.frame.
+  contig_offsets <- as.data.frame(contig_offsets)
+  rownames(contig_offsets) <- levels(split_coverages$split_name)
+  colnames(contig_offsets) <- levels(split_coverages$sample_name)
 
   contig_offsets
 }
 
 ## Return a vec of offset snv positions.  These will match up with the
-## `x_values` of the split_coverages data.
+## `x_values` of the split_coverages data.  Output is in the same
+## order as the snv_data input.
 get_offset_snv_positions <- function(snv_data, contig_offsets) {
-  contig_names <- snv_data$contig_name
-  snv_posns <- snv_data$pos_in_contig
+  unlist(
+    Map(
+      function(sample_name, split_name, snv_pos) {
+        ## Must convert split_name and sample_name to character before
+        ## lookup as they are factors.
+        offset <- contig_offsets[as.character(split_name), as.character(sample_name)]
 
-  sapply(seq_along(contig_names), function(idx) {
-    this_name <- contig_names[[idx]]
-    this_pos <- snv_posns[[idx]]
+        if (is.null(offset)) {
+          abort("split_name: '",
+                split_name,
+                "' with sample '",
+                sample_name,
+                "' was not found in contig_offsets!")
+        }
 
-    this_offset <- contig_offsets[[this_name]]
-
-    this_pos + this_offset
-  })
+        snv_pos + offset
+      },
+      snv_data$sample_name,
+      snv_data$split_name,
+      snv_data$pos
+    )
+  )
 }
 
 ## This function is called in the main part of the script.
 parse_input_data <- function(opts) {
-  split_coverages <- parse_split_coverages(opts)
+  tmp <- parse_split_coverages(opts)
+  split_coverages <- tmp$split_coverages
+  contig_offsets <- tmp$contig_offsets
+
   sample_data <- parse_sample_data(opts)
   snv_data <- parse_snv_data(opts)
 
@@ -646,25 +722,16 @@ parse_input_data <- function(opts) {
   }
 
   if (!is.null(snv_data)) {
-    ## Check that contig names in the snv data match those in the
-    ## split coverages.  TODO contigs can be split and have names
-    ## like _split_00001.  The SNV data reports SNVs on contigs as
-    ## a whole, so you need to calculate offset for each split of
-    ## each contig.
-    if (any(levels(snv_data$contig_name) %nin%
-            levels(split_coverages$split_name))) {
-      abort("Some contig names in the SNV data file are not present in the split coverages file.  Do the names in the split coverages file end with '_split_00001' or something similar?")
+    ## Check that split_names in the snv data match those in the
+    ## split coverages file.
+    if (any(levels(snv_data$split_name) %nin% levels(split_coverages$split_name))) {
+      abort("Some split_names in the SNV data file are not present in the split coverages file.")
     }
 
-    ## We need to order the snv data in the same contig order as the
-    ## split_coverages.  Then need to convert the pos_in_contig column
-    ## of the snv_data so that it matches the x_values in the
-    ## split_coverages file.  To do this we need to calculate offsets
-    ## for each of the contigs.  The first one would have no offset,
-    ## the 2nd would have to take into account the legth of the first
-    ## offset.  Etc.
-
-    contig_offsets <- get_contig_offsets(split_coverages)
+    ## We need to order the snv data in the same split order as the
+    ## split_coverages.  Then need to convert the pos column of the
+    ## snv_data so that it matches the x_values in the split_coverages
+    ## file.
 
     snv_data$x_values <- get_offset_snv_positions(
       snv_data,
@@ -673,9 +740,10 @@ parse_input_data <- function(opts) {
   }
 
   list(split_coverages = split_coverages,
+       snv_data = snv_data,
        sample_data = sample_data,
        ## Take sample names here in case any samples were removed
-       ## above.
+       ## above in the sample_data step.
        sample_names = split_coverages$sample_name)
 }
 
@@ -699,6 +767,25 @@ area_plot <- function(dat, opts) {
     cov_plot <- cov_plot + geom_area(fill = dat$split_coverages$sample_color)
   }
 
+  if (!is.null(dat$snv_data)) {
+    max_cov <- tapply(X = dat$split_coverages$coverage, INDEX = dat$split_coverages$sample_name, FUN = max)
+    max_cov <- data.frame(max_cov = max_cov, sample_name = names(max_cov))
+
+    snv_color <- data.frame(base_pos_in_codon = 0:3, snv_color = c("black", "red", "red", "green"))
+
+    snv_plot_dat <- merge(dat$snv_data, max_cov, by = "sample_name")
+    snv_plot_dat <- merge(snv_plot_dat, snv_color, by = "base_pos_in_codon")
+
+    cov_plot <- cov_plot +
+      geom_segment(
+        data = snv_plot_dat,
+        mapping = aes(x = x_values,
+                      xend = x_values,
+                      y = 0,
+                      yend = departure_from_reference * max_cov),
+        color = snv_plot_dat$snv_color
+      )
+  }
 
   cov_plot <- cov_plot + theme_bw()
   cov_plot <- cov_plot + theme(legend.position = "none")
@@ -724,6 +811,26 @@ line_plot <- function(dat, opts) {
     cov_plot <- cov_plot + geom_line()
   } else {
     cov_plot <- cov_plot + geom_line(color = dat$split_coverages$sample_color)
+  }
+
+  if (!is.null(dat$snv_data)) {
+    max_cov <- tapply(X = dat$split_coverages$coverage, INDEX = dat$split_coverages$sample_name, FUN = max)
+    max_cov <- data.frame(max_cov = max_cov, sample_name = names(max_cov))
+
+    snv_color <- data.frame(base_pos_in_codon = 0:3, snv_color = c("black", "red", "red", "green"))
+
+    snv_plot_dat <- merge(dat$snv_data, max_cov, by = "sample_name")
+    snv_plot_dat <- merge(snv_plot_dat, snv_color, by = "base_pos_in_codon")
+
+    cov_plot <- cov_plot +
+      geom_segment(
+        data = snv_plot_dat,
+        mapping = aes(x = x_values,
+                      xend = x_values,
+                      y = 0,
+                      yend = departure_from_reference * max_cov),
+        color = snv_plot_dat$snv_color
+      )
   }
 
   cov_plot <- cov_plot + theme_bw()

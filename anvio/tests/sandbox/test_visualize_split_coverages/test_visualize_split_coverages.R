@@ -179,32 +179,40 @@ describe("sort_split_coverages()", {
 ## SNV data functions
 describe("SNV data function", {
   split_coverages <- data.frame(
-    nt_position = c(
-      0:4,
-      0:9,
-      0:3
+    nt_position = rep(
+      c(0:4, 0:9, 0:3),
+      times = 2
     ),
-    split_name = c(
-      rep("contig_1", 5),
-      rep("contig_2", 10),
-      rep("contig_3", 4)
+    split_name = rep(
+      c(rep("contig_1_split_00001", 5),
+        rep("contig_1_split_00002", 10),
+        rep("contig_2_split_00001", 4)),
+      times = 2
     ),
-    sample_name = rep("sample_1", 19),
-    x_values = 0:18
+    sample_name = c(
+      rep("sample_1", 19),
+      rep("sample_2", 19)
+    ),
+    x_values = rep(
+      0:18,
+      times = 2
+    )
   )
 
-  contig_offsets <- list(
-    contig_1 = 0,
-    contig_2 = 5, # length of contig 1
-    contig_3 = 15 # length of contig 1 + length of contig 2
+  expected_contig_offsets <- data.frame(
+    sample_1 = c(0, 5, 15),
+    sample_2 = c(0, 5, 15),
+    row.names = c("contig_1_split_00001",
+                  "contig_1_split_00002",
+                  "contig_2_split_00001")
   )
+
 
   describe("get_contig_offsets()", {
-    ## This expects data to be properly sorted.
-    it("returns list of offsets for each contig", {
-      actual <- get_contig_offsets(split_coverages)
+    it("returns a data.frame with length of contigs in samples", {
+      actual_contig_offsets <- get_contig_offsets(split_coverages)
 
-      expect_equal(actual, contig_offsets)
+      expect_equal(actual_contig_offsets, expected_contig_offsets)
     })
   })
 
@@ -213,26 +221,57 @@ describe("SNV data function", {
     ## multiple contigs, we need to update the positions in the SNV file
     ## to reflect the "total sample" x-values.
 
-    ## SNV data positions are also 0-based? (TODO CHECK THIS)
-
-    c1_pos <- c(0, 2, 4)
-    c2_pos <- c(0, 4, 9)
-    c3_pos <- c(0, 1, 3)
+    ## Technically, this should be sorted on sample, then by contig,
+    ## but it doesn't matter for the test.
     snv_data <- data.frame(
       ## Each contig has 3 SNVs, at the start, end, and somewhere in the
       ## middle.
-      contig_name = c(
-        rep("contig_1", 3),
-        rep("contig_2", 3),
-        rep("contig_3", 3)
+      split_name = c(
+        ## each has 3 SNVs and in 2 samples
+        rep("contig_1_split_00001", 3 * 2),
+        rep("contig_1_split_00002", 3 * 2),
+        rep("contig_2_split_00001", 3 * 2)
       ),
-      pos_in_contig = c(c1_pos, c2_pos, c3_pos)
+      sample_name = rep(paste0("sample_", 1:2), 3),
+      pos = c(
+        ## Contig 1
+        0, 0,
+        2, 2,
+        4, 4,
+        ## Contig 2
+        0, 0,
+        4, 4,
+        9, 9,
+        ## Contig 3 snv positions
+        0, 0,
+        1, 1,
+        3, 3
+      )
     )
 
-    it("returns a thing of offset positions", {
-      actual <- get_offset_snv_positions(snv_data, contig_offsets)
+    it("returns a vector of offset positions", {
+      actual <- get_offset_snv_positions(snv_data, expected_contig_offsets)
 
-      expected <- c(c1_pos, c2_pos + 5, c3_pos + 15)
+      c1_offset <- 0
+      c2_offset <- 5
+      c3_offset <- 15
+
+      expected <- c(
+        ## Contig 1
+        0 + c1_offset, 0 + c1_offset,
+        2 + c1_offset, 2 + c1_offset,
+        4 + c1_offset, 4 + c1_offset,
+
+        ## Contig 2
+        0 + c2_offset, 0 + c2_offset,
+        4 + c2_offset, 4 + c2_offset,
+        9 + c2_offset, 9 + c2_offset,
+
+        ## Contig 3
+        0 + c3_offset, 0 + c3_offset,
+        1 + c3_offset, 1 + c3_offset,
+        3 + c3_offset, 3 + c3_offset
+      )
 
       expect_equal(actual, expected)
     })
@@ -240,11 +279,11 @@ describe("SNV data function", {
 
 
 
-  describe("sort_snv_data()", {
+  ## describe("sort_snv_data()", {
 
-    good_snv_data <- data.frame(
-      departure_from_reference = c(0, 1, 0.234)
-    )
-  })
+  ##   good_snv_data <- data.frame(
+  ##     departure_from_reference = c(0, 1, 0.234)
+  ##   )
+  ## })
 
 })
