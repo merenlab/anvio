@@ -95,7 +95,15 @@ INFO "Export genomic locus using HMM"
 anvi-export-locus -c $output_dir/CONTIGS.db \
                   -O $output_dir/exported_locus_from_hmm \
                   -n 22,22 \
-                  -s S-AdoMet_synt_C \
+                  -s RNA_pol_Rpb6 \
+                  --use-hmm \
+                  --hmm-sources Bacteria_71
+
+INFO "Export genomic locus using HMM (multiple, only 1 expected hit)"
+anvi-export-locus -c $output_dir/CONTIGS.db \
+                  -O $output_dir/exported_locus_from_hmm \
+                  -n 22,22 \
+                  -s RNA_pol_Rpb6,fake_gene \
                   --use-hmm \
                   --hmm-sources Bacteria_71
 
@@ -131,6 +139,12 @@ anvi-export-locus -c $output_dir/CONTIGS.db \
                   -O $output_dir/exported_locus_from_functions \
                   -n 22,22 \
                   -s NusB
+
+INFO "Export genomic locus using functional annotation search (multiple; 2 expected)"
+anvi-export-locus -c $output_dir/CONTIGS.db \
+                  -O $output_dir/exported_locus_from_functions \
+                  -n 22,22 \
+                  -s NusB,'Glutamine amidotransferase class-I'
 
 INFO "Export genomic locus using functional annotation search in flank-mode"
 anvi-export-locus -c $output_dir/CONTIGS.db \

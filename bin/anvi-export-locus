@@ -35,7 +35,6 @@ import anvio
 import anvio.terminal as terminal
 
 from anvio.splitter import LocusSplitter
-# from anvio.splitter_matt import LocusSplitter
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -48,6 +47,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db']
 __provides__ = ['locus-fasta']
+__description__ = 'FIXME'
 
 
 run = terminal.Run()
@@ -68,7 +68,6 @@ if __name__ == '__main__':
     # Essential input
     groupA = parser.add_argument_group('Essential INPUT')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    groupA.add_argument(*anvio.A('flank-mode'), **anvio.K('flank-mode'))
     # Query options for anchor gene
     groupB =  parser.add_argument_group('Query options for locating locus', "search according to either hmm or functional annotations")
     groupB.add_argument('-s', '--search-term', help='search term.') # there is a 'search-terms' argument in __init__py, come up with new name?
@@ -81,10 +80,14 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'required': True}))
     # Additional
     groupD = parser.add_argument_group('ADDITIONAL STUFF', "Flags and parameters you can set according to your need")
+    groupD.add_argument(*anvio.A('flank-mode'), **anvio.K('flank-mode'))
     groupD.add_argument(*anvio.A('num-genes'), **anvio.K('num-genes'))
-    groupD.add_argument('--separate-fasta', default = False, action='store_true', help='Split each match to a separate FASTA file.')
+    # FIXME --separate-fasta is not an argument accepted by LocusSplitter, yet was put in this file for some
+    # reason. Maybe you know.
+    # groupD.add_argument('--separate-fasta', default = False, action='store_true', help='Split each match to a separate FASTA file.')
     groupD.add_argument('--use-hmm', default = False, action='store_true', help='Use HMM hits instead of functional annotations. \
-                            If you choose this option, you must also say which HMM source to use.') # ask Alon about adding this parameter to __init__py
+                            In other words, --search-term will be queried against HMM source annotations, NOT functional annotations. \
+                            If you choose this option, you must also say which HMM source to use.')
     groupD.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
     groupD.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
     groupD.add_argument(*anvio.A('annotation-sources'), **anvio.K('annotation-sources'))

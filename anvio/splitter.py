@@ -697,6 +697,8 @@ class LocusSplitter:
         self.include_fasta_output = True
         self.is_in_flank_mode = bool(A('flank_mode'))
 
+        if self.annotation_sources:
+            self.annotation_sources = self.annotation_sources.split(self.delimiter)
 
         if A('list_hmm_sources'):
             hmmops.SequencesForHMMHits(self.input_contigs_db_path).list_available_hmm_sources()
@@ -720,16 +722,13 @@ class LocusSplitter:
             raise ConfigError("If you want to use HMMs to find the gene of interest that will define your locus,\
                                you must also specify a --search-term.")
 
-        # Preventing user from looking for more than one search_term at a time
-        # Will improve funcitonality later to allow user to provide more than one search term
-
         if self.search_term:
-            self.search_term = self.search_term.split(',')
+            self.search_term = self.search_term.split(self.delimiter)
 
         utils.is_contigs_db(self.input_contigs_db_path)
 
         if len(self.hmm_sources):
-            self.hmm_sources = set([s.strip() for s in self.hmm_sources.split(',')])
+            self.hmm_sources = set([s.strip() for s in self.hmm_sources.split(self.delimiter)])
 
         # If user is in default mode, they MUST provide --num-genes
         if not self.is_in_flank_mode:
@@ -737,7 +736,7 @@ class LocusSplitter:
                 raise ConfigError("You must provide --num-genes when in default mode.")
 
         if self.num_genes:
-            self.num_genes_list = [int(x) for x in self.num_genes.split(',')]
+            self.num_genes_list = [int(x) for x in self.num_genes.split(self.delimiter)]
             if len(self.num_genes_list) > 2:
                 raise ConfigError("The block size you provided, \"%s\", is not valid.\
                                     The gene block size is defined by only one or two integers for either \
@@ -747,7 +746,7 @@ class LocusSplitter:
             if len(self.num_genes_list) == 1:
                 self.num_genes_list = [0, self.num_genes_list[0]]
 
-            if ',' in self.num_genes:
+            if self.delimiter in self.num_genes:
                 self.run.info('Genes to report', '%d genes before the matching gene, and %d that follow' % (self.num_genes_list[0], self.num_genes_list[1]))
             else:
                 self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[0]))
@@ -778,7 +777,7 @@ class LocusSplitter:
             self.run.info('Search term', self.search_term, mc='green')
             self.run.info('HMM sources being used', ', '.join(s.sources))
 
-            hmm_hits = utils.get_filtered_dict(s.hmm_hits, 'gene_name', {self.search_term})
+            hmm_hits = utils.get_filtered_dict(s.hmm_hits, 'gene_name', set(self.search_term))
             gene_caller_ids_of_interest = [entry['gene_callers_id'] for entry in hmm_hits.values()]
 
             self.targets.append('HMMs')
@@ -795,7 +794,9 @@ class LocusSplitter:
             counter = 1
             for term in self.search_term:
                 self.run.info('Search term %d of %d' % (counter,len(self.search_term)), term, mc='green')
-                self.run.info('Function calls being used', ', '.join(contigs_db.gene_function_call_sources))
+                self.run.info('Function calls being used', ', '.join((contigs_db.gene_function_call_sources
+                                                                      if not self.annotation_sources
+                                                                      else self.annotation_sources)))
 
                 foo, search_report = contigs_db.search_for_gene_functions([term], requested_sources=self.annotation_sources, verbose=True)
                 # gene id's of genes with the searched function
