@@ -165,6 +165,63 @@ class SCGTaxonomyContext(object):
             self.sanity_check()
 
 
+    def sanity_check(self):
+        if sorted(list(locally_known_HMMs_to_remote_FASTAs.keys())) != sorted(self.default_scgs_for_taxonomy):
+            raise ConfigError("Oh no. The SCGs designated to be used for all SCG taxonomy tasks in the constants.py\
+                               are not the same names described in locally known HMMs to remote FASTA files\
+                               conversion table definedd in SetupLocalSCGTaxonomyData module. If this makes zero\
+                               sense to you please ask a developer.")
+
+        if not self.SCGs_taxonomy_data_dir:
+            raise ConfigError("`SetupLocalSCGTaxonomyData` class is upset because it was inherited without\
+                               a directory for SCG taxonomy data to be stored :( This variable can't be None.")
+
+        # sanity checks specific to each class
+        if self.__class__.__name__ in ['PopulateContigsDatabaseWithSCGTaxonomy', 'SCGTaxonomyEstimator']:
+            if not os.path.exists(self.SCGs_taxonomy_data_dir):
+                raise ConfigError("Anvi'o could not find the data directory for the single-copy core genes taxonomy\
+                                   setup. You may need to run `anvi-setup-scg-databases`, or provide a directory path\
+                                   where SCG databases are set up. This is the current path anvi'o is considering (which\
+                                   can be changed via the `--scgs-taxonomy-data-dir` parameter): '%s'" % (self.SCGs_taxonomy_data_dir))
+
+            if not os.path.exists(self.accession_to_taxonomy_file_path):
+                raise ConfigError("While your SCG taxonomy data dir seems to be in place, it is missing at least one critical\
+                                   file (in this case, the file to resolve accession IDs to taxon names). You may need to run\
+                                   the program `anvi-setup-scg-databases` with the `--reset` flag to set things right again.")
+
+            if not self.contigs_db_path:
+                raise ConfigError("For these things to work, you need to provide a contigs database for the anvi'o SCG\
+                                   taxonomy workflow :(")
+
+            utils.is_contigs_db(self.contigs_db_path)
+
+            if self.__class__.__name__ in ['PopulateContigsDatabaseWithSCGTaxonomy']:
+                missing_SCG_databases = [SCG for SCG in self.SCGs if not os.path.exists(self.SCGs[SCG]['db'])]
+                if len(missing_SCG_databases):
+                    raise ConfigError("Even though anvi'o found the directory for databases for taxonomy stuff,\
+                                       your setup seems to be missing %d of %d databases required for everything to work\
+                                       with the current genes configuration of this class. Here are the list of\
+                                       genes for which we are missing databases: '%s'." % \
+                                                (len(missing_SCG_databases), len(self.SCGs), ', '.join(missing_SCG_databases)))
+
+            if self.__class__.__name__ in ['SCGTaxonomyEstimator']:
+                scg_taxonomy_was_run = ContigsDatabase(self.contigs_db_path).meta['scg_taxonomy_was_run']
+                if not scg_taxonomy_was_run:
+                    raise ConfigError("It seems the SCG taxonomy tables were not populatd in this contigs database :/ Luckily it\
+                                       is easy to fix that. Please see the program `anvi-run-scg-taxonomy`.")
+
+                if self.profile_db_path:
+                    utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+
+                if self.collection_name:
+                    raise ConfigError("If you are asking anvi'o to estimate taxonomy using a collection, you must also provide\
+                                       a profile database to this program.")
+
+                if self.treat_as_metagenome and self.collection_name:
+                    raise ConfigError("You can't ask anvi'o to treat your contigs database as a metagenome and also give it a\
+                                       collection.")
+
+
     def update_dict_with_taxonomy(self, d, mode=None):
         """Takes a dictionary that includes a key `accession` and populates the dictionary with taxonomy"""
 
@@ -191,12 +248,6 @@ class SCGTaxonomyContext(object):
         return d
 
 
-    def sanity_check(self):
-        if sorted(list(locally_known_HMMs_to_remote_FASTAs.keys())) != sorted(self.default_scgs_for_taxonomy):
-            raise ConfigError("Oh no. The SCGs designated to be used for all SCG taxonomy tasks in the constants.py\
-                               are not the same names described in locally known HMMs to remote FASTA files\
-                               conversion table definedd in SetupLocalSCGTaxonomyData module. If this makes zero\
-                               sense to you please ask a developer.")
 
         if not self.SCGs_taxonomy_data_dir:
             raise ConfigError("`SetupLocalSCGTaxonomyData` class is upset because it was inherited without\
@@ -400,38 +451,9 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         self.evalue = 1e-05
         self.min_pct_id = 90
 
-        self.metagenome = False
-
-        self.SCG_DB_PATH = lambda SCG: os.path.join(self.search_databases_dir_path, SCG)
-        self.SCG_FASTA_DB_PATH = lambda SCG: os.path.join(self.search_databases_dir_path,
-                                                          [db for db in os.listdir(self.search_databases_dir_path) if db.endwith(".dmnd")])
-
-        self.sanity_check()
-
         self.taxonomy_dict = OrderedDict()
 
         self.mutex = multiprocessing.Lock()
-
-
-    def sanity_check(self):
-        if not os.path.exists(self.SCGs_taxonomy_data_dir):
-            raise ConfigError("Anvi'o could not find the data directory for the single-copy core genes taxonomy\
-                               setup. You may need to run `anvi-setup-scg-databases`, or provide a directory path\
-                               where SCG databases are set up. This is the current path anvi'o is considering (which\
-                               can be changed via the `--scgs-taxonomy-data-dir` parameter): '%s'" % (self.SCGs_taxonomy_data_dir))
-
-        if not os.path.exists(self.accession_to_taxonomy_file_path):
-            raise ConfigError("While your SCG taxonomy data dir seems to be in place, it is missing at least one critical\
-                               file (in this case, the file to resolve accession IDs to taxon names). You may need to run\
-                               the program `anvi-setup-scg-databases` with the `--reset` flag to set things right again.")
-
-        missing_SCG_databases = [SCG for SCG in self.SCGs if not os.path.exists(self.SCGs[SCG]['db'])]
-        if len(missing_SCG_databases):
-            raise ConfigError("Even though anvi'o found the directory for databases for taxonomy stuff,\
-                               your setup seems to be missing %d of %d databases required for everything to work\
-                               with the current genes configuration of this class. Here are the list of\
-                               genes for which we are missing databases: '%s'." % \
-                                        (len(missing_SCG_databases), len(self.SCGs), ', '.join(missing_SCG_databases)))
 
 
     def get_SCG_sequences_dict_from_contigs_db(self):
