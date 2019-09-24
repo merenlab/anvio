@@ -269,8 +269,54 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         self.run.info('Profile DB', self.profile_db_path)
         self.run.info('Metagenome mode', self.treat_as_metagenome)
 
+        # two dictionaries that will be initiated later
+        self.scg_name_to_gene_caller_id_dict = {}
+        self.frequency_of_scgs_with_taxonomy = {}
+        self.gene_callers_id_to_scg_taxonomy_dict = {}
+
+        self.initialized = False
+
+
     def estimate(self):
         pass
+    def init(self):
+        self.init_scg_data()
+
+        self.initialized = True
+
+
+    def init_scg_data(self):
+        if not self.contigs_db_path:
+            return None
+
+        self.progress.new('Initializing SCG taxonomy dictionary')
+        self.progress.update('...')
+
+        for scg_name in self.SCGs:
+            self.scg_name_to_gene_caller_id_dict[scg_name] = set([])
+
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+        scg_taxonomy_table = contigs_db.db.get_table_as_dict(t.scg_taxonomy_table_name)
+        contigs_db.disconnect()
+
+        for entry in scg_taxonomy_table.values():
+            gene_callers_id = entry['gene_callers_id']
+            self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id] = entry
+
+        self.progress.end()
+
+        for entry in self.gene_callers_id_to_scg_taxonomy_dict.values():
+            scg_gene_name = entry['gene_name']
+            gene_callers_id = entry['gene_callers_id']
+
+            self.scg_name_to_gene_caller_id_dict[scg_gene_name].add(gene_callers_id)
+ 
+        self.frequency_of_scgs_with_taxonomy = OrderedDict(sorted([(g, len(self.scg_name_to_gene_caller_id_dict[g])) for g in self.scg_name_to_gene_caller_id_dict], key = lambda x: x[1], reverse=True))
+
+        self.run.info_single("A total of %s single-copy core genes with taxonomic affiliations were successfuly initialized\
+                              from the contigs database 🎉 Following shows the frequency of these SCGs: %s." % \
+                                        (pp(len(self.gene_callers_id_to_scg_taxonomy_dict)),
+                                         ', '.join(["%s (%d)" % (g, self.frequency_of_scgs_with_taxonomy[g]) for g in self.frequency_of_scgs_with_taxonomy])), nl_before=1)
 
 
 class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
