@@ -23,6 +23,7 @@ import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
+import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
 from anvio.dbops import ContigsSuperclass, ContigsDatabase
@@ -32,7 +33,7 @@ from anvio.tables.scgtaxonomy import TableForSCGTaxonomy
 
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
-
+pp = terminal.pretty_print
 
 _author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -205,7 +206,7 @@ class SCGTaxonomyContext(object):
                                                 (len(missing_SCG_databases), len(self.SCGs), ', '.join(missing_SCG_databases)))
 
             if self.__class__.__name__ in ['SCGTaxonomyEstimator']:
-                scg_taxonomy_was_run = ContigsDatabase(self.contigs_db_path).meta['scg_taxonomy_was_run']
+                scg_taxonomy_was_run = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress).meta['scg_taxonomy_was_run']
                 if not scg_taxonomy_was_run:
                     raise ConfigError("It seems the SCG taxonomy tables were not populatd in this contigs database :/ Luckily it\
                                        is easy to fix that. Please see the program `anvi-run-scg-taxonomy`.")
@@ -213,7 +214,7 @@ class SCGTaxonomyContext(object):
                 if self.profile_db_path:
                     utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
-                if self.collection_name:
+                if self.collection_name and not self.profile_db_path:
                     raise ConfigError("If you are asking anvi'o to estimate taxonomy using a collection, you must also provide\
                                        a profile database to this program.")
 
