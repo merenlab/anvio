@@ -314,17 +314,17 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         return pd.DataFrame.from_dict(D), occurrence_of_functions_in_pangenome_dict
 
 
-    def functional_enrichment_stats(self):
+    def functional_occurrence_stats(self):
         """
-            Compute the functional enrichment stats for a pangenome
+            Compute the functional occurrence stats for a pangenome
 
-            returns the enrichment_dict, which has the form:
-                value = enrichment_dict[category_name][function_name][value_name]
+            returns the functional_occurrence_summary_dict, which has the form:
+                value = functional_occurrence_summary_dict[category_name][function_name][value_name]
 
             If self.args.output_file_path exists then an output file is created.
 
             To learn more about how this works refer to the docummentation:
-                anvi-script-get-enriched-functions-per-pan-group -h
+                anvi-get-functional-occurrence-summary-per-pan-group -h
         """
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
@@ -332,13 +332,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         category_variable = A('category_variable')
         functional_annotation_source = A('annotation_source')
         list_functional_annotation_sources = A('list_annotation_sources')
-        min_function_enrichment = A('min_function_enrichment')
-        fdr = A('false_detection_rate')
-        min_portion_occurrence_of_function_in_group = A('min_portion_occurrence_of_function_in_group')
         functional_occurrence_table_output = A('functional_occurrence_table_output')
         exclude_ungrouped = A('exclude_ungrouped')
 
-        min_number_for_p_value_calculation = 5
 
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
@@ -348,25 +344,25 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         if not self.functions_initialized:
             raise ConfigError("For some reason funtions are not initialized for this pan class instance. We\
-                               can't summarize functional enrichment stats without that :/")
+                               can't summarize functional occurrence stats without that :/")
 
         if not len(self.gene_clusters_functions_dict):
             raise ConfigError("The gene clusters functions dict seems to be empty. We assume this error makes\
                                zero sense to you, and it probably will not help you to know that it also makes\
                                zero sense to anvi'o too :/ Maybe you forgot to provide a genomes storage?")
 
+        if list_functional_annotation_sources:
+            self.run.info('Available functional annotation sources', ', '.join(self.gene_clusters_function_sources))
+            sys.exit()
+
         if not category_variable:
             raise ConfigError("For this to work, you must provide a category variable .. and it better be in\
                                the misc additional layer data table, too. If you don't have any idea what is\
                                available, try `anvi-show-misc-data`.")
 
-        if list_functional_annotation_sources:
-            self.run.info('Available functional annotation sources', ', '.join(self.gene_clusters_function_sources))
-            sys.exit()
-
         if not functional_annotation_source:
             raise ConfigError("You haven't provided a functional annotation source to make sense of functional\
-                               enrichment stats as defined by the categorical variable %s. These are the functions\
+                               occurrence stats as defined by the categorical variable %s. These are the functions\
                                that are available, so pick one: %s." % (category_variable, ', '.join(self.gene_clusters_function_sources)))
 
         if functional_annotation_source not in self.gene_clusters_function_sources:
@@ -381,6 +377,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                                this is probably a mistake, surely you didn't mean to provide an empty category.\
                                Do you think this is a mistake on our part? Let us know." % \
                                                                     category_variable)
+
         type_category_variable = type(values_that_are_not_none[0][category_variable])
         if type_category_variable != str:
             raise ConfigError("The variable '%s' does not seem to resemble anything that could be a category.\
@@ -392,6 +389,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         self.run.info('Category', category_variable)
         self.run.info('Functional annotation source', functional_annotation_source)
+        self.run.info('Exclude ungrouped', exclude_ungrouped)
 
         occurrence_frequency_of_functions_in_pangenome_dataframe, occurrence_of_functions_in_pangenome_dict = self.get_occurrence_of_functions_in_pangenome(gene_clusters_functions_summary_dict)
 
@@ -402,7 +400,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # Get the presence/absence info for functions, which we will use for the comparisson between groups
         occurrence_of_functions_in_pangenome_dataframe = occurrence_frequency_of_functions_in_pangenome_dataframe.astype(bool).astype(int)
 
-        self.progress.new('Functional enrichment analysis')
+        self.progress.new('Functional occurrence analysis')
         self.progress.update('Creating a dictionary')
 
         # get a list of unique function names
@@ -426,102 +424,56 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             categories_to_genomes_dict[c] = set([genome for genome in categories_dict.keys() if str(categories_dict[genome][category_variable]) == c])
         number_of_genomes = len(categories_dict.keys())
 
-        enrichment_dict = {}
-        chi2_test_p_values = []
+        functional_occurrence_summary_dict = {}
         function_occurrence_table = {}
 
         # populate the number of genomes per category once
-        groups_below_threshold = []
         for c in categories:
             function_occurrence_table[c] = {}
             function_occurrence_table[c]['N'] = len(categories_to_genomes_dict[c])
-            if function_occurrence_table[c]['N'] < min_number_for_p_value_calculation:
-                groups_below_threshold.append(c)
 
-        self.progress.update("Calculating functional enrichment statistics")
+        self.progress.update("Generating the input table for anvi-get-enriched-functions-per-pan-group")
         for f in functions_names:
             for c in categories:
                 function_occurrence_table[c]['p'] = functions_in_categories.loc[c, f] / function_occurrence_table[c]['N']
             function_occurrence_table_df = pd.DataFrame.from_dict(function_occurrence_table, orient='index')
-            c_dict = dict(zip(function_occurrence_table_df['p'].index, range(len(function_occurrence_table_df['p'].index))))
-            test_statistic, p_value, relative_statistic_vector = utils.get_enriched_functions_statistics(function_occurrence_table_df['p'].values,
-                                                                              function_occurrence_table_df['N'].values)
-            if groups_below_threshold:
-                # if there were groups with less than 5 members than we discard the q-value
-                p_value = None
 
-            chi2_test_p_values.append(p_value)
-            enrichment_dict[f] = {}
-
-            enrichment_dict[f]["enrichment_score"] = test_statistic
-            enrichment_dict[f]["unadjusted_p_value"] = p_value
-            enrichment_dict[f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
-            enrichment_dict[f]["function_accession"] = occurrence_of_functions_in_pangenome_dict[f]["accession"]
+            functional_occurrence_summary_dict[f] = {}
+            functional_occurrence_summary_dict[f]["gene_clusters_ids"] = occurrence_of_functions_in_pangenome_dict[f]["gene_clusters_ids"]
+            functional_occurrence_summary_dict[f]["function_accession"] = occurrence_of_functions_in_pangenome_dict[f]["accession"]
             for c in categories:
-                enrichment_dict[f]['p_' + c] = function_occurrence_table[c]['p']
+                functional_occurrence_summary_dict[f]['p_' + c] = function_occurrence_table[c]['p']
             for c in categories:
-                enrichment_dict[f]['N_' + c] = function_occurrence_table[c]['N']
-            for c in categories:
-                enrichment_dict[f]['r_' + c] = relative_statistic_vector[c_dict[c]]
-
-            associated_groups = [c for c in categories if enrichment_dict[f]['r_' + c] > 0]
-            enrichment_dict[f]['associated_groups'] = associated_groups
-
-        if not groups_below_threshold:
-            import statsmodels.stats.multitest as multitest
-            reject, corrected_p_values, foo1, foo2 = multitest.multipletests(chi2_test_p_values, method='fdr_bh', alpha=fdr)
-        else:
-            corrected_p_values = [None] * len(enrichment_dict.keys())
-            run.warning('At least one of your groups has less than %s members. \
-                         This is fine, but small groups do not allow the computation \
-                         of a meaningful q-value, and hence anvi\'o will still \
-                         compute a test statistic (AKA enrichment score) that you can \
-                         use to sort your functions but there will be no q-value asociated \
-                         with these scores. Here are the problematic groups: %s.' % (min_number_for_p_value_calculation, ', '.join(groups_below_threshold)))
-
-        i = 0
-        if len(corrected_p_values) != len(enrichment_dict.keys()):
-            raise ConfigError('This should never happen, contact Alon Shaiber now.')
-        for f in enrichment_dict:
-            enrichment_dict[f]['adjusted_q_value'] = corrected_p_values[i]
-            i += 1
+                functional_occurrence_summary_dict[f]['N_' + c] = function_occurrence_table[c]['N']
 
         if output_file_path:
             self.progress.update('Generating the output file')
-            enrichment_data_frame = self.get_enrichment_dict_as_dataframe(enrichment_dict, functional_annotation_source)
-            if min_function_enrichment > 0 or min_portion_occurrence_of_function_in_group > 0:
-                enrichment_data_frame = enrichment_data_frame[enrichment_data_frame['enrichment_score'] > min_function_enrichment]
-                enrichment_data_frame = enrichment_data_frame[enrichment_data_frame['portion_occurrence_in_group'] > min_portion_occurrence_of_function_in_group]
-
-            # sort according to enrichment
-            enrichment_data_frame.sort_values(by=['enrichment_score'], axis=0, ascending=False, inplace=True)
+            functional_occurrence_summary_data_frame = self.get_functional_occurrence_summary_dict_as_dataframe(functional_occurrence_summary_dict, functional_annotation_source)
 
             # Sort the columns the way we want them
-            columns = [functional_annotation_source, 'enrichment_score', 'unadjusted_p_value', \
-                       'adjusted_q_value', 'associated_groups', 'function_accession', \
-                       'gene_clusters_ids']
-            columns.extend([s + c for s in ['p_', 'N_', 'r_'] for c in categories])
-            enrichment_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.4f', columns=columns)
+            columns = [functional_annotation_source, 'function_accession', 'gene_clusters_ids']
+            columns.extend([s + c for s in ['p_', 'N_'] for c in categories])
+            functional_occurrence_summary_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.4f', columns=columns)
 
         self.progress.end()
 
         if output_file_path:
-            self.run.info('Functions enrichment summary', output_file_path)
+            self.run.info('Functional occurrence summary', output_file_path)
 
-        return enrichment_dict
+        return functional_occurrence_summary_dict
 
 
-    def get_enrichment_dict_as_dataframe(self, enrichment_dict, functional_annotation_source):
+    def get_functional_occurrence_summary_dict_as_dataframe(self, functional_occurrence_summary_dict, functional_annotation_source):
         # convert dictionary to pandas
         # we want to deal with sequences (see below) and so this is easier than using pandas from_dict
         # we first convert it to a dict of dicts and then convert to pandas
         # because this is faster than alternatives
         i = 0
         D = {}
-        for f in enrichment_dict:
+        for f in functional_occurrence_summary_dict:
             D[i] = {}
             D[i][functional_annotation_source] = f
-            for key, value in enrichment_dict[f].items():
+            for key, value in functional_occurrence_summary_dict[f].items():
                 if type(value)==str:
                     D[i][key] = value
                 else:
@@ -533,9 +485,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                         # if it is not a sequnce, it is a single value
                         D[i][key] = value
             i += 1
-        enrichment_data_frame = pd.DataFrame.from_dict(D, orient='index')
+        functional_occurrence_summary_data_frame = pd.DataFrame.from_dict(D, orient='index')
 
-        return enrichment_data_frame
+        return functional_occurrence_summary_data_frame
 
 
     def process(self):
