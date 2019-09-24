@@ -752,21 +752,37 @@ parse_input_data <- function(opts) {
 
 #### Plotting functions ####
 
-## NEXT STEP: add the SNV data to the plots.
+## This function handles any "basic" plots like area, line, or
+## anything in ggplot2 that uses the same aesthetics as geom_area or
+## geom_line.
+basic_plot <- function(dat, opts) {
+  geom_fn <- switch(
+    opts$chart_type,
+    "area" = geom_area,
+    "line" = geom_line,
+    ## Default
+    {
+      logger$warn("Chart type '%s' is not a valid choice.  Using 'area' instead",
+                  opts$chart_type)
 
-area_plot <- function(dat, opts) {
+      geom_area
+    }
+  )
+
   ## Set up the coverage chart.
   cov_plot <- ggplot(dat$split_coverages,
                      aes(x = x_values,
                          y = coverage,
                          group = sample_name))
 
+  ## Add the coverage geom.
   if (is.null(dat$split_coverages$sample_color)) {
-    cov_plot <- cov_plot + geom_area()
+    cov_plot <- cov_plot + geom_fn()
   } else {
-    cov_plot <- cov_plot + geom_area(fill = dat$split_coverages$sample_color)
+    cov_plot <- cov_plot + geom_fn(fill = dat$split_coverages$sample_color)
   }
 
+  ## Add the SNV data if it is available.
   if (!is.null(dat$snv_data)) {
     max_cov <- tapply(X = dat$split_coverages$coverage, INDEX = dat$split_coverages$sample_name, FUN = max)
     max_cov <- data.frame(max_cov = max_cov, sample_name = names(max_cov))
@@ -787,72 +803,30 @@ area_plot <- function(dat, opts) {
       )
   }
 
+  ## Tweak the theme.
   cov_plot <- cov_plot + theme_bw()
   cov_plot <- cov_plot + theme(legend.position = "none")
 
-  if (opts$free_y_scale)
+  ## Check for free y scale.
+  if (opts$free_y_scale) {
     cov_plot <- cov_plot + facet_grid(sample_name ~ ., scales="free_y")
-  else
-    cov_plot <- cov_plot + facet_grid(sample_name ~ .)
-
-  cov_plot <- cov_plot + labs(x = "Nucleotide position", y = "Coverage")
-
-  cov_plot
-}
-
-line_plot <- function(dat, opts) {
-  ## Set up the coverage chart.
-  cov_plot <- ggplot(dat$split_coverages,
-                     aes(x = x_values,
-                         y = coverage,
-                         group = sample_name))
-
-  if (is.null(dat$split_coverages$sample_color)) {
-    cov_plot <- cov_plot + geom_line()
   } else {
-    cov_plot <- cov_plot + geom_line(color = dat$split_coverages$sample_color)
-  }
-
-  if (!is.null(dat$snv_data)) {
-    max_cov <- tapply(X = dat$split_coverages$coverage, INDEX = dat$split_coverages$sample_name, FUN = max)
-    max_cov <- data.frame(max_cov = max_cov, sample_name = names(max_cov))
-
-    snv_color <- data.frame(base_pos_in_codon = 0:3, snv_color = c("black", "red", "red", "green"))
-
-    snv_plot_dat <- merge(dat$snv_data, max_cov, by = "sample_name")
-    snv_plot_dat <- merge(snv_plot_dat, snv_color, by = "base_pos_in_codon")
-
-    cov_plot <- cov_plot +
-      geom_segment(
-        data = snv_plot_dat,
-        mapping = aes(x = x_values,
-                      xend = x_values,
-                      y = 0,
-                      yend = departure_from_reference * max_cov),
-        color = snv_plot_dat$snv_color
-      )
-  }
-
-  cov_plot <- cov_plot + theme_bw()
-  cov_plot <- cov_plot + theme(legend.position = "none")
-
-  if (opts$free_y_scale)
-    cov_plot <- cov_plot + facet_grid(sample_name ~ ., scales="free_y")
-  else
     cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+  }
 
+  ## Add chart labels.
   cov_plot <- cov_plot + labs(x = "Nucleotide position", y = "Coverage")
 
   cov_plot
 }
 
-## This function is called in the main part of the script.
-## Wrapper fn to handle plot drawing.
+
+## This function is called in the main part of the script.  Wrapper fn
+## to handle plot drawing.  If you want to add new plot types in the
+## future, call them here.
 draw_plot <- function(...) {
-  if (opts$chart_type == "area") {
-    area_plot(...)
-  } else if (opts$chart_type == "line") {
-    line_plot(...)
+  if (opts$chart_type == "area" || opts$chart_type == "line") {
+    basic_plot(...)
   } else {
     ## Sanity check: check_opts should prevent this from happening.
     abort("bad chart type")
@@ -881,7 +855,7 @@ set_up_opts <- function() {
                 action = "store",
                 type = "character",
                 help = "Path to additional data file"),
-    make_option(opt_str = c("--snv-data"),
+    make_option(opt_str = c("-d", "--snv-data"),
                 action = "store",
                 type = "character",
                 help = "Path to SNV data file (output of anvi-gen-variability-profile"),
@@ -947,21 +921,74 @@ set_up_opts <- function() {
 
   )
 
-  usage <- "%prog -i infile.txt -o coverage_graphs.pdf [-s sample_data.txt] [-w chart_width] [-c chart_height] [-t chart_type] [-m max_coverage] [-p compress-threshold] [-n window-size] [--no-compression] [--free-y-scale] [--verbose level]"
+  ## - SNV data is the output from anvi-gen-variability-profile.  Note
+  ##   that both contig_name and split_name columns must be present in
+  ##   this file.
+
+  usage <- "%prog -i split_coverages.txt -o coverage_graphs.pdf [...other opts...]"
 
   description <- "
 Description:
+
+  anvi-script-visualize-split-coverages
+  =====================================
+
   Generate PDF image of coverage for splits across multiple samples.
 
-  - The input file required for this script is the output of the
-    program anvi-get-split-coverages.
+  Split coverages data
+  --------------------
+
+  - The main input file required for this script is the output of
+    the program anvi-get-split-coverages.
+
+  - Required columns include:
+    - unique_entry_id
+    - nt_position
+    - split_name
+    - sample_name
+    - coverage
+
+  Sample data
+  -----------
+
+  - Sample data may be provided in order to color the graphs.
 
   - Any color that is not included in `colors()` or a valid hex code
     (e.g., #00FF00) will be changed to '#333333'.
 
+  - If the sample data is provided, only samples listed in the sample
+    data file will be output in the final PDF.
+
+  - Required columns include:
+    - sample_name
+    - sample_color
+
+  SNV data
+  --------
+
+  - SNV data is the output from anvi-gen-variability-profile.
+    this file.
+
+  - When providing SNV data, it is best to also pass in the
+    --free-y-scale argument as well.
+
+  - Required columns include:
+    - contig_name
+    - split_name
+    - sample_id
+    - pos
+    - departure_from_reference
+    - competing_nts
+
+  Chart types
+  -----------
+
   - Current options for --chart-type include: 'area', 'line'
 
-  Compression: ggplot2 can take a long time to plot lots of data
+  Compression
+  -----------
+
+  ggplot2 can take a long time to plot lots of data
   points.  Even a smallish data (a couple of samples, ~30,000 data
   points per samples) can take a few minutes to plot.
 
