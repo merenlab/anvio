@@ -249,9 +249,6 @@ class SCGTaxonomyContext(object):
 
 
 
-        if not self.SCGs_taxonomy_data_dir:
-            raise ConfigError("`SetupLocalSCGTaxonomyData` class is upset because it was inherited without\
-                               a directory for SCG taxonomy data to be stored :( This variable can't be None.")
 
 
 class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
