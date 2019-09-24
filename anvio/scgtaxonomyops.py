@@ -662,13 +662,35 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
 
 
     def get_consensus_hit(self, scg_raw_hits):
+        pd.set_option('mode.chained_assignment', None)
+
         df = pd.DataFrame.from_records(scg_raw_hits)
 
-        # all this does at this point is to find the top hit based on percent identity and return it.
-        # there are so many things that must be done here.
-        hit_with_max_percent_identity = (df.loc[df['percent_identity'].idxmax()])
+        # find the max percent identity score in the df
+        max_percent_identity = max(df['percent_identity'])
 
-        return dict(hit_with_max_percent_identity)
+        # subset the data frame to those with percent identity that match to `max_percent_identity`
+        df_max_identity = df.loc[df.percent_identity == max_percent_identity]
+
+        # find the taxonomic level where the number of unique taxon names is one
+        for taxonomic_level in self.levels_of_taxonomy[::-1]:
+            if len(df_max_identity[taxonomic_level].unique()) == 1:
+                break
+
+        # take one of the hits from `df_max_identity`, and assign None to all taxonomic levels
+        # beyond `taxonomic_level`, which, after the loop above shows the proper level of
+        # assignment for this set
+        final_hit = df_max_identity.head(1)
+        for taxonomic_level_to_nullify in self.levels_of_taxonomy[self.levels_of_taxonomy.index(taxonomic_level) + 1:]:
+            final_hit.at[0, taxonomic_level_to_nullify] = None
+
+        # FIXME: final hit is still not what we can trust. next, we should find out whether the percent identity
+        # for the level of taxonomy at `taxonomic_level` is higher than the minimum percent identity for all sequences
+        # considered that are affiliated with final_hit[taxonomic_level]
+    
+        final_hit_dict = final_hit.to_dict('records')[0]
+
+        return final_hit_dict
 
 
 class lowident():
