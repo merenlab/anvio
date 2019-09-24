@@ -892,14 +892,19 @@ class LocusSplitter:
         if gene_caller_ids_flank_pair:
             if not isinstance(gene_caller_ids_flank_pair, list):
                 raise ConfigError("The gene_caller_ids_flank_pair must be integers.")
-            if len(gene_caller_ids_flank_pair) != 2:
-                raise ConfigError("You are in flank-mode, and you provided either 1 or >2 gene-caller-ids. \
-                                   Anvi'o cannot handle this because flank-mode can only use 2 gene-caller_ids \
-                                   to cut out and locus  (i.e., only a pair of flanking genes)! If you \
-                                   used --search-term, one of your flanking gene inputs may have matched to \
-                                   more than one gene on the contig. Use `anvi-export-functions` on your \
-                                   CONTIGS.db and confirm if your flanking genes are single copies. If not, \
-                                   then choose different flanking genes :)")
+            if len(gene_caller_ids_flank_pair) == 1:
+                raise ConfigError("You are in flank-mode, and you provided only %d gene-caller-id. \
+                                   Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's \
+                                   to cut out a locus (i.e., only a pair of flanking genes)! Please add another \
+                                   search-term :)" % (len(self.gene_caller_ids_of_interest)))
+            if len(gene_caller_ids_flank_pair) > 2:
+                raise ConfigError("You are in flank-mode, and anvi'o found %d gene-caller-id's from the search-terms provided. \
+                                   Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's \
+                                   to cut out a locus (i.e., only a pair of flanking genes)! Here are the gene-caller-ids anvi'o found \
+                                   from the search-terms: %s. Please use `anvi-export-functions` on your CONTIGS.db, locate the gene-caller-id's \
+                                   anvi'o matched to your search-terms, then confirm the correct flanking gene-caller-ids. Anvi'o recommends you \
+                                   use the --gene-caller-ids flag to specify the specific pair gene-caller-ids you need to cut out the locus \
+                                   so there are no more mix ups :)" % (len(self.gene_caller_ids_of_interest), str(self.gene_caller_ids_of_interest)))
             if [g for g in gene_caller_ids_flank_pair if not isinstance(g, int) or g < 0]:
                 raise ConfigError("Both gene-caller_ids inputs must be integers!")
 
