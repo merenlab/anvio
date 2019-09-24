@@ -908,6 +908,11 @@ set_up_opts <- function() {
                 help = "Path to outfile"),
 
     ## Chart options
+    make_option(opt_str = c("-t", "--chart-type"),
+                action = "store",
+                type = "character",
+                default = "area",
+                help = "What type of chart do you want? [default %default]"),
     make_option(opt_str = c("-w", "--whole-chart-width"),
                 action = "store",
                 type = "double",
@@ -918,23 +923,6 @@ set_up_opts <- function() {
                 type = "double",
                 default = 2.0,
                 help = "Height of each individual coverage chart [default %default]"),
-    make_option(opt_str = c("-t", "--chart-type"),
-                action = "store",
-                type = "character",
-                default = "area",
-                help = "What type of chart do you want? [default %default]"),
-
-    ## Data "compression"
-    make_option(opt_str = c("-m", "--max-coverage"),
-                action = "store",
-                type = "double",
-                default = 1000,
-                help = "Max coverage.  Any value g.t. this will be capped at this value. [default %default]"),
-    make_option(opt_str = c("-p", "--compress-threshold"),
-                action = "store",
-                type = "double",
-                default = 1000,
-                help = "If samples have more data points than this, they will be compressed. [default %default]"),
     make_option(opt_str = c("-f", "--free-y-scale"),
                 action = "store_true",
                 type = "logical",
@@ -942,16 +930,6 @@ set_up_opts <- function() {
                 help = "Depending on the visualization strategy, the y-axis of the plot may be scaled to the common max.\
                         Use this flag to let them go free so every single plot has its own maximum \
                         value. [default %default]"),
-    make_option(opt_str = c("-n", "--window-size"),
-                action = "store",
-                type = "double",
-                default = 0,
-                help = "Window size for compression.  Higher number = more compression. Pass 0 for auto. [default %default]"),
-    make_option(opt_str = c("-r", "--no-compression"),
-                action = "store_true",
-                type = "logical",
-                default = FALSE,
-                help = "Pass this flag if you want no compression.  Overrides other compression opts."),
 
     ## Chart colors
     make_option(opt_str = c("--coverage-plot-color"),
@@ -988,6 +966,28 @@ set_up_opts <- function() {
                 type = "double",
                 default = "1.0",
                 help = "Transparency of the SNV markers [default %default]"),
+
+    ## Data "compression"
+    make_option(opt_str = c("-m", "--max-coverage"),
+                action = "store",
+                type = "double",
+                default = 1000,
+                help = "Max coverage.  Any value g.t. this will be capped at this value. [default %default]"),
+    make_option(opt_str = c("-p", "--compress-threshold"),
+                action = "store",
+                type = "double",
+                default = 1000,
+                help = "If samples have more data points than this, they will be compressed. [default %default]"),
+    make_option(opt_str = c("-n", "--window-size"),
+                action = "store",
+                type = "double",
+                default = 0,
+                help = "Window size for compression.  Higher number = more compression. Pass 0 for auto. [default %default]"),
+    make_option(opt_str = c("-r", "--no-compression"),
+                action = "store_true",
+                type = "logical",
+                default = FALSE,
+                help = "Pass this flag if you want no compression.  Overrides other compression opts."),
 
     ## Verbosity
     make_option(opt_str = c("-v", "--verbose"),
