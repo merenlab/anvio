@@ -30,6 +30,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
+@terminal.time_program
 def main(args):
     t = scgtaxonomyops.SCGTaxonomyEstimator(args)
     t.estimate()
