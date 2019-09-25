@@ -432,6 +432,37 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         else:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
 
+    def print_scg_taxonomy_estimations_dict(self, scg_taxonomy_estimations_dict):
+        self.progress.reset()
+        self.run.warning(None, header='Taxonomy for %s' % ('collection "%s"' % self.collection_name if self.collection_name else "whatever"), lc="green")
+
+        d = self.get_print_friendly_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
+        header = ['bin_name', 'total_scgs', 'supporting_scgs', 'taxonomy']
+        table = []
+        for bin_name in d:
+            bin_data = d[bin_name]
+            taxon_text = ' / '.join([bin_data[l] if bin_data[l] else '' for l in self.levels_of_taxonomy])
+            table.append([bin_name, bin_data['total_scgs'], str(bin_data['total_scgs']), str(bin_data['supporting_scgs']), taxon_text])
+
+        print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+
+
+    def store_scg_taxonomy_estimations_dict(self, scg_taxonomy_estimations_dict):
+            d = self.get_print_friendly_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
+            utils.store_dict_as_TAB_delimited_file(d, self.output_file_path, headers=['bin_name', 'total_scgs', 'supporting_scgs'] + self.levels_of_taxonomy)
+            self.run.info("Output file", self.output_file_path, nl_before=1)
+
+
+    def get_print_friendly_scg_taxonomy_estimations_dict(self, scg_taxonomy_estimations_dict):
+        d = {}
+
+        for bin_name in scg_taxonomy_estimations_dict:
+            d[bin_name] = scg_taxonomy_estimations_dict[bin_name]['consensus_taxonomy']
+            d[bin_name]['total_scgs'] = scg_taxonomy_estimations_dict[bin_name]['total_scgs']
+            d[bin_name]['supporting_scgs'] = scg_taxonomy_estimations_dict[bin_name]['supporting_scgs']
+
+        return d
+
 
     def init(self):
         self.init_scg_data()
