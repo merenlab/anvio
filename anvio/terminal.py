@@ -495,8 +495,8 @@ class Timer:
 
         # parse units present in fmt
         format_order = []
-        for i, c in enumerate(fmt):
-            if c == '{':
+        for i, x in enumerate(fmt):
+            if x == '{':
                 for j, k in enumerate(fmt[i:]):
                     if k == '}':
                         unit = fmt[i+1:i+j]
