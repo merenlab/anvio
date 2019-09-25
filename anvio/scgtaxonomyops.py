@@ -276,6 +276,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         self.run.info('Metagenome mode', self.treat_as_metagenome)
 
         # these dictionaries that will be initiated later
+        self.contigs_db_project_name = "Unknown"
         self.scg_name_to_gene_caller_id_dict = {}
         self.frequency_of_scgs_with_taxonomy = {}
         self.gene_callers_id_to_scg_taxonomy_dict = {}
@@ -428,6 +429,10 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
         if self.profile_db_path and not self.treat_as_metagenome:
             scg_taxonomy_estimations_dict = self.estimate_for_bins_in_collection()
+        elif not self.profile_db_path and not self.treat_as_metagenome:
+            splits_in_contigs_database = self.split_name_to_gene_caller_ids_dict.keys()
+            scg_taxonomy_estimations_dict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(splits_in_contigs_database,
+                                                                                                           self.contigs_db_project_name)
         else:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
 
@@ -442,12 +447,12 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         self.run.warning(None, header='Taxonomy for %s' % ('collection "%s"' % self.collection_name if self.collection_name else "whatever"), lc="green")
 
         d = self.get_print_friendly_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
-        header = ['bin_name', 'total_scgs', 'supporting_scgs', 'taxonomy']
+        header = ['total_scgs', 'supporting_scgs', 'taxonomy']
         table = []
         for bin_name in d:
             bin_data = d[bin_name]
             taxon_text = ' / '.join([bin_data[l] if bin_data[l] else '' for l in self.levels_of_taxonomy])
-            table.append([bin_name, bin_data['total_scgs'], str(bin_data['total_scgs']), str(bin_data['supporting_scgs']), taxon_text])
+            table.append([bin_name, str(bin_data['total_scgs']), str(bin_data['supporting_scgs']), taxon_text])
 
         print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
 
@@ -472,13 +477,12 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
     def init(self):
         self.init_scg_data()
 
-        if self.profile_db_path and not self.treat_as_metagenome:
-            self.init_bin_name_to_gene_caller_ids_dict()
+        self.init_split_to_gene_caller_ids_dict()
 
         self.initialized = True
 
 
-    def init_bin_name_to_gene_caller_ids_dict(self):
+    def init_split_to_gene_caller_ids_dict(self):
         if not self.contigs_db_path:
             return None
 
@@ -521,6 +525,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             self.scg_name_to_gene_caller_id_dict[scg_name] = set([])
 
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+        self.contigs_db_project_name = contigs_db.meta['project_name']
         scg_taxonomy_table = contigs_db.db.get_table_as_dict(t.scg_taxonomy_table_name)
         contigs_db.disconnect()
 
@@ -535,7 +540,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             gene_callers_id = entry['gene_callers_id']
 
             self.scg_name_to_gene_caller_id_dict[scg_gene_name].add(gene_callers_id)
- 
+
         self.frequency_of_scgs_with_taxonomy = OrderedDict(sorted([(g, len(self.scg_name_to_gene_caller_id_dict[g])) for g in self.scg_name_to_gene_caller_id_dict], key = lambda x: x[1], reverse=True))
 
         self.run.info_single("A total of %s single-copy core genes with taxonomic affiliations were successfuly initialized\
