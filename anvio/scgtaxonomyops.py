@@ -280,6 +280,22 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         if not skip_init:
             self.init()
 
+    def show_scg_taxonomy_hits_in_splits(self, hits, bin_name=None):
+        self.progress.reset()
+        self.run.warning(None, header='Hits for %s' % (bin_name if bin_name else "a bunch of splits"), lc="green")
+
+        if len(hits):
+            header = ['SCG', 'gene', 'pct id', 'taxonomy']
+            table = []
+
+            for hit in hits:
+                table.append([hit['gene_name'], str(hit['gene_callers_id']), str(hit['percent_identity']), ' / '.join([hit[l] if hit[l] else '' for l in self.levels_of_taxonomy])])
+
+            print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+        else:
+            self.run.info_single("No hits :/")
+
+
 
     def estimate(self):
         """Function that works with taxonomic annotaion of SCGs to estimate taxonomy"""
