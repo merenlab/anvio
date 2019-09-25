@@ -9,6 +9,7 @@ import os
 import glob
 import shutil
 import pickle
+import hashlib
 import pandas as pd
 import multiprocessing
 
@@ -34,6 +35,7 @@ from anvio.tables.scgtaxonomy import TableForSCGTaxonomy
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 pp = terminal.pretty_print
+HASH = lambda text: str(hashlib.sha224(text.encode('utf-8')).hexdigest()[0:8])
 
 _author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
