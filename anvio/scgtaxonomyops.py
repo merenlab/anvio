@@ -388,6 +388,21 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
             self.show_scg_taxonomy_hits_in_splits(list(scg_taxonomy_dict.values()) + [consensus_taxonomy], bin_name)
 
+        # set some useful information. `total_scgs` is the number of SCGs with taxonomy found in the collection of splits. the
+        # `supporting_scgs` communicate how many of them supports the consensus taxonomy fully
+        total_scgs = len(scg_taxonomy_dict) 
+        supporting_scgs = 0
+
+        consensus_hash = HASH(consensus_taxonomy)
+        for scg_taxonomy_hit in scg_taxonomy_dict.values():
+            if consensus_hash == scg_taxonomy_hit['tax_hash']:
+                supporting_scgs += 1
+
+        return {'consensus_taxonomy': consensus_taxonomy,
+                'scgs': scg_taxonomy_dict,
+                'total_scgs': total_scgs,
+                'supporting_scgs': supporting_scgs}
+
 
     def estimate_for_bins_in_collection(self):
         bin_name_to_split_names_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
