@@ -280,6 +280,41 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         if not skip_init:
             self.init()
 
+    def get_consensus_taxonomy(self, scg_taxonomy_dict):
+        if not len(scg_taxonomy_dict):
+            return dict([(l, None) for l in self.levels_of_taxonomy])
+
+        pd.set_option('mode.chained_assignment', None)
+
+        scg_hits = list(scg_taxonomy_dict.values())
+
+        df = pd.DataFrame.from_records(scg_hits)
+
+        # add a new column to the df to summarize taxonomic information as a hash
+        df["tax_hash"] = df[self.levels_of_taxonomy].apply(lambda row: HASH(''.join(row.values.astype(str))), axis=1)
+
+        # figure out most frequent tax hash values in the df
+        tax_hash_counts = df['tax_hash'].value_counts()
+        tax_hash_df = tax_hash_counts.rename_axis('tax_hash').reset_index(name='frequency')
+        max_frequency = tax_hash_df.frequency.max()
+        tax_hash_df_most_frequent = tax_hash_df[tax_hash_df.frequency == max_frequency]
+
+        if len(tax_hash_df_most_frequent.index) == 1:
+            # if there is only a single winner, we're golden
+            winner_tax_hash = tax_hash_df_most_frequent.tax_hash[0]
+        else:
+            # if there are competing hashes, we need to be more careful
+            raise ConfigError("You've hit some uncharted area")
+
+        # get the consensus hit based on the winner hash
+        consensus_hit = df[df.tax_hash == winner_tax_hash].head(1)
+
+        # turn it into a Python dict before returning
+        consensus_hit = consensus_hit.to_dict('records')[0]
+
+        return consensus_hit
+
+
     def show_scg_taxonomy_hits_in_splits(self, hits, bin_name=None):
         self.progress.reset()
         self.run.warning(None, header='Hits for %s' % (bin_name if bin_name else "a bunch of splits"), lc="green")
