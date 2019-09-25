@@ -302,7 +302,8 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         # add a new column to the df to summarize taxonomic information as a hash
         df["tax_hash"] = df[self.levels_of_taxonomy].apply(lambda row: HASH(''.join(row.values.astype(str))), axis=1)
 
-        # figure out most frequent tax hash values in the df
+        # we have already stored a unique hash for taxonomy strings. here we will figure out most frequent
+        # hash values in the df
         tax_hash_counts = df['tax_hash'].value_counts()
         tax_hash_df = tax_hash_counts.rename_axis('tax_hash').reset_index(name='frequency')
         max_frequency = tax_hash_df.frequency.max()
@@ -312,7 +313,8 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             # if there is only a single winner, we're golden
             winner_tax_hash = tax_hash_df_most_frequent.tax_hash[0]
         else:
-            # if there are competing hashes, we need to be more careful
+            # if there are competing hashes, we need to be more careful to decide
+            # which taxonomic level should we use to cut things off.
             raise ConfigError("You've hit some uncharted area")
 
         # get the consensus hit based on the winner hash
@@ -351,6 +353,18 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
 
     def estimate_for_list_of_splits(self, split_names, bin_name=None):
+        """Try to estimate SCG taxonomy for a bunch of splits.
+
+           The purpose of this function is to to do critical things: identify SCGs we use for taxonomy in `split_names`,
+           and generate a consensus taxonomy with the assumption that these are coming from splits that represents a
+           single population.
+
+           It will return a dictionary with multiple items, including a dictionary that contains the final consensus\
+           taxonomy, another one that includes every SCG and their raw associations with taxon names (from which the\
+           consensus taxonomy was computed), as well as information about how many SCGs were analyzed and supported the\
+           consesnus.
+        """
+
         scg_taxonomy_dict = {}
 
         scg_gene_caller_ids_in_splits = self.get_gene_caller_ids_for_splits(split_names)
