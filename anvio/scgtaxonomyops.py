@@ -250,7 +250,7 @@ class SCGTaxonomyContext(object):
 
 
 class SCGTaxonomyEstimator(SCGTaxonomyContext):
-    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress(), skip_init=False):
         self.args = args
         self.run = run
         self.progress = progress
@@ -269,12 +269,16 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         self.run.info('Profile DB', self.profile_db_path)
         self.run.info('Metagenome mode', self.treat_as_metagenome)
 
-        # two dictionaries that will be initiated later
+        # these dictionaries that will be initiated later
         self.scg_name_to_gene_caller_id_dict = {}
         self.frequency_of_scgs_with_taxonomy = {}
         self.gene_callers_id_to_scg_taxonomy_dict = {}
+        self.split_name_to_gene_caller_ids_dict = {}
 
         self.initialized = False
+
+        if not skip_init:
+            self.init()
 
 
     def estimate(self):
@@ -296,7 +300,42 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
     def init(self):
         self.init_scg_data()
 
+        if self.profile_db_path and not self.treat_as_metagenome:
+            self.init_bin_name_to_gene_caller_ids_dict()
+
         self.initialized = True
+
+
+    def init_bin_name_to_gene_caller_ids_dict(self):
+        if not self.contigs_db_path:
+            return None
+
+        self.progress.new('Initializing genes in splits')
+        self.progress.update('...')
+
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "split, gene_callers_id")
+        contigs_db.disconnect()
+
+        for split_name, gene_callers_id in genes_in_splits:
+            if gene_callers_id not in self.gene_callers_id_to_scg_taxonomy_dict:
+                continue
+
+            if split_name not in self.split_name_to_gene_caller_ids_dict:
+                self.split_name_to_gene_caller_ids_dict[split_name] = set()
+
+            self.split_name_to_gene_caller_ids_dict[split_name].add(gene_callers_id)
+
+        self.progress.end()
+
+
+    def get_gene_caller_ids_for_splits(self, split_names_list):
+        gene_caller_ids_for_splits = set([])
+        for split_name in split_names_list:
+            if split_name in self.split_name_to_gene_caller_ids_dict:
+                gene_caller_ids_for_splits.update(self.split_name_to_gene_caller_ids_dict[split_name])
+
+        return gene_caller_ids_for_splits
 
 
     def init_scg_data(self):
