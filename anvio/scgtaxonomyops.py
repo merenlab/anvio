@@ -35,7 +35,8 @@ from anvio.tables.scgtaxonomy import TableForSCGTaxonomy
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 pp = terminal.pretty_print
-HASH = lambda text: str(hashlib.sha224(text.encode('utf-8')).hexdigest()[0:8])
+
+HASH = lambda d: str(hashlib.sha224(''.join([str(d[level]) for level in constants.levels_of_taxonomy]).encode('utf-8')).hexdigest()[0:8])
 
 _author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -224,6 +225,9 @@ class SCGTaxonomyContext(object):
                     raise ConfigError("You can't ask anvi'o to treat your contigs database as a metagenome and also give it a\
                                        collection.")
 
+                if self.output_file_path:
+                    filesnpaths.is_output_file_writable(self.output_file_path)
+
 
     def update_dict_with_taxonomy(self, d, mode=None):
         """Takes a dictionary that includes a key `accession` and populates the dictionary with taxonomy"""
@@ -282,7 +286,10 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         if not skip_init:
             self.init()
 
+
     def get_consensus_taxonomy(self, scg_taxonomy_dict):
+        """Takes in a scg_taxonomy_dict, returns a final taxonomic string that summarize all"""
+
         if not len(scg_taxonomy_dict):
             return dict([(l, None) for l in self.levels_of_taxonomy])
 
