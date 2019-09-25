@@ -299,9 +299,6 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
         df = pd.DataFrame.from_records(scg_hits)
 
-        # add a new column to the df to summarize taxonomic information as a hash
-        df["tax_hash"] = df[self.levels_of_taxonomy].apply(lambda row: HASH(''.join(row.values.astype(str))), axis=1)
-
         # we have already stored a unique hash for taxonomy strings. here we will figure out most frequent
         # hash values in the df
         tax_hash_counts = df['tax_hash'].value_counts()
@@ -366,10 +363,12 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         """
 
         scg_taxonomy_dict = {}
+        consensus_taxonomy = None
 
         scg_gene_caller_ids_in_splits = self.get_gene_caller_ids_for_splits(split_names)
         for gene_callers_id in scg_gene_caller_ids_in_splits:
             scg_taxonomy_dict[gene_callers_id] = self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id]
+            scg_taxonomy_dict[gene_callers_id]["tax_hash"] = HASH(self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id])
 
         try:
             consensus_taxonomy = self.get_consensus_taxonomy(scg_taxonomy_dict)
@@ -379,7 +378,6 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             raise ConfigError("While trying to sort out the consensus taxonomy for %s anvi'o failed :( The list of SCG taxon hits that\
                                caused the failure is printed in your terminal. But the actual error message that came from the depths\
                                of the codebase was this: '%s'." % (('the bin "%s"' % bin_name) if bin_name else 'a bunch of splits', e))
-
 
         if anvio.DEBUG:
             consensus_taxonomy['gene_name'] = 'CONSENSUS'
@@ -423,14 +421,21 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
     def estimate(self):
         """Function that works with taxonomic annotaion of SCGs to estimate taxonomy"""
 
+        scg_taxonomy_estimations_dict = {}
+
         if not self.initialized:
             self.init()
 
         if self.profile_db_path and not self.treat_as_metagenome:
-            self.estimate_for_bins_in_collection()
-
+            scg_taxonomy_estimations_dict = self.estimate_for_bins_in_collection()
         else:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
+
+        if self.output_file_path:
+            self.store_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
+
+        self.print_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
+
 
     def print_scg_taxonomy_estimations_dict(self, scg_taxonomy_estimations_dict):
         self.progress.reset()
