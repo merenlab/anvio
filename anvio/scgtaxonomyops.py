@@ -405,6 +405,8 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
 
     def estimate_for_bins_in_collection(self):
+        bins_taxonomy_dict = {}
+
         bin_name_to_split_names_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
         self.run.info_single("%s split names associated with %s bins of in collection '%s' have been \
                               successfuly recovered 🎊" % (pp(sum([len(v) for v in bin_name_to_split_names_dict.values()])),
@@ -413,7 +415,9 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
         for bin_name in bin_name_to_split_names_dict:
             split_names = bin_name_to_split_names_dict[bin_name]
-            taxonomy_dict = self.estimate_for_list_of_splits(split_names, bin_name)
+            bins_taxonomy_dict[bin_name] = self.estimate_for_list_of_splits(split_names, bin_name)
+
+        return bins_taxonomy_dict
 
 
     def estimate(self):
