@@ -326,7 +326,17 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             table = []
 
             for hit in hits:
-                table.append([hit['gene_name'], str(hit['gene_callers_id']), str(hit['percent_identity']), ' / '.join([hit[l] if hit[l] else '' for l in self.levels_of_taxonomy])])
+                taxon_text = ' / '.join([hit[l] if hit[l] else '' for l in self.levels_of_taxonomy])
+
+                # if the hit we are working on sent here as 'consensus', we will color it up a bit so it shows up
+                # more clearly in the debug output.
+                if hit['gene_name'] == 'CONSENSUS':
+                    taxon_text = terminal.c(taxon_text, color='red')
+
+                    for field_name in ['gene_name', 'percent_identity', 'gene_callers_id']:
+                        hit[field_name] = terminal.c(hit[field_name], color='red')
+
+                table.append([hit['gene_name'], str(hit['gene_callers_id']), str(hit['percent_identity']), taxon_text])
 
             print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
         else:
@@ -349,11 +359,12 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
                                caused the failure is printed in your terminal. But the actual error message that came from the depths\
                                of the codebase was this: '%s'." % (('the bin "%s"' % bin_name) if bin_name else 'a bunch of splits', e))
 
-        consensus_taxonomy['gene_name'] = 'CONSENSUS'
-        consensus_taxonomy['percent_identity'] = '--'
-        consensus_taxonomy['gene_callers_id'] = '--'
 
         if anvio.DEBUG:
+            consensus_taxonomy['gene_name'] = 'CONSENSUS'
+            consensus_taxonomy['percent_identity'] = '--'
+            consensus_taxonomy['gene_callers_id'] = '--'
+
             self.show_scg_taxonomy_hits_in_splits(list(scg_taxonomy_dict.values()) + [consensus_taxonomy], bin_name)
 
 
