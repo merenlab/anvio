@@ -333,6 +333,30 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             self.run.info_single("No hits :/")
 
 
+    def estimate_for_list_of_splits(self, split_names, bin_name=None):
+        scg_taxonomy_dict = {}
+
+        scg_gene_caller_ids_in_splits = self.get_gene_caller_ids_for_splits(split_names)
+        for gene_callers_id in scg_gene_caller_ids_in_splits:
+            scg_taxonomy_dict[gene_callers_id] = self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id]
+
+        try:
+            consensus_taxonomy = self.get_consensus_taxonomy(scg_taxonomy_dict)
+        except Exception as e:
+            self.show_scg_taxonomy_hits_in_splits(list(scg_taxonomy_dict.values()))
+
+            raise ConfigError("While trying to sort out the consensus taxonomy for %s anvi'o failed :( The list of SCG taxon hits that\
+                               caused the failure is printed in your terminal. But the actual error message that came from the depths\
+                               of the codebase was this: '%s'." % (('the bin "%s"' % bin_name) if bin_name else 'a bunch of splits', e))
+
+        consensus_taxonomy['gene_name'] = 'CONSENSUS'
+        consensus_taxonomy['percent_identity'] = '--'
+        consensus_taxonomy['gene_callers_id'] = '--'
+
+        if anvio.DEBUG:
+            self.show_scg_taxonomy_hits_in_splits(list(scg_taxonomy_dict.values()) + [consensus_taxonomy], bin_name)
+
+
 
     def estimate(self):
         """Function that works with taxonomic annotaion of SCGs to estimate taxonomy"""
