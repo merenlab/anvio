@@ -323,7 +323,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         return consensus_hit
 
 
-    def show_scg_taxonomy_hits_in_splits(self, hits, bin_name=None):
+    def print_scg_taxonomy_hits_in_splits(self, hits, bin_name=None):
         self.progress.reset()
         self.run.warning(None, header='Hits for %s' % (bin_name if bin_name else "a bunch of splits"), lc="green")
 
@@ -373,7 +373,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         try:
             consensus_taxonomy = self.get_consensus_taxonomy(scg_taxonomy_dict)
         except Exception as e:
-            self.show_scg_taxonomy_hits_in_splits(list(scg_taxonomy_dict.values()))
+            self.print_scg_taxonomy_hits_in_splits(list(scg_taxonomy_dict.values()))
 
             raise ConfigError("While trying to sort out the consensus taxonomy for %s anvi'o failed :( The list of SCG taxon hits that\
                                caused the failure is printed in your terminal. But the actual error message that came from the depths\
@@ -384,7 +384,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             consensus_taxonomy['percent_identity'] = '--'
             consensus_taxonomy['gene_callers_id'] = '--'
 
-            self.show_scg_taxonomy_hits_in_splits(list(scg_taxonomy_dict.values()) + [consensus_taxonomy], bin_name)
+            self.print_scg_taxonomy_hits_in_splits(list(scg_taxonomy_dict.values()) + [consensus_taxonomy], bin_name)
 
         # set some useful information. `total_scgs` is the number of SCGs with taxonomy found in the collection of splits. the
         # `supporting_scgs` communicate how many of them supports the consensus taxonomy fully
