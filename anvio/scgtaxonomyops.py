@@ -357,6 +357,17 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             self.show_scg_taxonomy_hits_in_splits(list(scg_taxonomy_dict.values()) + [consensus_taxonomy], bin_name)
 
 
+    def estimate_for_bins_in_collection(self):
+        bin_name_to_split_names_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
+        self.run.info_single("%s split names associated with %s bins of in collection '%s' have been \
+                              successfuly recovered 🎊" % (pp(sum([len(v) for v in bin_name_to_split_names_dict.values()])),
+                                                           pp(len(bin_name_to_split_names_dict)),
+                                                           self.collection_name), nl_before=1)
+
+        for bin_name in bin_name_to_split_names_dict:
+            split_names = bin_name_to_split_names_dict[bin_name]
+            taxonomy_dict = self.estimate_for_list_of_splits(split_names, bin_name)
+
 
     def estimate(self):
         """Function that works with taxonomic annotaion of SCGs to estimate taxonomy"""
