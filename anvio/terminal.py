@@ -477,7 +477,6 @@ class Timer:
                 fmt = '{seconds}s'
             else:
                 m = 1
-                previous = 'seconds'
                 for i, unit in enumerate(unit_hierarchy):
                     if not seconds // (m * unit_denominations[unit]) >= 1:
                         fmt = '{%s}%s{%s}%s' % (unit_hierarchy[i-1],
@@ -492,13 +491,12 @@ class Timer:
                                                 unit_hierarchy[i-1][0])
                         break
                     else:
-                        previous = unit
                         m *= unit_denominations[unit]
 
         # parse units present in fmt
         format_order = []
-        for i, c in enumerate(fmt):
-            if c == '{':
+        for i, x in enumerate(fmt):
+            if x == '{':
                 for j, k in enumerate(fmt[i:]):
                     if k == '}':
                         unit = fmt[i+1:i+j]
