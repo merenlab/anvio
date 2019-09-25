@@ -317,6 +317,14 @@ class DB:
         return [t[0] for t in response.fetchall()]
 
 
+    def get_some_columns_from_table(self, table, comma_separated_column_names, unique=False, where_clause=None):
+        if where_clause:
+            response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table, where_clause))
+        else:
+            response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table))
+        return response.fetchall()
+
+
     def get_table_column_types(self, table_name):
         response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
         return [t[2] for t in response.fetchall()]
