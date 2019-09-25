@@ -375,12 +375,9 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         if not self.initialized:
             self.init()
 
-        if self.profile_db_path:
-            collection_to_split = ccollections.GetSplitNamesInBins(self.args).get_dict()
-            self.run.info_single("%s split names associated with %s bins of in collection '%s' have been \
-                                  successfuly recovered 🎊" % (pp(sum([len(v) for v in collection_to_split.values()])),
-                                                                 pp(len(collection_to_split)),
-                                                                 self.collection_name), nl_before=1)
+        if self.profile_db_path and not self.treat_as_metagenome:
+            self.estimate_for_bins_in_collection()
+
         else:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
 
