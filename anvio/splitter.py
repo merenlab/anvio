@@ -826,11 +826,12 @@ class LocusSplitter:
             self.init()
 
         if not len(self.gene_caller_ids_of_interest):
-            raise ConfigError("There aren't any gene calls that match to the criteria you provided to anvi'o\
-                               export locus magic. Is this yet another case of you did everything right\
-                               yet anvi'o failed you? If that's the case, let us know :( This class will quietly\
-                               kill this process without reporting any error since a lack of hit may be the\
-                               expected outcome of some weird processes somewhere.")
+            self.run.warning("There aren't any gene calls that match to the criteria you provided to anvi'o\
+                              export locus magic. Is this yet another case of you did everything right\
+                              yet anvi'o failed you? If that's the case, let us know :( This class will quietly\
+                              kill this process without reporting any error since a lack of hit may be the\
+                              expected outcome of some weird processes somewhere.")
+            return
 
         self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
         self.contigs_db.init_functions()
