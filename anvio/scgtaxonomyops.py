@@ -221,7 +221,7 @@ class SCGTaxonomyContext(object):
                     raise ConfigError("If you are asking anvi'o to estimate taxonomy using a collection, you must also provide\
                                        a profile database to this program.")
 
-                if self.treat_as_metagenome and self.collection_name:
+                if self.metagenome_mode and self.collection_name:
                     raise ConfigError("You can't ask anvi'o to treat your contigs database as a metagenome and also give it a\
                                        collection.")
 
@@ -278,13 +278,16 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.just_do_it = A('just_do_it')
-        self.treat_as_metagenome = True if A('metagenome') else False
+        self.metagenome_mode = True if A('metagenome_mode') else False
+        self.scg_name_for_metagenome_mode = A('scg_name_for_metagenome_mode')
 
         SCGTaxonomyContext.__init__(self, self.args)
 
         self.run.info('Contigs DB', self.contigs_db_path)
         self.run.info('Profile DB', self.profile_db_path)
-        self.run.info('Metagenome mode', self.treat_as_metagenome)
+        self.run.info('Metagenome mode', self.metagenome_mode)
+        if self.metagenome_mode:
+            self.run.info('SCG for metagenome', self.scg_name_for_metagenome_mode)
 
         # these dictionaries that will be initiated later
         self.contigs_db_project_name = "Unknown"
@@ -458,8 +461,8 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
                                    you can also tell anvi'o to `--just-do-it`. It is your computer after all.")
 
         splits_in_contigs_database = self.split_name_to_gene_caller_ids_dict.keys()
-        contigs_db_taxonomy_dict[self.contigs_db_project_name] = self.estimate_for_list_of_splits_or_gene_caller_ids(split_names=splits_in_contigs_database,
-                                                                                                                     bin_name=self.contigs_db_project_name)
+        contigs_db_taxonomy_dict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(split_names=splits_in_contigs_database,
+                                                                                                  bin_name=self.contigs_db_project_name)
 
         return contigs_db_taxonomy_dict
 
@@ -505,11 +508,11 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         if not self.initialized:
             self.init()
 
-        if self.profile_db_path and not self.treat_as_metagenome:
+        if self.profile_db_path and not self.metagenome_mode:
             scg_taxonomy_estimations_dict = self.estimate_for_bins_in_collection()
-        elif not self.profile_db_path and not self.treat_as_metagenome:
+        elif not self.profile_db_path and not self.metagenome_mode:
             scg_taxonomy_estimations_dict = self.estimate_for_contigs_db_for_genome()
-        elif self.treat_as_metagenome:
+        elif self.metagenome_mode:
             scg_taxonomy_estimations_dict = self.estimate_for_contigs_db_for_metagenome()
         else:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
@@ -525,33 +528,54 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
         if self.collection_name:
             self.run.warning(None, header='Estimated taxonomy for collection "%s"' % self.collection_name, lc="green")
+        elif self.metagenome_mode:
+            self.run.warning(None, header='Taxa in metagenome "%s"' % self.contigs_db_project_name, lc="green")
         else:
             self.run.warning(None, header='Estimated taxonomy for "%s"' % self.contigs_db_project_name, lc="green")
 
         d = self.get_print_friendly_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
-        header = ['total_scgs', 'supporting_scgs', 'taxonomy']
+
+        if self.metagenome_mode:
+            header = ['percent_identity', 'taxonomy']
+        else:
+            header = ['total_scgs', 'supporting_scgs', 'taxonomy']
+
         table = []
         for bin_name in d:
             bin_data = d[bin_name]
             taxon_text = ' / '.join([bin_data[l] if bin_data[l] else '' for l in self.levels_of_taxonomy])
-            table.append([bin_name, str(bin_data['total_scgs']), str(bin_data['supporting_scgs']), taxon_text])
+
+            if self.metagenome_mode:
+                table.append([bin_name, str(bin_data['percent_identity']), taxon_text])
+            else:
+                table.append([bin_name, str(bin_data['total_scgs']), str(bin_data['supporting_scgs']), taxon_text])
 
         print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
 
 
     def store_scg_taxonomy_estimations_dict(self, scg_taxonomy_estimations_dict):
-            d = self.get_print_friendly_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
-            utils.store_dict_as_TAB_delimited_file(d, self.output_file_path, headers=['bin_name', 'total_scgs', 'supporting_scgs'] + self.levels_of_taxonomy)
-            self.run.info("Output file", self.output_file_path, nl_before=1)
+        d = self.get_print_friendly_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
+
+        if self.metagenome_mode:
+            headers = ['scg_name', 'percent_identity']
+        else:
+            headers = ['bin_name', 'total_scgs', 'supporting_scgs']
+
+        utils.store_dict_as_TAB_delimited_file(d, self.output_file_path, headers=headers + self.levels_of_taxonomy)
+        self.run.info("Output file", self.output_file_path, nl_before=1)
 
 
     def get_print_friendly_scg_taxonomy_estimations_dict(self, scg_taxonomy_estimations_dict):
         d = {}
 
-        for bin_name in scg_taxonomy_estimations_dict:
-            d[bin_name] = scg_taxonomy_estimations_dict[bin_name]['consensus_taxonomy']
-            d[bin_name]['total_scgs'] = scg_taxonomy_estimations_dict[bin_name]['total_scgs']
-            d[bin_name]['supporting_scgs'] = scg_taxonomy_estimations_dict[bin_name]['supporting_scgs']
+        if self.metagenome_mode:
+            for scg_hit in scg_taxonomy_estimations_dict[self.contigs_db_project_name]['scgs'].values():
+                d['%s_%d' % (scg_hit['gene_name'], scg_hit['gene_callers_id'])] = scg_hit
+        else:
+            for bin_name in scg_taxonomy_estimations_dict:
+                d[bin_name] = scg_taxonomy_estimations_dict[bin_name]['consensus_taxonomy']
+                d[bin_name]['total_scgs'] = scg_taxonomy_estimations_dict[bin_name]['total_scgs']
+                d[bin_name]['supporting_scgs'] = scg_taxonomy_estimations_dict[bin_name]['supporting_scgs']
 
         return d
 
