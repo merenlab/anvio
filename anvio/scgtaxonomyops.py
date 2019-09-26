@@ -467,9 +467,9 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         if self.profile_db_path and not self.treat_as_metagenome:
             scg_taxonomy_estimations_dict = self.estimate_for_bins_in_collection()
         elif not self.profile_db_path and not self.treat_as_metagenome:
-            splits_in_contigs_database = self.split_name_to_gene_caller_ids_dict.keys()
-            scg_taxonomy_estimations_dict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(splits_in_contigs_database,
-                                                                                                           self.contigs_db_project_name)
+            scg_taxonomy_estimations_dict = self.estimate_for_contigs_db_for_genome()
+        elif self.treat_as_metagenome:
+            scg_taxonomy_estimations_dict = self.estimate_for_contigs_db_for_metagenome()
         else:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
 
