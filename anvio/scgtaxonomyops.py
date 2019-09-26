@@ -423,6 +423,39 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         return bins_taxonomy_dict
 
 
+    def estimate_for_contigs_db_for_genome(self):
+        contigs_db_taxonomy_dict = {}
+
+        scg_frequencies = self.frequency_of_scgs_with_taxonomy.values()
+        if len([sf for sf in scg_frequencies if sf > 1]) * 100 / len(scg_frequencies) > 20:
+            if self.just_do_it:
+                self.run.warning("Because you asked anvi'o to just do it, it will do it, but you seem to have too much contamination\
+                                  in this contigs database for it to represent a genome. So probably taxonomy estimations are all\
+                                  garbage, but hey, at least it runs?")
+            else:
+                raise ConfigError("There seems to be too much redundancy of single-copy core genes in this contigs database to assign\
+                                   taxonomy with any confidence :/ A more proper way to do it is to use the `--metagenome` flag. Or\
+                                   you can also tell anvi'o to `--just-do-it`. It is your computer after all.")
+
+        splits_in_contigs_database = self.split_name_to_gene_caller_ids_dict.keys()
+        contigs_db_taxonomy_dict[self.contigs_db_project_name] = self.estimate_for_list_of_splits_or_gene_caller_ids(split_names=splits_in_contigs_database,
+                                                                                                                     bin_name=self.contigs_db_project_name)
+
+        return contigs_db_taxonomy_dict
+
+
+    def estimate_for_contigs_db_for_metagenome(self):
+        contigs_db_taxonomy_dict = {}
+
+        most_frequent_scg = next(iter(self.frequency_of_scgs_with_taxonomy))
+        gene_caller_ids_of_interest = self.scg_name_to_gene_caller_id_dict[most_frequent_scg]
+
+        contigs_db_taxonomy_dict[self.contigs_db_project_name] = self.estimate_for_list_of_splits_or_gene_caller_ids(gene_caller_ids=gene_caller_ids_of_interest,
+                                                                                                                     bin_name=self.contigs_db_project_name)
+
+        return contigs_db_taxonomy_dict
+
+
     def estimate(self):
         """Function that works with taxonomic annotaion of SCGs to estimate taxonomy"""
 
