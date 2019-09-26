@@ -762,6 +762,8 @@ class LocusSplitter:
 
         self.sanity_check()
 
+        self.search_term_to_gene_id_hits_dict = {}
+
         self.run.warning(None, header="Initialization bleep bloops", lc="cyan")
 
         if self.gene_caller_ids:
@@ -800,7 +802,9 @@ class LocusSplitter:
 
                 foo, search_report = contigs_db.search_for_gene_functions([term], requested_sources=self.annotation_sources, verbose=True)
                 # gene id's of genes with the searched function
-                gene_caller_ids_of_interest.extend(i[0] for i in search_report)
+                genes_that_hit = [i[0] for i in search_report]
+                gene_caller_ids_of_interest.extend(genes_that_hit)
+                self.search_term_to_gene_id_hits_dict[term] = genes_that_hit
 
                 self.targets.append('functions')
                 self.sources = contigs_db.gene_function_call_sources
@@ -814,6 +818,8 @@ class LocusSplitter:
                      '%d genes matched your search' % len(self.gene_caller_ids_of_interest),
                      mc='green', nl_after=1)
 
+        print('here is the dict:')
+        print(self.search_term_to_gene_id_hits_dict)
 
     def process(self, skip_init=False):
         if not skip_init:
