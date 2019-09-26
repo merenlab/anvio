@@ -350,8 +350,8 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             self.run.info_single("No hits :/")
 
 
-    def estimate_for_list_of_splits(self, split_names, bin_name=None):
-        """Try to estimate SCG taxonomy for a bunch of splits.
+    def estimate_for_list_of_splits_or_gene_caller_ids(self, split_names=None, gene_caller_ids=None, bin_name=None):
+        """Try to estimate SCG taxonomy for a bunch of splits or gene caller ids. You need to provide one of them.
 
            The purpose of this function is to to do critical things: identify SCGs we use for taxonomy in `split_names`,
            and generate a consensus taxonomy with the assumption that these are coming from splits that represents a
@@ -363,11 +363,15 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
            consesnus.
         """
 
+        if (not split_names and not gene_caller_ids) or (split_names and gene_caller_ids):
+            raise ConfigError("You must give this function either a list of split names or a list of gene caller ids.")
+
         scg_taxonomy_dict = {}
         consensus_taxonomy = None
 
-        scg_gene_caller_ids_in_splits = self.get_gene_caller_ids_for_splits(split_names)
-        for gene_callers_id in scg_gene_caller_ids_in_splits:
+        gene_caller_ids_of_interest = self.get_gene_caller_ids_for_splits(split_names) if split_names else gene_caller_ids
+
+        for gene_callers_id in gene_caller_ids_of_interest:
             scg_taxonomy_dict[gene_callers_id] = self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id]
             scg_taxonomy_dict[gene_callers_id]["tax_hash"] = HASH(self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id])
 
@@ -389,7 +393,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
         # set some useful information. `total_scgs` is the number of SCGs with taxonomy found in the collection of splits. the
         # `supporting_scgs` communicate how many of them supports the consensus taxonomy fully
-        total_scgs = len(scg_taxonomy_dict) 
+        total_scgs = len(scg_taxonomy_dict)
         supporting_scgs = 0
 
         consensus_hash = HASH(consensus_taxonomy)
