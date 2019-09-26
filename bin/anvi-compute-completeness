@@ -58,7 +58,6 @@ def compute_completeness(args):
 
     try:
         p_completion, p_redundancy, domain, domain_probabilities, info_text, results_dict = completeness.get_info_for_splits(splits_of_interest, min_e_value = args.min_e_value)
-        domain_confidence = domain_probabilities[domain] if domain else 0.0
     except ConfigError as e:
         print(e)
         sys.exit(-1)
