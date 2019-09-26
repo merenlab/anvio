@@ -351,8 +351,24 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             self.run.info_single("No hits :/")
 
 
-    def estimate_for_list_of_splits_or_gene_caller_ids(self, split_names=None, gene_caller_ids=None, bin_name=None):
-        """Try to estimate SCG taxonomy for a bunch of splits or gene caller ids. You need to provide one of them.
+    def get_scg_taxonomy_dict(self, gene_caller_ids, bin_name=None):
+        scg_taxonomy_dict = {}
+
+        improper_gene_caller_ids = [g for g in gene_caller_ids if g not in self.gene_callers_id_to_scg_taxonomy_dict]
+        if improper_gene_caller_ids:
+            raise ConfigError("Something weird is going on. Somehow anvi'o has a bunch of gene caller ids for which it is\
+                               supposed to estimate taxonomy. However, %d of them do not occur in a key dictionary. The code\
+                               here does not know what to suggest :( Apologies." % len(improper_gene_caller_ids))
+
+        for gene_callers_id in gene_caller_ids:
+            scg_taxonomy_dict[gene_callers_id] = self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id]
+            scg_taxonomy_dict[gene_callers_id]["tax_hash"] = HASH(self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id])
+
+        return scg_taxonomy_dict
+
+
+    def estimate_for_list_of_splits(self, split_names=None, bin_name=None):
+        """Estimate SCG taxonomy for a bunch of splits that belong to a single population.
 
            The purpose of this function is to to do critical things: identify SCGs we use for taxonomy in `split_names`,
            and generate a consensus taxonomy with the assumption that these are coming from splits that represents a
@@ -364,20 +380,17 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
            consesnus.
         """
 
-        if (not split_names and not gene_caller_ids) or (split_names and gene_caller_ids):
-            raise ConfigError("You must give this function either a list of split names or a list of gene caller ids.")
-
-        scg_taxonomy_dict = {}
         consensus_taxonomy = None
 
-        gene_caller_ids_of_interest = self.get_gene_caller_ids_for_splits(split_names) if split_names else gene_caller_ids
-
-        for gene_callers_id in gene_caller_ids_of_interest:
-            scg_taxonomy_dict[gene_callers_id] = self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id]
-            scg_taxonomy_dict[gene_callers_id]["tax_hash"] = HASH(self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id])
+        gene_caller_ids_of_interest = self.get_gene_caller_ids_for_splits(split_names)
+        scg_taxonomy_dict = self.get_scg_taxonomy_dict(gene_caller_ids_of_interest)
 
         try:
             consensus_taxonomy = self.get_consensus_taxonomy(scg_taxonomy_dict)
+            consensus_taxonomy['gene_name'] = 'CONSENSUS'
+            consensus_taxonomy['percent_identity'] = '--'
+            consensus_taxonomy['gene_callers_id'] = '--'
+
         except Exception as e:
             self.print_scg_taxonomy_hits_in_splits(list(scg_taxonomy_dict.values()))
 
@@ -386,10 +399,6 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
                                of the codebase was this: '%s'." % (('the bin "%s"' % bin_name) if bin_name else 'a bunch of splits', e))
 
         if anvio.DEBUG:
-            consensus_taxonomy['gene_name'] = 'CONSENSUS'
-            consensus_taxonomy['percent_identity'] = '--'
-            consensus_taxonomy['gene_callers_id'] = '--'
-
             self.print_scg_taxonomy_hits_in_splits(list(scg_taxonomy_dict.values()) + [consensus_taxonomy], bin_name)
 
         # set some useful information. `total_scgs` is the number of SCGs with taxonomy found in the collection of splits. the
@@ -446,13 +455,23 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
 
     def estimate_for_contigs_db_for_metagenome(self):
-        contigs_db_taxonomy_dict = {}
+        contigs_db_taxonomy_dict = {self.contigs_db_project_name: {}}
 
         most_frequent_scg = next(iter(self.frequency_of_scgs_with_taxonomy))
+        if self.scg_name_for_metagenome_mode:
+            self.run.warning("As per your request anvi'o set '%s' to be THE single-copy core gene to survey your metagenome for its\
+                              taxonomic composition." % (self.scg_name_for_metagenome_mode))
+        else:
+            self.scg_name_for_metagenome_mode = most_frequent_scg
+
+            self.run.warning("Anvi'o automatically set '%s' to be THE single-copy core gene to survey your metagenome for its\
+                              taxonomic composition. If you are not happy with that, you could change it with the parameter\
+                              `--scg-name-for-metagenome-mode`.")
+
         gene_caller_ids_of_interest = self.scg_name_to_gene_caller_id_dict[most_frequent_scg]
 
-        contigs_db_taxonomy_dict[self.contigs_db_project_name] = self.estimate_for_list_of_splits_or_gene_caller_ids(gene_caller_ids=gene_caller_ids_of_interest,
-                                                                                                                     bin_name=self.contigs_db_project_name)
+        contigs_db_taxonomy_dict[self.contigs_db_project_name]['scgs'] = self.get_scg_taxonomy_dict(gene_caller_ids=gene_caller_ids_of_interest,
+                                                                                                    bin_name=self.contigs_db_project_name)
 
         return contigs_db_taxonomy_dict
 
