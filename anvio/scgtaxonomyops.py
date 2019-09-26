@@ -159,7 +159,7 @@ class SCGTaxonomyContext(object):
                             self.run.warning("Some weird letter found in '%s'. " % taxonomy_text)
 
                     self.accession_to_taxonomy_dict[accession] = d
-            
+
             # let's add one more accession for all those missing accessions
             self.accession_to_taxonomy_dict['unknown_accession'] = dict([(taxon, None) for taxon in self.levels_of_taxonomy])
 
@@ -267,6 +267,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         self.output_file_path = A('output_file')
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
+        self.just_do_it = A('just_do_it')
         self.treat_as_metagenome = True if A('metagenome') else False
 
         SCGTaxonomyContext.__init__(self, self.args)
@@ -481,7 +482,11 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
     def print_scg_taxonomy_estimations_dict(self, scg_taxonomy_estimations_dict):
         self.progress.reset()
-        self.run.warning(None, header='Taxonomy for %s' % ('collection "%s"' % self.collection_name if self.collection_name else "whatever"), lc="green")
+
+        if self.collection_name:
+            self.run.warning(None, header='Estimated taxonomy for collection "%s"' % self.collection_name, lc="green")
+        else:
+            self.run.warning(None, header='Estimated taxonomy for "%s"' % self.contigs_db_project_name, lc="green")
 
         d = self.get_print_friendly_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
         header = ['total_scgs', 'supporting_scgs', 'taxonomy']
@@ -879,7 +884,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
                 num_finished_processes += 1
 
                 self.progress.increment(increment_to=num_finished_processes)
-                self.progress.update("Processed %s of %s SGCs aligment in %s processus with %s cores." \
+                self.progress.update("%s of %s SGCs are finished in %s processes with %s threads." \
                                         % (num_finished_processes, total_num_processes, int(self.num_parallel_processes), self.num_threads))
 
             except KeyboardInterrupt:
@@ -999,7 +1004,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         # FIXME: final hit is still not what we can trust. next, we should find out whether the percent identity
         # for the level of taxonomy at `taxonomic_level` is higher than the minimum percent identity for all sequences
         # considered that are affiliated with final_hit[taxonomic_level]
-    
+
         # turn it into a Python dict before returning
         final_hit_dict = final_hit.to_dict('records')[0]
 
