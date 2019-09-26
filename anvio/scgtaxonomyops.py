@@ -225,6 +225,16 @@ class SCGTaxonomyContext(object):
                     raise ConfigError("You can't ask anvi'o to treat your contigs database as a metagenome and also give it a\
                                        collection.")
 
+                if self.scg_name_for_metagenome_mode and not self.metagenome_mode:
+                    raise ConfigError("If you are not running in `--metagenome-mode`, there is no use to define a SCG name for\
+                                       this mode :/")
+
+                if self.scg_name_for_metagenome_mode and self.scg_name_for_metagenome_mode not in self.SCGs:
+                    raise ConfigError("We understand that you wish to work with '%s' to study the taxonomic make up of your contigs\
+                                       database in metagenome mode. But then this gene is not one of those anvi'o recognizes as\
+                                       suitable SCGs to do that. Here is a list for you to choose from: '%s'." \
+                                                            % (self.scg_name_for_metagenome_mode, ', '.join(self.SCGs.keys())))
+
                 if self.output_file_path:
                     filesnpaths.is_output_file_writable(self.output_file_path)
 
