@@ -101,7 +101,7 @@ anvi-export-locus -c $output_dir/CONTIGS.db \
 
 INFO "Export genomic locus using HMM (multiple, only 1 expected hit)"
 anvi-export-locus -c $output_dir/CONTIGS.db \
-                  -O $output_dir/exported_locus_from_hmm \
+                  -O $output_dir/exported_locus_from_hmm_multi \
                   -n 22,22 \
                   -s RNA_pol_Rpb6,fake_gene \
                   --use-hmm \
@@ -138,19 +138,22 @@ INFO "Export genomic locus using functional annotation search"
 anvi-export-locus -c $output_dir/CONTIGS.db \
                   -O $output_dir/exported_locus_from_functions \
                   -n 22,22 \
-                  -s NusB
+                  -s NusB \
+                  --overwrite-output-destinations
 
 INFO "Export genomic locus using functional annotation search (multiple; 2 expected)"
 anvi-export-locus -c $output_dir/CONTIGS.db \
                   -O $output_dir/exported_locus_from_functions \
                   -n 22,22 \
-                  -s NusB,'Glutamine amidotransferase class-I'
+                  -s NusB,'Glutamine amidotransferase class-I' \
+                  --overwrite-output-destinations
 
 INFO "Export genomic locus using functional annotation search in flank-mode"
 anvi-export-locus -c $output_dir/CONTIGS.db \
                   -O $output_dir/exported_locus_from_functions \
                   --flank-mode  \
-                  -s NusB,YigB
+                  -s NusB,rpoz \
+                  --overwrite-output-destinations
 
 
 INFO "Export only Pfam annotations"
