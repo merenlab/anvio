@@ -3284,7 +3284,7 @@ class ContigsDatabase:
             except KeyError:
                 raise ConfigError("Oh no :( There is a contigs database here at '%s', but it seems to be broken :( It is very\
                                    likely that the process that was trying to create this database failed, and left behind\
-                                   this unfinished thingy (if you would like to picture its state you an imagine the baby\
+                                   this unfinished thingy (if you would like to picture its state you should imagine the baby\
                                    Voldemort at King's Cross). Well, anvi'o believes it is best if you make it go away with\
                                    fire, and try whatever you were trying before you got this error one more time with a\
                                    proper contigs database. End of sad news. Bye now." % self.db_path)

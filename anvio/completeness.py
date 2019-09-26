@@ -6,7 +6,6 @@
     contigs database.
 """
 
-import numpy
 import argparse
 from collections import Counter
 
@@ -185,7 +184,6 @@ class Completeness:
 
         # learn domain predictions from anvi'o random forest
         domain_probabilities, actual_domains, control_domains = self.SCG_domain_predictor.predict_from_observed_genes_per_domain(observed_genes_per_domain)
-        domain_specific_estimates = []
 
         if anvio.DEBUG:
             self.run.warning(None, header="DOMAIN ESTIMTES FOR '%s'" % bin_name, lc='green')
