@@ -549,6 +549,21 @@ D = {
              'help': "Path to The taxonomy file format tsv containe:\
               ID\td__domaine;p__phylum;[..];s__genus species"}
                 ),
+    'metagenome-mode': (
+            ['-m', '--metagenome-mode'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Treat a given contigs database as a metagenome rather than treating it as a single genome."}
+                ),
+    'scg-name-for-metagenome-mode': (
+            ['-S','--scg-name-for-metagenome-mode'],
+            {'default': None,
+             'type': str,
+             'metavar': 'SCG_NAME',
+             'help': "When running in metagenome mode, anvi'o automatically chooses the most frequent single-copy\
+                      core gene to estimate the taxonomic composition within a contigs database. If you have a\
+                      different preference you can use this parameter to communicate that."}
+                ),
     'taxonomy-database': (
             ['-r', '--taxonomy-database'],
             {'default': None,
