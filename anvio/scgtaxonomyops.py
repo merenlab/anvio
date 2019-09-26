@@ -455,6 +455,17 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
 
     def estimate_for_contigs_db_for_metagenome(self):
+        """Treat a given contigs database as a metagenome.
+
+           This function deserves some attention. It relies on a single SCG to estimate the composition of a metagenome.
+           For instance, its sister function, `estimate_for_contigs_db_for_genome`, works with a list of splits that are
+           assumed to belong to the same genome. In which case a consensus taxonomy learned from all SCGs is most
+           appropriate. In this case, however, we don't know which split will go together, hence, we can't pull together
+           SCGs to learn a consensus taxonomy for independent populations in the metagenome. The best we can do is to stick
+           with a single SCG with the hope that (1) it will cut through as many populations as possible and (2) will have
+           reasonable power to resolve taxonomy all by itself. These independent assumptions will both work in some cases
+           and both fail in others.
+        """
         contigs_db_taxonomy_dict = {self.contigs_db_project_name: {}}
 
         most_frequent_scg = next(iter(self.frequency_of_scgs_with_taxonomy))
