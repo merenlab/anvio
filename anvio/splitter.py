@@ -893,9 +893,10 @@ class LocusSplitter:
             if not isinstance(gene_caller_ids_flank_pair, list):
                 raise ConfigError("The gene_caller_ids_flank_pair must be integers.")
             if len(gene_caller_ids_flank_pair) == 1:
-                raise ConfigError("You are in flank-mode, and you provided only %d gene-caller-id. \
+                raise ConfigError("You are in flank-mode, and anvi'o only found %d gene-caller-id. \
                                    Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's \
-                                   to cut out a locus (i.e., only a pair of flanking genes)! Please add another \
+                                   to cut out a locus (i.e., only a pair of flanking genes)! This most likely occured because 1 of your \
+                                   search-terms was not found the functions of the CONTIGS.db. Please try again with another \
                                    search-term :)" % (len(self.gene_caller_ids_of_interest)))
             if len(gene_caller_ids_flank_pair) > 2:
                 raise ConfigError("You are in flank-mode, and anvi'o found %d gene-caller-id's from the search-terms provided. \
