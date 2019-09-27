@@ -7,6 +7,7 @@ contigs databases with taxon names, and estimate taxonomy for genomes and metagn
 
 import os
 import glob
+import copy
 import shutil
 import pickle
 import hashlib
@@ -27,7 +28,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
-from anvio.dbops import ContigsSuperclass, ContigsDatabase
+from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass
 from anvio.drivers.diamond import Diamond
 from anvio.tables.scgtaxonomy import TableForSCGTaxonomy
 
@@ -280,6 +281,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         self.just_do_it = A('just_do_it')
         self.metagenome_mode = True if A('metagenome_mode') else False
         self.scg_name_for_metagenome_mode = A('scg_name_for_metagenome_mode')
+        self.compute_coverages_across_samples = A('compute_coverages_across_samples')
 
         SCGTaxonomyContext.__init__(self, self.args)
 
@@ -295,6 +297,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         self.frequency_of_scgs_with_taxonomy = {}
         self.gene_callers_id_to_scg_taxonomy_dict = {}
         self.split_name_to_gene_caller_ids_dict = {}
+        self.gene_callers_id_to_split_name_dict = {}
 
         self.initialized = False
 
@@ -604,6 +607,9 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         else:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
 
+        if self.compute_coverages_across_samples:
+            self.get_scg_coverages_across_samples_dict(scg_taxonomy_estimations_dict)
+
         if self.output_file_path:
             self.store_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
 
@@ -668,12 +674,75 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
 
     def get_gene_caller_ids_for_splits(self, split_names_list):
+        """Returns gene caller ids found in a list of splits"""
+
         gene_caller_ids_for_splits = set([])
         for split_name in split_names_list:
             if split_name in self.split_name_to_gene_caller_ids_dict:
                 gene_caller_ids_for_splits.update(self.split_name_to_gene_caller_ids_dict[split_name])
 
         return gene_caller_ids_for_splits
+
+
+    def get_split_names_for_scg_taxonomy_estimations_dict(self, scg_taxonomy_estimations_dict):
+        """Returns a list of split names associated with SCGs found in a scg_taxonomy_estimations_dict."""
+
+        if 'scgs' not in list(scg_taxonomy_estimations_dict.values())[0]:
+            raise ConfigError("Someone called this function with something that doesn't look like the kind\
+                               of input data it was expecting (sorry for the vagueness of the message, but\
+                               anvi'o hopes that will be able to find out why it is happening).")
+
+        split_names = set([])
+
+        for entry_name in scg_taxonomy_estimations_dict:
+            for gene_callers_id in scg_taxonomy_estimations_dict[entry_name]['scgs']:
+                split_names.add(self.gene_callers_id_to_split_name_dict[gene_callers_id])
+
+        return split_names
+
+
+    def get_scg_coverages_across_samples_dict(self, scg_taxonomy_estimations_dict):
+        if not self.metagenome_mode:
+            raise ConfigError("Sorry, this feature is only available for `--metagenome-mode` at the moment.")
+
+        scg_coverages_across_samples_dict = {}
+
+        self.progress.new('Recovering coverages')
+        self.progress.update('Learning all split names affiliated with SCGs ..')
+        split_names_of_interest = self.get_split_names_for_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
+        self.progress.end()
+
+        # initialize split coverages for splits that have anything to do with our SCGs
+        args = copy.deepcopy(self.args)
+        args.split_names_of_interest = split_names_of_interest
+        profile_db = ProfileSuperclass(args)
+        profile_db.init_split_coverage_values_per_nt_dict()
+
+        # recover all gene caller ids that occur in our taxonomy estimation dictionary
+        # and ge their coverage stats from the profile super
+        gene_caller_ids_of_interest = set([])
+        for bin_name in scg_taxonomy_estimations_dict:
+            for gene_callers_id in scg_taxonomy_estimations_dict[bin_name]['scgs']:
+                gene_caller_ids_of_interest.add(gene_callers_id)
+
+        # at this point we have everything. splits of interest are loaded in memory in `profile_db`, and we know
+        # which gene caller ids we are interested in recovering coverages for. the way to access to gene coverages
+        # is a bit convoluted in the dbops for historical reasons, but it is quite straightforward. the most
+        # weird part is that we need a copy of a contigs super. so we will start with that:
+        contigs_db = ContigsSuperclass(self.args, r=run_quiet, p=progress_quiet)
+        for split_name in split_names_of_interest:
+            # note for the curious: yes, here we are sending the same gene caller ids of interest over and over to
+            # the `get_gene_level_coverage_stats` for each split, but that function is smart enough to not spend any
+            # time on those gene caller ids that do not occur in the split name we are interested in.
+            d = profile_db.get_gene_level_coverage_stats(split_name, contigs_db, gene_caller_ids_of_interest=gene_caller_ids_of_interest)
+
+
+        if self.metagenome_mode:
+            pass
+        else:
+            pass
+
+        return scg_coverages_across_samples_dict
 
 
 class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
