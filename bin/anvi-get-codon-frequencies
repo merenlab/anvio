@@ -29,6 +29,15 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db', 'bam-file',]
 __provides__ = ['codon-frequencies-txt', 'aa-frequencies-txt',]
+__description__ = ("Get amino acid or codon frequencies of genes in a contigs database, or get the same information "
+                   "considering the make up of the environmnet captured in a BAM file through the mapped reads. "
+                   "What is the difference? The first one will give you AA or CDN frequencies given a set of genes. In "
+                   "contrast, the latter will also take a BAM file, and will give you AA or CDN frequencies of the "
+                   "environment. If you want to know the frequencies of residues of a \"gene\" you do not need a BAM "
+                   "file. If you want the frequencies you observe in actual read recruitment results, then you need "
+                   "provide a BAM file. The latter will give you frequencies of CDN or AA \"linkmers\" an anvio trick "
+                   "that, for each codon position, enables you to work with only the short reads that fully cover the "
+                   "codon.")
 
 
 class ReportCodonFrequencies:
@@ -186,15 +195,7 @@ class ReportCodonFrequencies:
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Get amino acid or codon frequencies of genes in a contigs database, or or get the same information\
-                                                  considering the make up of the environmnet captured in a BAM file through the mapped reads.\
-                                                  What is the difference? The first one will give you AA or CDN frequencies given a set of genes. In\
-                                                  contrast, the latter will also take a BAM file, and will give you AA or CDN frequencies of the\
-                                                  environment. If you want to know the frequencies of residues of a "gene" you do not need a BAM\
-                                                  file. If you want the frequencies you observe in actual read recruitment results, then you need\
-                                                  provide a BAM file. The latter will give you frequencies of CDN or AA "linkmers" an anvio trick\
-                                                  that, for each codon position, enables you to work with only the short reads that fully cover the\
-                                                  codon to ensure molecular linkage between bases (well, assuming there are no sequencing errors).')
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT DATABASE', 'The contigs database. Clearly those genes must be read from somewhere.')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))

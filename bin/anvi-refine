@@ -27,6 +27,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['profile-db', 'contigs-db', 'bin',]
 __provides__ = ['bin',]
+__description__ = "Start the anvi'o interactive interactive for refining"
 
 
 run = terminal.Run()
@@ -34,7 +35,7 @@ progress = terminal.Progress()
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Start the anvi'o interactive interactive for refining")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DEFAULT INPUTS', "The interavtive interface can be started with and without\
                                                           anvi'o databases. The default use assumes you have your\

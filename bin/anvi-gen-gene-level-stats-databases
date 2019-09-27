@@ -25,6 +25,12 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['profile-db', 'contigs-db', 'collection', 'bin',]
 __provides__ = ['genes-db',]
+__description__ = ("A program to compute genes databases for a ginen set of bins stored in "
+                   "an anvi'o collection. Genes databases store gene-level coverage and "
+                   "detection statistics, and they are usually computed and generated "
+                   "automatically when they are required (such as running anvi-interactive "
+                   "with `--gene-mode` flag). This program allows you to pre-compute them "
+                   "if you don't want them to be done all at once.")
 
 
 run = terminal.Run()
@@ -111,12 +117,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="A program to compute genes databases for a ginen set of bins stored in\
-                                                  an anvi'o collection. Genes databases store gene-level coverage and\
-                                                  detection statistics, and they are usually computed and generated\
-                                                  automatically when they are required (such as running anvi-interactive\
-                                                  with `--gene-mode` flag). This program allows you to pre-compute them\
-                                                  if you don't want them to be done all at once.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT DATABASES', "Which anvi'o databases do you wish to work today?")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))

@@ -14,23 +14,25 @@ Developers and contributors at large
 ===============================================================================
 Tobias Paczian             Argonne National Laboratory        United States
 Mike Lee                   NASA Ames Research Center          United States
+Emanuel Burgos             University of Wisconsin-Madison    United States
 Gökmen Göksel              Koding, Inc.                       United States
 Faruk Uzun                 Monera, Inc.                       Turkey
-Gökmen Görgen              Radity, Inc                        Switzerland
-Emanuel Burgos             University of Wisconsin-Madison    United States
-Doğan Can Kilment          Makroser, Inc.                     Turkey
 Daniel Blankenberg         Genomic Medicine Institute         United States
+Ryan Moore                 University of Delaware             United States
+Gökmen Görgen              Radity, Inc                        Switzerland
+Doğan Can Kilment          Makroser, Inc.                     Turkey
+Srinidhi Varadharajan      University of Oslo                 Norway
+Xabier Vázquez-Campos      University of New South Wales      Australia
+Quentin Clayssen           University of Nantes               France
 John Eppley                University of Hawaiʻi at Mānoa     United States
 S. Çağlar Onur             DigitalOcean, Inc.                 United States
-Xabier Vázquez-Campos      University of New South Wales      Australia
-Ryan Moore                 University of Delaware             United States
-Srinidhi Varadharajan      University of Oslo                 Norway
-Bryan Merill               Stanford University                United States
-C. Titus Brown             University of California Davis     United States
-Finlay Maguire             Dalhousie University               Canada
-Elmar Pruesse              University of Colorado Denver      United States
-M. Fauzi Haroon            Harvard University                 United States
 Tom Delmont                Genoscope                          France
+Finlay Maguire             Dalhousie University               Canada
+M. Fauzi Haroon            Harvard University                 United States
+Elmar Pruesse              University of Colorado Denver      United States
+Dan Utter                  Harvard University                 United States
+C. Titus Brown             University of California Davis     United States
+Bryan Merill               Stanford University                United States
 Ines Martinez              University of Alberta              Canada
 
 --

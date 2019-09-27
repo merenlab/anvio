@@ -18,8 +18,17 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
+__resources__ = [("A conceptual tutorial on the structural biology capabilities of anvio",
+                  "http://merenlab.org/2018/09/04/structural-biology-with-anvio/"),
+                 ("A practical tutorial section in the infant gut tutorial",
+                  "http://merenlab.org/tutorials/infant-gut/#chapter-vii-linking-genomic-heterogeneity-to-protein-structures")]
 __requires__ = ['contigs-db']
 __provides__ = ['structure-db']
+__description__ = ("Identifies genes in your contigs database that encode proteins that are "
+                   "homologous to proteins with solved structures. If sufficiently similar "
+                   "homologs are identified, they are used as structural templates to predict "
+                   "the 3D structure of proteins in your contigs database. See our tutorial: "
+                   "http://merenlab.org/2018/09/04/structural-biology-with-anvio/")
 
 
 run = terminal.Run()
@@ -33,15 +42,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Identifies genes in your contigs database that encode proteins that are \
-                                                  homologous to proteins with solved structures. If sufficiently similar \
-                                                  homologs are identified, they are used as structural templates to predict \
-                                                  the 3D structure of proteins in your contigs database. This means we are \
-                                                  at the mercy of structural biologists: if they have not solved a structure \
-                                                  of a protein sufficiently similar in AA sequence to yours, this isn't going \
-                                                  to work. But it's worth a try! The software we are using is MODELLER, more \
-                                                  of which can be learned about at https://salilab.org/modeller/, or in our \
-                                                  tutorial, which doesn't exist yet FIXME")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
     groupG = parser.add_argument_group('GENES', 'Specifying which genes you want to be modelled.')

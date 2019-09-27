@@ -24,6 +24,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['linkmers-txt',]
 __provides__ = ['oligotypes',]
+__description__ = "Takes an anvi'o linkmers report, generates an oligotyping output"
 
 
 run = terminal.Run()
@@ -86,7 +87,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="Takes an anvi'o linkmers report, generates an oligotyping output")
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument('-i', '--input-file', metavar = 'LINKMER_REPORT', required = True,
                         help = 'Output file of `anvi-report-linkmers`.')

@@ -25,6 +25,7 @@ __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db', 'profile-db', 'pan-db', 'collection-txt',]
 __provides__ = ['collection',]
+__description__ = "Import an external binning result into anvi'o"
 
 
 run = terminal.Run()
@@ -213,7 +214,7 @@ def sanity_check(args):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description="Import an external binning result into anvi'o")
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument('data', metavar = "TAB DELIMITED FILE",
                         help = 'The input file that describes bin IDs for each split or contig.')

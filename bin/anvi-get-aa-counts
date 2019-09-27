@@ -18,6 +18,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = ("Fetches the number of times each amino acid occurs from a contigs database in a "
+                   "given bin, set of contigs, or set of genes")
 
 
 run = terminal.Run()
@@ -32,8 +34,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Collects AA counts information from a contigs database\
-                                                  for a given bin, set of contigs, or set of genes.')
+    parser = argparse.ArgumentParser(description=__description__)
 
     group0 = parser.add_argument_group('MANDATORY STUFF', 'You have to set the following two parameters, then\
                                                            you will select one set of parameters from the\

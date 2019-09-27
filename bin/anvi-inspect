@@ -22,6 +22,7 @@ __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
 __requires__ = ['profile-db', 'contigs-db', 'bin']
 __provides__ = ['interactive']
+__description__ = "Start an anvi'o inspect interactive interface."
 
 
 run = terminal.Run()
@@ -29,7 +30,7 @@ progress = terminal.Progress()
 
 if __name__ == '__main__':
     # setup the command line user interface
-    parser = argparse.ArgumentParser(description="Start an anvi'o inspect interactive interface.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DEFAULT INPUTS', "The interactive interface can be started with anvi'o databases.")
     groupB = parser.add_argument_group('VISUALS RELATED', "Parameters that give access to various adjustements regarding\

@@ -12,6 +12,7 @@ any later version.
 Please read the COPYING file.
 """
 
+__description__ = "A simple script to generate info from search tables"
 
 import sys
 import argparse
@@ -25,7 +26,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='A simple script to generate info from search tables')
+    parser = argparse.ArgumentParser(description=__description__)
     parser.add_argument('contigs_db', metavar = 'CONTIGS_DB',
                         help = 'Contigs database to read from.')
     parser.add_argument('--list-sources', action='store_true', default=False,

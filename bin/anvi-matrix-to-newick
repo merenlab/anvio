@@ -20,6 +20,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['view-data',]
 __provides__ = ['dendrogram',]
+__description__ = "Takes a distance matrix, returns a newick tree."
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -40,7 +41,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Takes an observation matrix, returns a newick tree.')
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT', 'The data you wish to cluster')
     groupA.add_argument('input_matrix', metavar='PATH', default=None,

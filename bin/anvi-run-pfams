@@ -7,6 +7,7 @@ import anvio
 import anvio.pfam as pfam
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import time_program
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -16,12 +17,19 @@ __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
 __requires__ = ['contigs-db', 'pfams-data',]
 __provides__ = ['functions',]
+__description__ = "Run Pfam on Contigs Database."
+
+
+@time_program
+def main(args):
+    p = pfam.Pfam(args)
+    p.process()
 
 
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Run Pfam on Contigs Database.')
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('pfam-data-dir'), **anvio.K('pfam-data-dir'))
@@ -30,8 +38,7 @@ if __name__ == '__main__':
     args = anvio.get_args(parser)
 
     try:
-        pfam = pfam.Pfam(args)
-        pfam.process()
+        main(args)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

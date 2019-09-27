@@ -20,6 +20,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = "Train a classifier for CPR prediction"
 
 
 run = terminal.Run()
@@ -65,7 +66,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Train a classifier for CPR prediction')
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument('matrix', help = 'TAB-delimited matrix of CPR genome names, classes, and presence absence\
                                           of single-copy genes. Headers of the first two rows should be "genome", and\

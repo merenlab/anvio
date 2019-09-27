@@ -21,6 +21,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = "Access self tables, display values, or set new ones totally on your own risk."
 
 
 class DatabaseInfo:
@@ -181,7 +182,7 @@ class DatabaseInfo:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Access self tables, display values, or set new ones totally on your own risk.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('Input', "The database path you wish to access.")
     groupA.add_argument("input", metavar = "DATABASE_PATH", nargs=None, help = "An anvi'o database for pan, profile, contigs, or auxiliary data")

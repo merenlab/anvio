@@ -20,6 +20,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = "Merge a given set of bins in an anvi'o collection"
 
 
 run = terminal.Run()
@@ -71,7 +72,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Merge a given set of bins in an anvi'o collection")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group("DB AND COLLECTION", "Simple enough. This guy needs a pan or profile database\
                                         and a collection name. You can get a list of available collections with another\

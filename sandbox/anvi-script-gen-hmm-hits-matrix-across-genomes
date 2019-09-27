@@ -19,6 +19,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = ("A simple script to generate a TAB-delimited file for the presence or absence "
+                   "of HMM hits in a given set of contigs databases and an HMM source.")
 
 
 run = terminal.Run()
@@ -70,9 +72,7 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='A simple script to generate a TAB-delimited file for the presence\
-                                                  or absence of HMM hits in a given set of contigs databases and an\
-                                                  HMM source.')
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupB = parser.add_argument_group('INPUT: INTERNAL/EXTERNAL GENOMES FILE', "Yes. You need to use an internal and/or external genomes file\
                                         to tell anvi'o where your contigs databases are.")

@@ -17,6 +17,7 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __provides__ = ['cogs-data']
+__description__ = "Download COG data from the NCBI"
 
 
 run = terminal.Run()
@@ -26,7 +27,7 @@ pp = terminal.pretty_print
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Download COG data from the NCBI')
+    parser = argparse.ArgumentParser(description=__description__)
     parser.add_argument('--cog-data-dir', default=None, type=str, help="The directory for COG data to be stored. If you leave it\
                         as is without specifying anything, the default destination for the data directory will be used to set things\
                         up. The advantage of it is that everyone will be using a single data directory, but then you may need\

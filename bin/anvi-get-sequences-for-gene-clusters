@@ -25,6 +25,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['pan-db', 'genomes-storage-db']
 __provides__ = ['genes-fasta', 'concatenated-gene-alignment-fasta']
+__description__ = "Do cool stuff with gene clusters in anvi'o pan genomes"
 
 
 run = terminal.Run()
@@ -76,7 +77,7 @@ def main(args):
             if len(columns) != 1:
                 raise ConfigError("The input file for gene cluster IDs must contain a single column. It seems yours has %d :/" % len(columns))
 
-            gene_cluster_ids = set([p.strip('\n') for p in open(args.gene_cluster_ids_file, 'rU').readlines()])
+            gene_cluster_ids = set([p.strip('\n') for p in open(args.gene_cluster_ids_file, 'r').readlines()])
             run.info('Mode', 'Reporting alignments for a list of gene clusters from an input file.')
     else:
         run.info('Mode', 'Reporting alignments for all gene clusters.')
@@ -100,7 +101,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Do cool stuff with gene clusters in anvi'o pan genomes")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db'))

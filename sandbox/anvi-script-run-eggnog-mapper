@@ -18,6 +18,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = "Run eggnog-mapper on a contigs database, and store results"
 
 
 run = terminal.Run()
@@ -54,7 +55,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Run eggnog-mapper on a contigs database, and store results')
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument('--cog-data-dir', default=None, type=str, help="The directory path for your COG setup\

@@ -30,6 +30,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['profile-db', 'contigs-db', 'collection', 'pan-db', 'genomes-storage-db',]
 __provides__ = ['summary',]
+__description__ = "Summarize an anvi'o collection. Fun stuff."
 
 
 run = terminal.Run()
@@ -65,7 +66,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description="Summarize an anvi'o collection. Fun stuff.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('PROFILE', "The profile. It could be a standard or pan profile database.")
     groupB = parser.add_argument_group('PROFILE TYPE SPECIFIC PARAMETERS', "If you are summarizing a collection stored in\
