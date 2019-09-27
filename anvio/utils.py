@@ -1186,11 +1186,11 @@ def get_split_and_contig_names_of_interest(contigs_db_path, gene_caller_ids):
 
     where_clause_contigs = "parent in (%s)" % ', '.join(['"%s"' % c for c in contig_names_of_interest])
     splits_info = contigs_db.get_some_rows_from_table_as_dict(t.splits_info_table_name, where_clause=where_clause_contigs)
-    split_names_of_ineterest = set(splits_info.keys())
+    split_names_of_interest = set(splits_info.keys())
 
     contigs_db.disconnect()
 
-    return (split_names_of_ineterest, contig_names_of_interest)
+    return (split_names_of_interest, contig_names_of_interest)
 
 
 def get_contigs_splits_dict(split_ids, splits_basic_info):
