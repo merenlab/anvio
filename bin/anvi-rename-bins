@@ -24,6 +24,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = "Rename all bins in a given collection (so they have pretty names)."
 
 
 run = terminal.Run()
@@ -199,7 +200,7 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Rename all bins in a given collection (so they have pretty names).')
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DEFAULT INPUTS', "Standard stuff")
     groupB = parser.add_argument_group('OUTPUT AND TESTING', "a.k.a, sweet parameters of convenience")

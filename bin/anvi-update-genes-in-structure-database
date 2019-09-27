@@ -18,6 +18,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = ("Add or remove genes from an already existing structure database. All settings used "
+                   "to generate your database will be used in this program.")
 
 
 run = terminal.Run()
@@ -29,9 +31,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Add or remove genes from an already existing \
-                                                  structure database. All settings used to generate \
-                                                  your database will be used in this program.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
     groupG = parser.add_argument_group('GENES', 'Specifying which genes you want to be modelled.')

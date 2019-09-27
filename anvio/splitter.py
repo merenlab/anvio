@@ -575,6 +575,8 @@ class BinSplitter(summarizer.Bin, XSplitter):
         bin_profile_db.db.copy_paste(table_name='self', source_db_path=self.profile_db_path)
         bin_profile_db.db.copy_paste(table_name='views', source_db_path=self.profile_db_path)
         bin_profile_db.db.copy_paste(table_name='states', source_db_path=self.profile_db_path)
+        bin_profile_db.db.copy_paste(table_name='layer_additional_data', source_db_path=self.profile_db_path)
+        bin_profile_db.db.copy_paste(table_name='layer_orders', source_db_path=self.profile_db_path)
 
         # update some values
         bin_profile_db.db.update_meta_value('contigs_db_hash', self.contigs_db_hash)

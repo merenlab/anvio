@@ -23,6 +23,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__description__ = "A script for anvi'o to test itself"
 
 
 tests = {'mini': ['run_mini_test.sh'],
@@ -80,7 +81,7 @@ def main(args):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description="A script for anvi'o to test itself")
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument('--suite', default='full',
                         help="Suite of tests to execute. By default this program will execute a full suite of example anvi'o\

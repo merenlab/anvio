@@ -25,6 +25,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['profile-db', 'single-profile-db', 'contigs-db', 'genes-db', 'bin', 'view-data', 'dendrogram', 'phylogeny']
 __provides__ = ['collection', 'bin', 'interactive', 'svg']
+__description__ = "Start an anvi'o server for the interactive interface"
 
 
 run = terminal.Run()
@@ -32,7 +33,7 @@ progress = terminal.Progress()
 
 if __name__ == '__main__':
     # setup the command line user interface
-    parser = argparse.ArgumentParser(description="Start an anvi'o server for the interactive interface")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DEFAULT INPUTS', "The interavtive interface can be started with and without\
                                                           anvi'o databases. The default use assumes you have your\

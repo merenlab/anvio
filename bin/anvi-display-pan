@@ -26,13 +26,14 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['pan-db', 'genomes-storage-db']
 __provides__ = ['collection', 'bin', 'interactive', 'svg']
+__description__ = "Start an anvi'o server to display a pan-genome"
 
 run = terminal.Run()
 progress = terminal.Progress()
 
 if __name__ == '__main__':
     # setup the command line user interface
-    parser = argparse.ArgumentParser(description="Start an anvi'o server to display a pan-genome")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT FILES', "Input files from the pangenome analysis.")
     groupB = parser.add_argument_group('OPTIONAL INPUTS', "Where the yay factor becomes a reality.")

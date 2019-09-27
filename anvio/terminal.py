@@ -343,35 +343,35 @@ class Run:
 
 class Timer:
     """
-        The premise of the class is to build an ordered dictionary, where each key is a checkpoint
-        name and value is a timestamp.
+    The premise of the class is to build an ordered dictionary, where each key is a checkpoint
+    name and value is a timestamp.
 
-        Examples
-        ========
+    Examples
+    ========
 
-            from anvio.terminal import Timer
-            import time
-            t = Timer(); time.sleep(1)
-            t.make_checkpoint('checkpoint_name'); time.sleep(1)
-            timedelta = t.timedelta_to_checkpoint(timestamp=t.timestamp(), checkpoint_key='checkpoint_name')
-            print(t.format_time(timedelta, fmt = '{days} days, {hours} hours, {seconds} seconds', zero_padding=0))
-            print(t.time_elapsed())
+        from anvio.terminal import Timer
+        import time
+        t = Timer(); time.sleep(1)
+        t.make_checkpoint('checkpoint_name'); time.sleep(1)
+        timedelta = t.timedelta_to_checkpoint(timestamp=t.timestamp(), checkpoint_key='checkpoint_name')
+        print(t.format_time(timedelta, fmt = '{days} days, {hours} hours, {seconds} seconds', zero_padding=0))
+        print(t.time_elapsed())
 
-            >>> 0 days, 0 hours, 1 seconds
-            >>> 00:00:02
+        >>> 0 days, 0 hours, 1 seconds
+        >>> 00:00:02
 
-            t = Timer(3) # 3 checkpoints expected until completion
-            for _ in range(3):
-                time.sleep(1); t.make_checkpoint()
-                print('complete: %s' % t.complete)
-                print(t.eta(fmt='ETA: {seconds} seconds'))
+        t = Timer(3) # 3 checkpoints expected until completion
+        for _ in range(3):
+            time.sleep(1); t.make_checkpoint()
+            print('complete: %s' % t.complete)
+            print(t.eta(fmt='ETA: {seconds} seconds'))
 
-            >>> complete: False
-            >>> ETA: 02 seconds
-            >>> complete: False
-            >>> ETA: 01 seconds
-            >>> complete: True
-            >>> ETA: 00 seconds
+        >>> complete: False
+        >>> ETA: 02 seconds
+        >>> complete: False
+        >>> ETA: 01 seconds
+        >>> complete: True
+        >>> ETA: 00 seconds
     """
     def __init__(self, required_completion_score = None):
         self.timer_start = self.timestamp()
@@ -422,7 +422,7 @@ class Timer:
         return checkpoint
 
 
-    def calculate_time_remaining(self, infinite_default = None):
+    def calculate_time_remaining(self, infinite_default = '∞'):
         if self.complete:
             return datetime.timedelta(seconds = 0)
         if not self.required_completion_score:
@@ -442,7 +442,7 @@ class Timer:
         # eta was called within the last half second, the previous ETA is returned without further
         # calculation.
         eta_timestamp = self.timestamp()
-        if eta_timestamp - self.last_eta_timestamp < datetime.timedelta(seconds = 0.5):
+        if eta_timestamp - self.last_eta_timestamp < datetime.timedelta(seconds = 0.5) and self.num_checkpoints > 0:
             return self.last_eta
 
         eta = self.calculate_time_remaining()
@@ -454,8 +454,8 @@ class Timer:
         return eta
 
 
-    def time_elapsed(self):
-        return self.format_time(self.timedelta_to_checkpoint(self.timestamp(), checkpoint_key = 0))
+    def time_elapsed(self, fmt=None):
+        return self.format_time(self.timedelta_to_checkpoint(self.timestamp(), checkpoint_key = 0), fmt=fmt)
 
 
     def format_time(self, timedelta, fmt = '{hours}:{minutes}:{seconds}', zero_padding = 2):
@@ -477,7 +477,6 @@ class Timer:
                 fmt = '{seconds}s'
             else:
                 m = 1
-                previous = 'seconds'
                 for i, unit in enumerate(unit_hierarchy):
                     if not seconds // (m * unit_denominations[unit]) >= 1:
                         fmt = '{%s}%s{%s}%s' % (unit_hierarchy[i-1],
@@ -492,13 +491,12 @@ class Timer:
                                                 unit_hierarchy[i-1][0])
                         break
                     else:
-                        previous = unit
                         m *= unit_denominations[unit]
 
         # parse units present in fmt
         format_order = []
-        for i, c in enumerate(fmt):
-            if c == '{':
+        for i, x in enumerate(fmt):
+            if x == '{':
                 for j, k in enumerate(fmt[i:]):
                     if k == '}':
                         unit = fmt[i+1:i+j]
@@ -541,6 +539,119 @@ class Timer:
         return formatted_time
 
 
+class TimeCode(object):
+    """
+    This context manager times blocks of code, and calls run.info afterwards to report
+    the time (unless quiet = True). See also time_program()
+
+    PARAMS
+    ======
+        sc: 'green'
+            run info color with no runtime error
+        success_msg: None
+            If None, it is set to 'Code ran succesfully in'
+        fc: 'green'
+            run info color with runtime error
+        failure_msg: None
+            If None, it is set to 'Code failed within'
+        run: Run()
+            Provide a pre-existing Run instance if you want
+        quiet: False,
+            If True, run.info is not called and datetime object is stored
+            as `time` (see examples)
+        suppress_first: 0,
+            Supress output if code finishes within this many seconds.
+
+    EXAMPLES
+    ========
+
+        import time
+        import anvio.terminal as terminal
+
+        # EXAMPLE 1
+        with terminal.TimeCode() as t:
+            time.sleep(5)
+
+        >>> ✓ Code finished successfully after 05s
+
+
+        # EXAMPLE 2
+        with terminal.TimeCode() as t:
+            time.sleep(5)
+            print(asdf) # undefined variable
+
+        >>> ✖ Code encountered error after 05s
+
+        # EXAMPLE 3
+        with terminal.TimeCode(quiet=True) as t:
+            time.sleep(5)
+        print(t.time)
+
+        >>> 0:00:05.000477
+    """
+    def __init__(self, sc='green', success_msg = None, fc='red', failure_msg = None, run = Run(), quiet = False, suppress_first = 0):
+        self.run = run
+        self.run.single_line_prefixes = {0: '✓ ', 1: '✖ '}
+
+        self.quiet = quiet
+        self.suppress_first = suppress_first
+        self.sc, self.fc = sc, fc
+        self.s_msg, self.f_msg = success_msg, failure_msg
+
+        self.s_msg = self.s_msg if self.s_msg else 'Code finished after '
+        self.f_msg = self.f_msg if self.f_msg else 'Code encountered error after '
+
+
+    def __enter__(self):
+        self.timer = Timer()
+        return self
+
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.time = self.timer.timedelta_to_checkpoint(self.timer.timestamp())
+
+        if self.quiet or self.time <= datetime.timedelta(seconds=self.suppress_first):
+            return
+
+        return_code = 0 if exception_type is None else 1
+
+        msg, color = (self.s_msg, self.sc) if not return_code else (self.f_msg, self.fc)
+        self.run.info_single(msg + self.timer.time_elapsed(), nl_before=1, mc=color, level=return_code)
+
+
+def time_program(program_method):
+    """
+    A decorator used to time anvio programs. See below for example.
+    For a concrete example, see `bin/anvi-profile`.
+
+    EXAMPLE
+    =======
+
+    import anvio.terminal as terminal
+
+    @terminal.time_program
+    def main(args):
+        <do stuff>
+
+    if __name__ == '__main__':
+        <do stuff>
+        main(args)
+    """
+    import inspect
+    program_name = os.path.basename(inspect.getfile(program_method))
+
+    TimeCode_params = {
+        'success_msg': '%s finished after ' % program_name,
+        'failure_msg': '%s encountered an error after ' % program_name,
+        'suppress_first': 3, # avoid clutter when program finishes or fails within 3 seconds
+    }
+
+    def wrapper(*args, **kwargs):
+        with TimeCode(**TimeCode_params):
+            program_method(*args, **kwargs)
+    return wrapper
+
+
 def pretty_print(n):
     """Pretty print function for very big integers"""
     if not isinstance(n, int):
@@ -554,6 +665,50 @@ def pretty_print(n):
             ret.append(',')
     ret.reverse()
     return ''.join(ret[1:]) if ret[0] == ',' else ''.join(ret)
+
+
+def tabulate(*args, **kwargs):
+    """
+    Uses the function `tabulate` in the `tabulate` module to tabulate data. This function behaves
+    almost identically, but exists because currently multiline cells that have ANSI colors break the
+    formatting of the table grid. These issues can be tracked to assess the status of this bug and
+    whether or not it has been fixed:
+
+    https://bitbucket.org/astanin/python-tabulate/issues/170/ansi-color-code-doesnt-work-with-linebreak
+    https://bitbucket.org/astanin/python-tabulate/issues/176/ansi-color-codes-create-issues-with
+
+    Until then, this overwrites a function in the module to preserve formatting when using multiline
+    cells with ANSI color codes.
+    """
+    import tabulate
+
+    def _align_column(strings, alignment, minwidth=0, has_invisible=True, enable_widechars=False, is_multiline=False):
+        strings, padfn = tabulate._align_column_choose_padfn(strings, alignment, has_invisible)
+        width_fn = tabulate._choose_width_fn(has_invisible, enable_widechars, is_multiline)
+        s_widths = list(map(width_fn, strings))
+        maxwidth = max(max(s_widths), minwidth)
+        if is_multiline:
+            if not enable_widechars and not has_invisible:
+                padded_strings = [
+                    "\n".join([padfn(maxwidth, s) for s in ms.splitlines()])
+                    for ms in strings]
+            else:
+                lines = [line.splitlines() for line in strings]
+                lines_pad = [[(s, maxwidth + len(s) - width_fn(s)) for s in group]
+                             for group in lines]
+                padded_strings = ["\n".join([padfn(w, s) for s, w in group])
+                                  for group in lines_pad]
+        else:
+            if not enable_widechars and not has_invisible:
+                padded_strings = [padfn(maxwidth, s) for s in strings]
+            else:
+                s_lens = list(map(len, strings))
+                visible_widths = [maxwidth - (w - l) for w, l in zip(s_widths, s_lens)]
+                padded_strings = [padfn(w, s) for s, w in zip(strings, visible_widths)]
+        return padded_strings
+
+    tabulate._align_column = _align_column
+    return tabulate.tabulate(*args, **kwargs)
 
 
 def get_date():

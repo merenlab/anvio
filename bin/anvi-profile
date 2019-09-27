@@ -2,10 +2,12 @@
 # -*- coding: utf-8
 
 import sys
-import anvio.profiler
+import anvio.profiler as profiler
+import anvio.terminal as terminal
 
 import anvio
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import time_program
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -19,12 +21,22 @@ __tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "c
 __resources__ = [("The usage of the profiler in metagenomics workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 __requires__ = ['bam-file', 'contigs-db']
 __provides__ = ['single-profile-db', 'misc-data-item-orders']
+__description__ = "Creates a single anvi'o profile database. The default input to this program is a BAM file.\
+                   When it is run on a BAM file, depending on the user parameters, the program quantifies\
+                   coverage per nucleotide position (and averages them out per contig), calculates\
+                   single-nucleotide, single-codon, and single-amino acid variants, and stores these data\
+                   into appropriate tables. Anvi'o single profiles can be merged by the program `anvi-merge`."
+
+
+@time_program
+def main(args):
+    profiler.BAMProfiler(args)._run()
 
 
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='Main entry point for Post-Assembly Metagenomics Pipeline')
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupI = parser.add_argument_group('INPUTS', 'There are two possible inputs for anvio profiler. You must\
                                                   to declare either of these two.')
@@ -77,8 +89,7 @@ if __name__ == '__main__':
     args = anvio.get_args(parser)
 
     try:
-        profiler = anvio.profiler.BAMProfiler(args)
-        profiler._run()
+        main(args)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

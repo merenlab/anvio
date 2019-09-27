@@ -20,6 +20,7 @@ __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['genes-db', 'pan-db', 'profile-db']
 __provides__ = ['misc-data-items-txt', 'misc-data-layers-txt', 'misc-data-layer-orders-txt']
+__description__ = "Export additional data or order tables in pan or profile databases for items or layers."
 
 
 run = terminal.Run()
@@ -31,7 +32,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Export additional data or order tables in pan or profile databases for items or layers.")
+    parser = argparse.ArgumentParser(description=__description__)
 
     parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
     parser.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))

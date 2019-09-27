@@ -426,13 +426,20 @@ function getNamedLayerDefaults(layer, attribute, default_value, group)
     }
 
     if (typeof group !== 'undefined' && group.startsWith('ANI_')) {
-        if (group === 'ANI_percentage_identity') {
+        if (group === 'ANI_percentage_identity' || group === 'ANI_full_percentage_identity') {
             if (attribute == 'min') return 0.7;
             if (attribute == 'max') return 1;
         }
 
         if (attribute == 'height') return '180';
         if (attribute == 'color')  return '#FF0000';
+        if (attribute == 'color-start')  return '#F2F2F2';
+        if (attribute == 'type')   return 'intensity';
+    }
+
+    if (typeof group !== 'undefined' && group.startsWith('SourMash_')) {
+        if (attribute == 'height') return '180';
+        if (attribute == 'color')  return '#FF006F';
         if (attribute == 'color-start')  return '#F2F2F2';
         if (attribute == 'type')   return 'intensity';
     }

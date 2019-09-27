@@ -22,6 +22,8 @@ __maintainer__ = "Alon Shaiber"
 __resources__ = [("Tutorial", "http://merenlab.org/2018/07/09/anvio-snakemake-workflows/")]
 __tags__ = ["metagenomics", "phylogenomics", "contigs", "pangenomics", "metapangenomics"]
 __email__ = "alon.shaiber@gmail.com"
+__description__ = ("Execute, manage, parallelize, and troubleshoot entire \'omics workflows which "
+                   "chain together anvi\'o and 3rd party programs.")
 
 
 run = terminal.Run()
@@ -62,7 +64,7 @@ if __name__ == '__main__':
                  (doi:10.1093/bioinformatics/bts480)', lc = 'yellow')
 
     import argparse
-    parser = argparse.ArgumentParser(description="")
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('ESSENTIAL INPUTS', "Things you must provide or this won't work")
     groupA.add_argument(*anvio.A("workflow"), **anvio.K("workflow"))

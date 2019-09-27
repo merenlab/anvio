@@ -4,7 +4,7 @@ set -e
 
 if [ -z "$1"  ]
 then
-    echo "Pleaes send a FASTA file as a parameter..";
+    echo "Please send a FASTA file as a parameter...";
     exit -1
 fi
 

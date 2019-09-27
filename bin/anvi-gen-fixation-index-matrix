@@ -21,10 +21,11 @@ __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 __requires__ = ['contigs-db', 'profile-db', 'structure-db', 'bin']
 __provides__ = ['fixation-index-matrix']
+__description__ = "Generate a pairwise matrix of a fixation indices between samples"
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Generate a pairwise matrix of a fixation indices between samples')
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DATABASES', "Declaring relevant anvi'o databases. First things first. Some\
                                                      are mandatory, some are optional.")

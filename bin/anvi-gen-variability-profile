@@ -8,6 +8,7 @@ import argparse
 import anvio
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import time_program
 from anvio.variabilityops import variability_engines
 
 
@@ -18,12 +19,26 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__resources__ = [("All about SNVs, SCVs, and SAAVs", "http://merenlab.org/2015/07/20/analyzing-variability/")]
 __requires__ = ['contigs-db', 'profile-db', 'structure-db', 'bin']
 __provides__ = ['variability-profile']
+__description__ = ("Generate a table that comprehensively summarizes the variability of nucleotide, "
+                   "codon, or amino acid positions. We call these single nucleotide variants (SNVs), "
+                   "single codon variants (SCVs), and single amino acid variants (SAAVs), respectively. "
+                   "Learn more here: http://merenlab.org/2015/07/20/analyzing-variability/")
+
+@time_program
+def main(args):
+    if args.engine not in variability_engines:
+        raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)
+
+    variability_engine = variability_engines[args.engine](args)
+    variability_engine.process()
+    variability_engine.report()
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Extract information for variable positions')
+    parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('DATABASES', "Declaring relevant anvi'o databases. First things first. Some\
                                                      are mandatory, some are optional.")
@@ -74,12 +89,7 @@ if __name__ == '__main__':
     args = anvio.get_args(parser)
 
     try:
-        if args.engine not in variability_engines:
-            raise ConfigError("You are doing something wrong :/ Focus '%s' does not correspond to an available engine." % args.engine)
-
-        variability_engine = variability_engines[args.engine](args)
-        variability_engine.process()
-        variability_engine.report()
+        main(args)
     except ConfigError as e:
         print(e)
         sys.exit(1)

@@ -337,6 +337,9 @@ class DB:
 
         columns_to_return = list(range(0, len(table_structure)))
 
+        if columns_of_interest and not isinstance(columns_of_interest, type([])):
+            raise ConfigError("The parameter `columns_of_interest` must be of type <list>.")
+
         if omit_parent_column:
             if '__parent__' in table_structure:
                 columns_to_return.remove(table_structure.index('__parent__'))

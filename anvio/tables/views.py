@@ -65,9 +65,15 @@ class TablesForViews(Table):
 
         try:
             anvio_db.db.create_table(table_name, table_structure, table_types)
-        except:
+        except Exception as e:
+            # FIXME: the following if statement will omit errors and quietly continue despite the
+            # table creation failed. I think we should remove it, and add `create_table` function
+            # a new flag, such as `ok_if_exists` and call it in this context as
+            # `ok_if_exists=append_mode`.
             if not append_mode:
-                raise ConfigError("Table already exists")
+                raise ConfigError("Something bad happened when anvi'o was trying to create table `%s` in database\
+                                   '%s'. Here is how the part of the code that was about this described the\
+                                   problem: '%s'." % (table_name, self.db_path, str(e)))
 
         db_entries = [tuple([item] + [data_dict[item][h] for h in table_structure[1:]]) for item in data_dict]
         anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), db_entries)
