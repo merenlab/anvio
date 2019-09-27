@@ -2577,10 +2577,13 @@ class ProfileSuperclass(object):
         self.progress.end()
 
 
-    def get_gene_level_coverage_stats_entry_for_default(self, gene_callers_id, split_coverage, sample_name, gene_start,
-        gene_stop, gene_length, outliers_threshold=1.5):
-        # and recover the gene coverage array per position for a given sample:
+    def get_gene_level_coverage_stats_entry_for_default(self, gene_callers_id, split_coverage, sample_name, gene_start, gene_stop, gene_length, outliers_threshold=1.5):
+        """Returns coverage stats for a single gene in default mode.
 
+           The alternative to this mode is the INSEQ/Tn-SEQ mode that is handled in `get_gene_level_coverage_stats_entry_for_inseq`,
+           where coverage statistics are computed differently.
+        """
+        # and recover the gene coverage array per position for a given sample:
         gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
 
         mean_coverage = numpy.mean(gene_coverage_values_per_nt)
@@ -2609,17 +2612,21 @@ class ProfileSuperclass(object):
                 'non_outlier_positions': non_outlier_positions}
 
 
-    def get_gene_level_coverage_stats_entry_for_inseq(self, gene_callers_id, split_coverage, sample_name, gene_start,
-        gene_stop, gene_length, outliers_threshold=0.9):
+    def get_gene_level_coverage_stats_entry_for_inseq(self, gene_callers_id, split_coverage, sample_name, gene_start, gene_stop, gene_length, outliers_threshold=0.9):
+        """Returns coverage stats for a single gene in INSEQ/Tn-SEQ mode.
+
+           The alternative to this mode is the default mode that is handled in `get_gene_level_coverage_stats_entry_for_default`,
+           where coverage statistics are computed in most conventional ways.
+        """
+
         # Lets ignore those pesty warnings...
         numpy.seterr(divide='ignore', over='ignore')
 
         total_read_counts_in_sample = self.num_mapped_reads_per_sample[sample_name]
         gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
 
-        # INSEQ/Tn-SEQ views
+        # variables for INSEQ/Tn-SEQ views
         mean_coverage = 0
-        #detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
         total_counts_of_sites_in_gene = 0
         total_counts_of_sites_in_gene_normalized = 0
         mean_three_prime = 0

@@ -934,6 +934,29 @@ D = {
                       filtering criteria. In other programs, you may get everything, nothing, or an error. It really depends\
                       on the situation. Fortunately, mistakes are cheap, so it's worth a try."}
                 ),
+    'flank-mode': (
+            ['--flank-mode'],
+            {'action': 'store_true',
+             'help': "If in --flank-mode, anvi-export-locus will extract a locus based on the coordinates \
+                     of flanking genes. You MUST provide 2 flanking genes in the form of TWO \
+                     --search-term, --gene-caller-ids, or --hmm-sources. The --flank-mode option is  \
+                     appropriate for extracting loci of variable gene number lengths, but are consistantly \
+                     located between the same flanking genes in the genome(s) of interest."}
+              ),
+    'num-genes': (
+            ['-n','--num-genes'],
+            {'metavar': 'NUM_GENES',
+             'type': str,
+             'help': "Required for DEFAULT mode. For each match (to the function, or HMM that was searched) a sequence which includes \
+                      a block of genes will be saved. The block could include either genes only in the forward direction of the gene (defined \
+                      according to the direction of transcription of the gene) or reverse or both. \
+                      If you wish to get both direction use a comma (no spaces) to define the block \
+                      For example, \"-n 4,5\" will give you four genes before and five genes after. \
+                      Whereas, \"-n 5\" will give you five genes after (in addition to the gene that matched). \
+                      To get only genes preceeding the match use \"-n 5,0\". \
+                      If the number of genes requested exceeds the length of the contig, then the output \
+                      will include the sequence until the end of the contig."}
+              ),
     'gene-mode': (
             ['--gene-mode'],
             {'default': False,

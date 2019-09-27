@@ -697,6 +697,10 @@ class LocusSplitter:
         self.remove_partial_hits = A('remove_partial_hits')
         self.reverse_complement_if_necessary = not A('never_reverse_complement')
         self.include_fasta_output = True
+        self.is_in_flank_mode = bool(A('flank_mode'))
+
+        if self.annotation_sources:
+            self.annotation_sources = self.annotation_sources.split(self.delimiter)
 
         if A('list_hmm_sources'):
             hmmops.SequencesForHMMHits(self.input_contigs_db_path).list_available_hmm_sources()
@@ -714,41 +718,65 @@ class LocusSplitter:
         filesnpaths.is_output_dir_writable(self.output_dir)
 
         if (not (self.gene_caller_ids or self.search_term)) or (self.gene_caller_ids and self.search_term):
-            raise ConfigError("You must specify exacly one of the following: --gene-caller-ids or --search-term")
+            raise ConfigError("You must specify exactly one of the following: --gene-caller-ids or --search-term")
 
         if self.use_hmm and not self.search_term:
             raise ConfigError("If you want to use HMMs to find the gene of interest that will define your locus,\
                                you must also specify a --search-term.")
 
+        if self.is_in_flank_mode and self.use_hmm:
+            raise ConfigError("Anvi'o currently cannot use hmm search terms in flank-mode. If this \
+                functionality is needed for your analysis, please make a issue on the github \
+                repository page and we will address it.")
+
+        if self.gene_caller_ids and self.is_in_flank_mode:
+            num_genes = len(utils.get_gene_caller_ids_from_args(self.gene_caller_ids, delimiter=self.delimiter))
+            if num_genes != 2:
+                raise ConfigError("You're in flank mode and opted to use gene caller ids to identify the \
+                                   flanking genes. But you provided anvi'o %d gene caller id, and anvi'o \
+                                   needs exactly 2." % num_genes)
+
+        if self.search_term:
+            self.search_term = self.search_term.split(self.delimiter)
+
         utils.is_contigs_db(self.input_contigs_db_path)
 
         if len(self.hmm_sources):
-            self.hmm_sources = set([s.strip() for s in self.hmm_sources.split(',')])
+            self.hmm_sources = set([s.strip() for s in self.hmm_sources.split(self.delimiter)])
 
-        self.num_genes_list = [int(x) for x in self.num_genes.split(',')]
-        if len(self.num_genes_list) > 2:
-            raise ConfigError("The block size you provided, \"%s\", is not valid.\
-                                The gene block size is defined by only one or two integers for either \
-                                a block following the search match or a block preceding and following \
-                                the search match respectively." % self.num_genes)
+        # If user is in default mode, they MUST provide --num-genes
+        if not self.is_in_flank_mode:
+            if not self.num_genes:
+                raise ConfigError("You must provide --num-genes when in default mode.")
 
-        if len(self.num_genes_list) == 1:
-            self.num_genes_list = [0, self.num_genes_list[0]]
+        if self.num_genes:
+            self.num_genes_list = [int(x) for x in self.num_genes.split(self.delimiter)]
+            if len(self.num_genes_list) > 2:
+                raise ConfigError("The block size you provided, \"%s\", is not valid.\
+                                    The gene block size is defined by only one or two integers for either \
+                                    a block following the search match or a block preceding and following \
+                                    the search match respectively (e.g., 3,2)." % self.num_genes)
+
+            if len(self.num_genes_list) == 1:
+                self.num_genes_list = [0, self.num_genes_list[0]]
+
+            if self.delimiter in self.num_genes:
+                self.run.info('Genes to report', '%d genes before the matching gene, and %d that follow' % (self.num_genes_list[0], self.num_genes_list[1]))
+            else:
+                self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[0]))
 
         self.run.warning(None, header="Input / Output", lc="cyan")
         self.run.info('Contigs DB', os.path.abspath(self.input_contigs_db_path))
         self.run.info('Output directory', self.output_dir)
-        if ',' in self.num_genes:
-            self.run.info('Genes to report', '%d genes before the matching gene, and %d that follow' % (self.num_genes_list[0], self.num_genes_list[1]))
-        else:
-            self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[0]))
         self.run.info('Rev-comp the locus sequence if necessary', self.reverse_complement_if_necessary)
 
 
     def init(self):
-        """The whole purpose of this function is to identify which gene calls to focus"""
+        """Init calls sanity check and parses all input to get self.gene_caller_ids_of_interest"""
 
         self.sanity_check()
+
+        self.search_term_to_gene_id_hits_dict = {}
 
         self.run.warning(None, header="Initialization bleep bloops", lc="cyan")
 
@@ -765,7 +793,7 @@ class LocusSplitter:
             self.run.info('Search term', self.search_term, mc='green')
             self.run.info('HMM sources being used', ', '.join(s.sources))
 
-            hmm_hits = utils.get_filtered_dict(s.hmm_hits, 'gene_name', {self.search_term})
+            hmm_hits = utils.get_filtered_dict(s.hmm_hits, 'gene_name', set(self.search_term))
             gene_caller_ids_of_interest = [entry['gene_callers_id'] for entry in hmm_hits.values()]
 
             self.targets.append('HMMs')
@@ -774,17 +802,28 @@ class LocusSplitter:
             self.run.info('Mode', 'Function search')
 
             contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
-            # use functional annotation
             contigs_db.init_functions()
-            self.run.info('Search term', self.search_term, mc='green')
-            self.run.info('Function calls being used', ', '.join(contigs_db.gene_function_call_sources))
 
-            foo, search_report = contigs_db.search_for_gene_functions([self.search_term], requested_sources=self.annotation_sources, verbose=True)
-            # gene id's of genes with the searched function
-            gene_caller_ids_of_interest = [i[0] for i in search_report]
+            # use functional annotation
+            # if self.search_term:
+            gene_caller_ids_of_interest = []
+            counter = 1
+            for term in self.search_term:
+                self.run.info('Search term %d of %d' % (counter,len(self.search_term)), term, mc='green')
+                self.run.info('Function calls being used', ', '.join((contigs_db.gene_function_call_sources
+                                                                      if not self.annotation_sources
+                                                                      else self.annotation_sources)))
 
-            self.targets.append('functions')
-            self.sources = contigs_db.gene_function_call_sources
+                foo, search_report = contigs_db.search_for_gene_functions([term], requested_sources=self.annotation_sources, verbose=True)
+                # gene id's of genes with the searched function
+                genes_that_hit = [i[0] for i in search_report]
+                gene_caller_ids_of_interest.extend(genes_that_hit)
+
+                self.search_term_to_gene_id_hits_dict[term] = set(genes_that_hit)
+
+                self.targets.append('functions')
+                self.sources = contigs_db.gene_function_call_sources
+                counter += 1
 
         # Multiple sources could annotate the same gene, so make sure the list is unique
         self.gene_caller_ids_of_interest = set(gene_caller_ids_of_interest)
@@ -805,47 +844,111 @@ class LocusSplitter:
                               yet anvi'o failed you? If that's the case, let us know :( This class will quietly\
                               kill this process without reporting any error since a lack of hit may be the\
                               expected outcome of some weird processes somewhere.")
+            return
 
         self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
         self.contigs_db.init_functions()
-        counter = 1
-        for gene_callers_id in self.gene_caller_ids_of_interest:
+
+        # Here we will differentiate between being in default-mode OR flank-mode. If in default-mode, we will iterate through
+        # the gene-caller-ids-of-interest and cut out the locus X amount of genes above and below the gene-caller-id
+        # based on the --num-genes given by the user. If in flank-mode, we will only export 1 locus based on the flanking
+        # gene-caller-ids provided.
+
+        # default
+        if not self.is_in_flank_mode:
+            counter = 1
+            for gene_callers_id in self.gene_caller_ids_of_interest:
+                self.run.warning(None,
+                                 header="Exporting locus %d of %d" % (counter, len(self.gene_caller_ids_of_interest)),
+                                 nl_after=0)
+
+                output_path_prefix = os.path.join(self.output_dir, "%s_%.4d" % (self.output_file_prefix, counter))
+
+                self.export_locus(output_path_prefix, gene_callers_id)
+
+                counter += 1
+
+        # flank-mode
+        elif self.is_in_flank_mode:
             self.run.warning(None,
-                             header="Exporting locus %d of %d" % \
-                                        (counter, len(self.gene_caller_ids_of_interest)),
+                             header="Exporting locus 1 of 1",
                              nl_after=0)
 
-            output_path_prefix = os.path.join(self.output_dir, "%s_%.4d" % (self.output_file_prefix, counter))
-
-            self.export_locus(gene_callers_id, output_path_prefix)
-
-            counter += 1
+            output_path_prefix = os.path.join(self.output_dir, self.output_file_prefix)
+            gene_caller_ids_flank_pair = list(self.gene_caller_ids_of_interest)
+            self.export_locus(output_path_prefix,None,gene_caller_ids_flank_pair)
 
 
-    def export_locus(self, gene_callers_id, output_path_prefix):
-        """Takes a gene callers ID, and exports a contigs database.
+    def export_locus(self, output_path_prefix, gene_callers_id=None, gene_caller_ids_flank_pair=None):
+        """
+        This function takes gene_callers_id or gene_caller_ids_flank_pair, and exports a contigs database.
 
-           Output path prefix should be unique for every export locus call. If the prefix you provide
-           looks like this:
+        If gene_callers_id is provided, export_locus use --num-genes to  cut X above and below the
+        gene_callers_id. If gene_caller_ids_flank_pair is provided, export_locus will cut out the locus
+        between the pair provided. It is REQUIRED that gene_caller_ids_flank_pair is a pair of gen-callers-ID.
 
-                >>> output_path_prefix = '/path/to/dir/file_name_prefix'
+        Output path prefix should be unique for every export locus call. If the prefix you provide
+        looks like this:
 
-           the output files will be stored as this:
+            >>> output_path_prefix = '/path/to/dir/file_name_prefix'
 
-                >>> '/path/to/dir/file_name_prefix.fa'
-                >>> '/path/to/dir/file_name_prefix.db'
+        the output files will be stored as this:
 
-           """
+            >>> '/path/to/dir/file_name_prefix.fa'
+            >>> '/path/to/dir/file_name_prefix.db'
+
+
+        Need to add check, where if you are in flank mode and one of your search_terms gives you more then one gene-caller-id
+        then you have more then how to choose which contig to cut out?????????
+        """
+        if gene_callers_id and not isinstance(gene_caller_id, int):
+            raise ConfigError("The gene_caller_id must be an integer.")
+        if gene_callers_id and gene_caller_ids_flank_pair:
+            raise ConfigError("You can only provide the gene_callers_id or gene_caller_id_pair (with a , delimiter).")
+        elif not (gene_callers_id or gene_caller_ids_flank_pair):
+            raise ConfigError("You must provide at least 1 of the following: gene_callers_id or gene_caller_id_pair (with a , delimiter).")
+
+        if self.is_in_flank_mode:
+            if not isinstance(gene_caller_ids_flank_pair, list):
+                raise ConfigError("The gene_caller_ids_flank_pair must be integers.")
+            if [g for g in gene_caller_ids_flank_pair if not isinstance(g, int) or g < 0]:
+                raise ConfigError("Both gene-caller_ids inputs must be integers!")
+
+            if len(gene_caller_ids_flank_pair) == 1:
+                raise ConfigError("You are in flank-mode, and anvi'o only found %d gene-caller-id. \
+                                   Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's \
+                                   to cut out a locus (i.e., only a pair of flanking genes)! This most likely occured because 1 of your \
+                                   search-terms was not found the functions of the CONTIGS.db. Please try again with another \
+                                   search-term :)" % (len(self.gene_caller_ids_of_interest)))
+            elif len(gene_caller_ids_flank_pair) > 2:
+                raise ConfigError("You are in flank-mode, and anvi'o found %d total gene-caller-id's from the search-terms provided. \
+                                   Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's \
+                                   to cut out a locus (i.e., only a pair of flanking genes)! Here are the gene-caller-ids anvi'o found \
+                                   from the search-terms %s: %s and %s: %s. Please use `anvi-export-functions` on your CONTIGS.db, locate \
+                                   these gene-caller-id's, then confirm the correct flanking gene-caller-ids. Anvi'o recommends you \
+                                   use the --gene-caller-ids flag to specify the specific pair gene-caller-ids you need to cut out the locus \
+                                   so there are no more mix ups :)" % (len(self.gene_caller_ids_of_interest),
+                                                                       str(self.search_term[0]),
+                                                                       str(self.search_term_to_gene_id_hits_dict[self.search_term[0]]),
+                                                                       str(self.search_term[1]),
+                                                                       str(self.search_term_to_gene_id_hits_dict[self.search_term[1]]),
+                                                                       ))
+
+            gene_caller_ids = list(gene_caller_ids_flank_pair)
+            first_gene_of_the_block, last_gene_of_the_block = sorted(gene_caller_ids)
+            gene_callers_id = first_gene_of_the_block # just for getting contig name from contigDB
 
         if os.path.isdir(output_path_prefix):
             raise ConfigError("Output path prefix can't be a directory name...")
 
         filesnpaths.is_output_file_writable(output_path_prefix + '.fa')
 
+        # if not already initiated, re-initiate contigsDB
         if not self.contigs_db:
             self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
             self.contigs_db.init_functions()
 
+        # Query for gene_call, contig_name, and genes_in_contig_sorted
         gene_call = self.contigs_db.genes_in_contigs_dict[gene_callers_id]
         contig_name = self.contigs_db.genes_in_contigs_dict[gene_callers_id]['contig']
         genes_in_contig_sorted = sorted(list(self.contigs_db.contig_name_to_genes[contig_name]))
@@ -853,16 +956,20 @@ class LocusSplitter:
         D = lambda: 1 if gene_call['direction'] == 'f' else -1
         premature = False
 
+        # Print out locus info for user
         self.run.info("Contig name", contig_name)
         self.run.info("Contig length", self.contigs_db.contigs_basic_info[contig_name]['length'])
         self.run.info("Num genes in contig", len(genes_in_contig_sorted))
         self.run.info("Target gene call", gene_callers_id)
         self.run.info("Target gene direction", "Forward" if D() == 1 else "Reverse", mc = 'green' if D() == 1 else 'red')
 
-        gene_1 = gene_callers_id - self.num_genes_list[0] * D()
-        gene_2 = gene_callers_id + self.num_genes_list[1] * D()
-        first_gene_of_the_block = min(gene_1, gene_2)
-        last_gene_of_the_block = max(gene_1, gene_2)
+        # Here we run Default-mode and cut out the locus based on the anchor gene_callers_id and
+        # cut + self.num_genes_list[0] and - self.num_genes_list[1] arount it
+        if not self.is_in_flank_mode:
+            gene_1 = gene_callers_id - self.num_genes_list[0] * D()
+            gene_2 = gene_callers_id + self.num_genes_list[1] * D()
+            first_gene_of_the_block = min(gene_1, gene_2)
+            last_gene_of_the_block = max(gene_1, gene_2)
 
         self.run.info("First and last gene of the locus (raw)", "%d and %d" % (first_gene_of_the_block, last_gene_of_the_block))
 
@@ -893,6 +1000,8 @@ class LocusSplitter:
         contig_sequence = db.DB(self.input_contigs_db_path, None, ignore_version=True) \
                             .get_some_rows_from_table(t.contig_sequences_table_name,
                                                       where_clause="contig='%s'" % contig_name)[0][1]
+
+        # Extract the locus!
         locus_sequence = contig_sequence[locus_start:locus_stop]
 
         # here we will create a gene calls dict for genes that are specific to our locus. since we trimmed
