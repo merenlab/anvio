@@ -485,18 +485,28 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
            reasonable power to resolve taxonomy all by itself. These independent assumptions will both work in some cases
            and both fail in others.
         """
-        contigs_db_taxonomy_dict = {self.contigs_db_project_name: {}}
 
+        # we first need to decide which SCG we should use to survey taxonomy
         most_frequent_scg = next(iter(self.frequency_of_scgs_with_taxonomy))
         if self.scg_name_for_metagenome_mode:
+            frequency_of_user_chosen_scg = self.frequency_of_scgs_with_taxonomy[self.scg_name_for_metagenome_mode]
+            frequency_of_most_frequent_scg = self.frequency_of_scgs_with_taxonomy[most_frequent_scg]
+
+            if frequency_of_user_chosen_scg < frequency_of_most_frequent_scg:
+                additional_note = " And just so you know, there is another SCG that was observed more times (i.e., %s; %d times)\
+                                   in this metagenome compared to yours (i.e., %d times). You're the boss, of course." %\
+                                            (most_frequent_scg, frequency_of_most_frequent_scg, frequency_of_user_chosen_scg)
+            else:
+                additional_note = ""
+
             self.run.warning("As per your request anvi'o set '%s' to be THE single-copy core gene to survey your metagenome for its\
-                              taxonomic composition." % (self.scg_name_for_metagenome_mode))
+                              taxonomic composition.%s" % (self.scg_name_for_metagenome_mode, additional_note))
         else:
             self.scg_name_for_metagenome_mode = most_frequent_scg
 
             self.run.warning("Anvi'o automatically set '%s' to be THE single-copy core gene to survey your metagenome for its\
                               taxonomic composition. If you are not happy with that, you could change it with the parameter\
-                              `--scg-name-for-metagenome-mode`.")
+                              `--scg-name-for-metagenome-mode`." % (self.scg_name_for_metagenome_mode))
 
         gene_caller_ids_of_interest = self.scg_name_to_gene_caller_id_dict[most_frequent_scg]
         scg_taxonomy_dict = self.get_scg_taxonomy_dict(gene_caller_ids=gene_caller_ids_of_interest,
