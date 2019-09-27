@@ -2495,13 +2495,13 @@ class ProfileSuperclass(object):
             # we may be called from a part of the code that doesn't know what KIND of genes
             # database is being called. Therefore, the `parameters` dict we are about to send
             # to `init_gene_level_coverage_stats_from_genes_db` may contain the default
-            # `mode` value set before. BUT WE DON'T WANT THAT. 
+            # `mode` value set before. BUT WE DON'T WANT THAT.
             mode_set_in_db = db.DB(self.genes_db_path, client_version=None, ignore_version=True).get_meta_value('mode')
 
             self.run.warning("A gene stats database of type '%s' is found (anvi'o hopes that this is the type of stats you\
                               were expecting to find)." % mode_set_in_db.upper())
 
-            parameters['mode'] = mode_set_in_db 
+            parameters['mode'] = mode_set_in_db
 
             # since we are here and learned the mode, we can also set the self.inseq_stats variable IF the table
             # is actually inseq stats table. if we don't do this, the interactive interface will never load the inseq
@@ -3236,7 +3236,6 @@ class PanDatabase:
         self.db.create_table(t.collections_contigs_table_name, t.collections_contigs_table_structure, t.collections_contigs_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
-        self.db.create_table(t.scg_taxonomy_table_name, t.scg_taxonomy_structure, t.scg_taxonomy_types)
 
 
         return self.db
@@ -3348,7 +3347,7 @@ class ContigsDatabase:
         self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
         self.db.create_table(t.nt_position_info_table_name, t.nt_position_info_table_structure, t.nt_position_info_table_types)
-        self.db.create_table(t.scg_taxonomy_table_name, t.scg_taxonomy_structure, t.scg_taxonomy_types)
+        self.db.create_table(t.scg_taxonomy_table_name, t.scg_taxonomy_table_structure, t.scg_taxonomy_table_types)
 
 
         return self.db
