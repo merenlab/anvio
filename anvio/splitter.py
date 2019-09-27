@@ -849,12 +849,11 @@ class LocusSplitter:
         self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
         self.contigs_db.init_functions()
 
-        """
-        Here we will differentiate between being in default-mode OR flank-mode. If in default-mode, we will iterate through
-        the gene-caller-ids-of-interest and cut out the locus X amount of genes above and below the gene-caller-id
-        based on the --num-genes given by the user. If in flank-mode, we will only export 1 locus based on the flanking
-        gene-caller-ids provided.
-        """
+        # Here we will differentiate between being in default-mode OR flank-mode. If in default-mode, we will iterate through
+        # the gene-caller-ids-of-interest and cut out the locus X amount of genes above and below the gene-caller-id
+        # based on the --num-genes given by the user. If in flank-mode, we will only export 1 locus based on the flanking
+        # gene-caller-ids provided.
+
         # default
         if not self.is_in_flank_mode:
             counter = 1
