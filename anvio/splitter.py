@@ -722,6 +722,18 @@ class LocusSplitter:
             raise ConfigError("If you want to use HMMs to find the gene of interest that will define your locus,\
                                you must also specify a --search-term.")
 
+        if self.is_in_flank_mode and self.use_hmm:
+            raise ConfigError("Anvi'o currently cannot use hmm search terms in flank-mode. If this \
+                functionality is needed for your analysis, please make a issue on the github \
+                repository page and we will address it.")
+
+        if self.gene_caller_ids and self.is_in_flank_mode:
+            num_genes = len(utils.get_gene_caller_ids_from_args(self.gene_caller_ids, delimiter=self.delimiter))
+            if num_genes != 2:
+                raise ConfigError("You're in flank mode and opted to use gene caller ids to identify the \
+                                   flanking genes. But you provided anvi'o %d gene caller id, and anvi'o \
+                                   needs exactly 2." % num_genes)
+
         if self.search_term:
             self.search_term = self.search_term.split(self.delimiter)
 
@@ -758,7 +770,7 @@ class LocusSplitter:
 
 
     def init(self):
-        """The whole purpose of this function is to identify which gene calls to focus"""
+        """Init calls sanity check and parses all input to get self.gene_caller_ids_of_interest"""
 
         self.sanity_check()
 
@@ -819,6 +831,7 @@ class LocusSplitter:
                      '%d genes matched your search' % len(self.gene_caller_ids_of_interest),
                      mc='green', nl_after=1)
 
+
     def process(self, skip_init=False):
         if not skip_init:
             self.init()
@@ -830,11 +843,6 @@ class LocusSplitter:
                               kill this process without reporting any error since a lack of hit may be the\
                               expected outcome of some weird processes somewhere.")
             return
-
-        if self.is_in_flank_mode and self.use_hmm:
-            raise ConfigError("Anvi'o currently cannot use hmm search terms in flank-mode. If this \
-                functionality is needed for your analysis, please make a issue on the github \
-                repository page and we will address it.")
 
         self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
         self.contigs_db.init_functions()
@@ -892,23 +900,26 @@ class LocusSplitter:
         Need to add check, where if you are in flank mode and one of your search_terms gives you more then one gene-caller-id
         then you have more then how to choose which contig to cut out?????????
         """
-        # Confirming the user provided the right parameters for export_locus method
+        if gene_callers_id and not isinstance(gene_caller_id, int):
+            raise ConfigError("The gene_caller_id must be an integer.")
         if gene_callers_id and gene_caller_ids_flank_pair:
-                raise ConfigError("You can only provide the gene_callers_id or gene_caller_id_pair (with a , delimiter).")
+            raise ConfigError("You can only provide the gene_callers_id or gene_caller_id_pair (with a , delimiter).")
         elif not (gene_callers_id or gene_caller_ids_flank_pair):
             raise ConfigError("You must provide at least 1 of the following: gene_callers_id or gene_caller_id_pair (with a , delimiter).")
-        # if gene_callers_id and not isinstance(gene_caller_id, int):
-            # raise ConfigError("The gene_caller_id must be an integer.")
-        if gene_caller_ids_flank_pair:
+
+        if self.is_in_flank_mode:
             if not isinstance(gene_caller_ids_flank_pair, list):
                 raise ConfigError("The gene_caller_ids_flank_pair must be integers.")
+            if [g for g in gene_caller_ids_flank_pair if not isinstance(g, int) or g < 0]:
+                raise ConfigError("Both gene-caller_ids inputs must be integers!")
+
             if len(gene_caller_ids_flank_pair) == 1:
                 raise ConfigError("You are in flank-mode, and anvi'o only found %d gene-caller-id. \
                                    Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's \
                                    to cut out a locus (i.e., only a pair of flanking genes)! This most likely occured because 1 of your \
                                    search-terms was not found the functions of the CONTIGS.db. Please try again with another \
                                    search-term :)" % (len(self.gene_caller_ids_of_interest)))
-            if len(gene_caller_ids_flank_pair) > 2:
+            elif len(gene_caller_ids_flank_pair) > 2:
                 raise ConfigError("You are in flank-mode, and anvi'o found %d total gene-caller-id's from the search-terms provided. \
                                    Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's \
                                    to cut out a locus (i.e., only a pair of flanking genes)! Here are the gene-caller-ids anvi'o found \
@@ -921,11 +932,7 @@ class LocusSplitter:
                                                                        str(self.search_term[1]),
                                                                        str(self.search_term_to_gene_id_hits_dict[self.search_term[1]]),
                                                                        ))
-            if [g for g in gene_caller_ids_flank_pair if not isinstance(g, int) or g < 0]:
-                raise ConfigError("Both gene-caller_ids inputs must be integers!")
 
-        # Get flanking first and last gene-caller-id of locus
-        if gene_caller_ids_flank_pair:
             gene_caller_ids = list(gene_caller_ids_flank_pair)
             first_gene_of_the_block, last_gene_of_the_block = sorted(gene_caller_ids)
             gene_callers_id = first_gene_of_the_block # just for getting contig name from contigDB
@@ -962,7 +969,6 @@ class LocusSplitter:
             gene_2 = gene_callers_id + self.num_genes_list[1] * D()
             first_gene_of_the_block = min(gene_1, gene_2)
             last_gene_of_the_block = max(gene_1, gene_2)
-
 
         self.run.info("First and last gene of the locus (raw)", "%d and %d" % (first_gene_of_the_block, last_gene_of_the_block))
 
