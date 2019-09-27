@@ -302,6 +302,73 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             self.init()
 
 
+    def init(self):
+        self.init_scg_data()
+
+        self.init_split_to_gene_caller_ids_dict()
+
+        self.initialized = True
+
+
+    def init_split_to_gene_caller_ids_dict(self):
+        if not self.contigs_db_path:
+            return None
+
+        self.progress.new('Initializing genes in splits')
+        self.progress.update('...')
+
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "split, gene_callers_id")
+        contigs_db.disconnect()
+
+        for split_name, gene_callers_id in genes_in_splits:
+            if gene_callers_id not in self.gene_callers_id_to_scg_taxonomy_dict:
+                continue
+
+            if split_name not in self.split_name_to_gene_caller_ids_dict:
+                self.split_name_to_gene_caller_ids_dict[split_name] = set()
+
+            self.split_name_to_gene_caller_ids_dict[split_name].add(gene_callers_id)
+            self.gene_callers_id_to_split_name_dict[gene_callers_id] = split_name
+
+        self.progress.end()
+
+
+    def init_scg_data(self):
+        if not self.contigs_db_path:
+            return None
+
+        self.progress.new('Initializing SCG taxonomy dictionary')
+        self.progress.update('...')
+
+        for scg_name in self.SCGs:
+            self.scg_name_to_gene_caller_id_dict[scg_name] = set([])
+
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+        self.contigs_db_project_name = contigs_db.meta['project_name']
+        scg_taxonomy_table = contigs_db.db.get_table_as_dict(t.scg_taxonomy_table_name)
+        contigs_db.disconnect()
+
+        for entry in scg_taxonomy_table.values():
+            gene_callers_id = entry['gene_callers_id']
+            self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id] = entry
+
+        self.progress.end()
+
+        for entry in self.gene_callers_id_to_scg_taxonomy_dict.values():
+            scg_gene_name = entry['gene_name']
+            gene_callers_id = entry['gene_callers_id']
+
+            self.scg_name_to_gene_caller_id_dict[scg_gene_name].add(gene_callers_id)
+
+        self.frequency_of_scgs_with_taxonomy = OrderedDict(sorted([(g, len(self.scg_name_to_gene_caller_id_dict[g])) for g in self.scg_name_to_gene_caller_id_dict], key = lambda x: x[1], reverse=True))
+
+        self.run.info_single("A total of %s single-copy core genes with taxonomic affiliations were successfuly initialized\
+                              from the contigs database 🎉 Following shows the frequency of these SCGs: %s." % \
+                                        (pp(len(self.gene_callers_id_to_scg_taxonomy_dict)),
+                                         ', '.join(["%s (%d)" % (g, self.frequency_of_scgs_with_taxonomy[g]) for g in self.frequency_of_scgs_with_taxonomy])), nl_before=1)
+
+
     def get_consensus_taxonomy(self, scg_taxonomy_dict):
         """Takes in a scg_taxonomy_dict, returns a final taxonomic string that summarize all"""
 
@@ -597,37 +664,6 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         return d
 
 
-    def init(self):
-        self.init_scg_data()
-
-        self.init_split_to_gene_caller_ids_dict()
-
-        self.initialized = True
-
-
-    def init_split_to_gene_caller_ids_dict(self):
-        if not self.contigs_db_path:
-            return None
-
-        self.progress.new('Initializing genes in splits')
-        self.progress.update('...')
-
-        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
-        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "split, gene_callers_id")
-        contigs_db.disconnect()
-
-        for split_name, gene_callers_id in genes_in_splits:
-            if gene_callers_id not in self.gene_callers_id_to_scg_taxonomy_dict:
-                continue
-
-            if split_name not in self.split_name_to_gene_caller_ids_dict:
-                self.split_name_to_gene_caller_ids_dict[split_name] = set()
-
-            self.split_name_to_gene_caller_ids_dict[split_name].add(gene_callers_id)
-
-        self.progress.end()
-
-
     def get_gene_caller_ids_for_splits(self, split_names_list):
         gene_caller_ids_for_splits = set([])
         for split_name in split_names_list:
@@ -635,41 +671,6 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
                 gene_caller_ids_for_splits.update(self.split_name_to_gene_caller_ids_dict[split_name])
 
         return gene_caller_ids_for_splits
-
-
-    def init_scg_data(self):
-        if not self.contigs_db_path:
-            return None
-
-        self.progress.new('Initializing SCG taxonomy dictionary')
-        self.progress.update('...')
-
-        for scg_name in self.SCGs:
-            self.scg_name_to_gene_caller_id_dict[scg_name] = set([])
-
-        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
-        self.contigs_db_project_name = contigs_db.meta['project_name']
-        scg_taxonomy_table = contigs_db.db.get_table_as_dict(t.scg_taxonomy_table_name)
-        contigs_db.disconnect()
-
-        for entry in scg_taxonomy_table.values():
-            gene_callers_id = entry['gene_callers_id']
-            self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id] = entry
-
-        self.progress.end()
-
-        for entry in self.gene_callers_id_to_scg_taxonomy_dict.values():
-            scg_gene_name = entry['gene_name']
-            gene_callers_id = entry['gene_callers_id']
-
-            self.scg_name_to_gene_caller_id_dict[scg_gene_name].add(gene_callers_id)
-
-        self.frequency_of_scgs_with_taxonomy = OrderedDict(sorted([(g, len(self.scg_name_to_gene_caller_id_dict[g])) for g in self.scg_name_to_gene_caller_id_dict], key = lambda x: x[1], reverse=True))
-
-        self.run.info_single("A total of %s single-copy core genes with taxonomic affiliations were successfuly initialized\
-                              from the contigs database 🎉 Following shows the frequency of these SCGs: %s." % \
-                                        (pp(len(self.gene_callers_id_to_scg_taxonomy_dict)),
-                                         ', '.join(["%s (%d)" % (g, self.frequency_of_scgs_with_taxonomy[g]) for g in self.frequency_of_scgs_with_taxonomy])), nl_before=1)
 
 
 class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
