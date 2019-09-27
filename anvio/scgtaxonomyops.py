@@ -494,7 +494,10 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         consensus_hash = HASH(consensus_taxonomy)
         for scg_taxonomy_hit in scg_taxonomy_dict.values():
             if consensus_hash == scg_taxonomy_hit['tax_hash']:
+                scg_taxonomy_hit['supporting_consensus'] = True
                 supporting_scgs += 1
+            else:
+                scg_taxonomy_hit['supporting_consensus'] = False
 
         return {'consensus_taxonomy': consensus_taxonomy,
                 'scgs': scg_taxonomy_dict,
