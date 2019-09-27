@@ -804,7 +804,8 @@ class LocusSplitter:
                 # gene id's of genes with the searched function
                 genes_that_hit = [i[0] for i in search_report]
                 gene_caller_ids_of_interest.extend(genes_that_hit)
-                self.search_term_to_gene_id_hits_dict[term] = genes_that_hit
+
+                self.search_term_to_gene_id_hits_dict[term] = set(genes_that_hit)
 
                 self.targets.append('functions')
                 self.sources = contigs_db.gene_function_call_sources
@@ -818,9 +819,6 @@ class LocusSplitter:
                      '%d genes matched your search' % len(self.gene_caller_ids_of_interest),
                      mc='green', nl_after=1)
 
-        print('here is the dict:')
-        print(self.search_term_to_gene_id_hits_dict)
-
     def process(self, skip_init=False):
         if not skip_init:
             self.init()
@@ -832,6 +830,11 @@ class LocusSplitter:
                               kill this process without reporting any error since a lack of hit may be the\
                               expected outcome of some weird processes somewhere.")
             return
+
+        if self.is_in_flank_mode and self.use_hmm:
+            raise ConfigError("Anvi'o currently cannot use hmm search terms in flank-mode. If this \
+                functionality is needed for your analysis, please make a issue on the github \
+                repository page and we will address it.")
 
         self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
         self.contigs_db.init_functions()
@@ -906,13 +909,18 @@ class LocusSplitter:
                                    search-terms was not found the functions of the CONTIGS.db. Please try again with another \
                                    search-term :)" % (len(self.gene_caller_ids_of_interest)))
             if len(gene_caller_ids_flank_pair) > 2:
-                raise ConfigError("You are in flank-mode, and anvi'o found %d gene-caller-id's from the search-terms provided. \
+                raise ConfigError("You are in flank-mode, and anvi'o found %d total gene-caller-id's from the search-terms provided. \
                                    Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's \
                                    to cut out a locus (i.e., only a pair of flanking genes)! Here are the gene-caller-ids anvi'o found \
-                                   from the search-terms: %s. Please use `anvi-export-functions` on your CONTIGS.db, locate the gene-caller-id's \
-                                   anvi'o matched to your search-terms, then confirm the correct flanking gene-caller-ids. Anvi'o recommends you \
+                                   from the search-terms %s: %s and %s: %s. Please use `anvi-export-functions` on your CONTIGS.db, locate \
+                                   these gene-caller-id's, then confirm the correct flanking gene-caller-ids. Anvi'o recommends you \
                                    use the --gene-caller-ids flag to specify the specific pair gene-caller-ids you need to cut out the locus \
-                                   so there are no more mix ups :)" % (len(self.gene_caller_ids_of_interest), str(self.gene_caller_ids_of_interest)))
+                                   so there are no more mix ups :)" % (len(self.gene_caller_ids_of_interest),
+                                                                       str(self.search_term[0]),
+                                                                       str(self.search_term_to_gene_id_hits_dict[self.search_term[0]]),
+                                                                       str(self.search_term[1]),
+                                                                       str(self.search_term_to_gene_id_hits_dict[self.search_term[1]]),
+                                                                       ))
             if [g for g in gene_caller_ids_flank_pair if not isinstance(g, int) or g < 0]:
                 raise ConfigError("Both gene-caller_ids inputs must be integers!")
 
