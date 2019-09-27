@@ -240,7 +240,12 @@ class Pfam(object):
             counter += 1
 
         gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
-        gene_function_calls_table.create(functions_dict)
+        if functions_dict:
+            gene_function_calls_table.create(functions_dict)
+        else:
+            self.run.warning("Pfam class has no hits to process. Returning empty handed, but still adding Pfam as \
+                              a functional source.")
+            gene_function_calls_table.add_empty_sources_to_functional_sources({'Pfam'})
 
         if anvio.DEBUG:
             run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up\
