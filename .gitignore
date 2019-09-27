@@ -13,3 +13,4 @@ smtp_config.ini
 anvio/data/misc/SCG_test
 anvio/data/misc/SCG_old.tar.gz
 anvio/data/misc/SCG
+diamond-log-file.txt
