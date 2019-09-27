@@ -143,7 +143,10 @@ class COGs:
 
     def store_hits_into_contigs_db(self):
         if not self.hits:
-            self.run.warning("COGs class has no hits to process. Returning empty handed.")
+            self.run.warning("COGs class has no hits to process. Returning empty handed, but still adding COGs as \
+                              functional sources.")
+            gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
+            gene_function_calls_table.add_empty_sources_to_functional_sources({'COG_FUNCTION', 'COG_CATEGORY'})
             return
 
         cogs_data = COGsData(self.args)
