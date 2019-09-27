@@ -393,6 +393,11 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
            consesnus.
         """
 
+        if self.metagenome_mode:
+            raise ConfigError("Someone is attempting to estimate taxonomy for a set of splits using a class inherited in\
+                               `metagenome mode`. If you are a programmer please note that it is best to use the member\
+                               function `estimate` directly.")
+
         consensus_taxonomy = None
 
         gene_caller_ids_of_interest = self.get_gene_caller_ids_for_splits(split_names)
