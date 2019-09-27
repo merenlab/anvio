@@ -432,7 +432,8 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         return {'consensus_taxonomy': consensus_taxonomy,
                 'scgs': scg_taxonomy_dict,
                 'total_scgs': total_scgs,
-                'supporting_scgs': supporting_scgs}
+                'supporting_scgs': supporting_scgs,
+                'metagenome_mode': False}
 
 
     def estimate_for_bins_in_collection(self):
@@ -498,11 +499,12 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
                               `--scg-name-for-metagenome-mode`.")
 
         gene_caller_ids_of_interest = self.scg_name_to_gene_caller_id_dict[most_frequent_scg]
+        scg_taxonomy_dict = self.get_scg_taxonomy_dict(gene_caller_ids=gene_caller_ids_of_interest,
+                                                       bin_name=self.contigs_db_project_name)
 
-        contigs_db_taxonomy_dict[self.contigs_db_project_name]['scgs'] = self.get_scg_taxonomy_dict(gene_caller_ids=gene_caller_ids_of_interest,
-                                                                                                    bin_name=self.contigs_db_project_name)
 
-        return contigs_db_taxonomy_dict
+        return {self.contigs_db_project_name: {'scgs': scg_taxonomy_dict,
+                                               'metagenome_mode': True}}
 
 
     def estimate(self):
