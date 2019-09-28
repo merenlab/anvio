@@ -901,7 +901,7 @@ class LocusSplitter:
         Need to add check, where if you are in flank mode and one of your search_terms gives you more then one gene-caller-id
         then you have more then how to choose which contig to cut out?????????
         """
-        if gene_callers_id and not isinstance(gene_caller_id, int):
+        if gene_callers_id and not isinstance(gene_callers_id, int):
             raise ConfigError("The gene_caller_id must be an integer.")
         if gene_callers_id and gene_caller_ids_flank_pair:
             raise ConfigError("You can only provide the gene_callers_id or gene_caller_id_pair (with a , delimiter).")
