@@ -2,6 +2,72 @@
 ## exists("logger") is TRUE.
 assign("logger", make_logger(1), envir = globalenv())
 
+## Stub out the abort() function used by functions that can terminate
+## the script.
+assign(
+  "abort",
+  function(...) {
+    stop("abort() would've been called")
+  },
+  envir = globalenv()
+)
+
+
+## Make an alias for describe called context for increased spec
+## clarity.
+context <- describe
+
+describe("Sample data file", {
+  describe("check_sample_data_headers()", {
+    context("with just color info", {
+      sample_data <- data.frame(
+        sample_name = paste0("sample_", 1:2),
+        sample_color = c("blue", "green")
+      )
+
+      it("returns NULL and doesn't raise error", {
+        expect_null(check_sample_data_headers(sample_data))
+      })
+    })
+
+    context("with just group info", {
+      sample_data <- data.frame(
+        sample_name = paste0("sample_", 1:2),
+        group = c("a", "b")
+      )
+
+      it("returns NULL and doesn't raise error", {
+        expect_null(check_sample_data_headers(sample_data))
+      })
+    })
+
+    context("with color and group info", {
+      sample_data <- data.frame(
+        sample_name = paste0("sample_", 1:2),
+        sample_color = c("blue", "green"),
+        group = c("a", "b")
+      )
+
+      it("returns NULL and doesn't raise error", {
+        expect_null(check_sample_data_headers(sample_data))
+      })
+    })
+
+    context("with other columns", {
+      sample_data <- data.frame(
+        sample_name = paste0("sample_", 1:2),
+        sample_color = c("blue", "green"),
+        group = c("a", "b"),
+        apple = 1:2
+      )
+
+      it("aborts the program", {
+        expect_error(check_sample_data_headers(sample_data))
+      })
+    })
+  })
+})
+
 describe("sapply_by_group()", {
   describe("with character groups", {
     df <- data.frame(
