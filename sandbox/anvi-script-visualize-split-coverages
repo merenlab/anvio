@@ -499,8 +499,8 @@ parse_split_coverages <- function(opts) {
 
 ## Check sample_data headers
 check_sample_data_headers <- function(sample_data) {
-  if (any(names(sample_data) != c("sample_name", "sample_color"))) {
-    abort("bad header row in additional data file")
+  if (any(colnames(sample_data) %nin% c("sample_name", "sample_color", "group"))) {
+    abort("bad header row in sample_data file")
   }
 }
 
