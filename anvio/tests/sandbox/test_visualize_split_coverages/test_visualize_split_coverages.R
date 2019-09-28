@@ -33,7 +33,7 @@ describe("Sample data file", {
     context("with just group info", {
       sample_data <- data.frame(
         sample_name = paste0("sample_", 1:2),
-        group = c("a", "b")
+        sample_group = c("a", "b")
       )
 
       it("returns NULL and doesn't raise error", {
@@ -45,7 +45,7 @@ describe("Sample data file", {
       sample_data <- data.frame(
         sample_name = paste0("sample_", 1:2),
         sample_color = c("blue", "green"),
-        group = c("a", "b")
+        sample_group = c("a", "b")
       )
 
       it("returns NULL and doesn't raise error", {
@@ -57,12 +57,41 @@ describe("Sample data file", {
       sample_data <- data.frame(
         sample_name = paste0("sample_", 1:2),
         sample_color = c("blue", "green"),
-        group = c("a", "b"),
+        sample_group = c("a", "b"),
         apple = 1:2
       )
 
       it("aborts the program", {
         expect_error(check_sample_data_headers(sample_data))
+      })
+    })
+  })
+
+  describe("check_sample_groups()", {
+    default_group_name <- "__anvi__default__sample__group"
+
+    context("when using reserved default group name", {
+      sample_data <- data.frame(
+        sample_name = "sample_1",
+        sample_group = default_group_name
+      )
+
+      it("aborts the program", {
+        expect_error(check_sample_groups(sample_data))
+      })
+    })
+
+    context("when no sample_group info is given", {
+      sample_data <- data.frame(
+        sample_name = "sample_1",
+        sample_color = "#333333"
+      )
+
+      it("adds the default group name", {
+        expected <- default_group_name
+        actual <- check_sample_groups(sample_data)
+
+        expect_equal(actual, expected)
       })
     })
   })

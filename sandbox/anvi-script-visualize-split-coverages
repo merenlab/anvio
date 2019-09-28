@@ -499,14 +499,41 @@ parse_split_coverages <- function(opts) {
 
 ## Check sample_data headers
 check_sample_data_headers <- function(sample_data) {
-  if (any(colnames(sample_data) %nin% c("sample_name", "sample_color", "group"))) {
+  logger$debug("Checking sample_data header")
+
+  if (any(colnames(sample_data) %nin% c("sample_name", "sample_color", "sample_group"))) {
     abort("bad header row in sample_data file")
+  }
+}
+
+## If only one group is specified, warn the user, as group is used to
+## break samples into separate PDFs.
+check_sample_groups <- function(sample_data) {
+  logger$debug("Checking sample_data groups")
+
+  default_group <- "__anvi__default__sample__group"
+
+  ## TODO TEST
+  if (any(sample_data$sample_group) == default_group) {
+    abort("You used __anvi__default__sample__group as a sample_group.  Please choose a different group name.")
+  }
+
+  if (is.null(sample_data$sample_group)) {
+    rep(default_group, times = nrow(sample_data))
+  } else if (length(unique(sample_data$sample_group)) == 1) {
+    logger$warn("A single group was provided for all samples in sample_data file.  This option is for splitting samples across PDFs.  Did you mean to specify more than one group?")
+
+    sample_data$sample_group
+  } else {
+    sample_data$sample_group
   }
 }
 
 ## Check that all color names are either named R colors or
 ## hexcodes.  If not, just make them black.
 fix_colors <- function(sample_data, opts) {
+  logger$debug("Checking the colors")
+
   ## sample_color is not always present in the sample_data file.
   if (is.null(sample_data$sample_color)) {
     rep(opts$coverage_plot_color, times = nrow(sample_data))
@@ -523,6 +550,8 @@ fix_colors <- function(sample_data, opts) {
 }
 
 parse_sample_data <- function(opts) {
+  logger$debug("Parsing sample data")
+
   if (is.null(opts$sample_data)) {
     sample_data = NULL
   } else {
@@ -532,7 +561,8 @@ parse_sample_data <- function(opts) {
                              comment.char = "")
 
     check_sample_data_headers(sample_data)
-    sample_data$sample_color <- fix_colors(sample_data)
+    check_sample_groups(sample_data)
+    sample_data$sample_color <- fix_colors(sample_data, opts)
   }
 
   sample_data
@@ -876,9 +906,9 @@ basic_plot <- function(dat, opts) {
 
   ## Check for free y scale.
   if (opts$free_y_scale) {
-    cov_plot <- cov_plot + facet_grid(sample_name ~ ., scales = "free_y")
+    cov_plot <- cov_plot + facet_grid(rows = vars(sample_name), scales = "free_y")
   } else {
-    cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+    cov_plot <- cov_plot + facet_grid(rows = vars(sample_name))
   }
 
   ## Add chart labels.
