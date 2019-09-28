@@ -1,3 +1,7 @@
+## Add logger to the global environment.  Many functions assume that
+## exists("logger") is TRUE.
+assign("logger", make_logger(1), envir = globalenv())
+
 describe("sapply_by_group()", {
   describe("with character groups", {
     df <- data.frame(
@@ -141,7 +145,7 @@ describe("fix_colors()", {
   )
 
   it("returns vec with invalid colors as #333333", {
-    actual <- fix_colors(df)
+    actual <- fix_colors(df, list(coverage_plot_color = "#333333"))
     expected <- c("#333333", "blue", "#123FFF", "#333333")
 
     expect_equal(actual, expected)
@@ -178,42 +182,135 @@ describe("sort_split_coverages()", {
 
 ## SNV data functions
 describe("SNV data function", {
-  split_coverages <- data.frame(
-    nt_position = rep(
-      c(0:4, 0:9, 0:3),
-      times = 2
-    ),
-    split_name = rep(
-      c(rep("contig_1_split_00001", 5),
-        rep("contig_1_split_00002", 10),
-        rep("contig_2_split_00001", 4)),
-      times = 2
-    ),
-    sample_name = c(
-      rep("sample_1", 19),
-      rep("sample_2", 19)
-    ),
-    x_values = rep(
-      0:18,
-      times = 2
+  ## expected_contig_offsets <- data.frame(
+  ##   sample_1 = c(0, 5, 15),
+  ##   sample_2 = c(0, 5, 15),
+  ##   row.names = c("contig_1_split_00001",
+  ##                 "contig_1_split_00002",
+  ##                 "contig_2_split_00001")
+  ## )
+  expected_contig_offsets <- matrix(
+    rep(c(0, 5, 15), 2),
+    nrow = 3,
+    ncol = 2,
+    dimnames = list(
+      split_name = c("contig_1_split_00001",
+        "contig_1_split_00002",
+        "contig_2_split_00001"),
+      sample_name = paste0("sample_", 1:2)
     )
-  )
-
-  expected_contig_offsets <- data.frame(
-    sample_1 = c(0, 5, 15),
-    sample_2 = c(0, 5, 15),
-    row.names = c("contig_1_split_00001",
-                  "contig_1_split_00002",
-                  "contig_2_split_00001")
   )
 
 
   describe("get_contig_offsets()", {
-    it("returns a data.frame with length of contigs in samples", {
-      actual_contig_offsets <- get_contig_offsets(split_coverages)
+    describe("with multiple samples and multiple contigs", {
+      split_coverages <- data.frame(
+        nt_position = rep(
+          c(0:4, 0:9, 0:3),
+          times = 2
+        ),
+        split_name = rep(
+          c(rep("contig_1_split_00001", 5),
+            rep("contig_1_split_00002", 10),
+            rep("contig_2_split_00001", 4)),
+          times = 2
+        ),
+        sample_name = c(
+          rep("sample_1", 19),
+          rep("sample_2", 19)
+        ),
+        x_values = rep(
+          0:18,
+          times = 2
+        )
+      )
 
-      expect_equal(actual_contig_offsets, expected_contig_offsets)
+      it("returns a data.frame with length of contigs in samples", {
+        actual_contig_offsets <- get_contig_offsets(split_coverages)
+
+        expect_equal(actual_contig_offsets, expected_contig_offsets)
+      })
     })
+
+    describe("with multiple samples and a single contig", {
+      split_coverages <- data.frame(
+        nt_position = rep(0:4, 2),
+        split_name = rep("contig_1_split_00001", 10),
+        sample_name = c(rep("sample_1", 5), rep("sample_2", 5)),
+        x_values = rep(0:4, 2)
+      )
+
+      expected_contig_offsets <- matrix(
+        c(0, 0),
+        nrow = 1,
+        ncol = 2,
+        dimnames = list(
+          split_name = c("contig_1_split_00001"),
+          sample_name = paste0("sample_", 1:2)
+        )
+      )
+
+      it("returns a 1 x nsamples data frame", {
+        actual_contig_offsets <- get_contig_offsets(split_coverages)
+
+        expect_equal(actual_contig_offsets, expected_contig_offsets)
+      })
+    })
+
+    describe("with a single sample and multiple contigs", {
+      split_coverages <- data.frame(
+        nt_position = c(0:4, 0:9),
+        split_name = c(
+          rep("contig_1_split_00001", 5),
+          rep("contig_1_split_00002", 10)
+        ),
+        sample_name = rep("sample_1", 15),
+        x_values = 0:14
+      )
+
+      expected_contig_offsets <- matrix(
+        c(0, 5),
+        nrow = 2,
+        ncol = 1,
+        dimnames = list(
+          split_name = c("contig_1_split_00001", "contig_1_split_00002"),
+          sample_name = c("sample_1")
+        )
+      )
+
+      it("returns a 1 x nsamples data frame", {
+        actual_contig_offsets <- get_contig_offsets(split_coverages)
+
+        expect_equal(actual_contig_offsets, expected_contig_offsets)
+      })
+    })
+
+
+    describe("with single sample and a single contig", {
+      split_coverages <- data.frame(
+        nt_position = 0:4,
+        split_name = rep("contig_1_split_00001", 5),
+        sample_name = rep("sample_1", 5),
+        x_values = 0:4
+      )
+
+      expected_contig_offsets <- matrix(
+        0,
+        nrow = 1,
+        ncol = 1,
+        dimnames = list(
+          split_name = c("contig_1_split_00001"),
+          sample_name = c("sample_1")
+        )
+      )
+
+      it("returns a 1 x nsamples data frame", {
+        actual_contig_offsets <- get_contig_offsets(split_coverages)
+
+        expect_equal(actual_contig_offsets, expected_contig_offsets)
+      })
+    })
+
   })
 
   describe("get_offset_snv_positions()", {

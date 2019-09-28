@@ -1,10 +1,5 @@
 #!/usr/bin/env Rscript
 
-## START HERE:  if a split is missing from the variability table, will the offsets still be correct?
-
-
-## Last update: 2019-06-20 (mooreryan)
-
 ## To run unit tests:
 ##
 ## - Install the `testthat` package.
@@ -392,10 +387,12 @@ parse_split_coverages <- function(opts) {
     abort("missing '$infile' from opts list")
   }
 
+  logger$debug("Reading split_coverages")
   split_coverages <- read.table(opts$infile,
                                 header = TRUE,
                                 sep = "\t")
 
+  logger$debug("Checking split_coverages")
   ## Check split coverage header rows
   expected_split_cov_header <- c(
     "unique_entry_id",
@@ -404,9 +401,11 @@ parse_split_coverages <- function(opts) {
     "sample_name",
     "coverage"
   )
-  if (any(names(split_coverages) != expected_split_cov_header)) {
+  if (any(colnames(split_coverages) != expected_split_cov_header)) {
     abort("bad header row in split coverages file")
   }
+
+  logger$debug("Ordering split_coverages")
 
   ## Lots of steps expected nicely sorted data frame, so sort it by
   ## sample_name, then split_name, then nt_position.
@@ -414,12 +413,14 @@ parse_split_coverages <- function(opts) {
                                            split_coverages$split_name,
                                            split_coverages$nt_position), ]
 
+  logger$debug("Checking for multiple split_names")
+
   ## If there are multiple split_names in the split coverages file,
   ## we need to make sure they are all sorted properly, then we need
   ## to treat all split_names within a single contig as one big
   ## super-contig.
   if (length(unique(split_coverages$split_name)) > 1) {
-    logger$debug("Multiple split_names found")
+    logger$debug("Multiple split names found")
     ## Get number of positions (rows) for all splits per sample.
     sample_counts <- table(split_coverages$sample_name)
 
@@ -436,10 +437,12 @@ parse_split_coverages <- function(opts) {
     ## cases.
     split_coverages$x_values <- as.vector(unlist(nt_posns_by_sample))
   } else {
+    logger$debug("Single split names found")
     ## Use the regular nt_position as the x_values.
     split_coverages$x_values <- split_coverages$nt_position
   }
 
+  logger$debug("Getting contig offsets")
   ## We need to calculate offsets for each of the contigs in order to
   ## link up the SNV data.  The first one would have no offset, the
   ## 2nd would have to take into account the legth of the first
@@ -658,6 +661,7 @@ add_sample_data <- function(split_coverages, sample_data) {
 ## Important:  this must be run BEFORE any data reduction.
 ##
 get_contig_offsets <- function(split_coverages) {
+  logger$debug("Getting lengths per sample")
   ## Get split_name lengths in each sample.  Returns a matrix with
   ## samples as rows and split_name as columns.
   contig_lengths <- tapply(
@@ -667,10 +671,13 @@ get_contig_offsets <- function(split_coverages) {
       split_name = split_coverages$split_name
     ),
     FUN = length
-  )
+  ) # returns a nsamples X nsplits matrix, with dimnames
 
+  logger$debug("Getting number of samples")
   nsamples <- nrow(contig_lengths)
+  ncontigs <- ncol(contig_lengths)
 
+  logger$debug("Getting contig offsets")
   ## Rows will be contigs/splits and cols will be samples.  Entries
   ## will be offset of contig/split for that sample.
   contig_offsets <- apply(
@@ -688,11 +695,21 @@ get_contig_offsets <- function(split_coverages) {
       })
     }
   )
+  ## returns a vector if there is only one contig, or one sample.
+  ## Matrix otherwise, name of row dimname will be lost.
 
-  ## In the case of one sample, ensure that it is a data.frame.
-  contig_offsets <- as.data.frame(contig_offsets)
-  rownames(contig_offsets) <- levels(split_coverages$split_name)
-  colnames(contig_offsets) <- levels(split_coverages$sample_name)
+  ## In the case of one sample, or one contig ensure that it's an
+  ## ncontigs X nsamples matrix.
+  if (is.null(dim(contig_offsets))) {
+    logger$debug("Ensuring data is a matrix")
+    contig_offsets <- matrix(contig_offsets, nrow = ncontigs, ncol = nsamples)
+  }
+
+  ## Set dimnames (technically not sure if this should be levels or not)
+  dimnames(contig_offsets) <- list(
+    split_name = levels(split_coverages$split_name),
+    sample_name = levels(split_coverages$sample_name)
+  )
 
   contig_offsets
 }
@@ -727,11 +744,15 @@ get_offset_snv_positions <- function(snv_data, contig_offsets) {
 
 ## This function is called in the main part of the script.
 parse_input_data <- function(opts) {
+  logger$debug("Parsing split coverages")
   tmp <- parse_split_coverages(opts)
   split_coverages <- tmp$split_coverages
   contig_offsets <- tmp$contig_offsets
 
+
+  logger$debug("Parsing sample data")
   sample_data <- parse_sample_data(opts)
+  logger$debug("Parsing SNV data")
   snv_data <- parse_snv_data(opts)
 
   ## If sample_data file is given, we need to adjust the split
