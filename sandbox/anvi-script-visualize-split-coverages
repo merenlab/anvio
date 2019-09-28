@@ -4,31 +4,9 @@
 ##
 ## - Install the `testthat` package.
 ##
-## - The test runner is located ${anvio_source_dir}/anvio/tests/sandbox/test_visualize_split_coverages/test_visualize_split_coverages.R
+## - The test runner is located ${anvio_source_dir}/anvio/tests/sandbox/test_visualize_split_coverages/run_tests.R
 ##
 ## - Run the test runner with Rscript at the terminal.
-
-## To add a new chart type:
-##
-## - Pick a name for your new chart type, e.g., 'box', then add that
-##   to the `available_chart_types` variable in the `check_chart_type`
-##   function.
-##
-## - Add any other opts that your program needs to the `set_up_opts`
-##   function, and add to the description banner if necessary.
-##
-## - Add a new plot function that takes `dat` and `opts`.  E.g.,
-##   box_plot <- function(dat, opts) { ... }.  Make sure this function
-##   returns a ggplot2 object ready to be plotted by the wrapper
-##   functions.
-##
-## - Add this function to the option list of the `draw_plot` wrapper
-##   function.
-
-## Use packages.  Will exit if missing the package.  Supress messages
-## about overwritten methods.
-suppressMessages(library(ggplot2))
-suppressMessages(library(optparse))
 
 #### Logging functions ####
 
@@ -103,15 +81,28 @@ make_logger <- function(verbosity = 2) {
   )
 }
 
-#### End logging functions ####
-
-#### Utility functions ####
-
 ## Write a `msg` to stderr then exit with code 1.
 abort <- function(msg, ...) {
   logger$fatal(msg, ...)
   quit(save = "no", status = 1, runLast = FALSE)
 }
+
+#### End logging functions ####
+
+#### Import libraries ####
+
+## Try to load the packages.  Abort if they are not available.
+if (!suppressPackageStartupMessages(require(ggplot2))) {
+  abort("ggplot2 is a required package!")
+}
+
+if (!suppressPackageStartupMessages(require(optparse))) {
+  abort("optparse is a required package!")
+}
+
+#### End import libraries ####
+
+#### Utility functions ####
 
 is_hex_color <- function(color) {
   grepl("#[0-9a-fA-F]{6}", color)
@@ -206,7 +197,7 @@ check_required_args <- function(opts) {
     if (is.null(opts[[arg]])) {
       msg <- paste0("'",
                     arg,
-                    "' is a required argument.")
+                    "' is a required argument.  For help, try running:  anvi-script-visualize-split-coverages --help")
       abort(msg)
     }
   }
@@ -1122,6 +1113,9 @@ Description:
 
   - The main input file required for this script is the output of
     the program anvi-get-split-coverages.
+
+  - All contigs/splits present in a sample will be merged along
+    the x-axis in alphabetical order.
 
   - Required columns include:
     - unique_entry_id
