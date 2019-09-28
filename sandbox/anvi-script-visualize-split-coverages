@@ -507,14 +507,19 @@ check_sample_data_headers <- function(sample_data) {
 ## Check that all color names are either named R colors or
 ## hexcodes.  If not, just make them black.
 fix_colors <- function(sample_data, opts) {
-  sapply(
-    sample_data$sample_color,
-    function(color) {
-      ifelse(color == "" || (color %nin% colors() && !is_hex_color(color)),
-             opts$coverage_plot_color,
-             as.character(color))
-    }
-  )
+  ## sample_color is not always present in the sample_data file.
+  if (is.null(sample_data$sample_color)) {
+    rep(opts$coverage_plot_color, times = nrow(sample_data))
+  } else {
+    sapply(
+      sample_data$sample_color,
+      function(color) {
+        ifelse(color == "" || (color %nin% colors() && !is_hex_color(color)),
+               opts$coverage_plot_color,
+               as.character(color))
+      }
+    )
+  }
 }
 
 parse_sample_data <- function(opts) {

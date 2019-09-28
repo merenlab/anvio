@@ -216,6 +216,25 @@ describe("fix_colors()", {
 
     expect_equal(actual, expected)
   })
+
+  context("when sample_color is not specified", {
+    sample_data <- data.frame(
+      sample_name = paste0("sample_", 1:2),
+      group = letters[1:2]
+    )
+
+    opts <- data.frame(
+      coverage_plot_color = "#333333"
+    )
+
+    it("gives a default color for all samples", {
+      expected <- rep(opts$coverage_plot_color, times = 2)
+
+      actual <- fix_colors(sample_data, opts)
+
+      expect_equal(actual, expected)
+    })
+  })
 })
 
 describe("sort_split_coverages()", {
