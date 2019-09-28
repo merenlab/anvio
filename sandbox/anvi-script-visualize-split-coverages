@@ -201,7 +201,7 @@ cap_coverage <- function(coverage, max_coverage) {
 
 check_required_args <- function(opts) {
   ## Make sure the required args are given.
-  required_args = c("infile", "outfile")
+  required_args = c("infile", "outfile_basename")
   for (arg in required_args) {
     if (is.null(opts[[arg]])) {
       msg <- paste0("'",
@@ -223,7 +223,7 @@ check_infile <- function(opts) {
 
 check_outfile <- function(opts) {
   ## Make sure the directory of the outfile exists.
-  outdir <- dirname(opts$outfile)
+  outdir <- dirname(opts$outfile_basename)
   if (!dir.exists(outdir)) {
     abort(paste0("Directory '",
                  outdir,
@@ -792,7 +792,11 @@ parse_input_data <- function(opts) {
 
   ## If sample_data file is given, we need to adjust the split
   ## coverages data frame.
-  if (!is.null(sample_data)) {
+  if (is.null(sample_data)) {
+    ## Set sample_group
+    default_group <- "__anvi__default__sample__group"
+    split_coverages$sample_group <- rep(default_group, times = nrow(split_coverages))
+  } else {
     logger$info("Sample_data given.  Adjusting split_coverages.")
     ## Make sure the names in sample_data df are okay.
     check_sample_names(sample_data, split_coverages$sample_name)
@@ -856,65 +860,93 @@ basic_plot <- function(dat, opts) {
     }
   )
 
-  ## Set up the coverage chart.
-  cov_plot <- ggplot(dat$split_coverages,
-                     aes(x = x_values,
-                         y = coverage,
-                         group = sample_name))
-
-  ## Add the coverage geom.
-  if (is.null(dat$split_coverages$sample_color)) {
-    cov_plot <- cov_plot + geom_fn(fill = opts$coverage_plot_color)
-  } else {
-    cov_plot <- cov_plot + geom_fn(fill = dat$split_coverages$sample_color)
+  ## Sanity check.  sample_group should always be set.
+  if (is.null(dat$split_coverages$sample_group)) {
+    abort("Something went wrong....sample_group was not set!")
   }
 
-  ## Add the SNV data if it is available.
-  if (!is.null(dat$snv_data)) {
-    max_cov <- tapply(X = dat$split_coverages$coverage, INDEX = dat$split_coverages$sample_name, FUN = max)
-    max_cov <- data.frame(max_cov = max_cov, sample_name = names(max_cov))
+  sample_groups <- unique(dat$split_coverages$sample_group)
+  logger$debug("There will be %d sample group(s)", length(sample_groups))
 
-    snv_color <- data.frame(
-      base_pos_in_codon = 0:3,
-      snv_color = c(
-        opts$snv_intergenic_color,
-        opts$snv_nonsynonymous_color,
-        opts$snv_nonsynonymous_color,
-        opts$snv_synonymous_color
+  ## In the case of a single sample_group this will be length one.
+  sapply(sample_groups, function(group) {
+    split_coverages_subset <- subset(dat$split_coverages,
+                                     sample_group == group)
+
+    included_samples <- unique(as.character(split_coverages_subset$sample_name))
+    nsamples <- length(included_samples)
+
+    ## Set up the coverage chart.
+    cov_plot <- ggplot(split_coverages_subset,
+                       aes(x = x_values,
+                           y = coverage,
+                           group = sample_name))
+
+    ## Add the coverage geom.
+    if (is.null(split_coverages_subset$sample_color)) {
+      cov_plot <- cov_plot + geom_fn(fill = opts$coverage_plot_color)
+    } else {
+      cov_plot <- cov_plot + geom_fn(fill = split_coverages_subset$sample_color)
+    }
+
+    ## Add the SNV data if it is available.
+    if (!is.null(dat$snv_data)) {
+      max_cov <- tapply(X = split_coverages_subset$coverage, INDEX = split_coverages_subset$sample_name, FUN = max)
+      max_cov <- data.frame(max_cov = max_cov, sample_name = names(max_cov))
+
+      snv_color <- data.frame(
+        base_pos_in_codon = 0:3,
+        snv_color = c(
+          opts$snv_intergenic_color,
+          opts$snv_nonsynonymous_color,
+          opts$snv_nonsynonymous_color,
+          opts$snv_synonymous_color
+        )
       )
-    )
 
-    snv_plot_dat <- merge(dat$snv_data, max_cov, by = "sample_name")
-    snv_plot_dat <- merge(snv_plot_dat, snv_color, by = "base_pos_in_codon")
+      # TODO double check that we don't need to also subset this.
+      snv_plot_dat <- merge(dat$snv_data, max_cov, by = "sample_name")
+      snv_plot_dat <- merge(snv_plot_dat, snv_color, by = "base_pos_in_codon")
 
-    cov_plot <- cov_plot +
-      geom_segment(
-        data = snv_plot_dat,
-        mapping = aes(x = x_values,
-                      xend = x_values,
-                      y = 0,
-                      yend = departure_from_reference * max_cov),
-        color = snv_plot_dat$snv_color,
-        size = opts$snv_marker_width,
-        alpha = opts$snv_marker_transparency
-      )
-  }
+      snv_plot_dat_subset <- subset(snv_plot_dat, sample_name %in% included_samples)
 
-  ## Tweak the theme.
-  cov_plot <- cov_plot + theme_bw()
-  cov_plot <- cov_plot + theme(legend.position = "none")
+      ## print("dat$snv_data")
+      ## write.table(dat$snv_data)
+      ## print("hey bob")
+      ## write.table(snv_plot_dat)
 
-  ## Check for free y scale.
-  if (opts$free_y_scale) {
-    cov_plot <- cov_plot + facet_grid(rows = vars(sample_name), scales = "free_y")
-  } else {
-    cov_plot <- cov_plot + facet_grid(rows = vars(sample_name))
-  }
+      cov_plot <- cov_plot +
+        geom_segment(
+          data = snv_plot_dat_subset,
+          mapping = aes(x = x_values,
+                        xend = x_values,
+                        y = 0,
+                        yend = departure_from_reference * max_cov),
+          color = snv_plot_dat_subset$snv_color,
+          size = opts$snv_marker_width,
+          alpha = opts$snv_marker_transparency
+        )
+    }
 
-  ## Add chart labels.
-  cov_plot <- cov_plot + labs(x = "Nucleotide position", y = "Coverage")
+    ## Tweak the theme.
+    cov_plot <- cov_plot + theme_bw()
+    cov_plot <- cov_plot + theme(legend.position = "none")
 
-  cov_plot
+    ## Check for free y scale.
+    if (opts$free_y_scale) {
+      cov_plot <- cov_plot + facet_grid(rows = vars(sample_name), scales = "free_y")
+    } else {
+      cov_plot <- cov_plot + facet_grid(rows = vars(sample_name))
+    }
+
+    ## Add chart labels.
+    cov_plot <- cov_plot + labs(x = "Nucleotide position", y = "Coverage")
+
+    list(plot = cov_plot,
+         sample_group = group,
+         nsamples = nsamples)
+  },
+  simplify = FALSE)
 }
 
 
@@ -932,12 +964,29 @@ draw_plot <- function(...) {
 
 ## This function is called in the main part of the script.
 ## Fn to write plot to disk.
-write_plot <- function(gg_plot, dat, opts) {
-  pdf(opts$outfile,
-      width = opts$whole_chart_width,
-      height = opts$individual_chart_height * length(levels(dat$sample_names)))
-  print(gg_plot)
-  suppressMessages(invisible(dev.off()))
+write_plot <- function(gg_plots, dat, opts) {
+  if (length(gg_plots) == 1) {
+    logger$debug("Found only 1 plot")
+    plt <- gg_plots[[1]]
+    outfile <- paste0(opts$outfile_basename, ".pdf")
+
+    pdf(outfile,
+        width = opts$whole_chart_width,
+        height = opts$individual_chart_height * plt$nsamples)
+    print(plt$plot)
+    suppressMessages(invisible(dev.off()))
+  } else {
+    logger$debug("Found %d plots", length(gg_plots))
+    for (plt in gg_plots) {
+      outfile <- paste0(opts$outfile_basename, "_sample_group_", plt$sample_group, ".pdf")
+
+      pdf(outfile,
+          width = opts$whole_chart_width,
+          height = opts$individual_chart_height * plt$nsamples)
+      print(plt$plot)
+      suppressMessages(invisible(dev.off()))
+    }
+  }
 }
 
 #### Optparse ####
@@ -958,10 +1007,10 @@ set_up_opts <- function() {
                 help = "Path to SNV data file (output of anvi-gen-variability-profile"),
 
     ## Outfile options
-    make_option(opt_str = c("-o", "--outfile"),
+    make_option(opt_str = c("-o", "--outfile-basename"),
                 action = "store",
                 type = "character",
-                help = "Path to outfile"),
+                help = "Outfile basename (can be a path)"),
 
     ## Chart options
     make_option(opt_str = c("-t", "--chart-type"),
