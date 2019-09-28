@@ -655,7 +655,7 @@ class TimeCode(object):
         return_code = 0 if exception_type is None else 1
 
         msg, color = (self.s_msg, self.sc) if not return_code else (self.f_msg, self.fc)
-        self.run.info_single(msg + self.timer.time_elapsed(), nl_before=1, mc=color, level=return_code)
+        self.run.info_single(msg + str(self.time), nl_before=1, mc=color, level=return_code)
 
 
 def time_program(program_method):
