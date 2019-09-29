@@ -210,7 +210,7 @@ class SCGTaxonomyContext(object):
                                                 (len(missing_SCG_databases), len(self.SCGs), ', '.join(missing_SCG_databases)))
 
             if self.__class__.__name__ in ['SCGTaxonomyEstimator']:
-                scg_taxonomy_was_run = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress).meta['scg_taxonomy_was_run']
+                scg_taxonomy_was_run = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['scg_taxonomy_was_run']
                 if not scg_taxonomy_was_run:
                     raise ConfigError("It seems the SCG taxonomy tables were not populatd in this contigs database :/ Luckily it\
                                        is easy to fix that. Please see the program `anvi-run-scg-taxonomy`.")
@@ -954,17 +954,17 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
     def get_SCG_sequences_dict_from_contigs_db(self):
         """Returns a dictionary of all HMM hits per SCG of interest"""
 
-        contigs_db = ContigsSuperclass(self.args, r=self.run, p=self.progress)
+        contigs_db = ContigsSuperclass(self.args, r=run_quiet, p=progress_quiet)
         splits_dict = {contigs_db.a_meta['project_name']: list(contigs_db.splits_basic_info.keys())}
 
-        s = hmmops.SequencesForHMMHits(self.args.contigs_db, sources=self.hmm_source_for_scg_taxonomy)
+        s = hmmops.SequencesForHMMHits(self.args.contigs_db, sources=self.hmm_source_for_scg_taxonomy, run=run_quiet, progress=progress_quiet)
         hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=True)
         hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(self.default_scgs_for_taxonomy))
 
         if not len(hmm_sequences_dict):
             raise ConfigError("Your selections returned an empty list of genes to work with :/")
 
-        self.run.info('Hits', '%d hits for %d source(s)' % (len(hmm_sequences_dict), len(s.sources)))
+        self.run.info('Num relevant SCGs in contigs db', '%s' % (pp(len(hmm_sequences_dict))))
 
         scg_sequences_dict = {}
         for entry_id in hmm_sequences_dict:
@@ -989,12 +989,11 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         self.run.info('Database reference', self.search_databases_dir_path)
         self.run.info('Number of SCGs', len(scg_sequences_dict))
 
-        self.run.warning('', header='Parameters for DIAMOND search', lc='green')
-        self.run.info('Blast type', "Blastp")
-        self.run.info('Maximum number of target sequences', self.max_target_seqs)
-        self.run.info('Minimum bit score to report alignments', self.min_pct_id)
-        self.run.info('Number aligment running at same time', self.num_parallel_processes)
-        self.run.info('Number of CPUs will be used for each aligment', self.num_threads)
+        self.run.warning('', header='Parameters for DIAMOND blastp', lc='green')
+        self.run.info('Max number of target sequences', self.max_target_seqs)
+        self.run.info('Min bit score to report alignments', self.min_pct_id)
+        self.run.info('Num aligment tasks running in parallel', self.num_parallel_processes)
+        self.run.info('Num CPUs per aligment task', self.num_threads)
 
         self.tables_for_taxonomy = TableForSCGTaxonomy(self.contigs_db_path, self.run, self.progress)
         self.tables_for_taxonomy.delete_contents_of_table(t.scg_taxonomy_table_name)
