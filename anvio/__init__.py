@@ -564,6 +564,13 @@ D = {
                       core gene to estimate the taxonomic composition within a contigs database. If you have a\
                       different preference you can use this parameter to communicate that."}
                 ),
+    'compute-scg-coverages': (
+            ['--compute-scg-coverages'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When this flag is declared, anvi'o will go back to the profile database to learn coverage\
+                      statistics of single-copy core genes for which we have taxonomy information."}
+                ),
     'taxonomy-database': (
             ['-r', '--taxonomy-database'],
             {'default': None,
