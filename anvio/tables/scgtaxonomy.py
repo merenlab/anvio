@@ -54,7 +54,7 @@ class TableForSCGTaxonomy(Table):
                 continue
 
             for scg_hit in scg_hits:
-                entries.append([self.next_id(t.scg_taxonomy_table_name), gene_callers_id, scg_name] + [scg_hit[f] for f in t.scg_taxonomy_structure[3:]])
+                entries.append([self.next_id(t.scg_taxonomy_table_name), gene_callers_id, scg_name] + [scg_hit[f] for f in t.scg_taxonomy_table_structure[3:]])
 
         self.database.insert_many(t.scg_taxonomy_table_name, entries)
         self.database.disconnect()
