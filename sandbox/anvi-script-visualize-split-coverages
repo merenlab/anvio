@@ -476,6 +476,13 @@ parse_split_coverages <- function(opts) {
       split_coverages <- shrink_data(split_coverages, opts$window_size)
 
       logger$info("Total data points after compression: %d", nrow(split_coverages))
+
+      if (nrow(split_coverages) >= 100000) {
+        tmp_nsamples <- length(unique(as.character(split_coverages$sample_name)))
+
+        logger$warn("Even after compression, you still have more than 100,000 data points.  Unless you have added sample_group info with --sample-data, **PLOTTING WILL LIKELY BE VERY SLOW**.",
+                    tmp_nsamples)
+      }
     }
   }
 
@@ -505,7 +512,7 @@ check_sample_groups <- function(sample_data) {
   default_group <- "__anvi__default__sample__group"
 
   ## TODO TEST
-  if (any(sample_data$sample_group) == default_group) {
+  if (any(as.character(sample_data$sample_group) == default_group)) {
     abort("You used __anvi__default__sample__group as a sample_group.  Please choose a different group name.")
   }
 
@@ -541,11 +548,11 @@ fix_colors <- function(sample_data, opts) {
 }
 
 parse_sample_data <- function(opts) {
-  logger$debug("Parsing sample data")
-
   if (is.null(opts$sample_data)) {
     sample_data = NULL
   } else {
+    logger$debug("Parsing sample data")
+
     sample_data = read.table(opts$sample_data,
                              header = TRUE,
                              sep = "\t",
@@ -610,6 +617,8 @@ parse_snv_data <- function(opts) {
   if (is.null(opts$snv_data)) {
     snv_data <- NULL
   } else {
+    logger$debug("Parsing SNV data")
+
     snv_data <- read.table(opts$snv_data,
                            header = TRUE,
                            sep = "\t",
@@ -775,15 +784,18 @@ parse_input_data <- function(opts) {
   split_coverages <- tmp$split_coverages
   contig_offsets <- tmp$contig_offsets
 
-
-  logger$debug("Parsing sample data")
   sample_data <- parse_sample_data(opts)
-  logger$debug("Parsing SNV data")
   snv_data <- parse_snv_data(opts)
 
   ## If sample_data file is given, we need to adjust the split
   ## coverages data frame.
   if (is.null(sample_data)) {
+    ## First, warn the user if they have a lot of samples that the
+    ## script will probably be slow.
+    if (length(unique(as.character(split_coverages$sample_name))) >= 10) {
+      logger$warn("You have more than 10 samples, but did not provide any sample_group info.  **PLOTTING WILL LIKELY BE VERY SLOW**.  Consider adding sample_group information using the --sample-data option.")
+    }
+
     ## Set sample_group
     default_group <- "__anvi__default__sample__group"
     split_coverages$sample_group <- rep(default_group, times = nrow(split_coverages))
@@ -1127,18 +1139,32 @@ Description:
   Sample data
   -----------
 
-  - Sample data may be provided in order to color the graphs.
+  - If the sample data is provided, only samples listed in the sample
+    data file will be output in the final PDF.  I.e., you can use the
+    sample data file to limit the number of samples in the final
+    output.
+
+  - Sample data may be provided to group the samples.  If you have a
+    lot of samples, you should consider grouping them, or else the
+    script will take A TON of time.  Each group of samples will get
+    its own PDF output.
+
+  - Sample groups can be numbers, letters, strings, or a mix (e.g.,
+    sample_1, 1, A).
+
+  - Sample data may be provided in order to color the graphs.  Sample
+    colors should be in the sample_color column.
 
   - Any color that is not included in `colors()` or a valid hex code
     (e.g., #00FF00) will be changed to the color specified by the
     --coverage-plot-color parameter.
 
-  - If the sample data is provided, only samples listed in the sample
-    data file will be output in the final PDF.
-
   - Required columns include:
     - sample_name
+
+  - At least one of these columns should be present:
     - sample_color
+    - sample_group
 
   SNV data
   --------
