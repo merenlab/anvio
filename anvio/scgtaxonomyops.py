@@ -236,6 +236,10 @@ class SCGTaxonomyContext(object):
                                        suitable SCGs to do that. Here is a list for you to choose from: '%s'." \
                                                             % (self.scg_name_for_metagenome_mode, ', '.join(self.SCGs.keys())))
 
+                if self.compute_scg_coverages and not self.profile_db_path:
+                    raise ConfigError("The flag `--compute-scg-coverages` is only good if there is a non-blank profile database around\
+                                       from which anvi'o can learn coverage statistics of genes across one or more samples :/")
+
                 if self.output_file_path:
                     filesnpaths.is_output_file_writable(self.output_file_path)
 
@@ -281,7 +285,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         self.just_do_it = A('just_do_it')
         self.metagenome_mode = True if A('metagenome_mode') else False
         self.scg_name_for_metagenome_mode = A('scg_name_for_metagenome_mode')
-        self.compute_coverages_across_samples = A('compute_coverages_across_samples')
+        self.compute_scg_coverages = A('compute_scg_coverages')
 
         SCGTaxonomyContext.__init__(self, self.args)
 
@@ -607,7 +611,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         else:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
 
-        if self.compute_coverages_across_samples:
+        if self.compute_scg_coverages:
             self.get_scg_coverages_across_samples_dict(scg_taxonomy_estimations_dict)
 
         if self.output_file_path:
@@ -951,7 +955,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         """Returns a dictionary of all HMM hits per SCG of interest"""
 
         contigs_db = ContigsSuperclass(self.args, r=self.run, p=self.progress)
-        splits_dict = {contigs_db.a_meta['project_name']: list(contigs_db.splits_basic_info.keys())} 
+        splits_dict = {contigs_db.a_meta['project_name']: list(contigs_db.splits_basic_info.keys())}
 
         s = hmmops.SequencesForHMMHits(self.args.contigs_db, sources=self.hmm_source_for_scg_taxonomy)
         hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=True)
