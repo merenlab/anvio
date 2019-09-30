@@ -28,7 +28,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
-from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass
+from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
 from anvio.drivers.diamond import Diamond
 from anvio.tables.scgtaxonomy import TableForSCGTaxonomy
 
@@ -135,7 +135,7 @@ class SCGTaxonomyContext(object):
         self.letter_to_level = dict([(l.split('_')[1][0], l) for l in self.levels_of_taxonomy])
 
         self.accession_to_taxonomy_dict = None
-        if self.accession_to_taxonomy_file_path:
+        if os.path.exists(self.accession_to_taxonomy_file_path):
             self.progress.new("Reading the accession to taxonomy file")
             self.progress.update('...')
 
@@ -302,6 +302,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         self.gene_callers_id_to_scg_taxonomy_dict = {}
         self.split_name_to_gene_caller_ids_dict = {}
         self.gene_callers_id_to_split_name_dict = {}
+        self.sample_names_in_profile_db = None
 
         self.initialized = False
 
@@ -313,6 +314,9 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         self.init_scg_data()
 
         self.init_split_to_gene_caller_ids_dict()
+
+        if self.metagenome_mode:
+            self.sample_names_in_profile_db = ProfileDatabase(self.profile_db_path).samples
 
         self.initialized = True
 
@@ -595,32 +599,38 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
 
     def estimate(self):
-        """Function that works with taxonomic annotaion of SCGs to estimate taxonomy"""
+        """Function that returns the `scg_taxonomy_super_dict`.
 
-        scg_taxonomy_estimations_dict = {}
+           `scg_taxonomy_super_dict` contains a wealth of information regarding samples, SCGs,
+           SCG taxonoic affiliations, consensus taxonomy, and coverages of SCGs across samples.
+        """
+
+        scg_taxonomy_super_dict = {}
 
         if not self.initialized:
             self.init()
 
         if self.profile_db_path and not self.metagenome_mode:
-            scg_taxonomy_estimations_dict = self.estimate_for_bins_in_collection()
+            scg_taxonomy_super_dict['taxonomy'] = self.estimate_for_bins_in_collection()
         elif not self.profile_db_path and not self.metagenome_mode:
-            scg_taxonomy_estimations_dict = self.estimate_for_contigs_db_for_genome()
+            scg_taxonomy_super_dict['taxonomy'] = self.estimate_for_contigs_db_for_genome()
         elif self.metagenome_mode:
-            scg_taxonomy_estimations_dict = self.estimate_for_contigs_db_for_metagenome()
+            scg_taxonomy_super_dict['taxonomy'] = self.estimate_for_contigs_db_for_metagenome()
         else:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
 
         if self.compute_scg_coverages:
-            self.get_scg_coverages_across_samples_dict(scg_taxonomy_estimations_dict)
+            scg_taxonomy_super_dict['coverages'] = self.get_scg_coverages_across_samples_dict(scg_taxonomy_super_dict)
+        else:
+            scg_taxonomy_super_dict['coverages'] = None
+
+        self.print_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
 
         if self.output_file_path:
-            self.store_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
-
-        self.print_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
+            self.store_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
 
 
-    def print_scg_taxonomy_estimations_dict(self, scg_taxonomy_estimations_dict):
+    def print_scg_taxonomy_super_dict(self, scg_taxonomy_super_dict):
         self.progress.reset()
 
         if self.collection_name:
@@ -630,49 +640,87 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         else:
             self.run.warning(None, header='Estimated taxonomy for "%s"' % self.contigs_db_project_name, lc="green")
 
-        d = self.get_print_friendly_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
+        d = self.get_print_friendly_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
 
         if self.metagenome_mode:
             header = ['percent_identity', 'taxonomy']
         else:
             header = ['total_scgs', 'supporting_scgs', 'taxonomy']
 
+        # if we are in `--compute-scg-coverages` mode, and more than 5 sample names, we are in trouble since they will\
+        # unlikely fit into the display while printing them. so here we will cut it to make sure things look OK.
+        samples_not_shown = 0
+        sample_names_to_display = None
+        if self.compute_scg_coverages:
+            sample_names_to_display = sorted(self.sample_names_in_profile_db)[0:5]
+            samples_not_shown = sorted(self.sample_names_in_profile_db)[5:]
+
+            header += sample_names_to_display
+
+            if samples_not_shown:
+                header += ['... %d more' % len(samples_not_shown)]
+
         table = []
         for bin_name in d:
             bin_data = d[bin_name]
-            taxon_text = ' / '.join([bin_data[l] if bin_data[l] else '' for l in self.levels_of_taxonomy])
 
-            if self.metagenome_mode:
-                table.append([bin_name, str(bin_data['percent_identity']), taxon_text])
+            # set the taxonomy text depending on how much room we have. if there are sample coverages, keep it simple,
+            # otherwise show the entire taxonomy text.
+            if self.compute_scg_coverages:
+                taxon_text = ['(%s) %s' % (l.split('_')[1][0], bin_data[l]) for l in self.levels_of_taxonomy[::-1] if bin_data[l]][0]
             else:
-                table.append([bin_name, str(bin_data['total_scgs']), str(bin_data['supporting_scgs']), taxon_text])
+                taxon_text = ' / '.join([bin_data[l] if bin_data[l] else '' for l in self.levels_of_taxonomy])
+
+            # setting up the table columns here.
+            if self.metagenome_mode:
+                row = [bin_name, str(bin_data['percent_identity']), taxon_text]
+
+                # if there are coverages, add samples to the display too
+                if self.compute_scg_coverages:
+                    row += [d[bin_name][sample_name] for sample_name in sample_names_to_display]
+            else:
+                row = [bin_name, str(bin_data['total_scgs']), str(bin_data['supporting_scgs']), taxon_text]
+
+            if samples_not_shown:
+                row += ['(...)']
+
+            table.append(row)
 
         print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
 
 
-    def store_scg_taxonomy_estimations_dict(self, scg_taxonomy_estimations_dict):
-        d = self.get_print_friendly_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
+    def store_scg_taxonomy_super_dict(self, scg_taxonomy_super_dict):
+        d = self.get_print_friendly_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
 
         if self.metagenome_mode:
             headers = ['scg_name', 'percent_identity']
         else:
             headers = ['bin_name', 'total_scgs', 'supporting_scgs']
 
-        utils.store_dict_as_TAB_delimited_file(d, self.output_file_path, headers=headers + self.levels_of_taxonomy)
+        headers += self.levels_of_taxonomy
+
+        if self.compute_scg_coverages:
+            headers += sorted(self.sample_names_in_profile_db)
+
+        utils.store_dict_as_TAB_delimited_file(d, self.output_file_path, headers=headers)
         self.run.info("Output file", self.output_file_path, nl_before=1)
 
 
-    def get_print_friendly_scg_taxonomy_estimations_dict(self, scg_taxonomy_estimations_dict):
+    def get_print_friendly_scg_taxonomy_super_dict(self, scg_taxonomy_super_dict):
         d = {}
 
         if self.metagenome_mode:
-            for scg_hit in scg_taxonomy_estimations_dict[self.contigs_db_project_name]['scgs'].values():
+            for scg_hit in scg_taxonomy_super_dict['taxonomy'][self.contigs_db_project_name]['scgs'].values():
                 d['%s_%d' % (scg_hit['gene_name'], scg_hit['gene_callers_id'])] = scg_hit
+
+                if self.compute_scg_coverages:
+                    coverages = scg_taxonomy_super_dict['coverages'][scg_hit['gene_callers_id']]
+                    scg_hit.update(coverages)
         else:
-            for bin_name in scg_taxonomy_estimations_dict:
-                d[bin_name] = scg_taxonomy_estimations_dict[bin_name]['consensus_taxonomy']
-                d[bin_name]['total_scgs'] = scg_taxonomy_estimations_dict[bin_name]['total_scgs']
-                d[bin_name]['supporting_scgs'] = scg_taxonomy_estimations_dict[bin_name]['supporting_scgs']
+            for bin_name in scg_taxonomy_super_dict['taxonomy']:
+                d[bin_name] = scg_taxonomy_super_dict['taxonomy'][bin_name]['consensus_taxonomy']
+                d[bin_name]['total_scgs'] = scg_taxonomy_super_dict['taxonomy'][bin_name]['total_scgs']
+                d[bin_name]['supporting_scgs'] = scg_taxonomy_super_dict['taxonomy'][bin_name]['supporting_scgs']
 
         return d
 
@@ -688,45 +736,54 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         return gene_caller_ids_for_splits
 
 
-    def get_split_names_for_scg_taxonomy_estimations_dict(self, scg_taxonomy_estimations_dict):
-        """Returns a list of split names associated with SCGs found in a scg_taxonomy_estimations_dict."""
+    def get_split_names_for_scg_taxonomy_super_dict(self, scg_taxonomy_super_dict):
+        """Returns a list of split names associated with SCGs found in a scg_taxonomy_super_dict."""
 
-        if 'scgs' not in list(scg_taxonomy_estimations_dict.values())[0]:
+        if 'scgs' not in list(scg_taxonomy_super_dict['taxonomy'].values())[0]:
             raise ConfigError("Someone called this function with something that doesn't look like the kind\
                                of input data it was expecting (sorry for the vagueness of the message, but\
                                anvi'o hopes that will be able to find out why it is happening).")
 
         split_names = set([])
 
-        for entry_name in scg_taxonomy_estimations_dict:
-            for gene_callers_id in scg_taxonomy_estimations_dict[entry_name]['scgs']:
+        for entry_name in scg_taxonomy_super_dict['taxonomy']:
+            for gene_callers_id in scg_taxonomy_super_dict['taxonomy'][entry_name]['scgs']:
                 split_names.add(self.gene_callers_id_to_split_name_dict[gene_callers_id])
 
         return split_names
 
 
-    def get_scg_coverages_across_samples_dict(self, scg_taxonomy_estimations_dict):
+    def get_scg_coverages_across_samples_dict(self, scg_taxonomy_super_dict):
         if not self.metagenome_mode:
             raise ConfigError("Sorry, this feature is only available for `--metagenome-mode` at the moment.")
+
+        if not len(self.sample_names_in_profile_db):
+            raise ConfigError("There is something terribly wrong here. The profile database does not seem to have any\
+                               sample names set in its self table. Either the class was initialized improperly, or you\
+                               are working with a database that is not suitable for what you wish to do here :(")
+        else:
+            self.progress.reset()
+            self.run.info_single("Anvi'o will now attempt to recover SCG coverages from the profile database, which\
+                                  contains %d samples." % (len(self.sample_names_in_profile_db)), nl_before=1, nl_after=1)
 
         scg_coverages_across_samples_dict = {}
 
         self.progress.new('Recovering coverages')
         self.progress.update('Learning all split names affiliated with SCGs ..')
-        split_names_of_interest = self.get_split_names_for_scg_taxonomy_estimations_dict(scg_taxonomy_estimations_dict)
+        split_names_of_interest = self.get_split_names_for_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
         self.progress.end()
 
         # initialize split coverages for splits that have anything to do with our SCGs
         args = copy.deepcopy(self.args)
         args.split_names_of_interest = split_names_of_interest
-        profile_db = ProfileSuperclass(args)
+        profile_db = ProfileSuperclass(args, r=run_quiet)
         profile_db.init_split_coverage_values_per_nt_dict()
 
         # recover all gene caller ids that occur in our taxonomy estimation dictionary
         # and ge their coverage stats from the profile super
         gene_caller_ids_of_interest = set([])
-        for bin_name in scg_taxonomy_estimations_dict:
-            for gene_callers_id in scg_taxonomy_estimations_dict[bin_name]['scgs']:
+        for bin_name in scg_taxonomy_super_dict['taxonomy']:
+            for gene_callers_id in scg_taxonomy_super_dict['taxonomy'][bin_name]['scgs']:
                 gene_caller_ids_of_interest.add(gene_callers_id)
 
         # at this point we have everything. splits of interest are loaded in memory in `profile_db`, and we know
@@ -738,13 +795,18 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             # note for the curious: yes, here we are sending the same gene caller ids of interest over and over to
             # the `get_gene_level_coverage_stats` for each split, but that function is smart enough to not spend any
             # time on those gene caller ids that do not occur in the split name we are interested in.
-            d = profile_db.get_gene_level_coverage_stats(split_name, contigs_db, gene_caller_ids_of_interest=gene_caller_ids_of_interest)
+            all_scg_stats_in_split = profile_db.get_gene_level_coverage_stats(split_name, contigs_db, gene_caller_ids_of_interest=gene_caller_ids_of_interest)
 
+            for scg_stats in all_scg_stats_in_split.values():
+                for entry in scg_stats.values():
+                    gene_callers_id = int(entry['gene_callers_id'])
+                    sample_name = entry['sample_name']
+                    coverage = entry['non_outlier_mean_coverage']
 
-        if self.metagenome_mode:
-            pass
-        else:
-            pass
+                    if gene_callers_id not in scg_coverages_across_samples_dict:
+                        scg_coverages_across_samples_dict[gene_callers_id] = dict([(sample_name, 0) for sample_name in self.sample_names_in_profile_db])
+
+                    scg_coverages_across_samples_dict[gene_callers_id][sample_name] = coverage
 
         return scg_coverages_across_samples_dict
 
