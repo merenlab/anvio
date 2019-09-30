@@ -937,9 +937,9 @@ basic_plot <- function(dat, opts) {
 
     ## Check for free y scale.
     if (opts$free_y_scale) {
-      cov_plot <- cov_plot + facet_grid(rows = vars(sample_name), scales = "free_y")
+      cov_plot <- cov_plot + facet_grid(sample_name ~ ., scales = "free_y")
     } else {
-      cov_plot <- cov_plot + facet_grid(rows = vars(sample_name))
+      cov_plot <- cov_plot + facet_grid(sample_name ~ .)
     }
 
     ## Add chart labels.
