@@ -2561,6 +2561,10 @@ class ProfileSuperclass(object):
 
 
     def init_split_coverage_values_per_nt_dict(self, split_names=None):
+        if not self.auxiliary_profile_data_available:
+            raise ConfigError("What you're trying to do requires the AUXILIARY-DATA.db file :/ Please make sure it is in the\
+                               same directory with the profile database you are working with.")
+
         self.progress.new('Computing split coverage values per nt ...')
         self.progress.update('...')
 
