@@ -18,6 +18,100 @@ assign(
 context <- describe
 
 describe("Sample data file", {
+  describe("check_samples()", {
+    ## The point of this function is to remove any samples listed in
+    ## the sample data file that aren't also in the split coverages
+    ## file.
+    split_coverages <- data.frame(
+      sample_name = c(
+        rep("sample_1", 10),
+        rep("sample_2", 10)
+      )
+    )
+
+    context("some samples are present", {
+      sample_data <- data.frame(
+        sample_name = paste0("sample_", 1:3),
+        sample_color = rep("blue", 3),
+        sample_group = c(1, 2, 1)
+      )
+
+      it("returns a copy of sample_data without the missing samples", {
+
+        expected <- sample_data[1:2, ]
+
+        actual <- check_samples(sample_data, split_coverages)
+
+        expect_equal(actual, expected)
+      })
+    })
+
+    context("all samples are present", {
+      sample_data <- data.frame(
+        sample_name = paste0("sample_", 1:2),
+        sample_color = rep("blue", 2),
+        sample_group = 1:2
+      )
+
+      it("returns a copy of sample_data without the missing samples", {
+        expected <- sample_data
+
+        actual <- check_samples(sample_data, split_coverages)
+
+        expect_equal(actual, expected)
+      })
+    })
+
+    context("no samples are present", {
+      sample_data <- data.frame(
+        sample_name = paste0("SAMPLE_", 1:2),
+        sample_color = rep("blue", 2),
+        sample_group = 1:2
+      )
+
+      it("aborts the program", {
+        expect_error(check_samples(sample_data, split_coverages))
+      })
+    })
+  })
+
+  describe("fix_colors()", {
+    df <- data.frame(
+      sample_color = c(
+        "arst",
+        "blue",
+        "#123FFF",
+        "123FFF"
+      )
+    )
+
+    it("returns vec with invalid colors as #333333", {
+      actual <- fix_colors(df, list(coverage_plot_color = "#333333"))
+      expected <- c("#333333", "blue", "#123FFF", "#333333")
+
+      expect_equal(actual, expected)
+    })
+
+    context("when sample_color is not specified", {
+      sample_data <- data.frame(
+        sample_name = paste0("sample_", 1:2),
+        group = letters[1:2]
+      )
+
+      opts <- data.frame(
+        coverage_plot_color = "#333333"
+      )
+
+      it("gives a default color for all samples", {
+        expected <- rep(opts$coverage_plot_color, times = 2)
+
+        actual <- fix_colors(sample_data, opts)
+
+        expect_equal(actual, expected)
+      })
+    })
+  })
+
   describe("check_sample_data_headers()", {
     context("with just color info", {
       sample_data <- data.frame(
@@ -208,7 +302,7 @@ describe("shrink_data()", {
 
 describe("is_hex_color()", {
   it("hex codes must start with '#' char", {
-    expect_false(is_hex_color("123fff"))
+      expect_false(is_hex_color("123fff"))
   })
 
   it("is false for 'short' hex codes", {
@@ -228,43 +322,6 @@ describe("is_hex_color()", {
   })
 })
 
-
-describe("fix_colors()", {
-  df <- data.frame(
-    sample_color = c(
-      "arst",
-      "blue",
-      "#123FFF",
-      "123FFF"
-    )
-  )
-
-  it("returns vec with invalid colors as #333333", {
-    actual <- fix_colors(df, list(coverage_plot_color = "#333333"))
-    expected <- c("#333333", "blue", "#123FFF", "#333333")
-
-    expect_equal(actual, expected)
-  })
-
-  context("when sample_color is not specified", {
-    sample_data <- data.frame(
-      sample_name = paste0("sample_", 1:2),
-      group = letters[1:2]
-    )
-
-    opts <- data.frame(
-      coverage_plot_color = "#333333"
-    )
-
-    it("gives a default color for all samples", {
-      expected <- rep(opts$coverage_plot_color, times = 2)
-
-      actual <- fix_colors(sample_data, opts)
-
-      expect_equal(actual, expected)
-    })
-  })
-})
 
 describe("sort_split_coverages()", {
   sample_sort_order <- c("s_2", "s_1")
@@ -309,8 +366,8 @@ describe("SNV data function", {
     ncol = 2,
     dimnames = list(
       split_name = c("contig_1_split_00001",
-        "contig_1_split_00002",
-        "contig_2_split_00001"),
+                     "contig_1_split_00002",
+                     "contig_2_split_00001"),
       sample_name = paste0("sample_", 1:2)
     )
   )
