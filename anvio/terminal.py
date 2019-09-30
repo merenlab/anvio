@@ -422,7 +422,7 @@ class Timer:
         return checkpoint
 
 
-    def calculate_time_remaining(self, infinite_default = '∞'):
+    def calculate_time_remaining(self, infinite_default = '∞:∞:∞'):
         if self.complete:
             return datetime.timedelta(seconds = 0)
         if not self.required_completion_score:
@@ -514,7 +514,11 @@ class Timer:
         # calculate the value for each unit (e.g. 'seconds', 'days', etc) found in fmt
         format_values_dict = {}
         smallest_unit = unit_hierarchy[[unit in format_order for unit in unit_hierarchy].index(True)]
-        r = int(timedelta.total_seconds()) // unit_denominations[smallest_unit]
+        units_less_than_or_equal_to_smallest_unit = unit_hierarchy[::-1][unit_hierarchy[::-1].index(smallest_unit):]
+        seconds_in_base_unit = 1
+        for a in [v for k, v in unit_denominations.items() if k in units_less_than_or_equal_to_smallest_unit]:
+            seconds_in_base_unit *= a
+        r = int(timedelta.total_seconds()) // seconds_in_base_unit
 
         for i, lower_unit in enumerate(unit_hierarchy):
             if lower_unit in format_order:
@@ -537,6 +541,41 @@ class Timer:
         formatted_time = fmt % (*[format_value for format_value in format_values],)
 
         return formatted_time
+
+
+    def _test_format_time(self):
+        """
+        Run this and visually inspect its working
+        """
+        run = Run()
+        for exponent in range(1, 7):
+            seconds = 10 ** exponent
+            td = datetime.timedelta(seconds = seconds)
+
+            run.warning('', header='TESTING %s' % td, lc='yellow')
+            fmts = [
+                None,
+                "SECONDS {seconds}",
+                "MINUTES {minutes}",
+                "HOURS   {hours}",
+                "DAYS    {days}",
+                "WEEKS   {weeks}",
+
+                "MINUTES {minutes} SECONDS {seconds}",
+                "SECONDS {seconds} MINUTES {minutes}",
+                "HOURS   {hours}   MINUTES {minutes}",
+                "DAYS    {days}    HOURS   {hours}",
+                "WEEKS   {weeks}   DAYS    {days}",
+                "WEEKS   {weeks}   HOURS   {hours}",
+                "WEEKS   {weeks}   MINUTES {minutes}",
+                "DAYS    {days}    MINUTES {minutes}",
+                "HOURS   {hours}   SECONDS {seconds}",
+
+                "DAYS    {days}    MINUTES {minutes} SECONDS {seconds}",
+                "WEEKS   {weeks}   HOURS {hours}     DAYS    {days}    SECONDS {seconds} MINUTES {minutes}",
+            ]
+            for fmt in fmts:
+                run.info(str(fmt), self.format_time(td, fmt=fmt))
 
 
 class TimeCode(object):
@@ -616,7 +655,7 @@ class TimeCode(object):
         return_code = 0 if exception_type is None else 1
 
         msg, color = (self.s_msg, self.sc) if not return_code else (self.f_msg, self.fc)
-        self.run.info_single(msg + self.timer.time_elapsed(), nl_before=1, mc=color, level=return_code)
+        self.run.info_single(msg + str(self.time), nl_before=1, mc=color, level=return_code)
 
 
 def time_program(program_method):
