@@ -797,9 +797,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
 
         self.run.info("%s release found" % self.target_database, "%s (%s)" % (version, release_date), mc="green")
 
-        # FIXME
-        if not anvio.DEBUG:
-            self.download_and_format_files()
+        self.download_and_format_files()
 
         self.create_search_databases()
 
@@ -904,14 +902,17 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
             self.progress.update("Working on %s in %d threads" % (SCG, self.num_threads))
 
             files_to_concatenate = [os.path.join(self.msa_individual_genes_dir_path, f) for f in locally_known_HMMs_to_remote_FASTAs[SCG]]
-            destination_file_path = os.path.join(self.search_databases_dir_path, SCG)
+            FASTA_file_for_SCG = os.path.join(self.search_databases_dir_path, SCG)
 
             # concatenate from the dictionary into the new destination
-            utils.concatenate_files(destination_file_path, files_to_concatenate)
+            utils.concatenate_files(FASTA_file_for_SCG, files_to_concatenate)
 
-            # create a diamond search database for `destination_file_path`
-            diamond = Diamond(query_fasta=destination_file_path, run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
-            diamond.makedb(output_file_path=destination_file_path + ".dmnd")
+            # create a diamond search database for `FASTA_file_for_SCG`
+            diamond = Diamond(query_fasta=FASTA_file_for_SCG, run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
+            diamond.makedb(output_file_path=FASTA_file_for_SCG + ".dmnd")
+
+            # compress the FASTA file
+            utils.gzip_compress_file(FASTA_file_for_SCG)
 
         self.progress.reset()
         self.run.info_single("Another good news. All FASTA files that were supposed to be merged were merged and\
