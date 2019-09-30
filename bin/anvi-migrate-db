@@ -40,6 +40,9 @@ class Migrater(object):
 
 
     def get_db_meta(self):
+        if self.db_path.split('.')[-1] not in ['db', 'h5']:
+            raise ConfigError("This program only works with files that end with `.db` extension.")
+
         try:
             if self.db_path.endswith('.db'):
                 db_conn = db.DB(self.db_path, None, ignore_version=True)

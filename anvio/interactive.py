@@ -2257,15 +2257,25 @@ class ContigsInteractive():
 
         self.tables['header'] = [c['project_name'] for c in self.contigs_stats.values()]
 
+        basic_stats = []
+
         ##
         ##  Table for basic stats
         ##
         self.progress.new('Generating stats tables')
+
         self.progress.update('Basic stats ...')
-        basic_stats = []
         basic_stats.append(['Total Length'] + [c['total_length'] for c in self.contigs_stats.values()])
         basic_stats.append(['Num Contigs'] + [c['num_contigs'] for c in self.contigs_stats.values()])
-        basic_stats.append(['Num Genes (' + constants.default_gene_caller + ')'] + [c['num_genes'] for c in self.contigs_stats.values()])
+
+        self.progress.update('Number of contigs ...')
+        contig_lengths_for_all = [c['contig_lengths'] for c in self.contigs_stats.values()]
+        X = lambda n: [len([count for count in contig_lengths_for_one if count >= n]) for contig_lengths_for_one in contig_lengths_for_all]
+        basic_stats.append(['Num Contigs > 5 kb'] + X(5000))
+        basic_stats.append(['Num Contigs > 10 kb'] + X(10000))
+        basic_stats.append(['Num Contigs > 20 kb'] + X(20000))
+        basic_stats.append(['Num Contigs > 50 kb'] + X(50000)) 
+        basic_stats.append(['Num Contigs > 100 kb'] + X(100000))
 
         self.progress.update('Contig lengths ...')
         contig_lengths_for_all = [c['contig_lengths'] for c in self.contigs_stats.values()]
@@ -2273,6 +2283,10 @@ class ContigsInteractive():
         MIN_L = lambda: [min(lengths) for lengths in contig_lengths_for_all]
         basic_stats.append(['Longest Contig'] + MAX_L())
         basic_stats.append(['Shortest Contig'] + MIN_L())
+
+        self.progress.update('Number of genes ...')
+        contig_lengths_for_all = [c['contig_lengths'] for c in self.contigs_stats.values()]
+        basic_stats.append(['Num Genes (' + constants.default_gene_caller + ')'] + [c['num_genes'] for c in self.contigs_stats.values()])
 
         self.progress.update('N/L values ...')
         n_values = [c['n_values'] for c in self.contigs_stats.values()]
