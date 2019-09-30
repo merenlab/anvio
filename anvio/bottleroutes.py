@@ -35,7 +35,7 @@ import anvio.drivers as drivers
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
-import anvio.taxoestimation as taxoestimation
+import anvio.scgtaxonomyops as scgtaxonomyops
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.serverAPI import AnviServerAPI
@@ -97,6 +97,12 @@ class BottleApplication(Bottle):
             response = mock_response
         else:
             from bottle import response, request
+
+        # if there is a contigs database, get an instance from the SCG Taxonomy class
+        if A('contigs_db'):
+            self.scg_taxonomy = scgtaxonomyops.SCGTaxonomyEstimator(argparse.Namespace(contigs_db=self.interactive.contigs_db_path))
+        else:
+            self.scg_taxonomy = None
 
 
     def set_password(self, password):
@@ -1290,12 +1296,13 @@ class BottleApplication(Bottle):
 
 
     def get_taxonomy(self):
+        if not self.scg_taxonomy:
+            raise ConfigError("The SCG taxonomy was not initiated during init, however someone is calling this function :(")
+
         bin_name = request.forms.get('bin_name')
-        bin_data = set(json.loads(request.forms.get('collection_data')))
+        split_names_in_bin = set(json.loads(request.forms.get('collection_data')))
 
-        args = argparse.Namespace(contigs_db=self.interactive.contigs_db_path)
-        estimate = taxoestimation.SCGsTaxonomy(args)
+        d = self.scg_taxonomy.estimate_for_list_of_splits(split_names_in_bin, bin_name=bin_name)
 
-        estimation = estimate.assignation_by_bin({bin_name: bin_data })
-        return json.dumps(estimation)
+        return json.dumps(d)
 
