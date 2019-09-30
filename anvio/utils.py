@@ -2305,6 +2305,21 @@ def is_blank_profile(db_path):
     return True if blank == 1 else False
 
 
+def get_enriched_groups(props, reps):
+    '''
+        Accepts a vector of proportions and number of replicates per group and
+        returns a boolean vector where each group that has proportion above
+        the "expected" (i.e. the overall proportion) is True and the rest are False.
+    '''
+    import numpy as np
+    # if the function doesn't occur at all then test_statistic is zero and p-value is 1
+    if not np.count_nonzero(props):
+        return np.zeros(len(props))
+    overall_portion = np.sum(np.multiply(props, reps)) / np.sum(reps)
+
+    return props > overall_portion
+
+
 def is_pan_db(db_path):
     if get_db_type(db_path) != 'pan':
         raise ConfigError("'%s' is not an anvi'o pan database." % db_path)

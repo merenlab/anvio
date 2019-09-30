@@ -395,7 +395,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         if functional_occurrence_table_output:
             occurrence_frequency_of_functions_in_pangenome_dataframe.astype(int).transpose().to_csv(functional_occurrence_table_output, sep='\t')
-            self.run.info('Occurrence frequency of functions summary:', functional_occurrence_table_output)
+            self.run.info('Occurrence frequency of functions:', functional_occurrence_table_output)
 
         # Get the presence/absence info for functions, which we will use for the comparisson between groups
         occurrence_of_functions_in_pangenome_dataframe = occurrence_frequency_of_functions_in_pangenome_dataframe.astype(bool).astype(int)
@@ -445,13 +445,18 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 functional_occurrence_summary_dict[f]['p_' + c] = function_occurrence_table[c]['p']
             for c in categories:
                 functional_occurrence_summary_dict[f]['N_' + c] = function_occurrence_table[c]['N']
+            enriched_groups_vector = utils.get_enriched_groups(function_occurrence_table_df['p'].values,
+                                                               function_occurrence_table_df['N'].values)
+            c_dict = dict(zip(function_occurrence_table_df['p'].index, range(len(function_occurrence_table_df['p'].index))))
+            associated_groups = [c for c in categories if enriched_groups_vector[c_dict[c]]]
+            functional_occurrence_summary_dict[f]['associated_groups'] = associated_groups
 
         if output_file_path:
             self.progress.update('Generating the output file')
             functional_occurrence_summary_data_frame = self.get_functional_occurrence_summary_dict_as_dataframe(functional_occurrence_summary_dict, functional_annotation_source)
 
             # Sort the columns the way we want them
-            columns = [functional_annotation_source, 'function_accession', 'gene_clusters_ids']
+            columns = [functional_annotation_source, 'function_accession', 'gene_clusters_ids', 'associated_groups']
             columns.extend([s + c for s in ['p_', 'N_'] for c in categories])
             functional_occurrence_summary_data_frame.to_csv(output_file_path, sep='\t', index=False, float_format='%.4f', columns=columns)
 
