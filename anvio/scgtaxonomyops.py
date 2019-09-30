@@ -315,7 +315,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
         self.init_split_to_gene_caller_ids_dict()
 
-        if self.metagenome_mode:
+        if self.metagenome_mode and self.profile_db_path:
             self.sample_names_in_profile_db = ProfileDatabase(self.profile_db_path).samples
 
         self.initialized = True
