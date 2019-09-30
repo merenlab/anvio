@@ -38,6 +38,7 @@ if __name__ == '__main__':
 
     try:
         s = scgtaxonomyops.SetupLocalSCGTaxonomyData(args)
+        s.setup()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
