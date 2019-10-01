@@ -7,6 +7,7 @@ import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 
+from anvio.errors import ConfigError
 from anvio.tables.tableops import Table
 
 
@@ -39,15 +40,20 @@ class TableForGeneFunctions(Table):
         self.set_next_available_id(t.gene_function_calls_table_name)
 
 
-    def create(self, functions_dict, drop_previous_annotations_first = False):
-        self.sanity_check()
-
-        # incoming stuff:
-        gene_function_sources = set([v['source'] for v in list(functions_dict.values())])
-        unique_num_genes = len(set([v['gene_callers_id'] for v in list(functions_dict.values())]))
-
-        # oepn connection
+    def add_empty_sources_to_functional_sources(self, gene_function_sources):
+        if type(gene_function_sources) is not set:
+            raise ConfigError('The programmer who called this function forgot that gene_function_sources must be of \
+                               type %s. If this is not your falut, please contact an anvi\'o developer.' % set)
+        # open connection
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+        self.add_new_sources_to_functional_sources(gene_function_sources, database)
+
+        # disconnect like a pro.
+        database.disconnect()
+
+
+    def add_new_sources_to_functional_sources(self, gene_function_sources, database):
 
         # are there any previous annotations in the db:
         gene_function_sources_in_db = database.get_meta_value('gene_function_sources')
@@ -98,6 +104,20 @@ class TableForGeneFunctions(Table):
             # good then. update sources
             database.remove_meta_key_value_pair('gene_function_sources')
             database.set_meta_value('gene_function_sources', ','.join(list(gene_function_sources_in_db.union(gene_function_sources))))
+
+
+    def create(self, functions_dict, drop_previous_annotations_first = False):
+        self.sanity_check()
+
+        # open connection
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+        # Add the new sources to existing sources
+        gene_function_sources = set([v['source'] for v in list(functions_dict.values())])
+        self.add_new_sources_to_functional_sources(gene_function_sources, database)
+
+        unique_num_genes = len(set([v['gene_callers_id'] for v in list(functions_dict.values())]))
+
 
         # push the data
         db_entries = [tuple([self.next_id(t.gene_function_calls_table_name)] + [functions_dict[v][h] for h in t.gene_function_calls_table_structure[1:]]) for v in functions_dict]
