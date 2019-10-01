@@ -30,6 +30,7 @@ Elmar Pruesse              University of Colorado Denver      United States
 M. Fauzi Haroon            Harvard University                 United States
 Tom Delmont                Genoscope                          France
 Ines Martinez              University of Alberta              Canada
+Amy Willis                 University of Washington           United States
 
 --
 
