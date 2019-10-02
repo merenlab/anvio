@@ -242,6 +242,16 @@ class SCGTaxonomyContext(object):
                     raise ConfigError("The flag `--compute-scg-coverages` is only good if there is a non-blank profile database around\
                                        from which anvi'o can learn coverage statistics of genes across one or more samples :/")
 
+                if self.update_profile_db_with_taxonomy:
+                    if not self.metagenome_mode:
+                        raise ConfigError("Updating the profile database with taxonomy layer data is only possible in metagenome \
+                                           mode :/ And not only that, you should also instruct anvi'o to compute single-copy core\
+                                           gene coverages.")
+                    if not self.compute_scg_coverages:
+                        raise ConfigError("You wish to update the profile database with taxonomy, but this will not work if anvi'o\
+                                           is computing coverages values of SCGs across samples (pro tip: you can ask anvi'o to do\
+                                           it by adding the flag `--compute-scg-coverages` to your command line).")
+
                 if self.output_file_path:
                     filesnpaths.is_output_file_writable(self.output_file_path)
 
@@ -288,6 +298,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         self.metagenome_mode = True if A('metagenome_mode') else False
         self.scg_name_for_metagenome_mode = A('scg_name_for_metagenome_mode')
         self.compute_scg_coverages = A('compute_scg_coverages')
+        self.update_profile_db_with_taxonomy = A('update_profile_db_with_taxonomy')
 
         SCGTaxonomyContext.__init__(self, self.args)
 
@@ -625,6 +636,9 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             scg_taxonomy_super_dict['coverages'] = self.get_scg_coverages_across_samples_dict(scg_taxonomy_super_dict)
         else:
             scg_taxonomy_super_dict['coverages'] = None
+
+        if self.update_profile_db_with_taxonomy:
+            self.add_taxonomy_as_additional_layer_data(scg_taxonomy_super_dict)
 
         self.print_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
 
