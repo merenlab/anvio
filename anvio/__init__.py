@@ -571,6 +571,15 @@ D = {
              'help': "When this flag is declared, anvi'o will go back to the profile database to learn coverage\
                       statistics of single-copy core genes for which we have taxonomy information."}
                 ),
+    'update-profile-db-with-taxonomy': (
+            ['--update-profile-db-with-taxonomy'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When anvi'o knows all both taxonomic affiliations and coverages across samples for single-copy\
+                      core genes, it can, in theory add this information to the profile database. With this flag you\
+                      can isntruct anvi'o to do that and find information on taxonomy in the `layers` tab of your\
+                      interactive interface."}
+                ),
     'taxonomy-database': (
             ['-r', '--taxonomy-database'],
             {'default': None,
