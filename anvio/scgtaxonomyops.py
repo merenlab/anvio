@@ -11,11 +11,12 @@ import copy
 import shutil
 import pickle
 import hashlib
+import argparse
 import pandas as pd
 import multiprocessing
 
 from tabulate import tabulate
-from collections import OrderedDict
+from collections import OrderedDict, Counter
 
 import anvio
 import anvio.tables as t
@@ -28,9 +29,10 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
-from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
 from anvio.drivers.diamond import Diamond
 from anvio.tables.scgtaxonomy import TableForSCGTaxonomy
+from anvio.tables.miscdata import TableForLayerAdditionalData
+from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
 
 
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
@@ -723,6 +725,93 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
                 d[bin_name]['supporting_scgs'] = scg_taxonomy_super_dict['taxonomy'][bin_name]['supporting_scgs']
 
         return d
+
+
+    def add_taxonomy_as_additional_layer_data(self, scg_taxonomy_super_dict):
+        """A function that adds taxonomy to additional data tables of a given profile
+           database. This will only work in metagenome mode."""
+
+        if not self.metagenome_mode or not self.compute_scg_coverages:
+            return
+
+        self.progress.new("Adding summary taxonomy for samples")
+        self.progress.update('...')
+
+        scgs_dict = list(scg_taxonomy_super_dict['taxonomy'].values())[0]['scgs']
+
+        # at this stage each scgs_dict entry will look like this, and most critically will
+        # have the same SCG:
+        #
+        # "7660": {
+        #       "gene_callers_id": 7660,
+        #       "gene_name": "Ribosomal_S6",
+        #       "accession": "CONSENSUS",
+        #       "percent_identity": "98.9",
+        #       "t_domain": "Bacteria",
+        #       "t_phylum": "Firmicutes",
+        #       "t_class": "Bacilli",
+        #       "t_order": "Staphylococcales",
+        #       "t_family": "Staphylococcaceae",
+        #       "t_genus": "Staphylococcus",
+        #       "t_species": null,
+        #       "tax_hash": "b310c392"
+        #     },
+        #
+        # this will enable us to learn the which SCG has been used to calculate coverage
+        # information by only looking at a single entry:
+        scg_name = list(scgs_dict.values())[0]['gene_name']
+
+        # the might for loop to go through all taxonomic levels one by one
+        for level in constants.levels_of_taxonomy[::-1]:
+            # setting the data group early on:
+            data_group = '%s_%s' % (scg_name, level[2:])
+            self.progress.update('Working on %s-level data' % level)
+            data_dict = {}
+            data_keys_list = set([])
+            for sample_name in self.sample_names_in_profile_db:
+                data_dict[sample_name] = Counter()
+                for gene_callers_id in scgs_dict:
+                    # starting with a tiny hack to fill in missing values. here we first find
+                    # the most highly resolved level of taxonomy that is not null for this
+                    # particular scg taxonomy
+                    i = 0
+                    for i in range(constants.levels_of_taxonomy.index(level), 0, -1):
+                        if scgs_dict[gene_callers_id][constants.levels_of_taxonomy[i]]:
+                            break
+
+                    # just some abbreviations
+                    l = constants.levels_of_taxonomy[i][2:]
+                    m = scgs_dict[gene_callers_id][constants.levels_of_taxonomy[i]]
+
+                    # if the best level we found in the previous step is matching to the level
+                    # set by the main for loop, we're good to go with that name:
+                    if level == constants.levels_of_taxonomy[i]:
+                        taxon_name = m
+                    # otherwise we will try to replace that None name with something that is more
+                    # sensible:
+                    else:
+                        taxon_name = "Unknown_%s_%s_%d" % (l, m, gene_callers_id)
+
+                    # a key that will turn these data into stacked bar charts in the interface once
+                    # they are added to the database:
+                    key = '%s!%s' % (data_group, taxon_name)
+
+                    # step where we add up all the values for each identical taxon names as we build
+                    # the data dictionary:
+                    data_dict[sample_name][key] += scg_taxonomy_super_dict['coverages'][gene_callers_id][sample_name]
+                    data_keys_list.add(key)
+
+            # next few lines demonstrate the power of anvi'o quite nicely:
+            self.progress.update("Updating additional data tables...")
+            args = argparse.Namespace(profile_db=self.profile_db_path, target_data_group=data_group, just_do_it=True)
+            T = TableForLayerAdditionalData(args, r=run_quiet, p=progress_quiet)
+            T.add(data_dict, list(data_keys_list))
+
+            self.progress.reset()
+
+            self.run.info_single("%s level taxonomy is added to the profile database." % (level.capitalize()))
+
+        self.progress.end()
 
 
     def get_gene_caller_ids_for_splits(self, split_names_list):
