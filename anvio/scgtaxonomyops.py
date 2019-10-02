@@ -589,7 +589,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
                               taxonomic composition. If you are not happy with that, you could change it with the parameter\
                               `--scg-name-for-metagenome-mode`." % (self.scg_name_for_metagenome_mode))
 
-        gene_caller_ids_of_interest = self.scg_name_to_gene_caller_id_dict[most_frequent_scg]
+        gene_caller_ids_of_interest = self.scg_name_to_gene_caller_id_dict[self.scg_name_for_metagenome_mode]
         scg_taxonomy_dict = self.get_scg_taxonomy_dict(gene_caller_ids=gene_caller_ids_of_interest,
                                                        bin_name=self.contigs_db_project_name)
 
