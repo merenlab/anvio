@@ -567,21 +567,19 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                     cache: false,
                     data: {
                         'bin_name': bin_name,
-                        'collection_data': JSON.stringify(this.ExportCollection(false)['data'][bin_name])
+                        'split_list': JSON.stringify(this.ExportCollection(false)['data'][bin_name])
                     },
                     success: (data) => {
-                        if (data.hasOwnProperty(bin_name)) {
-                            let order = ["t_domain", "t_phylum", "t_class",
-                                         "t_order", "t_family", "t_genus", "t_species"];
+                        let order = ["t_domain", "t_phylum", "t_class",
+                                     "t_order", "t_family", "t_genus", "t_species"];
 
-                            for (let i=order.length-1; i >= 0; i--) {
-                                let level = order[i];
+                        for (let i=order.length-1; i >= 0; i--) {
+                            let level = order[i];
 
-                                if (data[bin_name]['taxonomy'][level] !== 'NA') {
-                                    bin_row.querySelector('span.taxonomy-level').innerHTML = level.split('_')[1];
-                                    bin_row.querySelector('span.taxonomy-name').innerHTML = " " + data[bin_name]['taxonomy'][level];
-                                    return;
-                                }
+                            if (data['consensus_taxonomy'][level] !== null) {
+                                bin_row.querySelector('span.taxonomy-level').innerHTML = level.split('_')[1];
+                                bin_row.querySelector('span.taxonomy-name').innerHTML = " " + data['consensus_taxonomy'][level];
+                                return;
                             }
                         }
 
