@@ -9,6 +9,7 @@ Mahmoud Yousef (mahmoudyousef at uchicago dot edu)
 Matthew Schechter (mschechter at uchicago dot edu)
 Andrea Watson (andreawatson at uchicago dot edu)
 Emily Fogarty (efogarty at uchicago dot edu)
+Florian Trigodet (trigodet dot florian at gmail dot com)
 
 ===============================================================================
 Developers and contributors at large
