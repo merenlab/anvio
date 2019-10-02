@@ -1300,9 +1300,13 @@ class BottleApplication(Bottle):
             raise ConfigError("The SCG taxonomy was not initiated during init, however someone is calling this function :(")
 
         bin_name = request.forms.get('bin_name')
-        split_names_in_bin = set(json.loads(request.forms.get('collection_data')))
+        split_list = json.loads(request.forms.get('split_list'))
 
-        d = self.scg_taxonomy.estimate_for_list_of_splits(split_names_in_bin, bin_name=bin_name)
+        try:
+            output = self.scg_taxonomy.estimate_for_list_of_splits(split_list, bin_name=bin_name)
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': message})
 
-        return json.dumps(d)
+        return json.dumps(output)
 
