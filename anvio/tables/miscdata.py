@@ -290,11 +290,11 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         looks_like_layer_orders = sorted(list(data_dict.values())[0].keys()) == sorted(['data_type', 'data_value']) or \
                                   sorted(list(data_dict.values())[0].keys()) == sorted(['basic', 'newick'])
 
-        if looks_like_layer_orders and data_dict_type is not 'layer_orders':
+        if looks_like_layer_orders and data_dict_type != 'layer_orders':
             raise ConfigError("The data you sent here seems to describe an order, but you want anvi'o to treat it\
                                as additional data for %s. Not cool." % self.target_table)
 
-        if not looks_like_layer_orders and data_dict_type is 'layer_orders':
+        if not looks_like_layer_orders and data_dict_type == 'layer_orders':
             raise ConfigError("The data that claims to be a layer order data do not seem to be one.")
 
         if data_keys_list:
