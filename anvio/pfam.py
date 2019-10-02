@@ -213,6 +213,9 @@ class Pfam(object):
         contigs_db = dbops.ContigsSuperclass(args)
         tmp_directory_path = filesnpaths.get_temp_directory_path()
 
+        # get an instance of gene functions table
+        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
+
         # export AA sequences for genes
         target_files_dict = {'AA:GENE': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
         contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['AA:GENE'],
@@ -223,6 +226,15 @@ class Pfam(object):
         # run hmmscan
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads)
         hmm_hits_file = hmmer.run_hmmscan('Pfam', 'AA', 'GENE', None, None, len(self.function_catalog), hmm_file, None, '--cut_ga')
+
+        if not hmm_hits_file:
+            run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But\
+                             now anvi'o will add PFAMs as a functional source with no hits, clean the temporary directories\
+                             and gracefully quit.", nl_before=1, nl_after=1)
+            shutil.rmtree(tmp_directory_path)
+            hmmer.clean_tmp_dirs()
+            gene_function_calls_table.add_empty_sources_to_functional_sources({'Pfam'})
+            return
 
         # parse hmmscan output
         parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE')
@@ -242,7 +254,6 @@ class Pfam(object):
 
             counter += 1
 
-        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
         if functions_dict:
             gene_function_calls_table.create(functions_dict)
         else:
