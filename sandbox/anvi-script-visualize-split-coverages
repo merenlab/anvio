@@ -406,14 +406,21 @@ parse_split_coverages <- function(opts) {
 
   logger$debug("Checking for multiple split_names")
 
+  unique_split_names <- unique(split_coverages$split_name)
+  num_unique_split_names <- length(unique_split_names)
+  logger$debug("Unique split names in split coverages file: %d",
+               num_unique_split_names)
+
   ## If there are multiple split_names in the split coverages file,
   ## we need to make sure they are all sorted properly, then we need
   ## to treat all split_names within a single contig as one big
   ## super-contig.
-  if (length(unique(split_coverages$split_name)) > 1) {
+  if (num_unique_split_names > 1) {
     logger$debug("Multiple split names found")
     ## Get number of positions (rows) for all splits per sample.
     sample_counts <- table(split_coverages$sample_name)
+
+    logger$debug("dim(sample_counts): %s", dim(sample_counts))
 
     ## Make sample-wide nucleotide positions.  Each sample has
     ## nucleotide positions running from 0 to count - 1.
@@ -428,7 +435,7 @@ parse_split_coverages <- function(opts) {
     ## cases.
     split_coverages$x_values <- as.vector(unlist(nt_posns_by_sample))
   } else {
-    logger$debug("Single split names found")
+    logger$debug("Single split name found")
     ## Use the regular nt_position as the x_values.
     split_coverages$x_values <- split_coverages$nt_position
   }
@@ -502,6 +509,20 @@ check_sample_data_headers <- function(sample_data) {
   if (any(colnames(sample_data) %nin% c("sample_name", "sample_color", "sample_group"))) {
     abort("bad header row in sample_data file")
   }
+}
+
+## Returns a copy of `sample_data` without any rows whose sample is
+## NOT also present in split_coverages.
+check_samples <- function(sample_data, split_coverages) {
+  good_samples <- as.character(sample_data$sample_name) %in% unique(as.character(split_coverages$sample_name))
+
+  if (all(good_samples == FALSE)) {
+    abort("None of the samples listed in the sample data file were also in the split coverages file!")
+  } else if (any(good_samples == FALSE)) {
+    logger$warn("Some of the samples listed in the sample data file were not also in the split coverages file.  These will not be included in the sample data")
+  }
+
+  sample_data[good_samples, ]
 }
 
 ## If only one group is specified, warn the user, as group is used to
@@ -784,6 +805,9 @@ parse_input_data <- function(opts) {
   split_coverages <- tmp$split_coverages
   contig_offsets <- tmp$contig_offsets
 
+  logger$debug("No. unique samples in split names file: %d",
+               length(unique(split_coverages$sample_name)))
+
   sample_data <- parse_sample_data(opts)
   snv_data <- parse_snv_data(opts)
 
@@ -894,7 +918,9 @@ basic_plot <- function(dat, opts) {
 
     ## Add the SNV data if it is available.
     if (!is.null(dat$snv_data)) {
-      max_cov <- tapply(X = split_coverages_subset$coverage, INDEX = split_coverages_subset$sample_name, FUN = max)
+      max_cov <- tapply(X = split_coverages_subset$coverage,
+                        INDEX = split_coverages_subset$sample_name,
+                        FUN = max)
       max_cov <- data.frame(max_cov = max_cov, sample_name = names(max_cov))
 
       snv_color <- data.frame(
@@ -913,11 +939,6 @@ basic_plot <- function(dat, opts) {
 
       snv_plot_dat_subset <- subset(snv_plot_dat, sample_name %in% included_samples)
 
-      ## print("dat$snv_data")
-      ## write.table(dat$snv_data)
-      ## print("hey bob")
-      ## write.table(snv_plot_dat)
-
       cov_plot <- cov_plot +
         geom_segment(
           data = snv_plot_dat_subset,
@@ -929,6 +950,7 @@ basic_plot <- function(dat, opts) {
           size = opts$snv_marker_width,
           alpha = opts$snv_marker_transparency
         )
+
     }
 
     ## Tweak the theme.
