@@ -513,16 +513,16 @@ check_sample_data_headers <- function(sample_data) {
 
 ## Returns a copy of `sample_data` without any rows whose sample is
 ## NOT also present in split_coverages.
-check_samples <- function(sample_data, split_coverages) {
-  good_samples <- as.character(sample_data$sample_name) %in% unique(as.character(split_coverages$sample_name))
+check_samples_against_split_coverages <- function(dat, split_coverages, which_file) {
+  good_samples <- as.character(dat$sample_name) %in% unique(as.character(split_coverages$sample_name))
 
   if (all(good_samples == FALSE)) {
-    abort("None of the samples listed in the sample data file were also in the split coverages file!")
+    abort("None of the samples listed in the %s file were also in the split coverages file!", which_file)
   } else if (any(good_samples == FALSE)) {
-    logger$warn("Some of the samples listed in the sample data file were not also in the split coverages file.  These will not be included in the sample data")
+    logger$warn("Some of the samples listed in the %s file were not also in the split coverages file.  These will not be included in the %s.", which_file)
   }
 
-  sample_data[good_samples, ]
+  dat[good_samples, ]
 }
 
 ## If only one group is specified, warn the user, as group is used to
@@ -810,6 +810,11 @@ parse_input_data <- function(opts) {
 
   sample_data <- parse_sample_data(opts)
   snv_data <- parse_snv_data(opts)
+
+  ## Remove any rows whose samples aren't also present in the
+  ## split coverages file.
+  sample_data <- check_samples_against_split_coverages(sample_data, split_coverages,  "sample data")
+  snv_data <- check_samples_against_split_coverages(snv_data, split_coverages, "SNV data")
 
   ## If sample_data file is given, we need to adjust the split
   ## coverages data frame.
