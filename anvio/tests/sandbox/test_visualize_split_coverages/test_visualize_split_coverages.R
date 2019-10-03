@@ -37,7 +37,6 @@ describe("Sample data file", {
       )
 
       it("returns a copy of sample_data without the missing samples", {
-
         expected <- sample_data[1:2, ]
 
         actual <- check_samples_against_split_coverages(sample_data, split_coverages)
@@ -353,13 +352,6 @@ describe("sort_split_coverages()", {
 
 ## SNV data functions
 describe("SNV data function", {
-  ## expected_contig_offsets <- data.frame(
-  ##   sample_1 = c(0, 5, 15),
-  ##   sample_2 = c(0, 5, 15),
-  ##   row.names = c("contig_1_split_00001",
-  ##                 "contig_1_split_00002",
-  ##                 "contig_2_split_00001")
-  ## )
   expected_contig_offsets <- matrix(
     rep(c(0, 5, 15), 2),
     nrow = 3,
@@ -544,14 +536,4 @@ describe("SNV data function", {
       expect_equal(actual, expected)
     })
   })
-
-
-
-  ## describe("sort_snv_data()", {
-
-  ##   good_snv_data <- data.frame(
-  ##     departure_from_reference = c(0, 1, 0.234)
-  ##   )
-  ## })
-
 })
