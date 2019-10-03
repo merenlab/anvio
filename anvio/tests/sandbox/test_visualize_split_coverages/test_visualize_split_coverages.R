@@ -18,7 +18,7 @@ assign(
 context <- describe
 
 describe("Sample data file", {
-  describe("check_samples()", {
+  describe("check_samples_against_split_coverages()", {
     ## The point of this function is to remove any samples listed in
     ## the sample data file that aren't also in the split coverages
     ## file.
@@ -40,7 +40,7 @@ describe("Sample data file", {
 
         expected <- sample_data[1:2, ]
 
-        actual <- check_samples(sample_data, split_coverages)
+        actual <- check_samples_against_split_coverages(sample_data, split_coverages)
 
         expect_equal(actual, expected)
       })
@@ -56,7 +56,7 @@ describe("Sample data file", {
       it("returns a copy of sample_data without the missing samples", {
         expected <- sample_data
 
-        actual <- check_samples(sample_data, split_coverages)
+        actual <- check_samples_against_split_coverages(sample_data, split_coverages)
 
         expect_equal(actual, expected)
       })
@@ -70,7 +70,7 @@ describe("Sample data file", {
       )
 
       it("aborts the program", {
-        expect_error(check_samples(sample_data, split_coverages))
+        expect_error(check_samples_against_split_coverages(sample_data, split_coverages))
       })
     })
   })
