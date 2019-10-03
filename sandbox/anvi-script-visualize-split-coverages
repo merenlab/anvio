@@ -905,6 +905,11 @@ basic_plot <- function(dat, opts) {
     split_coverages_subset <- subset(dat$split_coverages,
                                      sample_group == group)
 
+    if (nrow(split_coverages_subset) == 0) {
+      abort("The split_coverages subset for sample group '%s' has no rows!")
+    }
+
+
     included_samples <- unique(as.character(split_coverages_subset$sample_name))
     nsamples <- length(included_samples)
 
@@ -944,18 +949,23 @@ basic_plot <- function(dat, opts) {
 
       snv_plot_dat_subset <- subset(snv_plot_dat, sample_name %in% included_samples)
 
-      cov_plot <- cov_plot +
-        geom_segment(
-          data = snv_plot_dat_subset,
-          mapping = aes(x = x_values,
-                        xend = x_values,
-                        y = 0,
-                        yend = departure_from_reference * max_cov),
-          color = snv_plot_dat_subset$snv_color,
-          size = opts$snv_marker_width,
-          alpha = opts$snv_marker_transparency
-        )
+      if (nrow(snv_plot_dat_subset) > 0) {
 
+        cov_plot <- cov_plot +
+          geom_segment(
+            data = snv_plot_dat_subset,
+            mapping = aes(x = x_values,
+                          xend = x_values,
+                          y = 0,
+                          yend = departure_from_reference * max_cov),
+            color = snv_plot_dat_subset$snv_color,
+            size = opts$snv_marker_width,
+            alpha = opts$snv_marker_transparency
+          )
+      } else {
+        logger$warn("Sample group '%s' had no SNV data!  No SNV data will be plotted for this group!",
+                    group)
+      }
     }
 
     ## Tweak the theme.
