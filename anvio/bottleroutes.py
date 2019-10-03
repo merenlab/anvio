@@ -98,8 +98,9 @@ class BottleApplication(Bottle):
         else:
             from bottle import response, request
 
-        # if there is a contigs database, get an instance from the SCG Taxonomy class
-        if A('contigs_db'):
+        # if there is a contigs database, and scg taxonomy was run on it get an instance
+        # of the SCG Taxonomy class early on:
+        if A('contigs_db') and dbops.ContigsDatabase(A('contigs_db')).meta['scg_taxonomy_was_run']:
             self.scg_taxonomy = scgtaxonomyops.SCGTaxonomyEstimator(argparse.Namespace(contigs_db=self.interactive.contigs_db_path))
         else:
             self.scg_taxonomy = None
@@ -1297,7 +1298,7 @@ class BottleApplication(Bottle):
 
     def get_taxonomy(self):
         if not self.scg_taxonomy:
-            raise ConfigError("The SCG taxonomy was not initiated during init, however someone is calling this function :(")
+            return
 
         collection = json.loads(request.forms.get('collection'))
 
