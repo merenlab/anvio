@@ -350,7 +350,6 @@ check_verbosity <- function(opts) {
   }
 }
 
-## This function is called in the main part of the script.
 ## `opts` is the output of parse_args function
 check_opts <- function(opts) {
   check_required_args(opts)
@@ -476,7 +475,6 @@ parse_split_coverages <- function(opts) {
       logger$info("Compressing samples.  Window size is %d", opts$window_size)
       logger$info("Total data points before compression: %d", nrow(split_coverages))
 
-
       ## Replace orig. coverage with smoothed cov.
       split_coverages$coverage <- smooth_coverage(split_coverages, opts$window_size)
 
@@ -532,7 +530,6 @@ check_sample_groups <- function(sample_data) {
 
   default_group <- "__anvi__default__sample__group"
 
-  ## TODO TEST
   if (any(as.character(sample_data$sample_group) == default_group)) {
     abort("You used __anvi__default__sample__group as a sample_group.  Please choose a different group name.")
   }
@@ -549,7 +546,7 @@ check_sample_groups <- function(sample_data) {
 }
 
 ## Check that all color names are either named R colors or
-## hexcodes.  If not, just make them black.
+## hexcodes.  If not, make them the default color.
 fix_colors <- function(sample_data, opts) {
   logger$debug("Checking the colors")
 
@@ -646,16 +643,15 @@ parse_snv_data <- function(opts) {
                            comment.char = "")
 
     check_snv_data_header(snv_data)
-
     check_snv_proportions(snv_data$departure_from_reference)
-
     check_snv_contigs_and_splits(snv_data)
 
     ## Change sample_id to sample_name to match the split cov file.
-    snv_data <- transform(snv_data, sample_name = snv_data$sample_id, sample_id = NULL)
+    snv_data <- transform(snv_data,
+                          sample_name = snv_data$sample_id,
+                          sample_id = NULL)
 
-    ## Sort by contig, then by sample_name (TODO should this also be
-    ## sorted by sample data file ordering?)
+    ## Sort by contig, then by sample_name
     snv_data <- snv_data[order(snv_data$split_name, snv_data$sample_name), ]
   }
 
@@ -798,7 +794,6 @@ get_offset_snv_positions <- function(snv_data, contig_offsets) {
   )
 }
 
-## This function is called in the main part of the script.
 parse_input_data <- function(opts) {
   logger$debug("Parsing split coverages")
   tmp <- parse_split_coverages(opts)
