@@ -561,30 +561,40 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                     },
                 });
 
+                let collection_data = {};
+                collection_data[bin_name] = [];
+
+                for (let node of this.selections[bin_id].values()) {
+                    if (node.IsLeaf()) {
+                        collection_data[bin_name].push(node.label);
+                    }
+                }
+
                 $.ajax({
                     type: "POST",
                     url: "/data/get_taxonomy",
                     cache: false,
                     data: {
-                        'bin_name': bin_name,
-                        'split_list': JSON.stringify(this.ExportCollection(false)['data'][bin_name])
+                        'collection': JSON.stringify(collection_data)
                     },
                     success: (data) => {
-                        let order = ["t_domain", "t_phylum", "t_class",
-                                     "t_order", "t_family", "t_genus", "t_species"];
+                        if (data.hasOwnProperty(bin_name)) {
+                            let order = ["t_domain", "t_phylum", "t_class",
+                                         "t_order", "t_family", "t_genus", "t_species"];
 
-                        for (let i=order.length-1; i >= 0; i--) {
-                            let level = order[i];
+                            for (let i=order.length-1; i >= 0; i--) {
+                                let level = order[i];
 
-                            if (data['consensus_taxonomy'][level] !== null) {
-                                bin_row.querySelector('span.taxonomy-level').innerHTML = level.split('_')[1];
-                                bin_row.querySelector('span.taxonomy-name').innerHTML = " " + data['consensus_taxonomy'][level];
-                                return;
+                                if (data[bin_name]['consensus_taxonomy'][level] !== null) {
+                                    bin_row.querySelector('span.taxonomy-level').innerHTML = level.split('_')[1];
+                                    bin_row.querySelector('span.taxonomy-name').innerHTML = " " + data[bin_name]['consensus_taxonomy'][level];
+                                    return;
+                                }
                             }
-                        }
 
-                        bin_row.querySelector('span.taxonomy-level').innerHTML = 'N/A';
-                        bin_row.querySelector('span.taxonomy-name').innerHTML = " N/A";
+                            bin_row.querySelector('span.taxonomy-level').innerHTML = 'N/A';
+                            bin_row.querySelector('span.taxonomy-name').innerHTML = " N/A";
+                        }
                     }
                 });
             }
