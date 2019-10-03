@@ -1128,7 +1128,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(self.default_scgs_for_taxonomy))
 
         if not len(hmm_sequences_dict):
-            raise ConfigError("Your selections returned an empty list of genes to work with :/")
+            return None
 
         self.run.info('Num relevant SCGs in contigs db', '%s' % (pp(len(hmm_sequences_dict))))
 
@@ -1148,8 +1148,23 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
     def populate_contigs_database(self):
         """Populates SCG taxonomy tables in a contigs database"""
 
-        # this is the dictionary that shows all hits for each SCG of interest
+        # get an instnce for the tables for taxonomy early on.
+        self.tables_for_taxonomy = TableForSCGTaxonomy(self.contigs_db_path, self.run, self.progress)
+
+        # get the dictionary that shows all hits for each SCG of interest
         scg_sequences_dict = self.get_SCG_sequences_dict_from_contigs_db()
+
+        if not scg_sequences_dict:
+            self.run.warning("This contigs database contains no single-copy core genes that are used by the\
+                              anvi'o taxonomy headquarters in Lausanne. Somewhat disappointing but totally OK.")
+
+            # even if there are no SCGs to use for taxonomy later, we did attempt ot populate the
+            # contigs database, so we shall note that in the self table to make sure the error from
+            # `anvi-estimate-taxonomy` is not "you seem to have not run taxonomy".
+            self.tables_for_taxonomy.update_self_value()
+
+            # return empty handed like a goose in the job market in 2020
+            return None
 
         self.run.info('Taxonomy', self.accession_to_taxonomy_file_path)
         self.run.info('Database reference', self.search_databases_dir_path)
@@ -1161,7 +1176,6 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         self.run.info('Num aligment tasks running in parallel', self.num_parallel_processes)
         self.run.info('Num CPUs per aligment task', self.num_threads)
 
-        self.tables_for_taxonomy = TableForSCGTaxonomy(self.contigs_db_path, self.run, self.progress)
         self.tables_for_taxonomy.delete_contents_of_table(t.scg_taxonomy_table_name)
 
         total_num_processes = len(scg_sequences_dict)
