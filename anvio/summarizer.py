@@ -314,6 +314,62 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         return pd.DataFrame.from_dict(D), occurrence_of_functions_in_pangenome_dict
 
 
+    def functional_enrichment_stats(self):
+        '''
+            Compute functional enrichment.
+
+            To learn more refer to the docummentation:
+                anvi-get-enriched-functions-per-pan-group -h
+        '''
+        # Before we do anything let's make sure the user has R installed
+        utils.is_program_exists('Rscript')
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        output_file_path = A('output_file')
+        tmp_functional_occurrence_file = filesnpaths.get_temp_file_path()
+
+        enrichment_file_path = output_file_path
+        if not enrichment_file_path:
+            # if no output was requested it means a programmer is calling this function
+            # in that case, we will use a tmp file for the enrichment output
+            enrichment_file_path = filesnpaths.get_temp_file_path()
+
+        # set the tmp output_file for the functional occurrence.
+        # this is a little hacky, but allows for the functional occurrence to be used without
+        # the functional enrichment (if we will want that at some point)
+        self.args.output_file = tmp_functional_occurrence_file
+
+        if filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
+            raise ConfigError('The file "%s" already exists and anvi\'o doesn\'t like to override stuff' % enrichment_file_path)
+
+        # Call functional occurrence. Output is saved to the tmp file
+        self.functional_occurrence_stats()
+
+        cmd = 'anvi-run-enrichment-analysis.R --input %s --output %s' % (tmp_functional_occurrence_file,
+                                                                                    output_file_path)
+
+        log_file = filesnpaths.get_temp_file_path()
+        self.progress.new('Functional enrichment analysis')
+        self.progress.update('Running enrichment analysis')
+        utils.run_command(cmd, log_file)
+        self.progress.end()
+        if not filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
+            raise ConfigError('It looks like something went wrong during the functional enrichment analysis.\
+                               We don\'t know what happened, but this log file could contain some clues: %s' % log_file)
+
+        if filesnpaths.is_file_empty(enrichment_file_path):
+            raise ConfigError('It looks like something went wrong during the functional enrichment analysis.\
+                               An output file was created, but it is empty \
+                               We don\'t know why this happened, but this log file could contain some clues: %s' % log_file)
+
+        run.info('Functional enrichment summary log file:', log_file)
+        run.info('Functional enrichment summary', output_file_path)
+
+        if not output_file_path:
+            # if a programmer called this function then we return a dict
+            return utils.get_TAB_delimited_file_as_dictionary(enrichment_file_path)
+
+
     def functional_occurrence_stats(self):
         """
             Compute the functional occurrence stats for a pangenome

@@ -17,6 +17,22 @@
 # installing BiocManager and then running `BiocManager::install("qvalue")`
 
 ## Load required packages
+required_packages <- list("tidyverse", "magrittr", "qvalue", "optparse")
+installation_instructions <- list("conda install -c r r-tidyverse", "conda install -c bioconda r-magrittr", "conda install -c bioconda bioconductor-qvalue", "conda install -c conda-forge r-optparse")
+names(installation_instructions) <- required_packages
+missing_packages <- list()
+installation_instructions_for_missing_packages <- list()
+i <- 1
+for (p in required_packages) {
+    if(!p %in% rownames(installed.packages())){
+        missing_packages[[i]] <- p
+        installation_instructions_for_missing_packages[[i]] <- installation_instructions[[p]]
+        i <- i+1
+    }
+}
+if(length(missing_packages) > 0) {
+    stop(cat("The following R packages are required in order to run this program, but are missing: ", paste(missing_packages, collapse = ', '), ".\n", "You can install these packages using conda by running the following commands:\n", paste(installation_instructions_for_missing_packages, collapse='\n','\n')))
+}
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(magrittr))
