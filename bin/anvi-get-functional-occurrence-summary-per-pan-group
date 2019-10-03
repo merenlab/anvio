@@ -33,6 +33,11 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
+def main(args):
+    s = summarizer.PanSummarizer(args, lazy_init=True)
+    s.functional_enrichment_stats()
+
+
 if __name__ == '__main__':
     import argparse
 
@@ -61,8 +66,7 @@ if __name__ == '__main__':
     args = anvio.get_args(parser)
 
     try:
-        s = summarizer.PanSummarizer(args, lazy_init=True)
-        s.functional_occurrence_stats()
+        main(args)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
