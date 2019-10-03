@@ -2514,7 +2514,7 @@ function showTaxonomy()
         type: 'POST',
         url: '/data/get_taxonomy',
         data: {
-            data: JSON.stringify(collection_info['data'], null, 4),
+            'collection': JSON.stringify(collection_info['data'], null, 4), 
         },
         success: (response) => {
             toastr.info(response, "Server");
