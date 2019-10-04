@@ -168,7 +168,7 @@ Bins.prototype.GetSelectedBinColor = function() {
 
 
 Bins.prototype.GetBinColor = function(bin_id) {
-    return this.container.querySelector('#bin_color_' + bin_id).getAttribute('color');
+    return this.container.querySelector('#bin_color_' + bin_id.toString()).getAttribute('color');
 }
 
 
@@ -197,7 +197,11 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
     this.selections[bin_id].clear();
     this.PushHistory(transaction);
 
-    this.container.querySelector(`tr[bin-id='${bin_id}']`).remove();
+    let bin_row = this.container.querySelector(`tr[bin-id='${bin_id}']`);
+
+    bin_row.nextElementSibling.remove(); // remove taxonomy row too.
+    bin_row.remove();
+
     if (!this.container.querySelectorAll('*').length) {
         // No bins left
         this.NewBin();
@@ -989,6 +993,9 @@ Bins.prototype.RebuildIntersections = function() {
         return;
 
     for (let bin_id in this.selections) {
+        if (!this.selections[bin_id].size) {
+            continue;
+        }
         let bin_color = this.GetBinColor(bin_id);
         let inserted = true;
         let removed = true;
