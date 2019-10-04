@@ -36,6 +36,7 @@ Dan Utter                  Harvard University                 United States
 C. Titus Brown             University of California Davis     United States
 Bryan Merill               Stanford University                United States
 Ines Martinez              University of Alberta              Canada
+Amy Willis                 University of Washington           United States
 
 --
 
