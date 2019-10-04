@@ -2517,10 +2517,50 @@ function showTaxonomy()
             'collection': JSON.stringify(collection_info['data'], null, 4), 
         },
         success: (response) => {
-            toastr.info(response, "Server");
+            if (response.hasOwnProperty('message')) {
+                toastr.error(response['message'], 'Server');
+                return;
+            }
 
-            $(this.dialog).modal('hide');
-            this.dialog.remove();
+            let content = `<table class="table">
+                              <thead>
+                                <tr>
+                                  <th scope="col">Annotation</th>
+                                  <th scope="col">Gene Callers Id</th>
+                                  <th scope="col">Gene Name</th>
+                                  <th scope="col">Percent Identity</th>
+                                  <th scope="col">Taxonomy</th>
+                                </tr>
+                              </thead>
+
+                              <tbody>`;
+
+            let order = ["t_domain", "t_phylum", "t_class",
+                         "t_order", "t_family", "t_genus", "t_species"];
+
+            Object.keys(response).map(function(bin_name) {
+                let consensus_taxonomy = response[bin_name]['consensus_taxonomy'];
+                let taxonomy_array = [];
+
+                for (let i=order.length-1; i >= 0; i--) {
+                    let level = order[i];
+                    if (consensus_taxonomy[level] !== null) {
+                        taxonomy_array.push(consensus_taxonomy[level]);
+                    }
+                }
+                content += `<tr>
+                    <td>${ consensus_taxonomy['accession'] }</td>
+                    <td>${ consensus_taxonomy['gene_callers_id'] }</td>
+                    <td>${ consensus_taxonomy['gene_name'] }</td>
+                    <td>${ consensus_taxonomy['percent_indentity'] }</td>
+                    <td>${ taxonomy_array.join(' / ') }</td>
+                </tr>`;
+            });
+
+
+
+
+            showDraggableDialog('Taxonomy Estimation', content + '</table>');
         }
     });
 
