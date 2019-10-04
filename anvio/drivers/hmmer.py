@@ -121,8 +121,6 @@ class HMMer:
 
 
         for part_file in self.target_files_dict[target]:
-            worker_no = str(len(workers) + 1)
-
             log_file = part_file + '_log'
             output_file = part_file + '_output'
             shitty_file = part_file + '_shitty'
