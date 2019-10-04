@@ -6,8 +6,10 @@ A. Murat Eren (a.murat.eren at gmail dot com)
 Alon Shaiber (alon.shaiber at gmail dot com)
 Evan Kiefl (kiefl.evan at gmail dot com)
 Mahmoud Yousef (mahmoudyousef at uchicago dot edu)
+Matthew Schechter (mschechter at uchicago dot edu)
 Andrea Watson (andreawatson at uchicago dot edu)
 Emily Fogarty (efogarty at uchicago dot edu)
+Florian Trigodet (trigodet dot florian at gmail dot com)
 
 ===============================================================================
 Developers and contributors at large

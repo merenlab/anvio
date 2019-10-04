@@ -115,35 +115,50 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             AdditionalDataBaseClass.add(self, data_dict, data_keys, skip_check_names)
 
 
-    def remove(self, data_keys_list):
-        '''Give this guy a list of key for additional data, and watch their demise.'''
+    def remove(self, data_keys_list=[], data_groups_list=[]):
+        '''Give this guy a list of keys or groups for additional data, and watch their demise.'''
 
-        if not isinstance(data_keys_list, list):
+        if not isinstance(data_keys_list, list) or not isinstance(data_groups_list, list):
             raise ConfigError("The remove function in AdditionalDataBaseClass wants you to watch\
                                yourself before you wreck yourself. In other words, can you please\
-                               make sure the keys you send is of type `list` thankyouverymuch?")
+                               make sure the keys or groups you send is of type `list` thankyouverymuch?")
+
+        if data_keys_list and data_groups_list:
+            raise ConfigError("You seem to be interested in removing both data keys and data groups from\
+                               misc data tables. Using both of these parameters is quite risky, so anvi'o\
+                               would like you to use only one of them at a time. Apologeies.")
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+        # not all additional data table types have data_group concept
+        if data_groups_list and 'data_group' not in database.get_table_structure(self.table_name):
+            raise ConfigError("You clearly are interestd in removing some data groups from your profile database\
+                               but the additional data table for %s does not have data groups :/ Perhaps you are\
+                               looking for the parameter `--keys-to-remove`?" % self.target_table)
+        else:
+            additional_data_groups = sorted(database.get_single_column_from_table(self.table_name, 'data_group', unique=True))
 
         additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True))
 
         if not len(additional_data_keys):
             self.run.info_single('There is nothing to remove --the %s additional data table is already empty :(' % self.target_table)
             database.disconnect()
-
             return
 
-        missing_keys = [k for k in data_keys_list if k not in additional_data_keys]
-        if len(missing_keys) and not self.just_do_it:
-            database.disconnect()
-            raise ConfigError("The following keys you wanted to remove from the items additional data table are\
-                               not really in the table: '%s'. Anvi'o is confused :/" % (', '.join(missing_keys)))
-
         if data_keys_list:
+            # see if there are any missing keys
+            missing_keys = [k for k in data_keys_list if k not in additional_data_keys]
+            if len(missing_keys) and not self.just_do_it:
+                database.disconnect()
+                raise ConfigError("The following keys you wanted to remove from the %s additional data table are\
+                                   not really in the table: '%s'. Anvi'o is confused but can totally ignore the missing\
+                                   keys and just remove whatever is matching to your list if you were to use the flag\
+                                   `--just-do-it`." % (self.target_table, ', '.join(missing_keys)))
+
             for key in data_keys_list:
                 if key not in additional_data_keys:
                     # what the hell, user?
-                    return
+                    continue
 
                 if 'data_group' in database.get_table_structure(self.table_name):
                     database._exec('''DELETE from %s WHERE data_key="%s" and data_group="%s"''' % (self.table_name, key, self.target_data_group))
@@ -152,6 +167,25 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
             self.run.warning("Data from the table '%s' for the following data keys in data group '%s' \
                               removed from the database: '%s'. #SAD." % (self.target_table, self.target_data_group, ', '.join(data_keys_list)))
+        elif data_groups_list:
+            # see if there are any missing groups
+            missing_groups = [k for k in data_groups_list if k not in additional_data_groups]
+            if len(missing_groups) and not self.just_do_it:
+                database.disconnect()
+                raise ConfigError("The following groups you wanted to remove from the %s additional data table are\
+                                   not really in the table: '%s'. Anvi'o is confused but can totally ignore the missing\
+                                   keys and just remove whatever is matching to your list if you were to use the flag\
+                                   `--just-do-it`." % (self.target_table, ', '.join(missing_groups)))
+
+            for group in data_groups_list:
+                if group not in additional_data_groups:
+                    # user is cray.
+                    continue
+                else:
+                    database._exec('''DELETE from %s WHERE data_group="%s"''' % (self.table_name, group))
+
+            self.run.warning("Data from the table '%s' for the following data groups \
+                              are now removed from the database: '%s'. #SAD." % (self.target_table, ', '.join(data_groups_list)))
         else:
             if not self.just_do_it:
                 raise ConfigError("You did not provide a list of data keys to remove, which means you are about to delete everything in the\
