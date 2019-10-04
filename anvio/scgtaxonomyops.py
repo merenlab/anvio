@@ -704,7 +704,8 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             # set the taxonomy text depending on how much room we have. if there are sample coverages, keep it simple,
             # otherwise show the entire taxonomy text.
             if self.compute_scg_coverages:
-                taxon_text = ['(%s) %s' % (l.split('_')[1][0], bin_data[l]) for l in self.levels_of_taxonomy[::-1] if bin_data[l]][0]
+                taxon_text_l = ['(%s) %s' % (l.split('_')[1][0], bin_data[l]) for l in self.levels_of_taxonomy[::-1] if bin_data[l]]
+                taxon_text = taxon_text_l[0] if taxon_text_l else '(NA) NA'
             else:
                 taxon_text = ' / '.join([bin_data[l] if bin_data[l] else '' for l in self.levels_of_taxonomy])
 
