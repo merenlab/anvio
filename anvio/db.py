@@ -146,12 +146,12 @@ class DB:
         self._exec_many('''INSERT INTO %s VALUES(%s)''' % (table_name, ','.join(['?'] * len(data[0]))), data)
 
 
-    def get_max_value_in_column(self, table_name, column_name, value_if_empty=None):
+    def get_max_value_in_column(self, table_name, column_name, value_if_empty=None, return_min_instead=False):
         """
         value_if_empty, default = None:
             If not None and table has no entries, value returned is value_if_empty.
         """
-        response = self._exec("""SELECT MAX(%s) FROM %s""" % (column_name, table_name))
+        response = self._exec("""SELECT %s(%s) FROM %s""" % ('MIN' if return_min_instead else 'MAX', column_name, table_name))
         rows = response.fetchall()
 
         val = rows[0][0]
