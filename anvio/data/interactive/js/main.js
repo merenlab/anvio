@@ -1436,6 +1436,7 @@ function serializeSettings(use_layer_names) {
     state['show-bin-labels'] = $('#show_bin_labels').is(':checked');
     state['bin-labels-font-size'] = $('#bin_labels_font_size').val();
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
+    state['estimate-taxonomy'] = $('#estimate_taxonomy').is(':checked');
     state['bin-labels-angle'] = $('#bin_labels_angle').val();
     state['background-opacity'] = $('#background_opacity').val();
     state['max-font-size-label'] = $('#max_font_size_label').val();
@@ -2392,6 +2393,9 @@ function processState(state_name, state) {
     if (state.hasOwnProperty('autorotate-bin-labels')) {
         $('#autorotate_bin_labels').prop('checked', state['autorotate-bin-labels']).trigger('change');
     }
+    if (state.hasOwnProperty('estimate-taxonomy')) {
+        $('#estimate_taxonomy').prop('checked', state['estimate-taxonomy']).trigger('change');
+    }
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
     }
@@ -2508,6 +2512,11 @@ function shutdownServer()
 
 function showTaxonomy()
 {
+    if (!$('#estimate_taxonomy').is(':checked')) {
+        // don't continue running, if this is unchecked
+        return;
+    }
+
     let collection_info = bins.ExportCollection();
 
     $.ajax({
