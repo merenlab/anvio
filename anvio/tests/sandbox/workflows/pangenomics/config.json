@@ -12,6 +12,9 @@
     "anvi_run_ncbi_cogs": {
         "run": false
     },
+    "anvi_compute_genome_similarity": {
+        "run": true
+    },
     "project_name": "TEST",
     "output_dirs": {
         "FASTA_DIR": "01_FASTA",
