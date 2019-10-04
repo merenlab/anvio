@@ -1310,7 +1310,8 @@ class BottleApplication(Bottle):
             run.info_single('Taxonomy estimation has been requested for bin(s) "%s".' % (", ".join(collection.keys())))
         except Exception as e:
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
-            return json.dumps({'status': 1, 'message': message})
+            print(message)
+            return json.dumps({'status': 1})
 
         return json.dumps(output)
 
