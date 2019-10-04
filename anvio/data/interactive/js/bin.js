@@ -94,9 +94,9 @@ Bins.prototype.NewBin = function(id, binState) {
                        <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
                     </tr>
                     <tr style="display: none;">
-                            <td>&nbsp;</td>
-                            <td>&nbsp;</td>
-                            <td colspan="6">
+                            <td style="border-top: 0px;">&nbsp;</td>
+                            <td style="border-top: 0px;">&nbsp;</td>
+                            <td colspan="6" style="border-top: 0px; padding-top: 0px;">
                                 <span bin-id="${id}" class="label label-primary taxonomy-level" style="text-transform: capitalize;">N/A</span>&nbsp;<span bin-id="${id}" class="taxonomy-name"></span>
                             </td>
                     </tr>`;
