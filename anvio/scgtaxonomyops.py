@@ -678,6 +678,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             self.run.warning(None, header='Estimated taxonomy for "%s"' % self.contigs_db_project_name, lc="green")
 
         d = self.get_print_friendly_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
+        ordered_bin_names = sorted(list(d.keys()))
 
         if self.metagenome_mode:
             header = ['percent_identity', 'taxonomy']
@@ -697,8 +698,14 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             if samples_not_shown:
                 header += ['... %d more' % len(samples_not_shown)]
 
+            # since we know coverages and sample names, we have a chance here to order the output
+            # based on coverage. so let's do that.
+            sorted_bin_coverage_tuples = sorted([(bin_name, sum([d[bin_name][sample_name] for sample_name in self.sample_names_in_profile_db])) for bin_name in d], key=lambda x: x[1], reverse=True)
+            ordered_bin_names = [tpl[0] for tpl in sorted_bin_coverage_tuples]
+
+
         table = []
-        for bin_name in d:
+        for bin_name in ordered_bin_names:
             bin_data = d[bin_name]
 
             # set the taxonomy text depending on how much room we have. if there are sample coverages, keep it simple,
