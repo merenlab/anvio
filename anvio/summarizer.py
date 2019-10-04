@@ -324,6 +324,23 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # Before we do anything let's make sure the user has R installed
         utils.is_program_exists('Rscript')
 
+        # Let's make sure all the required packages are installed
+        # And thank you to Ryan Moore (https://github.com/mooreryan) for this suggestion (https://github.com/merenlab/anvio/commit/91f9cf1531febdbf96feb74c3a68747b91e868de#r35353982)
+        missing_packages = []
+        log_file = filesnpaths.get_temp_file_path()
+        package_dict = utils.get_required_packages_for_enrichment_test()
+        for lib in package_dict:
+            ret_val = utils.run_command(["Rscript", "-e", "library('%s')" % lib], log_file)
+            if ret_val != 0:
+                missing_packages.append(lib)
+
+        if missing_packages:
+            raise ConfigError('The following R packages are required in order to run \
+                               this program, but are missing: %s. You can install these \
+                               packages using conda by running the following commands: \
+                               %s' % (', '.join(missing_packages),
+                                      ', '.join(['"%s"' % package_dict[i] for i in missing_packages])))
+
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         output_file_path = A('output_file')
         tmp_functional_occurrence_file = filesnpaths.get_temp_file_path()

@@ -849,6 +849,18 @@ def apply_and_concat(df, fields, func, column_names, func_args=tuple([])):
     return pd.concat((df, df2), axis=1, sort=True)
 
 
+def get_required_packages_for_enrichment_test():
+    ''' Return a dict with the packages as keys and installation instrucstions as values'''
+    packages = ["tidyverse", "magrittr", "qvalue", "optparse"]
+
+    installation_instructions = ["conda install -c r r-tidyverse",
+                                 "conda install -c bioconda r-magrittr",
+                                 "conda install -c bioconda bioconductor-qvalue",
+                                 "conda install -c conda-forge r-optparse"]
+
+    return dict(zip(packages,installation_instructions))
+
+
 def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_dict, key, genes_of_interest=None, samples_of_interest=None, as_pandas=False):
     """
         This function takes the gene_level_coverage_stats_dict and return one of the values
