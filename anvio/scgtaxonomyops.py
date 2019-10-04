@@ -326,25 +326,75 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
     def init(self):
         self.init_scg_data()
 
-        self.init_split_to_gene_caller_ids_dict()
-
         if self.metagenome_mode and self.profile_db_path:
             self.sample_names_in_profile_db = ProfileDatabase(self.profile_db_path).samples
 
         self.initialized = True
 
 
-    def init_split_to_gene_caller_ids_dict(self):
+    def init_scg_data(self):
         if not self.contigs_db_path:
             return None
 
-        self.progress.new('Initializing genes in splits')
-        self.progress.update('...')
+        self.progress.new('Initializing')
+        self.progress.update('Working on SCG taxonomy dictionary')
+
+        for scg_name in self.SCGs:
+            self.scg_name_to_gene_caller_id_dict[scg_name] = set([])
 
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+        self.contigs_db_project_name = contigs_db.meta['project_name']
+        scg_taxonomy_table = contigs_db.db.get_table_as_dict(t.scg_taxonomy_table_name)
         genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "split, gene_callers_id")
+        min_contig_length_in_contigs_db = contigs_db.db.get_max_value_in_column(t.contigs_info_table_name, "length", return_min_instead=True)
         contigs_db.disconnect()
 
+        # this is important. before we begin, we need to filter out gene caller ids and splits from main dictionaries if
+        # they shouldn't be there. read the warning below to see the utility of this step.
+        if self.profile_db_path and self.compute_scg_coverages:
+            split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
+            split_names_in_contigs_db = set([tpl[0] for tpl in genes_in_splits])
+            splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
+
+            min_contig_length_in_profile_db = ProfileDatabase(self.profile_db_path).meta['min_contig_length']
+
+            if len(splits_missing_in_profile_db):
+                self.progress.reset()
+                self.run.warning("Please note that anvi'o found %s splits in your contigs database. But only %s of them\
+                                  appeared ot be in the profile database. As a result, anvi'o will now remove the %s splits\
+                                  that occur only in the contigs db from all downstream analyses here (if you didn't use the flag\
+                                  `--compute-scg-coverages` this wouldn't have been necessary, but with the current settings\
+                                  this is really the best for everyone). Where is this difference coming from though? Well. This\
+                                  is often the case because the 'minimum contig length parameter' set during the `anvi-profile`\
+                                  step can exclude many contigs from downstream analyses (often for good reasons, too). For\
+                                  instance, in your case the minimum contig length goes as low as %s nts in your contigs database.\
+                                  Yet, the minimum contig length set in the profile databaes is %s nts. Hence the difference. Anvi'o\
+                                  hopes that this explaines some things." % (pp(len(split_names_in_contigs_db)),
+                                                                             pp(len(split_names_in_profile_db)),
+                                                                             pp(len(splits_missing_in_profile_db)),
+                                                                             pp(min_contig_length_in_contigs_db),
+                                                                             pp(min_contig_length_in_profile_db)))
+
+                self.progress.update("Removing %s splits missing form the profile db" % pp(len(splits_missing_in_profile_db)))
+                genes_in_splits = [tpl for tpl in genes_in_splits if tpl[0] not in splits_missing_in_profile_db]
+
+                # so now we know the final list of split names and gene caller ids as they are stored in the updated
+                # `genes_in_splits` variable. time to clean up the `scg_taxonomy_table` dictionary as well.
+                final_set_of_gene_caller_ids = set([tpl[1] for tpl in genes_in_splits if tpl[0] not in splits_missing_in_profile_db])
+                entry_ids_to_remove = [entry for entry in scg_taxonomy_table if scg_taxonomy_table[entry]['gene_callers_id'] not in final_set_of_gene_caller_ids]
+                [scg_taxonomy_table.pop(e) for e in entry_ids_to_remove]
+
+        for entry in scg_taxonomy_table.values():
+            gene_callers_id = entry['gene_callers_id']
+            self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id] = entry
+
+        for entry in self.gene_callers_id_to_scg_taxonomy_dict.values():
+            scg_gene_name = entry['gene_name']
+            gene_callers_id = entry['gene_callers_id']
+
+            self.scg_name_to_gene_caller_id_dict[scg_gene_name].add(gene_callers_id)
+
+        self.progress.update("Finalizing main dictionaries")
         for split_name, gene_callers_id in genes_in_splits:
             if gene_callers_id not in self.gene_callers_id_to_scg_taxonomy_dict:
                 continue
@@ -356,34 +406,6 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             self.gene_callers_id_to_split_name_dict[gene_callers_id] = split_name
 
         self.progress.end()
-
-
-    def init_scg_data(self):
-        if not self.contigs_db_path:
-            return None
-
-        self.progress.new('Initializing SCG taxonomy dictionary')
-        self.progress.update('...')
-
-        for scg_name in self.SCGs:
-            self.scg_name_to_gene_caller_id_dict[scg_name] = set([])
-
-        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
-        self.contigs_db_project_name = contigs_db.meta['project_name']
-        scg_taxonomy_table = contigs_db.db.get_table_as_dict(t.scg_taxonomy_table_name)
-        contigs_db.disconnect()
-
-        for entry in scg_taxonomy_table.values():
-            gene_callers_id = entry['gene_callers_id']
-            self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id] = entry
-
-        self.progress.end()
-
-        for entry in self.gene_callers_id_to_scg_taxonomy_dict.values():
-            scg_gene_name = entry['gene_name']
-            gene_callers_id = entry['gene_callers_id']
-
-            self.scg_name_to_gene_caller_id_dict[scg_gene_name].add(gene_callers_id)
 
         self.frequency_of_scgs_with_taxonomy = OrderedDict(sorted([(g, len(self.scg_name_to_gene_caller_id_dict[g])) for g in self.scg_name_to_gene_caller_id_dict], key = lambda x: x[1], reverse=True))
 
@@ -605,7 +627,6 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         gene_caller_ids_of_interest = self.scg_name_to_gene_caller_id_dict[self.scg_name_for_metagenome_mode]
         scg_taxonomy_dict = self.get_scg_taxonomy_dict(gene_caller_ids=gene_caller_ids_of_interest,
                                                        bin_name=self.contigs_db_project_name)
-
 
         return {self.contigs_db_project_name: {'scgs': scg_taxonomy_dict,
                                                'metagenome_mode': True}}
