@@ -2552,7 +2552,7 @@ function showTaxonomy()
                     <td>${ consensus_taxonomy['accession'] }</td>
                     <td>${ consensus_taxonomy['gene_callers_id'] }</td>
                     <td>${ consensus_taxonomy['gene_name'] }</td>
-                    <td>${ consensus_taxonomy['percent_indentity'] }</td>
+                    <td>${ consensus_taxonomy['percent_identity'] }</td>
                     <td>${ taxonomy_array.join(' / ') }</td>
                 </tr>`;
             });
