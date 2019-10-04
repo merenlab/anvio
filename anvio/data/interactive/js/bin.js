@@ -74,13 +74,11 @@ Bins.prototype.NewBin = function(id, binState) {
         var redundancy = "---";
     }
 
-    var template = `<tr bin-id="${id}">
+    var template = `<tr bin-id="${id}" class="bin-row">
                        <td><input type="radio" name="active_bin" value="${id}"></td>
                        <td><div id="bin_color_${id}" class="colorpicker" color="${color}" style="background-color: ${color}"></td>
                        <td data-value="${name}">
                             <input type="text" class="bin-name" onChange="emit('bin-settings-changed');" size="21" id="bin_name_${id}" value="${name}">
-                            <br>
-                            <span class="label label-primary taxonomy-level" style="text-transform: capitalize;">N/A</span>&nbsp;<span class="taxonomy-name"></span>
                         </td>
                        ${mode != 'pan' ? `
                            <td data-value="${contig_count}" class="num-items"><input type="button" value="${contig_count}" title="Click for contig names" onClick="showContigNames(${id});"></td>
@@ -94,6 +92,13 @@ Bins.prototype.NewBin = function(id, binState) {
                             <td data-value="${redundancy}" class="redundancy"><input type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id}); "></td>
                        `}
                        <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
+                    </tr>
+                    <tr style="display: none;">
+                            <td>&nbsp;</td>
+                            <td>&nbsp;</td>
+                            <td colspan="6">
+                                <span bin-id="${id}" class="label label-primary taxonomy-level" style="text-transform: capitalize;">N/A</span>&nbsp;<span bin-id="${id}" class="taxonomy-name"></span>
+                            </td>
                     </tr>`;
 
     this.container.insertAdjacentHTML('beforeend', template);
@@ -324,7 +329,7 @@ Bins.prototype.DeleteAllBins = function() {
         return;
     }
 
-    for (let tr of this.container.querySelectorAll('tr')) {
+    for (let tr of this.container.querySelectorAll('tr.bin-row')) {
         this.DeleteBin(tr.getAttribute('bin-id'), false);
     }
 };
@@ -586,14 +591,18 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                                 let level = order[i];
 
                                 if (data[bin_name]['consensus_taxonomy'][level] !== null) {
-                                    bin_row.querySelector('span.taxonomy-level').innerHTML = level.split('_')[1];
-                                    bin_row.querySelector('span.taxonomy-name').innerHTML = " " + data[bin_name]['consensus_taxonomy'][level];
+                                    // show taxonomy layer
+                                    bin_row.nextElementSibling.style.display = '';
+
+                                    this.container.querySelector(`span.taxonomy-level[bin-id="${bin_id}"]`).innerHTML = level.split('_')[1];
+                                    this.container.querySelector(`span.taxonomy-name[bin-id="${bin_id}"]`).innerHTML = " " + data[bin_name]['consensus_taxonomy'][level];
                                     return;
                                 }
                             }
 
-                            bin_row.querySelector('span.taxonomy-level').innerHTML = 'N/A';
-                            bin_row.querySelector('span.taxonomy-name').innerHTML = " N/A";
+                            bin_row.nextElementSibling.style.display = 'none';
+                            this.container.querySelector(`span.taxonomy-level[bin-id="${bin_id}"]`).innerHTML = 'N/A';
+                            this.container.querySelector(`span.taxonomy-name[bin-id="${bin_id}"]`).innerHTML = " N/A";
                         }
                     }
                 });
@@ -686,7 +695,7 @@ Bins.prototype.ExportCollection = function(use_bin_id=false) {
     let data = {};
     let colors = {};
 
-    for (let tr of this.container.querySelectorAll('tr')) {
+    for (let tr of this.container.querySelectorAll('tr.bin-row')) {
         let bin_id = tr.getAttribute('bin-id');
         let bin_name = tr.querySelector('.bin-name').value;
         let bin_color = tr.querySelector('.colorpicker').getAttribute('color');
