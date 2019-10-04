@@ -2517,14 +2517,15 @@ function showTaxonomy()
             'collection': JSON.stringify(collection_info['data'], null, 4), 
         },
         success: (response) => {
-            if (response.hasOwnProperty('message')) {
-                toastr.error(response['message'], 'Server');
+            if (response.hasOwnProperty('status')) {
+                toastr.error("Taxonomy estimation failed, please see terminal for details.", 'Server');
                 return;
             }
 
             let content = `<table class="table">
                               <thead>
                                 <tr>
+                                  <th scope="col">Bin</th>
                                   <th scope="col">Annotation</th>
                                   <th scope="col">Gene Callers Id</th>
                                   <th scope="col">Gene Name</th>
@@ -2549,7 +2550,8 @@ function showTaxonomy()
                     }
                 }
                 content += `<tr>
-                    <td>${ consensus_taxonomy['accession'] }</td>
+                    <td>${ bin_name }</td>
+                    <td>${ consensus_taxonomy['accession'] || 'N/A' }</td>
                     <td>${ consensus_taxonomy['gene_callers_id'] }</td>
                     <td>${ consensus_taxonomy['gene_name'] }</td>
                     <td>${ consensus_taxonomy['percent_identity'] }</td>
