@@ -727,7 +727,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
                 row = [bin_name, str(bin_data['total_scgs']), str(bin_data['supporting_scgs']), taxon_text]
 
             if samples_not_shown:
-                row += ['(...)']
+                row += ['... %d more' % len(samples_not_shown)]
 
             table.append(row)
 
