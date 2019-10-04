@@ -914,8 +914,12 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         # which gene caller ids we are interested in recovering coverages for. the way to access to gene coverages
         # is a bit convoluted in the dbops for historical reasons, but it is quite straightforward. the most
         # weird part is that we need a copy of a contigs super. so we will start with that:
+        self.progress.new("Recovering SCG coverages")
+        self.progress.update("Initiating the contigs super class")
         contigs_db = ContigsSuperclass(self.args, r=run_quiet, p=progress_quiet)
+
         for split_name in split_names_of_interest:
+            self.progress.update("Working with %s" % split_name)
             # note for the curious: yes, here we are sending the same gene caller ids of interest over and over to
             # the `get_gene_level_coverage_stats` for each split, but that function is smart enough to not spend any
             # time on those gene caller ids that do not occur in the split name we are interested in.
@@ -931,6 +935,8 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
                         scg_coverages_across_samples_dict[gene_callers_id] = dict([(sample_name, 0) for sample_name in self.sample_names_in_profile_db])
 
                     scg_coverages_across_samples_dict[gene_callers_id][sample_name] = coverage
+
+        self.progress.end()
 
         return scg_coverages_across_samples_dict
 
