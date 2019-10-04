@@ -89,3 +89,6 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                          to something other than the default value, which is "true", while we allow you to do it \
                          this is likely to break things, we trust that you know what you are doing, but advise you \
                          to proceed with caution.')
+
+        if not self.project_name:
+            raise ConfigError("You must provide a project_name in your config file.")
