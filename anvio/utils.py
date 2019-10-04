@@ -849,6 +849,18 @@ def apply_and_concat(df, fields, func, column_names, func_args=tuple([])):
     return pd.concat((df, df2), axis=1, sort=True)
 
 
+def get_required_packages_for_enrichment_test():
+    ''' Return a dict with the packages as keys and installation instrucstions as values'''
+    packages = ["tidyverse", "magrittr", "qvalue", "optparse"]
+
+    installation_instructions = ["conda install -c r r-tidyverse",
+                                 "conda install -c bioconda r-magrittr",
+                                 "conda install -c bioconda bioconductor-qvalue",
+                                 "conda install -c conda-forge r-optparse"]
+
+    return dict(zip(packages,installation_instructions))
+
+
 def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_dict, key, genes_of_interest=None, samples_of_interest=None, as_pandas=False):
     """
         This function takes the gene_level_coverage_stats_dict and return one of the values
@@ -2465,46 +2477,19 @@ def is_blank_profile(db_path):
     return True if blank == 1 else False
 
 
-def get_two_sample_z_test_statistic(p1, p2, n1, n2):
+def get_enriched_groups(props, reps):
     '''
-        Compute a two sample z-test statistic
-
-        If one group has no hits (e.g. p1=0) then we compute an upper bound
-        for the p-value by pretending that it had one hit.
-
-        If one group has 100% hits (e.g. p1=1) then we compute an upper bound
-        for the p-value by pretending that p1=1-1/n1 hits
+        Accepts a vector of proportions and number of replicates per group and
+        returns a boolean vector where each group that has proportion above
+        the "expected" (i.e. the overall proportion) is True and the rest are False.
     '''
-    import numpy
-    if p1 == 0 and p2 == 0:
-        return (0, 1)
+    import numpy as np
+    # if the function doesn't occur at all then test_statistic is zero and p-value is 1
+    if not np.count_nonzero(props):
+        return np.zeros(len(props))
+    overall_portion = np.sum(np.multiply(props, reps)) / np.sum(reps)
 
-    inequality_sign = p1 > p2
-    # This is done in order to estimate an upper bound
-    # for the p-value
-    p1 = max(p1, 1/n1) # in case p1 is zero
-    p2 = max(p2, 1/n2)
-    p1 = min(p1, 1 - 1/n1) # in case p1 is 1
-    p2 = min(p2, 1 - 1/n2)
-
-    new_inequality_sign = p1 > p2
-    if new_inequality_sign != inequality_sign:
-        # if the portion correction changed the direction of the inequality
-        # then there is no power to this test.
-        # This would only happen when the groups in questions are very small anyway,
-        # but we want to be on the safe side.
-        return (0,1)
-
-    p = (n1*p1 + n2*p2) / (n1 + n2)
-
-    z = (p1 - p2) / numpy.sqrt(p*(1 - p) * (1/n1 + 1/n2))
-    p_value = get_p_value_for_z_test(z)
-    return (z, p_value)
-
-
-def get_p_value_for_z_test(z):
-    from scipy.stats import norm
-    return 2*norm.cdf(-abs(z))
+    return props > overall_portion
 
 
 def is_pan_db(db_path):
