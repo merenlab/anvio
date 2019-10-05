@@ -97,7 +97,7 @@ Bins.prototype.NewBin = function(id, binState) {
                             <td style="border-top: 0px;">&nbsp;</td>
                             <td style="border-top: 0px;">&nbsp;</td>
                             <td colspan="6" style="border-top: 0px; padding-top: 0px;">
-                                <span bin-id="${id}" class="label label-primary taxonomy-level" style="text-transform: capitalize;">N/A</span>&nbsp;<span bin-id="${id}" class="taxonomy-name"></span>
+                                <span bin-id="${id}" class="taxonomy-name-label">N/A</span>
                             </td>
                     </tr>`;
 
@@ -596,22 +596,18 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                             let order = ["t_domain", "t_phylum", "t_class",
                                          "t_order", "t_family", "t_genus", "t_species"];
 
+                            bin_row.nextElementSibling.style.display = '';
+                            this.container.querySelector(`span.taxonomy-name-label[bin-id="${bin_id}"]`).innerHTML = " (?) Unknown";
+
                             for (let i=order.length-1; i >= 0; i--) {
                                 let level = order[i];
 
                                 if (data[bin_name]['consensus_taxonomy'][level] !== null) {
-                                    // show taxonomy layer
-                                    bin_row.nextElementSibling.style.display = '';
-
-                                    this.container.querySelector(`span.taxonomy-level[bin-id="${bin_id}"]`).innerHTML = level.split('_')[1];
-                                    this.container.querySelector(`span.taxonomy-name[bin-id="${bin_id}"]`).innerHTML = " " + data[bin_name]['consensus_taxonomy'][level];
+                                    let label = level.split('_')[1][0];
+                                    this.container.querySelector(`span.taxonomy-name-label[bin-id="${bin_id}"]`).innerHTML = " (" + label + ") " + data[bin_name]['consensus_taxonomy'][level].replace('_', ' ');
                                     return;
                                 }
                             }
-
-                            bin_row.nextElementSibling.style.display = 'none';
-                            this.container.querySelector(`span.taxonomy-level[bin-id="${bin_id}"]`).innerHTML = 'N/A';
-                            this.container.querySelector(`span.taxonomy-name[bin-id="${bin_id}"]`).innerHTML = " N/A";
                         }
                     }
                 });
