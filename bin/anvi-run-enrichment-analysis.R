@@ -21,6 +21,39 @@ suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(magrittr))
 
+## If we got here, that means tidyverse was loaded, which means it
+## must be installed.  This means tidyr must also be installed.  This
+## is a sanity check for that.
+if (isFALSE("tidyr" %in% rownames(installed.packages())) ||
+    isFALSE("tidyr" %in% (.packages()))) {
+  print("Error: tidyr not loaded.  Something went wrong")
+  quit(save = "no", status = 1, runLast = FALSE)
+}
+
+## Figure out which version of tidyr is installed.
+tidyr_version <- installed.packages()[(.packages()), ]["tidyr", "Version"]
+
+## tidyr uses semantic versioning ie 1.0.0 and then possibly some
+## stuff after.
+matches <- regmatches(tidyr_version,
+                      regexec("([0-9]+)\\.([0-9]+)\\.([0-9]+).*",
+                              tidyr_version,
+                              perl = TRUE))
+
+## See if there were matches.
+if (length(matches[[1]]) == 0) {
+  warning("Could not determine tidyr version number accurately")
+} else {
+  ## Major version is the first matching group.
+  ver_major <- matches[[1]][[2]]
+
+  if (strtoi(ver_major) >= 1) {
+    message("tidyr major version >= 1.  Using nest_legacy.")
+
+    ## Need to use nest_legacy if using tidyr version >= 1.
+    nest <- nest_legacy
+  }
+}
 
 # command line options
 option_list <- list(
@@ -101,4 +134,3 @@ enrichment_output <- w_models %>%
 
 enrichment_output %>%
   write_tsv(path = opts$output)
-
