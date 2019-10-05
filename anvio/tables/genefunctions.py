@@ -53,7 +53,7 @@ class TableForGeneFunctions(Table):
         database.disconnect()
 
 
-    def add_new_sources_to_functional_sources(self, gene_function_sources, database):
+    def add_new_sources_to_functional_sources(self, gene_function_sources, database, drop_previous_annotations_first=False):
 
         # are there any previous annotations in the db:
         gene_function_sources_in_db = database.get_meta_value('gene_function_sources')
@@ -74,7 +74,7 @@ class TableForGeneFunctions(Table):
             # there are gene calls, but the user wants everything to be dropeped.
             self.run.warning("As per your request, anvi'o is DROPPING all previous function calls from %d sources\
                               before adding the incoming data, which contains %d entries originating from %d sources: %s" \
-                                    % (len(gene_function_sources_in_db), len(functions_dict),
+                                    % (len(gene_function_sources_in_db), len(gene_function_sources),
                                        len(gene_function_sources), ', '.join(gene_function_sources)))
 
             # clean the table and reset the next available ids
@@ -106,7 +106,7 @@ class TableForGeneFunctions(Table):
             database.set_meta_value('gene_function_sources', ','.join(list(gene_function_sources_in_db.union(gene_function_sources))))
 
 
-    def create(self, functions_dict, drop_previous_annotations_first = False):
+    def create(self, functions_dict, drop_previous_annotations_first=False):
         self.sanity_check()
 
         # open connection
@@ -114,7 +114,7 @@ class TableForGeneFunctions(Table):
 
         # Add the new sources to existing sources
         gene_function_sources = set([v['source'] for v in list(functions_dict.values())])
-        self.add_new_sources_to_functional_sources(gene_function_sources, database)
+        self.add_new_sources_to_functional_sources(gene_function_sources, database, drop_previous_annotations_first=drop_previous_annotations_first)
 
         unique_num_genes = len(set([v['gene_callers_id'] for v in list(functions_dict.values())]))
 
