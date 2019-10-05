@@ -2532,47 +2532,109 @@ function showTaxonomy()
             }
 
             let content = `<table class="table">
-                              <thead>
+                              <thead class="thead-light">
                                 <tr>
-                                  <th scope="col">Bin</th>
-                                  <th scope="col">Annotation</th>
-                                  <th scope="col">Gene Callers Id</th>
-                                  <th scope="col">Gene Name</th>
-                                  <th scope="col">Percent Identity</th>
-                                  <th scope="col">Taxonomy</th>
+                                  <th>Bin name</th>
+                                  <th>Total SCGs</th>
+                                  <th>Supporting SCGs</th>
+                                  <th>Domain</th>
+                                  <th>Phylum</th>
+                                  <th>Class</th>
+                                  <th>Order</th>
+                                  <th>Family</th>
+                                  <th>Genus</th>
+                                  <th>Species</th>
                                 </tr>
                               </thead>
 
                               <tbody>`;
 
-            let order = ["t_domain", "t_phylum", "t_class",
-                         "t_order", "t_family", "t_genus", "t_species"];
+            let levels_of_taxonomy = ["t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"];
 
+            // building the table for each bin
             Object.keys(response).map(function(bin_name) {
-                let consensus_taxonomy = response[bin_name]['consensus_taxonomy'];
-                let taxonomy_array = [];
+                let d = response[bin_name];
 
-                for (let i=order.length-1; i >= 0; i--) {
-                    let level = order[i];
-                    if (consensus_taxonomy[level] !== null) {
-                        taxonomy_array.push(consensus_taxonomy[level]);
-                    }
-                }
                 content += `<tr>
-                    <td>${ bin_name }</td>
-                    <td>${ consensus_taxonomy['accession'] || 'N/A' }</td>
-                    <td>${ consensus_taxonomy['gene_callers_id'] }</td>
-                    <td>${ consensus_taxonomy['gene_name'] }</td>
-                    <td>${ consensus_taxonomy['percent_identity'] }</td>
-                    <td>${ taxonomy_array.join(' / ') }</td>
-                </tr>`;
+                    <td><a data-toggle="collapse" data-parent="#panel-${ bin_name }" href="#collapse-${ bin_name }">${ bin_name }</a></td>
+                    <td class="text-center">${ d['total_scgs'] }</td>
+                    <td class="text-center">${ d['supporting_scgs'] }</td>`;
+
+                levels_of_taxonomy.forEach(function (level, index) {
+                    if (d['consensus_taxonomy'][level] !== null) {
+                        if (level === "t_species")
+                            content += `<td><i>${ d['consensus_taxonomy'][level].replace('_', ' ') }</i></td>`;
+                        else
+                            content += `<td>${ d['consensus_taxonomy'][level].replace('_', ' ') }</td>`;
+                    } else {
+                        content += `<td>--</td>`;
+                    }
+                });
+
+                content += `</tr>`;
+
+                // Building an inner table for each individual SCG within a given bin.
+                let scg_table_content = `<tr id="collapse-${ bin_name }" class="panel-collapse fade collapse" style="background: #acaf3330;"><td colspan="10">
+
+                <table class="table table-striped sortable" id="tblGrid_${ bin_name }">
+
+                    <thead id="tblHead_${ bin_name }">
+                        <tr>
+                            <th>SCG Name</th>
+                            <th>Gene Caller's Id</th>
+                            <th>Percent Identity</th>
+                            <th>&lt;3?</th>
+                            <th>Domain</th>
+                            <th>Phylum</th>
+                            <th>Class</th>
+                            <th>Order</th>
+                            <th>Family</th>
+                            <th>Genus</th>
+                            <th>Species</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>`;
+
+                    // This is the second for loop to build what's going on inside those individual SCG tables
+                    Object.keys(d['scgs']).map(function(scg_id) {
+                        let scg = d['scgs'][scg_id];
+
+                        scg_table_content += `<tr>
+                            <td>${ scg['gene_name'] }</a></td>
+                            <td class="text-center">${ scg['gene_callers_id'] }</a></td>
+                            <td class="text-center">${ scg['percent_identity'] }</a></td>
+                            <td>${ scg['supporting_consensus'] }</td>`;
+
+                        levels_of_taxonomy.forEach(function (level, index) {
+                            if (scg[level] !== null) {
+                                if (level === "t_species")
+                                    scg_table_content += `<td><i>${ scg[level].replace('_', ' ') }</i></td>`;
+                                else
+                                    scg_table_content += `<td>${ scg[level].replace('_', ' ') }</td>`;
+                            } else {
+                                scg_table_content += `<td>--</td>`;
+                            }
+                        });
+
+                        scg_table_content += `</tr>`;
+                    });
+
+                scg_table_content += `</tbody></table>`;
+
+                if(d['total_scgs'] == 0){
+                    // If actually there are no SCGs for this bin that were useful to estimatet taxonomy,
+                    // don't add the `scg_table_content` to the actual content. 
+                    content += `<tr id="collapse-${ bin_name }" class="panel-collapse fade collapse" style="background: #acaf3330;"><td colspan="10">
+                                    None of the contigs in this bin contained SCGs anvi'o could use to estimate taxonomy :/`;
+                } else {
+                    content += scg_table_content;
+                }
+
+                content += `</td></tr>`;
             });
 
-
-
-
-            showDraggableDialog('Taxonomy Estimation', content + '</table>');
+            showTaxonomyTableDialog('Detailed Table for Taxonomy Estimation', content + '</table>');
         }
     });
-
 }
