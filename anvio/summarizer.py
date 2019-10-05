@@ -362,8 +362,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # Call functional occurrence. Output is saved to the tmp file
         self.functional_occurrence_stats()
 
-        cmd = 'anvi-run-enrichment-analysis.R --input %s --output %s' % (tmp_functional_occurrence_file,
-                                                                                    output_file_path)
+        cmd = 'anvi-script-run-functional-enrichment-stats --input %s --output %s' % (tmp_functional_occurrence_file,
+                                                                                      output_file_path)
 
         log_file = filesnpaths.get_temp_file_path()
         self.progress.new('Functional enrichment analysis')
@@ -479,9 +479,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         # get a list of unique function names
         functions_names = set(occurrence_of_functions_in_pangenome_dataframe.columns)
 
-        # the total occurrence of functions in all categories (it is important to this before adding the category column)
-        total_occurrence_of_functions = occurrence_of_functions_in_pangenome_dataframe.astype(bool).sum()
-
         # add a category column to the dataframe
         occurrence_of_functions_in_pangenome_dataframe['category'] = occurrence_of_functions_in_pangenome_dataframe.index.map(lambda x: str(categories_dict[x][category_variable]))
 
@@ -495,7 +492,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         categories_to_genomes_dict = {}
         for c in categories:
             categories_to_genomes_dict[c] = set([genome for genome in categories_dict.keys() if str(categories_dict[genome][category_variable]) == c])
-        number_of_genomes = len(categories_dict.keys())
 
         functional_occurrence_summary_dict = {}
         function_occurrence_table = {}
@@ -505,7 +501,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             function_occurrence_table[c] = {}
             function_occurrence_table[c]['N'] = len(categories_to_genomes_dict[c])
 
-        self.progress.update("Generating the input table for anvi-get-enriched-functions-per-pan-group")
+        self.progress.update("Generating the input table for functional enrichment analysis")
         for f in functions_names:
             for c in categories:
                 function_occurrence_table[c]['p'] = functions_in_categories.loc[c, f] / function_occurrence_table[c]['N']
