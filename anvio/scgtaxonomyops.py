@@ -1195,7 +1195,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
 
             # even if there are no SCGs to use for taxonomy later, we did attempt ot populate the
             # contigs database, so we shall note that in the self table to make sure the error from
-            # `anvi-estimate-taxonomy` is not "you seem to have not run taxonomy".
+            # `anvi-estimate-scg-taxonomy` is not "you seem to have not run taxonomy".
             self.tables_for_taxonomy.update_self_value()
 
             # return empty handed like a goose in the job market in 2020

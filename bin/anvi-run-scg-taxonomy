@@ -21,7 +21,7 @@ __requires__ = ['contigs-db']
 __provides__ = ['contigs-db']
 __description__ = ("The purpose of this program is to affiliate single-copy core genes in an anvi'o contigs database with "
                    "taxonomic names. A prooperly setup local SCG taxonomy database is required for this program to perform properly "
-                   "After its successful run, `anvi-estimate-taxonomy` will be useful to estimate taxonomy at genome-, collection-, or metagenome-level).")
+                   "After its successful run, `anvi-estimate-scg-taxonomy` will be useful to estimate taxonomy at genome-, collection-, or metagenome-level).")
 
 
 @terminal.time_program
