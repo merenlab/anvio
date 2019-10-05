@@ -41,7 +41,7 @@ pp = terminal.pretty_print
 
 HASH = lambda d: str(hashlib.sha224(''.join([str(d[level]) for level in constants.levels_of_taxonomy]).encode('utf-8')).hexdigest()[0:8])
 
-_author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
