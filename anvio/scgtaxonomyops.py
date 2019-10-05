@@ -205,11 +205,11 @@ class SCGTaxonomyContext(object):
             if self.__class__.__name__ in ['PopulateContigsDatabaseWithSCGTaxonomy']:
                 missing_SCG_databases = [SCG for SCG in self.SCGs if not os.path.exists(self.SCGs[SCG]['db'])]
                 if len(missing_SCG_databases):
-                    raise ConfigError("Even though anvi'o found the directory for databases for taxonomy stuff,\
+                    raise ConfigError("OK. It is very likley that if you run `anvi-setup-scg-taxonomy` first you will be golden.\
+                                       Because even though anvi'o found the directory for taxonomy headquarters,\
                                        your setup seems to be missing %d of %d databases required for everything to work\
-                                       with the current genes configuration of this class. Here are the list of\
-                                       genes for which we are missing databases: '%s'." % \
-                                                (len(missing_SCG_databases), len(self.SCGs), ', '.join(missing_SCG_databases)))
+                                       with the current genes configuration of this class (sources say this is a record, FYI)." % \
+                                                (len(missing_SCG_databases), len(self.SCGs)))
 
             if self.__class__.__name__ in ['SCGTaxonomyEstimator']:
                 scg_taxonomy_was_run = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['scg_taxonomy_was_run']
@@ -579,8 +579,8 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
                                   garbage, but hey, at least it runs?")
             else:
                 raise ConfigError("There seems to be too much redundancy of single-copy core genes in this contigs database to assign\
-                                   taxonomy with any confidence :/ A more proper way to do it is to use the `--metagenome` flag. Or\
-                                   you can also tell anvi'o to `--just-do-it`. It is your computer after all.")
+                                   taxonomy with any confidence :/ A more proper way to do it is to use the `--metagenome-mode` flag.\
+                                   Or you can also tell anvi'o to `--just-do-it`. It is your computer after all :(")
 
         splits_in_contigs_database = self.split_name_to_gene_caller_ids_dict.keys()
         contigs_db_taxonomy_dict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(split_names=splits_in_contigs_database,
@@ -962,12 +962,6 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
 
         SCGTaxonomyContext.__init__(self, self.args)
 
-        self.run.info("Local directory to setup", self.SCGs_taxonomy_data_dir)
-        self.run.info("Reset the directory first", self.reset, mc="red")
-        self.run.info("Remote database", self.target_database, nl_before=1, mc="green")
-        self.run.info("Remote URL to download files", self.target_database_URL)
-        self.run.info("Remote files of interest", ', '.join(self.target_database_files))
-
 
     def setup(self):
         """This function downloads all GTDB files necessary to setup the SCG databases anvi'o will rely upon.
@@ -979,25 +973,44 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
         if not anvio.DEBUG:
             self.check_initial_directory_structure()
 
-        self.run.warning("Please remember that the data anvi'o attempts do download on behalf of you are\
+        self.run.warning("Please remember that the data anvi'o uses for SCG taxonomy is a\
                           courtesy of The Genome Taxonomy Database (GTDB), an initiative to establish a \
                           standardised microbial taxonomy based on genome phylogeny, primarly funded by\
                           tax payers in Australia. Please don't forget to cite the original work,\
                           doi:10.1038/nbt.4229 by Parks et al to explicitly mention the source of databases\
-                          anvi'o will use to estimate genome level taxonomy. If you are not sure how it\
+                          anvi'o relies upon to estimate genome level taxonomy. If you are not sure how it\
                           should look like in your methods sections, anvi'o developers will be happy to\
                           help you if you can't find any published example to get inspiration.", lc = 'yellow')
 
-        self.progress.new("%s setup" % self.target_database)
+        # let's try to figure out what do we want to do here. download files or just create/re-create
+        # databases.
+        a_scg_fasta, a_scg_database = list(self.SCGs.values())[0]['fasta'] + '.gz', list(self.SCGs.values())[0]['db']
 
-        self.progress.update("Reading the VERSION file...")
-        content = utils.get_remote_file_content(self.target_database_URL + 'VERSION')
-        version, release_date  = content.strip().split('\n')[0].strip(), content.strip().split('\n')[2].strip()
-        self.progress.end()
+        if os.path.exists(a_scg_fasta) and os.path.exists(a_scg_database) and not self.reset:
+            raise ConfigError("It seems you have both the FASTA files and the search databases for anvi'o SCG taxonomy\
+                               in place. If you want to start from scratch and download everything from GTDB clean, use\
+                               the flag `--reset`.")
 
-        self.run.info("%s release found" % self.target_database, "%s (%s)" % (version, release_date), mc="green")
+        elif self.reset:
+            self.run.info("Local directory to setup", self.SCGs_taxonomy_data_dir)
+            self.run.info("Reset the directory first", self.reset, mc="red")
+            self.run.info("Remote database", self.target_database, nl_before=1, mc="green")
+            self.run.info("Remote URL to download files", self.target_database_URL)
+            self.run.info("Remote files of interest", ', '.join(self.target_database_files))
 
-        self.download_and_format_files()
+            self.progress.new("%s setup" % self.target_database)
+            self.progress.update("Reading the VERSION file...")
+            content = utils.get_remote_file_content(self.target_database_URL + 'VERSION')
+            version, release_date  = content.strip().split('\n')[0].strip(), content.strip().split('\n')[2].strip()
+            self.progress.end()
+
+            self.run.info("%s release found" % self.target_database, "%s (%s)" % (version, release_date), mc="green")
+
+            self.download_and_format_files()
+
+        elif os.path.exists(a_scg_fasta) and not os.path.exists(a_scg_database):
+            self.run.warning("Anvi'o found your FASTA files in place, but not the databases. Now it will generate all\
+                              the search databases using the existing FASTA files.")
 
         self.create_search_databases()
 
@@ -1011,11 +1024,6 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
                 shutil.rmtree(self.SCGs_taxonomy_data_dir)
                 self.run.warning('The existing directory for SCG taxonomy data dir has been removed. Just so you know.')
                 filesnpaths.gen_output_directory(self.SCGs_taxonomy_data_dir)
-
-            else:
-                raise ConfigError("You already seem to have a directory where anvi'o intends to use for setup. If you wish to\
-                                   re-run the setup, please use the flag `--reset` and BE VERY CAREFUL that this\
-                                   directory does not contain anything you don't want to lose: '%s'." % self.SCGs_taxonomy_data_dir)
         else:
             filesnpaths.gen_output_directory(self.SCGs_taxonomy_data_dir)
 
@@ -1061,11 +1069,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
                 self.progress.reset()
                 self.run.info_single('%d of %d seq in %s were all gaps and removed.' % (num_sequences_removed, total_num_sequences, os.path.basename(fasta_file_path)))
 
-        self.progress.end()
-
-
-    def create_search_databases(self):
-        self.progress.new("Creating search databases")
+        # Start formatting things.
         self.progress.update("Checking output directory to store files ...")
         filesnpaths.is_output_dir_writable(os.path.dirname(self.search_databases_dir_path))
         filesnpaths.gen_output_directory(self.search_databases_dir_path, delete_if_exists=True, dont_warn=True)
@@ -1092,14 +1096,14 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
                                output: %s" % (len(missing_msa_gene_names), ', '.join(missing_msa_gene_names), self.msa_individual_genes_dir_path))
         else:
             self.progress.reset()
-            self.run.info_single("Good news! Conversion dict and FASTA files it requires seem to be all in place.\
-                                  Anvi'o will now proceed to merge %d FASTA files that correspond to %d SCGs, and\
+            self.run.info_single("Good news! The conversion dict and the FASTA files it requires seem to be in place.\
+                                  Anvi'o is now ready to to merge %d FASTA files that correspond to %d SCGs, and\
                                   create individual search databases for them." % \
                                         (len(msa_individual_gene_names_required), len(locally_known_HMMs_to_remote_FASTAs)), nl_before=1, nl_after=1, mc="green")
 
         # Merge FASTA files that should be merged. This is defined in the conversion dictionary.
         for SCG in locally_known_HMMs_to_remote_FASTAs:
-            self.progress.update("Working on %s in %d threads" % (SCG, self.num_threads))
+            self.progress.update("Working on %s ..." % (SCG))
 
             files_to_concatenate = [os.path.join(self.msa_individual_genes_dir_path, f) for f in locally_known_HMMs_to_remote_FASTAs[SCG]]
             FASTA_file_for_SCG = os.path.join(self.search_databases_dir_path, SCG)
@@ -1107,16 +1111,48 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
             # concatenate from the dictionary into the new destination
             utils.concatenate_files(FASTA_file_for_SCG, files_to_concatenate)
 
+            # compress the FASTA file
+            utils.gzip_compress_file(FASTA_file_for_SCG)
+
+        self.progress.end()
+
+
+    def create_search_databases(self):
+        """Creates all the search databases"""
+
+        self.progress.new("Creating search databases")
+        self.progress.update("Removing any database that still exists in the output directory...")
+        [os.remove(database_path) for database_path in [s['db'] for s in self.SCGs.values()] if os.path.exists(database_path)]
+
+        self.progress.update("Decompressing FASTA files")
+        [utils.gzip_decompress_file(fasta_path + '.gz', fasta_path, keep_original=False) for fasta_path in [s['fasta'] for s in self.SCGs.values()] if os.path.exists(fasta_path + '.gz')]
+
+        missing_FASTA_files = [fasta_path for fasta_path in [s['fasta'] for s in self.SCGs.values()] if not os.path.exists(fasta_path)]
+        if len(missing_FASTA_files):
+            raise ConfigError("Weird news :( Anvi'o is missing some FASTA files that were supposed to be somewhere. Since this\
+                               can't be your fault, it is not easy to advice what could be the solution to this. But you can\
+                               always try to re-run `anvi-setup-scg-taxonomy` with `--reset` flag.")
+
+        # Merge FASTA files that should be merged. This is defined in the conversion dictionary.
+        for SCG in self.SCGs:
+            self.progress.update("Working on %s in %d threads" % (SCG, self.num_threads))
+
+            FASTA_file_for_SCG = self.SCGs[SCG]['fasta']
+
             # create a diamond search database for `FASTA_file_for_SCG`
             diamond = Diamond(query_fasta=FASTA_file_for_SCG, run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
             diamond.makedb(output_file_path=FASTA_file_for_SCG + ".dmnd")
 
-            # compress the FASTA file
-            utils.gzip_compress_file(FASTA_file_for_SCG)
+        self.progress.update("Compressing FASTA files")
+        [utils.gzip_compress_file(fasta_path) for fasta_path in [s['fasta'] for s in self.SCGs.values()]]
 
-        self.progress.reset()
-        self.run.info_single("Another good news. All FASTA files that were supposed to be merged were merged and\
-                              turned into fancy search databases.", nl_after=1, mc="green")
+        self.progress.end()
+        self.run.info_single("Every FASTA is now turned into a fancy search database. It means you are now allowed to run \
+                              `anvi-run-scg-taxonomy` on anvi'o contigs databases. This workflow is very new, and there are\
+                              caveats to it just like every other computational approach you use to make sense of complex 'omics\
+                              data. To better understand those caveats you should read our online documentation a bit. If you see\
+                              things that concerns you, please let anvi'o developers know. They love bad news. If you get good\
+                              results from this workflow, thank to those who contributed to the GTDB.", nl_after=1, mc="green")
 
 
     def clean_up(self):
