@@ -250,12 +250,6 @@
                                             <span class="grid_details" style="display: none; margin-left:5px; float-left;">Width: <input id="grid_width" size="2" value="1" onchange="emit('bin-settings-changed');" /></span>
                                         </div>
                                 </div>
-                                <div class="form-group form-margin full-mode pan-mode gene-mode" style="display: none">
-                                        <label class="col-md-4 settings-label" for="estimate_taxonomy" data-help="estimate-taxonomy">Estimate taxonomy:</label>  
-                                        <div class="col-md-8">
-                                            <input type="checkbox" id="estimate_taxonomy" name="checkbox" value="value" onchange="bins.UpdateBinsWindow(); if (this.checked) { $('#show_taxonomy_button').removeClass('disabled').prop('disabled', false); } else { $('#show_taxonomy_button').addClass('disabled').prop('disabled', true); }">
-                                        </div>
-                                </div> 
 
                                 <span class="settings-header">Layers</span>
                                 <div class="form-group form-margin">
@@ -381,6 +375,14 @@
                     <div role="tabpanel" class="tab-pane fade in" id="bin_settings">
                         <div id="bin-settings" class="form-horizontal">
                             <div class="panel-body">
+
+                                <div class="form-group form-margin full-mode">
+                                    <p id="estimate-taxonomy-check">
+                                        <input type="checkbox" id="estimate_taxonomy" name="checkbox" value="value" onchange="bins.UpdateBinsWindow(); if (this.checked) { $('#show_taxonomy_button').removeClass('disabled').prop('disabled', false); } else { $('#show_taxonomy_button').addClass('disabled').prop('disabled', true); }">
+                                        Realtime taxonomy estimation for bins (whenever possible).
+                                    </p>
+                                </div>
+
                                 <table class="table sortable" id="bins-table">
                                     <thead id="thead_bins">
                                         <tr>
