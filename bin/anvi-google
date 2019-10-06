@@ -1,19 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-import os
 import sys
-import glob
 import argparse
 import textwrap
-import tabulate
-import numpy as np
 import pandas as pd
 
 from colored import fore, back, style
 from operator import itemgetter
 from itertools import groupby
-from collections import OrderedDict
 
 import anvio
 import anvio.utils as utils
@@ -116,7 +111,7 @@ class ProgramSearch:
 
         try:
             _, description, _, _ = p.parse_help_output(output)
-        except Exception as e:
+        except Exception:
             return ''
 
         return description.replace('\n', '')
