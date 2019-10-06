@@ -753,7 +753,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['item_orders'] = item_orders
         self.p_meta['available_item_orders'] = list(self.item_orders.keys())
         self.p_meta['default_item_order'] = default_item_order
-        
+
         self.add_user_tree()
 
         if self.skip_hierarchical_clustering and not self.tree:
@@ -875,7 +875,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             if completion_redundancy_available:
                 # get completeness estimate
                 p_completion, p_redundancy, domain, domain_probabilities, info_text, _ = completeness.get_info_for_splits(set(self.collection[bin_id]))
-                domain_confidence = domain_probabilities[domain] if domain else 0.0
 
             for view in self.views:
                 self.views[view]['dict'][bin_id]['bin_name'] = bin_id
@@ -1471,14 +1470,14 @@ class StructureInteractive(VariabilitySuper):
         try:
             self.full_variability.filter_data(criterion="corresponding_gene_call",
                                               subset_filter=self.available_genes)
-        except self.EndProcess as e:
+        except self.EndProcess:
             raise ConfigError("This is really sad. There is no overlap between the gene IDs in your\
                                structure database and the gene IDs in your variability table.")
 
         try:
             self.full_variability.filter_data(criterion="departure_from_consensus",
                                               min_filter=self.min_departure_from_consensus)
-        except self.EndProcess as e:
+        except self.EndProcess:
             raise ConfigError("This is really sad. There are no entries in your variability table\
                                with a departure_from_consensus less than {}. Try setting\
                                --min-departure-from-consensus to 0.".format(self.min_departure_from_consensus))
@@ -1832,7 +1831,7 @@ class StructureInteractive(VariabilitySuper):
            inheriting this method.
         """
         # use class-wide attributes if no parameters are passed
-        if available_gene_caller_ids is "" and available_genes_path is "":
+        if available_gene_caller_ids == "" and available_genes_path == "":
             available_gene_caller_ids = self.available_gene_caller_ids
             available_genes_path = self.available_genes_path
 
@@ -1906,7 +1905,7 @@ class StructureInteractive(VariabilitySuper):
            method.
         """
         # use class-wide attributes if no parameters are passed
-        if available_samples_path is "":
+        if available_samples_path == "":
             available_samples_path = self.available_samples_path
 
         # method inherited from VariabilitySuper
