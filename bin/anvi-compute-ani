@@ -13,7 +13,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Ozcan Esen"
 __email__ = "ozcanesen@gmail.com"
-__description__ = ("This program no longer functions, and has been superseded by the beefier `anvi-compute-genome-similarity`")
+__description__ = ("This program has been superseded by the beefier `anvi-compute-genome-similarity`")
 
 
 def main(args):
