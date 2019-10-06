@@ -97,6 +97,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.collection_name = A('collection_name')
         self.gene_mode = A('gene_mode')
         self.inspect_split_name = A('split_name')
+        self.just_do_it = A('just_do_it')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
 
 
@@ -693,8 +694,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.p_meta['available_item_orders'].append('alphabetical')
 
         if not self.inspect_split_name or self.inspect_split_name not in self.displayed_item_names_ordered:
-            raise ConfigError("Either you forgot to provide split name to inspect or the split name\
-                             you have provided does not exist.")
+            if self.just_do_it:
+                self.inspect_split_name = alphabetical_order['data'][0]
+                self.run.warning("Since you have asked so kindly, anvi'o decided to start the interactive\
+                                  interface with this split: %s" % self.inspect_split_name)
+            else:
+                raise ConfigError("Either you forgot to provide a split name to `anvi-inspect` or the split name\
+                                   you have provided does not exist. If you don't care and want to start the\
+                                   interactive inteface with a random split from the profile database, please use\
+                                   the flag `--just-do-it`")
 
 
     def load_refine_mode(self):
