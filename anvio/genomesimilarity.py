@@ -85,7 +85,7 @@ class Dereplicate:
         if self.program_name in ['pyANI']:
             return 'percentage_identity' if not self.use_full_percent_identity else 'full_percentage_identity'
         elif self.program_name in ['sourmash']:
-            return 'mash_similarity'
+            return 'sourmash_mash_similarity'
 
 
     def is_genome_names_compatible_with_similarity_matrix(self, similarity_matrix, genome_names):
@@ -234,7 +234,7 @@ class Dereplicate:
 
         if filesnpaths.is_dir_empty(dir_path):
             raise ConfigError("The %s you provided is empty. What kind of game are you playing?" % dir_name)
-        files_in_dir = os.listdir(self.ani_dir)
+        files_in_dir = os.listdir(dir_path)
 
         for report in necessary_reports:
             report_name = report + ".txt"
