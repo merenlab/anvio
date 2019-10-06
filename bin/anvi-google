@@ -37,7 +37,7 @@ TABLE_BG = back.GREY_11
 TABLE_FG = fore.GREY_100
 TABLE_STYLE = TABLE_BG + TABLE_FG
 HIGHLIGHT_BG = back.GREY_11
-HIGHLIGHT_FG = fore.LIGHT_CYAN
+HIGHLIGHT_FG = fore.GREEN
 HIGHLIGHT_STYLE = HIGHLIGHT_BG + HIGHLIGHT_FG
 COL_WIDTH = 20 # Does not apply to the description column, which is extended if possible to fill terminal width
 
