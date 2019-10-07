@@ -572,7 +572,7 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
 
                 if (!$('#estimate_taxonomy').is(':checked')) {
                     // don't continue running, if this is unchecked
-                    return;
+                    continue;
                 }
 
                 let collection_data = {};
