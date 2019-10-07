@@ -584,7 +584,7 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                 });
 
                 if (!$('#estimate_taxonomy').is(':checked')) {
-                    return;
+                    continue;
                 }
 
                 let collection_data = {};
