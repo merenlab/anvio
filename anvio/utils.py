@@ -374,6 +374,8 @@ def gzip_decompress_file(input_file_path, output_file_path=None, keep_original=T
     if not keep_original:
         os.remove(input_file_path)
 
+    return output_file_path
+
 
 def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
     """Uses subprocess.call to run your `cmdline`"""
