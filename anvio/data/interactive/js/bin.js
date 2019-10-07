@@ -40,6 +40,7 @@ function Bins(prefix, container) {
     this.future = [];
 
     document.body.addEventListener('bin-settings-changed', (event) => this.RedrawBins());
+    $(document).on('sorted', () => { this.BinsSorted(); });
 };
 
 
@@ -93,7 +94,7 @@ Bins.prototype.NewBin = function(id, binState) {
                        `}
                        <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
                     </tr>
-                    <tr style="display: none;">
+                    <tr style="display: none;" data-parent="${id}">
                             <td style="border-top: 0px;">&nbsp;</td>
                             <td style="border-top: 0px;">&nbsp;</td>
                             <td colspan="6" style="border-top: 0px; padding-top: 0px;">
@@ -445,6 +446,18 @@ Bins.prototype.IsNodeMemberOfBin = function(node) {
     }
     return false;
 };
+
+
+Bins.prototype.BinsSorted = function() {
+    // move every taxonomy row after their original parent.
+    this.container.querySelectorAll('[data-parent]').forEach((elem) => { 
+        let taxonomy_row = elem.parentNode.removeChild(elem);
+        let parent_bin_id = elem.getAttribute('data-parent');
+
+        let parent_row = this.container.querySelector(`tr[bin-id="${parent_bin_id}"]`);
+        parent_row.insertAdjacentHTML('afterend', taxonomy_row.outerHTML);
+    });
+}
 
 
 Bins.prototype.UpdateBinsWindow = function(bin_list) {
