@@ -1297,10 +1297,13 @@ class BottleApplication(Bottle):
 
 
     def get_taxonomy(self):
-        if not self.scg_taxonomy:
-            return
-
         collection = json.loads(request.forms.get('collection'))
+
+        if not self.scg_taxonomy:
+            run.warning('Taxonomy estimation requested for the bin(s) "%s". \
+                         However taxonomy estimation is not available for this project. \
+                         Please run "anvi-run-scg-taxonomy" program first.' % (", ".join(collection.keys())))
+            return json.dumps({'status': 1})
 
         output = {}
         try:

@@ -2513,7 +2513,6 @@ function shutdownServer()
 function showTaxonomy()
 {
     if (!$('#estimate_taxonomy').is(':checked')) {
-        // don't continue running, if this is unchecked
         return;
     }
 
@@ -2526,8 +2525,12 @@ function showTaxonomy()
             'collection': JSON.stringify(collection_info['data'], null, 4), 
         },
         success: (response) => {
-            if (response.hasOwnProperty('status')) {
-                toastr.error("Taxonomy estimation failed, please see terminal for details.", 'Server');
+            if (response.hasOwnProperty('status') && data.status != 0) {
+                if ($('#estimate_taxonomy').is(':checked')) {
+                    toastr.error("Taxonomy estimation failed, please see terminal for details.\
+                                  Automatic taxonomy estimation unchecked for now.", 'Server');
+                }
+                $('#estimate_taxonomy').prop('checked', false);
                 return;
             }
 
