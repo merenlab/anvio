@@ -571,8 +571,7 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                 });
 
                 if (!$('#estimate_taxonomy').is(':checked')) {
-                    // don't continue running, if this is unchecked
-                    continue;
+                    return;
                 }
 
                 let collection_data = {};
@@ -592,6 +591,14 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                         'collection': JSON.stringify(collection_data)
                     },
                     success: (data) => {
+                        if (data.hasOwnProperty('status') && data.status != 0) {
+                            if ($('#estimate_taxonomy').is(':checked')) {
+                                toastr.error("Taxonomy estimation failed, please see terminal for details.\
+                                              Automatic taxonomy estimation unchecked for now.", 'Server');
+                            }
+                            $('#estimate_taxonomy').prop('checked', false);
+                            return;
+                        }
                         if (data.hasOwnProperty(bin_name)) {
                             let order = ["t_domain", "t_phylum", "t_class",
                                          "t_order", "t_family", "t_genus", "t_species"];
