@@ -378,8 +378,8 @@
 
                                 <div class="form-group form-margin full-mode">
                                     <p id="estimate-taxonomy-check">
-                                        <input type="checkbox" id="estimate_taxonomy" name="checkbox" value="value" onchange="bins.UpdateBinsWindow(); if (this.checked) { $('#show_taxonomy_button').removeClass('disabled').prop('disabled', false); } else { $('#show_taxonomy_button').addClass('disabled').prop('disabled', true); }">
-                                        Realtime taxonomy estimation for bins (whenever possible).
+                                        <input type="checkbox" id="estimate_taxonomy" value="value" onclick="this.onchange();" onchange="bins.UpdateBinsWindow(); if (this.checked) { $('#show_taxonomy_button').removeClass('disabled').prop('disabled', false); } else { $('#show_taxonomy_button').addClass('disabled').prop('disabled', true); }">
+                                        <label for="estimate_taxonomy">Realtime taxonomy estimation for bins (whenever possible).</label>
                                     </p>
                                 </div>
 
