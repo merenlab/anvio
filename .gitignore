@@ -8,6 +8,7 @@ test-output/
 anvio/extensions/concoct/vbgmm.c
 anvio/data/misc/COG/
 anvio/data/misc/MODELLER/db/
+anvio/data/misc/SCG_TAXONOMY/
 smtp_config.ini
 .snakemake
 anvio/data/misc/SCG_test
