@@ -1122,27 +1122,40 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
         self.progress.update("Removing any database that still exists in the output directory...")
         [os.remove(database_path) for database_path in [s['db'] for s in self.SCGs.values()] if os.path.exists(database_path)]
 
-        self.progress.update("Decompressing FASTA files")
-        [utils.gzip_decompress_file(fasta_path + '.gz', fasta_path, keep_original=False) for fasta_path in [s['fasta'] for s in self.SCGs.values()] if os.path.exists(fasta_path + '.gz')]
+        # compresssing and decompressing FASTA files changes their hash and make them look like
+        # modified in git. to avoid that, we will do the database generation in a temporary directory.
+        temp_dir = filesnpaths.get_temp_directory_path()
 
-        missing_FASTA_files = [fasta_path for fasta_path in [s['fasta'] for s in self.SCGs.values()] if not os.path.exists(fasta_path)]
+        self.progress.update("Copying FASTA files to %s ..." % (temp_dir))
+        # the following line basically returns a dictionary that shows the new path
+        # of the FASTA file under temp_dir for a given SCG .. apologies for the
+        # incomprehensible list comprehension
+        new_paths = dict([(os.path.basename(fasta_path), shutil.copy((fasta_path + '.gz'), os.path.join(temp_dir, os.path.basename(fasta_path) + '.gz'))) for fasta_path in [s['fasta'] for s in self.SCGs.values()]])
+
+        missing_FASTA_files = [SCG for SCG in self.SCGs if not os.path.exists(new_paths[SCG])]
         if len(missing_FASTA_files):
             raise ConfigError("Weird news :( Anvi'o is missing some FASTA files that were supposed to be somewhere. Since this\
                                can't be your fault, it is not easy to advice what could be the solution to this. But you can\
                                always try to re-run `anvi-setup-scg-databases` with `--reset` flag.")
 
+        self.progress.update("Decompressing FASTA files in %s" % (temp_dir))
+        new_paths = dict([(SCG, utils.gzip_decompress_file(new_paths[SCG], keep_original=False)) for SCG in new_paths])
+
         # Merge FASTA files that should be merged. This is defined in the conversion dictionary.
         for SCG in self.SCGs:
             self.progress.update("Working on %s in %d threads" % (SCG, self.num_threads))
 
-            FASTA_file_for_SCG = self.SCGs[SCG]['fasta']
+            FASTA_file_path_for_SCG = new_paths[SCG]
 
-            # create a diamond search database for `FASTA_file_for_SCG`
-            diamond = Diamond(query_fasta=FASTA_file_for_SCG, run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
-            diamond.makedb(output_file_path=FASTA_file_for_SCG + ".dmnd")
+            # create a diamond search database for `FASTA_file_path_for_SCG`
+            diamond = Diamond(query_fasta=FASTA_file_path_for_SCG, run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
+            diamond.makedb(output_file_path=self.SCGs[SCG]['db'])
 
-        self.progress.update("Compressing FASTA files")
-        [utils.gzip_compress_file(fasta_path) for fasta_path in [s['fasta'] for s in self.SCGs.values()]]
+            if not os.path.exists(self.SCGs[SCG]['db']):
+                raise ConfigError("Something went wrong and DIAMOND did not create the database file it was supposed to\
+                                   for %s :(" % SCG)
+
+        shutil.rmtree(temp_dir)
 
         self.progress.end()
         self.run.info_single("Every FASTA is now turned into a fancy search database. It means you are now allowed to run \
