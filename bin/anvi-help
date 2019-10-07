@@ -1,19 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
-import os
 import sys
-import glob
 import argparse
 import textwrap
-import tabulate
-import numpy as np
 import pandas as pd
 
 from colored import fore, back, style
 from operator import itemgetter
 from itertools import groupby
-from collections import OrderedDict
 
 import anvio
 import anvio.utils as utils
@@ -42,12 +37,13 @@ TABLE_BG = back.GREY_11
 TABLE_FG = fore.GREY_100
 TABLE_STYLE = TABLE_BG + TABLE_FG
 HIGHLIGHT_BG = back.GREY_11
-HIGHLIGHT_FG = fore.LIGHT_CYAN
+HIGHLIGHT_FG = fore.GREEN
 HIGHLIGHT_STYLE = HIGHLIGHT_BG + HIGHLIGHT_FG
 COL_WIDTH = 20 # Does not apply to the description column, which is extended if possible to fill terminal width
 
 T = lambda x, l=COL_WIDTH: textwrap.TextWrapper(width=l, break_on_hyphens=True, break_long_words=True).fill(text=x)
 F = lambda x, l=COL_WIDTH: textwrap.TextWrapper(width=l, break_on_hyphens=False, break_long_words=False).fill(text=x)
+D = lambda x, l=COL_WIDTH: textwrap.TextWrapper(width=l, break_on_hyphens=True, break_long_words=True).fill(text=x).replace('<>', '\n')
 
 class ProgramSearch:
     def __init__(self, args):
@@ -60,7 +56,7 @@ class ProgramSearch:
         self.report = A('report', null)
 
         self.headers_to_report = []
-        self.headers = ['Program', 'Description', 'Tags', 'Provides', 'Requires', 'Resources', 'Status']
+        self.headers = ['Program', 'Description', 'Tags', 'Provides', 'Requires', 'Status']
         self.table = pd.DataFrame([], columns = self.headers)
 
         self.handle_inputs()
@@ -76,7 +72,7 @@ class ProgramSearch:
         if self.headers_to_report:
             return
 
-        self.headers_to_report = ['Program', 'Description', 'Resources', 'Provides', 'Requires']
+        self.headers_to_report = ['Program', 'Description', 'Provides', 'Requires']
 
 
     def handle_inputs(self):
@@ -116,7 +112,7 @@ class ProgramSearch:
 
         try:
             _, description, _, _ = p.parse_help_output(output)
-        except Exception as e:
+        except Exception:
             return ''
 
         return description.replace('\n', '')
@@ -128,15 +124,22 @@ class ProgramSearch:
             status = program.meta_info['status']['value']
             provides = [item.id for item in program.meta_info['provides']['value']]
             requires = [item.id for item in program.meta_info['requires']['value']]
-            resources = program.meta_info['resources']['value']
             description = program.meta_info['description']['value']
+
+            resources = program.meta_info['resources']['value']
 
             if not len(description):
                 # Yes, it can be learned from parse_description_from_program_call,
                 # No, it is not worth waiting ~1s for.
                 pass
 
-            row_info = [program.name, description, tags, provides, requires, resources, status]
+            # if there are resources listed for the program, add them at the end of the description
+            if len(resources):
+                resources_text = '<><>'.join(['%s: %s' % (r) for r in resources])
+
+                description += "<><>RESOURCES:<><>%s<>" % (resources_text)
+
+            row_info = [program.name, description, tags, provides, requires, status]
             row = dict(zip(self.headers, row_info))
             self.table = self.table.append(row, ignore_index = True)
 
@@ -240,15 +243,11 @@ class ProgramSearch:
 
     def make_row_printable(self, row, description_width=None):
         for header, info in row.iteritems():
-            if header == 'Resources':
-                resources = [T(resource[0] + ':') + '\n' + T(resource[1]) for resource in info]
-                formatted_info = '\n\n'.join(resources)
-
-            elif header == 'Program':
+            if header == 'Program':
                 formatted_info = F(info) # never linebreaks the program name
 
             elif header == 'Description':
-                formatted_info = T(info, description_width) if description_width else T(info)
+                formatted_info = D(info, description_width) if description_width else D(info)
 
             elif type(info) == list:
                 formatted_info = '\n\n'.join([T(str(item)) for item in info])
