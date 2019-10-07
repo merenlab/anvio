@@ -2641,3 +2641,19 @@ function showTaxonomy()
         }
     });
 }
+
+
+function toggleTaxonomyEstimation() {
+    let is_checked = $('#estimate_taxonomy').is(':checked');
+
+    if (is_checked) {
+        $('#show_taxonomy_button').removeClass('disabled').prop('disabled', false);
+    } else {
+        $('#show_taxonomy_button').addClass('disabled').prop('disabled', true);
+        $('.taxonomy-name-label').each((index, elem) => { 
+            $(elem).closest('tr').hide();
+        });
+    }
+
+    bins.UpdateBinsWindow();
+}
