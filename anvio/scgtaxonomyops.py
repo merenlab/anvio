@@ -203,7 +203,7 @@ class SCGTaxonomyContext(object):
             if self.__class__.__name__ in ['PopulateContigsDatabaseWithSCGTaxonomy']:
                 missing_SCG_databases = [SCG for SCG in self.SCGs if not os.path.exists(self.SCGs[SCG]['db'])]
                 if len(missing_SCG_databases):
-                    raise ConfigError("OK. It is very likley that if you run `anvi-setup-scg-taxonomy` first you will be golden.\
+                    raise ConfigError("OK. It is very likley that if you run `anvi-setup-scg-databases` first you will be golden.\
                                        Because even though anvi'o found the directory for taxonomy headquarters,\
                                        your setup seems to be missing %d of %d databases required for everything to work\
                                        with the current genes configuration of this class (sources say this is a record, FYI)." % \
@@ -1129,7 +1129,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
         if len(missing_FASTA_files):
             raise ConfigError("Weird news :( Anvi'o is missing some FASTA files that were supposed to be somewhere. Since this\
                                can't be your fault, it is not easy to advice what could be the solution to this. But you can\
-                               always try to re-run `anvi-setup-scg-taxonomy` with `--reset` flag.")
+                               always try to re-run `anvi-setup-scg-databases` with `--reset` flag.")
 
         # Merge FASTA files that should be merged. This is defined in the conversion dictionary.
         for SCG in self.SCGs:
