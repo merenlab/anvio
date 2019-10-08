@@ -94,7 +94,7 @@ Bins.prototype.NewBin = function(id, binState) {
                        `}
                        <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
                     </tr>
-                    <tr style="display: none;" data-parent="${id}">
+                    <tr style="${ $('#estimate_taxonomy').is(':checked') ? `` : `display: none;`}" data-parent="${id}">
                             <td style="border-top: 0px;">&nbsp;</td>
                             <td style="border-top: 0px;">&nbsp;</td>
                             <td colspan="6" style="border-top: 0px; padding-top: 0px;">
