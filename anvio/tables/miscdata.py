@@ -131,12 +131,13 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         # not all additional data table types have data_group concept
-        if data_groups_list and 'data_group' not in database.get_table_structure(self.table_name):
-            raise ConfigError("You clearly are interestd in removing some data groups from your profile database\
-                               but the additional data table for %s does not have data groups :/ Perhaps you are\
-                               looking for the parameter `--keys-to-remove`?" % self.target_table)
-        else:
-            additional_data_groups = sorted(database.get_single_column_from_table(self.table_name, 'data_group', unique=True))
+        if data_groups_list:
+            if 'data_group' not in database.get_table_structure(self.table_name):
+                raise ConfigError("You seem to be interested in removing some data groups from your profile database\
+                                   but the additional data table for %s does not have data groups :/ Perhaps you are\
+                                   looking for the parameter `--keys-to-remove`?" % self.target_table)
+            else:
+                additional_data_groups = sorted(database.get_single_column_from_table(self.table_name, 'data_group', unique=True))
 
         additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True))
 
@@ -324,11 +325,11 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         looks_like_layer_orders = sorted(list(data_dict.values())[0].keys()) == sorted(['data_type', 'data_value']) or \
                                   sorted(list(data_dict.values())[0].keys()) == sorted(['basic', 'newick'])
 
-        if looks_like_layer_orders and data_dict_type is not 'layer_orders':
+        if looks_like_layer_orders and data_dict_type != 'layer_orders':
             raise ConfigError("The data you sent here seems to describe an order, but you want anvi'o to treat it\
                                as additional data for %s. Not cool." % self.target_table)
 
-        if not looks_like_layer_orders and data_dict_type is 'layer_orders':
+        if not looks_like_layer_orders and data_dict_type == 'layer_orders':
             raise ConfigError("The data that claims to be a layer order data do not seem to be one.")
 
         if data_keys_list:
