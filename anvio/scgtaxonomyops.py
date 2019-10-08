@@ -165,7 +165,7 @@ class SCGTaxonomyContext(object):
                                     # species itself may have a subclade, such as this one, 'Corynebacterium aurimucosum_C', so we
                                     # neeed to make sure the subclades are removed from all words in the species level
                                     # taxonomy string.
-                                    d[self.letter_to_level[letter]] = ' '.join(['_'.join(word.split('_')[:-1]) if '_' in word else word for word in taxon.split()])
+                                    d[self.letter_to_level[letter]] = ' '.join(['_'.join(word.split('_')[:-1]) if '_' in word else word for word in taxon.split(' ')])
                             else:
                                 d[self.letter_to_level[letter]] = taxon
                         else:
