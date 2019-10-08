@@ -606,8 +606,7 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                     success: (data) => {
                         if (data.hasOwnProperty('status') && data.status != 0) {
                             if ($('#estimate_taxonomy').is(':checked')) {
-                                toastr.error("Taxonomy estimation failed, please see terminal for details.\
-                                              Automatic taxonomy estimation unchecked for now.", 'Server');
+                                toastr.error('"' + data.message + '", the server said.', "The anvi'o headquarters is upset");
                             }
                             $('#estimate_taxonomy').prop('checked', false);
                             return;
