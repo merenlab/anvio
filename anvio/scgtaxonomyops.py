@@ -148,6 +148,7 @@ class SCGTaxonomyContext(object):
                     #    d__Bacteria;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Enterococcaceae;g__Enterococcus_B;s__Enterococcus_B faecalis
                     #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Pseudomonadales;f__Moraxellaceae;g__Acinetobacter;s__Acinetobacter sp1
                     #    d__Bacteria;p__Firmicutes;c__Bacilli;o__Bacillales;f__Bacillaceae_G;g__Bacillus_A;s__Bacillus_A cereus_AU
+                    #    d__Bacteria;p__Firmicutes_A;c__Clostridia;o__Tissierellales;f__Helcococcaceae;g__Finegoldia;s__Finegoldia magna_H
                     #
                     d = {}
                     for letter, taxon in [e.split('__', 1) for e in taxonomy_text.split(';')]:
@@ -164,7 +165,7 @@ class SCGTaxonomyContext(object):
                                     # species itself may have a subclade, such as this one, 'Corynebacterium aurimucosum_C', so we
                                     # neeed to make sure the subclades are removed from all words in the species level
                                     # taxonomy string.
-                                    d[self.letter_to_level[letter]] = ' '.join(['_'.join(word.split('_')[:-1]) for word in taxon.split()])
+                                    d[self.letter_to_level[letter]] = ' '.join(['_'.join(word.split('_')[:-1]) if '_' in word else word for word in taxon.split()])
                             else:
                                 d[self.letter_to_level[letter]] = taxon
                         else:
