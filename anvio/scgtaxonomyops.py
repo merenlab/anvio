@@ -142,22 +142,33 @@ class SCGTaxonomyContext(object):
             self.accession_to_taxonomy_dict = {}
             with open(self.accession_to_taxonomy_file_path, 'r') as taxonomy_file:
                 for accession, taxonomy_text in [l.strip('\n').split('\t') for l in taxonomy_file.readlines() if not l.startswith('#') and l]:
-                    # taxonomy_text kinda looks like this:
+                    # taxonomy_text kinda looks like these:
                     #
+                    #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Burkholderiales;f__Burkholderiaceae;g__Alcaligenes;s__Alcaligenes faecalis_C
+                    #    d__Bacteria;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Enterococcaceae;g__Enterococcus_B;s__Enterococcus_B faecalis
                     #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Pseudomonadales;f__Moraxellaceae;g__Acinetobacter;s__Acinetobacter sp1
+                    #    d__Bacteria;p__Firmicutes;c__Bacilli;o__Bacillales;f__Bacillaceae_G;g__Bacillus_A;s__Bacillus_A cereus_AU
                     #
                     d = {}
                     for letter, taxon in [e.split('__', 1) for e in taxonomy_text.split(';')]:
                         if letter in self.letter_to_level:
-                            # if 'species' level taxon name does not include an underscore, it usually is simply the
-                            # assignment of the genus name as species name. which is not quite useful for our needs.
-                            # so the following if statement removes those species level annotations.
-                            if letter == 's' and '_' not in taxon:
-                                d[self.letter_to_level[letter]] = None
+                            # NOTE: This is VERY important. Here we are basically removing subclades GTDB defines for
+                            # simplicity. We may have to change this behavior later. So basically, Enterococcus_B will
+                            # become Enterococcus
+                            if '_' in taxon:
+                                if letter != 's':
+                                    d[self.letter_to_level[letter]] = '_'.join(taxon.split('_')[:-1])
+                                else:
+                                    # special treatment for species level taxonomy string.
+                                    # the genus is copied for the species level taxonomy, such as this one, 'Bacillus_A cereus', or
+                                    # species itself may have a subclade, such as this one, 'Corynebacterium aurimucosum_C', so we
+                                    # neeed to make sure the subclades are removed from all words in the species level
+                                    # taxonomy string.
+                                    d[self.letter_to_level[letter]] = ' '.join(['_'.join(word.split('_')[:-1]) for word in taxon.split()])
                             else:
                                 d[self.letter_to_level[letter]] = taxon
                         else:
-                            self.run.warning("Some weird letter found in '%s'. " % taxonomy_text)
+                            self.run.warning("Some weird letter found in '%s' :(" % taxonomy_text)
 
                     self.accession_to_taxonomy_dict[accession] = d
 
