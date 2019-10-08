@@ -2521,12 +2521,8 @@ function showTaxonomy()
             'collection': JSON.stringify(collection_info['data'], null, 4), 
         },
         success: (response) => {
-            if (response.hasOwnProperty('status') && data.status != 0) {
-                if ($('#estimate_taxonomy').is(':checked')) {
-                    toastr.error("Taxonomy estimation failed, please see terminal for details.\
-                                  Automatic taxonomy estimation unchecked for now.", 'Server');
-                }
-                $('#estimate_taxonomy').prop('checked', false);
+            if (response.hasOwnProperty('status') && response.status != 0) {
+                toastr.error('"' + response.message + '", the server said.', "The anvi'o headquarters is upset");
                 return;
             }
 
