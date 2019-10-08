@@ -615,7 +615,6 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                             let order = ["t_domain", "t_phylum", "t_class",
                                          "t_order", "t_family", "t_genus", "t_species"];
 
-                            bin_row.nextElementSibling.style.display = '';
                             this.container.querySelector(`span.taxonomy-name-label[bin-id="${bin_id}"]`).innerHTML = " (?) Unknown";
 
                             for (let i=order.length-1; i >= 0; i--) {
