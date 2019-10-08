@@ -281,6 +281,8 @@ function showTaxonomyTableDialog(title, content)
         $(this).remove();
     });
 
+    // trigger bootstrap-sortable in case newly generated page content may have sortable tables.
+    $.bootstrapSortable({ applyLast: true })
 }
 
 function showDraggableDialog(title, content, updateOnly)
@@ -319,6 +321,9 @@ function showDraggableDialog(title, content, updateOnly)
     $('#modal' + randomID).on('hidden.bs.modal', function () {
         $(this).remove();
     });
+
+    // trigger bootstrap-sortable in case newly generated page content may have sortable tables.
+    $.bootstrapSortable({ applyLast: true })
 }
 
 //--------------------------------------------------------------------------------------------------
