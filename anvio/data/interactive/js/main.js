@@ -2555,7 +2555,7 @@ function showTaxonomy()
                 let d = response[bin_name];
 
                 content += `<tr>
-                    <td><a data-toggle="collapse" data-parent="#panel-${ bin_name }" href="#collapse-${ bin_name }">${ bin_name }</a></td>
+                    <td><a data-toggle="collapse" data-parent="#panel-${ bin_name }" href="#collapse-${ bin_name }"><i class="glyphicon glyphicon-chevron-right"></i>&nbsp;${ bin_name }</a></td>
                     <td class="text-center">${ d['total_scgs'] }</td>
                     <td class="text-center">${ d['supporting_scgs'] }</td>`;
 
@@ -2634,6 +2634,14 @@ function showTaxonomy()
             });
 
             showTaxonomyTableDialog('Detailed Table for Taxonomy Estimation', content + '</table>');
+
+            $('.panel-collapse').on('show.bs.collapse', function () {
+                $(this).prev().find('i.glyphicon').removeClass('glyphicon-chevron-right').addClass('glyphicon-chevron-down');
+            });
+
+            $('.panel-collapse').on('hide.bs.collapse', function () {
+               $(this).prev().find('i.glyphicon').removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-right');
+            });
         }
     });
 }

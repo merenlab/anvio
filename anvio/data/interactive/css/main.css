@@ -754,3 +754,10 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     clear: both;
     display: table;
 }
+
+.taxonomyTableDialog i.glyphicon {
+   font-family: 'Glyphicons Halflings';
+    font-size: 10px;
+    top: 1px;
+    padding: 4px 4px;
+}
