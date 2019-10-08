@@ -609,6 +609,7 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                                 toastr.error('"' + data.message + '", the server said.', "The anvi'o headquarters is upset");
                             }
                             $('#estimate_taxonomy').prop('checked', false);
+                            toggleTaxonomyEstimation();
                             return;
                         }
                         if (data.hasOwnProperty(bin_name)) {
