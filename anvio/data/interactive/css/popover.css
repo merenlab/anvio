@@ -155,32 +155,32 @@
   content: '✖'; /* UTF-8 symbol */
 }
 
-table {
+.popover table {
   color: #333; /* Lighten up font color */
   font-family: Helvetica, Arial, sans-serif; /* Nicer font */
   border-collapse:
   collapse; border-spacing: 0;
 }
 
-td, th { border: 1px solid #CCC; height: 30px;  } /* Make cells a bit taller */
+.popover td,.popover th { border: 1px solid #CCC; height: 30px;  } /* Make cells a bit taller */
 
-th {
+.popover th {
   background: #F3F3F3; /* Light grey background */
   font-weight: bold; /* Make sure they're bold */
 }
 
-td {
+.popover td {
   padding: 0px 10px;
 }
 
-tr:nth-child(even) {
+.popover tr:nth-child(even) {
     background-color: #FAFAFA;
 }
 
-tr:nth-child(odd) {
+.popover tr:nth-child(odd) {
     background-color: #FFFFFF;
 }
 
-.borderless td, .borderless th {
+.popover .borderless td,.popover  .borderless th {
     border: none;
 }

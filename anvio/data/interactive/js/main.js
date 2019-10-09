@@ -2597,7 +2597,7 @@ function showTaxonomy()
 
                         scg_table_content += `<tr>
                             <td>${ scg['gene_name'] }</a></td>
-                            <td class="text-center">${ scg['gene_callers_id'] }</a></td>
+                            <td class="text-center"><a href="#" onclick="showGenePopup(this, '${ scg['gene_callers_id'] }');">${ scg['gene_callers_id'] }</a></td>
                             <td class="text-center">${ scg['percent_identity'] }</a></td>
                             <td>${ scg['supporting_consensus'] }</td>`;
 
@@ -2642,6 +2642,51 @@ function showTaxonomy()
     });
 }
 
+function showGenePopup(element, gene_callers_id) {
+
+    $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
+
+    // workaround for known popover bug
+    // source: https://stackoverflow.com/questions/32581987/need-click-twice-after-hide-a-shown-bootstrap-popover
+    $('body').on('hidden.bs.popover', function (e) {
+      $(e.target).data("bs.popover").inState.click = false;
+    });
+
+    $('[data-toggle="popover"]').on('shown.bs.popover', function (e) {
+      var popover = $(e.target).data("bs.popover").$tip;
+      
+      if ($(popover).css('top').charAt(0) === '-') {
+        $(popover).css('top', '0px');
+      }
+
+      if ($(popover).css('left').charAt(0) === '-') {
+        $(popover).css('left', '0px');
+      }
+    });
+
+    $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/get_gene_info/' + gene_callers_id,
+            data: {'gene_callers_id': gene_callers_id},
+            success: function(gene_data) {
+                $(element).attr('data-content', );
+                $(element).attr('data-toggle', 'popover');
+                var popOverSettings = {
+                    placement: 'bottom',
+                    container: 'body',
+                    html: true,
+                    selector: '[rel="popover"]', //Sepcify the selector here
+                    content: function () {
+                        return get_gene_functions_table_html(gene_data);
+                    }
+                }
+
+                $(element).popover(popOverSettings);
+                $(element).popover('show');
+            }
+    });
+}
 
 function toggleTaxonomyEstimation() {
     let is_checked = $('#estimate_taxonomy').is(':checked');
