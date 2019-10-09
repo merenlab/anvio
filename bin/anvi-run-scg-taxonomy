@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+
+import anvio
+import anvio.terminal as terminal
+import anvio.scgtaxonomyops as scgtaxonomyops
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Quentin Clayssen"
+__email__ = "quentin.clayssen@gmail.com"
+__requires__ = ['contigs-db']
+__provides__ = ['scgs-taxonomy']
+__resources__ = [("Usage examples and warnings", "http://merenlab.org/scg-taxonomy")]
+__description__ = ("The purpose of this program is to affiliate single-copy core genes in an anvi'o contigs database with "
+                   "taxonomic names. A prooperly setup local SCG taxonomy database is required for this program to perform properly "
+                   "After its successful run, `anvi-estimate-scg-taxonomy` will be useful to estimate taxonomy at genome-, collection-, or metagenome-level).")
+
+
+@terminal.time_program
+def main(args):
+    t = scgtaxonomyops.PopulateContigsDatabaseWithSCGTaxonomy(args)
+    t.populate_contigs_database()
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('INPUT DATABASE', "An anvi'o contigs databaes to search for and  store the taxonomic\
+                                        affiliations of SCGs.")
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': True}))
+
+    groupA = parser.add_argument_group("ADVANCED STUFF")
+    groupA.add_argument(*anvio.A('scgs-taxonomy-data-dir'), **anvio.K('scgs-taxonomy-data-dir'))
+
+    groupH = parser.add_argument_group("PERFORMANCE")
+    groupH.add_argument(*anvio.A('num-parallel-processes'), **anvio.K('num-parallel-processes'))
+    groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupH.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)

@@ -2,9 +2,7 @@
 # -*- coding: utf-8
 """A script to export a FASTA files from sequence sources and compute genome similarity matrices."""
 
-import os
 import sys
-import shutil
 import argparse
 
 import anvio
