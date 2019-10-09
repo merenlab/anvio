@@ -1458,20 +1458,6 @@ D = {
              'action': 'store_true',
              'help': "Don't bother me with questions or warnings, just do it."}
                 ),
-    'force': (
-            ['--force'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "Please note that using the --force flag is not using 'the force'. It's forcing things.\
-                      If anvi'o suggested you to use this flag, things must be very very bad. This flag is\
-                      only used when the user wants to skip checks and balances and try their chances with\
-                      by pushing things through. This flag will tell anvi'o to not pay attention to some\
-                      critical things that are in place to ensure the sanity of your analyses. But if you\
-                      feel like a power user today and wnat to give it a try, go ahead. But please make\
-                      extra sure if you run into problem downstream and need help that you are a power user\
-                      and should be fine. BRUTE FORCE ALMOST NEVER WORKS AND IF ANVI'O IS FAILING TO DO\
-                      SOMETHING IT MEANS THERE IS A BIGGER PROBLEM NEEDS ADRESSING."}
-                ),
     'ip-address': (
             ['-I', '--ip-address'],
             {'metavar': 'IP_ADDR',
