@@ -29,6 +29,8 @@ class Sourmash:
         self.program_name = program_name
         self.check_program()
 
+        self.results = {}
+
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.log_file_path = os.path.abspath(A('log_file') or filesnpaths.get_temp_file_path())
         self.num_threads = A('num_threads') or 1
@@ -40,12 +42,10 @@ class Sourmash:
                          lc='green', header="CITATION")
 
         if self.num_threads != 1:
+            self.num_threads = 1
             self.run.warning("Anvi'o speaking: sourmash currently doesn't support multithreading.\
                              Anvi'o will have to reduce your number of threads to one :(")
-            self.num_threads = 1
 
-        self.run.info('[sourmash] Kmer size', self.kmer_size)
-        self.run.info('[sourmash] Compression ratio', self.scale)
         self.run.info('[sourmash] Log file path', self.log_file_path, nl_after=1)
 
 
@@ -54,20 +54,22 @@ class Sourmash:
 
 
     def process(self, input_path, fasta_files):
+        self.run.info('[sourmash] Kmer size', self.kmer_size, nl_before=1)
+        self.run.info('[sourmash] Compression ratio', self.scale)
+
+        report_name = 'kmer_%d_mash_similarity' % self.kmer_size
+
         # backup the old working directory before changing the directory
         old_wd = os.getcwd()
         os.chdir(input_path)
         os.mkdir('output')
 
         self.progress.new('Sourmash')
-        self.progress.update('Computing fasta signatures...')
-
-        kmers = list(range(5,25,5))
-        kmers_str = ','.join([str(kmer) for kmer in kmers])
+        self.progress.update('Computing fasta signatures for kmer=%d, scale=%d' % (self.kmer_size, self.scale))
 
         scale = '--scaled=%i' % self.scale
         compute_command = [self.program_name, 'compute',
-                           '-k', kmers_str,
+                           '-k', self.kmer_size,
                            '-f', scale]
         compute_command.extend(fasta_files)
 
@@ -80,10 +82,10 @@ class Sourmash:
                               Please check the log file `%s` for details. Offending command: \
                               `%s` ..." % (self.log_file_path, ' '.join([str(x) for x in compute_command[:7]])))
 
-        self.progress.update('Computing distance matrix...')
+        self.progress.update('Computing similarity matrix for kmer=%d, scale=%d' % (self.kmer_size, self.scale))
         compare_command = [self.program_name, 'compare',
-                           '-k', '5',
-                           '--csv', os.path.join('output', 'mash_distance.txt')]
+                           '-k', self.kmer_size,
+                           '--csv', os.path.join('output', report_name + '.txt')]
         for f in fasta_files:
             compare_command.append(f + ".sig")
 
@@ -95,11 +97,13 @@ class Sourmash:
                               Please check the log file `%s` for details. Offending command: \
                               `%s` ..." % (self.log_file_path, ' '.join([str(x) for x in compute_command[:7]])))
 
-        matrix = utils.get_TAB_delimited_file_as_dictionary(os.path.join('output', 'mash_distance.txt'), indexing_field=-1, separator=',')
+        self.results[report_name] = utils.get_TAB_delimited_file_as_dictionary(os.path.join('output', report_name + '.txt'),
+                                                                               indexing_field=-1,
+                                                                               separator=',')
 
         self.progress.end()
 
         # restore old working directory
         os.chdir(old_wd)
 
-        return matrix
+        return self.results
