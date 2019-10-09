@@ -1256,7 +1256,10 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         self.tables_for_taxonomy = TableForSCGTaxonomy(self.contigs_db_path, self.run, self.progress)
 
         # get the dictionary that shows all hits for each SCG of interest
+        self.progress.new('Contigs bleep bloop')
+        self.progress.update('Recovering the SCGs dictionary')
         scg_sequences_dict = self.get_SCG_sequences_dict_from_contigs_db()
+        self.progress.end()
 
         if not scg_sequences_dict:
             self.run.warning("This contigs database contains no single-copy core genes that are used by the\
