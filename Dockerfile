@@ -32,7 +32,8 @@ RUN apt-get update && apt-get install -qq build-essential libgsl0-dev bedtools m
 RUN pip install https://github.com/BinPro/CONCOCT/archive/1.1.0.tar.gz
 
 # Install BINSANITY
-RUN pip install git+https://github.com/edgraham/BinSanity.git
+# RUN pip install git+https://github.com/edgraham/BinSanity.git
+RUN pip install git+https://github.com/meren/BinSanity.git
 
 # Install MAXBIN2 (installing fraggenescan will require cpanm, and we also need IDBA-UD)
 RUN conda install -c bioconda perl-app-cpanminus
@@ -46,7 +47,7 @@ ENV PATH /opt/FragGeneScan1.31:/opt/MaxBin-2.2.7:$PATH
 
 # Install some helper tools
 RUN pip install virtualenv
-RUN apt-get install vim
+RUN apt-get install vim -yy
 
 # Setup the environment
 ENV ANVIO_VERSION 6
