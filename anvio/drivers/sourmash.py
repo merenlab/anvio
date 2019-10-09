@@ -65,7 +65,10 @@ class Sourmash:
         # backup the old working directory before changing the directory
         old_wd = os.getcwd()
         os.chdir(input_path)
-        os.mkdir('output')
+        if not os.path.exists('output'):
+            os.mkdir('output')
+        else:
+            pass
 
         self.progress.new('Sourmash')
         self.progress.update('Computing fasta signatures for kmer=%d, scale=%d' % (self.kmer_size, self.scale))
@@ -76,9 +79,7 @@ class Sourmash:
                            '-f', scale]
         compute_command.extend(fasta_files)
 
-        print(' '.join([str(x) for x in compute_command]))
-
-        exit_code = utils.run_command(compute_command, self.log_file_path)
+        exit_code = utils.run_command(compute_command, self.log_file_path, remove_log_file_if_exists=False)
         if int(exit_code):
             self.progress.end()
             raise ConfigError("sourmash returned with non-zero exit code, there may be some errors.\
@@ -92,8 +93,7 @@ class Sourmash:
         for f in fasta_files:
             compare_command.append(f + ".sig")
 
-        print(' '.join([str(x) for x in compare_command]))
-        exit_code = utils.run_command(compare_command, self.log_file_path)
+        exit_code = utils.run_command(compare_command, self.log_file_path, remove_log_file_if_exists=False)
         if int(exit_code):
             self.progress.end()
             raise ConfigError("sourmash returned with non-zero exit code, there may be some errors.\
