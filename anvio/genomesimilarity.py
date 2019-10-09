@@ -962,6 +962,9 @@ class SourMash(GenomeSimilarity):
         self.method = 'sourmash_kmer_%d' % (self.kmer_size)
         self.similarity_type = 'SourMash_kmer_%d' % (self.kmer_size)
 
+        # FIXME
+        self.kmer_size = None
+
 
     def reformat_results(self, results):
         file_to_name = {}

@@ -62,11 +62,16 @@ class Sourmash:
         self.progress.new('Sourmash')
         self.progress.update('Computing fasta signatures...')
 
+        kmers = list(range(5,25,5))
+        kmers_str = ','.join([str(kmer) for kmer in kmers])
+
         scale = '--scaled=%i' % self.scale
         compute_command = [self.program_name, 'compute',
-                           '-k', self.kmer_size,
+                           '-k', kmers_str,
                            '-f', scale]
         compute_command.extend(fasta_files)
+
+        print(' '.join([str(x) for x in compute_command]))
 
         exit_code = utils.run_command(compute_command, self.log_file_path)
         if int(exit_code):
@@ -77,11 +82,12 @@ class Sourmash:
 
         self.progress.update('Computing distance matrix...')
         compare_command = [self.program_name, 'compare',
-                           '-k', self.kmer_size,
+                           '-k', '5',
                            '--csv', os.path.join('output', 'mash_distance.txt')]
         for f in fasta_files:
             compare_command.append(f + ".sig")
 
+        print(' '.join([str(x) for x in compare_command]))
         exit_code = utils.run_command(compare_command, self.log_file_path)
         if int(exit_code):
             self.progress.end()
