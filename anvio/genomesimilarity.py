@@ -959,11 +959,10 @@ class SourMash(GenomeSimilarity):
         null = lambda x: x
         self.min_similarity = A('min_mash_similarity', null) or 0
         self.kmer_size = A('kmer_size', null)
-        self.method = 'sourmash_kmer_%d' % (self.kmer_size)
-        self.similarity_type = 'SourMash_kmer_%d' % (self.kmer_size)
+        self.method = 'sourmash'
+        self.similarity_type = 'SourMash'
 
-        # FIXME
-        self.kmer_size = None
+        self.adaptive_kmer = True if not self.kmer_size else False
 
 
     def reformat_results(self, results):
@@ -992,8 +991,9 @@ class SourMash(GenomeSimilarity):
     def process(self, directory=None):
         self.temp_dir = directory if directory else self.get_fasta_sequences_dir()
 
-        self.results['mash_similarity'] = self.program.process(self.temp_dir, self.name_to_temp_path.values())
-        self.results['mash_similarity'] = self.reformat_results(self.results['mash_similarity'])
+        self.results = self.program.process(self.temp_dir, self.name_to_temp_path.values())
+        for report in self.results:
+            self.results[report] = self.reformat_results(self.results[report])
 
         self.cluster()
 
