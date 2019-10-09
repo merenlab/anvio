@@ -10,13 +10,12 @@ import anvio.filesnpaths as filesnpaths
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
+__maintainer__ = "Özcan Esen"
+__email__ = "ozcanesen@gmail.com"
 
 
 run = terminal.Run()
