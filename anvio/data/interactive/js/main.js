@@ -2662,6 +2662,8 @@ function showGenePopup(element, gene_callers_id) {
       if ($(popover).css('left').charAt(0) === '-') {
         $(popover).css('left', '0px');
       }
+
+      $(popover).draggable();
     });
 
     $.ajax({
