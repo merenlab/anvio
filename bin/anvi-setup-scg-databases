@@ -15,9 +15,10 @@ __version__ = anvio.__version__
 __maintainer__ = "Quentin Clayssen"
 __email__ = "quentin.clayssen@gmail.com"
 __provides__ = ['scgs-taxonomy-db']
+__resources__ = [("Usage examples and warnings", "http://merenlab.org/scg-taxonomy")]
 __description__ = ("The purpose of this program is to download necessary information from GTDB (https://gtdb.ecogenomic.org/), "
                    "and set it up in such a way that your anvi'o installation is able to assign taxonomy to single-copy core "
-                   "genes using `anvi-run-scg-taxonomy` and estimate taxonomy for genomes or metagenomes using `anvi-estimate-scg-taxonomy`).")
+                   "genes using `anvi-run-scg-taxonomy` and estimate taxonomy for genomes or metagenomes using `anvi-estimate-genome-taxonomy`).")
 
 
 run = terminal.Run()

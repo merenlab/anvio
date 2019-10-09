@@ -578,7 +578,7 @@ D = {
                       system will be using a single data directory, but then you may need to run the setup\
                       program with superuser privileges. If you don't have superuser privileges, then you can\
                       use this parameter to tell anvi'o the location you wish to use to setup your databases.\
-                      If you are using a program (such as `anvi-run-scg-taxonomy` or `anvi-estimate-scg-taxonomy`)\
+                      If you are using a program (such as `anvi-run-scg-taxonomy` or `anvi-estimate-genome-taxonomy`)\
                       you will have to use this parameter to tell those programs where your data are."}
                 ),
     'scgs-taxonomy-remote-database-url': (

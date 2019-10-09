@@ -17,9 +17,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Quentin Clayssen"
 __email__ = "quentin.clayssen@gmail.com"
-__tags__ = ["metagenomics", "profile_db", "contigs_db", "taxonomy"]
-__requires__ = ['profile-db', 'contigs-db', 'scgs-taxonomy-db']
-__provides__ = ['genome-taxonomy']
+__requires__ = ['profile-db', 'contigs-db', 'scgs-taxonomy', 'collection', 'bin']
+__provides__ = ['genome-taxonomy', 'genome-taxonomy-txt']
+__resources__ = [("Usage examples and warnings", "http://merenlab.org/scg-taxonomy")]
 __description__ = ("Estimates taxonomy at genome and metagenome level. This program is the entry point to"
                    "estimate taxonomy for a given set of contigs (i.e., all contigs in a contigs database,"
                    "or contigs described in collections as bins). For this, it uses single-copy core"
