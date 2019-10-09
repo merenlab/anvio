@@ -14,9 +14,7 @@ ENV CONDA_PREFIX /opt/conda/envs/anvioenv
 RUN echo "conda activate anvioenv" >> ~/.bashrc
 SHELL ["/bin/bash", "-c"]
 
-RUN conda install -y conda-build prodigal mcl muscle hmmer \
-                     diamond blast megahit bowtie2 bwa \
-                     samtools centrifuge trimal iqtree
+RUN conda install -y conda-build
 
 COPY conda-recipe /tmp/conda-recipe
 RUN conda-build /tmp/conda-recipe/anvio-minimal && conda-build /tmp/conda-recipe/anvio
