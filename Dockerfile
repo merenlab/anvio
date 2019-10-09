@@ -17,24 +17,13 @@ RUN conda install -y conda-build prodigal mcl muscle hmmer \
                      diamond blast megahit bowtie2 bwa \
                      samtools centrifuge trimal iqtree
 
-# Build Anvi'o
-RUN cd /tmp && \
-    git clone --recursive --depth 1 https://github.com/merenlab/anvio.git && \
-    cd anvio && \
-    python setup.py sdist
-
-RUN mkdir /tmp/recipe
-RUN echo "{% set version = \"5.6\" %}" >> /tmp/recipe/meta.yaml
-RUN echo "{% set sha256 = \"$(shasum -a 256 /tmp/anvio/dist/anvio-5.5-master.tar.gz | cut -d ' ' -f 1)\" %}" >> /tmp/recipe/meta.yaml
-RUN echo "{% set url = \"file:///tmp/anvio/dist/anvio-5.5-master.tar.gz\" %}" >> /tmp/recipe/meta.yaml
-RUN wget https://gist.githubusercontent.com/ozcan/7528b48853cf6af76bb34743036eaec0/raw/3fb48af408703c80dd8f48f744a1c41edb6adb04/meta.yaml -O /tmp/meta.yaml && \
-    cat /tmp/meta.yaml >> /tmp/recipe/meta.yaml && \
-    rm /tmp/meta.yaml
-RUN conda-build /tmp/recipe
+COPY conda-recipe /tmp
+RUN conda-build /tmp/conda-recipe/anvio-minimal && conda-build /tmp/conda-recipe/anvio
 
 # Install Anvi'o
 RUN conda index /opt/conda/envs/anvioenv/conda-bld/
-RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio-minimal=5.6
+RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio-minimal
+RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio
 
 # Install METABAT and DAS_TOOL
 RUN conda install metabat2 das_tool
