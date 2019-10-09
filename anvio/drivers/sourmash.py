@@ -110,3 +110,48 @@ class Sourmash:
         os.chdir(old_wd)
 
         return self.results
+
+
+class IterateKmerSourmash(Sourmash):
+    """
+    This class runs sourmash iteratively until it finds the 'best' kmer based on entropy
+    maximization.
+
+    PARAMS
+    ======
+        method: str, "scan"
+            the method to determine maximal entropy. "scan" simply tries all of the kmer values
+            within a range
+    """
+    def __init__(self, args, method='scan', lower_bound=5, upper_bound=30):
+        self.method = method
+        self.lower_bound = lower_bound
+        self.upper_bound = upper_bound
+
+        # Rename Sourmash.process to Sourmash_process
+        self.Sourmash_process = Sourmash.process
+        Sourmash.__init__(self, args=args)
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.available_methods = {
+            'scan': (self.scan_method, {'step': A('step') or 3}),
+        }
+
+
+    def process(self, input_path, fasta_files):
+        iterator, iterator_args = self.determine_method_iterator()
+        for kmer in iterator(**iterator_args):
+            self.kmer_size = kmer
+            self.Sourmash_process(self, input_path, fasta_files)
+
+
+    def scan_method(self, step=1):
+        for kmer in range(self.lower_bound, self.upper_bound + 1, step):
+            yield kmer
+
+
+    def determine_method_iterator(self):
+        try:
+            return self.available_methods[self.method]
+        except KeyError as e:
+            raise ConfigError("IterateKmerSourmash :: .%s is not a valid method for entropy maximization." % self.method)
