@@ -1,4 +1,4 @@
-FROM continuumio/miniconda3
+FROM continuumio/miniconda3:4.7.10
 
 RUN conda update conda
 RUN conda config --env --add channels conda-forge
