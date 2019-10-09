@@ -17,7 +17,7 @@ RUN conda install -y conda-build prodigal mcl muscle hmmer \
                      diamond blast megahit bowtie2 bwa \
                      samtools centrifuge trimal iqtree
 
-COPY conda-recipe /tmp
+COPY conda-recipe /tmp/conda-recipe
 RUN conda-build /tmp/conda-recipe/anvio-minimal && conda-build /tmp/conda-recipe/anvio
 
 # Install Anvi'o
