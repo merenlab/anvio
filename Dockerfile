@@ -1,4 +1,5 @@
 FROM continuumio/miniconda3:4.7.10
+ENV ANVIO_VERSION 6
 
 RUN conda update conda
 RUN conda config --env --add channels conda-forge
@@ -22,8 +23,8 @@ RUN conda-build /tmp/conda-recipe/anvio-minimal && conda-build /tmp/conda-recipe
 
 # Install Anvi'o
 RUN conda index /opt/conda/envs/anvioenv/conda-bld/
-RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio-minimal
-RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio
+RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio-minimal=$ANVIO_VERSION
+RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio=$ANVIO_VERSION
 
 # Install METABAT and DAS_TOOL
 RUN conda install metabat2 das_tool
