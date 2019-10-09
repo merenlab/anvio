@@ -751,6 +751,11 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
             table.append(row)
 
+        # if we are not in metagenome mode let's sort the output table based on total and
+        # supporting SCGs
+        if not self.metagenome_mode:
+            table = sorted(table, key=lambda x: (int(x[1]), int(x[2])), reverse=True)
+
         print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
 
 
