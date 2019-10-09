@@ -521,6 +521,7 @@ class BinSplitter(summarizer.Bin, XSplitter):
                     t.splits_info_table_name: ('split', self.split_names),
                     t.splits_taxonomy_table_name: ('split', self.split_names),
                     t.nt_position_info_table_name: ('contig_name', self.contig_names),
+                    t.scg_taxonomy_table_name: ('gene_callers_id', self.gene_caller_ids),
                     'kmer_contigs': ('contig', self.split_names),
                     'kmer_splits': ('contig', self.split_names),
                 }

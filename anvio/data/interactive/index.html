@@ -375,11 +375,19 @@
                     <div role="tabpanel" class="tab-pane fade in" id="bin_settings">
                         <div id="bin-settings" class="form-horizontal">
                             <div class="panel-body">
-                                <table class="table table-striped sortable" id="bins-table">
+
+                                <div class="form-group form-margin full-mode refine-mode">
+                                    <p id="estimate-taxonomy-check">
+                                        <input type="checkbox" id="estimate_taxonomy" value="value" onclick="this.onchange();" onchange="toggleTaxonomyEstimation();">
+                                        <label for="estimate_taxonomy">Realtime taxonomy estimation for bins (whenever possible).</label>
+                                    </p>
+                                </div>
+
+                                <table class="table sortable" id="bins-table">
                                     <thead id="thead_bins">
                                         <tr>
                                             <th data-defaultsort='disabled'></th>
-                                            <th data-defaultsort='disabled' class="text-center"></th>
+                                            <th class="text-center"></th>
                                             <th>Name</th>
                                             <th id="splits_title">Splits</th>
                                             <th id="len_title">Len</th>
@@ -404,6 +412,9 @@
                                     </div>
                                     <div class="sidebar-bins-buttons btn-group col-md-12 full-mode pan-mode" role="group" style="display: none">
                                         <button type="button" class="btn btn-default btn-sm" onclick="showGenSummaryWindow();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-globe" aria-hidden="true"></span> Generate a static summary page</button>
+                                    </div>
+                                    <div class="sidebar-bins-buttons btn-group col-md-12 full-mode refine-mode" role="group" style="display: none">
+                                        <button type="button" id="show_taxonomy_button" class="btn btn-default btn-sm" onclick="showTaxonomy();" style="width: 100%"><span class="glyphicon glyphicon-gift" aria-hidden="true"></span> Recalculate / Show Taxonomy for Bins</button>
                                     </div>
                                     <div class="sidebar-bins-buttons btn-group col-md-12 refine-mode" role="group" style="display: none">
                                         <button type="button" class="btn btn-default btn-sm" onclick="storeRefinedBins();" style="width: 100%" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Store refined bins in the database</button>

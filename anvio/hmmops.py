@@ -134,7 +134,6 @@ class SequencesForHMMHits:
         self.progress.update('Recovering split and contig names for %d genes' % (len(gene_caller_ids_of_interest)))
         split_names_of_interest, contig_names_of_interest = utils.get_split_and_contig_names_of_interest(contigs_db_path, gene_caller_ids_of_interest)
 
-
         self.progress.update('Recovering contig seqs for %d genes' % (len(gene_caller_ids_of_interest)))
         where_clause_for_contigs = "contig in (%s)" % ', '.join(['"%s"' % s for s in contig_names_of_interest])
         self.contig_sequences = contigs_db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name, \
