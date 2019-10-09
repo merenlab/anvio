@@ -43,7 +43,8 @@ RUN cd /opt && wget https://downloads.sourceforge.net/project/fraggenescan/FragG
 RUN cpanm install LWP::Simple
 ENV PERL5LIB /opt/conda/envs/anvioenv/lib/5.26.2/:/opt/conda/envs/anvioenv/lib/site_perl/5.26.2/:$PERL5LIB
 RUN cd /opt && wget https://downloads.sourceforge.net/project/maxbin2/MaxBin-2.2.7.tar.gz && tar zxf MaxBin-2.2.7.tar.gz && cd MaxBin-2.2.7/src && make
-ENV PATH /opt/FragGeneScan1.31:/opt/MaxBin-2.2.7:$PATH
+RUN echo 'export PATH=/opt/FragGeneScan1.31:$PATH' >> ~/.bashrc
+RUN echo 'export PATH=/opt/MaxBin-2.2.7:$PATH' >> ~/.bashrc
 
 # Install some helper tools
 RUN pip install virtualenv
