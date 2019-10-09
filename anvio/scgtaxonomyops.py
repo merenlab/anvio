@@ -452,18 +452,23 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         if len(tax_hash_df_most_frequent.index) == 1:
             # if there is only a single winner, we're golden
             winner_tax_hash = tax_hash_df_most_frequent.tax_hash[0]
+
+            # get the consensus hit based on the winner hash
+            consensus_hit = df[df.tax_hash == winner_tax_hash].head(1)
+
+            # turn it into a Python dict before returning
+            return consensus_hit.to_dict('records')[0]
         else:
             # if there are competing hashes, we need to be more careful to decide
             # which taxonomic level should we use to cut things off.
-            raise ConfigError("You've hit some uncharted area")
+            consensus_hit = {}
+            for level in self.levels_of_taxonomy[::-1]:
+                if len(df[level].unique()) > 1:
+                    consensus_hit[level] = None
+                else:
+                    consensus_hit[level] = df[level].unique()[0]
 
-        # get the consensus hit based on the winner hash
-        consensus_hit = df[df.tax_hash == winner_tax_hash].head(1)
-
-        # turn it into a Python dict before returning
-        consensus_hit = consensus_hit.to_dict('records')[0]
-
-        return consensus_hit
+            return consensus_hit
 
 
     def print_scg_taxonomy_hits_in_splits(self, hits, bin_name=None):
@@ -1424,6 +1429,10 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
 
         # subset the data frame to those with percent identity that match to `max_percent_identity`
         df_max_identity = df.loc[df.percent_identity == max_percent_identity]
+
+        # if some of the competing names have null species deignations, remove them from consideration
+        if len(df_max_identity.t_species.unique()) > 1:
+            df_max_identity = df_max_identity[df_max_identity.t_species.notnull()]
 
         # find the taxonomic level where the number of unique taxon names is one
         for taxonomic_level in self.levels_of_taxonomy[::-1]:
