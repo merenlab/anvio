@@ -43,8 +43,8 @@ __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "Quentin Clayssen"
-__email__ = "quentin.clayssen@gmail.com"
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
 
 
 # This is the most critical part of this entire operation. The following hard-coded dict translates
