@@ -134,8 +134,9 @@
                           <span class="glyphicon glyphicon-menu-hamburger" aria-hidden="true" style="color: #008A77;"></span>
                         </a>
                         <ul class="dropdown-menu multi-level" role="menu">
+                          <li><a href="https://github.com/merenlab/anvio/blob/master/AUTHORS.txt">Anvi'o authors</a></li>
                           <li><a href="http://merenlab.org/projects/anvio/">Anvi'o project page</a></li>
-                          <li><a href="http://merenlab.org/2015/05/01/anvio-tutorial/">Anvi'o user manual</a></li>
+                          <li><a href="http:/merenlab.org/2019/10/07/getting-help/">Getting help</a></li>
                           <li><a href="https://github.com/meren/anvio/issues">Browse known issues / Report an issue</a></li>
                           <li><a href="http://merenlab.org/people/">Contact us</a></li>
                           <li role="separator" class="divider"></li>
@@ -153,7 +154,7 @@
                         <div id="tree-settings" class="form-horizontal">
                             <span class="settings-header">Display</span>
                             <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="tree_type" data-help="drawing-type">Drawing type:</label>  
+                                    <label class="col-md-4 settings-label" for="tree_type" data-help="drawing-type">Drawing type:</label>
                                     <div class="col-md-8">
                                         <select id="tree_type" class="form-control input-xs">
                                             <option value="phylogram">Phylogram</option>
@@ -162,7 +163,7 @@
                                     </div>
                             </div>
                             <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label size-sm" for="trees_container" data-help="order-by">Items order:</label>  
+                                    <label class="col-md-4 settings-label size-sm" for="trees_container" data-help="order-by">Items order:</label>
                                     <div class="col-md-8">
                                         <select id="trees_container" class="form-control input-xs" onchange="onTreeClusteringChange();"></select>
                                         <div id="tree_modified_warning" class="alert alert-info" style="padding: 12px 15px; margin: 10px 0px; display: none;" >
@@ -172,9 +173,9 @@
                                             <button type="button" class="btn btn-xs" onclick="restoreOriginalTree();">Revert changes</button>
                                         </div>
                                     </div>
-                            </div>       
+                            </div>
                             <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="views_container" data-help="view">View:</label>  
+                                    <label class="col-md-4 settings-label" for="views_container" data-help="view">View:</label>
                                     <div class="col-md-8">
                                         <select id="views_container" class="form-control input-xs" onchange="onViewChange();"></select>
                                     </div>
@@ -184,68 +185,68 @@
                             <div id="additional_settings" style="display: none;">
                                 <span class="settings-header">Dendrogram</span>
                                 <div class="form-group form-margin circlephylogram_settings">
-                                        <label class="col-md-4 settings-label" for="angle-min" data-help="draw-angle">Angle:</label>  
+                                        <label class="col-md-4 settings-label" for="angle-min" data-help="draw-angle">Angle:</label>
                                         <div class="col-md-8 form-inline">
-                                            <input type="text" value="0" size="4" id="angle-min" class="form-control input-xs"> to 
+                                            <input type="text" value="0" size="4" id="angle-min" class="form-control input-xs"> to
                                             <input type="text" value="270" size="4" id="angle-max" class="form-control input-xs">
                                         </div>
                                 </div>
                                 <div class="form-group form-margin circlephylogram_settings">
-                                        <label class="col-md-4 settings-label" for="tree-radius" data-help='tree-radius'>Radius:</label>  
+                                        <label class="col-md-4 settings-label" for="tree-radius" data-help='tree-radius'>Radius:</label>
                                         <div class="col-md-8">
                                             <input type="text" value="0" size="4" id="tree-radius" class="form-control input-xs">
                                         </div>
-                                </div> 
+                                </div>
                                 <div class="form-group form-margin phylogram_settings" style="display: none;">
-                                        <label class="col-md-4 settings-label" for="tree_height" data-help="tree-height">Height:</label>  
+                                        <label class="col-md-4 settings-label" for="tree_height" data-help="tree-height">Height:</label>
                                         <div class="col-md-8">
                                             <input type="text" value="0" size="4" id="tree_height" class="form-control input-xs">
                                         </div>
-                                </div> 
+                                </div>
                                 <div class="form-group form-margin phylogram_settings" style="display: none;">
-                                        <label class="col-md-4 settings-label" for="tree_width" data-help="tree-width">Width:</label>  
+                                        <label class="col-md-4 settings-label" for="tree_width" data-help="tree-width">Width:</label>
                                         <div class="col-md-8">
                                             <input type="text" value="0" size="4" id="tree_width" class="form-control input-xs">
                                         </div>
-                                </div> 
+                                </div>
                                 <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="edge_length_normalization" data-help="edge-length-norm">Edge length norm.:</label>  
+                                        <label class="col-md-4 settings-label" for="edge_length_normalization" data-help="edge-length-norm">Edge length norm.:</label>
                                         <div class="col-md-8">
                                             <input type="checkbox" id="edge_length_normalization" name="checkbox" value="value">
                                         </div>
-                                </div> 
+                                </div>
 
                                 <span class="settings-header">Selections</span>
                                 <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="outer-ring-height" data-help="bins-layer-height">Height:</label>  
+                                        <label class="col-md-4 settings-label" for="outer-ring-height" data-help="bins-layer-height">Height:</label>
                                         <div class="col-md-8">
                                             <input type="text" onchange="emit('bin-settings-changed');" value="60" size="4" id="outer-ring-height" class="form-control input-xs">
                                         </div>
                                 </div>
                                 <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="outer-ring-margin" data-help="bins-layer-margin">Margin:</label>  
+                                        <label class="col-md-4 settings-label" for="outer-ring-margin" data-help="bins-layer-margin">Margin:</label>
                                         <div class="col-md-8">
                                             <input type="text" onchange="emit('bin-settings-changed');" value="30" size="4" id="outer-ring-margin" class="form-control input-xs">
                                         </div>
                                 </div>
                                 <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="show_bin_labels" data-help="show-bin-labels">Show names:</label>  
+                                        <label class="col-md-4 settings-label" for="show_bin_labels" data-help="show-bin-labels">Show names:</label>
                                         <div class="col-md-8">
-                                            <input type="checkbox" id="show_bin_labels" name="checkbox" 
+                                            <input type="checkbox" id="show_bin_labels" name="checkbox"
                                             value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('.bin_labels_details').show(); } else { $('.bin_labels_details').hide(); }" style="float: left;" checked>
                                             <span class="bin_labels_details" style="margin-left:5px; float-left;">Font Size: <input id="bin_labels_font_size" size="5" value="128" onchange="emit('bin-settings-changed');" /></span>
                                         </div>
-                                </div> 
+                                </div>
                                 <div class="form-group form-margin bin_labels_details">
-                                        <label class="col-md-4 settings-label" for="autorotate_bin_labels" data-help="autororate-bin-labels">Autorotate names:</label>  
+                                        <label class="col-md-4 settings-label" for="autorotate_bin_labels" data-help="autororate-bin-labels">Autorotate names:</label>
                                         <div class="col-md-8">
-                                            <input type="checkbox" id="autorotate_bin_labels" name="checkbox" 
+                                            <input type="checkbox" id="autorotate_bin_labels" name="checkbox"
                                             value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#span_bin_labels_angle').hide(); } else { $('#span_bin_labels_angle').show(); }" style="float: left;" checked>
                                             <span id="span_bin_labels_angle" style="display: none; margin-left:5px; float-left;">Angle: <input id="bin_labels_angle" size="5" value="0" onchange="emit('bin-settings-changed');" /></span>
                                         </div>
-                                </div> 
+                                </div>
                                 <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="show_grid_for_bins" data-help="show-grids">Show grids:</label>  
+                                        <label class="col-md-4 settings-label" for="show_grid_for_bins" data-help="show-grids">Show grids:</label>
                                         <div class="col-md-8">
                                             <input type="checkbox" id="show_grid_for_bins" name="checkbox" value="value" onchange="emit('bin-settings-changed'); if (this.checked) { $('#grid_color, .grid_details').show(); } else { $('#grid_color, .grid_details').hide(); }" style="float: left;">
                                             <div id="grid_color" style="display: none !important; margin-left: 5px;" class="colorpicker" style="background-color: #FFFFFF" color="#FFFFFF"></div>
@@ -255,47 +256,47 @@
 
                                 <span class="settings-header">Layers</span>
                                 <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="layer-margin" data-help="layer-margins">Margins:</label>  
+                                        <label class="col-md-4 settings-label" for="layer-margin" data-help="layer-margins">Margins:</label>
                                         <div class="col-md-8">
                                             <input type="text" value="15" size="4" id="layer-margin" class="form-control input-xs">
                                         </div>
-                                </div> 
+                                </div>
                                 <div class="form-group form-margin max-font-size-input" style="display: none;">
-                                        <label class="col-md-4 settings-label" for="max_font_size" data-help="max-font-size">Max. Font Size: </label>  
+                                        <label class="col-md-4 settings-label" for="max_font_size" data-help="max-font-size">Max. Font Size: </label>
                                         <div class="col-md-8">
                                             <input type="text" value="60" size="4" id="max_font_size" class="form-control input-xs">
                                         </div>
                                 </div>
 
                                 <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="custom_layer_margin" data-help="custom-layer-margins">Custom margins:</label>  
+                                        <label class="col-md-4 settings-label" for="custom_layer_margin" data-help="custom-layer-margins">Custom margins:</label>
                                         <div class="col-md-8">
                                             <input type="checkbox" id="custom_layer_margin" name="checkbox" value="value" onchange="if(this.checked) { $('.column-margin').show(); } else { $('.column-margin').hide(); } $('#layer-margin').prop('disabled', this.checked); ">
                                         </div>
-                                </div> 
+                                </div>
                                 <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="background_opacity" data-help="numeric-layer-background-opacity">Background opacity:</label>  
+                                        <label class="col-md-4 settings-label" for="background_opacity" data-help="numeric-layer-background-opacity">Background opacity:</label>
                                         <div class="col-md-8">
                                             <input type="text" value="0.3" size="4" id="background_opacity" class="form-control input-xs">
                                         </div>
-                                </div> 
+                                </div>
                                 <span class="settings-header">Layer Labels</span>
                                 <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="max_font_size_label" data-help="max-font-size-label">Max. Font Size: </label>  
+                                        <label class="col-md-4 settings-label" for="max_font_size_label" data-help="max-font-size-label">Max. Font Size: </label>
                                         <div class="col-md-8">
                                             <input type="text" value="120" size="4" id="max_font_size_label" class="form-control input-xs">
                                         </div>
-                                </div> 
+                                </div>
 
                                 <span class="settings-header">Performance</span>
                                 <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="optimize_speed" data-help="optimize-speed">Optimize speed:</label>  
+                                        <label class="col-md-4 settings-label" for="optimize_speed" data-help="optimize-speed">Optimize speed:</label>
                                         <div class="col-md-8">
                                             <input type="checkbox" id="optimize_speed" name="checkbox" value="value" checked>
                                         </div>
                                 </div>
                                 <div class="form-group form-margin">
-                                        <label class="col-md-4 settings-label" for="draw_guide_lines" data-help="draw-guide-lines">Draw Guide Lines:</label>  
+                                        <label class="col-md-4 settings-label" for="draw_guide_lines" data-help="draw-guide-lines">Draw Guide Lines:</label>
                                         <div class="col-md-8">
                                                 <select id="draw_guide_lines">
                                                     <option value="no" selected>No</option>
@@ -451,19 +452,19 @@
 
                             <span class="settings-header">Tree/Dendrogram</span>
                             <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="samples_tree_height" data-help="samples-tree-height">Height:</label>  
+                                    <label class="col-md-4 settings-label" for="samples_tree_height" data-help="samples-tree-height">Height:</label>
                                     <div class="col-md-8">
                                         <input type="text" value="400" size="4" id="samples_tree_height" class="form-control input-xs">
                                     </div>
-                            </div>  
+                            </div>
                             <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="samples_edge_length_normalization" data-help="samples-edge-length-norm">Edge length norm.:</label>  
+                                    <label class="col-md-4 settings-label" for="samples_edge_length_normalization" data-help="samples-edge-length-norm">Edge length norm.:</label>
                                     <div class="col-md-8">
                                         <input type="checkbox" id="samples_edge_length_normalization" name="checkbox" value="value" checked="checked">
                                     </div>
                             </div>
                             <div class="form-group form-margin">
-                                    <label class="col-md-4 settings-label" for="samples_ignore_branch_length" data-help="samples-ignore-branch-length">Ignore branch lengths:</label>  
+                                    <label class="col-md-4 settings-label" for="samples_ignore_branch_length" data-help="samples-ignore-branch-length">Ignore branch lengths:</label>
                                     <div class="col-md-8">
                                         <input type="checkbox" id="samples_ignore_branch_length" name="checkbox" value="value">
                                     </div>
@@ -743,10 +744,10 @@
                 </div>
                 <div class="btn-group sidebar-state-buttons sidebar-footer-draw" role="group" style="margin-bottom: 0px;">
                     <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button"><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
-                    <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button> 
+                    <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button>
                 </div>
                 <div class="btn-group btn-group-justified" id="sidebar-footer-controls" role="group">
-                    <a class="btn btn-default btn-sm" data-help="zoom-in"  onclick="zoom(1.10);"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span></a>                
+                    <a class="btn btn-default btn-sm" data-help="zoom-in"  onclick="zoom(1.10);"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span></a>
                     <a class="btn btn-default btn-sm" data-help="zoom-out" onclick="zoom(0.90);"><span class="glyphicon glyphicon-zoom-out" aria-hidden="true"></span></a>
                     <a class="btn btn-default btn-sm" data-help="return-to-natural" onclick="zoom_reset();"><span class="glyphicon glyphicon-screenshot" aria-hidden="true"></span></a>
                     <a class="btn btn-default btn-sm upload-button" onclick="showUploadProject();"><span class="glyphicon glyphicon-cloud-upload" aria-hidden="true"></span></a>
@@ -832,7 +833,7 @@
                         <select class="form-control" id="saveState_list" size="10" onchange="$('#saveState_name').val(this.value);" ondblclick="saveState();"></select>
                     </div>
                     <div class="form-group">
-                            <label class="col-md-2 settings-label label-big" for="saveState_name">Name: </label>  
+                            <label class="col-md-2 settings-label label-big" for="saveState_name">Name: </label>
                             <div class="col-md-10">
                                 <input type="text" id="saveState_name" class="form-control" />
                             </div>
@@ -909,31 +910,31 @@
 
                 <div class="modal-body">
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">Name:</label>  
+                        <label class="col-md-4 settings-label">Name:</label>
                         <div class="col-md-8">
                             <input type="text" id="phylogeny_name" value="New_phylogeny_1">
                         </div>
                     </div>
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">Gene Cluster Bin:</label>  
+                        <label class="col-md-4 settings-label">Gene Cluster Bin:</label>
                         <div class="col-md-8">
                             <select id="phylogeny_gene_cluster"></select>
                         </div>
                     </div>
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">Program:</label>  
+                        <label class="col-md-4 settings-label">Program:</label>
                         <div class="col-md-8">
                             <select id="phylogeny_programs"></select>
                         </div>
                     </div>
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">Aligner:</label>  
+                        <label class="col-md-4 settings-label">Aligner:</label>
                         <div class="col-md-8">
                             <select id="phylogeny_aligners"></select>
                         </div>
                     </div>
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">Store generated tree permanently:</label>  
+                        <label class="col-md-4 settings-label">Store generated tree permanently:</label>
                         <div class="col-md-8">
                             <input type="checkbox" id="phylogeny_store_generated_tree"/>
                         </div>
@@ -964,13 +965,13 @@
 
                 <div class="modal-body">
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">Username:</label>  
+                        <label class="col-md-4 settings-label">Username:</label>
                         <div class="col-md-8">
                             <input type="text" id="username" value="">
                         </div>
                     </div>
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">Password:</label>  
+                        <label class="col-md-4 settings-label">Password:</label>
                         <div class="col-md-8">
                             <input type="password" id="password" value="">
                         </div>
@@ -978,25 +979,25 @@
                     <div class="col-md-12">
                         <center><a href="https://anvi-server.org/accounts/register/">Register</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://anvi-server.org/accounts/password/reset/">Reset your password</a></center>
                     </div>
-                    
+
                     <div class="col-md-12">
                         <hr/>
                     </div>
-                    
+
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">Project name:</label>  
+                        <label class="col-md-4 settings-label">Project name:</label>
                         <div class="col-md-8">
                             <input type="text" id="upload_project_name" value="">
                         </div>
                     </div>
-                    
+
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">Delete if project exists:</label>  
+                        <label class="col-md-4 settings-label">Delete if project exists:</label>
                         <div class="col-md-8">
                             <input type="checkbox" id="upload_delete_if_exists">
                         </div>
                     </div>
-                    
+
                     <div class="col-md-12">
                         <hr/>
                     </div>
@@ -1008,38 +1009,38 @@
                     </div>
 
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">View:</label>  
+                        <label class="col-md-4 settings-label">View:</label>
                         <div class="col-md-8">
                             <select id="upload_view"></select>
                         </div>
                     </div>
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">Ordering:</label>  
+                        <label class="col-md-4 settings-label">Ordering:</label>
                         <div class="col-md-8">
                             <select id="upload_ordering"></select>
                         </div>
                     </div>
 
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">State:</label>  
+                        <label class="col-md-4 settings-label">State:</label>
                         <div class="col-md-8">
                             <select id="upload_state"></select>
                         </div>
                     </div>
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">Collection:</label>  
+                        <label class="col-md-4 settings-label">Collection:</label>
                         <div class="col-md-8">
                             <select id="upload_collection"></select>
                         </div>
                     </div>
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">Include samples metadata:</label>  
+                        <label class="col-md-4 settings-label">Include samples metadata:</label>
                         <div class="col-md-8">
                             <input type="checkbox" id="upload_include_samples" disabled> <i>(temporarily unavailable)</i>
                         </div>
                     </div>
                     <div class="col-md-12">
-                        <label class="col-md-4 settings-label">Include description:</label>  
+                        <label class="col-md-4 settings-label">Include description:</label>
                         <div class="col-md-8">
                             <input type="checkbox" id="upload_include_description" checked>
                         </div>
@@ -1071,7 +1072,7 @@
 
                 <div class="modal-body">
                     <div class="col-md-12">
-                        <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" id="splitSequence" rows="16" onclick="$(this).select();" readonly></textarea> 
+                        <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" id="splitSequence" rows="16" onclick="$(this).select();" readonly></textarea>
                     </div>
                 </div>
 
@@ -1104,16 +1105,16 @@
     function placementSetter(tooltip, source)
     {
         if (source.hasAttribute('data-help') && tooltip_placements.hasOwnProperty(source.getAttribute('data-help')))
-            return tooltip_placements[source.getAttribute('data-help')]; 
+            return tooltip_placements[source.getAttribute('data-help')];
 
-        return 'top';      
+        return 'top';
     }
 
     $(document).ready(function() {
-        $("body").tooltip({ 
+        $("body").tooltip({
             selector: '[data-toggle=tooltip], [data-help]',
             title: titleSetter,
-            placement: placementSetter, 
+            placement: placementSetter,
             container: 'body'
         });
     });
