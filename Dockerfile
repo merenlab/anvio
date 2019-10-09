@@ -1,5 +1,5 @@
 FROM continuumio/miniconda3:4.7.10
-ENV ANVIO_VERSION "6_master"
+ENV ANVIO_VERSION "6"
 
 RUN conda update conda
 RUN conda config --env --add channels conda-forge
