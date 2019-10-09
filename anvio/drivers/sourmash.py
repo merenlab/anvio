@@ -22,8 +22,11 @@ __email__ = "mahmoudyousef@uchicago.edu"
 
 
 class Sourmash:
-    def __init__(self, args={}, run=terminal.Run(), progress=terminal.Progress(),
-                 program_name='sourmash'):
+    """
+    This is an incomplete driver of sourmash that makes a single kmer signature, and computes
+    similarities. Feel free to buff this to suit your needs
+    """
+    def __init__(self, args={}, run=terminal.Run(), progress=terminal.Progress(), program_name='sourmash'):
         self.run = run
         self.progress = progress
         self.program_name = program_name
