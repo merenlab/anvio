@@ -953,7 +953,6 @@ class SourMash(GenomeSimilarity):
 
         self.results = {}
         self.clusterings = {}
-        self.program = sourmash.Sourmash(args)
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
@@ -963,6 +962,11 @@ class SourMash(GenomeSimilarity):
         self.similarity_type = 'SourMash'
 
         self.adaptive_kmer = True if not self.kmer_size else False
+        self.program = sourmash.Sourmash(args) if not self.adaptive_kmer else sourmash.IterateKmerSourmash(args)
+
+        if self.adaptive_kmer:
+            run.warning("You didn't provide a kmer value, so anvi'o will find the 'best' kmer\
+                         value it can by maximizing the entropy of the similarity matrix.")
 
 
     def reformat_results(self, results):
