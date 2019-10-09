@@ -32,8 +32,7 @@ RUN apt-get update && apt-get install -qq build-essential libgsl0-dev bedtools m
 RUN pip install https://github.com/BinPro/CONCOCT/archive/1.1.0.tar.gz
 
 # Install BINSANITY
-# RUN pip install git+https://github.com/edgraham/BinSanity.git
-RUN pip install git+https://github.com/meren/BinSanity.git
+RUN pip install git+https://github.com/edgraham/BinSanity.git
 
 # Install MAXBIN2 (installing fraggenescan will require cpanm, and we also need IDBA-UD)
 RUN conda install -c bioconda perl-app-cpanminus
