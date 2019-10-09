@@ -104,6 +104,9 @@ class SCGTaxonomyContext(object):
        core gene taxonomy operations.
     """
     def __init__(self, args, skip_sanity_check=False):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.skip_sanity_check = A('skip_sanity_check') or skip_sanity_check
+
         # hard-coded GTDB variables. poor design, but I don't think we are going do need an
         # alternative to GTDB.
         self.target_database = "GTDB"
@@ -178,8 +181,10 @@ class SCGTaxonomyContext(object):
 
             self.progress.end()
 
-        if not skip_sanity_check:
+        if not self.skip_sanity_check:
             self.sanity_check()
+        else:
+            self.run.warning("We are skipping all sanity checks :( Dangerous stuff is happening.")
 
 
     def sanity_check(self):
