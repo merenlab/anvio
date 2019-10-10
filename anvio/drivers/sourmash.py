@@ -2,12 +2,16 @@
 """Interface to sourmash"""
 
 import os
+import numpy as np
+import pandas as pd
 import shutil
 
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+
+from scipy.stats import entropy
 
 from anvio.errors import ConfigError
 
@@ -119,12 +123,21 @@ class IterateKmerSourmash(Sourmash):
 
     PARAMS
     ======
-        method: str, "scan"
-            the method to determine maximal entropy. "scan" simply tries all of the kmer values
-            within a range
+
+    method: str, "scan"
+        The method to determine maximal entropy. "scan" simply tries all of the kmer values
+        within a range
+
+    lower_bound, upper_bound: (int, int), (5, 80)
+        Optimal kmer value will be searched within these bounds (inclusive)
+
+    store_all: bool, False
+        All kmer values tried will end up in self.results if True. Otherwise, only the optimal
+        kmer value will be retained
     """
-    def __init__(self, args, method='scan', lower_bound=5, upper_bound=30):
+    def __init__(self, args, method='scan', lower_bound=8, upper_bound=30, store_all=True):
         self.method = method
+        self.store_all = store_all
         self.lower_bound = lower_bound
         self.upper_bound = upper_bound
 
@@ -134,24 +147,59 @@ class IterateKmerSourmash(Sourmash):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.available_methods = {
-            'scan': (self.scan_method, {'step': A('step') or 3}),
+            'scan': (self.scan_method, {'step': A('step') or 1}),
         }
 
 
     def process(self, input_path, fasta_files):
-        iterator, iterator_args = self.determine_method_iterator()
-        for kmer in iterator(**iterator_args):
+        kmer_search, kmer_search_args = self.determine_kmer_search_method()
+        best_kmer = kmer_search(input_path, fasta_files, **kmer_search_args)
+        best_report_name = 'kmer_%d_mash_similarity' % best_kmer
+
+        self.run.info_single('Optimal kmer value was %d' % best_kmer, nl_before=1, nl_after=1)
+
+        if not self.store_all:
+            self.results = {best_report_name: self.results[best_report_name]}
+
+        return self.results
+
+
+    def scan_method(self, input_path, fasta_files, step=1):
+        entropy_dict = {} # kmer: entropy
+
+        for kmer in range(self.lower_bound, self.upper_bound + 1, step):
             self.kmer_size = kmer
+            report_name = 'kmer_%d_mash_similarity' % self.kmer_size
+
             self.Sourmash_process(self, input_path, fasta_files)
 
+            entropy_dict[kmer] = self.calc_similarity_matrix_entropy(self.results[report_name])
 
-    def scan_method(self, step=1):
-        for kmer in range(self.lower_bound, self.upper_bound + 1, step):
-            yield kmer
+        return max(entropy_dict, key=entropy_dict.get)
 
 
-    def determine_method_iterator(self):
+    def calc_similarity_matrix_entropy(self, matrix):
+        """Calculates Shannon entropy of triangular portion of the matrix"""
+        array = pd.DataFrame(matrix).values.astype(float)
+        array = array[np.triu_indices(array.shape[0], k=1)]
+
+        if np.sum(array) == 0.0 or np.sum(array) == len(array):
+            similarity_entropy = 0
+        else:
+            similarity_entropy = entropy(array)
+
+        self.run.info('[sourmash] Similarity entropy', similarity_entropy)
+        self.run.info('[sourmash] Average off-diagonal', np.mean(array))
+
+        return similarity_entropy
+
+
+    def determine_kmer_search_method(self):
+        self.run.info('[sourmash] Method to find optimal kmer', self.method)
+
         try:
             return self.available_methods[self.method]
         except KeyError as e:
             raise ConfigError("IterateKmerSourmash :: .%s is not a valid method for entropy maximization." % self.method)
+
+
