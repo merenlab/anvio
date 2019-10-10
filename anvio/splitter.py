@@ -868,6 +868,39 @@ class LocusSplitter:
 
                 counter += 1
 
+            ##################
+            # This is where anvi'o should print a warning message that the exported loci
+            # are overlapping. Please see this issue for a reproducible example:
+            # https://github.com/merenlab/anvio/issues/1228
+
+            # Print warning if exported loci overlap on contig
+            # from itertools import combinations
+
+            # counter = 0
+            # for combo in combinations(list(self.gene_caller_ids_of_interest), 2):  # 2 for pairs
+            #     gene_1_1 = combo[0] - self.num_genes_list[0]
+            #     gene_2_1 = combo[0] + self.num_genes_list[1]
+            #     first_gene_of_the_block_1 = min(gene_1_1, gene_2_1)
+            #     last_gene_of_the_block_1 = max(gene_1_1, gene_2_1)
+
+            #     gene_1_2 = combo[1] - self.num_genes_list[0]
+            #     gene_2_2 = combo[1] + self.num_genes_list[1]
+            #     first_gene_of_the_block_2 = min(gene_1_2, gene_2_2)
+            #     last_gene_of_the_block_2 = max(gene_1_2, gene_2_2)
+
+            #     if first_gene_of_the_block_2 < first_gene_of_the_block_1 < last_gene_of_the_block_2:
+            #         self.run.warning(None,
+            #                         header="OVERLAPPPING!",
+            #                         nl_after=0)
+
+            #     elif first_gene_of_the_block_2 < last_gene_of_the_block_1 < last_gene_of_the_block_2:
+            #         self.run.warning(None,
+            #                         header="OVERLAPPPING!",
+            #                         nl_after=0)
+            #     counter += 1
+
+            ##################
+
         # flank-mode
         elif self.is_in_flank_mode:
             self.run.warning(None,
@@ -876,7 +909,7 @@ class LocusSplitter:
 
             output_path_prefix = os.path.join(self.output_dir, self.output_file_prefix)
             gene_caller_ids_flank_pair = list(self.gene_caller_ids_of_interest)
-            self.export_locus(output_path_prefix,None,gene_caller_ids_flank_pair)
+            self.export_locus(output_path_prefix, None, gene_caller_ids_flank_pair)
 
 
     def export_locus(self, output_path_prefix, gene_callers_id=None, gene_caller_ids_flank_pair=None):
@@ -927,7 +960,9 @@ class LocusSplitter:
                                    from the search-terms %s: %s and %s: %s. Please use `anvi-export-functions` on your CONTIGS.db, locate \
                                    these gene-caller-id's, then confirm the correct flanking gene-caller-ids. Anvi'o recommends you \
                                    use the --gene-caller-ids flag to specify the specific pair gene-caller-ids you need to cut out the locus \
-                                   so there are no more mix ups :)" % (len(self.gene_caller_ids_of_interest),
+                                   so there are no more mix ups. On the other hand, if you are trying to extract multiple loci from a genome \
+                                   using the same flanking genes, anvi'o cannot currently handle this in --flank-mode. If this functionality \
+                                   is necessary for your analysis, please make an issue on github and we will address it." % (len(self.gene_caller_ids_of_interest),
                                                                        str(self.search_term[0]),
                                                                        str(self.search_term_to_gene_id_hits_dict[self.search_term[0]]),
                                                                        str(self.search_term[1]),
