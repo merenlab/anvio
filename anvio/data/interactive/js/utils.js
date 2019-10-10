@@ -250,6 +250,41 @@ function createCookie(name,value,days) {
 
 //--------------------------------------------------------------------------------------------------
 
+function showTaxonomyTableDialog(title, content)
+{
+    var randomID = title.hashCode();
+
+    var template = `
+    <div class="modal fade taxonomyTableDialog" id="modal` + randomID + `" role="dialog" data-backdrop="false" style="pointer-events: none; width: 100%;">
+        <div class="modal-dialog" style="pointer-events: all; width: 1200px;">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                     <h4 class="modal-title">` + title + `</h4>
+                </div>
+
+                <div class="modal-body">
+                    ` + content + `
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Fine</button>
+                </div>
+            </div>
+        </div>
+    </div>`;
+
+    $('body').append(template);
+    $('#modal' + randomID).modal({'show': true, 'backdrop': true, 'keyboard': false}).find('.modal-dialog').draggable({handle: '.modal-header'});
+    $('#modal' + randomID).on('hidden.bs.modal', function () {
+        $(this).remove();
+    });
+
+    // trigger bootstrap-sortable in case newly generated page content may have sortable tables.
+    $.bootstrapSortable({ applyLast: true })
+}
+
 function showDraggableDialog(title, content, updateOnly)
 {
     var randomID = title.hashCode();
@@ -258,7 +293,7 @@ function showDraggableDialog(title, content, updateOnly)
     {
         if (checkObjectExists('#modal' + randomID))
             $('#modal' + randomID).find('.modal-body').html(content);
-        
+
         return;
     }
     else
@@ -286,6 +321,9 @@ function showDraggableDialog(title, content, updateOnly)
     $('#modal' + randomID).on('hidden.bs.modal', function () {
         $(this).remove();
     });
+
+    // trigger bootstrap-sortable in case newly generated page content may have sortable tables.
+    $.bootstrapSortable({ applyLast: true })
 }
 
 //--------------------------------------------------------------------------------------------------

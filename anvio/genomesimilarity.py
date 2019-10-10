@@ -234,7 +234,7 @@ class Dereplicate:
 
         if filesnpaths.is_dir_empty(dir_path):
             raise ConfigError("The %s you provided is empty. What kind of game are you playing?" % dir_name)
-        files_in_dir = os.listdir(self.ani_dir)
+        files_in_dir = os.listdir(dir_path)
 
         for report in necessary_reports:
             report_name = report + ".txt"

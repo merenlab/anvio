@@ -680,7 +680,7 @@ def time_program(program_method):
     program_name = os.path.basename(inspect.getfile(program_method))
 
     TimeCode_params = {
-        'success_msg': '%s finished after ' % program_name,
+        'success_msg': '%s took ' % program_name,
         'failure_msg': '%s encountered an error after ' % program_name,
         'suppress_first': 3, # avoid clutter when program finishes or fails within 3 seconds
     }

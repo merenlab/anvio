@@ -97,7 +97,7 @@ class BinSanity:
         }
 
         cmd_line = [self.program_name,
-            '-c', input_files.coverage, 
+            '-c', input_files.coverage,
             '-f', os.path.dirname(input_files.fasta),
             '-l', os.path.basename(input_files.fasta),
             '-o', self.temp_path,
@@ -126,4 +126,3 @@ class BinSanity:
             shutil.rmtree(self.temp_path)
 
         return clusters
-        
