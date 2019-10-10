@@ -29,7 +29,8 @@ function Bins(prefix, container) {
     this.container = container || document.createElement("div");
 
     this.cache = {
-        'completeness': {}
+        'completeness': {},
+        'taxonomy': {},
     };
 
     this.keepHistory = false;
@@ -39,6 +40,7 @@ function Bins(prefix, container) {
     this.future = [];
 
     document.body.addEventListener('bin-settings-changed', (event) => this.RedrawBins());
+    $(document).on('sorted', () => { this.BinsSorted(); });
 };
 
 
@@ -73,10 +75,12 @@ Bins.prototype.NewBin = function(id, binState) {
         var redundancy = "---";
     }
 
-    var template = `<tr bin-id="${id}">
+    var template = `<tr bin-id="${id}" class="bin-row">
                        <td><input type="radio" name="active_bin" value="${id}"></td>
                        <td><div id="bin_color_${id}" class="colorpicker" color="${color}" style="background-color: ${color}"></td>
-                       <td data-value="${name}"><input type="text" class="bin-name" onChange="emit('bin-settings-changed');" size="21" id="bin_name_${id}" value="${name}"></td>
+                       <td data-value="${name}">
+                            <input type="text" class="bin-name" onChange="emit('bin-settings-changed'); this.parentNode.setAttribute('data-value', this.value);" size="21" id="bin_name_${id}" value="${name}">
+                        </td>
                        ${mode != 'pan' ? `
                            <td data-value="${contig_count}" class="num-items"><input type="button" value="${contig_count}" title="Click for contig names" onClick="showContigNames(${id});"></td>
                            <td data-value="${contig_length}" class="length-sum"><span>${contig_length}</span></td>
@@ -89,6 +93,13 @@ Bins.prototype.NewBin = function(id, binState) {
                             <td data-value="${redundancy}" class="redundancy"><input type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id}); "></td>
                        `}
                        <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
+                    </tr>
+                    <tr style="${ $('#estimate_taxonomy').is(':checked') ? `` : `display: none;`}" data-parent="${id}">
+                            <td style="border-top: 0px;">&nbsp;</td>
+                            <td style="border-top: 0px;">&nbsp;</td>
+                            <td colspan="6" style="border-top: 0px; padding-top: 0px;">
+                                <span bin-id="${id}" class="taxonomy-name-label">N/A</span>
+                            </td>
                     </tr>`;
 
     this.container.insertAdjacentHTML('beforeend', template);
@@ -158,7 +169,7 @@ Bins.prototype.GetSelectedBinColor = function() {
 
 
 Bins.prototype.GetBinColor = function(bin_id) {
-    return this.container.querySelector('#bin_color_' + bin_id).getAttribute('color');
+    return this.container.querySelector('#bin_color_' + bin_id.toString()).getAttribute('color');
 }
 
 
@@ -187,7 +198,11 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
     this.selections[bin_id].clear();
     this.PushHistory(transaction);
 
-    this.container.querySelector(`tr[bin-id='${bin_id}']`).remove();
+    let bin_row = this.container.querySelector(`tr[bin-id='${bin_id}']`);
+
+    bin_row.nextElementSibling.remove(); // remove taxonomy row too.
+    bin_row.remove();
+
     if (!this.container.querySelectorAll('*').length) {
         // No bins left
         this.NewBin();
@@ -319,7 +334,7 @@ Bins.prototype.DeleteAllBins = function() {
         return;
     }
 
-    for (let tr of this.container.querySelectorAll('tr')) {
+    for (let tr of this.container.querySelectorAll('tr.bin-row')) {
         this.DeleteBin(tr.getAttribute('bin-id'), false);
     }
 };
@@ -433,6 +448,18 @@ Bins.prototype.IsNodeMemberOfBin = function(node) {
 };
 
 
+Bins.prototype.BinsSorted = function() {
+    // move every taxonomy row after their original parent.
+    this.container.querySelectorAll('[data-parent]').forEach((elem) => { 
+        let taxonomy_row = elem.parentNode.removeChild(elem);
+        let parent_bin_id = elem.getAttribute('data-parent');
+
+        let parent_row = this.container.querySelector(`tr[bin-id="${parent_bin_id}"]`);
+        parent_row.insertAdjacentHTML('afterend', taxonomy_row.outerHTML);
+    });
+}
+
+
 Bins.prototype.UpdateBinsWindow = function(bin_list) {
     if (!this.allowRedraw)
         return;
@@ -454,6 +481,7 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
             }
 
             let bin_row = this.container.querySelector(`tr[bin-id="${bin_id}"]`);
+            let bin_name = bin_row.querySelector('.bin-name').valie
 
             bin_row.querySelector('td.num-gene-clusters').setAttribute('data-value', num_gene_clusters);
             bin_row.querySelector('td.num-gene-clusters>input').value = num_gene_clusters;
@@ -477,6 +505,7 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
             }
 
             let bin_row = this.container.querySelector(`tr[bin-id="${bin_id}"]`);
+            let bin_name = bin_row.querySelector('.bin-name').value;
 
             bin_row.querySelector('td.num-items').setAttribute('data-value', num_items);
             bin_row.querySelector('td.num-items>input').value = num_items;
@@ -552,6 +581,54 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                         showCompleteness(bin_id, true);
                         showRedundants(bin_id, true);
                     },
+                });
+
+                if (!$('#estimate_taxonomy').is(':checked')) {
+                    continue;
+                }
+
+                let collection_data = {};
+                collection_data[bin_name] = [];
+
+                for (let node of this.selections[bin_id].values()) {
+                    if (node.IsLeaf()) {
+                        collection_data[bin_name].push(node.label);
+                    }
+                }
+
+                $.ajax({
+                    type: "POST",
+                    url: "/data/get_taxonomy",
+                    cache: false,
+                    data: {
+                        'collection': JSON.stringify(collection_data)
+                    },
+                    success: (data) => {
+                        if (data.hasOwnProperty('status') && data.status != 0) {
+                            if ($('#estimate_taxonomy').is(':checked')) {
+                                toastr.error('"' + data.message + '", the server said.', "The anvi'o headquarters is upset");
+                            }
+                            $('#estimate_taxonomy').prop('checked', false);
+                            toggleTaxonomyEstimation();
+                            return;
+                        }
+                        if (data.hasOwnProperty(bin_name)) {
+                            let order = ["t_domain", "t_phylum", "t_class",
+                                         "t_order", "t_family", "t_genus", "t_species"];
+
+                            this.container.querySelector(`span.taxonomy-name-label[bin-id="${bin_id}"]`).innerHTML = " (?) Unknown";
+
+                            for (let i=order.length-1; i >= 0; i--) {
+                                let level = order[i];
+
+                                if (data[bin_name]['consensus_taxonomy'][level] !== null) {
+                                    let label = level.split('_')[1][0];
+                                    this.container.querySelector(`span.taxonomy-name-label[bin-id="${bin_id}"]`).innerHTML = " (" + label + ") " + data[bin_name]['consensus_taxonomy'][level].replace('_', ' ');
+                                    return;
+                                }
+                            }
+                        }
+                    }
                 });
             }
         }
@@ -642,7 +719,7 @@ Bins.prototype.ExportCollection = function(use_bin_id=false) {
     let data = {};
     let colors = {};
 
-    for (let tr of this.container.querySelectorAll('tr')) {
+    for (let tr of this.container.querySelectorAll('tr.bin-row')) {
         let bin_id = tr.getAttribute('bin-id');
         let bin_name = tr.querySelector('.bin-name').value;
         let bin_color = tr.querySelector('.colorpicker').getAttribute('color');
@@ -936,6 +1013,9 @@ Bins.prototype.RebuildIntersections = function() {
         return;
 
     for (let bin_id in this.selections) {
+        if (!this.selections[bin_id].size) {
+            continue;
+        }
         let bin_color = this.GetBinColor(bin_id);
         let inserted = true;
         let removed = true;

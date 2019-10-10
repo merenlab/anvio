@@ -35,6 +35,7 @@ import anvio.drivers as drivers
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
+import anvio.scgtaxonomyops as scgtaxonomyops
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.serverAPI import AnviServerAPI
@@ -96,6 +97,13 @@ class BottleApplication(Bottle):
             response = mock_response
         else:
             from bottle import response, request
+
+        # if there is a contigs database, and scg taxonomy was run on it get an instance
+        # of the SCG Taxonomy class early on:
+        if A('contigs_db') and dbops.ContigsDatabase(A('contigs_db')).meta['scg_taxonomy_was_run']:
+            self.scg_taxonomy = scgtaxonomyops.SCGTaxonomyEstimator(argparse.Namespace(contigs_db=self.interactive.contigs_db_path))
+        else:
+            self.scg_taxonomy = None
 
 
     def set_password(self, password):
@@ -164,6 +172,8 @@ class BottleApplication(Bottle):
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
         self.route('/data/check_homogeneity_info',             callback=self.check_homogeneity_info, method='POST')
         self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
+        self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
+        self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
 
 
     def run_application(self, ip, port):
@@ -583,6 +593,44 @@ class BottleApplication(Bottle):
         progress.end()
 
         return json.dumps(data)
+
+
+    def get_gene_info(self, gene_callers_id):
+        # TO DO: there are three functions returns gene info dict for different purposes
+        # this needs to be organized.
+
+        gene_callers_id = int(gene_callers_id)
+        split_name = self.interactive.gene_callers_id_to_split_name_dict[gene_callers_id]
+
+        # we need eentry id
+        entry_id = None
+        for candidate_entry_id in self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
+            if int(gene_callers_id) == int(self.interactive.genes_in_splits[candidate_entry_id]['gene_callers_id']):
+                entry_id = candidate_entry_id
+
+
+        if not entry_id:
+            raise ConfigError("Can not find this gene_callers_id in any splits.")
+
+        p =  self.interactive.genes_in_splits[entry_id]
+        # p looks like this at this point:
+        #
+        # {'percentage_in_split': 100,
+        #  'start_in_split'     : 16049,
+        #  'stop_in_split'      : 16633}
+        #  'prot'               : u'prot2_03215',
+        #  'split'              : u'D23-1contig18_split_00036'}
+        #
+        # we will add a bit more attributes:
+        p['source'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['source']
+        p['direction'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['direction']
+        p['start_in_contig'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['start']
+        p['stop_in_contig'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['stop']
+        p['complete_gene_call'] = 'No' if  self.interactive.genes_in_contigs_dict[gene_callers_id]['partial'] else 'Yes'
+        p['length'] = p['stop_in_contig'] - p['start_in_contig']
+        p['functions'] =  self.interactive.gene_function_calls_dict[gene_callers_id] if gene_callers_id in  self.interactive.gene_function_calls_dict else None
+
+        return json.dumps(p)
 
 
     def search_items_by_name(self):
@@ -1285,3 +1333,25 @@ class BottleApplication(Bottle):
         new_newick = re.sub(r"base32(\w*)", lambda m: base64.b32decode(m.group(1).replace('_','=')).decode('utf-8'), new_newick)
 
         return json.dumps({'newick': new_newick})
+
+
+    def get_taxonomy(self):
+        collection = json.loads(request.forms.get('collection'))
+
+        if not self.scg_taxonomy:
+            message = "You first need to run `anvi-run-scg-taxonomy` on your contigs database for this to work :("
+            run.warning(message)
+            return json.dumps({'status': 1, 'message': message})
+
+        output = {}
+        try:
+            for bin_name in collection:
+                output[bin_name] = self.scg_taxonomy.estimate_for_list_of_splits(collection[bin_name], bin_name=bin_name)
+
+            run.info_single('Taxonomy estimation has been requested for bin(s) "%s".' % (", ".join(collection.keys())))
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': message})
+
+        return json.dumps(output)
+

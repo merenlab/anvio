@@ -14,13 +14,12 @@ from anvio.errors import ConfigError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
+__maintainer__ = "Özcan Esen"
+__email__ = "ozcanesen@gmail.com"
 
 
 run = terminal.Run()
@@ -101,7 +100,7 @@ class DAS_Tool:
         cwd_backup = os.getcwd()
         os.chdir(self.temp_path)
         log_path = P('logs.txt')
-        
+
         if anvio.DEBUG:
             self.run.info('Working directory', self.temp_path)
 
@@ -134,8 +133,8 @@ class DAS_Tool:
             '-l', ','.join(c_names),
             '-o', P('OUTPUT'),
             '--threads', str(threads),
-            *utils.serialize_args(args, 
-                use_underscore=True, 
+            *utils.serialize_args(args,
+                use_underscore=True,
                 skip_keys=['source_collections'])]
 
         self.progress.new(self.program_name)

@@ -64,7 +64,7 @@ def main(args):
 
     if not items_order_of_interest:
         raise ConfigError("The item order '%s' is not one of the item orders in the database. This what you\
-                           have in there: '%s'." % (order_name, ', '.join(item_order_names_raw)))
+                           have in there: '%s'." % (order_name, ', '.join(item_order_names)))
 
     order_data_type_newick = items_order_of_interest['type'] == 'newick'
     run.info("Database", db_path)

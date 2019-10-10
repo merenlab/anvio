@@ -101,8 +101,8 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
     groupB.add_argument(*anvio.A('leeway'), **anvio.K('leeway'))
 
-    groupB = parser.add_argument_group('OUTPUT', "How should results be stored.")
-    parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+    groupC = parser.add_argument_group('OUTPUT', "How should results be stored.")
+    groupC.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
 
     args = anvio.get_args(parser)
 

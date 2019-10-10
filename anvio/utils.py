@@ -374,6 +374,8 @@ def gzip_decompress_file(input_file_path, output_file_path=None, keep_original=T
     if not keep_original:
         os.remove(input_file_path)
 
+    return output_file_path
+
 
 def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
     """Uses subprocess.call to run your `cmdline`"""
@@ -926,6 +928,31 @@ def get_gene_caller_ids_from_args(gene_caller_ids, delimiter):
     return gene_caller_ids_set
 
 
+def remove_sequences_with_only_gaps_from_fasta(input_file_path, output_file_path, inplace=True):
+    filesnpaths.is_file_fasta_formatted(input_file_path)
+    filesnpaths.is_output_file_writable(output_file_path)
+
+    total_num_sequences = 0
+    num_sequences_removed = 0
+    input_fasta = u.SequenceSource(input_file_path)
+    clean_fasta = u.FastaOutput(output_file_path)
+
+    while next(input_fasta):
+        total_num_sequences += 1
+        if input_fasta.seq.count('-') == len(input_fasta.seq):
+            num_sequences_removed += 1
+        else:
+            clean_fasta.store(input_fasta, split=False)
+
+    if inplace:
+        if num_sequences_removed:
+            shutil.move(output_file_path, input_file_path)
+        else:
+            os.remove(output_file_path)
+
+    return total_num_sequences, num_sequences_removed
+
+
 def get_all_ids_from_fasta(input_file):
     fasta = u.SequenceSource(input_file)
     ids = []
@@ -1030,14 +1057,17 @@ def get_time_to_date(local_time, fmt='%Y-%m-%d %H:%M:%S'):
     return time.strftime(fmt, time.localtime(local_time))
 
 
-def concatenate_files(dest_file, file_list):
+def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
     if not dest_file:
         raise ConfigError("Destination cannot be empty.")
+
+    filesnpaths.is_output_file_writable(dest_file)
+
     if not len(file_list):
         raise ConfigError("File list cannot be empty.")
+
     for f in file_list:
         filesnpaths.is_file_exists(f)
-    filesnpaths.is_output_file_writable(dest_file)
 
     dest_file_obj = open(dest_file, 'w')
     for chunk_path in file_list:
@@ -1045,6 +1075,11 @@ def concatenate_files(dest_file, file_list):
             dest_file_obj.write(line)
 
     dest_file_obj.close()
+
+    if remove_concatenated_files:
+        for f in file_list:
+            os.remove(f)
+
     return dest_file
 
 
@@ -1165,11 +1200,11 @@ def get_split_and_contig_names_of_interest(contigs_db_path, gene_caller_ids):
 
     where_clause_contigs = "parent in (%s)" % ', '.join(['"%s"' % c for c in contig_names_of_interest])
     splits_info = contigs_db.get_some_rows_from_table_as_dict(t.splits_info_table_name, where_clause=where_clause_contigs)
-    split_names_of_ineterest = set(splits_info.keys())
+    split_names_of_interest = set(splits_info.keys())
 
     contigs_db.disconnect()
 
-    return (split_names_of_ineterest, contig_names_of_interest)
+    return (split_names_of_interest, contig_names_of_interest)
 
 
 def get_contigs_splits_dict(split_ids, splits_basic_info):
@@ -2597,6 +2632,23 @@ def download_file(url, output_file_path, progress=progress, run=run):
 
     progress.end()
     run.info('Downloaded succesfully', output_file_path)
+
+
+def get_remote_file_content(url, gzipped=False):
+    import requests
+    from io import BytesIO
+
+    remote_file = requests.get(url)
+
+    if remote_file.status_code == 404:
+        raise ConfigError("Bad news. The remove file at '%s' was not found :(" % url)
+
+    if gzipped:
+        buf = BytesIO(remote_file.content)
+        fg = gzip.GzipFile(fileobj=buf)
+        return fg.read().decode('utf-8')
+
+    return remote_file.content.decode('utf-8')
 
 
 def download_protein_structures(protein_code_list, output_dir):
