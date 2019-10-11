@@ -164,7 +164,7 @@ class WorkflowSuperClass:
             snakemake.main()
 
         # restore the `sys.argv` to the original for the sake of sakity (totally made up word,
-        # but you already know what it measn. you're welcome.)
+        # but you already know what it means. you're welcome.)
         sys.argv = original_sys_argv
 
 
