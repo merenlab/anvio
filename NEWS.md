@@ -1,3 +1,11 @@
+# v6, "esther" is out! (11.10.2019) #
+We are happy to announce anvi'o v6, "esther":
+
+This release adds more than 16,000 lines of code to v6, and makes available new tools for those who study microbial 'omics.
+
+Please see the release notes [here](https://github.com/merenlab/anvio/releases/tag/v6), and our updated installation instructions [here](http://merenlab.org/install-anvio).
+***
+
 # Working with NCBI genomes (18.03.2019) #
 [A new blog post](http://merenlab.org/2019/03/14/ncbi-genome-download-magic/) by [@Alon Shaiber](https://twitter.com/alon_shaiber) on how to download microbial genomes from the NCBI and include them in anvi'o 'omics analyses.
 ***
