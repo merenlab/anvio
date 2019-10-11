@@ -639,10 +639,14 @@ class GenomeSimilarity:
                 self.clusterings[report_name] = clustering.get_newick_tree_data_for_dict(self.results[report_name],
                                                                                          linkage=self.clustering_linkage,
                                                                                          distance=self.clustering_distance)
-            except:
-                raise ConfigError("Bad news :/ Something went wrong while anvi'o was processing the output for\
-                                   '%s'. You can find the offending file if you search for the output file in\
-                                   the temporary output directory '%s'." % (report_name, os.path.join(self.temp_dir, 'output')))
+            except Exception as e:
+                if anvio.DEBUG:
+                    print(e)
+                run.warning("Bad news :/ Something went wrong while anvi'o was processing the clustering for\
+                             '%s'. You can find the offending file if you search for the output file in\
+                             the temporary output directory '%s'. You potentially waited so long, so anvi'o\
+                             will continue as if nothing happened. If you want to diagnose this problem, rerun with\
+                             --debug" % (report_name, os.path.join(self.temp_dir, 'output')))
 
 
     def add_to_pan_db(self):
@@ -673,11 +677,13 @@ class GenomeSimilarity:
                 l_args = argparse.Namespace(pan_db=self.pan_db, just_do_it=True, target_data_group=target_data_group)
                 TableForLayerAdditionalData(l_args, r=terminal.Run(verbose=False)).add(self.results[report_name], list(self.results[report_name].keys()))
 
-                TableForLayerOrders(self.args, r=terminal.Run(verbose=False)).add({self.method + '_' + report_name: {'data_type': 'newick',
-                                                                                   'data_value': self.clusterings[report_name]}})
+                clustering_present = True if report_name in self.clusterings else False
+                if clustering_present:
+                    TableForLayerOrders(self.args, r=terminal.Run(verbose=False)).add({self.method + '_' + report_name: {'data_type': 'newick',
+                                                                                       'data_value': self.clusterings[report_name]}})
 
-                run.info_single("Additional data and order for %s are now in pan db" % target_data_group.replace('_', ' '), mc='green')
-
+                extra_msg = ' and order' if clustering_present else ''
+                run.info_single("Additional data%s for %s are now in pan db" % (extra_msg, target_data_group.replace('_', ' ')), mc='green')
 
 
     def report(self, output_dir = None, ok_if_exists = False):
@@ -692,8 +698,10 @@ class GenomeSimilarity:
             output_path_for_report = J(output_dir, self.method + '_' + report_name)
 
             utils.store_dict_as_TAB_delimited_file(self.results[report_name], output_path_for_report + '.txt')
-            with open(output_path_for_report + '.newick', 'w') as f:
-                f.write(self.clusterings[report_name])
+
+            if report_name in self.clusterings:
+                with open(output_path_for_report + '.newick', 'w') as f:
+                    f.write(self.clusterings[report_name])
 
             run.info_single('Matrix and clustering of \'%s\' written to output directory' % report_name.replace('_',' '), mc='green')
 
