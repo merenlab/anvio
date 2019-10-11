@@ -135,7 +135,7 @@ class IterateKmerSourmash(Sourmash):
         All kmer values tried will end up in self.results if True. Otherwise, only the optimal
         kmer value will be retained
     """
-    def __init__(self, args, method='scan', lower_bound=8, upper_bound=30, store_all=True):
+    def __init__(self, args, method='scan', lower_bound=7, upper_bound=15, store_all=True):
         self.method = method
         self.store_all = store_all
         self.lower_bound = lower_bound
@@ -183,15 +183,12 @@ class IterateKmerSourmash(Sourmash):
         array = pd.DataFrame(matrix).values.astype(float)
         array = array[np.triu_indices(array.shape[0], k=1)]
 
-        if np.sum(array) == 0.0 or np.sum(array) == len(array):
-            similarity_entropy = 0
-        else:
-            similarity_entropy = entropy(array)
+        hist, bins = np.histogram(array, bins=len(array))
 
-        self.run.info('[sourmash] Similarity entropy', similarity_entropy)
+        self.run.info('[sourmash] Similarity entropy', entropy(hist))
         self.run.info('[sourmash] Average off-diagonal', np.mean(array))
 
-        return similarity_entropy
+        return entropy(hist)
 
 
     def determine_kmer_search_method(self):
