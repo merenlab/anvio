@@ -198,7 +198,12 @@ class SCGTaxonomyContext(object):
             raise ConfigError("`SetupLocalSCGTaxonomyData` class is upset because it was inherited without\
                                a directory for SCG taxonomy data to be stored :( This variable can't be None.")
 
-        # sanity checks specific to each class
+        # sanity checks specific to classes start below
+        if self.__class__.__name__ in ['SetupLocalSCGTaxonomyData']:
+            if self.reset and self.redo_databases:
+                raise ConfigError("You can't ask anvi'o to both `--reset` and `--redo-databases` at the same time. Well.\
+                                   You can, but then this happens :/")
+
         if self.__class__.__name__ in ['PopulateContigsDatabaseWithSCGTaxonomy', 'SCGTaxonomyEstimator']:
             if not os.path.exists(self.SCGs_taxonomy_data_dir):
                 raise ConfigError("Anvi'o could not find the data directory for the single-copy core genes taxonomy\
@@ -982,7 +987,8 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
 
         # user accessible variables
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.reset = A("reset")
+        self.reset = A("reset") # complete start-over (downloading everything from GTDB)
+        self.redo_databases = A("redo_databases") # just redo the databaes
         self.num_threads = A('num_threads')
 
         SCGTaxonomyContext.__init__(self, self.args)
@@ -1011,7 +1017,15 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
         # databases.
         a_scg_fasta, a_scg_database = list(self.SCGs.values())[0]['fasta'] + '.gz', list(self.SCGs.values())[0]['db']
 
-        if os.path.exists(a_scg_fasta) and os.path.exists(a_scg_database) and not self.reset:
+        if os.path.exists(a_scg_fasta) and os.path.exists(a_scg_database) and self.redo_databases:
+            self.run.warning("Anvi'o is removing all the previous databases so it can regenerate them from their\
+                              ashes.")
+
+            db_paths = [v['db'] for v in self.SCGs.values()]
+            for db_path in db_paths:
+                os.remove(db_path) if os.path.exists(db_path) else None
+
+        elif os.path.exists(a_scg_fasta) and os.path.exists(a_scg_database) and not self.reset:
             raise ConfigError("It seems you have both the FASTA files and the search databases for anvi'o SCG taxonomy\
                                in place. If you want to start from scratch and download everything from GTDB clean, use\
                                the flag `--reset`.")
@@ -1239,6 +1253,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         if not len(hmm_sequences_dict):
             return None
 
+        self.progress.reset()
         self.run.info('Num relevant SCGs in contigs db', '%s' % (pp(len(hmm_sequences_dict))))
 
         scg_sequences_dict = {}
