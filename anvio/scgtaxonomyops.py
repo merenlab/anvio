@@ -1293,6 +1293,8 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
             # return empty handed like a goose in the job market in 2020
             return None
 
+        log_file_path = filesnpaths.get_temp_file_path()
+
         self.run.info('Taxonomy', self.accession_to_taxonomy_file_path)
         self.run.info('Database reference', self.search_databases_dir_path)
         self.run.info('Number of SCGs', len(scg_sequences_dict))
@@ -1302,6 +1304,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         self.run.info('Min bit score to report alignments', self.min_pct_id)
         self.run.info('Num aligment tasks running in parallel', self.num_parallel_processes)
         self.run.info('Num CPUs per aligment task', self.num_threads)
+        self.run.info('Log file path', log_file_path)
 
         self.tables_for_taxonomy.delete_contents_of_table(t.scg_taxonomy_table_name)
 
@@ -1331,7 +1334,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
 
         workers = []
         for i in range(0, int(self.num_parallel_processes)):
-            worker = multiprocessing.Process(target=self.blast_search_scgs_worker, args=(input_queue, output_queue))
+            worker = multiprocessing.Process(target=self.blast_search_scgs_worker, args=(input_queue, output_queue, log_file_path))
 
             workers.append(worker)
             worker.start()
@@ -1385,7 +1388,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
             self.run.info_single("No hits :/")
 
 
-    def blast_search_scgs_worker(self, input_queue, output_queue):
+    def blast_search_scgs_worker(self, input_queue, output_queue, log_file_path):
         """BLAST each SCG identified in the contigs database against the corresopinding
            target local database of GTDB seqeunces
         """
@@ -1399,6 +1402,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
             diamond.evalue = self.evalue
             diamond.min_pct_id = self.min_pct_id
             diamond.num_threads = self.num_threads
+            diamond.run.log_file_path = log_file_path
 
             blastp_search_output = diamond.blastp_stdin_multi(fasta_formatted_scg_sequence)
 
