@@ -1307,6 +1307,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         self.run.info('Log file path', log_file_path)
 
         self.tables_for_taxonomy.delete_contents_of_table(t.scg_taxonomy_table_name)
+        self.tables_for_taxonomy.update_self_value(value=False)
 
         total_num_processes = len(scg_sequences_dict)
 
@@ -1316,6 +1317,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         manager = multiprocessing.Manager()
         input_queue = manager.Queue()
         output_queue = manager.Queue()
+        error_queue = manager.Queue()
 
         blastp_search_output = []
 
@@ -1334,13 +1336,33 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
 
         workers = []
         for i in range(0, int(self.num_parallel_processes)):
-            worker = multiprocessing.Process(target=self.blast_search_scgs_worker, args=(input_queue, output_queue, log_file_path))
+            worker = multiprocessing.Process(target=self.blast_search_scgs_worker, args=(input_queue, output_queue, error_queue, log_file_path))
 
             workers.append(worker)
             worker.start()
 
         num_finished_processes = 0
         while num_finished_processes < total_num_processes:
+            # check error
+            error_text = error_queue.get()
+            if error_text:
+                self.progress.reset()
+
+                for worker in workers:
+                    worker.terminate()
+
+                if 'incompatible' in error_text:
+                    raise ConfigError("Your current databases are incompatible with the diamond version you have on your computer.\
+                                       Please run the command `anvi-setup-scg-databases --redo-databases` and come back.")
+                else:
+                    raise ConfigError("Bad news. The database search operation failed somewhere :( It is very hard for anvi'o\
+                                       to know what happened, but the MOST LIKELY reason is that you have a diamond version\
+                                       installed on your system that is incompatible with anvi'o :/ The best course of action for that\
+                                       is to make sure running `diamond --version` on your terminal returns `0.9.14`. If not,\
+                                       try to upgrade/downgrade your diamond to match this version. If you are in a conda environmnet\
+                                       you can try running `conda install diamond=0.9.14`. Please feel free to contact us if the problem\
+                                       persists. We apologize for the inconvenience.")
+
             try:
                 blastp_search_output += output_queue.get()
 
@@ -1388,7 +1410,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
             self.run.info_single("No hits :/")
 
 
-    def blast_search_scgs_worker(self, input_queue, output_queue, log_file_path):
+    def blast_search_scgs_worker(self, input_queue, output_queue, error_queue, log_file_path):
         """BLAST each SCG identified in the contigs database against the corresopinding
            target local database of GTDB seqeunces
         """
@@ -1412,7 +1434,13 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
             for blastp_hit in blastp_search_output.split('\n'):
                 if len(blastp_hit) and not blastp_hit.startswith('Query'):
                     fields = blastp_hit.split('\t')
-                    gene_callers_id = int(fields[0])
+
+                    try:
+                        gene_callers_id = int(fields[0])
+                        error_queue.put(None)
+                    except:
+                        error_queue.put(blastp_search_output)
+
                     hit = dict(zip(['accession', 'percent_identity', 'bitscore'], [fields[1], float(fields[2]), float(fields[11])]))
                     hit = self.update_dict_with_taxonomy(hit)
 
