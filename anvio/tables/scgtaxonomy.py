@@ -60,11 +60,11 @@ class TableForSCGTaxonomy(Table):
         self.database.disconnect()
 
 
-    def update_self_value(self):
+    def update_self_value(self, value=True):
         """Updates the self table in contigs db to clarify that scg taxonomy were run"""
 
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        self.database.update_meta_value("scg_taxonomy_was_run", True)
+        self.database.update_meta_value("scg_taxonomy_was_run", value)
         self.database.disconnect()
 
 
