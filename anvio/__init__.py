@@ -603,6 +603,13 @@ D = {
                       address the issue, this is the flag that will tell anvi'o to act like a real comptuer\
                       scientist challenged with a computational problem."}
                 ),
+    'redo-databases': (
+            ['--redo-databases'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Remove existing databases and re-create them. This can be necessary when versions of\
+                      programs change and databases they create and use become incompatible."}
+                ),
     'cog-data-dir': (
             ['--cog-data-dir'],
             {'default': None,
