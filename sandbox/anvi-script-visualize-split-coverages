@@ -485,7 +485,7 @@ parse_split_coverages <- function(opts) {
       if (nrow(split_coverages) >= 100000) {
         tmp_nsamples <- length(unique(as.character(split_coverages$sample_name)))
 
-        logger$warn("Even after compression, you still have more than 100,000 data points.  Unless you have added sample_group info with --sample-data, **PLOTTING WILL LIKELY BE VERY SLOW**.",
+        logger$warn("Even after compression, you still have more than 100,000 data points.  Unless you have added sample_group info with --sample-data, plotting may be very slow.",
                     tmp_nsamples)
       }
     }
@@ -813,7 +813,7 @@ parse_input_data <- function(opts) {
     ## First, warn the user if they have a lot of samples that the
     ## script will probably be slow.
     if (length(unique(as.character(split_coverages$sample_name))) >= 10) {
-      logger$warn("You have more than 10 samples, but did not provide any sample_group info.  **PLOTTING WILL LIKELY BE VERY SLOW**.  Consider adding sample_group information using the --sample-data option.")
+      logger$warn("You have more than 10 samples.  If the plotting is very slow, consider adding sample_group information using the --sample-data option.")
     }
 
     ## Set sample_group
