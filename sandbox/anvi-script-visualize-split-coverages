@@ -1281,6 +1281,9 @@ Description:
     like this: 'split_cov_output___group_1.pdf' and
     'split_cov_output___group_2.pdf'.
 
+  - If the path you provide includes a directory that does not exist, the
+    program will abort.  Please make the directory first, and then rerun.
+
   Chart options
   -------------
 
