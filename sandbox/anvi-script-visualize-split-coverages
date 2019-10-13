@@ -7,6 +7,11 @@
 ## - The test runner is located ${anvio_source_dir}/anvio/tests/sandbox/test_visualize_split_coverages/run_tests.R
 ##
 ## - Run the test runner with Rscript at the terminal.
+##
+## There are also some whole pipeline tests in a Makefile that you can
+## run by entering the
+## ${anvio_source_dir}/anvio/tests/sandbox/test_visualize_split_coverages/
+## directory and running the 'make' command.
 
 #### Logging functions ####
 
@@ -1011,10 +1016,16 @@ draw_plot <- function(...) {
 ## This function is called in the main part of the script.
 ## Fn to write plot to disk.
 write_plot <- function(gg_plots, dat, opts) {
+  ## Strip off PDF if user added it.
+  outfile_basename <- gsub(".pdf$",
+                           "",
+                           opts$outfile_basename,
+                           ignore.case = TRUE)
+
   if (length(gg_plots) == 1) {
     logger$debug("Found only 1 plot")
     plt <- gg_plots[[1]]
-    outfile <- paste0(opts$outfile_basename, ".pdf")
+    outfile <- paste0(outfile_basename, ".pdf")
 
     pdf(outfile,
         width = opts$whole_chart_width,
@@ -1024,7 +1035,13 @@ write_plot <- function(gg_plots, dat, opts) {
   } else {
     logger$debug("Found %d plots", length(gg_plots))
     for (plt in gg_plots) {
-      outfile <- paste0(opts$outfile_basename, "_sample_group_", plt$sample_group, ".pdf")
+      outfile <- paste0(
+        outfile_basename,
+        "___",
+        ## Replace any spaces with underscores.
+        gsub("[[:space:]]+", "_", plt$sample_group),
+        ".pdf"
+      )
 
       pdf(outfile,
           width = opts$whole_chart_width,
@@ -1056,7 +1073,7 @@ set_up_opts <- function() {
     make_option(opt_str = c("-o", "--outfile-basename"),
                 action = "store",
                 type = "character",
-                help = "Outfile basename (can be a path)"),
+                help = "Outfile basename (can be a path, if the directory exists)"),
 
     ## Chart options
     make_option(opt_str = c("-t", "--chart-type"),
@@ -1196,7 +1213,7 @@ Description:
 
   - Sample data may be provided to group the samples.  If you have a
     lot of samples, you should consider grouping them, or else the
-    script will take A TON of time.  Each group of samples will get
+    script will take a lof of time.  Each group of samples will get
     its own PDF output.
 
   - Sample groups can be numbers, letters, strings, or a mix (e.g.,
@@ -1249,6 +1266,20 @@ Description:
     - pos
     - departure_from_reference
     - competing_nts
+
+  Outfile
+  -------
+
+  --outfile-basename (-o) is used to specify the basename of the output file.
+
+  - For example, If you pass in --outfile-basename split_cov_output, and you
+    also did not provide any sample groups, then you will get a PDF named
+    'split_cov_output.pdf'.
+
+  - If you did include sample group info, (for example, if you included two
+    sample groups, 'group 1' and 'group 2', then your output files would look
+    like this: 'split_cov_output___group_1.pdf' and
+    'split_cov_output___group_2.pdf'.
 
   Chart options
   -------------
