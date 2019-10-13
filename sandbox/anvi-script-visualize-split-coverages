@@ -815,11 +815,6 @@ parse_input_data <- function(opts) {
     if (length(unique(as.character(split_coverages$sample_name))) >= 10) {
       logger$warn("You have more than 10 samples.  If the plotting is very slow, consider adding sample_group information using the --sample-data option.")
     }
-
-    ## Set sample_group
-    default_group <- "__anvi__default__sample__group"
-    split_coverages$sample_group <- rep(default_group,
-                                        times = nrow(split_coverages))
   } else {
     ## Remove any rows whose samples aren't also present in the
     ## split coverages file.
@@ -840,6 +835,15 @@ parse_input_data <- function(opts) {
 
     logger$debug("After reading sample_data, %d samples were kept.",
                  length(unique(split_coverages$sample_name)))
+  }
+
+  ## Even if the sample_data file was given, sometimes it will not
+  ## have the sample_group column, so check to see if you need to set
+  ## the default.
+  if (is.null(split_coverages$sample_group)) {
+    default_group <- "__anvi__default__sample__group"
+    split_coverages$sample_group <- rep(default_group,
+                                        times = nrow(split_coverages))
   }
 
   if (!is.null(snv_data)) {
