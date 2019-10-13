@@ -1,0 +1,13 @@
+entry_id	unique_pos_identifier	pos	pos_in_contig	contig_name	split_name	sample_id	corresponding_gene_call	in_partial_gene_call	in_complete_gene_call	base_pos_in_codon	codon_order_in_gene	codon_number	gene_length	coverage	cov_outlier_in_split	cov_outlier_in_contig	A	C	G	N	T	reference	consensus	competing_nts	departure_from_reference	departure_from_consensus	n2n1ratio	entropy
+0	0	0	0	contig_1	contig_1_split_00001	sample_A				0															0.25			
+1	0	0	0	contig_1	contig_1_split_00001	sample_B				0															0.75			
+2	1	6	6	contig_1	contig_1_split_00001	sample_A				1															0.5			
+3	1	6	6	contig_1	contig_1_split_00001	sample_B				1															0			
+4	2	2	12	contig_1	contig_1_split_00002	sample_A				3															0.25			
+5	2	2	12	contig_1	contig_1_split_00002	sample_B				3															0.75			
+6	3	2	2	contig_2	contig_2_split_00001	sample_A				2															0			
+7	3	2	2	contig_2	contig_2_split_00001	sample_B				2															0.5			
+8	4	7	7	contig_2	contig_2_split_00001	sample_A				0															0.25			
+9	4	7	7	contig_2	contig_2_split_00001	sample_B				0															1			
+10	5	1	1	contig_3	contig_3_split_00001	sample_A				1															1			
+11	5	1	1	contig_3	contig_3_split_00001	sample_B				1															0.5			
