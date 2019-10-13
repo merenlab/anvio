@@ -7,6 +7,11 @@
 ## - The test runner is located ${anvio_source_dir}/anvio/tests/sandbox/test_visualize_split_coverages/run_tests.R
 ##
 ## - Run the test runner with Rscript at the terminal.
+##
+## There are also some whole pipeline tests in a Makefile that you can
+## run by entering the
+## ${anvio_source_dir}/anvio/tests/sandbox/test_visualize_split_coverages/
+## directory and running the 'make' command.
 
 #### Logging functions ####
 
@@ -485,7 +490,7 @@ parse_split_coverages <- function(opts) {
       if (nrow(split_coverages) >= 100000) {
         tmp_nsamples <- length(unique(as.character(split_coverages$sample_name)))
 
-        logger$warn("Even after compression, you still have more than 100,000 data points.  Unless you have added sample_group info with --sample-data, **PLOTTING WILL LIKELY BE VERY SLOW**.",
+        logger$warn("Even after compression, you still have more than 100,000 data points.  Unless you have added sample_group info with --sample-data, plotting may be very slow.",
                     tmp_nsamples)
       }
     }
@@ -512,7 +517,8 @@ check_sample_data_headers <- function(sample_data) {
 ## Returns a copy of `sample_data` without any rows whose sample is
 ## NOT also present in split_coverages.
 check_samples_against_split_coverages <- function(dat, split_coverages, which_file) {
-  good_samples <- as.character(dat$sample_name) %in% unique(as.character(split_coverages$sample_name))
+  good_samples <- as.character(dat$sample_name) %in%
+    unique(as.character(split_coverages$sample_name))
 
   if (all(good_samples == FALSE)) {
     abort("None of the samples listed in the %s file were also in the split coverages file!", which_file)
@@ -806,24 +812,21 @@ parse_input_data <- function(opts) {
   sample_data <- parse_sample_data(opts)
   snv_data <- parse_snv_data(opts)
 
-  ## Remove any rows whose samples aren't also present in the
-  ## split coverages file.
-  sample_data <- check_samples_against_split_coverages(sample_data, split_coverages,  "sample data")
-  snv_data <- check_samples_against_split_coverages(snv_data, split_coverages, "SNV data")
-
   ## If sample_data file is given, we need to adjust the split
   ## coverages data frame.
   if (is.null(sample_data)) {
     ## First, warn the user if they have a lot of samples that the
     ## script will probably be slow.
     if (length(unique(as.character(split_coverages$sample_name))) >= 10) {
-      logger$warn("You have more than 10 samples, but did not provide any sample_group info.  **PLOTTING WILL LIKELY BE VERY SLOW**.  Consider adding sample_group information using the --sample-data option.")
+      logger$warn("You have more than 10 samples.  If the plotting is very slow, consider adding sample_group information using the --sample-data option.")
     }
-
-    ## Set sample_group
-    default_group <- "__anvi__default__sample__group"
-    split_coverages$sample_group <- rep(default_group, times = nrow(split_coverages))
   } else {
+    ## Remove any rows whose samples aren't also present in the
+    ## split coverages file.
+    sample_data <- check_samples_against_split_coverages(sample_data,
+                                                         split_coverages,
+                                                         "sample data")
+
     logger$info("Sample_data given.  Adjusting split_coverages.")
     ## Make sure the names in sample_data df are okay.
     check_sample_names(sample_data, split_coverages$sample_name)
@@ -839,7 +842,20 @@ parse_input_data <- function(opts) {
                  length(unique(split_coverages$sample_name)))
   }
 
+  ## Even if the sample_data file was given, sometimes it will not
+  ## have the sample_group column, so check to see if you need to set
+  ## the default.
+  if (is.null(split_coverages$sample_group)) {
+    default_group <- "__anvi__default__sample__group"
+    split_coverages$sample_group <- rep(default_group,
+                                        times = nrow(split_coverages))
+  }
+
   if (!is.null(snv_data)) {
+    snv_data <- check_samples_against_split_coverages(snv_data,
+                                                      split_coverages,
+                                                      "SNV data")
+
     ## Check that split_names in the snv data match those in the
     ## split coverages file.
     if (any(levels(snv_data$split_name) %nin% levels(split_coverages$split_name))) {
@@ -1000,10 +1016,16 @@ draw_plot <- function(...) {
 ## This function is called in the main part of the script.
 ## Fn to write plot to disk.
 write_plot <- function(gg_plots, dat, opts) {
+  ## Strip off PDF if user added it.
+  outfile_basename <- gsub(".pdf$",
+                           "",
+                           opts$outfile_basename,
+                           ignore.case = TRUE)
+
   if (length(gg_plots) == 1) {
     logger$debug("Found only 1 plot")
     plt <- gg_plots[[1]]
-    outfile <- paste0(opts$outfile_basename, ".pdf")
+    outfile <- paste0(outfile_basename, ".pdf")
 
     pdf(outfile,
         width = opts$whole_chart_width,
@@ -1013,7 +1035,13 @@ write_plot <- function(gg_plots, dat, opts) {
   } else {
     logger$debug("Found %d plots", length(gg_plots))
     for (plt in gg_plots) {
-      outfile <- paste0(opts$outfile_basename, "_sample_group_", plt$sample_group, ".pdf")
+      outfile <- paste0(
+        outfile_basename,
+        "___",
+        ## Replace any spaces with underscores.
+        gsub("[[:space:]]+", "_", plt$sample_group),
+        ".pdf"
+      )
 
       pdf(outfile,
           width = opts$whole_chart_width,
@@ -1045,7 +1073,7 @@ set_up_opts <- function() {
     make_option(opt_str = c("-o", "--outfile-basename"),
                 action = "store",
                 type = "character",
-                help = "Outfile basename (can be a path)"),
+                help = "Outfile basename (can be a path, if the directory exists)"),
 
     ## Chart options
     make_option(opt_str = c("-t", "--chart-type"),
@@ -1176,9 +1204,16 @@ Description:
     sample data file to limit the number of samples in the final
     output.
 
+  - If the sample data is provided, but none of the samples listed in
+    the sample data file are also in the split coverages file, then the
+    program will abort.  If some of the samples listed in the sample
+    data file are not present in the split coverages file, then those
+    samples present in the sample data file, but not present in the
+    split coverages file will be ignored.
+
   - Sample data may be provided to group the samples.  If you have a
     lot of samples, you should consider grouping them, or else the
-    script will take A TON of time.  Each group of samples will get
+    script will take a lof of time.  Each group of samples will get
     its own PDF output.
 
   - Sample groups can be numbers, letters, strings, or a mix (e.g.,
@@ -1204,6 +1239,17 @@ Description:
   - SNV data is the output from anvi-gen-variability-profile.
     this file.
 
+  - If any of the split names present in the SNV data file are not
+    also present in the split coverages file, then the program will
+    abort.
+
+  - If the SNV data is provided, but none of the samples listed in
+    the SNV data file are also in the split coverages file, then the
+    program will abort.  If some of the samples listed in the SNV
+    data file are not present in the split coverages file, then those
+    samples present in the SNV data file, but not present in the
+    split coverages file will be ignored.
+
   - When providing SNV data, it is best to also pass in the
     --free-y-scale argument as well.
 
@@ -1220,6 +1266,23 @@ Description:
     - pos
     - departure_from_reference
     - competing_nts
+
+  Outfile
+  -------
+
+  --outfile-basename (-o) is used to specify the basename of the output file.
+
+  - For example, If you pass in --outfile-basename split_cov_output, and you
+    also did not provide any sample groups, then you will get a PDF named
+    'split_cov_output.pdf'.
+
+  - If you did include sample group info, (for example, if you included two
+    sample groups, 'group 1' and 'group 2', then your output files would look
+    like this: 'split_cov_output___group_1.pdf' and
+    'split_cov_output___group_2.pdf'.
+
+  - If the path you provide includes a directory that does not exist, the
+    program will abort.  Please make the directory first, and then rerun.
 
   Chart options
   -------------
