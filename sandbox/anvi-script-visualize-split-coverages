@@ -521,9 +521,12 @@ check_samples_against_split_coverages <- function(dat, split_coverages, which_fi
     unique(as.character(split_coverages$sample_name))
 
   if (all(good_samples == FALSE)) {
-    abort("None of the samples listed in the %s file were also in the split coverages file!", which_file)
+    abort("None of the samples listed in the %s file were also in the split coverages file!",
+          which_file)
   } else if (any(good_samples == FALSE)) {
-    logger$warn("Some of the samples listed in the %s file were not also in the split coverages file.  These will not be included in the %s.", which_file)
+    logger$warn("Some of the samples listed in the %s file were not also in the split coverages file.  These will not be included in the %s.",
+                which_file,
+                which_file)
   }
 
   dat[good_samples, ]
