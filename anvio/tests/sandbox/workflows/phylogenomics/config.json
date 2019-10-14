@@ -4,11 +4,11 @@
         "--align-with": "famsa",
         "--concatenate-genes": true,
         "--get-aa-sequences": true,
-        "--hmm-sources": "Campbell_et_al",
+        "--hmm-sources": "Bacteria_71",
         "--separator": "",
         "--min-num-bins-gene-occurs": "",
         "--max-num-genes-missing-from-bin": "",
-        "--gene-names": "CoaE,FAD_syn,Flavokinase,Methyltransf_5,Peptidase_A8,Ribosomal_S20p",
+        "--gene-names": "Ribosomal_S20p",
         "threads": ""
     },
     "anvi_run_ncbi_cogs": {
