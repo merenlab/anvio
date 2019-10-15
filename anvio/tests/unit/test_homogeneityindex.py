@@ -31,8 +31,10 @@ class HomogeneityCalculatorTestCase(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_empty_gene_clusters(self):
-        actual = self.calculator.compute_functional_index(['AAAAA'])
+        actual = self.calculator.compute_functional_index([])
         expected = 0.0
+
+        self.assertEqual(actual, expected)
 
     def test_identical_sequences_get_a_perfect_score(self):
         seq1 = 'AAAAA'
