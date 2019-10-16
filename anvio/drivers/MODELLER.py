@@ -47,7 +47,7 @@ class MODELLER:
         self.run = run
         self.progress = progress
 
-        up_to_date_modeller_exec = "mod9.21" # default exec to use
+        self.up_to_date_modeller_exec = "mod9.22" # default exec to use
 
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
@@ -55,7 +55,7 @@ class MODELLER:
         self.deviation = A('deviation', float)
         self.directory = A('directory', str)
         self.very_fast = A('very_fast', bool)
-        self.executable = A('modeller_executable', null) or up_to_date_modeller_exec
+        self.executable = A('modeller_executable', null) or self.up_to_date_modeller_exec
         self.num_models = A('num_models', int)
         self.target_fasta_path = A('target_fasta_path', str)
         self.modeller_database = A('modeller_database', str) or "pdb_95"
