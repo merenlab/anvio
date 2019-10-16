@@ -124,7 +124,7 @@ get_unadjusted_p_value <- function(anova_output) {
 # fit the GLMs in a nifty way using nest()
 w_models <- df_in %>%
   gather(key = "type", value = "value", -c(1:n_columns_before_data)) %>%
-  separate(type, into = c("type", "group"), sep = "_") %>%
+  separate(type, into = c("type", "group"), sep = "_", extra = "merge") %>%
   spread(type, value) %>%
   mutate(x = N * p) %>%
   select(-p) %>%
