@@ -357,7 +357,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.args.output_file = tmp_functional_occurrence_file
 
         if filesnpaths.is_file_exists(enrichment_file_path, dont_raise=True):
-            raise ConfigError('The file "%s" already exists and anvi\'o doesn\'t like to override stuff' % enrichment_file_path)
+            if not self.just_do_it:
+                raise ConfigError('The file "%s" already exists and anvi\'o doesn\'t like to override stuff' % enrichment_file_path)
 
         # Call functional occurrence. Output is saved to the tmp file
         self.functional_occurrence_stats()
