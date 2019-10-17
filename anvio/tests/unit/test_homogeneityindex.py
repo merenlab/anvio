@@ -18,7 +18,7 @@ __maintainer__ = "Ryan Moore"
 __email__ = "moorer@udel.edu"
 
 
-class HomogeneityCalculatorTestCase(unittest.TestCase):
+class ComputeFunctionalIndexTestCase(unittest.TestCase):
     def setUp(self):
         self.match_score = 3
         self.fully_functionally_conserved_score = 2 / 3
@@ -148,6 +148,131 @@ class HomogeneityCalculatorTestCase(unittest.TestCase):
         expected = 1.0
 
         self.assertEqual(actual, expected)
+
+
+class ConvertSequencesToBinaryArrayTestCase(unittest.TestCase):
+    def setUp(self):
+        s1 = 'A-N-'  # 0101
+        s2 = 'AR-D'  # 0010
+        s3 = 'AR-D'  # 0010
+        s4 = 'A--D'  # 0110
+
+        self.gene_sequences = [s1, s2, s3, s4]
+
+        self.calculator = homogeneityindex.HomogeneityCalculator(quick_homogeneity=False)
+
+    def test_by_residue(self):
+        actual = self.calculator.convert_sequences_to_binary_array(self.gene_sequences,
+                                                                   bygene=False)
+
+        # Each entry represents a column in the alignment.
+        expected = [0b0000, 0b1001, 0b0111, 0b1000]
+
+        self.assertEqual(actual, expected)
+
+    def test_by_gene(self):
+        actual = self.calculator.convert_sequences_to_binary_array(self.gene_sequences,
+                                                                   bygene=True)
+
+        # Each entry represents a sequence in the alignment.
+        expected = [0b0101, 0b0010, 0b0010, 0b0110]
+
+        self.assertEqual(actual, expected)
+
+
+class ComputeGeometrixIndexTestCase(unittest.TestCase):
+    def setUp(self):
+        s1 = 'A-N-'  # 0101
+        s2 = 'AR-D'  # 0010
+        s3 = 'AR-D'  # 0010
+        s4 = 'A--D'  # 0110
+
+        self.gene_sequences = [s1, s2, s3, s4]
+
+        self.calculator = homogeneityindex.HomogeneityCalculator(quick_homogeneity=False)
+        
+        # For the geometric homogeneity index.  This looks like a lot, but it is good to double check that the 
+        # by-hand calculation matches the code, and to list it out explicitly so it is clearer how the algorithm 
+        # works. 
+        num_genes = len(self.gene_sequences)
+        num_residues = len(self.gene_sequences[0])
+        max_similarities_per_aln_col = num_genes
+        max_similarities_per_seq = num_residues
+        num_comparisons_per_aln_col = 3
+        num_comparisons_per_seq = 3
+
+        # First do the pairwise comparisons....
+
+        # 1v2, 1v3, 1v4
+        aln_col1_similarities = [2, 1, 3]
+        seq1_similarities = [1, 1, 2]
+
+        # 2v1, 2v3, 2v4
+        aln_col2_similarities = [2, 1, 3]
+        seq2_similarities = [1, 4, 3]
+
+        # 3v1, 3v2, 3v4
+        aln_col3_similarities = [1, 1, 0]
+        seq3_similarities = [1, 4, 3]
+
+        # s4 v s1, s4 v s2, s4 v s3
+        aln_col4_similarities = [3, 3, 0]
+        seq4_similarities = [2, 3, 3]
+
+        # Then each column has a similarity score w.r.t. the other columns.
+        aln_col1_similarity_score = sum(aln_col1_similarities) / max_similarities_per_aln_col / num_comparisons_per_aln_col
+        aln_col2_similarity_score = sum(aln_col2_similarities) / max_similarities_per_aln_col / num_comparisons_per_aln_col
+        aln_col3_similarity_score = sum(aln_col3_similarities) / max_similarities_per_aln_col / num_comparisons_per_aln_col
+        aln_col4_similarity_score = sum(aln_col4_similarities) / max_similarities_per_aln_col / num_comparisons_per_aln_col
+
+        # Also, each seq has a similarity score w.r.t. the other sequences.
+        seq1_similarity_score = sum(seq1_similarities) / max_similarities_per_seq / num_comparisons_per_seq
+        seq2_similarity_score = sum(seq2_similarities) / max_similarities_per_seq / num_comparisons_per_seq
+        seq3_similarity_score = sum(seq3_similarities) / max_similarities_per_seq / num_comparisons_per_seq
+        seq4_similarity_score = sum(seq4_similarities) / max_similarities_per_seq / num_comparisons_per_seq
+
+        # The quick geo score is the mean of all alignment column similarity scores.
+        self.quick_geometric_similarity = sum([aln_col1_similarity_score,
+                                               aln_col2_similarity_score,
+                                               aln_col3_similarity_score,
+                                               aln_col4_similarity_score]) / num_genes
+
+        # The by sequence similarity score is the mean of all sequence similarity scores.
+        by_seq_similarity = sum([seq1_similarity_score,
+                                 seq2_similarity_score,
+                                 seq3_similarity_score,
+                                 seq4_similarity_score]) / num_genes
+
+        # Finally the full geometric similarity score is the average of the quick score (by residue) and the by
+        # sequence score.
+        self.full_geometric_similarity = (self.quick_geometric_similarity + by_seq_similarity) / 2
+
+    def test_quick_geometric_homogeneity_index(self):
+        actual = self.calculator.compute_geometric_index(self.gene_sequences,
+                                                         quick_homogeneity=True)
+
+        self.assertEqual(actual, self.quick_geometric_similarity)
+
+    def test_geometric_homogeneity_index(self):
+        actual = self.calculator.compute_geometric_index(self.gene_sequences,
+                                                         quick_homogeneity=False)
+
+        self.assertEqual(actual, self.full_geometric_similarity)
+
+    def test_that_quick_geo_index_is_invariant_to_sequence_order(self):
+        aln1 = ['A-A', 'AA-', '-AA']
+        aln2 = ['AA-', 'A-A', '-AA']
+
+        self.assertEqual(self.calculator.compute_geometric_index(aln1, quick_homogeneity=True),
+                         self.calculator.compute_geometric_index(aln2, quick_homogeneity=True))
+
+
+    def test_that_full_geo_index_is_invariant_to_sequence_order(self):
+        aln1 = ['A-A', 'AA-', '-AA']
+        aln2 = ['AA-', 'A-A', '-AA']
+
+        self.assertEqual(self.calculator.compute_geometric_index(aln1, quick_homogeneity=False),
+                         self.calculator.compute_geometric_index(aln2, quick_homogeneity=False))
 
 
 if __name__ == '__main__':
