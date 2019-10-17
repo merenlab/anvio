@@ -181,7 +181,7 @@ def serialize_args(args, single_dash=False, use_underscore=False, skip_keys=None
 
         if translate and param in translate:
             param = translate[param]
-        
+
         dash = '-' if single_dash else '--'
 
         if not use_underscore:
@@ -380,6 +380,12 @@ def gzip_decompress_file(input_file_path, output_file_path=None, keep_original=T
 def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
     """Uses subprocess.call to run your `cmdline`"""
     cmdline = format_cmdline(cmdline)
+
+    if anvio.DEBUG:
+        Progress().reset()
+        Run().info("[DEBUG] `run_command` is running", \
+                   ' '.join(['%s' % (('"%s"' % str(x)) if ' ' in str(x) else ('%s' % str(x))) for x in cmdline]), \
+                   nl_before=1, nl_after=1, mc='red', lc='yellow')
 
     filesnpaths.is_output_file_writable(log_file_path)
 
