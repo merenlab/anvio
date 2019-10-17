@@ -395,7 +395,7 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
         log_file.close()
 
         if ret_val < 0:
-            raise ConfigError("command was terminated")
+            raise ConfigError("Command failed to run. What command, you say? This: '%s'" % ' '.join(cmdline))
         else:
             return ret_val
     except OSError as e:
