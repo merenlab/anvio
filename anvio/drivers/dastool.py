@@ -142,7 +142,6 @@ class DAS_Tool:
         utils.run_command(cmd_line, log_path)
         self.progress.end()
 
-
         clusters = {}
         with open(P('OUTPUT_DASTool_scaffolds2bin.txt'), 'r') as f:
             lines = f.readlines()

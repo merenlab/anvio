@@ -120,8 +120,6 @@ class BinSanity:
 
                 clusters[pretty_bin_name] = [line.strip().replace('>', '') for line in f if line.startswith('>')]
 
-        self.run.info('Bins formed', bin_count)
-
         if not anvio.DEBUG:
             shutil.rmtree(self.temp_path)
 

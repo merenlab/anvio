@@ -137,8 +137,6 @@ class MetaBAT2:
                 pretty_bin_name = os.path.basename(bin_file).replace('.', '_')
                 clusters[pretty_bin_name] = list(map(str.strip, f.readlines()))
 
-        self.run.info('Bins formed', bin_count)
-
         if not anvio.DEBUG:
             shutil.rmtree(self.temp_path)
 
