@@ -179,7 +179,7 @@ def serialize_args(args, single_dash=False, use_underscore=False, skip_keys=None
             if param in skip_keys:
                 continue
 
-        if param in translate:
+        if translate and param in translate:
             param = translate[param]
         
         dash = '-' if single_dash else '--'
