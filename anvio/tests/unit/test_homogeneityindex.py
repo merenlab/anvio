@@ -77,25 +77,34 @@ class ComputeFunctionalIndexTestCase(unittest.TestCase):
 
         self.assertEqual(actual, expected)
 
-    def test_a_gap_with_a_residue_is_a_mismatch(self):
-        """If one sequence has a residue where another has a gap, that is a mismatch."""
+    def test_a_gap_with_a_residue_does_not_reduce_the_score(self):
+        """Sequences should not be penalized if one sequence has a residue where another has a gap."""
         seq1 = 'AAAAA'
         seq2 = 'AA-AA'
 
         actual = self.calculator.compute_functional_index([seq1, seq2])
-        expected = 0.8
+        expected = 1.0
 
         self.assertEqual(actual, expected)
 
-    def test_two_gaps_count_as_a_match_and_increase_the_score(self):
-        """If a pair of residues are both gaps, they count as an exact match and increase the similarity score."""
+    def test_adding_in_more_seqs_with_gaps_does_not_increase_the_score(self):
+        """If you add in more sequences with a gap in the same position, it does not increase the score.  See
+        https://github.com/merenlab/anvio/issues/1265 for more info. """
         seq1 = 'AAAAA'
         seq1_gapped = 'AA-AA'
 
         two_seq_score = self.calculator.compute_functional_index([seq1, seq1_gapped])
         three_seq_score = self.calculator.compute_functional_index([seq1, seq1_gapped, seq1_gapped])
 
-        self.assertLess(two_seq_score, three_seq_score)
+        self.assertEqual(two_seq_score, three_seq_score)
+
+    def test_that_it_handles_gaps_properly(self):
+        """For more info, see https://github.com/merenlab/anvio/issues/1265."""
+        expected = 1.0
+
+        self.assertEqual(self.calculator.compute_functional_index(['A-A', 'A-A', 'A-A']), expected)
+        self.assertEqual(self.calculator.compute_functional_index(['AAA', 'AAA', 'A-A']), expected)
+        self.assertEqual(self.calculator.compute_functional_index(['-AA', 'A-A', 'AA-']), expected)
 
     def test_weird_residues_never_get_full_score(self):
         """Even when they match exactly, these residues will get the functionally conserved score rather than the

@@ -59,20 +59,19 @@ class HomogeneityCalculator(object):
                 for spot_b in range(spot_a+1,len(residues)):
                     amino_acid_residue_1 = residues[spot_a]
                     amino_acid_residue_2 = residues[spot_b]
-                    if amino_acid_residue_1 == "-":
-                        amino_acid_residue_1 = residues[spot_b]
-                        amino_acid_residue_2 = "-"
-                    max_score += 3
-                    if amino_acid_residue_1 == amino_acid_residue_2 and (amino_acid_residue_1 != 'X' and amino_acid_residue_1 != 'J' \
-                                                                        and amino_acid_residue_1 != 'B' and amino_acid_residue_1 != 'Z'):
-                        similarity_score += 3
-                    elif utils.is_amino_acid_functionally_conserved(amino_acid_residue_1,amino_acid_residue_2):
-                        similarity_score += 2
-                    #elif amino_acid_residue_2 != "-":
-                        #similarity_score += 1
-                        #max_score -= 3
-                    else:
-                        similarity_score += 0
+
+                    if amino_acid_residue_1 != "-" and amino_acid_residue_2 != "-":
+                        max_score += 3
+                        if amino_acid_residue_1 == amino_acid_residue_2 and (amino_acid_residue_1 != 'X' and amino_acid_residue_1 != 'J' \
+                                                                            and amino_acid_residue_1 != 'B' and amino_acid_residue_1 != 'Z'):
+                            similarity_score += 3
+                        elif utils.is_amino_acid_functionally_conserved(amino_acid_residue_1,amino_acid_residue_2):
+                            similarity_score += 2
+                        #elif amino_acid_residue_2 != "-":
+                            #similarity_score += 1
+                            #max_score -= 3
+                        else:
+                            similarity_score += 0
 
         functional_index = similarity_score / max_score
 
