@@ -108,6 +108,27 @@ class HomogeneityCalculatorTestCase(unittest.TestCase):
 
             self.assertEqual(actual, expected)
 
+    def test_ambiguous_bases_are_not_dependent_on_comparison_order(self):
+        """Ambiguous residues are treated as functionally conserved with the residues they represent.  The order of
+        comparison should not matter. """
+        # B group
+        self.assertEqual(self.calculator.compute_functional_index(['B', 'N']),
+                         self.calculator.compute_functional_index(['N', 'B']))
+        self.assertEqual(self.calculator.compute_functional_index(['B', 'D']),
+                         self.calculator.compute_functional_index(['D', 'B']))
+
+        # Z group
+        self.assertEqual(self.calculator.compute_functional_index(['Z', 'Q']),
+                         self.calculator.compute_functional_index(['Q', 'Z']))
+        self.assertEqual(self.calculator.compute_functional_index(['Z', 'E']),
+                         self.calculator.compute_functional_index(['E', 'Z']))
+
+        # J group
+        self.assertEqual(self.calculator.compute_functional_index(['J', 'L']),
+                         self.calculator.compute_functional_index(['L', 'J']))
+        self.assertEqual(self.calculator.compute_functional_index(['J', 'I']),
+                         self.calculator.compute_functional_index(['I', 'J']))
+
     def test_two_Xs_count_as_a_mismatch(self):
         """Two Xs count as a mismatch even when they are in the same alignment column in two sequences."""
         seq = 'X' * 5
