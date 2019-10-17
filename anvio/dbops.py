@@ -4012,11 +4012,19 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
 
         names_in_db = sorted(utils.get_all_item_names_from_the_database(anvio_db_path))
 
-        if names_in_db != names_in_data:
+        names_in_db_not_in_data = set(names_in_db) - set(names_in_data)
+        if names_in_db_not_in_data:
             raise ConfigError("Ehem. There is something wrong with the incoming items order data here :/ Basically,\
-                               the names found in your input data does not match to the item names found in the\
-                               database. Anvi'o is too lazy to find out what exactly differs, but just so you know\
-                               you're doing something wrong :/")
+                               the names found in your input data do not match to the item names found in the\
+                               database. For example, this item \"%s\" is in your database, but not in your input data\
+                               " % next(iter(names_in_db_not_in_data)))
+
+        names_in_data_not_in_db = set(names_in_data) - set(names_in_db)
+        if names_in_data_not_in_db:
+            raise ConfigError("Ehem. There is something wrong with the incoming items order data here :/ Basically,\
+                               the names found in your input data do not match to the item names found in the\
+                               database. For example, this item \"%s\" is in your input data, but not in your database\
+                               " % next(iter(names_in_data_not_in_db)))
 
     # additional data is JSON formatted entry
     # for now it will only contain collapsed node information.
