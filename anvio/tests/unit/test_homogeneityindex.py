@@ -191,10 +191,10 @@ class ConvertSequencesToBinaryArrayTestCase(unittest.TestCase):
 
 class ComputeGeometrixIndexTestCase(unittest.TestCase):
     def setUp(self):
-        s1 = 'A-N-'  # 0101
-        s2 = 'AR-D'  # 0010
-        s3 = 'AR-D'  # 0010
-        s4 = 'A--D'  # 0110
+        s1 = 'A-N--'  # 01011
+        s2 = 'AR-D-'  # 00101
+        s3 = 'AR-D-'  # 00101
+        s4 = 'A--D-'  # 01101
 
         self.gene_sequences = [s1, s2, s3, s4]
 
@@ -203,36 +203,42 @@ class ComputeGeometrixIndexTestCase(unittest.TestCase):
         # For the geometric homogeneity index.  This looks like a lot, but it is good to double check that the 
         # by-hand calculation matches the code, and to list it out explicitly so it is clearer how the algorithm 
         # works. 
-        num_genes = len(self.gene_sequences)
-        num_residues = len(self.gene_sequences[0])
-        max_similarities_per_aln_col = num_genes
-        max_similarities_per_seq = num_residues
-        num_comparisons_per_aln_col = 3
-        num_comparisons_per_seq = 3
+        num_seqs = len(self.gene_sequences)
+        num_aln_cols = len(self.gene_sequences[0])
+
+        max_similarities_per_aln_col = num_seqs
+        max_similarities_per_seq = num_aln_cols
+
+        num_comparisons_per_aln_col = num_aln_cols - 1
+        num_comparisons_per_seq = num_seqs - 1
 
         # First do the pairwise comparisons....
 
-        # 1v2, 1v3, 1v4
-        aln_col1_similarities = [2, 1, 3]
-        seq1_similarities = [1, 1, 2]
+        # 1v2, 1v3, 1v4, (1v5 for by residue)
+        aln_col1_similarities = [2, 1, 3, 0]
+        seq1_similarities = [2, 2, 3]
 
-        # 2v1, 2v3, 2v4
-        aln_col2_similarities = [2, 1, 3]
-        seq2_similarities = [1, 4, 3]
+        # 2v1, 2v3, 2v4, (2v5 for by residue)
+        aln_col2_similarities = [2, 1, 3, 2]
+        seq2_similarities = [2, 5, 4]
 
-        # 3v1, 3v2, 3v4
-        aln_col3_similarities = [1, 1, 0]
-        seq3_similarities = [1, 4, 3]
+        # 3v1, 3v2, 3v4, (3v5 for by residue)
+        aln_col3_similarities = [1, 1, 0, 3]
+        seq3_similarities = [2, 5, 4]
 
-        # s4 v s1, s4 v s2, s4 v s3
-        aln_col4_similarities = [3, 3, 0]
-        seq4_similarities = [2, 3, 3]
+        # 4v1, 4v2, 4v3, (4v5 for by residue)
+        aln_col4_similarities = [3, 3, 0, 1]
+        seq4_similarities = [3, 4, 4]
+
+        # 5v1, 5v2, 5v3, 5v4
+        aln_col5_similarities = [0, 2, 3, 1]
 
         # Then each column has a similarity score w.r.t. the other columns.
         aln_col1_similarity_score = sum(aln_col1_similarities) / max_similarities_per_aln_col / num_comparisons_per_aln_col
         aln_col2_similarity_score = sum(aln_col2_similarities) / max_similarities_per_aln_col / num_comparisons_per_aln_col
         aln_col3_similarity_score = sum(aln_col3_similarities) / max_similarities_per_aln_col / num_comparisons_per_aln_col
         aln_col4_similarity_score = sum(aln_col4_similarities) / max_similarities_per_aln_col / num_comparisons_per_aln_col
+        aln_col5_similarity_score = sum(aln_col5_similarities) / max_similarities_per_aln_col / num_comparisons_per_aln_col
 
         # Also, each seq has a similarity score w.r.t. the other sequences.
         seq1_similarity_score = sum(seq1_similarities) / max_similarities_per_seq / num_comparisons_per_seq
@@ -244,13 +250,14 @@ class ComputeGeometrixIndexTestCase(unittest.TestCase):
         self.quick_geometric_similarity = sum([aln_col1_similarity_score,
                                                aln_col2_similarity_score,
                                                aln_col3_similarity_score,
-                                               aln_col4_similarity_score]) / num_genes
+                                               aln_col4_similarity_score,
+                                               aln_col5_similarity_score]) / num_aln_cols
 
         # The by sequence similarity score is the mean of all sequence similarity scores.
         by_seq_similarity = sum([seq1_similarity_score,
                                  seq2_similarity_score,
                                  seq3_similarity_score,
-                                 seq4_similarity_score]) / num_genes
+                                 seq4_similarity_score]) / num_seqs
 
         # Finally the full geometric similarity score is the average of the quick score (by residue) and the by
         # sequence score.
@@ -269,16 +276,15 @@ class ComputeGeometrixIndexTestCase(unittest.TestCase):
         self.assertEqual(actual, self.full_geometric_similarity)
 
     def test_that_quick_geo_index_is_invariant_to_sequence_order(self):
-        aln1 = ['A-A', 'AA-', '-AA']
-        aln2 = ['AA-', 'A-A', '-AA']
+        aln1 = ['A-A', 'AA-', '-AA', '-A-']
+        aln2 = ['AA-', 'A-A', '-AA', '-A-']
 
         self.assertEqual(self.calculator.compute_geometric_index(aln1, quick_homogeneity=True),
                          self.calculator.compute_geometric_index(aln2, quick_homogeneity=True))
 
-
     def test_that_full_geo_index_is_invariant_to_sequence_order(self):
-        aln1 = ['A-A', 'AA-', '-AA']
-        aln2 = ['AA-', 'A-A', '-AA']
+        aln1 = ['A-A', 'AA-', '-AA', '-A-']
+        aln2 = ['AA-', 'A-A', '-AA', '-A-']
 
         self.assertEqual(self.calculator.compute_geometric_index(aln1, quick_homogeneity=False),
                          self.calculator.compute_geometric_index(aln2, quick_homogeneity=False))
