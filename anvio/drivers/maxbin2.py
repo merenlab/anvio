@@ -106,8 +106,6 @@ class MaxBin2:
                     if line.startswith('>'):
                         clusters[bin_name].append(line[1:].strip())
 
-        self.run.info('Bins formed', bin_count)
-
         if not anvio.DEBUG:
             shutil.rmtree(self.temp_path)
 
