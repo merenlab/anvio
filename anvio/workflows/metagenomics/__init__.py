@@ -169,6 +169,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.run_split = self.get_param_value_from_config(['anvi_split', 'run']) == True
         self.references_mode = self.get_param_value_from_config('references_mode', repress_default=True)
         self.fasta_txt_file = self.get_param_value_from_config('fasta_txt', repress_default=True)
+        self.profile_databases = {}
 
         self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references',\
                                                                             'references_for_removal_txt'],\
@@ -192,15 +193,23 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
     def init_target_files(self):
         target_files = []
-        # We only merge things if there are multiple samples in the same group
-        merged_profiles = [os.path.join(self.dirs_dict["MERGE_DIR"], g, "PROFILE.db") \
-                            for g in self.group_names if self.group_sizes[g] > 1]
-        target_files.extend(merged_profiles)
+
+        # let's also set the PROFILE databases paths variable here:
+        for group in self.group_names:
+            # we need to use the single profile if the group is of size 1.
+            self.profile_databases[group] = os.path.join(self.dirs_dict["MERGE_DIR"], group, "PROFILE.db") if self.group_sizes[group] > 1 else \
+                                               os.path.join(self.dirs_dict["PROFILE_DIR"],
+                                                            group,
+                                                            self.samples_information.loc[self.samples_information['group']==group,'sample'].values[0],
+                                                            "PROFILE.db")
+
+        target_files.extend(list(self.profile_databases.values()))
 
         # for groups of size 1 we create a message file
         message_file_for_groups_of_size_1 = [os.path.join(self.dirs_dict["MERGE_DIR"], g, "README.txt") \
                             for g in self.group_names if self.group_sizes[g] == 1]
         target_files.extend(message_file_for_groups_of_size_1)
+
 
         contigs_annotated = [os.path.join(self.dirs_dict["CONTIGS_DIR"],\
                              g + "-annotate_contigs_database.done") for g in self.group_names]
