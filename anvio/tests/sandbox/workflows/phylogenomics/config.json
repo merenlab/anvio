@@ -5,11 +5,7 @@
         "--concatenate-genes": true,
         "--get-aa-sequences": true,
         "--hmm-sources": "Bacteria_71",
-        "--separator": "",
-        "--min-num-bins-gene-occurs": "",
-        "--max-num-genes-missing-from-bin": "",
-        "--gene-names": "Ribosomal_S20p",
-        "threads": ""
+        "--min-num-bins-gene-occurs": 5
     },
     "anvi_run_ncbi_cogs": {
         "run": false
@@ -28,7 +24,7 @@
     "project_name": "TEST",
     "internal_genomes": "",
     "external_genomes": "external-genomes.txt",
-    "fasta_txt": "fasta.txt",
+    "fasta_txt": "five-genomes-fasta.txt",
     "output_dirs": {
         "PHYLO_DIR": "01_PHYLOGENOMICS",
         "LOGS_DIR": "00_LOGS"

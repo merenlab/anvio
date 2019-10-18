@@ -8,6 +8,7 @@ SETUP_WITH_OUTPUT_DIR $1
 INFO "Setting up the pan analysis directory"
 mkdir $output_dir/workflow_test
 cp $files/workflows/phylogenomics/* $output_dir/workflow_test/
+cp -r $files/workflows/pangenomics/five* $output_dir/workflow_test/
 cd $output_dir/workflow_test
 
 INFO "Creating a default config for contigs workflow"
