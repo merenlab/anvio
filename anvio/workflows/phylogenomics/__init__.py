@@ -81,8 +81,9 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
     def sanity_checks(self):
         if not self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--gene-names'):
-            raise ConfigError('You must provide a list of genes to use for the phylogenomics. \
-                         To do so, please use the "--gene-names" parameter of rule anvi_get_sequences_for_hmm_hits.')
+            run.warning('You did not provide a list of genes to use for phylogenomics. This is ok and things might work \
+                        but we wanted to make sure this is intended. If you change your mind, you can provide a list of genes \
+                        by using the "--gene-names" parameter of rule anvi_get_sequences_for_hmm_hits.')
 
         if not self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--return-best-hit'):
             run.warning('You changed the value for --return-best-hit for the rule anvi_get_sequences_for_hmm_hits \
