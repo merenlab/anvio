@@ -36,7 +36,7 @@ requirements:
     - six ==1.11.0
     - pandas ==0.25.1
     - matplotlib ==2.2.3
-    - pyani ==0.2.7
+    - pyani ==0.2.9
     - statsmodels ==0.9.0
     - snakemake-minimal ==5.2.4
     - colored ==1.3.93
