@@ -2703,5 +2703,12 @@ function toggleTaxonomyEstimation() {
         });
     }
 
-    bins.UpdateBinsWindow();
+    /*
+        loadState/processState triggers onchange event of inputs
+        which causes problem when state is loaded before bins initialized
+        so we make sure here.
+    */
+    if (bins) {
+        bins.UpdateBinsWindow();
+    }
 }
