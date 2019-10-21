@@ -116,8 +116,8 @@ class MetaBAT2:
         log_path = os.path.join(self.temp_path, 'logs.txt')
 
         cmd_line = [self.program_name,
-            '-i', input_files.fasta, 
-            '-a', input_files.coverage, 
+            '-i', input_files.fasta,
+            '-a', input_files.coverage,
             '-o', bin_prefix,
             '--cvExt',
             '-l',
@@ -137,10 +137,7 @@ class MetaBAT2:
                 pretty_bin_name = os.path.basename(bin_file).replace('.', '_')
                 clusters[pretty_bin_name] = list(map(str.strip, f.readlines()))
 
-        self.run.info('Bins formed', bin_count)
-
         if not anvio.DEBUG:
             shutil.rmtree(self.temp_path)
 
         return clusters
-        

@@ -10,3 +10,10 @@ anvio/data/misc/COG/
 anvio/data/misc/MODELLER/db/
 smtp_config.ini
 .snakemake
+anvio/data/misc/SCG_test
+anvio/data/misc/SCG_old.tar.gz
+anvio/data/misc/SCG
+diamond-log-file.txt
+anvio/data/misc/SCG_TAXONOMY/GTDB/SCG_SEARCH_DATABASES/*.dmnd
+
+anvio/tests/sandbox/test_visualize_split_coverages/TEST_OUTDIR

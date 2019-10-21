@@ -79,8 +79,8 @@ class MaxBin2:
         log_path = os.path.join(self.temp_path, 'logs.txt')
 
         cmd_line = [self.program_name,
-            '-contig', input_files.fasta, 
-            '-abund', input_files.coverage, 
+            '-contig', input_files.fasta,
+            '-abund', input_files.coverage,
             '-out', bin_prefix,
             '-thread', str(threads),
             *utils.serialize_args(args, single_dash=True, use_underscore=True)]
@@ -93,7 +93,7 @@ class MaxBin2:
 
         clusters = {}
         bin_count = 0
-        
+
         for bin_file in glob.glob(bin_prefix + '*.fasta'):
             bin_count += 1
             with open(bin_file, 'r') as f:
@@ -106,10 +106,7 @@ class MaxBin2:
                     if line.startswith('>'):
                         clusters[bin_name].append(line[1:].strip())
 
-        self.run.info('Bins formed', bin_count)
-
         if not anvio.DEBUG:
             shutil.rmtree(self.temp_path)
 
         return clusters
-        

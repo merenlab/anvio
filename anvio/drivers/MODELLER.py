@@ -47,7 +47,7 @@ class MODELLER:
         self.run = run
         self.progress = progress
 
-        up_to_date_modeller_exec = "mod9.21" # default exec to use
+        self.up_to_date_modeller_exec = "mod9.22" # default exec to use
 
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
@@ -55,7 +55,7 @@ class MODELLER:
         self.deviation = A('deviation', float)
         self.directory = A('directory', str)
         self.very_fast = A('very_fast', bool)
-        self.executable = A('modeller_executable', null) or up_to_date_modeller_exec
+        self.executable = A('modeller_executable', null) or self.up_to_date_modeller_exec
         self.num_models = A('num_models', int)
         self.target_fasta_path = A('target_fasta_path', str)
         self.modeller_database = A('modeller_database', str) or "pdb_95"
@@ -278,12 +278,28 @@ class MODELLER:
 
         # check that MODELLER exists
         if self.args.__dict__['modeller_executable'] if 'modeller_executable' in self.args.__dict__ else None:
-            self.run.info_single("As per your request, anvi'o will use `%s` to run MODELLER." % self.executable, nl_before=1)
+            self.run.info_single("As per your request, anvi'o will attempt to use `%s` to run MODELLER." % self.executable, nl_before=1)
+
+        try:
             utils.is_program_exists(self.executable)
-        else:
-            try:
-                utils.is_program_exists(self.executable)
-            except ConfigError as e:
+            self.run.info_single("Anvi'o found the executable for MODELLER, `%s`, and will\
+                                  use it." % self.executable, nl_before=1)
+        except ConfigError as e:
+            *prefix, sub_version = self.up_to_date_modeller_exec.split('.')
+            prefix, sub_version = ''.join(prefix), int(sub_version)
+            print(sub_version)
+            print(list(reversed(range(sub_version - 10, sub_version + 10))))
+            for alternate_version in reversed(range(sub_version - 10, sub_version + 10)):
+                alternate_program = prefix + '.' + str(alternate_version)
+                print(alternate_program)
+                if utils.is_program_exists(alternate_program, dont_raise=True):
+                    self.run.warning("Anvi'o didn't find %s to be a proper program, but it did \
+                                      find a similarly named program %s, that it will use \
+                                      instead." % (self.executable, alternate_program),
+                                     header='Alternate MODELLER executable found')
+                    self.executable = alternate_program
+                    break
+            else:
                 raise ConfigError("Anvi'o needs a MODELLER program to be installed on your system. You didn't specify one\
                                    (which can be done with `--modeller-executable`), so anvi'o tried the most recent version\
                                    it knows about: '%s'. If you are certain you have it on your system (for instance you can run it\
@@ -291,8 +307,6 @@ class MODELLER:
                                    don't have it on your system, check out these installation instructions on our website:\
                                    http://merenlab.org/2016/06/18/installing-third-party-software/#modeller" % (self.executable, self.executable))
 
-            self.run.info_single("Anvi'o found the default executable for MODELLER, `%s`, and will\
-                                  use it." % self.executable, nl_before=1)
         self.is_executable_a_MODELLER_program()
 
         # does target_fasta_path point to a fasta file?
@@ -559,7 +573,7 @@ class MODELLER:
             self.progress.clear()
             self.run.warning("Anvi'o looked in {} for a database with the name {} and with an extension \
                               of either .bin or .pir, but didn't find anything matching that \
-                              criteria. We'll try and download the best database we know of from \
+                              criteria. Anvi'o will try and download the best database it knows of from \
                               https://salilab.org/modeller/downloads/pdb_95.pir.gz and use that. \
                               You can checkout https://salilab.org/modeller/ for more info about the pdb_95 \
                               database".format(self.database_dir, self.modeller_database))
