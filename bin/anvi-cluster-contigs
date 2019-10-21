@@ -32,7 +32,9 @@ __requires__ = ['profile-db', 'contigs-db']
 __provides__ = ['collection', 'bin']
 __description__ = "A program to cluster items in a merged anvi'o profile using automatic binning algorithms."
 
+
 run = terminal.Run()
+
 
 def store_clusters_in_db(contigs_db_path, profile_db_path, clusters, collection_name, source, splits_mode=False):
     if not splits_mode:
@@ -64,18 +66,16 @@ def store_clusters_in_db(contigs_db_path, profile_db_path, clusters, collection_
                                                                 #  \
                                                                 #    poor man's random color generator
 
-    c = TablesForCollections(profile_db_path)
+    c = TablesForCollections(profile_db_path, run=terminal.Run(verbose=False))
     c.append(collection_name, clusters, bin_info_dict)
-
-    run.info('%s results in db' % source, profile_db_path, display_only=True)
 
 
 def prepare_input_files(profile_db, contigs_db, splits_mode=False):
     input_files = argparse.Namespace()
     temp_path = filesnpaths.get_temp_directory_path()
-    
+
     P = lambda x: os.path.join(temp_path, x)
-    
+
     input_files = argparse.Namespace()
     input_files.contigs_db = os.path.realpath(contigs_db.db.db_path)
     input_files.profile_db = os.path.realpath(profile_db.db.db_path)
@@ -98,29 +98,93 @@ def prepare_input_files(profile_db, contigs_db, splits_mode=False):
         utils.store_dict_as_TAB_delimited_file(contig_coverages, input_files.coverage, ['contig'] + sorted(list(profile_db.samples)))
 
     utils.export_sequences_from_contigs_db(contigs_db.db_path,
-                                           input_files.fasta, 
+                                           input_files.fasta,
                                            splits_mode=splits_mode)
 
     return input_files
 
 
+def main(args, unknown):
+    splits_mode = not args.contigs_mode
+
+    collection_name = args.collection_name.strip()
+    if not len(collection_name):
+        raise ConfigError('Nice try. Collection name cannot be emtpy')
+    try:
+        utils.check_sample_id(collection_name)
+    except:
+        raise ConfigError('"%s" is not a proper collection name. A proper one should be a single word and not contain\
+                            ANY characters but digits, ASCII letters and underscore character(s). There should not be\
+                            any space characters, and the collection name should not start with a digit.' % collection_name)
+
+    utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
+
+    merged_profile_db = dbops.ProfileDatabase(args.profile_db)
+
+    if(merged_profile_db.meta['merged'] != True):
+        raise ConfigError("'%s' does not seem to be a merged profile database :/" % args.profile_db)
+
+    contigs_db = dbops.ContigsDatabase(args.contigs_db)
+
+    # Here we parse not sys.argv but unknown parameters
+    # that is not recognized by parent parser.
+    driver = args.driver
+    sub_args, sub_unknown = subparsers[driver].parse_known_args(unknown)
+
+    # --debug handled by anvio/__init__.py can be in args
+    if '--debug' in sub_unknown:
+        sub_unknown.remove('--debug')
+
+    if len(sub_unknown):
+        raise ConfigError("Unrecognized parameters %s" % ' '.join(sub_unknown))
+
+    binning_module = modules[driver]()
+
+    run.info("Contigs DB", args.contigs_db)
+    run.info("Profile DB", args.profile_db)
+    run.info("Contigs Mode", args.contigs_mode)
+
+    input_files = prepare_input_files(merged_profile_db, contigs_db, splits_mode=splits_mode)
+
+    if anvio.DEBUG:
+        for name, path in input_files.__dict__.items():
+            run.info('Input file [%s]' % name, path)
+
+    clusters = binning_module.cluster(input_files, sub_args, threads=args.num_threads, splits_mode=splits_mode)
+
+    if not len(clusters):
+        c = TablesForCollections(args.profile_db)
+        c.delete(collection_name)
+
+        raise ConfigError("Binning algorithm '%s' did not return any clusters :( There will not be any collection\
+                           in your profie database for these results. Please take a look at the help menu and sanity\
+                           check your parameters for this binning algorithm." % (driver))
+    if not anvio.DEBUG:
+        os.remove(input_files.fasta)
+        os.remove(input_files.coverage)
+
+    store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver, splits_mode=splits_mode)
+
+    run.info_single("%s formed %d clusters, which are being added to the database as a collection named %s." % \
+                            (driver, len(clusters), collection_name), nl_before=1, nl_after=1, mc="green")
+
+
 if __name__ == '__main__':
-    show_help = ('--help' in sys.argv) or ('-h' in sys.argv)
-    modules = driver_modules['binning']
-
     parent_parser = argparse.ArgumentParser(description=__description__)
-
     parent_parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parent_parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parent_parser.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode'))
     parent_parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
-    parent_parser.add_argument(*anvio.A('driver'), **anvio.K('driver', 
+    parent_parser.add_argument(*anvio.A('driver'), **anvio.K('driver',
         {'choices': list(driver_modules['binning'].keys()), 'type': str.lower}))
     parent_parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+
+    show_help = ('--help' in sys.argv) or ('-h' in sys.argv)
 
     if show_help:
         parent_parser.print_help()
 
+    modules = driver_modules['binning']
     subparsers = {}
     for name, module in modules.items():
         subparser = argparse.ArgumentParser(usage=argparse.SUPPRESS, add_help=False)
@@ -146,61 +210,10 @@ if __name__ == '__main__':
     if show_help:
         sys.exit()
 
+    args, unknown = parent_parser.parse_known_args()
+
     try:
-        args, unknown = parent_parser.parse_known_args()
-        splits_mode = not args.contigs_mode
-
-        collection_name = args.collection_name.strip()
-        if not len(collection_name):
-            raise ConfigError('Nice try. Collection name cannot be emtpy')
-        try:
-            utils.check_sample_id(collection_name)
-        except:
-            raise ConfigError('"%s" is not a proper collection name. A proper one should be a single word and not contain\
-                                ANY characters but digits, ASCII letters and underscore character(s). There should not be\
-                                any space characters, and the collection name should not start with a digit.' % collection_name)
-
-        utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
-
-        merged_profile_db = dbops.ProfileDatabase(args.profile_db)
-
-        if(merged_profile_db.meta['merged'] != True):
-            raise ConfigError("'%s' does not seem to be a merged profile database :/" % args.profile_db)
-
-        contigs_db = dbops.ContigsDatabase(args.contigs_db)
-
-        # Here we parse not sys.argv but unknown parameters 
-        # that is not recognized by parent parser.
-        driver = args.driver
-        sub_args, sub_unknown = subparsers[driver].parse_known_args(unknown)
-
-        # --debug handled by anvio/__init__.py can be in args
-        if '--debug' in sub_unknown:
-            sub_unknown.remove('--debug')
-
-        if len(sub_unknown):
-            raise ConfigError("Unrecognized parameters %s" % ' '.join(sub_unknown))
-
-        binning_module = modules[driver]()
-
-        run.info("Contigs DB", args.contigs_db)
-        run.info("Profile DB", args.profile_db)
-        run.info("Contigs Mode", args.contigs_mode)
-
-        input_files = prepare_input_files(merged_profile_db, contigs_db, splits_mode=splits_mode)
-
-        if anvio.DEBUG:
-            for name, path in input_files.__dict__.items():
-                run.info('Input file [%s]' % name, path)
-
-        clusters = binning_module.cluster(input_files, sub_args, threads=args.num_threads, splits_mode=splits_mode)
-
-        if not anvio.DEBUG:
-            os.remove(input_files.fasta)
-            os.remove(input_files.coverage)
-
-        store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver, splits_mode=splits_mode)
-
+        main(args, unknown)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

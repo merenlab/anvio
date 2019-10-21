@@ -17,7 +17,7 @@
         "--align-with": "muscle",
         "--concatenate-genes": true,
         "--get-aa-sequences": true,
-        "--hmm-sources": "Campbell_et_al",
+        "--hmm-sources": "Bacteria_71",
         "--min-num-bins-gene-occurs": 5
     },
     "import_phylogenetic_tree_to_pangenome": {

@@ -97,7 +97,7 @@ class BinSanity:
         }
 
         cmd_line = [self.program_name,
-            '-c', input_files.coverage, 
+            '-c', input_files.coverage,
             '-f', os.path.dirname(input_files.fasta),
             '-l', os.path.basename(input_files.fasta),
             '-o', self.temp_path,
@@ -120,10 +120,7 @@ class BinSanity:
 
                 clusters[pretty_bin_name] = [line.strip().replace('>', '') for line in f if line.startswith('>')]
 
-        self.run.info('Bins formed', bin_count)
-
         if not anvio.DEBUG:
             shutil.rmtree(self.temp_path)
 
         return clusters
-        

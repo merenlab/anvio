@@ -32,9 +32,6 @@ pp = terminal.pretty_print
 
 def print_proper(args, collection, completeness, run, progress):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-    contigs_db_path = A('contigs_db')
-    profile_db_path = A('profile_db')
-    list_collections = A('list_collections')
     output_file_path = A('output_file')
 
     contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
@@ -66,10 +63,6 @@ def print_proper(args, collection, completeness, run, progress):
 
 def print_improper(args, collection, completeness, run, progress):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-    contigs_db_path = A('contigs_db')
-    profile_db_path = A('profile_db')
-    collection_name = A('collection_name')
-    list_collections = A('list_collections')
     output_file_path = A('output_file')
 
     run.info_single("Hi. I am the function that is called when the completion class is not initialized properly, and the best I can\
@@ -133,7 +126,7 @@ def main(args):
 
     if not collection_name:
         run.warning("You did not provide a collection name. Anvi'o will assume that what is in your contigs database\
-                     is a a single genome (or genome bin).")
+                     is a single genome (or genome bin).")
 
     if collection_name and collection_name not in collections.collections_dict:
         raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % collection_name)

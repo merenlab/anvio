@@ -234,17 +234,18 @@ def check_output_directory(output_directory, ok_if_exists=False):
     return output_directory
 
 
-def gen_output_directory(output_directory, progress=Progress(verbose=False), run=Run(), delete_if_exists=False):
+def gen_output_directory(output_directory, progress=Progress(verbose=False), run=Run(), delete_if_exists=False, dont_warn=False):
     if not output_directory:
         raise FilesNPathsError("Someone called `gen_output_directory` function without an output\
                                 directory name :( An embarrassing moment for everyone involved.")
 
     if os.path.exists(output_directory) and delete_if_exists and not is_dir_empty(output_directory):
         try:
-            run.warning('The existing directory "%s" is about to be removed... (You have \
-                         20 seconds to press CTRL + C). [filesnpaths::gen_output_directory]' % output_directory,
-                         header = '!!! READ THIS NOW !!!')
-            time.sleep(20)
+            if not dont_warn:
+                run.warning('The existing directory "%s" is about to be removed... (You have \
+                             20 seconds to press CTRL + C). [filesnpaths::gen_output_directory]' % output_directory,
+                             header = '!!! READ THIS NOW !!!')
+                time.sleep(20)
             shutil.rmtree(output_directory)
         except:
             progress.end()

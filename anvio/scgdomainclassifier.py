@@ -2,9 +2,7 @@
 # pylint: disable=line-too-long
 
 import os
-import sys
 import glob
-import numpy
 import random
 import itertools
 from collections import Counter
@@ -12,13 +10,12 @@ from collections import Counter
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.learning import RF
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError
 
 with terminal.SuppressAllOutput():
     import anvio.data.hmm as hmm_data
@@ -250,7 +247,7 @@ class Predict(SCGDomainClassifier):
                                following SCG domains are not defined in it: '%s'. One way to fix this could be re-training the\
                                random forest with `anvi-script-gen-scg-domain-classifier` with a reasonable set of genomes. Don't\
                                forget to store the resulting classifier at the default anvi'o path of /blah/blah/anvio/data/%s." \
-                                        % (', '.join(missing_classes), default_classifier_path))
+                                        % (', '.join(missing_classes), self.input_classifier_path))
 
 
     def predict_from_observed_genes_per_domain(self, observed_genes_per_domain):

@@ -77,7 +77,7 @@ class DBClassFactory:
 
         if db_type not in self.DB_CLASSES:
             raise ConfigError("DBClassFactory speaking. I do not know a class for database type\
-                                %s :/ I can deal with these though: '%s'" % (db_type, ', '.join(self.DB_CLASSES))) 
+                                %s :/ I can deal with these though: '%s'" % (db_type, ', '.join(self.DB_CLASSES)))
         return self.DB_CLASSES[db_type]
 
 
@@ -252,7 +252,7 @@ class ContigsSuperclass(object):
         elif split_names_of_interest:
             contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in split_names_of_interest])
 
-        if gene_caller_ids_of_interest or split_names_of_interest: 
+        if gene_caller_ids_of_interest or split_names_of_interest:
             # someone was interested in a subest of things, but found nothing for them?
             if not len(contig_names_of_interest):
                 raise ConfigError("Well, it turns out there are no contigs matching to the list of gene calls anvi'o\
@@ -274,7 +274,7 @@ class ContigsSuperclass(object):
                                                                   error_if_no_data=True)
             self.progress.end()
         else:
-            # load all 
+            # load all
             self.progress.new('Loading contig sequences')
             self.progress.update('Reading ALL contig sequences')
             self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
@@ -1668,7 +1668,7 @@ class PanSuperclass(object):
             homogeneity_keys, homogeneity_dict = TableForItemAdditionalData(self.args).get(['functional_homogeneity_index', 'geometric_homogeneity_index'])
         elif self.functional_homogeneity_info_is_available and self.geometric_homogeneity_info_is_available and self.combined_homogeneity_info_is_available:
             homogeneity_keys, homogeneity_dict = TableForItemAdditionalData(self.args).get(['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'])
-        
+
 
         gene_clusters_to_remove = set([])
         all_gene_clusters = set(list(gene_cluster_occurrences_accross_genomes.keys()))
@@ -2495,13 +2495,13 @@ class ProfileSuperclass(object):
             # we may be called from a part of the code that doesn't know what KIND of genes
             # database is being called. Therefore, the `parameters` dict we are about to send
             # to `init_gene_level_coverage_stats_from_genes_db` may contain the default
-            # `mode` value set before. BUT WE DON'T WANT THAT. 
+            # `mode` value set before. BUT WE DON'T WANT THAT.
             mode_set_in_db = db.DB(self.genes_db_path, client_version=None, ignore_version=True).get_meta_value('mode')
 
             self.run.warning("A gene stats database of type '%s' is found (anvi'o hopes that this is the type of stats you\
                               were expecting to find)." % mode_set_in_db.upper())
 
-            parameters['mode'] = mode_set_in_db 
+            parameters['mode'] = mode_set_in_db
 
             # since we are here and learned the mode, we can also set the self.inseq_stats variable IF the table
             # is actually inseq stats table. if we don't do this, the interactive interface will never load the inseq
@@ -2561,6 +2561,10 @@ class ProfileSuperclass(object):
 
 
     def init_split_coverage_values_per_nt_dict(self, split_names=None):
+        if not self.auxiliary_profile_data_available:
+            raise ConfigError("What you're trying to do requires the AUXILIARY-DATA.db file :/ Please make sure it is in the\
+                               same directory with the profile database you are working with.")
+
         self.progress.new('Computing split coverage values per nt ...')
         self.progress.update('...')
 
@@ -3237,6 +3241,7 @@ class PanDatabase:
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
 
+
         return self.db
 
 
@@ -3284,12 +3289,12 @@ class ContigsDatabase:
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
             try:
-                for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called', 'splits_consider_gene_calls']:
+                for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called', 'splits_consider_gene_calls', 'scg_taxonomy_was_run']:
                     self.meta[key] = int(self.meta[key])
             except KeyError:
                 raise ConfigError("Oh no :( There is a contigs database here at '%s', but it seems to be broken :( It is very\
                                    likely that the process that was trying to create this database failed, and left behind\
-                                   this unfinished thingy (if you would like to picture its state you an imagine the baby\
+                                   this unfinished thingy (if you would like to picture its state you should imagine the baby\
                                    Voldemort at King's Cross). Well, anvi'o believes it is best if you make it go away with\
                                    fire, and try whatever you were trying before you got this error one more time with a\
                                    proper contigs database. End of sad news. Bye now." % self.db_path)
@@ -3346,6 +3351,8 @@ class ContigsDatabase:
         self.db.create_table(t.splits_info_table_name, t.splits_info_table_structure, t.splits_info_table_types)
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
         self.db.create_table(t.nt_position_info_table_name, t.nt_position_info_table_structure, t.nt_position_info_table_types)
+        self.db.create_table(t.scg_taxonomy_table_name, t.scg_taxonomy_table_structure, t.scg_taxonomy_table_types)
+
 
         return self.db
 
@@ -3529,6 +3536,7 @@ class ContigsDatabase:
             kmer_size = int(kmer_size)
         except:
             raise ConfigError("K-mer size must be an integer.")
+
         if kmer_size < 2 or kmer_size > 8:
             raise ConfigError("We like our k-mer sizes between 2 and 8, sorry! (but then you can always change the\
                                 source code if you are not happy to be told what you can't do, let us know how it goes!).")
@@ -3669,6 +3677,7 @@ class ContigsDatabase:
         self.db.set_meta_value('gene_function_sources', None)
         self.db.set_meta_value('genes_are_called', (not skip_gene_calling))
         self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))
+        self.db.set_meta_value('scg_taxonomy_was_run', False)
         self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 
@@ -4003,11 +4012,19 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
 
         names_in_db = sorted(utils.get_all_item_names_from_the_database(anvio_db_path))
 
-        if names_in_db != names_in_data:
+        names_in_db_not_in_data = set(names_in_db) - set(names_in_data)
+        if names_in_db_not_in_data:
             raise ConfigError("Ehem. There is something wrong with the incoming items order data here :/ Basically,\
-                               the names found in your input data does not match to the item names found in the\
-                               database. Anvi'o is too lazy to find out what exactly differs, but just so you know\
-                               you're doing something wrong :/")
+                               the names found in your input data do not match to the item names found in the\
+                               database. For example, this item \"%s\" is in your database, but not in your input data\
+                               " % next(iter(names_in_db_not_in_data)))
+
+        names_in_data_not_in_db = set(names_in_data) - set(names_in_db)
+        if names_in_data_not_in_db:
+            raise ConfigError("Ehem. There is something wrong with the incoming items order data here :/ Basically,\
+                               the names found in your input data do not match to the item names found in the\
+                               database. For example, this item \"%s\" is in your input data, but not in your database\
+                               " % next(iter(names_in_data_not_in_db)))
 
     # additional data is JSON formatted entry
     # for now it will only contain collapsed node information.

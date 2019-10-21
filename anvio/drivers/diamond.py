@@ -26,7 +26,7 @@ pp = terminal.pretty_print
 
 
 class Diamond:
-    def __init__(self, query_fasta, target_fasta=None, run=run, progress=progress, num_threads=1, overwrite_output_destinations=False):
+    def __init__(self, query_fasta=None, target_fasta=None, run=run, progress=progress, num_threads=1, overwrite_output_destinations=False):
         self.run = run
         self.progress = progress
 
@@ -37,6 +37,7 @@ class Diamond:
 
         self.tmp_dir = tempfile.gettempdir()
         self.evalue = 1e-05
+        self.min_pct_id = None
         self.max_target_seqs = 100000
 
         self.query_fasta = query_fasta
@@ -106,7 +107,6 @@ class Diamond:
         self.progress.end()
 
         expected_output = (output_file_path or self.target_fasta) + '.dmnd'
-        self.check_output(expected_output, 'makedb')
 
         self.run.info('diamond makedb cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
         self.run.info('Diamond search db', expected_output)
@@ -119,7 +119,7 @@ class Diamond:
                     'blastp',
                     '-q', self.query_fasta,
                     '-d', self.target_fasta,
-                    '-a', self.search_output_path,
+                    '-o', self.tabular_output_path,
                     '-t', self.tmp_dir,
                     '-p', self.num_threads]
 
@@ -127,6 +127,9 @@ class Diamond:
 
         if self.max_target_seqs:
             cmd_line.extend(['--max-target-seqs', self.max_target_seqs])
+
+        if self.min_pct_id:
+            cmd_line.extend(['--id', self.min_pct_id])
 
         if self.evalue:
             cmd_line.extend(['--evalue', self.evalue])
@@ -140,10 +143,43 @@ class Diamond:
 
         self.progress.end()
 
-        expected_output = self.search_output_path + '.daa'
-        self.check_output(expected_output, 'blastp')
+        self.expected_output = self.search_output_path + '.daa'
 
-        self.run.info('Diamond blastp results', expected_output)
+        self.run.info('Diamond blastp results', self.expected_output)
+
+    def blastp_stdout(self):
+
+        cmd_line = ['diamond',
+                    'blastp',
+                    '-q', self.query_fasta,
+                    '-d', self.target_fasta,
+                    '-p', self.num_threads]
+
+        cmd_line.append('--sensitive') if self.sensitive else None
+
+        if self.max_target_seqs:
+            cmd_line.extend(['--max-target-seqs', self.max_target_seqs])
+
+        if self.min_pct_id:
+            cmd_line.extend(['--id', self.min_pct_id])
+
+        if self.evalue:
+            cmd_line.extend(['--evalue', self.evalue])
+
+        self.run.info('DIAMOND blastp cmd', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
+
+
+        shell_cmd_line=' '.join(str(x) for x in cmd_line)
+        out_bytes, ret_code = utils.get_command_output_from_shell(shell_cmd_line)
+
+        try:
+            decode_out=out_bytes.decode("utf-8")
+        except:
+            decode_out=out_bytes
+
+        return(decode_out)
+
+
 
 
     def blastp_stdin(self, sequence):
@@ -159,6 +195,40 @@ class Diamond:
         if self.max_target_seqs:
             cmd_line.extend(['--max-target-seqs', self.max_target_seqs])
 
+        if self.min_pct_id:
+            cmd_line.extend(['--id', self.min_pct_id])
+
+        if self.evalue:
+            cmd_line.extend(['--evalue', self.evalue])
+
+
+
+        self.run.info('DIAMOND blastp stdin cmd', ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
+
+        output = utils.run_command_STDIN(cmd_line, self.run.log_file_path, '>seq\n%s' % sequence,remove_log_file_if_exists=False)
+
+        self.progress.end()
+
+        self.run.info('Diamond blastp results', '%d lines were returned from STDIN call' % len(output))
+
+        return(output)
+
+    def blastp_stdin_multi(self, multisequence):
+        self.run.info('DIAMOND is set to be', 'Sensitive' if self.sensitive else 'Fast')
+
+        cmd_line = ['diamond',
+                    'blastp',
+                    '-d', self.target_fasta,
+                    '-p', self.num_threads]
+
+        cmd_line.append('--sensitive') if self.sensitive else None
+
+        if self.max_target_seqs:
+            cmd_line.extend(['--max-target-seqs', self.max_target_seqs])
+
+        if self.min_pct_id:
+            cmd_line.extend(['--id', self.min_pct_id])
+
         if self.evalue:
             cmd_line.extend(['--evalue', self.evalue])
 
@@ -167,14 +237,33 @@ class Diamond:
         self.progress.new('DIAMOND')
         self.progress.update('running blastp (using %d thread(s)) ...' % self.num_threads)
 
-        output = utils.run_command_STDIN(cmd_line, self.run.log_file_path, '>seq\n%s' % sequence)
+        output = utils.run_command_STDIN(cmd_line, self.run.log_file_path, multisequence,remove_log_file_if_exists=False)
 
         self.progress.end()
 
         self.run.info('Diamond blastp results', '%d lines were returned from STDIN call' % len(output))
-
         return(output)
 
+
+    def makedb_stdin(self, sequence, output_file_path=None):
+        self.progress.new('DIAMOND')
+        self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
+
+        cmd_line = ['diamond',
+                    'makedb',
+                    '-d', output_file_path or self.target_fasta,
+                    '-p', self.num_threads]
+
+        utils.run_command_STDIN(cmd_line, self.run.log_file_path,sequence)
+
+        self.progress.end()
+
+        expected_output = utils.run_command_STDIN(cmd_line, self.run.log_file_path,sequence)
+
+        expected_output = (output_file_path or self.target_fasta) + '.dmnd'
+        self.check_output(expected_output, 'makedb')
+
+        self.run.info('diamond makedb cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
 
     def view(self):
         self.progress.new('DIAMOND')

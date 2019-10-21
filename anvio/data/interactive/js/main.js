@@ -1436,6 +1436,7 @@ function serializeSettings(use_layer_names) {
     state['show-bin-labels'] = $('#show_bin_labels').is(':checked');
     state['bin-labels-font-size'] = $('#bin_labels_font_size').val();
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
+    state['estimate-taxonomy'] = $('#estimate_taxonomy').is(':checked');
     state['bin-labels-angle'] = $('#bin_labels_angle').val();
     state['background-opacity'] = $('#background_opacity').val();
     state['max-font-size-label'] = $('#max_font_size_label').val();
@@ -2392,6 +2393,9 @@ function processState(state_name, state) {
     if (state.hasOwnProperty('autorotate-bin-labels')) {
         $('#autorotate_bin_labels').prop('checked', state['autorotate-bin-labels']).trigger('change');
     }
+    if (state.hasOwnProperty('estimate-taxonomy')) {
+        $('#estimate_taxonomy').prop('checked', state['estimate-taxonomy']).trigger('change');
+    }
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
     }
@@ -2504,4 +2508,207 @@ function shutdownServer()
             }
         }
     });
+}
+
+function showTaxonomy()
+{
+    let collection_info = bins.ExportCollection();
+
+    $.ajax({
+        type: 'POST',
+        url: '/data/get_taxonomy',
+        data: {
+            'collection': JSON.stringify(collection_info['data'], null, 4), 
+        },
+        success: (response) => {
+            if (response.hasOwnProperty('status') && response.status != 0) {
+                toastr.error('"' + response.message + '", the server said.', "The anvi'o headquarters is upset");
+                return;
+            }
+
+            let content = `<table class="table">
+                              <thead class="thead-light">
+                                <tr>
+                                  <th>Bin name</th>
+                                  <th>Total SCGs</th>
+                                  <th>Supporting SCGs</th>
+                                  <th>Domain</th>
+                                  <th>Phylum</th>
+                                  <th>Class</th>
+                                  <th>Order</th>
+                                  <th>Family</th>
+                                  <th>Genus</th>
+                                  <th>Species</th>
+                                </tr>
+                              </thead>
+
+                              <tbody>`;
+
+            let levels_of_taxonomy = ["t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"];
+
+            // building the table for each bin
+            Object.keys(response).map(function(bin_name) {
+                let d = response[bin_name];
+
+                content += `<tr>
+                    <td><a data-toggle="collapse" data-parent="#panel-${ bin_name }" href="#collapse-${ bin_name }"><i class="glyphicon glyphicon-chevron-right"></i>&nbsp;${ bin_name }</a></td>
+                    <td class="text-center">${ d['total_scgs'] }</td>
+                    <td class="text-center">${ d['supporting_scgs'] }</td>`;
+
+                levels_of_taxonomy.forEach(function (level, index) {
+                    if (d['consensus_taxonomy'][level] !== null) {
+                        if (level === "t_species")
+                            content += `<td><i>${ d['consensus_taxonomy'][level].replace('_', ' ') }</i></td>`;
+                        else
+                            content += `<td>${ d['consensus_taxonomy'][level].replace('_', ' ') }</td>`;
+                    } else {
+                        content += `<td>--</td>`;
+                    }
+                });
+
+                content += `</tr>`;
+
+                // Building an inner table for each individual SCG within a given bin.
+                let scg_table_content = `<tr id="collapse-${ bin_name }" class="panel-collapse fade collapse" style="background: #acaf3330;"><td colspan="10">
+
+                <table class="table table-striped sortable" id="tblGrid_${ bin_name }">
+
+                    <thead id="tblHead_${ bin_name }">
+                        <tr>
+                            <th>SCG Name</th>
+                            <th>Gene Caller's Id</th>
+                            <th>Percent Identity</th>
+                            <th>&lt;3?</th>
+                            <th>Domain</th>
+                            <th>Phylum</th>
+                            <th>Class</th>
+                            <th>Order</th>
+                            <th>Family</th>
+                            <th>Genus</th>
+                            <th>Species</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>`;
+
+                    // This is the second for loop to build what's going on inside those individual SCG tables
+                    Object.keys(d['scgs']).map(function(scg_id) {
+                        let scg = d['scgs'][scg_id];
+
+                        scg_table_content += `<tr>
+                            <td>${ scg['gene_name'] }</a></td>
+                            <td class="text-center"><a href="#" onclick="showGenePopup(this, '${ scg['gene_callers_id'] }');">${ scg['gene_callers_id'] }</a></td>
+                            <td class="text-center">${ scg['percent_identity'] }</a></td>
+                            <td>${ scg['supporting_consensus'] }</td>`;
+
+                        levels_of_taxonomy.forEach(function (level, index) {
+                            if (scg[level] !== null) {
+                                if (level === "t_species")
+                                    scg_table_content += `<td><i>${ scg[level].replace('_', ' ') }</i></td>`;
+                                else
+                                    scg_table_content += `<td>${ scg[level].replace('_', ' ') }</td>`;
+                            } else {
+                                scg_table_content += `<td>--</td>`;
+                            }
+                        });
+
+                        scg_table_content += `</tr>`;
+                    });
+
+                scg_table_content += `</tbody></table>`;
+
+                if(d['total_scgs'] == 0){
+                    // If actually there are no SCGs for this bin that were useful to estimatet taxonomy,
+                    // don't add the `scg_table_content` to the actual content. 
+                    content += `<tr id="collapse-${ bin_name }" class="panel-collapse fade collapse" style="background: #acaf3330;"><td colspan="10">
+                                    None of the contigs in this bin contained SCGs anvi'o could use to estimate taxonomy :/`;
+                } else {
+                    content += scg_table_content;
+                }
+
+                content += `</td></tr>`;
+            });
+
+            showTaxonomyTableDialog('Detailed Table for Taxonomy Estimation', content + '</table>');
+
+            $('.panel-collapse').on('show.bs.collapse', function () {
+                $(this).prev().find('i.glyphicon').removeClass('glyphicon-chevron-right').addClass('glyphicon-chevron-down');
+            });
+
+            $('.panel-collapse').on('hide.bs.collapse', function () {
+               $(this).prev().find('i.glyphicon').removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-right');
+            });
+        }
+    });
+}
+
+function showGenePopup(element, gene_callers_id) {
+
+    $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
+
+    // workaround for known popover bug
+    // source: https://stackoverflow.com/questions/32581987/need-click-twice-after-hide-a-shown-bootstrap-popover
+    $('body').on('hidden.bs.popover', function (e) {
+      $(e.target).data("bs.popover").inState.click = false;
+    });
+
+    $('[data-toggle="popover"]').on('shown.bs.popover', function (e) {
+      var popover = $(e.target).data("bs.popover").$tip;
+      
+      if ($(popover).css('top').charAt(0) === '-') {
+        $(popover).css('top', '0px');
+      }
+
+      if ($(popover).css('left').charAt(0) === '-') {
+        $(popover).css('left', '0px');
+      }
+
+      $(popover).draggable();
+    });
+
+    $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/get_gene_info/' + gene_callers_id,
+            data: {'gene_callers_id': gene_callers_id},
+            success: function(gene_data) {
+                $(element).attr('data-content', );
+                $(element).attr('data-toggle', 'popover');
+                var popOverSettings = {
+                    placement: 'bottom',
+                    container: 'body',
+                    html: true,
+                    selector: '[rel="popover"]', //Sepcify the selector here
+                    content: function () {
+                        return get_gene_functions_table_html(gene_data);
+                    }
+                }
+
+                $(element).popover(popOverSettings);
+                $(element).popover('show');
+            }
+    });
+}
+
+function toggleTaxonomyEstimation() {
+    let is_checked = $('#estimate_taxonomy').is(':checked');
+
+    if (is_checked) {
+        $('.taxonomy-name-label').each((index, elem) => { 
+            $(elem).closest('tr').show();
+        });
+    } else {
+        $('.taxonomy-name-label').each((index, elem) => { 
+            $(elem).closest('tr').hide();
+        });
+    }
+
+    /*
+        loadState/processState triggers onchange event of inputs
+        which causes problem when state is loaded before bins initialized
+        so we make sure here.
+    */
+    if (bins) {
+        bins.UpdateBinsWindow();
+    }
 }

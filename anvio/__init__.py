@@ -4,6 +4,7 @@
 """Lots of under-the-rug, operational garbage in here. Run. Run away.."""
 
 import sys
+import json
 import copy
 import platform
 
@@ -11,11 +12,20 @@ import platform
 # unless you want to explode `bottle`:
 import pkg_resources
 
-anvio_version = '5.5-master'
-anvio_codename = 'margaret'
+anvio_version = '6-master'
+anvio_codename = 'esther'
 
 DEBUG = '--debug' in sys.argv
 FORCE = '--force' in sys.argv
+
+def P(d, dont_exit=False):
+    """Poor man's debug output printer during debugging."""
+
+    print(json.dumps(d, indent=2))
+
+    if not dont_exit:
+        sys.exit()
+
 
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
 # on systems working with multiple Python installations that are managed through modules):
@@ -155,7 +165,7 @@ D = {
             'help': "A two-column TAB-delimited file that lists multiple FASTA files to import\
                      for analysis. If using for `anvi-dereplicate-genomes` or `anvi-compute-distance`,\
                      each FASTA is assumed to be a genome. The first item in the header line\
-                     should read 'name', and the second item should read 'fasta_path'. Each line\
+                     should read 'name', and the second item should read 'path'. Each line\
                      in the field should describe a single entry, where the first column is\
                      the name of the FASTA file or corresponding sequence, and the second column\
                      is the path to the FASTA file itself."}
@@ -508,6 +518,97 @@ D = {
              'choices': tables.taxon_names_table_structure[1:],
              'help': "The taxonomic level to use. The default is '%(default)s'. Only relevant if the\
                       anvi'o ontigs database contains taxonomic annotations."}
+                ),
+    'taxonomy-file': (
+            ['-t', '--taxonomy-file'],
+            {'default': None,
+             'type': str,
+             'help': "Path to The taxonomy file format tsv containe:\
+              ID\td__domaine;p__phylum;[..];s__genus species"}
+                ),
+    'metagenome-mode': (
+            ['-m', '--metagenome-mode'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Treat a given contigs database as a metagenome rather than treating it as a single genome."}
+                ),
+    'scg-name-for-metagenome-mode': (
+            ['-S','--scg-name-for-metagenome-mode'],
+            {'default': None,
+             'type': str,
+             'metavar': 'SCG_NAME',
+             'help': "When running in metagenome mode, anvi'o automatically chooses the most frequent single-copy\
+                      core gene to estimate the taxonomic composition within a contigs database. If you have a\
+                      different preference you can use this parameter to communicate that."}
+                ),
+    'compute-scg-coverages': (
+            ['--compute-scg-coverages'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When this flag is declared, anvi'o will go back to the profile database to learn coverage\
+                      statistics of single-copy core genes for which we have taxonomy information."}
+                ),
+    'update-profile-db-with-taxonomy': (
+            ['--update-profile-db-with-taxonomy'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When anvi'o knows all both taxonomic affiliations and coverages across samples for single-copy\
+                      core genes, it can, in theory add this information to the profile database. With this flag you\
+                      can isntruct anvi'o to do that and find information on taxonomy in the `layers` tab of your\
+                      interactive interface."}
+                ),
+    'taxonomy-database': (
+            ['-r', '--taxonomy-database'],
+            {'default': None,
+             'type': str,
+             'metavar': 'PATH',
+             'help': "Path to the directory that contains the BLAST databases for single-copy core\
+                      genes. You will almost never need to use this parameter unless you are\
+                      trying something very fancy. Anvi'o will know where its database files are."}
+                ),
+    'scgs-taxonomy-data-dir': (
+            ['--scgs-taxonomy-data-dir'],
+            {'default': None,
+             'type': str,
+             'metavar': 'PATH',
+             'help': "The directory for SCGs data to be stored (or read from, depending on the context).\
+                      If you leave it as is without specifying anything, anvi'o will set up everything in\
+                      (or try to read things from) a pre-defined default directory. The advantage of using\
+                      the default directory at the time of set up is that every user of anvi'o on a computer\
+                      system will be using a single data directory, but then you may need to run the setup\
+                      program with superuser privileges. If you don't have superuser privileges, then you can\
+                      use this parameter to tell anvi'o the location you wish to use to setup your databases.\
+                      If you are using a program (such as `anvi-run-scg-taxonomy` or `anvi-estimate-genome-taxonomy`)\
+                      you will have to use this parameter to tell those programs where your data are."}
+                ),
+    'scgs-taxonomy-remote-database-url': (
+            ['--scgs-taxonomy-remote-database-url'],
+            {'default': None,
+             'type': str,
+             'metavar': 'URL',
+             'help': "Anvi'o will always try to download the latest release, but if there is a problem with\
+                      the latest release, feel free to run setup using a different URL. Just to note, anvi'o\
+                      will expect to find the following files in the URL provided here: 'VERSION', \
+                      'ar122_msa_individual_genes.tar.gz', 'ar122_taxonomy.tsv', 'bac120_msa_individual_genes.tar.gz', \
+                      and 'bac120_taxonomy.tsv'. If everything fails, you can give this URL, which is supposed to work\
+                      if teh server in which these databases are maintained is still online:\
+                      https://data.ace.uq.edu.au/public/gtdb/data/releases/release89/89.0/"}
+                ),
+    'reset': (
+            ['--reset'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Remove all the previously stored files and start over. If something is feels wrong\
+                      for some reason and if you believe re-downloading files and setting them up could\
+                      address the issue, this is the flag that will tell anvi'o to act like a real comptuer\
+                      scientist challenged with a computational problem."}
+                ),
+    'redo-databases': (
+            ['--redo-databases'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Remove existing databases and re-create them. This can be necessary when versions of\
+                      programs change and databases they create and use become incompatible."}
                 ),
     'cog-data-dir': (
             ['--cog-data-dir'],
@@ -1123,6 +1224,15 @@ D = {
                       be careful with this option if you are running your commands on a SGE --if you are clusterizing your runs,\
                       and asking for multiple threads to use, you may deplete your resources very fast."}
                 ),
+    'num-parallel-processes': (
+            ['-P', '--num-parallel-processes'],
+            {'metavar': 'NUM_PROCESSES',
+             'default': 1,
+             'type': int,
+             'help': "Maximum number of processes to run in parallel. Please note that this is different than number of threads. If you\
+                      ask for 4 parallel processes, and 5 threads, anvi'o will run four processes in parallel and assign 5 threads\
+                      to each. For resource allocation you must multiply the number of processes and threads."}
+                ),
     'variability-profile': (
             ['-V', '--variability-profile'],
             {'metavar': 'VARIABILITY_TABLE',
@@ -1354,20 +1464,6 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Don't bother me with questions or warnings, just do it."}
-                ),
-    'force': (
-            ['--force'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "Please note that using the --force flag is not using 'the force'. It's forcing things.\
-                      If anvi'o suggested you to use this flag, things must be very very bad. This flag is\
-                      only used when the user wants to skip checks and balances and try their chances with\
-                      by pushing things through. This flag will tell anvi'o to not pay attention to some\
-                      critical things that are in place to ensure the sanity of your analyses. But if you\
-                      feel like a power user today and wnat to give it a try, go ahead. But please make\
-                      extra sure if you run into problem downstream and need help that you are a power user\
-                      and should be fine. BRUTE FORCE ALMOST NEVER WORKS AND IF ANVI'O IS FAILING TO DO\
-                      SOMETHING IT MEANS THERE IS A BIGGER PROBLEM NEEDS ADRESSING."}
                 ),
     'ip-address': (
             ['-I', '--ip-address'],

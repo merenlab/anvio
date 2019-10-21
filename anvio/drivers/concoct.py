@@ -8,17 +8,14 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError
-
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
+__maintainer__ = "Özcan Esen"
+__email__ = "ozcanesen@gmail.com"
 
 
 run = terminal.Run()
@@ -115,12 +112,12 @@ class CONCOCT:
 
         self.temp_path = filesnpaths.get_temp_directory_path()
         log_path = os.path.join(self.temp_path, 'logs.txt')
-        
+
         if anvio.DEBUG:
             self.run.info('Working directory', self.temp_path)
 
         cmd_line = [self.program_name,
-            '--coverage_file', input_files.coverage, 
+            '--coverage_file', input_files.coverage,
             '--composition_file', input_files.fasta,
             '--basename', self.temp_path,
             '--threads', threads,
@@ -148,6 +145,3 @@ class CONCOCT:
                 clusters[pretty_bin_name].append(contig)
 
         return clusters
-
-
-

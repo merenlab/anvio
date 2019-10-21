@@ -188,7 +188,7 @@ def get_fastq(sample, zipped=run_gzip_fastqs, post_reference_based_short_read_re
         # if no QC and no reference based short read removal is requested, use raw input
         d = get_raw_fastq(sample)
         if len(d['r1']) > 1 or len(d['r2']) > 1:
-            raise('You are skipping QC, but some of your samples (for example %s) are composed of more than 1 pair of fastq files \
+            raise ConfigError('You are skipping QC, but some of your samples (for example %s) are composed of more than 1 pair of fastq files \
                    this is not allowed. Please first merge all the fastq files corresponding to a single sample (or just use QC, and the \
                    merging will be done for you).' % sample)
         d = {'r1': d['r1'][0],
@@ -983,10 +983,10 @@ rule anvi_merge:
             # Still waiting to get an answer on this issue:
             # https://groups.google.com/d/msg/snakemake/zU_wkfZ7YCs/GZP0Z_RoAgAJ
             # Until then, I will just create fake file so snakemake is happy
-            _message = "Only one file was profiled with %s so there " \
-                       "is nothing to merge. But don't worry, you can " \
-                       "still use anvi-interacite with the single profile " \
-                       "database that is here: %s" \
+            _message = "Only one file was profiled with %s so there \
+                       is nothing to merge. But dont worry, you can \
+                       still use anvi-interacite with the single profile \
+                       database that is here: %s" \
                        % (wildcards.group, input.profiles[0])
             create_fake_output_files(_message, output)
             shell("echo %s >> {log}" % _message)
@@ -1013,7 +1013,7 @@ rule anvi_import_collection:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_collection.log"
     input:
-        profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
+        profile = lambda wildcards: M.profile_databases[wildcards.group],
         contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
         collection_file = lambda wildcards: M.collections[wildcards.group]['collection_file']
     output:
@@ -1041,7 +1041,7 @@ rule anvi_import_default_collection:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_default_collection.log"
     input:
-        profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
+        profile = lambda wildcards: M.profile_databases[wildcards.group],
         contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
     output:
         imported_collection_flag = touch(os.path.join(dirs_dict["MERGE_DIR"], \
@@ -1061,7 +1061,7 @@ rule anvi_summarize:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_summarize.log")
     input:
-        profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
+        profile = lambda wildcards: M.profile_databases[wildcards.group],
         contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
         imported_collection_flag = lambda wildcards: M.get_collection_import_flag(str(wildcards.group))
     output:
@@ -1086,7 +1086,7 @@ rule anvi_split:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_split.log")
     input:
-        profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
+        profile = lambda wildcards: M.profile_databases[wildcards.group],
         contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
         imported_collection_flag = os.path.join(dirs_dict["MERGE_DIR"], \
                                                 '{group}', \
