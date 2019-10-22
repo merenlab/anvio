@@ -970,8 +970,6 @@ class SourMash(GenomeSimilarity):
         self.similarity_type = 'SourMash'
 
         self.adaptive_kmer = True if not self.kmer_size else False
-        # FIXME
-        self.adaptive_kmer = True
         self.program = sourmash.Sourmash(args) if not self.adaptive_kmer else sourmash.IterateKmerSourmash(args)
 
         if self.adaptive_kmer:
