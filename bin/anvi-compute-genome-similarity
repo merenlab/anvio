@@ -83,8 +83,9 @@ if __name__ == '__main__':
 
     group_SOURMASH = parser.add_argument_group('Sourmash Settings', "Tell anvi'o to tell sourmash what settings to set.\
                                                 Only if `--program` is set to `sourmash`")
-    group_SOURMASH.add_argument('--kmer-size', type=int, default=51, metavar='INT', help="Set the k-mer size for mash\
-                        similarity checks. The sourmash default is 51. See the sourmash documentation for details.")
+    group_SOURMASH.add_argument('--kmer-size', type=int, default=None, metavar='INT', help="Set the k-mer size for mash\
+                        similarity checks. If you don't provide this, anvi'o will try its best to define an ideal kmer for you.\
+                        For more info about kmer in general, check the sourmash documentation.")
     group_SOURMASH.add_argument('--scale', type=int, default=1000, metavar='INT', help='Set the compression ratio for\
                         fasta signature file computations. The default is 1000. Smaller ratios decrease sensitivity,\
                         while larger ratios will lead to large fasta signatures.')
