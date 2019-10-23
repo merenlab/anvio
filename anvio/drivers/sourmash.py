@@ -11,7 +11,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from scipy.stats import entropy
+from scipy.stats import entropy, skew, kurtosis
 
 from anvio.errors import ConfigError
 
@@ -26,10 +26,11 @@ __email__ = "mahmoudyousef@uchicago.edu"
 
 
 class Sourmash:
+    """This calculates a single kmer signature, and computes similarities.
+
+    Feel free to buff this to suit your needs
     """
-    This is an incomplete driver of sourmash that makes a single kmer signature, and computes
-    similarities. Feel free to buff this to suit your needs
-    """
+
     def __init__(self, args={}, run=terminal.Run(), progress=terminal.Progress(), program_name='sourmash'):
         self.run = run
         self.progress = progress
@@ -117,38 +118,72 @@ class Sourmash:
 
 
 class IterateKmerSourmash(Sourmash):
-    """
-    This class runs sourmash iteratively until it finds the 'best' kmer based on entropy
-    maximization.
+    """This class runs sourmash iteratively until it finds the 'best' kmer based on entropy maximization.
 
-    PARAMS
-    ======
-
-    method: str, "scan"
+    Parameters
+    ==========
+    method : str, "scan"
         The method to determine maximal entropy. "scan" simply tries all of the kmer values
-        within a range
-
-    lower_bound, upper_bound: (int, int), (5, 80)
-        Optimal kmer value will be searched within these bounds (inclusive)
-
-    store_all: bool, False
-        All kmer values tried will end up in self.results if True. Otherwise, only the optimal
-        kmer value will be retained
+        within a range and picks the highest.
     """
-    def __init__(self, args, method='scan', lower_bound=7, upper_bound=15, store_all=True):
+
+    def __init__(self, args, method='scan'):
+        self.args = args
         self.method = method
-        self.store_all = store_all
-        self.lower_bound = lower_bound
-        self.upper_bound = upper_bound
 
         # Rename Sourmash.process to Sourmash_process
         self.Sourmash_process = Sourmash.process
-        Sourmash.__init__(self, args=args)
+        Sourmash.__init__(self, args=self.args)
 
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.comprehensive = A('developer')
+        self.store_all = A('store_all')
+        self.just_do_it = A('just_do_it')
+
+        # various methods by which the maximum is found. 'scan' rudimentarily calculates all values
+        # in a range and picks the highest value. method_name: (method, method_kwargs)
         self.available_methods = {
-            'scan': (self.scan_method, {'step': A('step') or 1}),
+            'scan': (self.scan_for_max, {
+                'step': A('step') or 1,
+                'lower_bound': A('lower_bound') or 5,
+                'upper_bound': A('upper_bound') or 35,
+            }),
         }
+
+        if self.comprehensive:
+            if not self.just_do_it:
+                raise ConfigError("Don't use --developer.")
+            self.setup_developer_environment()
+
+
+    def setup_developer_environment(self):
+        """ Setup class so that `comprehensive_stats.txt` is output at the end of the run. """
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.method = 'scan'
+
+        self.comprehensive_stats = {
+            'kmer': [],
+            'min_distance_from_0_or_1': [],
+            'mean': [],
+            'variance': [],
+            'skewness': [],
+            'kurtosis': [],
+        }
+
+        self.entropy_binning_methods = [
+            'array_len',
+            'array_len_times_2',
+            'auto',
+            'fd',
+            'doane',
+            'scott',
+            'rice',
+            'sturges',
+            'sqrt',
+        ]
+
+        for binning_method in self.entropy_binning_methods:
+            self.comprehensive_stats['entropy_' + binning_method] = []
 
 
     def process(self, input_path, fasta_files):
@@ -161,34 +196,41 @@ class IterateKmerSourmash(Sourmash):
         if not self.store_all:
             self.results = {best_report_name: self.results[best_report_name]}
 
+        if self.comprehensive:
+            self.report_comprehensive()
+
         return self.results
 
 
-    def scan_method(self, input_path, fasta_files, step=1):
+    def report_comprehensive(self):
+        self.comprehensive_stats = pd.DataFrame(self.comprehensive_stats)
+        self.comprehensive_stats.to_csv('comprehensive_stats.txt', sep='\t', index=False)
+
+
+    def scan_for_max(self, input_path, fasta_files, step=1, lower_bound=5, upper_bound=51):
         entropy_dict = {} # kmer: entropy
 
-        for kmer in range(self.lower_bound, self.upper_bound + 1, step):
+        for kmer in range(lower_bound, upper_bound + 1, step):
             self.kmer_size = kmer
             report_name = 'kmer_%d_mash_similarity' % self.kmer_size
 
             self.Sourmash_process(self, input_path, fasta_files)
 
-            entropy_dict[kmer] = self.calc_similarity_matrix_entropy(self.results[report_name])
+            upper_triangular = self.get_upper_triangular(self.results[report_name])
+
+            entropy_dict[kmer] = calculate_entropy(upper_triangular)
+            self.run.info('[sourmash] Similarity entropy', entropy_dict[kmer])
+
+            if self.comprehensive:
+                self.calculate_comprehensive_stats(upper_triangular)
 
         return max(entropy_dict, key=entropy_dict.get)
 
 
-    def calc_similarity_matrix_entropy(self, matrix):
-        """Calculates Shannon entropy of triangular portion of the matrix"""
-        array = pd.DataFrame(matrix).values.astype(float)
-        array = array[np.triu_indices(array.shape[0], k=1)]
-
-        hist, bins = np.histogram(array, bins=len(array))
-
-        self.run.info('[sourmash] Similarity entropy', entropy(hist))
-        self.run.info('[sourmash] Average off-diagonal', np.mean(array))
-
-        return entropy(hist)
+    def get_upper_triangular(self, matrix):
+        upper_triangular = pd.DataFrame(matrix).values.astype(float)
+        upper_triangular = upper_triangular[np.triu_indices(upper_triangular.shape[0], k=1)]
+        return upper_triangular
 
 
     def determine_kmer_search_method(self):
@@ -200,3 +242,77 @@ class IterateKmerSourmash(Sourmash):
             raise ConfigError("IterateKmerSourmash :: .%s is not a valid method for entropy maximization." % self.method)
 
 
+    def calculate_comprehensive_stats(self, upper_triangular):
+        self.comprehensive_stats['kmer'].append(self.kmer_size)
+        self.comprehensive_stats['min_distance_from_0_or_1'].append(calculate_average_min_distance_from_0_or_1(upper_triangular))
+        self.comprehensive_stats['mean'].append(calculate_mean(upper_triangular))
+        self.comprehensive_stats['variance'].append(calculate_variance(upper_triangular))
+        self.comprehensive_stats['skewness'].append(calculate_skewness(upper_triangular))
+        self.comprehensive_stats['kurtosis'].append(calculate_kurtosis(upper_triangular))
+
+        for bin_method in self.entropy_binning_methods:
+            self.comprehensive_stats['entropy_' + bin_method].append(calculate_entropy(upper_triangular, bin_method=bin_method))
+
+        for metric in [metric for metric in self.comprehensive_stats.keys() if metric != 'kmer']:
+            self.run.info('[sourmash] ' + metric, self.comprehensive_stats[metric][-1])
+
+
+def calculate_entropy(array, bin_method='auto'):
+    """Calculates Shannon entropy of array.
+
+    This method is very sensitive to how many bins are used.
+
+    Parameters
+    ==========
+    array : array-like
+        Input array
+    bin_method : str, optional
+        How are the bins selected? Default is numpy's 'auto'
+
+    Returns
+    =======
+    entropy : float
+        Shannon entropy
+    """
+
+    if bin_method == 'array_len':
+        bins = np.linspace(0, 1, len(array) + 1)
+    elif bin_method == 'array_len_times_2':
+        bins = np.linspace(0, 1, 2*(len(array) + 1))
+    else:
+        bins = bin_method
+
+    return entropy(np.histogram(array, bins=bins, range=(0,1))[0])
+
+
+def calculate_average_min_distance_from_0_or_1(array):
+    """Calculates the element-wise distance to 0 or 1, whichever is closer. Takes the average.
+
+    Parameters
+    ==========
+    array : array-like
+        Input array
+
+    Returns
+    =======
+    output : type
+        The mean of the minimum distance to 0 or 1
+    """
+
+    return np.mean(np.min(np.stack((array, 1 - array)), axis=0))
+
+
+def calculate_mean(array):
+    return np.mean(array)
+
+
+def calculate_variance(array):
+    return np.var(array)
+
+
+def calculate_skewness(array):
+    return skew(array)
+
+
+def calculate_kurtosis(array):
+    return kurtosis(array)

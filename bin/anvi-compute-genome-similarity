@@ -89,6 +89,8 @@ if __name__ == '__main__':
     group_SOURMASH.add_argument('--scale', type=int, default=1000, metavar='INT', help='Set the compression ratio for\
                         fasta signature file computations. The default is 1000. Smaller ratios decrease sensitivity,\
                         while larger ratios will lead to large fasta signatures.')
+    group_SOURMASH.add_argument('--developer', action='store_true', help='Do developer stuff.')
+    group_SOURMASH.add_argument('--store-all', action='store_true', help='Do developer stuff.')
 
 
     group_CLUSTERING = parser.add_argument_group('HIERARCHICAL CLUSTERING', "anvi-compute-genome-similarity outputs similarity\
