@@ -47,7 +47,7 @@ RUN echo 'export PATH=/opt/MaxBin-2.2.7:$PATH' >> ~/.bashrc
 
 # Install some helper tools
 RUN pip install virtualenv
-RUN apt-get install vim -yy
+RUN apt-get install vim util-linux -yy
 
 # Setup the environment
 ENV ANVIO_VERSION 6
