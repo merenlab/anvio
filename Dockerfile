@@ -1,7 +1,6 @@
 FROM continuumio/miniconda3:4.7.10
 ENV ANVIO_VERSION "6_master"
 
-RUN conda update conda
 RUN conda config --env --add channels conda-forge
 RUN conda config --env --add channels bioconda
 RUN conda create -n anvioenv python=3.6
