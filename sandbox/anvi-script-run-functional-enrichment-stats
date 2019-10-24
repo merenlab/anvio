@@ -147,7 +147,28 @@ enrichment_output <- w_models %>%
          associated_groups,
          function_accession,
          gene_clusters_ids,
-         names(df_in)[n_columns_before_data + (1 : (G * 2))]) %>%
+         names(df_in)[n_columns_before_data + (1 : (G * 2))])
+
+# Rao test statistic should always be positive. However,
+# it happens that Rao test statistics are numerically negative
+# but close to zero. If they are large and negative (say, smaller than
+# 0.00001), we should throw an error:
+if (min(enrichment_output$enrichment_score) < -1e-5) {
+  message("A Rao test statistic is large and negative, oh my!")
+  message("Here are the rows where the test statistic was negative:")
+
+  enrichment_output %>%
+    filter(enrichment_score < 0) %>%
+    arrange(desc(enrichment_score)) %>%
+    print(n = Inf)
+
+  stop("Something has gone terribly wrong, and it's Amy's fault. Please let her know ASAP so she can fix it!")
+}
+
+# If they are small and negative, just set them to zero. Then,
+# order the columns from largest to smallest enrichment score:
+enrichment_output %<>%
+  mutate("enrichment_score" = pmax(0, enrichment_score)) %>%
   arrange(desc(enrichment_score))
 
 enrichment_output %>%
