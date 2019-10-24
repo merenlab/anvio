@@ -3,6 +3,7 @@
 """A script to run automatic binning algorithms on a merged anvi'o profile"""
 import os
 import sys
+import math
 import random
 import argparse
 
@@ -36,8 +37,12 @@ __description__ = "A program to cluster items in a merged anvi'o profile using a
 run = terminal.Run()
 
 
-def store_clusters_in_db(contigs_db_path, profile_db_path, clusters, collection_name, source, splits_mode=False):
-    if not splits_mode:
+def store_clusters_in_db(contigs_db_path, profile_db_path, clusters, collection_name, source):
+     # TODO: we need heuristic here to detect this
+     # only binsanity requires splits
+    cluster_has_contigs = True
+
+    if cluster_has_contigs:
         contigs_db = dbops.ContigsDatabase(contigs_db_path)
         splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name, string_the_key = True)
 
@@ -70,7 +75,24 @@ def store_clusters_in_db(contigs_db_path, profile_db_path, clusters, collection_
     c.append(collection_name, clusters, bin_info_dict)
 
 
-def prepare_input_files(profile_db, contigs_db, splits_mode=False):
+def log_normalize_nested_dict(source_dict):
+    for key in source_dict:
+        if isinstance(source_dict[key], dict):
+            source_dict[key] = log_normalize_nested_dict(source_dict[key])
+        elif isinstance(source_dict[key], int):
+            source_dict[key] = math.log10(source_dict[key] + 1)
+
+    return source_dict
+
+
+def prepare_input_files(profile_db, contigs_db):
+    """This function generates files that we send to clustering algorithms.
+    Returns input files inside a Namespace, which contains attributes:
+        - contigs_db:
+        - profile_db:
+        .....
+    """
+    sample_names = sorted(list(profile_db.samples))
     input_files = argparse.Namespace()
     temp_path = filesnpaths.get_temp_directory_path()
 
@@ -79,27 +101,43 @@ def prepare_input_files(profile_db, contigs_db, splits_mode=False):
     input_files = argparse.Namespace()
     input_files.contigs_db = os.path.realpath(contigs_db.db.db_path)
     input_files.profile_db = os.path.realpath(profile_db.db.db_path)
-    input_files.coverage = P('coverages.txt')
-    input_files.fasta = P('sequence.fa')
+
+    input_files.contig_coverages_log_norm = P('contig_coverages_log_norm.txt')
+    input_files.contig_coverages = P('contig_coverages.txt')
+    
+    input_files.split_coverages_log_norm = P('split_coverages_log_norm.txt')
+    input_files.split_coverages = P('split_coverages.txt')
+
+    input_files.splits_fasta = P('sequence_splits.fa')
+    input_files.contigs_fasta = P('sequence_contigs.fa')
 
     split_coverages = profile_db.db.get_table_as_dict('mean_coverage_contigs')
+    split_coverages_log_norm = log_normalize_nested_dict(split_coverages)
 
-    if splits_mode:
-        utils.store_dict_as_TAB_delimited_file(split_coverages, input_files.coverage, ['contig'] + sorted(list(profile_db.samples)))
-    else:
-        contig_coverages = {}
-        contig_names = set([x['__parent__'] for x in split_coverages.values()])
+    contig_coverages = {}
+    contig_names = set([x['__parent__'] for x in split_coverages.values()])
 
-        for entry in split_coverages.values():
-            c = entry['__parent__']
-            if c in contig_names and c not in contig_coverages:
-                contig_coverages[c] = entry
+    for entry in split_coverages.values():
+        c = entry['__parent__']
+        if c in contig_names and c not in contig_coverages:
+            contig_coverages[c] = entry
 
-        utils.store_dict_as_TAB_delimited_file(contig_coverages, input_files.coverage, ['contig'] + sorted(list(profile_db.samples)))
+    contig_coverages_log_norm = log_normalize_nested_dict(contig_coverages)
+
+    # Write output files
+    utils.store_dict_as_TAB_delimited_file(split_coverages, input_files.split_coverages, ['contig', *sample_names])
+    utils.store_dict_as_TAB_delimited_file(split_coverages_log_norm, input_files.split_coverages_log_norm, ['contig', *sample_names])
+
+    utils.store_dict_as_TAB_delimited_file(contig_coverages, input_files.contig_coverages, ['contig', *sample_names])
+    utils.store_dict_as_TAB_delimited_file(contig_coverages_log_norm, input_files.contig_coverages_log_norm, ['contig', *sample_names])
 
     utils.export_sequences_from_contigs_db(contigs_db.db_path,
-                                           input_files.fasta,
-                                           splits_mode=splits_mode)
+                                           input_files.splits_fasta,
+                                           splits_mode=True)
+
+    utils.export_sequences_from_contigs_db(contigs_db.db_path,
+                                           input_files.contigs_fasta,
+                                           splits_mode=False)
 
     return input_files
 
@@ -114,8 +152,6 @@ def main(args, unknown):
     else:
         run.warning("You are running an experimental workflow that is not fully tested :) Please scrutinize your output\
                      carefully after analysis.")
-
-    splits_mode = not args.contigs_mode
 
     collection_name = args.collection_name.strip()
     if not len(collection_name):
@@ -152,15 +188,14 @@ def main(args, unknown):
 
     run.info("Contigs DB", args.contigs_db)
     run.info("Profile DB", args.profile_db)
-    run.info("Contigs Mode", args.contigs_mode)
 
-    input_files = prepare_input_files(merged_profile_db, contigs_db, splits_mode=splits_mode)
+    input_files = prepare_input_files(merged_profile_db, contigs_db)
 
     if anvio.DEBUG:
         for name, path in input_files.__dict__.items():
             run.info('Input file [%s]' % name, path)
 
-    clusters = binning_module.cluster(input_files, sub_args, threads=args.num_threads, splits_mode=splits_mode)
+    clusters = binning_module.cluster(input_files, sub_args, threads=args.num_threads)
 
     if not len(clusters):
         c = TablesForCollections(args.profile_db)
@@ -169,11 +204,8 @@ def main(args, unknown):
         raise ConfigError("Binning algorithm '%s' did not return any clusters :( There will not be any collection\
                            in your profie database for these results. Please take a look at the help menu and sanity\
                            check your parameters for this binning algorithm." % (driver))
-    if not anvio.DEBUG:
-        os.remove(input_files.fasta)
-        os.remove(input_files.coverage)
 
-    store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver, splits_mode=splits_mode)
+    store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver)
 
     run.info_single("%s formed %d clusters, which are being added to the database as a collection named %s." % \
                             (driver, len(clusters), collection_name), nl_before=1, nl_after=1, mc="green")
@@ -183,7 +215,6 @@ if __name__ == '__main__':
     parent_parser = argparse.ArgumentParser(description=__description__)
     parent_parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parent_parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parent_parser.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode'))
     parent_parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
     parent_parser.add_argument(*anvio.A('driver'), **anvio.K('driver',
         {'choices': list(driver_modules['binning'].keys()), 'type': str.lower}))
