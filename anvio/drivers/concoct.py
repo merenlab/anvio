@@ -105,7 +105,7 @@ class CONCOCT:
         utils.is_program_exists(self.program_name)
 
 
-    def cluster(self, input_files, args, threads=1, splits_mode=False):
+    def cluster(self, input_files, args, threads=1):
         self.run.info_single("If you publish results from this workflow, \
                                please do not forget to cite \n%s" % CONCOCT.citation,
                                nl_before=1, nl_after=1, mc='green')
@@ -117,8 +117,8 @@ class CONCOCT:
             self.run.info('Working directory', self.temp_path)
 
         cmd_line = [self.program_name,
-            '--coverage_file', input_files.coverage,
-            '--composition_file', input_files.fasta,
+            '--coverage_file', input_files.contig_coverages,
+            '--composition_file', input_files.contigs_fasta,
             '--basename', self.temp_path,
             '--threads', threads,
              *utils.serialize_args(args, use_underscore=True)]

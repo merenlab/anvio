@@ -77,7 +77,7 @@ class BinSanity:
         utils.is_program_exists(self.program_name)
 
 
-    def cluster(self, input_files, args, threads=1, splits_mode=False):
+    def cluster(self, input_files, args, threads=1):
         self.temp_path = filesnpaths.get_temp_directory_path()
         self.run.info_single("If you publish results from this workflow, \
                                please do not forget to cite \n%s" % BinSanity.citation,
@@ -97,9 +97,9 @@ class BinSanity:
         }
 
         cmd_line = [self.program_name,
-            '-c', input_files.coverage,
-            '-f', os.path.dirname(input_files.fasta),
-            '-l', os.path.basename(input_files.fasta),
+            '-c', input_files.contig_coverages_log_norm,
+            '-f', os.path.dirname(input_files.contigs_fasta),
+            '-l', os.path.basename(input_files.contigs_fasta),
             '-o', self.temp_path,
             *utils.serialize_args(args, single_dash=True, translate=translation)]
 
