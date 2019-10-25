@@ -65,7 +65,7 @@ class MaxBin2:
         utils.is_program_exists(self.program_name)
 
 
-    def cluster(self, input_files, args, threads=1, splits_mode=False):
+    def cluster(self, input_files, args, threads=1):
         self.run.info_single("If you publish results from this workflow, \
                                please do not forget to cite \n%s" % MaxBin2.citation,
                                nl_before=1, nl_after=1, mc='green')
@@ -79,8 +79,8 @@ class MaxBin2:
         log_path = os.path.join(self.temp_path, 'logs.txt')
 
         cmd_line = [self.program_name,
-            '-contig', input_files.fasta,
-            '-abund', input_files.coverage,
+            '-contig', input_files.contigs_fasta,
+            '-abund', input_files.contig_coverages,
             '-out', bin_prefix,
             '-thread', str(threads),
             *utils.serialize_args(args, single_dash=True, use_underscore=True)]
