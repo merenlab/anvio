@@ -96,6 +96,7 @@ class CONCOCT:
                 Nicholas J Loman, Anders F Andersson & Christopher Quince. \
                 2014. Binning metagenomic contigs by coverage and composition. \
                 Nature Methods, doi: 10.1038/nmeth.3103"
+    cluster_type = 'contig'
 
     def __init__(self, run=run, progress=progress):
         self.run = run

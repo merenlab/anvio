@@ -76,6 +76,7 @@ class DAS_Tool:
                 Matthias Hess, Susannah G. Tringe & Jillian F. Banfield (2018). \
                 Recovery of genomes from metagenomes via a dereplication, aggregation \
                 and scoring strategy. Nature Microbiology. https://doi.org/10.1038/s41564-018-0171-1."
+    cluster_type = 'split'
 
     def __init__(self, run=run, progress=progress):
         self.run = run

@@ -69,6 +69,8 @@ class BinSanity:
                 clustering of environmental microbial assemblies using coverage and \
                 affinity propagation. PeerJ 5:e3035 https://doi.org/10.7717/peerj.3035"
 
+    cluster_type = 'contigsss'
+
     def __init__(self, run=run, progress=progress):
         self.run = run
         self.progress = progress

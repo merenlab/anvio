@@ -56,6 +56,8 @@ class MaxBin2:
                 metagenomic datasets, Bioinformatics, Volume 32, Issue 4, 15 February 2016,\
                 Pages 605–607, https://doi.org/10.1093/bioinformatics/btv638"
 
+    cluster_type = 'contig'
+
 
     def __init__(self, run=run, progress=progress):
         self.run = run
