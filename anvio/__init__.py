@@ -278,7 +278,7 @@ D = {
                       'start' (start position, integer), 'stop' (stop position, integer), 'direction' (the direction of the gene open reading\
                       frame; can be 'f' or 'r'), 'partial' (whether it is a complete gene call, or a partial one; must be 1 for partial\
                       calls, and 0 for complete calls), 'source' (the gene caller), and 'version' (the version of the gene caller, i.e.,\
-                      v2.6.7 or v1.0). An example file can be found via the URL https://goo.gl/TqCWT2"}
+                      v2.6.7 or v1.0). An example file can be found via the URL https://bit.ly/2qEEHuQ"}
                 ),
     'external-genomes': (
             ['-e', '--external-genomes'],
