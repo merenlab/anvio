@@ -37,12 +37,8 @@ __description__ = "A program to cluster items in a merged anvi'o profile using a
 run = terminal.Run()
 
 
-def store_clusters_in_db(contigs_db_path, profile_db_path, clusters, collection_name, source):
-     # TODO: we need heuristic here to detect this
-     # only binsanity requires splits
-    cluster_has_contigs = True
-
-    if cluster_has_contigs:
+def store_clusters_in_db(contigs_db_path, profile_db_path, clusters, collection_name, source, cluster_type):
+    if cluster_type == 'contig':
         contigs_db = dbops.ContigsDatabase(contigs_db_path)
         splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name, string_the_key = True)
 
@@ -186,8 +182,17 @@ def main(args, unknown):
 
     binning_module = modules[driver]()
 
+    cluster_type = getattr(binning_module, 'cluster_type', False)
+    if not cluster_type or cluster_type not in ['contig', 'binning']:
+        raise ConfigError("Anvi'o doesn't know what type of cluster this module returns.\
+                          Please define an 'cluster_type' class variable containing either\
+                          'contig' or 'split'.")
+
+
     run.info("Contigs DB", args.contigs_db)
     run.info("Profile DB", args.profile_db)
+    run.info("Binning module", type(binning_module).__name__)
+    run.info("Cluster type", cluster_type)
 
     input_files = prepare_input_files(merged_profile_db, contigs_db)
 
@@ -205,7 +210,7 @@ def main(args, unknown):
                            in your profie database for these results. Please take a look at the help menu and sanity\
                            check your parameters for this binning algorithm." % (driver))
 
-    store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver)
+    store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver, cluster_type)
 
     run.info_single("%s formed %d clusters, which are being added to the database as a collection named %s." % \
                             (driver, len(clusters), collection_name), nl_before=1, nl_after=1, mc="green")

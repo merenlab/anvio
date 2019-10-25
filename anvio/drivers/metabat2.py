@@ -94,6 +94,7 @@ class MetaBAT2:
                 MetaBAT 2: an adaptive binning algorithm for robust and efficient \
                 genome reconstruction from metagenome assemblies. \
                 PeerJ 7:e7359 https://doi.org/10.7717/peerj.7359"
+    cluster_type = 'contig'
 
     def __init__(self, run=run, progress=progress):
         self.run = run
