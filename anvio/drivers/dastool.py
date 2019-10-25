@@ -86,15 +86,11 @@ class DAS_Tool:
         utils.is_program_exists(self.program_name)
 
 
-    def cluster(self, input_files, args, threads=1, splits_mode=False):
+    def cluster(self, input_files, args, threads=1):
         self.run.info_single("If you publish results from this workflow, \
                                please do not forget to cite \n%s" % DAS_Tool.citation,
                                nl_before=1, nl_after=1, mc='green')
         self.temp_path = filesnpaths.get_temp_directory_path()
-
-        if not splits_mode:
-            raise ConfigError("DAS_Tool can only be run in splits mode. See --help for details.")
-
         P = lambda x: os.path.join(self.temp_path, x)
 
         cwd_backup = os.getcwd()
@@ -128,7 +124,7 @@ class DAS_Tool:
             c.export_collection(collection_name, output_file_prefix=prefix, include_unbinned=False)
 
         cmd_line = [self.program_name,
-            '-c', input_files.fasta,
+            '-c', input_files.splits_fasta,
             '-i', ','.join(c_files),
             '-l', ','.join(c_names),
             '-o', P('OUTPUT'),

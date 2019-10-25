@@ -103,7 +103,7 @@ class MetaBAT2:
         utils.is_program_exists(self.program_name)
 
 
-    def cluster(self, input_files, args, threads=1, splits_mode=False):
+    def cluster(self, input_files, args, threads=1):
         self.temp_path = filesnpaths.get_temp_directory_path()
         self.run.info_single("If you publish results from this workflow, \
                                please do not forget to cite \n%s" % MetaBAT2.citation,
@@ -116,8 +116,8 @@ class MetaBAT2:
         log_path = os.path.join(self.temp_path, 'logs.txt')
 
         cmd_line = [self.program_name,
-            '-i', input_files.fasta,
-            '-a', input_files.coverage,
+            '-i', input_files.contigs_fasta,
+            '-a', input_files.contig_coverages,
             '-o', bin_prefix,
             '--cvExt',
             '-l',
