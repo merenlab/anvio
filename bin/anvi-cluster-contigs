@@ -201,6 +201,14 @@ def main(args, unknown):
         for name, path in input_files.__dict__.items():
             run.info('Input file [%s]' % name, path)
 
+    citation = getattr(binning_module, 'citation', False)
+    if citation:
+        run.info_single("If you publish results from this workflow, \
+                         please do not forget to cite \n%s" % binning_module.citation,
+                         nl_before=1, nl_after=1, mc='green')
+    else:
+        run.warning("Anvi'o couldn't find any citation information in this module.\
+                     Please make sure if citation is necessary for this module.")
 
     clusters = binning_module.cluster(input_files, sub_args, working_dir, threads=args.num_threads)
 
