@@ -176,7 +176,7 @@ def main(args, unknown):
     binning_module_name = type(binning_module).__name__
 
     cluster_type = getattr(binning_module, 'cluster_type', False)
-    if not cluster_type or cluster_type not in ['contig', 'binning']:
+    if not cluster_type or cluster_type not in ['contig', 'split']:
         raise ConfigError("Anvi'o doesn't know what type of cluster this module returns.\
                           Please define an 'cluster_type' class variable containing either\
                           'contig' or 'split'.")
