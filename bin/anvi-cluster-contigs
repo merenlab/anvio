@@ -81,7 +81,7 @@ def log_normalize_nested_dict(source_dict):
     return source_dict
 
 
-def prepare_input_files(profile_db, contigs_db):
+def prepare_input_files(temp_path, profile_db, contigs_db):
     """This function generates files that we send to clustering algorithms.
     Returns input files inside a Namespace, which contains attributes:
         - contigs_db:
@@ -90,7 +90,6 @@ def prepare_input_files(profile_db, contigs_db):
     """
     sample_names = sorted(list(profile_db.samples))
     input_files = argparse.Namespace()
-    temp_path = filesnpaths.get_temp_directory_path()
 
     P = lambda x: os.path.join(temp_path, x)
 
@@ -188,19 +187,27 @@ def main(args, unknown):
                           Please define an 'cluster_type' class variable containing either\
                           'contig' or 'split'.")
 
+    working_dir = filesnpaths.get_temp_directory_path()
 
     run.info("Contigs DB", args.contigs_db)
     run.info("Profile DB", args.profile_db)
     run.info("Binning module", type(binning_module).__name__)
     run.info("Cluster type", cluster_type)
+    run.info('Working directory', working_dir)
 
-    input_files = prepare_input_files(merged_profile_db, contigs_db)
+    input_files = prepare_input_files(working_dir, merged_profile_db, contigs_db)
 
     if anvio.DEBUG:
         for name, path in input_files.__dict__.items():
             run.info('Input file [%s]' % name, path)
 
-    clusters = binning_module.cluster(input_files, sub_args, threads=args.num_threads)
+
+    clusters = binning_module.cluster(input_files, sub_args, working_dir, threads=args.num_threads)
+
+    if not anvio.DEBUG:
+        os.rmtree(working_dir)
+    else:
+        run.warning("Working in debug mode, Anvi'o will not clean the temporary directories.")
 
     if not len(clusters):
         c = TablesForCollections(args.profile_db)

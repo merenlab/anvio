@@ -7,7 +7,6 @@ import os
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
@@ -87,20 +86,15 @@ class DAS_Tool:
         utils.is_program_exists(self.program_name)
 
 
-    def cluster(self, input_files, args, threads=1):
+    def cluster(self, input_files, args, work_dir, threads=1):
+        J = lambda p: os.path.join(work_dir, p)
         self.run.info_single("If you publish results from this workflow, \
                                please do not forget to cite \n%s" % DAS_Tool.citation,
                                nl_before=1, nl_after=1, mc='green')
-        self.temp_path = filesnpaths.get_temp_directory_path()
-        P = lambda x: os.path.join(self.temp_path, x)
 
         cwd_backup = os.getcwd()
-        os.chdir(self.temp_path)
-        log_path = P('logs.txt')
-
-        if anvio.DEBUG:
-            self.run.info('Working directory', self.temp_path)
-
+        os.chdir(work_dir)
+        log_path = J('logs.txt')
 
         c = ccollections.Collections(r = run, p = progress)
         c.populate_collections_dict(input_files.profile_db)
@@ -117,7 +111,7 @@ class DAS_Tool:
         c_files = []
 
         for collection_name in source_collections:
-            prefix = P(collection_name)
+            prefix = J(collection_name)
 
             c_names.append(collection_name)
             c_files.append(prefix + '.txt')
@@ -128,7 +122,7 @@ class DAS_Tool:
             '-c', input_files.splits_fasta,
             '-i', ','.join(c_files),
             '-l', ','.join(c_names),
-            '-o', P('OUTPUT'),
+            '-o', J('OUTPUT'),
             '--threads', str(threads),
             *utils.serialize_args(args,
                 use_underscore=True,
@@ -140,7 +134,7 @@ class DAS_Tool:
         self.progress.end()
 
         clusters = {}
-        with open(P('OUTPUT_DASTool_scaffolds2bin.txt'), 'r') as f:
+        with open(J('OUTPUT_DASTool_scaffolds2bin.txt'), 'r') as f:
             lines = f.readlines()
 
             for entry in lines:
