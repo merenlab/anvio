@@ -133,8 +133,14 @@ class DAS_Tool:
         utils.run_command(cmd_line, log_path)
         self.progress.end()
 
+        output_file_name = 'OUTPUT_DASTool_scaffolds2bin.txt'
+        output_file_path = J(output_file_name)
+        if not os.path.exists(output_file_path):
+            raise ConfigError("One of the critical output files is missing ('%s'). Please take a look at the\
+                               log file: %s" % (output_file_name, log_path))
+
         clusters = {}
-        with open(J('OUTPUT_DASTool_scaffolds2bin.txt'), 'r') as f:
+        with open(output_file_path, 'r') as f:
             lines = f.readlines()
 
             for entry in lines:

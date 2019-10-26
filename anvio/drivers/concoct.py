@@ -7,6 +7,7 @@ import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 
+from anvio.errors import ConfigError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
@@ -126,7 +127,13 @@ class CONCOCT:
         clusters = {}
         threshold = args.length_threshold or '1000'
 
-        with open(J('clustering_gt%s.csv' % threshold), 'r') as f:
+        output_file_name = 'clustering_gt%s.csv' % threshold
+        output_file_path = J(output_file_name)
+        if not os.path.exists(output_file_path):
+            raise ConfigError("One of the critical output files is missing ('%s'). Please take a look at the\
+                               log file: %s" % (output_file_name, log_path))
+
+        with open(output_file_path, 'r') as f:
             lines = f.readlines()[1:]
 
             for entry in lines:
