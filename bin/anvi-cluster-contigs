@@ -3,7 +3,6 @@
 """A script to run automatic binning algorithms on a merged anvi'o profile"""
 import os
 import sys
-import math
 import random
 import argparse
 
@@ -71,16 +70,6 @@ def store_clusters_in_db(contigs_db_path, profile_db_path, clusters, collection_
     c.append(collection_name, clusters, bin_info_dict)
 
 
-def log_normalize_nested_dict(source_dict):
-    for key in source_dict:
-        if isinstance(source_dict[key], dict):
-            source_dict[key] = log_normalize_nested_dict(source_dict[key])
-        elif isinstance(source_dict[key], int):
-            source_dict[key] = math.log10(source_dict[key] + 1)
-
-    return source_dict
-
-
 def prepare_input_files(temp_path, profile_db, contigs_db):
     """This function generates files that we send to clustering algorithms.
     Returns input files inside a Namespace, which contains attributes:
@@ -99,7 +88,7 @@ def prepare_input_files(temp_path, profile_db, contigs_db):
 
     input_files.contig_coverages_log_norm = P('contig_coverages_log_norm.txt')
     input_files.contig_coverages = P('contig_coverages.txt')
-    
+
     input_files.split_coverages_log_norm = P('split_coverages_log_norm.txt')
     input_files.split_coverages = P('split_coverages.txt')
 
@@ -107,17 +96,19 @@ def prepare_input_files(temp_path, profile_db, contigs_db):
     input_files.contigs_fasta = P('sequence_contigs.fa')
 
     split_coverages = profile_db.db.get_table_as_dict('mean_coverage_contigs')
-    split_coverages_log_norm = log_normalize_nested_dict(split_coverages)
+    split_coverages_log_norm = profile_db.db.get_table_as_dict('mean_coverage_contigs', log_norm_numeric_values=True)
 
     contig_coverages = {}
+    contig_coverages_log_norm = {}
     contig_names = set([x['__parent__'] for x in split_coverages.values()])
 
-    for entry in split_coverages.values():
+    for split_name in split_coverages:
+        entry = split_coverages[split_name]
+        entry_log_norm = split_coverages_log_norm[split_name]
         c = entry['__parent__']
         if c in contig_names and c not in contig_coverages:
             contig_coverages[c] = entry
-
-    contig_coverages_log_norm = log_normalize_nested_dict(contig_coverages)
+            contig_coverages_log_norm[c] = entry_log_norm
 
     # Write output files
     utils.store_dict_as_TAB_delimited_file(split_coverages, input_files.split_coverages, ['contig', *sample_names])
