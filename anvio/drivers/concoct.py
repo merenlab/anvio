@@ -90,11 +90,13 @@ class CONCOCT:
                         ArgumentTypeError."}
                     )
     }
+
     citation = "Johannes Alneberg, Brynjar Smári Bjarnason, Ino de Bruijn, \
                 Melanie Schirmer, Joshua Quick, Umer Z Ijaz, Leo Lahti,\
                 Nicholas J Loman, Anders F Andersson & Christopher Quince. \
                 2014. Binning metagenomic contigs by coverage and composition. \
                 Nature Methods, doi: 10.1038/nmeth.3103"
+
     cluster_type = 'contig'
 
     def __init__(self, run=run, progress=progress):
@@ -107,9 +109,6 @@ class CONCOCT:
 
     def cluster(self, input_files, args, work_dir, threads=1):
         J = lambda p: os.path.join(work_dir, p)
-        self.run.info_single("If you publish results from this workflow, \
-                               please do not forget to cite \n%s" % CONCOCT.citation,
-                               nl_before=1, nl_after=1, mc='green')
 
         log_path = J('logs.txt')
         cmd_line = [self.program_name,

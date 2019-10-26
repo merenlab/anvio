@@ -171,6 +171,7 @@ def main(args, unknown):
         raise ConfigError("Unrecognized parameters %s" % ' '.join(sub_unknown))
 
     binning_module = modules[driver]()
+    binning_module_name = type(binning_module).__name__
 
     cluster_type = getattr(binning_module, 'cluster_type', False)
     if not cluster_type or cluster_type not in ['contig', 'binning']:
@@ -182,7 +183,7 @@ def main(args, unknown):
 
     run.info("Contigs DB", args.contigs_db)
     run.info("Profile DB", args.profile_db)
-    run.info("Binning module", type(binning_module).__name__)
+    run.info("Binning module", binning_module_name)
     run.info("Cluster type", cluster_type)
     run.info('Working directory', working_dir)
 
@@ -192,6 +193,10 @@ def main(args, unknown):
         for name, path in input_files.__dict__.items():
             run.info('Input file [%s]' % name, path)
 
+    run.warning("Anvi'o is now passing all your data to the binning module '%s'. If you publish results \
+                 from this workflow, please do not forget to reference the following citation." % binning_module_name,
+                 header='CITATION', lc='green')
+    run.info_single("%s" % binning_module.citation, nl_after=1, mc='green')
 
     clusters = binning_module.cluster(input_files, sub_args, working_dir, threads=args.num_threads)
 
