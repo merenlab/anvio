@@ -3,6 +3,7 @@
 """A script to run automatic binning algorithms on a merged anvi'o profile"""
 import os
 import sys
+import shutil
 import random
 import argparse
 
@@ -201,7 +202,7 @@ def main(args, unknown):
     clusters = binning_module.cluster(input_files, sub_args, working_dir, threads=args.num_threads)
 
     if not anvio.DEBUG:
-        os.rmtree(working_dir)
+        shutil.rmtree(working_dir)
     else:
         run.warning("Working in debug mode, Anvi'o will not clean the temporary directories.")
 
