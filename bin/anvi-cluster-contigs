@@ -3,7 +3,7 @@
 """A script to run automatic binning algorithms on a merged anvi'o profile"""
 import os
 import sys
-import math
+import shutil
 import random
 import argparse
 
@@ -71,16 +71,6 @@ def store_clusters_in_db(contigs_db_path, profile_db_path, clusters, collection_
     c.append(collection_name, clusters, bin_info_dict)
 
 
-def log_normalize_nested_dict(source_dict):
-    for key in source_dict:
-        if isinstance(source_dict[key], dict):
-            source_dict[key] = log_normalize_nested_dict(source_dict[key])
-        elif isinstance(source_dict[key], int):
-            source_dict[key] = math.log10(source_dict[key] + 1)
-
-    return source_dict
-
-
 def prepare_input_files(temp_path, profile_db, contigs_db):
     """This function generates files that we send to clustering algorithms.
     Returns input files inside a Namespace, which contains attributes:
@@ -99,7 +89,7 @@ def prepare_input_files(temp_path, profile_db, contigs_db):
 
     input_files.contig_coverages_log_norm = P('contig_coverages_log_norm.txt')
     input_files.contig_coverages = P('contig_coverages.txt')
-    
+
     input_files.split_coverages_log_norm = P('split_coverages_log_norm.txt')
     input_files.split_coverages = P('split_coverages.txt')
 
@@ -107,17 +97,19 @@ def prepare_input_files(temp_path, profile_db, contigs_db):
     input_files.contigs_fasta = P('sequence_contigs.fa')
 
     split_coverages = profile_db.db.get_table_as_dict('mean_coverage_contigs')
-    split_coverages_log_norm = log_normalize_nested_dict(split_coverages)
+    split_coverages_log_norm = profile_db.db.get_table_as_dict('mean_coverage_contigs', log_norm_numeric_values=True)
 
     contig_coverages = {}
+    contig_coverages_log_norm = {}
     contig_names = set([x['__parent__'] for x in split_coverages.values()])
 
-    for entry in split_coverages.values():
+    for split_name in split_coverages:
+        entry = split_coverages[split_name]
+        entry_log_norm = split_coverages_log_norm[split_name]
         c = entry['__parent__']
         if c in contig_names and c not in contig_coverages:
             contig_coverages[c] = entry
-
-    contig_coverages_log_norm = log_normalize_nested_dict(contig_coverages)
+            contig_coverages_log_norm[c] = entry_log_norm
 
     # Write output files
     utils.store_dict_as_TAB_delimited_file(split_coverages, input_files.split_coverages, ['contig', *sample_names])
@@ -139,14 +131,15 @@ def prepare_input_files(temp_path, profile_db, contigs_db):
 
 def main(args, unknown):
     if not args.just_do_it:
-        raise ConfigError("This is an experimental module and is not yet fully tested. Please consider using external\
-                           binning algorithms with raw data or data exported from anvi'o (i.e., see program `anvi-export-splits-and-coverages`)\
-                           and import your clusters into anvi'o with `anvi-import-collection`. If you are a programmer\
-                           or you wish to try this workflow on your own risk, please run `anvi-cluster-contigs` with\
-                           the flag `--just-do-it`. Thank you for your understanding and help.")
+        raise ConfigError("This is an experimental module and is not yet fully tested. Alternatively you could\
+                           use external binning algorithms with raw data or data exported from anvi'o (i.e., see program \
+                           `anvi-export-splits-and-coverages`) and import your clusters into anvi'o with `anvi-import-collection`.\
+                           If you still wish to try this workflow on your own risk, please run `anvi-cluster-contigs` with\
+                           the flag `--just-do-it`. Anvi'o developers thank you for your understanding and help.")
     else:
-        run.warning("You are running an experimental workflow that is not fully tested :) Please scrutinize your output\
-                     carefully after analysis.")
+        run.warning("You are running an experimental workflow not every part of which may be fully and thoroughly tested :)\
+                     Please scrutinize your output carefully after analysis, and keep us posted if you see things that\
+                     surprise you.")
 
     collection_name = args.collection_name.strip()
     if not len(collection_name):
@@ -180,6 +173,7 @@ def main(args, unknown):
         raise ConfigError("Unrecognized parameters %s" % ' '.join(sub_unknown))
 
     binning_module = modules[driver]()
+    binning_module_name = type(binning_module).__name__
 
     cluster_type = getattr(binning_module, 'cluster_type', False)
     if not cluster_type or cluster_type not in ['contig', 'binning']:
@@ -191,7 +185,7 @@ def main(args, unknown):
 
     run.info("Contigs DB", args.contigs_db)
     run.info("Profile DB", args.profile_db)
-    run.info("Binning module", type(binning_module).__name__)
+    run.info("Binning module", binning_module_name)
     run.info("Cluster type", cluster_type)
     run.info('Working directory', working_dir)
 
@@ -203,17 +197,19 @@ def main(args, unknown):
 
     citation = getattr(binning_module, 'citation', False)
     if citation:
-        run.info_single("If you publish results from this workflow, \
-                         please do not forget to cite \n%s" % binning_module.citation,
-                         nl_before=1, nl_after=1, mc='green')
+        run.warning("Anvi'o is now passing all your data to the binning module '%s'. If you publish results \
+                     from this workflow, please do not forget to reference the following citation." % binning_module_name,
+                     header='CITATION', lc='green')
+        run.info_single("%s" % binning_module.citation, nl_after=1, mc='green')
     else:
-        run.warning("Anvi'o couldn't find any citation information in this module.\
-                     Please make sure if citation is necessary for this module.")
+        raise ConfigError("The module %s does not seem to have any citation information. If you are currently developing a new\
+                           module please address this in your code. If you are a user, please consider dropping a line to anvi'o\
+                           developers." % (binning_module_name))
 
     clusters = binning_module.cluster(input_files, sub_args, working_dir, threads=args.num_threads)
 
     if not anvio.DEBUG:
-        os.rmtree(working_dir)
+        shutil.rmtree(working_dir)
     else:
         run.warning("Working in debug mode, Anvi'o will not clean the temporary directories.")
 

@@ -89,11 +89,14 @@ class MetaBAT2:
                  'help': "For exact reproducibility. (0: use random seed)."}
                     ),
     }
+
     citation = "Kang DD, Li F, Kirton E, Thomas A, Egan R, An H, Wang Z. 2019. \
                 MetaBAT 2: an adaptive binning algorithm for robust and efficient \
                 genome reconstruction from metagenome assemblies. \
                 PeerJ 7:e7359 https://doi.org/10.7717/peerj.7359"
+
     cluster_type = 'contig'
+
 
     def __init__(self, run=run, progress=progress):
         self.run = run
