@@ -8,6 +8,7 @@ import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 
+from anvio.errors import ConfigError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
@@ -70,13 +71,13 @@ class MaxBin2:
     def cluster(self, input_files, args, work_dir, threads=1):
         J = lambda p: os.path.join(work_dir, p)
 
-        bin_prefix = J('Bin')
+        output_file_prefix = J('MAXBIN_')
         log_path = J('logs.txt')
 
         cmd_line = [self.program_name,
             '-contig', input_files.contigs_fasta,
             '-abund', input_files.contig_coverages,
-            '-out', bin_prefix,
+            '-out', output_file_prefix,
             '-thread', str(threads),
             *utils.serialize_args(args, single_dash=True, use_underscore=True)]
 
@@ -86,10 +87,15 @@ class MaxBin2:
         utils.run_command(cmd_line, log_path)
         self.progress.end()
 
+        output_file_paths = glob.glob(J(output_file_prefix + '*.fasta'))
+        if not len(output_file_paths):
+            raise ConfigError("Some critical output files are missing. Please take a look at the\
+                               log file: %s" % (log_path))
+
         clusters = {}
         bin_count = 0
 
-        for bin_file in glob.glob(J(bin_prefix + '*.fasta')):
+        for bin_file in output_file_paths:
             bin_count += 1
             with open(bin_file, 'r') as f:
                 bin_name = os.path.basename(bin_file).replace('.fasta', '')
