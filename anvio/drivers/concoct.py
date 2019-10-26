@@ -90,11 +90,13 @@ class CONCOCT:
                         ArgumentTypeError."}
                     )
     }
+
     citation = "Johannes Alneberg, Brynjar Smári Bjarnason, Ino de Bruijn, \
                 Melanie Schirmer, Joshua Quick, Umer Z Ijaz, Leo Lahti,\
                 Nicholas J Loman, Anders F Andersson & Christopher Quince. \
                 2014. Binning metagenomic contigs by coverage and composition. \
                 Nature Methods, doi: 10.1038/nmeth.3103"
+
     cluster_type = 'contig'
 
     def __init__(self, run=run, progress=progress):
