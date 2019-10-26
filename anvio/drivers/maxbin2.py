@@ -50,6 +50,7 @@ class MaxBin2:
                  'help': "Minimum contig length. Default: 1000"}
                     ),
     }
+
     citation = "Yu-Wei Wu, Blake A. Simmons, Steven W. Singer, MaxBin 2.0: \
                 an automated binning algorithm to recover genomes from multiple \
                 metagenomic datasets, Bioinformatics, Volume 32, Issue 4, 15 February 2016,\
@@ -68,9 +69,6 @@ class MaxBin2:
 
     def cluster(self, input_files, args, work_dir, threads=1):
         J = lambda p: os.path.join(work_dir, p)
-        self.run.info_single("If you publish results from this workflow, \
-                               please do not forget to cite \n%s" % MaxBin2.citation,
-                               nl_before=1, nl_after=1, mc='green')
 
         bin_prefix = J('Bin')
         log_path = J('logs.txt')

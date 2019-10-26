@@ -64,11 +64,13 @@ class BinSanity:
                                     preparation step. (0: auto)."}
                     ),
     }
+
     citation = "Graham ED, Heidelberg JF, Tully BJ. (2017) BinSanity: unsupervised \
                 clustering of environmental microbial assemblies using coverage and \
                 affinity propagation. PeerJ 5:e3035 https://doi.org/10.7717/peerj.3035"
 
     cluster_type = 'contig'
+
 
     def __init__(self, run=run, progress=progress):
         self.run = run
@@ -80,10 +82,6 @@ class BinSanity:
 
     def cluster(self, input_files, args, work_dir, threads=1):
         J = lambda p: os.path.join(work_dir, p)
-
-        self.run.info_single("If you publish results from this workflow, \
-                               please do not forget to cite \n%s" % BinSanity.citation,
-                               nl_before=1, nl_after=1, mc='green')
 
         log_path = J('logs.txt')
 
