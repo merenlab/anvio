@@ -7,7 +7,6 @@ import shutil
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -104,17 +103,14 @@ class MetaBAT2:
         utils.is_program_exists(self.program_name)
 
 
-    def cluster(self, input_files, args, threads=1):
-        self.temp_path = filesnpaths.get_temp_directory_path()
+    def cluster(self, input_files, args, work_dir, threads=1):
+        J = lambda p: os.path.join(work_dir, p)
         self.run.info_single("If you publish results from this workflow, \
                                please do not forget to cite \n%s" % MetaBAT2.citation,
                                nl_before=1, nl_after=1, mc='green')
 
-        if anvio.DEBUG:
-            self.run.info('Working directory', self.temp_path)
-
-        bin_prefix = os.path.join(self.temp_path, 'Bin')
-        log_path = os.path.join(self.temp_path, 'logs.txt')
+        bin_prefix = J('Bin')
+        log_path = J('logs.txt')
 
         cmd_line = [self.program_name,
             '-i', input_files.contigs_fasta,
@@ -132,13 +128,10 @@ class MetaBAT2:
 
         clusters = {}
         bin_count = 0
-        for bin_file in glob.glob(bin_prefix + '*'):
+        for bin_file in glob.glob(J(bin_prefix + '*')):
             bin_count += 1
             with open(bin_file, 'r') as f:
                 pretty_bin_name = os.path.basename(bin_file).replace('.', '_')
                 clusters[pretty_bin_name] = list(map(str.strip, f.readlines()))
-
-        if not anvio.DEBUG:
-            shutil.rmtree(self.temp_path)
 
         return clusters

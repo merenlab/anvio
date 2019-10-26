@@ -7,7 +7,6 @@ import shutil
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -79,16 +78,14 @@ class BinSanity:
         utils.is_program_exists(self.program_name)
 
 
-    def cluster(self, input_files, args, threads=1):
-        self.temp_path = filesnpaths.get_temp_directory_path()
+    def cluster(self, input_files, args, work_dir, threads=1):
+        J = lambda p: os.path.join(work_dir, p)
+
         self.run.info_single("If you publish results from this workflow, \
                                please do not forget to cite \n%s" % BinSanity.citation,
                                nl_before=1, nl_after=1, mc='green')
 
-        if anvio.DEBUG:
-            self.run.info('Working directory', self.temp_path)
-
-        log_path = os.path.join(self.temp_path, 'logs.txt')
+        log_path = J('logs.txt')
 
         translation = {
             'preference': 'p',
@@ -102,7 +99,7 @@ class BinSanity:
             '-c', input_files.contig_coverages_log_norm,
             '-f', os.path.dirname(input_files.contigs_fasta),
             '-l', os.path.basename(input_files.contigs_fasta),
-            '-o', self.temp_path,
+            '-o', work_dir,
             *utils.serialize_args(args, single_dash=True, translate=translation)]
 
         self.progress.new(self.program_name)
@@ -112,7 +109,7 @@ class BinSanity:
 
         clusters = {}
         bin_count = 0
-        for bin_file in glob.glob(os.path.join(self.temp_path, '*.fna')):
+        for bin_file in glob.glob(J('*.fna')):
             bin_count += 1
             with open(bin_file, 'r') as f:
                 pretty_bin_name = os.path.basename(bin_file)
@@ -121,8 +118,5 @@ class BinSanity:
                 pretty_bin_name = pretty_bin_name.replace('-', '_')
 
                 clusters[pretty_bin_name] = [line.strip().replace('>', '') for line in f if line.startswith('>')]
-
-        if not anvio.DEBUG:
-            shutil.rmtree(self.temp_path)
 
         return clusters

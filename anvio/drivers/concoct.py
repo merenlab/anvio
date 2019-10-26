@@ -6,7 +6,6 @@ import os
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -106,21 +105,17 @@ class CONCOCT:
         utils.is_program_exists(self.program_name)
 
 
-    def cluster(self, input_files, args, threads=1):
+    def cluster(self, input_files, args, work_dir, threads=1):
+        J = lambda p: os.path.join(work_dir, p)
         self.run.info_single("If you publish results from this workflow, \
                                please do not forget to cite \n%s" % CONCOCT.citation,
                                nl_before=1, nl_after=1, mc='green')
 
-        self.temp_path = filesnpaths.get_temp_directory_path()
-        log_path = os.path.join(self.temp_path, 'logs.txt')
-
-        if anvio.DEBUG:
-            self.run.info('Working directory', self.temp_path)
-
+        log_path = J('logs.txt')
         cmd_line = [self.program_name,
             '--coverage_file', input_files.contig_coverages,
             '--composition_file', input_files.contigs_fasta,
-            '--basename', self.temp_path,
+            '--basename', work_dir,
             '--threads', threads,
              *utils.serialize_args(args, use_underscore=True)]
 
@@ -132,7 +127,7 @@ class CONCOCT:
         clusters = {}
         threshold = args.length_threshold or '1000'
 
-        with open(os.path.join(self.temp_path, 'clustering_gt%s.csv' % threshold), 'r') as f:
+        with open(J('clustering_gt%s.csv' % threshold), 'r') as f:
             lines = f.readlines()[1:]
 
             for entry in lines:
