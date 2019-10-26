@@ -6,6 +6,7 @@
 
 import os
 import time
+import math
 import sqlite3
 import pandas as pd
 
@@ -339,7 +340,7 @@ class DB:
         return self.get_all_rows_from_table(table_name)
 
 
-    def get_table_as_dict(self, table_name, table_structure=None, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True):
+    def get_table_as_dict(self, table_name, table_structure=None, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True, log_norm_numeric_values=False):
         if not table_structure:
             table_structure = self.get_table_structure(table_name)
 
@@ -397,7 +398,12 @@ class DB:
                     continue
 
             for i in columns_to_return[1:]:
-                entry[table_structure[i]] = row[i]
+                value = row[i]
+                if log_norm_numeric_values:
+                    if type(value) == float or type(value) == int:
+                        entry[table_structure[i]] = math.log10(value + 1)
+                else:
+                    entry[table_structure[i]] = value
 
             if string_the_key:
                 results_dict[str(row[0])] = entry
