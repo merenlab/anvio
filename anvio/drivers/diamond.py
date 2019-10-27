@@ -89,7 +89,9 @@ class Diamond:
         if not os.path.exists(expected_output):
             self.progress.end()
             raise ConfigError("Pfft. Something probably went wrong with Diamond's '%s' since one of the expected output files are missing.\
-                                Please check the log file here: '%s." % (process, self.run.log_file_path))
+                                Please check the log file here: '%s'. IT IS VERY LIKELY to get these kinds of errors if the version of\
+                                DIAMOND installed on your system differs from the one you had used to first setup your databases. Some\
+                                errors may disappear if you were to setup your search databases from scratch." % (process, self.run.log_file_path))
 
 
     def makedb(self, output_file_path=None):
