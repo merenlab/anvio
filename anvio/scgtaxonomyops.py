@@ -1373,7 +1373,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
                 num_finished_processes += 1
 
                 self.progress.increment(increment_to=num_finished_processes)
-                self.progress.update("%s of %s SGCs are finished in %s processes with %s threads." \
+                self.progress.update("%s of %s SCGs are finished in %s processes with %s threads." \
                                         % (num_finished_processes, total_num_processes, int(self.num_parallel_processes), self.num_threads))
 
             except KeyboardInterrupt:
