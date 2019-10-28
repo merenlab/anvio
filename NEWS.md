@@ -1,3 +1,9 @@
+# v6.1: a minor update for "esther" (28.10.2019) #
+This is a minor release that contains a set of bug fixes our users identified in `v6`. Please see our up-to-date [installation](http://merenlab.org/2016/06/26/installation-v2/) document to upgrade your anvi'o.
+
+In addition, here is a new blog post on our new tool, [anvi-export-locus](http://merenlab.org/2019/10/17/export-locus/)!
+***
+
 # v6, "esther" is out! (11.10.2019) #
 We are happy to announce anvi'o v6, "esther":
 
