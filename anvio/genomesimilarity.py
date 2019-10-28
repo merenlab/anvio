@@ -611,6 +611,7 @@ class GenomeSimilarity:
         self.output_dir = A('output_dir', null)
         self.pan_db = A('pan_db', null)
         self.output_dir_exists = A('output_dir_exists', null)
+        self.just_do_it = A('just_do_it', null)
 
         if (self.internal_genomes or self.external_genomes):
             self.genome_desc = genomedescriptions.GenomeDescriptions(args, run = terminal.Run(verbose=False))
@@ -689,7 +690,7 @@ class GenomeSimilarity:
     def report(self, output_dir = None, ok_if_exists = False):
         output_dir = output_dir if output_dir else self.output_dir
 
-        filesnpaths.check_output_directory(output_dir, ok_if_exists=ok_if_exists)
+        filesnpaths.check_output_directory(output_dir, ok_if_exists=(ok_if_exists or self.just_do_it))
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
 
