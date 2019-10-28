@@ -136,7 +136,7 @@ class IterateKmerSourmash(Sourmash):
         Sourmash.__init__(self, args=self.args)
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
-        self.comprehensive = A('developer')
+        self.comprehensive = A('comprehensive')
         self.store_all = A('store_all')
         self.just_do_it = A('just_do_it')
 
@@ -146,7 +146,7 @@ class IterateKmerSourmash(Sourmash):
             'scan': (self.scan_for_max, {
                 'step': A('step') or 1,
                 'lower_bound': A('lower_bound') or 5,
-                'upper_bound': A('upper_bound') or 35,
+                'upper_bound': A('upper_bound') or 51,
             }),
         }
 
@@ -171,8 +171,12 @@ class IterateKmerSourmash(Sourmash):
         }
 
         self.entropy_binning_methods = [
+            'array_len_div_4',
+            'array_len_div_2',
             'array_len',
             'array_len_times_2',
+            'array_len_times_4',
+            'array_len_times_8',
             'auto',
             'fd',
             'doane',
@@ -204,7 +208,7 @@ class IterateKmerSourmash(Sourmash):
 
     def report_comprehensive(self):
         self.comprehensive_stats = pd.DataFrame(self.comprehensive_stats)
-        self.comprehensive_stats.to_csv('comprehensive_stats.txt', sep='\t', index=False)
+        self.comprehensive_stats.to_csv(self.comprehensive, sep='\t', index=False)
 
 
     def scan_for_max(self, input_path, fasta_files, step=1, lower_bound=5, upper_bound=51):
@@ -274,11 +278,18 @@ def calculate_entropy(array, bin_method='auto'):
     entropy : float
         Shannon entropy
     """
-
-    if bin_method == 'array_len':
+    if bin_method == 'array_len_div_4':
+        bins = np.linspace(0, 1, int((len(array) + 1)/4))
+    elif bin_method == 'array_len_div_2':
+        bins = np.linspace(0, 1, int((len(array) + 1)/2))
+    elif bin_method == 'array_len':
         bins = np.linspace(0, 1, len(array) + 1)
     elif bin_method == 'array_len_times_2':
         bins = np.linspace(0, 1, 2*(len(array) + 1))
+    elif bin_method == 'array_len_times_4':
+        bins = np.linspace(0, 1, 4*(len(array) + 1))
+    elif bin_method == 'array_len_times_8':
+        bins = np.linspace(0, 1, 8*(len(array) + 1))
     else:
         bins = bin_method
 
