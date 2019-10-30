@@ -1451,6 +1451,8 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
                         hits_per_gene[gene_callers_id][scg_name] = []
 
                     hits_per_gene[gene_callers_id][scg_name].append(hit)
+                else:
+                    error_queue.put(None)
 
             for gene_callers_id, scg_raw_hits in hits_per_gene.items():
                 if len(scg_raw_hits.keys()) > 1:
