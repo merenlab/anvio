@@ -158,17 +158,13 @@ class Dereplicate:
                          are now burdened with the responsibility of knowing what parameters you used to generate\
                          these results.%s" % additional_msg)
 
-        if self.ani_dir and not self.program_name in ['pyANI']:
-            run.warning("You provided a pre-existing directory of ANI results (--ani-dir), but also provided a program\
-                        name ('%s') that was not compatible with ANI. Anvi'o knows that you want to use the pre-existing\
-                        results, so she cunningly ignores this slip-up." % self.program_name)
-            self.program_name = 'pyANI'
+        if self.ani_dir and not self.program_name in ['pyANI', 'fastANI']:
+            raise ConfigError("You provided a pre-existing directory of ANI results (--ani-dir), but also provided a program\
+                               name ('%s') that was not compatible with ANI." % self.program_name)
 
         if self.mash_dir and not self.program_name in ['sourmash']:
-            run.warning("You provided a pre-existing directory of mash results (--mash-dir), but also provided a program\
-                        name ('%s') that was not compatible with mash. Anvi'o knows that you want to use the pre-existing\
-                        results, so she cunningly ignores this slip-up." % self.program_name)
-            self.program_name = 'sourmash'
+            raise ConfigError("You provided a pre-existing directory of mash results (--mash-dir), but also provided a program\
+                               name ('%s') that was not compatible with mash." % self.program_name)
 
         if self.min_alignment_fraction < 0 or self.min_alignment_fraction > 1:
             if self.program_name == "pyANI":
