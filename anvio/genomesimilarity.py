@@ -19,7 +19,7 @@ import anvio.genomedescriptions as genomedescriptions
 from itertools import combinations
 
 from anvio.errors import ConfigError
-from anvio.drivers import pyani, sourmash
+from anvio.drivers import pyani, sourmash, fastani
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.miscdata import TableForLayerOrders
 
@@ -128,7 +128,7 @@ class Dereplicate:
                               your genomes. Please take a close look at your parameters: either --program needs to be\
                               set, or an importable directory (e.g. --ani-dir, --mash-dir, etc) needs to be provided.")
 
-        if self.program_name not in ['pyANI', 'sourmash']:
+        if self.program_name not in ['pyANI', 'fastANI', 'sourmash']:
             raise ConfigError("Anvi'o is impressed by your dedication to dereplicate your genomes through %s, but\
                               %s is not compatible with `anvi-dereplicate-genomes`. Anvi'o can only work with pyANI\
                               and sourmash separately." % (self.program_name, self.program_name))
@@ -224,9 +224,9 @@ class Dereplicate:
 
 
     def import_similarity_matrix(self):
-        dir_name, dir_path = ('--ani-dir', self.ani_dir) if self.program_name in ['pyANI'] else ('--mash-dir', self.mash_dir)
+        dir_name, dir_path = ('--ani-dir', self.ani_dir) if self.program_name in ['pyANI', 'fastANI'] else ('--mash-dir', self.mash_dir)
 
-        necessary_reports = [self.similarity_metric_name] + (['alignment_coverage'] if self.program_name in ['pyANI'] else [])
+        necessary_reports = [self.similarity_metric_name] + (['alignment_coverage'] if self.program_name in ['pyANI', 'fastANI'] else [])
 
         if filesnpaths.is_dir_empty(dir_path):
             raise ConfigError("The %s you provided is empty. What kind of game are you playing?" % dir_name)
@@ -744,7 +744,56 @@ class GenomeSimilarity:
 
 
 
+class FastANI(GenomeSimilarity):
+    def __init__(self, args):
+        self.args = args
+        self.results = {}
+
+        GenomeSimilarity.__init__(self, args)
+
+        self.similarity_type = 'ANI'
+
+        self.program = fastani.ManyToMany(self.args)
+
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+
+        self.fastANI_sanity_check()
+
+
+    def fastANI_sanity_check(self):
+        pass
+
+
+    def create_fasta_path_file(self):
+        """ Creates a text file with the paths of all the fasta files
+
+        It is the file created here that is passed to fastANI as its --rl and --ql parameters
+        """
+        file_with_fasta_paths = os.path.join(self.temp_dir, 'fasta_paths.txt')
+        with open(file_with_fasta_paths, 'w') as f:
+            f.write('\n'.join(self.name_to_temp_path.values()) + '\n')
+
+        return file_with_fasta_paths
+
+
+    def process(self, directory=None):
+        self.temp_dir = directory if directory else self.get_fasta_sequences_dir()
+        fastANI_input_file = self.create_fasta_path_file()
+        print(fastANI_input_file)
+
+        self.results = self.program.run_command(self.temp_dir, fastANI_input_file)
+
+        self.cluster()
+
+        if directory is None:
+            shutil.rmtree(self.temp_dir)
+
+
+
 class ANI(GenomeSimilarity):
+    """ This class handles specifically pyANI. See FastANI class for fastani handle """
+
     def __init__(self, args):
         self.args = args
         self.results = {}
@@ -782,8 +831,7 @@ class ANI(GenomeSimilarity):
         if len(self.genome_names) > 50:
             run.warning("You are comparing %d genomes. That's no small task. For context, 10 Prochlorococcus genomes\
                          using 4 threads took 2m20s on a 2016 Macbook Pro. And 50 genomes took 49m53s. Consider\
-                         instead using sourmash (--program sourmash). On the same Macbook with 1 thread using\
-                         sourmash, these times were 12s and 42s, respectively." % len(self.genome_names))
+                         instead using fastANI (--program fastANI). It's orders of magnitudes faster." % len(self.genome_names))
 
 
     def restore_names_in_dict(self, input_dict):
@@ -1012,5 +1060,6 @@ class SourMash(GenomeSimilarity):
 
 program_class_dictionary = {
     'pyANI': ANI,
+    'fastANI': FastANI,
     'sourmash': SourMash,
 }
