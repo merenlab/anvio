@@ -628,7 +628,7 @@ class GenomeSimilarity:
 
     def sanity_check(self, ok_if_exists):
         clustering.is_distance_and_linkage_compatible(self.clustering_distance, self.clustering_linkage)
-        filesnpaths.check_output_directory(self.output_dir, ok_if_exists=ok_if_exists)
+        filesnpaths.check_output_directory(self.output_dir, ok_if_exists=(ok_if_exists or self.just_do_it))
 
         if self.pan_db:
             utils.is_pan_db(self.pan_db)
