@@ -63,13 +63,16 @@ if __name__ == '__main__':
                         on the pan interactive interface through the 'layers' tab."}))
 
     group_PROGRAM = parser.add_argument_group('Program', "Tell anvi'o which similarity program to run.")
-    group_PROGRAM.add_argument('--program', type=str, default='pyANI', help="Tell anvi'o which program to run to process genome similarity.\
-                        You can either use pyANI for ANI calculations or sourmash for mash similarity. You must have\
-                        the necessary binary in path for the program you choose.",\
-                        choices=['pyANI','sourmash'])
+    group_PROGRAM.add_argument('--program', type=str, default='fastANI', help="Tell anvi'o which program to run to process genome similarity.\
+                        For ANI, you can either use pyANI or fastANI. If accuracy is paramount, or for dealing with genomes < 80% similar,\
+                        pyANI is what we recommend. However, fastANI is orders of magnitude faster. For mash similarity, you can choose\
+                        sourmash, however it is not recommended for genome comparisons.", choices=['pyANI','fastANI','sourmash'])
+
+    group_FASTANI = parser.add_argument_group('fastANI Settings', "Tell anvi'o to tell fastANI what settings to set.\
+                                                                   Only if `--program` is set to `pyANI`")
 
     group_PYANI = parser.add_argument_group('pyANI Settings', "Tell anvi'o to tell pyANI what method you wish to use\
-                                             and what settings to set. Only if `--program` is set to `pyANI` (which is the default)")
+                                             and what settings to set. Only if `--program` is set to `pyANI`")
     group_PYANI.add_argument('--method', default='ANIb', type=str, help="Method for pyANI. The default is %(default)s.\
                          You must have the necessary binary in path for whichever method you choose. According to\
                          the pyANI help for v0.2.7 at https://github.com/widdowquinn/pyani, the method 'ANIm' uses\
