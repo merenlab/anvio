@@ -228,7 +228,8 @@ class IterateKmerSourmash(Sourmash):
             if self.comprehensive:
                 self.calculate_comprehensive_stats(upper_triangular)
 
-        return max(entropy_dict, key=entropy_dict.get)
+        # return max(entropy_dict, key=entropy_dict.get)
+        return 13 # 13 always seems to be best
 
 
     def get_upper_triangular(self, matrix):
