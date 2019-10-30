@@ -146,7 +146,7 @@ class IterateKmerSourmash(Sourmash):
             'scan': (self.scan_for_max, {
                 'step': A('step') or 1,
                 'lower_bound': A('lower_bound') or 5,
-                'upper_bound': A('upper_bound') or 51,
+                'upper_bound': A('upper_bound') or 35,
             }),
         }
 
