@@ -121,6 +121,7 @@ class ManyToMany(FastANIDriver):
         names = ('query', 'reference', 'ani', 'mapping_fragments', 'total_fragments')
         fastANI_output = pd.read_csv(output_path, sep='\t', header=None, names=names)
         fastANI_output['alignment_fraction'] = fastANI_output['mapping_fragments'] / fastANI_output['total_fragments']
+        fastANI_output['ani'] /= 100
 
         fastANI_output = self.fill_missing_data(fastANI_output)
 
