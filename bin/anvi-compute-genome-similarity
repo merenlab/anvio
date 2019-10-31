@@ -22,7 +22,7 @@ __maintainer__ = "Ozcan Esen"
 __email__ = "ozcanesen@gmail.com"
 __tags__ = ['ani', 'dereplication', 'redundancy']
 __requires__ = ['external-genomes', 'internal-genomes', 'pan-db']
-__provides__ = ['genome-similarity', 'genome-similarity']
+__provides__ = ['genome-similarity']
 __description__ = ("Export sequences from sequence sources and compute a similarity metric (e.g. ANI). If a Pan Database "
                    "is given anvi'o will write computed output to misc data tables of Pan Database.")
 
@@ -64,9 +64,11 @@ if __name__ == '__main__':
 
     group_PROGRAM = parser.add_argument_group('Program', "Tell anvi'o which similarity program to run.")
     group_PROGRAM.add_argument('--program', type=str, default='fastANI', help="Tell anvi'o which program to run to process genome similarity.\
-                        For ANI, you can either use pyANI or fastANI. If accuracy is paramount, or for dealing with genomes < 80% similar,\
-                        pyANI is what we recommend. However, fastANI is orders of magnitude faster. For mash similarity, you can choose\
-                        sourmash, however it is not recommended for genome comparisons.", choices=['pyANI','fastANI','sourmash'])
+                        For ANI, you can either use pyANI or fastANI. If accuracy is paramount, or for dealing with genomes < 80 percent similar,\
+                        pyANI is what we recommend. However, fastANI is ORDERS of magnitude faster and sacrifices very little accuracy above\
+                        80 percent similarity. If you for some reason want to use mash similarity, you can use sourmash, but its really\
+                        not intended for genome comparisons.",
+                        choices=['pyANI','fastANI','sourmash'])
 
     group_FASTANI = parser.add_argument_group('fastANI Settings', "Tell anvi'o to tell fastANI what settings to set.\
                                                                    Only if `--program` is set to `pyANI`")
@@ -91,13 +93,10 @@ if __name__ == '__main__':
     group_SOURMASH = parser.add_argument_group('Sourmash Settings', "Tell anvi'o to tell sourmash what settings to set.\
                                                 Only if `--program` is set to `sourmash`")
     group_SOURMASH.add_argument('--kmer-size', type=int, default=None, metavar='INT', help="Set the k-mer size for mash\
-                        similarity checks. If you don't provide this, anvi'o will try its best to define an ideal kmer for you.\
-                        For more info about kmer in general, check the sourmash documentation.")
+                        similarity checks. We found 13 in almost all cases correlates best with alignment-based ANI.")
     group_SOURMASH.add_argument('--scale', type=int, default=1000, metavar='INT', help='Set the compression ratio for\
                         fasta signature file computations. The default is 1000. Smaller ratios decrease sensitivity,\
                         while larger ratios will lead to large fasta signatures.')
-    group_SOURMASH.add_argument('--comprehensive', type=str, default=None, help='Do developer stuff.')
-    group_SOURMASH.add_argument('--store-all', action='store_true', help='Do developer stuff.')
 
 
     group_CLUSTERING = parser.add_argument_group('HIERARCHICAL CLUSTERING', "anvi-compute-genome-similarity outputs similarity\
