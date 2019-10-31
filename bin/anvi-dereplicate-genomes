@@ -34,7 +34,7 @@ if __name__ == '__main__':
                                         computations on your genomes, you can import the result directory here to use. Please note\
                                         that file names must remain unchanged for anvi'o to find them")
     groupD.add_argument('--ani-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-genome-similarity`\
-                        if `--program` parameter was set to `pyANI` (which is the default) and use it for dereplication")
+                        if `--program` parameter was set to `fastANI` or `pyANI` and use it for dereplication")
     groupD.add_argument('--mash-dir', type=str, metavar='PATH', help="You can import the directory created by `anvi-compute-genome-similarity`\
                         if `--program` parameter was set to `sourmash` and use it for dereplication")
 
@@ -48,10 +48,19 @@ if __name__ == '__main__':
                         genome FASTAS will be reported.')
 
     groupC = parser.add_argument_group('Program', "Tell anvi'o which similarity program to run.")
-    groupC.add_argument('--program', type=str, help="Tell anvi'o which program to run to process genome similarity.\
-                        You can either use pyANI for ANI calculations or sourmash for mash similarity. You must have\
-                        the necessary binary in path for the program you choose.",\
-                        choices=['pyANI','sourmash'])
+    groupC.add_argument('--program', type=str, default='fastANI', help="Tell anvi'o which program to run to process genome similarity.\
+                        For ANI, you can either use pyANI or fastANI. If accuracy is paramount, or for dealing with genomes < 80 percent similar,\
+                        pyANI is what we recommend. However, fastANI is ORDERS of magnitude faster and sacrifices very little accuracy above\
+                        80 percent similarity. If you for some reason want to use mash similarity, you can use sourmash, but its really\
+                        not intended for genome comparisons.",
+                        choices=['fastANI','pyANI','sourmash'])
+
+    group_FASTANI = parser.add_argument_group('fastANI Settings', "Tell anvi'o to tell fastANI what settings to set.\
+                                                                   Only if `--program` is set to `pyANI`")
+    group_FASTANI.add_argument('--fastani-kmer-size', type=int, default=16, help="Choose a kmer. The default is %(default)s.")
+    group_FASTANI.add_argument('--fragment-length', type=int, default=3000, help="Choose a fragment length. The default is %(default)s.")
+    group_FASTANI.add_argument('--min-num-fragments', type=int, default=50, help="Choose the minimum number of fragment lengths to that can\
+                                                                                  can be trusted. The default is %(default)s.")
 
     groupE = parser.add_argument_group('pyANI Settings', "Tell anvi'o to tell pyANI what method you wish to use and what settings to set.\
                         Only if `--program` is set to `pyANI`")
