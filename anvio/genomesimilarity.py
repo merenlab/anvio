@@ -752,6 +752,7 @@ class FastANI(GenomeSimilarity):
         GenomeSimilarity.__init__(self, args)
 
         self.similarity_type = 'ANI'
+        self.method = 'fastANI'
 
         self.program = fastani.ManyToMany(args=self.args)
 

@@ -4,6 +4,8 @@
 import os
 import pandas as pd
 
+from itertools import product
+
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -61,18 +63,6 @@ class FastANIDriver:
         self.run.info('[fastANI] Log file path', self.log_file_path, nl_after=1)
 
 
-    def load_output_as_dataframe(self, output_path, name_conversion_dict=None):
-        names = ('query', 'reference', 'ani', 'mapping_fragments', 'total_fragments')
-        fastANI_output = pd.read_csv(output_path, sep='\t', header=None, names=names)
-        fastANI_output['alignment_fraction'] = fastANI_output['total_fragments'] / fastANI_output['mapping_fragments']
-
-        if name_conversion_dict:
-            for target in ['query', 'reference']:
-                fastANI_output[target] = fastANI_output[target].map(name_conversion_dict)
-
-        return fastANI_output
-
-
     def gen_results_dict(self):
         results = {
             'ani': {},
@@ -103,6 +93,49 @@ class ManyToMany(FastANIDriver):
         FastANIDriver.__init__(self, program_name, args, run, progress)
 
 
+    def fill_missing_data(self, fastANI_output):
+        """ If alignment is insufficient, fastANI removes the results from the output. This puts them back """
+
+        all_query_reference_combinations = set(product(self.query_names, self.reference_names))
+        present_query_reference_combinations = set([tuple(r) for r in fastANI_output[['query', 'reference']].values])
+        missing_query_reference_combinations = all_query_reference_combinations - present_query_reference_combinations
+
+        def missing_data_template(x, y):
+            return {
+                'query': x,
+                'reference': y,
+                'ani': 0,
+                'mapping_fragments': 0,
+                'total_fragments': 0,
+                'alignment_fraction': 0,
+            }
+
+        null_rows = pd.DataFrame([missing_data_template(x, y) for x, y in missing_query_reference_combinations])
+        fastANI_output = pd.concat([fastANI_output, null_rows], ignore_index=True, verify_integrity=False, sort=('query', 'reference'))
+        return fastANI_output
+
+
+    def load_output_as_dataframe(self, output_path, name_conversion_dict=None):
+        names = ('query', 'reference', 'ani', 'mapping_fragments', 'total_fragments')
+        fastANI_output = pd.read_csv(output_path, sep='\t', header=None, names=names)
+        fastANI_output['alignment_fraction'] = fastANI_output['mapping_fragments'] / fastANI_output['mapping_fragments']
+
+        fastANI_output = self.fill_missing_data(fastANI_output)
+
+        if name_conversion_dict:
+            for target in ['query', 'reference']:
+                fastANI_output[target] = fastANI_output[target].map(name_conversion_dict)
+
+
+        return fastANI_output
+
+
+    def get_all_query_and_reference_names(self, query_targets, reference_targets):
+        query_names = set([x.strip() for x in open(query_targets).readlines()])
+        reference_names = set([x.strip() for x in open(reference_targets).readlines()])
+        return query_names, reference_names
+
+
     def run_command(self, query_targets, reference_targets, output_path, run_dir=os.getcwd(), name_conversion_dict=None):
         """ Run the command
 
@@ -129,6 +162,8 @@ class ManyToMany(FastANIDriver):
         """
 
         self.add_run_info()
+
+        self.query_names, self.reference_names = self.get_all_query_and_reference_names(query_targets, reference_targets)
 
         command = [self.program_name,
                    '--ql', query_targets,
