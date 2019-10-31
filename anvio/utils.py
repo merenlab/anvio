@@ -326,7 +326,7 @@ def is_program_exists(program, dont_raise=False):
 def format_cmdline(cmdline):
     """Takes a cmdline for `run_command` or `run_command_STDIN`, and makes it beautiful."""
     if not cmdline or (not isinstance(cmdline, str) and not isinstance(cmdline, list)):
-        raise ConfigError("You made ultis::format_cmdline upset. The parameter you sent to run kinda sucks. It should be string\
+        raise ConfigError("You made utils::format_cmdline upset. The parameter you sent to run kinda sucks. It should be string\
                             or list type. Note that the parameter `shell` for subprocess.call in this `run_command` function\
                             is always False, therefore if you send a string type, it will be split into a list prior to being\
                             sent to subprocess.")
@@ -401,8 +401,20 @@ class RunInDirectory(object):
         os.chdir(self.cur_dir)
 
 
-def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
-    """Uses subprocess.call to run your `cmdline`"""
+def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True, run_dir=os.getcwd()):
+    """ Uses subprocess.call to run your `cmdline`
+
+    Parameters
+    ==========
+    cmdline : str or list
+        The command to be run, e.g. "echo hello" or ["echo", "hello"]
+    log_file_path : str or Path-like
+        All stdout from the command is sent to this filepath
+    run_dir : str or Path-like, os.getcwd()
+        Run the command in a specified directory. Returns to original directory afterwards, independent
+        of success or failure of the command. `log_file_path` is defined relative to the original directory,
+        not `run_dir`.
+    """
     cmdline = format_cmdline(cmdline)
 
     if anvio.DEBUG:
@@ -421,7 +433,8 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
             with open(log_file_path, "a") as log_file: log_file.write('# DATE: %s\n# CMD LINE: %s\n' % (get_date(), ' '.join(cmdline)))
 
         log_file = open(log_file_path, 'a')
-        ret_val = subprocess.call(cmdline, shell=False, stdout=log_file, stderr=subprocess.STDOUT)
+        with RunInDirectory(run_dir):
+            ret_val = subprocess.call(cmdline, shell=False, stdout=log_file, stderr=subprocess.STDOUT)
         log_file.close()
 
         if ret_val < 0:
