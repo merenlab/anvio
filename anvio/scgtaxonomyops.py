@@ -1481,6 +1481,12 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
 
         df = pd.DataFrame.from_records(scg_raw_hits)
 
+        # remove hits that are null at the phylum level if there are still hits
+        # in the df that are not null:
+        not_null_hits = df[df.t_phylum.notnull()]
+        if len(not_null_hits):
+            df = not_null_hits
+
         # find the max percent identity score in the df
         max_percent_identity = max(df['percent_identity'])
 
