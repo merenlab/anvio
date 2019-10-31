@@ -401,7 +401,7 @@ class RunInDirectory(object):
         os.chdir(self.cur_dir)
 
 
-def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True, run_dir=os.getcwd()):
+def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
     """ Uses subprocess.call to run your `cmdline`
 
     Parameters
@@ -410,10 +410,6 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
         The command to be run, e.g. "echo hello" or ["echo", "hello"]
     log_file_path : str or Path-like
         All stdout from the command is sent to this filepath
-    run_dir : str or Path-like, os.getcwd()
-        Run the command in a specified directory. Returns to original directory afterwards, independent
-        of success or failure of the command. `log_file_path` is defined relative to the original directory,
-        not `run_dir`.
     """
     cmdline = format_cmdline(cmdline)
 
@@ -433,8 +429,7 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
             with open(log_file_path, "a") as log_file: log_file.write('# DATE: %s\n# CMD LINE: %s\n' % (get_date(), ' '.join(cmdline)))
 
         log_file = open(log_file_path, 'a')
-        with RunInDirectory(run_dir):
-            ret_val = subprocess.call(cmdline, shell=False, stdout=log_file, stderr=subprocess.STDOUT)
+        ret_val = subprocess.call(cmdline, shell=False, stdout=log_file, stderr=subprocess.STDOUT)
         log_file.close()
 
         if ret_val < 0:
