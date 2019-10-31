@@ -86,13 +86,13 @@ class Dereplicate:
 
 
     def get_program_specific_info(self):
-        if self.program_name in ['pyANI']:
+        if self.program_name == 'pyANI':
             metric_name = 'percentage_identity' if not self.use_full_percent_identity else 'full_percentage_identity'
             necessary_reports = [metric_name, 'alignment_coverage']
-        elif self.program_name in ['sourmash']:
+        elif self.program_name == 'sourmash':
             metric_name = 'mash_similarity'
             necessary_reports = [metric_name]
-        elif self.percentage_identity in ['fastANI']:
+        elif self.program_name == 'fastANI':
             metric_name = 'ani'
             necessary_reports = [metric_name]
 
@@ -224,7 +224,17 @@ class Dereplicate:
     def gen_similarity_matrix(self):
         self.similarity.process(self.temp_dir)
 
-        similarity_matrix = self.similarity.results[self.program_info['metric_name']]
+        try:
+            similarity_matrix = self.similarity.results[self.program_info['metric_name']]
+        except KeyError:
+            # With sourmash you don't always know the metric name, you only be sure of what it
+            # contains. This is because the kmer is a part of the result name. This is my fault but
+            # I'm too lazy to fix the design because sourmash is not appropriate for genome
+            # comparison anyways. 
+            for result_name in self.similarity.results:
+                if self.program_info['metric_name'] in result_name:
+                    similarity_matrix = self.similarity.results[result_name]
+                    break
 
         run.info('%s similarity metric' % self.program_name, 'calculated')
 
