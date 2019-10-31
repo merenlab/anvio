@@ -78,8 +78,8 @@ if __name__ == '__main__':
 
     groupF = parser.add_argument_group('sourmash settings', "Tell anvi'o to run sourmash with specific settings. Only\
                         if `--program` is set to `sourmash`")
-    groupF.add_argument('--kmer-size', type=int, default=51, metavar='INT', help="Set the k-mer size for mash\
-                        similarity checks. The sourmash default is 51. See the sourmash documentation for details.")
+    groupF.add_argument('--kmer-size', type=int, default=13, metavar='INT', help="Set the k-mer size for mash\
+                        similarity checks. The default is %(default)s.")
     groupF.add_argument('--scale', type=int, default=1000, metavar='INT', help='Set the compression ratio for\
                         fasta signature file computations. The default is 1000. Smaller ratios decrease sensitivity,\
                         while larger ratios will lead to large fasta signatures.')
