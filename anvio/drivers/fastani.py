@@ -111,14 +111,16 @@ class ManyToMany(FastANIDriver):
             }
 
         null_rows = pd.DataFrame([missing_data_template(x, y) for x, y in missing_query_reference_combinations])
-        fastANI_output = pd.concat([fastANI_output, null_rows], ignore_index=True, verify_integrity=False, sort=('query', 'reference'))
+        fastANI_output = pd.concat([fastANI_output, null_rows], ignore_index=True, verify_integrity=False)
+        fastANI_output = fastANI_output.sort_values(by=['query', 'reference'])
+        fastANI_output = fastANI_output[['query', 'reference', 'ani', 'mapping_fragments', 'total_fragments', 'alignment_fraction']]
         return fastANI_output
 
 
     def load_output_as_dataframe(self, output_path, name_conversion_dict=None):
         names = ('query', 'reference', 'ani', 'mapping_fragments', 'total_fragments')
         fastANI_output = pd.read_csv(output_path, sep='\t', header=None, names=names)
-        fastANI_output['alignment_fraction'] = fastANI_output['mapping_fragments'] / fastANI_output['mapping_fragments']
+        fastANI_output['alignment_fraction'] = fastANI_output['mapping_fragments'] / fastANI_output['total_fragments']
 
         fastANI_output = self.fill_missing_data(fastANI_output)
 
@@ -189,7 +191,6 @@ class ManyToMany(FastANIDriver):
         utils.store_dataframe_as_TAB_delimited_file(self.fastANI_output, output_path)
 
         self.results = self.gen_results_dict()
-        print(self.results)
         return self.results
 
 
