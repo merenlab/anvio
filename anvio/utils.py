@@ -377,6 +377,30 @@ def gzip_decompress_file(input_file_path, output_file_path=None, keep_original=T
     return output_file_path
 
 
+class RunInDirectory(object):
+    """ Run any block of code in a specified directory. Return to original directory
+
+    Parameters
+    ==========
+    run_dir : str or Path-like
+        The directory the block of code should be run in
+    """
+
+    def __init__(self, run_dir):
+        self.run_dir = run_dir
+        self.cur_dir = os.getcwd()
+        if not os.path.isdir(self.run_dir):
+            raise ConfigError("RunInDirectory :: %s is not a directory." % str(self.run_dir))
+
+
+    def __enter__(self):
+        os.chdir(self.run_dir)
+
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        os.chdir(self.cur_dir)
+
+
 def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remove_log_file_if_exists=True):
     """Uses subprocess.call to run your `cmdline`"""
     cmdline = format_cmdline(cmdline)
