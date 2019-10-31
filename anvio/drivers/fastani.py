@@ -21,8 +21,15 @@ __email__ = "kiefl.evan@gmail.com"
 
 
 class FastANIDriver:
-    """ Super class for all fastANI usage """
-    def __init__(self, args={}, run=terminal.Run(), progress=terminal.Progress(), program_name='fastANI'):
+    """ Parent class for all fastANI usage
+
+    Parameters
+    ==========
+    program_name : str, fastANI
+        What is the fastANI binary called?
+    """
+
+    def __init__(self, program_name='fastANI', args={}, run=terminal.Run(), progress=terminal.Progress()):
         self.run = run
         self.progress = progress
         self.program_name = program_name
@@ -40,6 +47,12 @@ class FastANIDriver:
         self.run.warning("Anvi'o will use 'fastANI' by Jain et al. (DOI: 10.1038/s41467-018-07641-9) to compute ANI. \
                           If you publish your findings, please do not forget to properly credit their work.", lc='green', header="CITATION")
 
+
+    def check_programs(self):
+        utils.is_program_exists(self.program_name)
+
+
+    def add_run_info(self):
         self.run.info('[fastANI] Kmer size', self.kmer_size)
         self.run.info('[fastANI] Fragment length', self.fragment_length)
         self.run.info('[fastANI] Min num of fragments', self.min_num_fragments)
@@ -47,57 +60,67 @@ class FastANIDriver:
         self.run.info('[fastANI] Log file path', self.log_file_path, nl_after=1)
 
 
-    def check_programs(self):
-        utils.is_program_exists(self.program_name)
+
+class ManyToMany(FastANIDriver):
+    """ Compare many genomes (the queries) to many other genomes (the references)
+
+    If you're confused by the concept of many queries and many references, it's worth mentioning
+    that if you want to do ALL the pairwise comparisons of a set of genomes will call A, then both the
+    queries and the references are A
+    """
+
+    def __init__(self, program_name='fastANI', args={}, run=terminal.Run(), progress=terminal.Progress()):
+        FastANIDriver.__init__(self, program_name, args, run, progress)
 
 
-    def run_command(self, input_path, *args):
+    def gen_results_dict(self):
+        d = {}
+
+
+    def run_command(self, query_targets, reference_targets, output_path, run_dir=os.getcwd()):
         """ Run the command
 
         Parameters
         ==========
-        input_path : string or Path-like
-            The directory in which the binary will be executed
-        *args :
-            all arguments needed to generate the commmand, i.e.
-            arguments passed to get_command(). See Notes.
+        query_targets : string or Path-like
+            The query set of genomes (--ql). It should be a list of filepaths, one per line
+        reference_targets : string or Path-like
+            The reference set of genomes (--rl). It should be a list of filepaths, one per line
+        output_path : string or Path-like
+            Where should the raw fastANI output file be created? Relative to current working
+            directory, not `run_dir`
+        run_dir : string or Path-like, os.getcwd()
+            Where should the command be run? The current directory is the default
 
-        Notes
-        =====
-        - This command assumes all child classes have a method called `get_command(...)`.
-          As an example, refer to ManyToMany.get_command.
+        Returns
+        =======
+        results : dictionary
+            results dictionary
         """
-        # backup the old working directory before changing the directory
-        old_wd = os.getcwd()
-        os.chdir(input_path)
+
+        self.add_run_info()
+
+        command = [self.program_name,
+                   '--ql', query_targets,
+                   '--rl', reference_targets,
+                   '-k', self.kmer_size,
+                   '--fragLen', self.fragment_length,
+                   '--minFrag', self.min_num_fragments,
+                   '-t', self.num_threads,
+                   '-o', output_path]
 
         self.progress.new('fastANI')
-        self.progress.update('Running ...')
-        exit_code = utils.run_command(self.get_command(*args), self.log_file_path)
+        self.progress.update('Many to Many ...')
+
+        exit_code = utils.run_command(command, self.log_file_path, run_dir=run_dir)
+
         self.progress.end()
 
         if int(exit_code):
             raise ConfigError("fastANI returned with non-zero exit code, there may be some errors. \
                                please check the log file for details.")
 
-        # restore old working directory
-        os.chdir(old_wd)
-
-        return
+        return self.gen_results_dict(output_path)
 
 
-class ManyToMany(FastANIDriver):
-    """ Compare many genomes to many other genomes """
-    def __init__(self, args={}, run=terminal.Run(), progress=terminal.Progress(), program_name='fastANI'):
-        FastANIDriver.__init__(self, args, run, progress, program_name)
 
-
-    def get_command(self, fastANI_input_file):
-        return [self.program_name,
-                '--ql', fastANI_input_file,
-                '--rl', fastANI_input_file,
-                '-k', self.kmer_size,
-                '--fragLen', self.fragment_length,
-                '--minFrag', self.min_num_fragments,
-                '-t', self.num_threads,
-                '-o', 'many_to_many_output.txt']

@@ -643,7 +643,7 @@ class GenomeSimilarity:
                              '%s'. You can find the offending file if you search for the output file in\
                              the temporary output directory '%s'. You potentially waited so long, so anvi'o\
                              will continue as if nothing happened. If you want to diagnose this problem, rerun with\
-                             --debug" % (report_name, os.path.join(self.temp_dir, 'output')))
+                             --debug" % (report_name, J(self.temp_dir, 'output')))
 
 
     def add_to_pan_db(self):
@@ -753,7 +753,7 @@ class FastANI(GenomeSimilarity):
 
         self.similarity_type = 'ANI'
 
-        self.program = fastani.ManyToMany(self.args)
+        self.program = fastani.ManyToMany(args=self.args)
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
@@ -770,7 +770,7 @@ class FastANI(GenomeSimilarity):
 
         It is the file created here that is passed to fastANI as its --rl and --ql parameters
         """
-        file_with_fasta_paths = os.path.join(self.temp_dir, 'fasta_paths.txt')
+        file_with_fasta_paths = J(self.temp_dir, 'fasta_paths.txt')
         with open(file_with_fasta_paths, 'w') as f:
             f.write('\n'.join(self.name_to_temp_path.values()) + '\n')
 
@@ -780,9 +780,13 @@ class FastANI(GenomeSimilarity):
     def process(self, directory=None):
         self.temp_dir = directory if directory else self.get_fasta_sequences_dir()
         fastANI_input_file = self.create_fasta_path_file()
-        print(fastANI_input_file)
 
-        self.results = self.program.run_command(self.temp_dir, fastANI_input_file)
+        self.results = self.program.run_command(
+            query_targets=fastANI_input_file,
+            reference_targets=fastANI_input_file,
+            output_path=J(self.temp_dir, 'output'),
+            run_dir=self.temp_dir
+        )
 
         self.cluster()
 
