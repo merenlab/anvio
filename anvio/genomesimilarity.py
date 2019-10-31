@@ -54,6 +54,10 @@ class Dereplicate:
         self.program_name = A('program', null) or 'pyANI'
         self.representative_method = A('representative_method', null)
         self.similarity_threshold = A('similarity_threshold', null)
+        # fastANI specific
+        self.fastani_kmer_size = A('fastani_kmer_size', null)
+        self.fragment_length = A('fragment_length', null)
+        self.min_num_fragments = A('min_num_fragments', null)
         # pyANI specific
         self.min_alignment_fraction = A('min_alignment_fraction', null)
         self.significant_alignment_length = A('significant_alignment_length', null)
@@ -72,7 +76,7 @@ class Dereplicate:
         self.sequence_source_provided = False
 
         self.sanity_check()
-        self.similarity_metric_name = self.get_similarity_metric_name()
+        self.program_info = self.get_program_specific_info()
 
         self.clusters = {}
         self.cluster_report = {}
@@ -81,11 +85,21 @@ class Dereplicate:
         self.genome_name_to_cluster_name = {}
 
 
-    def get_similarity_metric_name(self):
+    def get_program_specific_info(self):
         if self.program_name in ['pyANI']:
-            return 'percentage_identity' if not self.use_full_percent_identity else 'full_percentage_identity'
+            metric_name = 'percentage_identity' if not self.use_full_percent_identity else 'full_percentage_identity'
+            necessary_reports = [metric_name, 'alignment_coverage']
         elif self.program_name in ['sourmash']:
-            return 'mash_similarity'
+            metric_name = 'mash_similarity'
+            necessary_reports = [metric_name]
+        elif self.percentage_identity in ['fastANI']:
+            metric_name = 'ani'
+            necessary_reports = [metric_name]
+
+        return {
+            'metric_name': metric_name,
+            'necessary_reports': necessary_reports
+        }
 
 
     def is_genome_names_compatible_with_similarity_matrix(self, similarity_matrix, genome_names):
@@ -210,7 +224,7 @@ class Dereplicate:
     def gen_similarity_matrix(self):
         self.similarity.process(self.temp_dir)
 
-        similarity_matrix = self.similarity.results[self.similarity_metric_name]
+        similarity_matrix = self.similarity.results[self.program_info['metric_name']]
 
         run.info('%s similarity metric' % self.program_name, 'calculated')
 
@@ -226,17 +240,15 @@ class Dereplicate:
     def import_similarity_matrix(self):
         dir_name, dir_path = ('--ani-dir', self.ani_dir) if self.program_name in ['pyANI', 'fastANI'] else ('--mash-dir', self.mash_dir)
 
-        necessary_reports = [self.similarity_metric_name] + (['alignment_coverage'] if self.program_name in ['pyANI', 'fastANI'] else [])
-
         if filesnpaths.is_dir_empty(dir_path):
             raise ConfigError("The %s you provided is empty. What kind of game are you playing?" % dir_name)
         files_in_dir = os.listdir(dir_path)
 
-        for report in necessary_reports:
+        for report in self.program_info['necessary_reports']:
             report_name = report + ".txt"
             matching_filepaths = [f for f in files_in_dir if report_name in f]
 
-            if self.similarity_metric_name == 'percentage_identity':
+            if self.program_info['metric_name'] == 'percentage_identity':
                 # FIXME very very bad block of code here. Why should this method know about
                 # percentage_identity or full_percentage_identity?
                 matching_filepaths = [f for f in matching_filepaths if 'full_percentage_identity' not in f]
@@ -253,7 +265,7 @@ class Dereplicate:
 
         run.info('%s results directory imported from' % self.program_name, dir_path)
 
-        return self.similarity.results[self.similarity_metric_name]
+        return self.similarity.results[self.program_info['metric_name']]
 
 
     def clean(self):
@@ -1016,16 +1028,11 @@ class SourMash(GenomeSimilarity):
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
         self.min_similarity = A('min_mash_similarity', null) or 0
-        self.kmer_size = A('kmer_size', null)
+        self.kmer_size = A('kmer_size', null) or 13 # lucky number 13
         self.method = 'sourmash'
         self.similarity_type = 'SourMash'
 
-        self.adaptive_kmer = True if not self.kmer_size else False
-        self.program = sourmash.Sourmash(args) if not self.adaptive_kmer else sourmash.IterateKmerSourmash(args)
-
-        if self.adaptive_kmer:
-            run.warning("You didn't provide a kmer value, so anvi'o will find the 'best' kmer\
-                         value it can by maximizing the entropy of the similarity matrix.")
+        self.program = sourmash.Sourmash(args)
 
 
     def reformat_results(self, results):
