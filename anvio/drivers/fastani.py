@@ -179,7 +179,8 @@ class ManyToMany(FastANIDriver):
         self.progress.new('fastANI')
         self.progress.update('Many to Many ...')
 
-        exit_code = utils.run_command(command, self.log_file_path, run_dir=run_dir)
+        with utils.RunInDirectory(run_dir):
+            exit_code = utils.run_command(command, self.log_file_path)
 
         self.progress.end()
 
