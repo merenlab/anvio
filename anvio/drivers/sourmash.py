@@ -118,13 +118,17 @@ class Sourmash:
 
 
 class IterateKmerSourmash(Sourmash):
-    """This class runs sourmash iteratively until it finds the 'best' kmer based on entropy maximization.
+    """ This class runs sourmash iteratively until it finds the 'best' kmer based on entropy maximization.
 
     Parameters
     ==========
     method : str, "scan"
         The method to determine maximal entropy. "scan" simply tries all of the kmer values
         within a range and picks the highest.
+
+    Notes
+    =====
+    - Why on earth are you using this class?
     """
 
     def __init__(self, args, method='scan'):
@@ -228,8 +232,7 @@ class IterateKmerSourmash(Sourmash):
             if self.comprehensive:
                 self.calculate_comprehensive_stats(upper_triangular)
 
-        # return max(entropy_dict, key=entropy_dict.get)
-        return 13 # 13 always seems to be best
+        return max(entropy_dict, key=entropy_dict.get)
 
 
     def get_upper_triangular(self, matrix):
