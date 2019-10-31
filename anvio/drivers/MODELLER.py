@@ -287,11 +287,8 @@ class MODELLER:
         except ConfigError as e:
             *prefix, sub_version = self.up_to_date_modeller_exec.split('.')
             prefix, sub_version = ''.join(prefix), int(sub_version)
-            print(sub_version)
-            print(list(reversed(range(sub_version - 10, sub_version + 10))))
             for alternate_version in reversed(range(sub_version - 10, sub_version + 10)):
                 alternate_program = prefix + '.' + str(alternate_version)
-                print(alternate_program)
                 if utils.is_program_exists(alternate_program, dont_raise=True):
                     self.run.warning("Anvi'o didn't find %s to be a proper program, but it did \
                                       find a similarly named program %s, that it will use \
