@@ -785,7 +785,8 @@ class FastANI(GenomeSimilarity):
             query_targets=fastANI_input_file,
             reference_targets=fastANI_input_file,
             output_path=J(self.temp_dir, 'output'),
-            run_dir=self.temp_dir
+            run_dir=self.temp_dir,
+            name_conversion_dict={v: k for k, v in self.name_to_temp_path.items()}
         )
 
         self.cluster()
