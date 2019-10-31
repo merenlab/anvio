@@ -504,11 +504,10 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns=[]
 
 
 def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_index=False, index_label="index", naughty_characters=[-np.inf, np.inf], rep_str=""):
-    """
-    Stores a pandas DataFrame as a tab-delimited file.
+    """ Stores a pandas DataFrame as a tab-delimited file.
 
-    PARAMS
-    ======
+    Parameters
+    ==========
     d: pandas DataFrame
         DataFrame you want to save.
     output_path: string
@@ -525,7 +524,7 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
     rep_str: String (default = "")
         The string that elements belonging to naughty_characters are replaced by.
 
-    RETURNS
+    Returns
     =======
     output_path
     """
