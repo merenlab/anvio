@@ -2,6 +2,7 @@
 """Interface to fastANI."""
 
 import os
+import pandas as pd
 
 import anvio
 import anvio.utils as utils
@@ -60,6 +61,35 @@ class FastANIDriver:
         self.run.info('[fastANI] Log file path', self.log_file_path, nl_after=1)
 
 
+    def load_output_as_dataframe(self, output_path, name_conversion_dict=None):
+        names = ('query', 'reference', 'ani', 'mapping_fragments', 'total_fragments')
+        fastANI_output = pd.read_csv(output_path, sep='\t', header=None, names=names)
+        fastANI_output['alignment_fraction'] = fastANI_output['total_fragments'] / fastANI_output['mapping_fragments']
+
+        if name_conversion_dict:
+            for target in ['query', 'reference']:
+                fastANI_output[target] = fastANI_output[target].map(name_conversion_dict)
+
+        return fastANI_output
+
+
+    def gen_results_dict(self):
+        results = {
+            'ani': {},
+            'alignment_fraction': {},
+            'mapping_fragments': {},
+            'total_fragments': {},
+        }
+
+        for _, row in self.fastANI_output.iterrows():
+            query, reference = row['query'], row['reference']
+            for result_name in results:
+                if query not in results[result_name]:
+                    results[result_name][query] = {}
+                results[result_name][query][reference] = row[result_name]
+
+        return results
+
 
 class ManyToMany(FastANIDriver):
     """ Compare many genomes (the queries) to many other genomes (the references)
@@ -73,11 +103,7 @@ class ManyToMany(FastANIDriver):
         FastANIDriver.__init__(self, program_name, args, run, progress)
 
 
-    def gen_results_dict(self):
-        d = {}
-
-
-    def run_command(self, query_targets, reference_targets, output_path, run_dir=os.getcwd()):
+    def run_command(self, query_targets, reference_targets, output_path, run_dir=os.getcwd(), name_conversion_dict=None):
         """ Run the command
 
         Parameters
@@ -91,6 +117,10 @@ class ManyToMany(FastANIDriver):
             directory, not `run_dir`
         run_dir : string or Path-like, os.getcwd()
             Where should the command be run? The current directory is the default
+        name_conversion_dict : dict, None
+            The keys of `results` are by default the file paths of the genomes, since that's what
+            fastANI outputs. Pass an optional dictionary with <path>:<name> to convert the output.
+            Note: this effects both the raw output in `output_path` and `results`
 
         Returns
         =======
@@ -118,9 +148,13 @@ class ManyToMany(FastANIDriver):
 
         if int(exit_code):
             raise ConfigError("fastANI returned with non-zero exit code, there may be some errors. \
-                               please check the log file for details.")
+                    please check the log file for details.")
 
-        return self.gen_results_dict(output_path)
+        self.fastANI_output = self.load_output_as_dataframe(output_path, name_conversion_dict)
+        utils.store_dataframe_as_TAB_delimited_file(self.fastANI_output, output_path)
 
+        self.results = self.gen_results_dict()
+        print(self.results)
+        return self.results
 
 
