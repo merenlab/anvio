@@ -22,7 +22,7 @@ __maintainer__ = "Ozcan Esen"
 __email__ = "ozcanesen@gmail.com"
 __tags__ = ['ani', 'dereplication', 'redundancy']
 __requires__ = ['external-genomes', 'internal-genomes', 'pan-db']
-__provides__ = ['genome-similarity', 'genome-similarity']
+__provides__ = ['genome-similarity']
 __description__ = ("Export sequences from sequence sources and compute a similarity metric (e.g. ANI). If a Pan Database "
                    "is given anvi'o will write computed output to misc data tables of Pan Database.")
 
@@ -63,13 +63,22 @@ if __name__ == '__main__':
                         on the pan interactive interface through the 'layers' tab."}))
 
     group_PROGRAM = parser.add_argument_group('Program', "Tell anvi'o which similarity program to run.")
-    group_PROGRAM.add_argument('--program', type=str, default='pyANI', help="Tell anvi'o which program to run to process genome similarity.\
-                        You can either use pyANI for ANI calculations or sourmash for mash similarity. You must have\
-                        the necessary binary in path for the program you choose.",\
-                        choices=['pyANI','sourmash'])
+    group_PROGRAM.add_argument('--program', type=str, default='fastANI', help="Tell anvi'o which program to run to process genome similarity.\
+                        For ANI, you can either use pyANI or fastANI. If accuracy is paramount, or for dealing with genomes < 80 percent similar,\
+                        pyANI is what we recommend. However, fastANI is ORDERS of magnitude faster and sacrifices very little accuracy above\
+                        80 percent similarity. If you for some reason want to use mash similarity, you can use sourmash, but its really\
+                        not intended for genome comparisons.",
+                        choices=['pyANI','fastANI','sourmash'])
+
+    group_FASTANI = parser.add_argument_group('fastANI Settings', "Tell anvi'o to tell fastANI what settings to set.\
+                                                                   Only if `--program` is set to `pyANI`")
+    group_FASTANI.add_argument('--fastani-kmer-size', type=int, default=16, help="Choose a kmer. The default is %(default)s.")
+    group_FASTANI.add_argument('--fragment-length', type=int, default=3000, help="Choose a fragment length. The default is %(default)s.")
+    group_FASTANI.add_argument('--min-num-fragments', type=int, default=50, help="Choose the minimum number of fragment lengths to that can\
+                                                                                  can be trusted. The default is %(default)s.")
 
     group_PYANI = parser.add_argument_group('pyANI Settings', "Tell anvi'o to tell pyANI what method you wish to use\
-                                             and what settings to set. Only if `--program` is set to `pyANI` (which is the default)")
+                                             and what settings to set. Only if `--program` is set to `pyANI`")
     group_PYANI.add_argument('--method', default='ANIb', type=str, help="Method for pyANI. The default is %(default)s.\
                          You must have the necessary binary in path for whichever method you choose. According to\
                          the pyANI help for v0.2.7 at https://github.com/widdowquinn/pyani, the method 'ANIm' uses\
@@ -83,8 +92,8 @@ if __name__ == '__main__':
 
     group_SOURMASH = parser.add_argument_group('Sourmash Settings', "Tell anvi'o to tell sourmash what settings to set.\
                                                 Only if `--program` is set to `sourmash`")
-    group_SOURMASH.add_argument('--kmer-size', type=int, default=51, metavar='INT', help="Set the k-mer size for mash\
-                        similarity checks. The sourmash default is 51. See the sourmash documentation for details.")
+    group_SOURMASH.add_argument('--kmer-size', type=int, default=None, metavar='INT', help="Set the k-mer size for mash\
+                        similarity checks. We found 13 in almost all cases correlates best with alignment-based ANI.")
     group_SOURMASH.add_argument('--scale', type=int, default=1000, metavar='INT', help='Set the compression ratio for\
                         fasta signature file computations. The default is 1000. Smaller ratios decrease sensitivity,\
                         while larger ratios will lead to large fasta signatures.')
