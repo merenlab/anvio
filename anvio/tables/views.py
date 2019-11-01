@@ -76,7 +76,14 @@ class TablesForViews(Table):
                                    problem: '%s'." % (table_name, self.db_path, str(e)))
 
         db_entries = [tuple([item] + [data_dict[item][h] for h in table_structure[1:]]) for item in data_dict]
-        anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), db_entries)
+
+        try:
+            anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), db_entries)
+        except Exception as e:
+            raise ConfigError("Something bad happened while anvi'o was trying to insert %d entries into the\
+                               table '%s' which contained a table structure with %d columns in '%s' :( This\
+                               is the error we got back from the database module: \"%s\"." % \
+                                    (len(db_entries), table_name, len(table_structure), self.db_path, e))
 
         if view_name and view_name not in views_in_db:
             anvio_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.views_table_name, (view_name, table_name))
