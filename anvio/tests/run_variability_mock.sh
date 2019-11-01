@@ -30,10 +30,10 @@ then
     cd sandbox
     rm -rf test-output
     mkdir test-output
-    
+
     INFO "Anvo'o version"
     anvi-profile --version
-    
+
     INFO "Generating a Bowtie2 ref"
     bowtie2-build single_contig.fa test-output/single_contig
 
@@ -51,10 +51,10 @@ then
         INFO "Profiling the BAM file"
         anvi-profile -i test-output/$sample.bam -c test-output/single_contig.db -o test-output/$sample-PROFILE -M 0 --profile-SCVs
     done
-    
+
 
     INFO "Merging all"
-    anvi-merge test-output/*/PROFILE.db -c test-output/single_contig.db -o test-output/SAMPLES-MERGED --skip-concoct-binning
+    anvi-merge test-output/*/PROFILE.db -c test-output/single_contig.db -o test-output/SAMPLES-MERGED
 
 elif [ $1 = "continue"  ]
 then
