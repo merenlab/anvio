@@ -19,7 +19,7 @@ import anvio.genomedescriptions as genomedescriptions
 from itertools import combinations
 
 from anvio.errors import ConfigError
-from anvio.drivers import pyani, sourmash
+from anvio.drivers import pyani, sourmash, fastani
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.miscdata import TableForLayerOrders
 
@@ -54,6 +54,10 @@ class Dereplicate:
         self.program_name = A('program', null) or 'pyANI'
         self.representative_method = A('representative_method', null)
         self.similarity_threshold = A('similarity_threshold', null)
+        # fastANI specific
+        self.fastani_kmer_size = A('fastani_kmer_size', null)
+        self.fragment_length = A('fragment_length', null)
+        self.min_num_fragments = A('min_num_fragments', null)
         # pyANI specific
         self.min_alignment_fraction = A('min_alignment_fraction', null)
         self.significant_alignment_length = A('significant_alignment_length', null)
@@ -72,7 +76,7 @@ class Dereplicate:
         self.sequence_source_provided = False
 
         self.sanity_check()
-        self.similarity_metric_name = self.get_similarity_metric_name()
+        self.program_info = self.get_program_specific_info()
 
         self.clusters = {}
         self.cluster_report = {}
@@ -81,11 +85,21 @@ class Dereplicate:
         self.genome_name_to_cluster_name = {}
 
 
-    def get_similarity_metric_name(self):
-        if self.program_name in ['pyANI']:
-            return 'percentage_identity' if not self.use_full_percent_identity else 'full_percentage_identity'
-        elif self.program_name in ['sourmash']:
-            return 'mash_similarity'
+    def get_program_specific_info(self):
+        if self.program_name == 'pyANI':
+            metric_name = 'percentage_identity' if not self.use_full_percent_identity else 'full_percentage_identity'
+            necessary_reports = [metric_name, 'alignment_coverage']
+        elif self.program_name == 'sourmash':
+            metric_name = 'mash_similarity'
+            necessary_reports = [metric_name]
+        elif self.program_name == 'fastANI':
+            metric_name = 'ani'
+            necessary_reports = [metric_name]
+
+        return {
+            'metric_name': metric_name,
+            'necessary_reports': necessary_reports
+        }
 
 
     def is_genome_names_compatible_with_similarity_matrix(self, similarity_matrix, genome_names):
@@ -128,7 +142,7 @@ class Dereplicate:
                               your genomes. Please take a close look at your parameters: either --program needs to be\
                               set, or an importable directory (e.g. --ani-dir, --mash-dir, etc) needs to be provided.")
 
-        if self.program_name not in ['pyANI', 'sourmash']:
+        if self.program_name not in ['pyANI', 'fastANI', 'sourmash']:
             raise ConfigError("Anvi'o is impressed by your dedication to dereplicate your genomes through %s, but\
                               %s is not compatible with `anvi-dereplicate-genomes`. Anvi'o can only work with pyANI\
                               and sourmash separately." % (self.program_name, self.program_name))
@@ -158,17 +172,13 @@ class Dereplicate:
                          are now burdened with the responsibility of knowing what parameters you used to generate\
                          these results.%s" % additional_msg)
 
-        if self.ani_dir and not self.program_name in ['pyANI']:
-            run.warning("You provided a pre-existing directory of ANI results (--ani-dir), but also provided a program\
-                        name ('%s') that was not compatible with ANI. Anvi'o knows that you want to use the pre-existing\
-                        results, so she cunningly ignores this slip-up." % self.program_name)
-            self.program_name = 'pyANI'
+        if self.ani_dir and not self.program_name in ['pyANI', 'fastANI']:
+            raise ConfigError("You provided a pre-existing directory of ANI results (--ani-dir), but also provided a program\
+                               name ('%s') that was not compatible with ANI." % self.program_name)
 
         if self.mash_dir and not self.program_name in ['sourmash']:
-            run.warning("You provided a pre-existing directory of mash results (--mash-dir), but also provided a program\
-                        name ('%s') that was not compatible with mash. Anvi'o knows that you want to use the pre-existing\
-                        results, so she cunningly ignores this slip-up." % self.program_name)
-            self.program_name = 'sourmash'
+            raise ConfigError("You provided a pre-existing directory of mash results (--mash-dir), but also provided a program\
+                               name ('%s') that was not compatible with mash." % self.program_name)
 
         if self.min_alignment_fraction < 0 or self.min_alignment_fraction > 1:
             if self.program_name == "pyANI":
@@ -214,7 +224,17 @@ class Dereplicate:
     def gen_similarity_matrix(self):
         self.similarity.process(self.temp_dir)
 
-        similarity_matrix = self.similarity.results[self.similarity_metric_name]
+        try:
+            similarity_matrix = self.similarity.results[self.program_info['metric_name']]
+        except KeyError:
+            # With sourmash you don't always know the metric name, you only be sure of what it
+            # contains. This is because the kmer is a part of the result name. This is my fault but
+            # I'm too lazy to fix the design because sourmash is not appropriate for genome
+            # comparison anyways. 
+            for result_name in self.similarity.results:
+                if self.program_info['metric_name'] in result_name:
+                    similarity_matrix = self.similarity.results[result_name]
+                    break
 
         run.info('%s similarity metric' % self.program_name, 'calculated')
 
@@ -228,19 +248,17 @@ class Dereplicate:
 
 
     def import_similarity_matrix(self):
-        dir_name, dir_path = ('--ani-dir', self.ani_dir) if self.program_name in ['pyANI'] else ('--mash-dir', self.mash_dir)
-
-        necessary_reports = [self.similarity_metric_name] + (['alignment_coverage'] if self.program_name in ['pyANI'] else [])
+        dir_name, dir_path = ('--ani-dir', self.ani_dir) if self.program_name in ['pyANI', 'fastANI'] else ('--mash-dir', self.mash_dir)
 
         if filesnpaths.is_dir_empty(dir_path):
             raise ConfigError("The %s you provided is empty. What kind of game are you playing?" % dir_name)
         files_in_dir = os.listdir(dir_path)
 
-        for report in necessary_reports:
+        for report in self.program_info['necessary_reports']:
             report_name = report + ".txt"
             matching_filepaths = [f for f in files_in_dir if report_name in f]
 
-            if self.similarity_metric_name == 'percentage_identity':
+            if self.program_info['metric_name'] == 'percentage_identity':
                 # FIXME very very bad block of code here. Why should this method know about
                 # percentage_identity or full_percentage_identity?
                 matching_filepaths = [f for f in matching_filepaths if 'full_percentage_identity' not in f]
@@ -257,7 +275,7 @@ class Dereplicate:
 
         run.info('%s results directory imported from' % self.program_name, dir_path)
 
-        return self.similarity.results[self.similarity_metric_name]
+        return self.similarity.results[self.program_info['metric_name']]
 
 
     def clean(self):
@@ -611,6 +629,7 @@ class GenomeSimilarity:
         self.output_dir = A('output_dir', null)
         self.pan_db = A('pan_db', null)
         self.output_dir_exists = A('output_dir_exists', null)
+        self.just_do_it = A('just_do_it', null)
 
         if (self.internal_genomes or self.external_genomes):
             self.genome_desc = genomedescriptions.GenomeDescriptions(args, run = terminal.Run(verbose=False))
@@ -627,7 +646,7 @@ class GenomeSimilarity:
 
     def sanity_check(self, ok_if_exists):
         clustering.is_distance_and_linkage_compatible(self.clustering_distance, self.clustering_linkage)
-        filesnpaths.check_output_directory(self.output_dir, ok_if_exists=ok_if_exists)
+        filesnpaths.check_output_directory(self.output_dir, ok_if_exists=(ok_if_exists or self.just_do_it))
 
         if self.pan_db:
             utils.is_pan_db(self.pan_db)
@@ -646,7 +665,7 @@ class GenomeSimilarity:
                              '%s'. You can find the offending file if you search for the output file in\
                              the temporary output directory '%s'. You potentially waited so long, so anvi'o\
                              will continue as if nothing happened. If you want to diagnose this problem, rerun with\
-                             --debug" % (report_name, os.path.join(self.temp_dir, 'output')))
+                             --debug" % (report_name, J(self.temp_dir, 'output')))
 
 
     def add_to_pan_db(self):
@@ -689,7 +708,7 @@ class GenomeSimilarity:
     def report(self, output_dir = None, ok_if_exists = False):
         output_dir = output_dir if output_dir else self.output_dir
 
-        filesnpaths.check_output_directory(output_dir, ok_if_exists=ok_if_exists)
+        filesnpaths.check_output_directory(output_dir, ok_if_exists=(ok_if_exists or self.just_do_it))
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
 
@@ -747,7 +766,62 @@ class GenomeSimilarity:
 
 
 
+class FastANI(GenomeSimilarity):
+    def __init__(self, args):
+        self.args = args
+        self.results = {}
+
+        GenomeSimilarity.__init__(self, args)
+
+        self.similarity_type = 'ANI'
+        self.method = 'fastANI'
+
+        self.program = fastani.ManyToMany(args=self.args)
+
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+
+        self.fastANI_sanity_check()
+
+
+    def fastANI_sanity_check(self):
+        pass
+
+
+    def create_fasta_path_file(self):
+        """ Creates a text file with the paths of all the fasta files
+
+        It is the file created here that is passed to fastANI as its --rl and --ql parameters
+        """
+        file_with_fasta_paths = J(self.temp_dir, 'fasta_paths.txt')
+        with open(file_with_fasta_paths, 'w') as f:
+            f.write('\n'.join(self.name_to_temp_path.values()) + '\n')
+
+        return file_with_fasta_paths
+
+
+    def process(self, directory=None):
+        self.temp_dir = directory if directory else self.get_fasta_sequences_dir()
+        fastANI_input_file = self.create_fasta_path_file()
+
+        self.results = self.program.run_command(
+            query_targets=fastANI_input_file,
+            reference_targets=fastANI_input_file,
+            output_path=J(self.temp_dir, 'output'),
+            run_dir=self.temp_dir,
+            name_conversion_dict={v: k for k, v in self.name_to_temp_path.items()}
+        )
+
+        self.cluster()
+
+        if directory is None:
+            shutil.rmtree(self.temp_dir)
+
+
+
 class ANI(GenomeSimilarity):
+    """ This class handles specifically pyANI. See FastANI class for fastani handle """
+
     def __init__(self, args):
         self.args = args
         self.results = {}
@@ -785,8 +859,7 @@ class ANI(GenomeSimilarity):
         if len(self.genome_names) > 50:
             run.warning("You are comparing %d genomes. That's no small task. For context, 10 Prochlorococcus genomes\
                          using 4 threads took 2m20s on a 2016 Macbook Pro. And 50 genomes took 49m53s. Consider\
-                         instead using sourmash (--program sourmash). On the same Macbook with 1 thread using\
-                         sourmash, these times were 12s and 42s, respectively." % len(self.genome_names))
+                         instead using fastANI (--program fastANI). It's orders of magnitudes faster." % len(self.genome_names))
 
 
     def restore_names_in_dict(self, input_dict):
@@ -961,14 +1034,15 @@ class SourMash(GenomeSimilarity):
 
         self.results = {}
         self.clusterings = {}
-        self.program = sourmash.Sourmash(args)
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
         self.min_similarity = A('min_mash_similarity', null) or 0
-        self.kmer_size = A('kmer_size', null)
-        self.method = 'sourmash_kmer_%d' % (self.kmer_size)
-        self.similarity_type = 'SourMash_kmer_%d' % (self.kmer_size)
+        self.kmer_size = A('kmer_size', null) or 13 # lucky number 13
+        self.method = 'sourmash'
+        self.similarity_type = 'SourMash'
+
+        self.program = sourmash.Sourmash(args)
 
 
     def reformat_results(self, results):
@@ -997,8 +1071,9 @@ class SourMash(GenomeSimilarity):
     def process(self, directory=None):
         self.temp_dir = directory if directory else self.get_fasta_sequences_dir()
 
-        self.results['mash_similarity'] = self.program.process(self.temp_dir, self.name_to_temp_path.values())
-        self.results['mash_similarity'] = self.reformat_results(self.results['mash_similarity'])
+        self.results = self.program.process(self.temp_dir, self.name_to_temp_path.values())
+        for report in self.results:
+            self.results[report] = self.reformat_results(self.results[report])
 
         self.cluster()
 
@@ -1008,5 +1083,6 @@ class SourMash(GenomeSimilarity):
 
 program_class_dictionary = {
     'pyANI': ANI,
+    'fastANI': FastANI,
     'sourmash': SourMash,
 }
