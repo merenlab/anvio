@@ -631,6 +631,12 @@ def transpose_tab_delimited_file(input_file_path, output_file_path):
     return output_file_path
 
 
+def get_list_in_chunks(input_list, num_items_in_each_chunk=1000):
+    """Yield smaller bits of a list"""
+    for index in range(0, len(input_list), num_items_in_each_chunk):
+        yield input_list[index:index + num_items_in_each_chunk]
+
+
 def split_fasta(input_file_path, parts=1, prefix=None):
     if not prefix:
         prefix = os.path.abspath(input_file_path)
