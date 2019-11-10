@@ -376,24 +376,87 @@ class DB:
             else:
                 return {}
 
-        if keys_of_interest:
-            keys_of_interest = set(keys_of_interest)
-
-        results_dict = {}
-
         rows = self.get_all_rows_from_table(table_name)
 
+        #-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
+        #
+        # SAD TABLES BEGIN
+        #
+        # FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
+        # this is one of the most critical design mistakes that remain in anvi'o. we set `entry_id` values
+        # in table classes depending on the data that will be entered into the database. this is how it goes:
+        # anvi'o learns the highest entry id in a table (to which it is about to enter some data), for each db
+        # entry assigns a new `entry_id`, enters the data. it is all good when there is a single process doing it.
+        # but when there are multiple processes running in parallel, sometimes race conditions occur: two processes
+        # learn the max entry id about the same time, and when they finally enter the data to the db, some entries
+        # end up not being unique. this is a toughie because sometimes entry ids are used to connect distinct 
+        # information from different tables, so they must be known before the data goes into the database, etc.
+        # when these race conditions occur, anvi'o gives an error telling the user kindly that they are fucked. but in
+        # some cases it is possible to recover from that (THE CODE BELOW TRIES TO DO THAT) by reassigning all ids on the
+        # fly to the resulting data dictionary (i.e., not paying atention to entry ids in the database and basically using
+        # new ones to avoid key information to not be overwritten due to the lack of unique entry ids which become keys for
+        # the data dictionary). in other cases there are no ways to fix it, such as for HMM tables.. The ACTUAL SOLUTION to\
+        # this is to remove `entry_id` columns from every table in anvi'o, and using SQLite indexes as entry ids.
         if table_name not in tables.tables_without_unique_entry_ids:
             unique_keys = set([r[0] for r in rows])
             if len(unique_keys) != len(rows):
-                raise ConfigError("This is one of the core functions of anvi'o you never want to hear from, but there seems\
-                                   to be something wrong with the table '%s' that you are trying to read from. While there\
-                                   are %d items in this table, there are only %d unique keys, which means some of them are\
-                                   going to be overwritten when this function creates a final dictionary of data to return.\
-                                   This may be a programmer error when the data was being inserted into the database, but\
-                                   needs fixin' before we can continue. If you are a user, please get in touch with anvi'o\
-                                   developers about this error. If you are a programmer, you probably did something\
-                                   wrong :(" % (table_name, len(rows), len(unique_keys)))
+                if anvio.FIX_SAD_TABLES:
+                    if 'hmm' in table_name:
+                        raise ConfigError("You asked anvi'o to fix sad tables, but the sad table you're trying to fix happens to\
+                                           be related to HMM operations in anvi'o, where supposedly unique entries tie together\
+                                           multiple tables. Long story short, solving this while ensuring everything is done right\
+                                           is quite difficult and there is no reason to take any risks. The best you can do is to\
+                                           remove all HMMs from your contigs database, and re-run them with a single instance of\
+                                           `anvi-run-hmms` command (you can use multiple threads, but you shouldn't send multiple\
+                                           `anvi-run-hmms` to your cluster to be run on the same contigs database in parallel --\
+                                           that's what led you to this point at the first place). Apologies for this bioinformatics\
+                                           poo poo :( It is all on us.")
+
+                    run.info_single("You have sad tables. You have used `--fix-sad-tables` flag. Now anvi'o will try to fix them...", mc="red")
+
+                    # here we will update the rows data with a small memory fingerprint:
+                    entry_id_counter = 0
+                    for i in range(0, len(rows)):
+                        row = rows[i]
+                        rows[i] = [entry_id_counter] + list(row[1:])
+                        entry_id_counter += 1
+
+                    # now we will remove the previous table, and enter the new data with up-to-date entry ids
+                    table_structure = self.get_table_structure(table_name)
+
+                    # delete the table content *gulp*
+                    self._exec('''DELETE FROM %s''' % table_name)
+
+                    # enter corrected data
+                    self._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), rows)
+
+                    run.info_single("If you are seeing this line, it means anvi'o managed to fix those sad tables. No more sad!\
+                                     But please make double sure that nothing looks funny in your results. If you start getting\
+                                     errors and you wish to contact us for that, please don't forget to mention that you did try\
+                                     to fix your sad tables.", mc="green")
+                else:
+                    raise ConfigError("This is one of the core functions of anvi'o you never want to hear from, but there seems\
+                                       to be something wrong with the table '%s' that you are trying to read from. While there\
+                                       are %d items in this table, there are only %d unique keys, which means some of them are\
+                                       going to be overwritten when this function creates a final dictionary of data to return.\
+                                       This often happens when the user runs multiple processes in parallel that tries to write\
+                                       to the same table. For instance, running a separate instance of `anvi-run-hmms` on the same\
+                                       contigs database with different HMM profiles. Anvi'o is very sad for not handling this\
+                                       properly, but such database tables need fixin' before things can continue :( If you would\
+                                       like anvi'o to try to fix this, please run the same command you just run with the flag\
+                                       `--fix-sad-tables`. If you do that it is a great idea to backup your original database\
+                                       and then very carefully check the results to make sure things do not look funny." \
+                                                    % (table_name, len(rows), len(unique_keys)))
+
+        #
+        # SAD TABLES END
+        #
+        #----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8-----
+
+        results_dict = {}
+
+        if keys_of_interest:
+            keys_of_interest = set(keys_of_interest)
 
         for row in rows:
             entry = {}
