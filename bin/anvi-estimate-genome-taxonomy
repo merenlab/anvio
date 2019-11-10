@@ -71,6 +71,7 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     groupE = parser.add_argument_group('ADVANCED', "Very pro-like stuff.")
+    groupE.add_argument(*anvio.A('simplify-taxonomy-information'), **anvio.K('simplify-taxonomy-information'))
     groupE.add_argument(*anvio.A('compute-scg-coverages'), **anvio.K('compute-scg-coverages'))
     groupE.add_argument(*anvio.A('update-profile-db-with-taxonomy'), **anvio.K('update-profile-db-with-taxonomy'))
 
