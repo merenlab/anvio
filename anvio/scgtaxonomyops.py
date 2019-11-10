@@ -493,7 +493,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         # behavior needs to change, the code down below must be updates. the purpose
         # of this is not to have a comprehensive list of EVERY single GTDB-specific
         # clade designations, but to make sure teh vast majority of names are covered.
-        GTDB_specific_clade_prefixes = ['CAG', 'UBA']
+        GTDB_specific_clade_prefixes = ['CAG', 'GCA', 'UBA', 'FUL', 'PAL', '2-0', 'Fen']
 
         taxonomic_levels_to_nullify = []
 
