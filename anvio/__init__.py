@@ -17,6 +17,7 @@ anvio_codename = 'esther'
 
 DEBUG = '--debug' in sys.argv
 FORCE = '--force' in sys.argv
+FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
 
 def P(d, dont_exit=False):
     """Poor man's debug output printer during debugging."""
@@ -46,7 +47,7 @@ def get_args(parser):
        to see can still be sorted out.
     """
 
-    allowed_ad_hoc_flags = ['--version', '--debug', '--force']
+    allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables']
 
     args, unknown = parser.parse_known_args()
 
