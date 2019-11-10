@@ -423,10 +423,7 @@ class DB:
         return results_dict
 
 
-    def get_table_as_dataframe(self, table_name,
-                               table_structure  = None, columns_of_interest = None,
-                               keys_of_interest = None, omit_parent_column  = False,
-                               error_if_no_data = True, where_clause        = None):
+    def get_table_as_dataframe(self, table_name, table_structure  = None, columns_of_interest = None, keys_of_interest = None, omit_parent_column  = False, error_if_no_data = True, where_clause = None):
         """get_table_as_dict() uses the first column as the key in the resulting
            dictionary. For pandas DataFrames there are two reasonable design
            approaches. The first mimics this approach and uses the first column as
