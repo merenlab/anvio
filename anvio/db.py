@@ -29,6 +29,13 @@ __status__ = "Development"
 
 run = terminal.Run()
 
+
+def get_list_in_chunks(input_list, num_items_in_each_chunk=1000):
+    """Yield smaller bits of a list"""
+    for index in range(0, len(input_list), num_items_in_each_chunk):
+        yield input_list[index:index + num_items_in_each_chunk]
+
+
 class DB:
     def __init__(self, db_path, client_version, new_database=False, ignore_version=False):
         self.db_path = db_path
