@@ -438,6 +438,81 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
                                          ', '.join(["%s (%d)" % (g, self.frequency_of_scgs_with_taxonomy[g]) for g in self.frequency_of_scgs_with_taxonomy])), nl_before=1)
 
 
+    def trim_taxonomy_dict_entry(self, taxonomy_dict_entry):
+        """ Remove excess information from taxonomy information.
+
+        The purpose of this is to give an option to the user to simplify GTDB names, that
+        will have a text information for every level of taxonomy depending on what branches
+        genomes fit, but it is not always helpful to the user. Such as this one:
+
+             t_domain Bacteria
+             t_phylum Firmicutes
+             t_class Clostridia
+             t_order Monoglobales
+             t_family UBA1381
+             t_genus CAG-41
+             t_species CAG-41 sp900066215
+
+         in this case the user may want to get this instead:
+
+             t_domain Bacteria
+             t_phylum Firmicutes
+             t_class Clostridia
+             t_order Monoglobales
+             t_family None
+             t_genus None
+             t_species None
+
+         So this function will take a taxonomy dict entry , and will return a simplified
+         version of it if trimming is applicable.
+
+        Paremeters
+        ==========
+        taxonomy_dict_entry: dict
+            a dictionary that contains keys for all taxon names. such as this one:
+                {[...],
+                 't_domain': 'Bacteria',
+                 't_phylum': 'Firmicutes',
+                 't_class': 'Clostridia',
+                 't_order': 'Oscillospirales',
+                 't_family': 'Acutalibacteraceae',
+                 't_genus': 'Ruminococcus',
+                 't_species': 'Ruminococcus sp002491825'
+                }
+         """
+
+        # for optimization, these letters should all have three characters. if that
+        # behavior needs to change, the code down below must be updates. the purpose
+        # of this is not to have a comprehensive list of EVERY single GTDB-specific
+        # clade designations, but to make sure teh vast majority of names are covered.
+        GTDB_specific_clade_prefixes = ['CAG', 'UBA']
+
+        taxonomic_levels_to_nullify = []
+
+        for taxonomic_level in self.levels_of_taxonomy[::-1]:
+            if not taxonomy_dict_entry[taxonomic_level]:
+                continue
+
+            if taxonomic_level == 't_species':
+                species_name = taxonomy_dict_entry[taxonomic_level].split(' ')[1]
+                try:
+                    int(species_name[2])
+                    taxonomic_levels_to_nullify.append(taxonomic_level)
+                except:
+                    None
+            else:
+                if taxonomy_dict_entry[taxonomic_level][0:3] in GTDB_specific_clade_prefixes:
+                    taxonomic_levels_to_nullify.append(taxonomic_level)
+
+        # this is the best way to make sure we are not going to nullify order, but leave behind a family name.
+        if taxonomic_levels_to_nullify:
+            level_below_which_to_nullify = min([self.levels_of_taxonomy.index(l) for l in taxonomic_levels_to_nullify])
+            for taxonomic_level in self.levels_of_taxonomy[level_below_which_to_nullify:]:
+                taxonomy_dict_entry[taxonomic_level] = None
+
+        return taxonomy_dict_entry
+
+
     def get_consensus_taxonomy(self, scg_taxonomy_dict):
         """Takes in a scg_taxonomy_dict, returns a final taxonomic string that summarize all"""
 
