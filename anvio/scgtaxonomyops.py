@@ -354,6 +354,8 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
 
     def init_scg_data(self):
+        """Initialize SCG taxonomy for the entire contigs database"""
+
         if not self.contigs_db_path:
             return None
 
