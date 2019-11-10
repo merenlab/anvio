@@ -438,10 +438,12 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
         self.frequency_of_scgs_with_taxonomy = OrderedDict(sorted([(g, len(self.scg_name_to_gene_caller_id_dict[g])) for g in self.scg_name_to_gene_caller_id_dict], key = lambda x: x[1], reverse=True))
 
-        self.run.info_single("A total of %s single-copy core genes with taxonomic affiliations were successfuly initialized\
-                              from the contigs database 🎉 Following shows the frequency of these SCGs: %s." % \
-                                        (pp(len(self.gene_callers_id_to_scg_taxonomy_dict)),
-                                         ', '.join(["%s (%d)" % (g, self.frequency_of_scgs_with_taxonomy[g]) for g in self.frequency_of_scgs_with_taxonomy])), nl_before=1)
+        if self.metagenome_mode or anvio.DEBUG:
+            self.run.info_single("A total of %s single-copy core genes with taxonomic affiliations were successfuly initialized\
+                                  from the contigs database 🎉 Following shows the frequency of these SCGs: %s." % \
+                                            (pp(len(self.gene_callers_id_to_scg_taxonomy_dict)),
+                                             ', '.join(["%s (%d)" % (g, self.frequency_of_scgs_with_taxonomy[g]) \
+                                                                for g in self.frequency_of_scgs_with_taxonomy])), nl_before=1)
 
 
     def trim_taxonomy_dict_entry(self, taxonomy_dict_entry):
