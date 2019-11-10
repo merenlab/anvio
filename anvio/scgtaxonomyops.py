@@ -360,7 +360,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
             return None
 
         self.progress.new('Initializing')
-        self.progress.update('Working on SCG taxonomy dictionary')
+        self.progress.update('SCG taxonomy dictionary')
 
         for scg_name in self.SCGs:
             self.scg_name_to_gene_caller_id_dict[scg_name] = set([])
@@ -410,20 +410,22 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         # NOTE: This will modify the taxonomy strings read from the contigs database. see the
         # function header for `trim_taxonomy_dict_entry` for more information.
         if self.simplify_taxonomy_information:
+            self.progress.update('SCG taxonomy dicts ... trimming main')
             for key in scg_taxonomy_table:
                 scg_taxonomy_table[key] = self.trim_taxonomy_dict_entry(scg_taxonomy_table[key])
 
+        self.progress.update('SCG taxonomy dicts ... building g->tax')
         for entry in scg_taxonomy_table.values():
             gene_callers_id = entry['gene_callers_id']
             self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id] = entry
 
+        self.progress.update('SCG taxonomy dicts ... building tax->g')
         for entry in self.gene_callers_id_to_scg_taxonomy_dict.values():
             scg_gene_name = entry['gene_name']
             gene_callers_id = entry['gene_callers_id']
-
             self.scg_name_to_gene_caller_id_dict[scg_gene_name].add(gene_callers_id)
 
-        self.progress.update("Finalizing main dictionaries")
+        self.progress.update('SCG taxonomy dicts ... building s->g + g->s')
         for split_name, gene_callers_id in genes_in_splits:
             if gene_callers_id not in self.gene_callers_id_to_scg_taxonomy_dict:
                 continue
