@@ -69,6 +69,7 @@ __status__ = "Development"
 pp = terminal.pretty_print
 run = terminal.Run()
 progress = terminal.Progress()
+progress_quiet = terminal.Progress(verbose=False)
 P = lambda x, y: float(x) * 100 / float(y)
 
 
@@ -1814,7 +1815,7 @@ class Bin:
         if self.summary.quick:
             return
 
-        s = SequencesForHMMHits(self.summary.contigs_db_path)
+        s = SequencesForHMMHits(self.summary.contigs_db_path, split_names_of_interest=self.split_names, progress=progress_quiet)
         hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits({self.bin_id: self.split_names})
 
         single_copy_gene_hmm_sources = [hmm_search_source for hmm_search_type, hmm_search_source in self.summary.hmm_searches_header]
