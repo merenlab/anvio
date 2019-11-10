@@ -1421,6 +1421,63 @@ def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=Fal
     return translated_sequence
 
 
+def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
+    """ Tests whether a gene sequence (amino acid or nucleotide) is clean
+
+    Parameters
+    ==========
+    seq : str
+        A string of amino acid or nucleotide sequence
+    amino_acid : bool, False
+        If True, the sequence is assumed to be an amino acid sequence
+    can_end_with_stop : bool, False
+        If True, the sequence can, but does not have to, end with * if amino_acid=True, or one of
+        <TAG, TGA, TAA> if amino_acid=False.
+
+    Returns
+    =======
+    value : bool
+
+    Notes
+    =====
+    - A 'clean gene' depends on `amino_acid`. If amino_acid=True, must contain only the 20 1-letter
+      codes (case insensitive) and start with M. If amino_acid=False, must contain only A,C,T,G
+      (case insenstive), start with ATG, and have length divisible by 3. If can_end_with_stop=True,
+      `seq` can end with a stop. If any intermediate  and in-frame stop codons are found, the gene
+      is not clean
+    """
+    seq = seq.upper()
+
+    start_char = 'M' if amino_acid else 'ATG'
+    end_chars = ['*'] if amino_acid else ['TAG', 'TGA', 'TAA']
+
+    permissible_chars = (set(constants.AA_to_single_letter_code.values())
+                         if amino_acid
+                         else set(constants.codons)) - set(end_chars)
+
+    if not amino_acid:
+        if len(seq) % 3:
+            return False
+
+        new_seq = [] # list of length-3 strings
+        for i in range(0, len(seq), 3):
+            new_seq.append(seq[i:i+3])
+
+        seq = new_seq
+
+    if not seq[0] == start_char:
+        return False
+
+    for element in seq[:-1]:
+        if element in end_chars or element not in permissible_chars:
+            return False
+
+    if seq[-1] in end_chars:
+        return True if can_end_with_stop else False
+    else:
+        return True if seq[-1] in permissible_chars else False
+
+
 def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):
 
     list_of_codons = get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict)
