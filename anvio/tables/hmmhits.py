@@ -35,7 +35,7 @@ pp = terminal.pretty_print
 
 
 class TablesForHMMHits(Table):
-    def __init__(self, db_path, num_threads_to_use=1, run=run, progress=progress):
+    def __init__(self, db_path, num_threads_to_use=1, run=run, progress=progress, initializing_for_deletion=False):
         self.num_threads_to_use = num_threads_to_use
         self.db_path = db_path
 
@@ -62,8 +62,9 @@ class TablesForHMMHits(Table):
                                   sources only operate on DNA sequences, and at this point it doesn't know which HMMs you wish to run.\
                                   If the lack of genes causes a problem, you will get another error message later probably :/")
 
-        self.set_next_available_id(t.hmm_hits_table_name)
-        self.set_next_available_id(t.hmm_hits_splits_table_name)
+        if not initializing_for_deletion:
+            self.set_next_available_id(t.hmm_hits_table_name)
+            self.set_next_available_id(t.hmm_hits_splits_table_name)
 
 
     def populate_search_tables(self, sources={}):
