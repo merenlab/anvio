@@ -1178,9 +1178,14 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                mistake stopped the show. Bye!")
 
         # summarize bins:
+        self.progress.new("Summarizing ...", progress_total_items=len(self.bin_ids))
         for i in range(0, len(self.bin_ids)):
             bin_id = self.bin_ids[i]
-            self.progress.new('[Processing "%s" (%d of %d)]' % (bin_id, i + 1, len(self.bin_ids)))
+
+            self.progress.increment()
+            self.progress.update_pid("Summarizing %d of %d: '%s'" % (i + 1, len(self.bin_ids), bin_id))
+            self.progress.update('...')
+
             bin = Bin(self, bin_id, self.run, self.progress)
             bin.output_directory = os.path.join(self.output_directory, 'bin_by_bin', bin_id)
             bin.bin_profile = self.collection_profile[bin_id]
@@ -1190,7 +1195,8 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             self.summary['collection'][bin_id]['source'] = self.bins_info_dict[bin_id]['source'] or 'unknown_source'
             self.summary['meta']['total_nts_in_collection'] += self.summary['collection'][bin_id]['total_length']
             self.summary['meta']['num_contigs_in_collection'] += self.summary['collection'][bin_id]['num_contigs']
-            self.progress.end()
+
+        self.progress.end()
 
         # bins are computed, add some relevant meta info:
         self.summary['meta']['percent_contigs_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.a_meta['total_length']))
