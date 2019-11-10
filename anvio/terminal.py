@@ -107,6 +107,10 @@ class Progress:
         self.t = Timer(self.progress_total_items)
 
 
+    def update_pid(self, pid):
+        self.pid = '%s %s' % (get_date(), pid)
+        
+
     def increment(self, increment_to=None):
         if increment_to:
             self.progress_current_item = increment_to
