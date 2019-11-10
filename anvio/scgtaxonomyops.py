@@ -407,6 +407,12 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
                 entry_ids_to_remove = [entry for entry in scg_taxonomy_table if scg_taxonomy_table[entry]['gene_callers_id'] not in final_set_of_gene_caller_ids]
                 [scg_taxonomy_table.pop(e) for e in entry_ids_to_remove]
 
+        # NOTE: This will modify the taxonomy strings read from the contigs database. see the
+        # function header for `trim_taxonomy_dict_entry` for more information.
+        if self.simplify_taxonomy_information:
+            for key in scg_taxonomy_table:
+                scg_taxonomy_table[key] = self.trim_taxonomy_dict_entry(scg_taxonomy_table[key])
+
         for entry in scg_taxonomy_table.values():
             gene_callers_id = entry['gene_callers_id']
             self.gene_callers_id_to_scg_taxonomy_dict[gene_callers_id] = entry
