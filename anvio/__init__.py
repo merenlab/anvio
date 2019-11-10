@@ -541,6 +541,15 @@ D = {
                       core gene to estimate the taxonomic composition within a contigs database. If you have a\
                       different preference you can use this parameter to communicate that."}
                 ),
+    'simplify-taxonomy-information': (
+            ['--simplify-taxonomy-information'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "The taxonomy output may include a large number of names that contain clade-specific code for\
+                      not-yet-characterized taxa. With this flag you can simplify taxon names. This will influence\
+                      all output files and displays as the use of this flag will on-the-fly trim taxonomic levels\
+                      with clade-specific code names."}
+                ),
     'compute-scg-coverages': (
             ['--compute-scg-coverages'],
             {'default': False,

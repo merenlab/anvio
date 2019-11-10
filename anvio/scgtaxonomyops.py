@@ -315,6 +315,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.just_do_it = A('just_do_it')
+        self.simplify_taxonomy_information = A('simplify_taxonomy_information')
         self.metagenome_mode = True if A('metagenome_mode') else False
         self.scg_name_for_metagenome_mode = A('scg_name_for_metagenome_mode')
         self.compute_scg_coverages = A('compute_scg_coverages')
