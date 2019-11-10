@@ -216,7 +216,10 @@ class DB:
 
 
     def _exec_many(self, sql_query, values):
-        return self.cursor.executemany(sql_query, values)
+        for chunk in get_list_in_chunks(values):
+            self.cursor.executemany(sql_query, chunk)
+
+        return True
 
 
     def insert(self, table_name, values=()):
