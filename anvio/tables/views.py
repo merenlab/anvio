@@ -78,10 +78,7 @@ class TablesForViews(Table):
         db_entries = [tuple([item] + [data_dict[item][h] for h in table_structure[1:]]) for item in data_dict]
 
         try:
-            # be gentle, and split large number of db_entries into smaller pieces
-            # before inserting them into the database
-            for chunk in utils.get_list_in_chunks(db_entries):
-                anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), chunk)
+            anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), db_entries)
         except Exception as e:
             num_columns = set([len(x) for x in db_entries])
             if len(num_columns) == 1:

@@ -47,12 +47,12 @@ def main(args):
                            do anything at all (anvi'o the pacifist). Choose either, and let's pretend this never\
                            happened.")
 
-    hmm_tables = TablesForHMMHits(args.contigs_db)
+    hmm_tables = TablesForHMMHits(args.contigs_db, initializing_for_deletion=True)
     if args.hmm_source:
         if args.hmm_source not in info_table:
             run.warning("Nice try, and anvi'o is proud of you. But it doesn't change the fact that the HMM source\
                          '%s' was not in your contigs database. That's OK. Now anvi'o will pretend as if nothing\
-                         happened, and quite without a fuss (but you shall remember this)." % args.hmm_source)
+                         happened, and quit without a fuss." % args.hmm_source)
             sys.exit(0)
 
         hmm_tables.remove_source(args.hmm_source)

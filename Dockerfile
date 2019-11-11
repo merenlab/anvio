@@ -49,7 +49,6 @@ RUN pip install virtualenv
 RUN apt-get install vim util-linux -yy
 
 # Setup the environment
-ENV ANVIO_VERSION 6
 RUN echo "export PS1=\"\[\e[0m\e[47m\e[1;30m\] :: anvi'o v$ANVIO_VERSION :: \[\e[0m\e[0m \[\e[1;34m\]\]\w\[\e[m\] \[\e[1;32m\]>>>\[\e[m\] \[\e[0m\]\"" >> /root/.bashrc
 
 CMD /bin/bash -l

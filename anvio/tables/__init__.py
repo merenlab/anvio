@@ -216,8 +216,6 @@ genome_gene_function_calls_table_name      = 'gene_function_calls'
 genome_gene_function_calls_table_structure = ['genome_name', ] + gene_function_calls_table_structure[:]
 genome_gene_function_calls_table_types     = [    'str'    , ] + gene_function_calls_table_types[:]
 
-tables_without_unique_entry_ids = [genome_gene_function_calls_table_name]
-
 ####################################################################################################
 #
 #     TABLE DESCRIPTIONS FOR THE STRUCTURE DB
@@ -245,3 +243,11 @@ structure_residue_info_table_types      = ['integer',         'integer'        ,
 residue_info_sources = {"DSSP":        {"structure": ['codon_order_in_gene' , 'aa'   , 'sec_struct' , 'rel_solvent_acc' , 'phi'  , 'psi'  , 'NH_O_1_index' , 'NH_O_1_energy' , 'O_NH_1_index' , 'O_NH_1_energy' , 'NH_O_2_index' , 'NH_O_2_energy' , 'O_NH_2_index' , 'O_NH_2_energy'],
                                         "types":     ['integer'             , 'text' , 'text'       , 'real'            , 'real' , 'real' , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real']},
                        }
+
+####################################################################################################
+#
+#     META META META
+#
+####################################################################################################
+
+tables_without_unique_entry_ids = [genome_gene_function_calls_table_name]
