@@ -352,6 +352,14 @@ anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                --init-gene-coverages \
                --reformat-contig-names
 
+INFO "Run quick summary of CONCOCT results"
+anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+               -c $output_dir/CONTIGS.db \
+               -o $output_dir/SAMPLES-MERGED-SUMMARY-QUICK \
+               -C 'cmdline_concoct_RENAMED' \
+               --reformat-contig-names \
+               --quick-summary
+
 INFO "Generate a SNV variabilty profile for PSAMPLES_Bin_00001 using a collection id"
 anvi-gen-variability-profile -c $output_dir/CONTIGS.db \
                              -p $output_dir/SAMPLES-MERGED/PROFILE.db \
