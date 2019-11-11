@@ -1900,6 +1900,17 @@ D = {
                       is because anvi'o computes gene coverages by going back to actual coverage values of each gene to\
                       average them, instead of using contig average coverage values, for extreme accuracy."}
                 ),
+    'reformat-contig-names': (
+            ['--reformat-contig-names'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Reformat contig names while generating the summary output so they look fancy. With this flag, anvi'o\
+                      will replace the original names of contigs to those that include the bin name as a prefix in resulting\
+                      summary output files per bin. Use this flag carefully as it may influence your downstream analyses due\
+                      to the fact that your original contig names in your input FASTA file for the contigs database will not\
+                      be in the summary output. Although, anvi'o will report a conversion map per bin so you can recover the\
+                      original contig name if you have to."}
+                ),
     'skip-auto-ordering': (
             ['--skip-auto-ordering'],
             {'default': False,
