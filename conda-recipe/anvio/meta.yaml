@@ -25,6 +25,10 @@ requirements:
     - trimal
     - iqtree
     - fastani
+    - r
+    - r-stringi
+    - r-tidyverse
+    - bioconductor-qvalue
 
 test:
   commands:

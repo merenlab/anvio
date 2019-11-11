@@ -69,6 +69,7 @@ __status__ = "Development"
 pp = terminal.pretty_print
 run = terminal.Run()
 progress = terminal.Progress()
+progress_quiet = terminal.Progress(verbose=False)
 P = lambda x, y: float(x) * 100 / float(y)
 
 
@@ -102,6 +103,7 @@ class ArgsTemplateForSummarizerClass:
         self.cog_data_dir = None
         self.output_dir = filesnpaths.get_temp_directory_path()
         self.report_aa_seqs_for_gene_calls = False
+        self.reformat_contig_names = False
 
 
 class SummarizerSuperClass(object):
@@ -144,6 +146,7 @@ class SummarizerSuperClass(object):
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
         self.delete_output_directory_if_exists = False if A('delete_output_directory_if_exists') == None else A('delete_output_directory_if_exists')
         self.just_do_it = A('just_do_it')
+        self.reformat_contig_names = A('reformat_contig_names')
 
         if not self.lazy_init:
             self.sanity_check()
@@ -1066,6 +1069,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.completeness_data_available = False
         self.gene_level_coverage_stats_available = False
         self.non_single_copy_gene_hmm_data_available = False
+        self.reformat_contig_names = False
 
         DatabasesMetaclass.__init__(self, self.args, self.run, self.progress)
         SummarizerSuperClass.__init__(self, self.args, self.run, self.progress)
@@ -1145,6 +1149,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                         ('Genes are called', self.a_meta['genes_are_called']),
                                                         ('Splits consider gene calls', self.a_meta['splits_consider_gene_calls']),
                                                         ('Gene function sources', ', '.join(self.gene_function_call_sources) if self.gene_function_call_sources else 'None :('),
+                                                        ('Summary reformatted contig names', self.reformat_contig_names),
                                                     ],
                                         'description': mistune.markdown(self.p_meta['description']),
                                         }
@@ -1177,9 +1182,14 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                mistake stopped the show. Bye!")
 
         # summarize bins:
+        self.progress.new("Summarizing ...", progress_total_items=len(self.bin_ids))
         for i in range(0, len(self.bin_ids)):
             bin_id = self.bin_ids[i]
-            self.progress.new('[Processing "%s" (%d of %d)]' % (bin_id, i + 1, len(self.bin_ids)))
+
+            self.progress.increment()
+            self.progress.update_pid("Summarizing %d of %d: '%s'" % (i + 1, len(self.bin_ids), bin_id))
+            self.progress.update('...')
+
             bin = Bin(self, bin_id, self.run, self.progress)
             bin.output_directory = os.path.join(self.output_directory, 'bin_by_bin', bin_id)
             bin.bin_profile = self.collection_profile[bin_id]
@@ -1189,7 +1199,8 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             self.summary['collection'][bin_id]['source'] = self.bins_info_dict[bin_id]['source'] or 'unknown_source'
             self.summary['meta']['total_nts_in_collection'] += self.summary['collection'][bin_id]['total_length']
             self.summary['meta']['num_contigs_in_collection'] += self.summary['collection'][bin_id]['num_contigs']
-            self.progress.end()
+
+        self.progress.end()
 
         # bins are computed, add some relevant meta info:
         self.summary['meta']['percent_contigs_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.a_meta['total_length']))
@@ -1255,6 +1266,13 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
                                                        headers=['samples'] + sorted(self.collection_profile.keys()) + ['__splits_not_binned__'],
                                                        file_obj=output_file_obj)
 
+        if self.reformat_contig_names:
+            self.run.warning("You have asked anvi'o to reformat contig names for bins in the summary output. Which means, the original names\
+                              found in the contigs database and BAM files are no longer there in FASTA files (and hopefully all other relevant\
+                              files) for your bins. Instead, they are replaced to include the bin name, and they look very neat. Just to make\
+                              sure you have an idea how the name conversion looked like, anvi'o kept a copy of the conversion map for each bin\
+                              you can find under directoris stored under `bin_by_bin/` directory. Please be extra careful for your downstream\
+                              analyses to make sure this change will not break things.")
 
         if self.debug:
             import json
@@ -1496,9 +1514,9 @@ class Bin:
         if not self.summary.initialized:
             raise ConfigError("The summary object you sent to the `Bin` class to make sense of the bin '%s' does\
                                not seem to have been initialized. Anvi'o could have taken care of it for you, but\
-                                it will not (not only because anvi'o is implemented by mean people, but also it kinda\
-                                likes to be explicit about this kind of stuff). Please initialize your summary object\
-                                first." % (bin_id))
+                               it will not (not only because anvi'o is implemented by mean people, but also it kinda\
+                               likes to be explicit about this kind of stuff). Please initialize your summary object\
+                               first." % (bin_id))
 
         if bin_id not in self.summary.bin_ids:
             raise ConfigError("Bin '%s' does not seem to be in this summary :/ These are the ones in it: %s." % (bin_id, ', '.join(self.summary.bin_ids)))
@@ -1511,6 +1529,10 @@ class Bin:
         self.across_samples = {}
         self.bin_profile = {}
         self.bin_info_dict = {'files': {}}
+
+        # this dictionary will keep new contig names if the user asked contig names in the summary output
+        # to be reformatted nicely
+        self.contig_name_conversion_dict = {}
 
         # this will quickly populate self.contig_names, self.total_length, and self.num_contigs variables
         self.process_contigs(quick=True)
@@ -1569,9 +1591,9 @@ class Bin:
     def create(self):
         self.create_bin_dir()
 
-        self.store_sequences_for_hmm_hits()
-
         self.process_contigs()
+
+        self.store_sequences_for_hmm_hits()
 
         if self.summary.completeness_data_available:
             self.access_completeness_scores()
@@ -1588,6 +1610,8 @@ class Bin:
         self.store_gene_level_coverage_stats()
 
         self.store_profile_data()
+
+        self.report_contig_name_conversion_dict()
 
         return self.bin_info_dict
 
@@ -1623,7 +1647,6 @@ class Bin:
 
 
     def store_profile_data(self):
-
         if self.summary.quick:
             return
 
@@ -1632,6 +1655,16 @@ class Bin:
         for table_name in self.bin_profile:
             output_file_obj = self.get_output_file_handle('%s.txt' % table_name)
             utils.store_dict_as_TAB_delimited_file({table_name: self.bin_profile[table_name]}, None, headers=['bin'] + self.summary.p_meta['samples'], file_obj=output_file_obj)
+
+
+    def report_contig_name_conversion_dict(self):
+        if not self.summary.reformat_contig_names:
+            return
+
+        self.progress.update('Storing contig name conversion dict ...')
+
+        output_file_obj = self.get_output_file_handle('contig-name-conversion-map.txt')
+        utils.store_dict_as_TAB_delimited_file(self.contig_name_conversion_dict, None, headers=['original_contig_name', 'reformatted_contig_name'], file_obj=output_file_obj)
 
 
     def summarize_hmm_hits(self):
@@ -1804,6 +1837,11 @@ class Bin:
         else:
             headers = ['gene_callers_id'] + headers + header_items_for_gene_sequences
 
+        if self.summary.reformat_contig_names:
+            for gene_callers_id in d:
+                reformatted_contig_name = self.contig_name_conversion_dict[d[gene_callers_id]['contig']]['reformatted_contig_name']
+                d[gene_callers_id]['contig'] = reformatted_contig_name
+
         self.progress.update('Storing genes basic info ...')
         utils.store_dict_as_TAB_delimited_file(d, None, headers=headers, file_obj=output_file_obj)
 
@@ -1814,8 +1852,13 @@ class Bin:
         if self.summary.quick:
             return
 
-        s = SequencesForHMMHits(self.summary.contigs_db_path)
+        s = SequencesForHMMHits(self.summary.contigs_db_path, split_names_of_interest=self.split_names, progress=progress_quiet)
         hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits({self.bin_id: self.split_names})
+
+        if self.summary.reformat_contig_names:
+            for entry_id in hmm_sequences_dict:
+                reformatted_contig_name = self.contig_name_conversion_dict[hmm_sequences_dict[entry_id]['contig']]['reformatted_contig_name']
+                hmm_sequences_dict[entry_id]['contig'] = reformatted_contig_name
 
         single_copy_gene_hmm_sources = [hmm_search_source for hmm_search_type, hmm_search_source in self.summary.hmm_searches_header]
         non_single_copy_gene_hmm_sources = self.summary.completeness.sources
@@ -1876,8 +1919,9 @@ class Bin:
 
         # now it is time to go through each contig found in contigs_represented to
         # figure out what fraction of the contig is in fact in this bin
-        for contig_id in contigs_represented:
-            splits_order = list(contigs_represented[contig_id].keys())
+        contig_name_counter = 1
+        for contig_name in contigs_represented:
+            splits_order = list(contigs_represented[contig_name].keys())
 
             # this is critical: sequential_blocks is a list of one ore more lists, where each item of this list
             # describes a range of splits that follow each other to represent a coherent
@@ -1886,8 +1930,8 @@ class Bin:
             sequential_blocks = ccollections.GetSequentialBlocksOfSplits(splits_order).process()
 
             for sequential_block in sequential_blocks:
-                first_split = contigs_represented[contig_id][sequential_block[0]]
-                last_split = contigs_represented[contig_id][sequential_block[-1]]
+                first_split = contigs_represented[contig_name][sequential_block[0]]
+                last_split = contigs_represented[contig_name][sequential_block[-1]]
 
                 contig_sequence_start_in_splits = self.summary.splits_basic_info[first_split]['start']
                 contig_sequence_end_in_splits = self.summary.splits_basic_info[last_split]['end']
@@ -1896,7 +1940,7 @@ class Bin:
                 total_contig_length_in_splits = contig_sequence_end_in_splits - contig_sequence_start_in_splits
 
                 # and this is is actual length:
-                contig_sequence_length = self.summary.contigs_basic_info[contig_id]['length']
+                contig_sequence_length = self.summary.contigs_basic_info[contig_name]['length']
 
                 if contig_sequence_length == total_contig_length_in_splits:
                     # the entireity of the contig is represented!
@@ -1906,13 +1950,20 @@ class Bin:
 
                 sequence = ''
                 for split_order in sequential_block:
-                    sequence += self.summary.split_sequences[contigs_represented[contig_id][split_order]]
+                    sequence += self.summary.split_sequences[contigs_represented[contig_name][split_order]]
 
-                fasta_id = contig_id + appendix
+                if self.summary.reformat_contig_names:
+                    reformatted_contig_name = '%s_contig_%06d' % (self.bin_id, contig_name_counter)
+                    self.contig_name_conversion_dict[contig_name] = {'reformatted_contig_name': reformatted_contig_name}
+                    contig_name = reformatted_contig_name
+
+                fasta_id = contig_name + appendix
                 self.contig_lengths.append(len(sequence))
 
                 output += '>%s\n' % fasta_id
                 output += '%s\n' % textwrap.fill(sequence, 80, break_on_hyphens=False)
+
+            contig_name_counter += 1
 
         return output
 
