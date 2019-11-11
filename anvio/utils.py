@@ -1422,7 +1422,7 @@ def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=Fal
 
 
 def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
-    """ Tests whether a gene sequence (amino acid or nucleotide) is clean
+    """ Returns True if gene sequence is clean (amino acid or nucleotide), otherwise raises ConfigError
 
     Parameters
     ==========
@@ -1446,6 +1446,7 @@ def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
       `seq` can end with a stop. If any intermediate  and in-frame stop codons are found, the gene
       is not clean
     """
+    error_msg_template = "The gene sequence is not clean. Reason: %s"
     seq = seq.upper()
 
     start_char = 'M' if amino_acid else 'ATG'
@@ -1457,7 +1458,7 @@ def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
 
     if not amino_acid:
         if len(seq) % 3:
-            return False
+            raise ConfigError(error_msg_template % "The number of nucleotides is not divisible by 3")
 
         new_seq = [] # list of length-3 strings
         for i in range(0, len(seq), 3):
@@ -1466,16 +1467,29 @@ def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
         seq = new_seq
 
     if not seq[0] == start_char:
-        return False
+        raise ConfigError(error_msg_template % "Should start with methionine but instead starts with %s" % seq[0])
 
-    for element in seq[:-1]:
-        if element in end_chars or element not in permissible_chars:
-            return False
+    for i, element in enumerate(seq[:-1]):
+        if element in end_chars:
+            l, r = min([i, 3]), min([len(seq[:-1])-i, 3])
+            raise ConfigError(error_msg_template % "Premature stop codon at %dth codon \
+                              position (counting from 0). Here is the position in the \
+                              context of the sequence: ...%s[%s]%s..." % \
+                              (i, ''.join(seq[:-1][i-l:i]), element, ''.join(seq[:-1][i+1:i+r+1])))
+        if element not in permissible_chars:
+            l, r = min([i, 3]), min([len(seq[:-1])-i, 3])
+            raise ConfigError(error_msg_template % "%s at %dth codon position (counting from zero) \
+                              isn't a valid sequence element. Here is the position in the \
+                              context of the sequence: ...%s[%s]%s..." % \
+                              (element, i, ''.join(seq[:-1][i-l:i]), element, ''.join(seq[:-1][i+1:i+r+1])))
 
     if seq[-1] in end_chars:
-        return True if can_end_with_stop else False
+        if not can_end_with_stop:
+            raise ConfigError(error_msg_template % "Sequence should not contain an explicit stop codon")
     else:
-        return True if seq[-1] in permissible_chars else False
+        raise ConfigError(error_msg_template % "Last codon is not a valid character: %s" % seq[-1])
+
+    return True
 
 
 def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):
