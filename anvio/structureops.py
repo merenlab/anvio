@@ -17,6 +17,7 @@ import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
+import anvio.fastalib as u
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
@@ -407,6 +408,20 @@ class Structure(object):
 
         return genes_of_interest
 
+
+    def skip_gene_if_not_clean(self, corresponding_gene_call, fasta_path):
+        """ Do not try modelling gene if it is not clean """
+        fasta = u.SequenceSource(fasta_path); next(fasta)
+        try:
+            utils.is_gene_sequence_clean(fasta.seq, amino_acid=True, can_end_with_stop=False)
+            return False
+        except ConfigError as error:
+            self.run.warning("You wanted to model a structure for gene ID %d, but it is not what anvi'o \
+                              considers a 'clean gene'. Anvi'o will move onto the next gene. Here is the \
+                              error that was raised: \"%s\"" % (corresponding_gene_call, error.e))
+            return True
+
+
     def process(self):
         """
         """
@@ -432,6 +447,9 @@ class Structure(object):
                                                       self.args.target_fasta_path,
                                                       set([corresponding_gene_call]),
                                                       quiet = True)
+
+            if self.skip_gene_if_not_clean(corresponding_gene_call, self.args.target_fasta_path):
+                continue
 
             # Model structure
             progress_title = 'Modelling gene ID %d; (%d of %d processed)' % (corresponding_gene_call, num_genes_tried, num_genes_to_try)
@@ -988,7 +1006,7 @@ class ContactMap(object):
         self.threshold = threshold
 
         self.distances_methods_dict = {
-            "CA": self.calc_CA_dist
+            "CA": self.calc_CA_dist,
         }
 
 
