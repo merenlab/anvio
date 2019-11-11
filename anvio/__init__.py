@@ -1248,7 +1248,8 @@ D = {
             {'metavar': 'VARIABILITY_TABLE',
              'type': str,
              'required': False,
-             'help': "FIXME"}
+             'help': "The output of anvi-gen-variability-profile, or a different variant-calling output that has been converted to the \
+                      anvi'o format."}
                 ),
     'min-coverage-in-each-sample': (
             ['--min-coverage-in-each-sample'],
