@@ -38,9 +38,11 @@ if __name__ == '__main__':
                                                        Most simply, anvi'o can learn this information when you \
                                                        provide both your profile (-p) and contigs (-c) databases. \
                                                        Alternatively, you can provide a variability table output \
-                                                       (-V) from the program anvi-gen-variability-profile. \
-                                                       Finally, you can visualize the structures without \
-                                                       overlaying variation by providing the flag --no-variability.")
+                                                       (-V) from the program anvi-gen-variability-profile. If you \
+                                                       don't want to visualize variants, this is the wrong tool for \
+                                                       the job. Instead, export the PDB files with \
+                                                       anvi-export-pdb-from-structure-database, and open with a \
+                                                       more comprehensive protein viewing software.")
     groupR = parser.add_argument_group("REFINING PARAMETERS", "Which samples, genes, and contigs etc. are you \
                                                                interested in? Define that stuff here.")
     groupP = parser.add_argument_group("SERVER CONFIGURATION", "For power users.")
