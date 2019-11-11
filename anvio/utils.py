@@ -125,7 +125,7 @@ class Multiprocessing:
                         self.run(processes_to_run.pop())
 
             if not NumRunningProceses() and not processes_to_run:
-                # let the blastn program finish writing all output files.
+                # let the program finish writing all output files.
                 # FIXME: this is ridiculous. find a better solution.
                 time.sleep(1)
                 break
@@ -1480,7 +1480,7 @@ def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
     if seq[-1] in end_chars:
         if not can_end_with_stop:
             raise ConfigError(error_msg_template % "Sequence should not contain an explicit stop codon")
-    else:
+    elif seq[-1] not in permissible_chars:
         raise ConfigError(error_msg_template % "Last codon is not a valid character: %s" % seq[-1])
 
     return True
