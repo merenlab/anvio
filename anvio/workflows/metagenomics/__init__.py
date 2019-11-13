@@ -353,9 +353,10 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         fastq_file_names = list(self.samples_information['r1']) + list(self.samples_information['r2'])
         bad_fastq_names = [s for s in fastq_file_names if (not s.endswith('.fastq') and not s.endswith('.fastq.gz'))]
         if bad_fastq_names:
-            raise ConfigError("We require tha all fastq file names end with either '.fastq' \
-                               or '.fastq.gz'. Some or all of the file names in %s aren't formatted \
-                               accordingly. These are the file names we don't like: %s" % (self.samples_txt_file, ', '.join(bad_fastq_names)))
+            run.warning("We noticed some of your sequence files in '%s' do not end with either '.fastq' \
+                         or '.fastq.gz'. That's okay, but anvi'o decided it should warn you. Here are the first \
+                         5 such files that have unconventional file extensions: %s." \
+                         % (self.samples_txt_file, ', '.join(bad_fastq_names[:5])))
 
 
     def init_kraken(self):
