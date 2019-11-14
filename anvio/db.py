@@ -27,8 +27,6 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
-run = terminal.Run()
-
 
 def get_list_in_chunks(input_list, num_items_in_each_chunk=1000):
     """Yield smaller bits of a list"""
@@ -37,9 +35,12 @@ def get_list_in_chunks(input_list, num_items_in_each_chunk=1000):
 
 
 class DB:
-    def __init__(self, db_path, client_version, new_database=False, ignore_version=False):
+    def __init__(self, db_path, client_version, new_database=False, ignore_version=False, run=terminal.Run(), progress=terminal.Progress()):
         self.db_path = db_path
         self.version = None
+
+        self.run = run
+        self.progress = progress
 
         if new_database:
             filesnpaths.is_output_file_writable(db_path)
