@@ -1497,6 +1497,11 @@ Drawer.prototype.draw_stack_bar_layers = function() {
             var offset = 0;
             for (var j=0; j < this.layerdata_dict[q.label][layer.index].length; j++)
             {
+                let stack_item_value = parseFloat(this.layerdata_dict[q.label][layer.index][j]);
+                if (isNaN(stack_item_value)) {
+                    stack_item_value = Number.EPSILON; // smallest positive number
+                }
+
                 if (this.settings['tree-type'] == 'phylogram') {
                     if (q.order == 0) {
                         path_cache[j] = [];
@@ -1509,10 +1514,10 @@ Drawer.prototype.draw_stack_bar_layers = function() {
 
                     path_cache[j].push(
                         "L", 
-                        this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index][j] - offset, 
+                        this.layer_boundaries[layer.order][1] - stack_item_value - offset, 
                         q.xy['y'] - q.size / 2, 
                         "L", 
-                        this.layer_boundaries[layer.order][1] - this.layerdata_dict[q.label][layer.index][j] - offset, 
+                        this.layer_boundaries[layer.order][1] - stack_item_value - offset, 
                         q.xy['y'] + q.size / 2
                         );
 
@@ -1530,7 +1535,7 @@ Drawer.prototype.draw_stack_bar_layers = function() {
                     var start_angle  = q.angle - q.size / 2;
                     var end_angle    = q.angle + q.size / 2;
                     var inner_radius = this.layer_boundaries[layer.order][0];
-                    var outer_radius = this.layer_boundaries[layer.order][0] + this.layerdata_dict[q.label][layer.index][j] + offset;
+                    var outer_radius = this.layer_boundaries[layer.order][0] + stack_item_value + offset;
 
                     if (q.order == 0)
                     {
@@ -1563,7 +1568,7 @@ Drawer.prototype.draw_stack_bar_layers = function() {
                     }
                 }
                 
-                offset += this.layerdata_dict[q.label][layer.index][j];
+                offset += stack_item_value;
             }
         }
         
