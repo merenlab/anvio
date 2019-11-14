@@ -90,7 +90,7 @@ class DB:
         while(check_counter < check_limit and filesnpaths.is_file_exists(journal_path, dont_raise=True)):
             if check_counter == 0:
                 # print only once
-                run.info_single("It seems the database at '%s' currently used by another proccess\
+                self.run.info_single("It seems the database at '%s' currently used by another proccess\
                                for writing operations. Anvi'o refuses to work with this database to avoid corrupting it. \
                                If you think this is a mistake, you may stop this process and delete the lock file at '%s' after making sure \
                                no other active process using it for writing. In case this program is ran by automatic workflow manager like snakemake \
@@ -217,8 +217,17 @@ class DB:
 
 
     def _exec_many(self, sql_query, values):
+        chunk_counter = 0
         for chunk in get_list_in_chunks(values):
+            if anvio.DEBUG:
+                self.progress.reset()
+                self.run.info_single("Adding the chunk %d with %d entries of %d total is being added to the db with\
+                                      the SQL command '%s'." \
+                                    % (chunk_counter, len(chunk), len(values), sql_query), nl_before=1)
+
             self.cursor.executemany(sql_query, chunk)
+
+            chunk_counter += 1
 
         return True
 
@@ -413,7 +422,7 @@ class DB:
                                            that's what led you to this point at the first place). Apologies for this bioinformatics\
                                            poo poo :( It is all on us.")
 
-                    run.info_single("You have sad tables. You have used `--fix-sad-tables` flag. Now anvi'o will try to fix them...", mc="red")
+                    self.run.info_single("You have sad tables. You have used `--fix-sad-tables` flag. Now anvi'o will try to fix them...", mc="red")
 
                     # here we will update the rows data with a small memory fingerprint:
                     entry_id_counter = 0
@@ -431,7 +440,7 @@ class DB:
                     # enter corrected data
                     self._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), rows)
 
-                    run.info_single("If you are seeing this line, it means anvi'o managed to fix those sad tables. No more sad!\
+                    self.run.info_single("If you are seeing this line, it means anvi'o managed to fix those sad tables. No more sad!\
                                      But please make double sure that nothing looks funny in your results. If you start getting\
                                      errors and you wish to contact us for that, please don't forget to mention that you did try\
                                      to fix your sad tables.", mc="green")
