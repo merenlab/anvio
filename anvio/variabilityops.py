@@ -1600,12 +1600,27 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def get_histogram(self, column, fix_offset=False, **kwargs):
-        """fix_offset can be provided if you're interested in returning the centre point of each bin
-           rather than the edges of each bin.
+        """ Return a histogram (counts and bins) for a specified column of self.data
 
-           **kwargs are the optional arguments of np.histogram
-           (https://docs.scipy.org/doc/numpy-1.14.0/reference/generated/numpy.histogram.html)
+        Parameters
+        ==========
+        column : str
+            The name of the column you want to get a histogram for. Must be numeric type
+        fix_offset : bool, False
+            If True, bins is set as the centre point for each bin, rather than the bin edges.
+            This decreases the length of bins by 1, since there is one less bin that there are
+            bin edges.
+        **kwargs : dict, optional
+            Any arguments of np.histogram
+            (https://docs.scipy.org/doc/numpy-1.14.0/reference/generated/numpy.histogram.html)
+
+        Returns
+        =======
+        (values, bins) : tuple
+            values are the counts in each bin, bins are either bin edges (fix_offset=False) or
+            centre-points of the bins (fix_offset=True)
         """
+
         if not pd.api.types.is_numeric_dtype(self.data[column]):
             raise ConfigError("get_histogram :: %s is not of numeric type" % (column))
 
