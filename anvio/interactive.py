@@ -1996,6 +1996,11 @@ class StructureInteractive(VariabilitySuper):
            If the variability table is provided, the full table is stored in memory and a gene
            subset is created.
         """
+        if anvio.DEBUG:
+            verbose, stealth = True, False
+        else:
+            verbose, stealth = False, True
+
         if gene_callers_id in self.variability_storage:
             # already profiled.
             return
@@ -2015,8 +2020,8 @@ class StructureInteractive(VariabilitySuper):
                 self.args.engine = engine
                 self.args.genes_of_interest_set = set([gene_callers_id])
                 self.args.compute_gene_coverage_stats = True
-                var = variability_engines[engine](self.args, p=terminal.Progress(verbose=False), r=terminal.Run(verbose=False))
-                var.stealth_filtering = False
+                var = variability_engines[engine](self.args, p=terminal.Progress(verbose=verbose), r=terminal.Run(verbose=verbose))
+                var.stealth_filtering = stealth
 
                 # we convert counts to frequencies so high-covered samples do not skew averaging
                 # across samples
