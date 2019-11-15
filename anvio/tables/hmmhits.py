@@ -150,9 +150,9 @@ class TablesForHMMHits(Table):
 
             if context == 'CONTIG':
                 # we are in trouble here. because our search results dictionary contains no gene calls, but contig
-                # names that contain our hits. on the other hand, the rest of the code outside of this if statement
-                # expects a `search_results_dict` with gene callers id in it. so there are two things we need to do
-                # to do. one is to come up with some new gene calls and add them to the contigs database. so things
+                # names contain our hits. on the other hand, the rest of the code outside of this if statement
+                # expects a `search_results_dict` with gene caller ids in it. so there are two things we need to do.
+                # one is to come up with some new gene calls and add them to the contigs database. so things
                 # will go smoothly downstream. two, we will need to update our `search_results_dict` so it looks
                 # like a a dictionary the rest of the code expects with `gene_callers_id` fields. both of these
                 # steps are going to be taken care of in the following function. magic.
