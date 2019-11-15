@@ -1432,6 +1432,7 @@ class StructureInteractive(VariabilitySuper):
         self.saavs_only = A('SAAVs_only', bool)
         self.scvs_only = A('SCVs_only', bool)
         self.variability_table_path = A('variability_profile', null)
+        self.no_variability = A('no_variability', bool)
         self.min_departure_from_consensus = A('min_departure_from_consensus', float) or 0
 
         # states
@@ -1557,8 +1558,9 @@ class StructureInteractive(VariabilitySuper):
         if var.data.empty:
             return []
 
-        FIND_MIN = lambda c: var.data[c].min() if c in var.data.columns else 0
-        FIND_MAX = lambda c: var.data[c].max() if c in var.data.columns else 1
+        FIND_MIN = lambda c, buff=0.01: var.data[c].min() - buff if c in var.data.columns else 0
+        FIND_MAX = lambda c, buff=0.01: var.data[c].max() + buff if c in var.data.columns else 1
+
 
         info = [
             {
@@ -1632,8 +1634,8 @@ class StructureInteractive(VariabilitySuper):
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 1,
-                'min': int(FIND_MIN('coverage')),
-                'max': int(FIND_MAX('coverage'))
+                'min': int(FIND_MIN('coverage', buff=1)),
+                'max': int(FIND_MAX('coverage', buff=1))
             },
             {
                 'name': 'synonymity',
@@ -1946,6 +1948,10 @@ class StructureInteractive(VariabilitySuper):
             raise ConfigError("Must provide a structure database.")
         utils.is_structure_db(self.structure_db_path)
 
+        if self.no_variability:
+            run.warning("Wow. Seriously? --no-variability? This is why freedom of speech needs to be\
+                         abolished.")
+
         elif not self.profile_db_path and not self.variability_table_path:
             raise ConfigError("You have to provide either a variability table generated from\
                                anvi-gen-variability-profile, or a profile and contigs database from\
@@ -2010,7 +2016,7 @@ class StructureInteractive(VariabilitySuper):
                 self.args.genes_of_interest_set = set([gene_callers_id])
                 self.args.compute_gene_coverage_stats = True
                 var = variability_engines[engine](self.args, p=terminal.Progress(verbose=False), r=terminal.Run(verbose=False))
-                var.stealth_filtering = True
+                var.stealth_filtering = False
 
                 # we convert counts to frequencies so high-covered samples do not skew averaging
                 # across samples
