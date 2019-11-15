@@ -2323,16 +2323,24 @@ class ProfileSuperclass(object):
                                flaw, but THANKS for reminding anyway... The best way to address this is to make sure all anvi'o\
                                profile and pan databases maintain a table with all item names they are supposed to be working with.")
 
-        # learn the number of mapped reads and set it in a nice variable
+        # learn the number of mapped reads and set it in a nice variable VERY CAREFULLY (blank profiles don't have it,
+        # and some ancient anvi'o databases may be lacking it).
         if self.p_meta['blank']:
-            self.num_mapped_reads_per_sample    = None
-        elif self.p_meta['merged']:
-            total_reads_mapped = [int(num_reads) for num_reads in self.p_meta['total_reads_mapped'].split(',')]
-            self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: total_reads_mapped[i] for i in range(0, len(self.p_meta['samples']))}
+            self.num_mapped_reads_per_sample = None
         else:
-            sample_name = self.p_meta['samples'][0]
-            keys, data = TableForLayerAdditionalData(self.args).get()
-            self.num_mapped_reads_per_sample = {sample_name: int(data[sample_name]['total_reads_mapped'])}
+            if self.p_meta['merged']:
+                if 'total_reads_mapped' not in self.p_meta:
+                    self.num_mapped_reads_per_sample = None
+                else:
+                    total_reads_mapped = [int(num_reads) for num_reads in self.p_meta['total_reads_mapped'].split(',')]
+                    self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: total_reads_mapped[i] for i in range(0, len(self.p_meta['samples']))}
+            else:
+                sample_name = self.p_meta['samples'][0]
+                keys, data = TableForLayerAdditionalData(self.args).get()
+                if 'total_reads_mapped' not in data[sample_name]:
+                    self.num_mapped_reads_per_sample = None
+                else:
+                    self.num_mapped_reads_per_sample = {sample_name: int(data[sample_name]['total_reads_mapped'])}
 
         profile_db.disconnect()
 
@@ -2625,6 +2633,16 @@ class ProfileSuperclass(object):
 
         # Lets ignore those pesty warnings...
         numpy.seterr(divide='ignore', over='ignore')
+
+        if not len(self.num_mapped_reads_per_sample):
+            raise ConfigError("Total read counts were not set for this database, without which INSEQ/Tn-SEQ coverage stats\
+                               can't be recovered :/ This number is automatically set by anvi'o during profiling given the\
+                               short read information in BAM files that match to contigs of interest. If you are working with\
+                               a 'blank' anvi'o profile database, there is no hope for you (since there is no BAM files involved\
+                               in that workflow), but if you are working with a legacy database there are other ways to set this\
+                               number (for instance, by using `anvi-db-info` program to set a `total_reads_mapped` variable).\
+                               If you want to do this but have no idea how this would work, please get in touch with the anvi'o\
+                               community and someone will help you :)")
 
         total_read_counts_in_sample = self.num_mapped_reads_per_sample[sample_name]
         gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
