@@ -1432,7 +1432,6 @@ class StructureInteractive(VariabilitySuper):
         self.saavs_only = A('SAAVs_only', bool)
         self.scvs_only = A('SCVs_only', bool)
         self.variability_table_path = A('variability_profile', null)
-        self.no_variability = A('no_variability', bool)
         self.min_departure_from_consensus = A('min_departure_from_consensus', float) or 0
 
         # states
@@ -1946,10 +1945,6 @@ class StructureInteractive(VariabilitySuper):
         if not self.structure_db_path:
             raise ConfigError("Must provide a structure database.")
         utils.is_structure_db(self.structure_db_path)
-
-        if self.no_variability:
-            run.warning("Wow. Seriously? --no-variability? This is why freedom of speech needs to be\
-                         abolished.")
 
         elif not self.profile_db_path and not self.variability_table_path:
             raise ConfigError("You have to provide either a variability table generated from\
