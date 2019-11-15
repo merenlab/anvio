@@ -2717,7 +2717,7 @@ class VariabilityFixationIndex():
         self.fst_matrix = np.zeros((dimension, dimension))
 
         indices_to_calculate = (dimension * (dimension + 1)) / 2
-        self.progress.new('Calculating pairwise fixation indices', progress_total_items=indices_to_calculate)
+        self.progress.new('Fixation index', progress_total_items=indices_to_calculate)
 
         for i, sample_1 in enumerate(sample_ids):
             for j, sample_2 in enumerate(sample_ids):
