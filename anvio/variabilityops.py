@@ -1073,6 +1073,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def load_structure_data(self):
+        """ Loads structure residue info from structure db as self.structure_residue_info """
         if not self.append_structure_residue_info:
             return
 
@@ -1644,10 +1645,13 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def get_residue_structure_information(self):
-        """
-        If by the end of all filtering there is no overlap between genes with variability and genes
-        with structure, this function raises a warning and the structure columns are not added to
-        the table. Otherwise this function appends the columns from residue_info to self.data
+        """ Merges self.structure_residue_info with self.data
+
+        Notes
+        =====
+        - If by the end of all filtering there is no overlap between genes with variability and genes
+          with structure, this function raises a warning and the structure columns are not added to
+          the table. Otherwise this function appends the columns from residue_info to self.data
         """
         if not self.append_structure_residue_info:
             return
@@ -1687,6 +1691,15 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def compute_gene_coverage_fields(self):
+        """ Adds _gene_ coverage, not position coverage, to self.data.
+
+        Notes
+        =====
+        - Expensive operation
+        - Redundant (gene coverage is added to EVERY entry)
+        - Adds gene_coverage, non_outlier_gene_coverage, non_outlier_gene_coverage_std,
+          and mean_normalized_coverage
+        """
         if not self.compute_gene_coverage_stats:
             return
 
@@ -1953,9 +1966,9 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
 class QuinceModeWrapperForFancyEngines(object):
     """A base class to recover quince mode data for both CDN and AA engines.
 
-       This wrapper exists outside of the actual classes for these engines since
-       the way they recover these frequencies is pretty much identical except one
-       place where the engine needs to be specifically.
+    This wrapper exists outside of the actual classes for these engines since
+    the way they recover these frequencies is pretty much identical except one
+    place where the engine needs to be specifically.
     """
     def __init__(self):
         if self.engine not in ['CDN', 'AA']:
@@ -2511,7 +2524,8 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
 
 
 class VariabilityFixationIndex():
-    """
+    """ Calculates a fixation index matrix
+
     Metric adapted from 'Genomic variation landscape of the human gut microbiome'
     (https://media.nature.com/original/nature-assets/nature/journal/v493/n7430/extref/nature11711-s1.pdf)
     which extends the traditional metric to allow for multiple alleles in one site. We further
@@ -2642,7 +2656,21 @@ class VariabilityFixationIndex():
 
 
     def get_intra_sample_diversity(self, sample):
-        """Note: This measure is unnormalized"""
+        """Calculates the intra-sample diversity for a given sample_id.
+
+        Parameters
+        ==========
+        sample : str
+            A sample id
+
+        Returns
+        =======
+        pi : float
+            Unnormalized intra-sample diversity. What this means is that the result has not been
+            divided by the genome length. This is not an issue when calculating FST = 1 - (intra1 +
+            intra2)/2 / inter, since anvio also calculates an unnormalized inter-sample diversity,
+            so that the 1/genome_length factors cancel out.
+        """
         sample_data = self.v.data[self.v.data['sample_id'] == sample]
         coverages = sample_data['coverage'].values
         matrix = sample_data[self.v.items].values
@@ -2655,7 +2683,23 @@ class VariabilityFixationIndex():
 
 
     def get_inter_sample_diversity(self, sample_1, sample_2):
-        """Note: This measure is unnormalized"""
+        """Calculates the inter-sample diversity for a given sample_id.
+
+        Parameters
+        ==========
+        sample_1 : str
+            A sample id
+        sample_2 : str
+            A sample id
+
+        Returns
+        =======
+        pi : float
+            Unnormalized inter-sample diversity. What this means is that the result has not been
+            divided by the genome length. This is not an issue when calculating FST = 1 - (intra1 +
+            intra2)/2 / inter, since anvio also calculates an unnormalized intra-sample diversity,
+            so that the 1/genome_length factors cancel out.
+        """
         pairwise_data, tensor_shape = self.get_pairwise_data_and_shape(sample_1, sample_2)
 
         # V/\
