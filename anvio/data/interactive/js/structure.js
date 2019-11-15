@@ -677,21 +677,23 @@ function draw_histogram() {
 
         let data_points = [];
 
-        for (let i=0; i < normalized_bins.length; i++) {
+        for (let i=0; i < normalized_counts.length; i++) {
             data_points.push({'x': normalized_bins[i], 'y': height - normalized_counts[i]});
+            data_points.push({'x': normalized_bins[i+1], 'y': height - normalized_counts[i]});
         }
+        data_points.push({'x': width, 'y': height})
 
-        var interpolate = d3.line()
+        var make_bar_chart = d3.line()
                             .x(function(d) { return d.x; })
-                            .y(function(d) { return d.y; })
-                            .curve(d3.curveCardinal);
+                            .y(function(d) { return d.y; });
 
-        var interpolated_line = interpolate(data_points);
-        interpolated_line += `L ${data_points[normalized_bins.length - 1]['x']} ${height} L ${data_points[0]['x']} ${height}`;
+        var bar_chart = make_bar_chart(data_points);
+        bar_chart += `L ${data_points[normalized_bins.length - 1]['x']} ${height} L ${data_points[0]['x']} ${height}`;
 
         svg.append("path")
             .style("fill","#337ab7")
-            .attr("d",function(d,i){ return interpolated_line; });
+            .style("stroke","#182943")
+            .attr("d",function(d,i){ return bar_chart; });
     }
 };
 
@@ -889,48 +891,48 @@ function onTargetColumnChange(element) {
 
 
 function getGradientColor(start_color, end_color, percent) {
-   // strip the leading # if it's there
-   start_color = start_color.replace(/^\s*#|\s*$/g, '');
-   end_color = end_color.replace(/^\s*#|\s*$/g, '');
+    // strip the leading # if it's there
+    start_color = start_color.replace(/^\s*#|\s*$/g, '');
+    end_color = end_color.replace(/^\s*#|\s*$/g, '');
 
-   // convert 3 char codes --> 6, e.g. `E0F` --> `EE00FF`
-   if(start_color.length == 3){
-     start_color = start_color.replace(/(.)/g, '$1$1');
-   }
+    // convert 3 char codes --> 6, e.g. `E0F` --> `EE00FF`
+    if(start_color.length == 3){
+      start_color = start_color.replace(/(.)/g, '$1$1');
+    }
 
-   if(end_color.length == 3){
-     end_color = end_color.replace(/(.)/g, '$1$1');
-   }
+    if(end_color.length == 3){
+      end_color = end_color.replace(/(.)/g, '$1$1');
+    }
 
-   // get colors
-   var start_red = parseInt(start_color.substr(0, 2), 16),
-       start_green = parseInt(start_color.substr(2, 2), 16),
-       start_blue = parseInt(start_color.substr(4, 2), 16);
+    // get colors
+    var start_red = parseInt(start_color.substr(0, 2), 16),
+        start_green = parseInt(start_color.substr(2, 2), 16),
+        start_blue = parseInt(start_color.substr(4, 2), 16);
 
-   var end_red = parseInt(end_color.substr(0, 2), 16),
-       end_green = parseInt(end_color.substr(2, 2), 16),
-       end_blue = parseInt(end_color.substr(4, 2), 16);
+    var end_red = parseInt(end_color.substr(0, 2), 16),
+        end_green = parseInt(end_color.substr(2, 2), 16),
+        end_blue = parseInt(end_color.substr(4, 2), 16);
 
-   // calculate new color
-   var diff_red = end_red - start_red;
-   var diff_green = end_green - start_green;
-   var diff_blue = end_blue - start_blue;
+    // calculate new color
+    var diff_red = end_red - start_red;
+    var diff_green = end_green - start_green;
+    var diff_blue = end_blue - start_blue;
 
-   diff_red = Math.abs(( (diff_red * percent) + start_red )).toString(16).split('.')[0];
-   diff_green = Math.abs(( (diff_green * percent) + start_green )).toString(16).split('.')[0];
-   diff_blue = Math.abs(( (diff_blue * percent) + start_blue )).toString(16).split('.')[0];
+    diff_red = Math.abs(( (diff_red * percent) + start_red )).toString(16).split('.')[0];
+    diff_green = Math.abs(( (diff_green * percent) + start_green )).toString(16).split('.')[0];
+    diff_blue = Math.abs(( (diff_blue * percent) + start_blue )).toString(16).split('.')[0];
 
-// ensure 2 digits by color
-   if( diff_red.length == 1 )
-     diff_red = '0' + diff_red
+     // ensure 2 digits by color
+    if( diff_red.length == 1 )
+      diff_red = '0' + diff_red
 
-   if( diff_green.length == 1 )
-     diff_green = '0' + diff_green
+    if( diff_green.length == 1 )
+      diff_green = '0' + diff_green
 
-   if( diff_blue.length == 1 )
-     diff_blue = '0' + diff_blue
+    if( diff_blue.length == 1 )
+      diff_blue = '0' + diff_blue
 
-   return '#' + diff_red + diff_green + diff_blue;
+    return '#' + diff_red + diff_green + diff_blue;
  };
 
 
