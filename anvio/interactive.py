@@ -2119,9 +2119,10 @@ class StructureInteractive(VariabilitySuper):
 
             if column_info["as_filter"] in ["slider"]:
                 # make a number histogram
-                histogram_args = {}
-                histogram_args["range"] = (column_info["min"], column_info["max"])
-                histogram_args["bins"] = 15
+                histogram_args = {
+                    'range': (column_info["min"], column_info["max"]),
+                    'bins': 30,
+                }
                 values, bins = var_object.get_histogram(column, fix_offset=False, **histogram_args)
 
             elif column_info["as_filter"] in ["checkbox"]:
