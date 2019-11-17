@@ -53,7 +53,7 @@ class TableForVariability(Table):
         return num_entries
 
 
-    def append(self, profile, quiet=False):
+    def append(self, profile):
         db_entry = tuple([self.next_id(t.variable_nts_table_name)] + [profile[h] for h in t.variable_nts_table_structure[1:]])
         self.db_entries.append(db_entry)
         self.num_entries += 1
