@@ -58,10 +58,21 @@ class TableForVariability(Table):
         self.db_entries.append(db_entry)
         self.num_entries += 1
 
+        if len(self.db_entries) >= self.max_num_entries_in_storage_buffer:
+            # everytime we are here, the contenst of self.db_entries will be stored in the
+            # database
+            self.store()
+
 
     def store(self):
+        if not len(self.db_entries):
+            return
+
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_nts_table_name, self.db_entries)
         database.disconnect()
 
+        if anvio.DEBUG:
+            run.info_single("SNVs: %d entries added to the nt variability table." % len(self.db_entries), mc="green")
 
+        self.db_entries = []
