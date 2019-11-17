@@ -338,7 +338,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 missing_packages.append(lib)
 
         if missing_packages:
-            raise ConfigError("The following R packages are required in order to run this program, but seems to be missing: '%s'.\
+            raise ConfigError("The following R packages are required in order to run this program, but seem to be missing: '%s'.\
                                To the best of her knowledge, anvi'o believes that you can install these packages by running the\
                                following commands (IF you are using conda): %s. UNFORTUNATELY, in some cases you may continue to\
                                see this error despite the fact that you have these packages installed :/ It would most likely mean\
