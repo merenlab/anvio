@@ -33,35 +33,40 @@
         <div class="row">
             <div class="col-md-3 sidebar">
                 <ul class="nav nav-tabs"  role="tablist">
-                  <li role="presentation" class="active"><a href="#tab_main" aria-controls="tab_main" role="tab" data-toggle="tab">Main</a></li>
-                  <li role="presentation"><a href="#tab_filters" aria-controls="tab_filters" role="tab" data-toggle="tab">Filters</a></li>
-                  <li role="presentation"><a href="#tab_perspectives" aria-controls="tab_perspectives" role="tab" data-toggle="tab">Perspectives</a></li>
-                  <li role="presentation"><a href="#tab_summary" aria-controls="tab_summary" role="tab" data-toggle="tab">Generate Summary</a></li>
+                  <li role="presentation" class="active"><a href="#tab_main" aria-controls="tab_main" role="tab" data-toggle="tab"><span class="settings-header"><h5>Main</h5></span></a></li>
+                  <li role="presentation"><a href="#tab_filters" aria-controls="tab_filters" role="tab" data-toggle="tab"><span class="settings-header"><h5>Filters</h5></span></a></li>
+                  <li role="presentation"><a href="#tab_perspectives" aria-controls="tab_perspectives" role="tab" data-toggle="tab"><span class="settings-header"><h5>Perspectives</h5></span></a></li>
+                  <li role="presentation"><a href="#tab_summary" aria-controls="tab_summary" role="tab" data-toggle="tab"><span class="settings-header"><h5>Output</h5></span></a></li>
                 </ul>
                 <div class="tab-content">
                     <div id="tab_main" role="tabpanel" class="tab-pane fade in active">
+                        <span class="settings-header"><h4>Gene</h4></span>
                         <div class="widget">
                             <div class="row">
                                 <div class="col-md-4 form-row-padding">
-                                    Gene Callers ID:
+                                    <label class="settings-label">Gene ID:</label>
                                 </div>
                                 <div class="col-md-8 form-row-padding">
                                     <select class="form-control" serialize="true" id="gene_callers_id_list" style="width: 100%;"></select>
                                 </div>
                             </div>
+                        </div>
+                        <span class="settings-header"><h4>Variant Type</h4></span>
+                        <div class="widget">
                             <div class="row">
                                 <div class="col-md-4 form-row-padding">
-                                    Engine:
+                                    <label class="col-md-4 settings-label">Engine:</label>
                                 </div>
                                 <div class="col-md-8 form-row-padding">
                                     <div id="engine_list"></div>
                                 </div>
                             </div>
                         </div>
+                        <span class="settings-header"><h4>Grouping</h4></span>
                         <div class="widget">
                             <div class="row">
                                 <div class="col-md-4 form-row-padding">
-                                    Category:
+                                    <label class="col-md-4 settings-label">Category:</label>
                                 </div>
                                 <div class="col-md-8 form-row-padding">
                                     <select class="form-control" serialize="true" id="sample_groups_list">
@@ -76,6 +81,7 @@
 
                             </div>
                         </div>
+                        <span class="settings-header"><h4>Session</h4></span>
                         <div class="btn-group" role="group" style="margin-bottom: 0px; width: 100%;">
                         <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showLoadStateWindow();" data-help="load-state-button" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
                         <button type="button" class="btn btn-default btn-sm" style="width: 50%;" onclick="showSaveStateWindow();" data-help="save-state-button"><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button> 
@@ -90,7 +96,7 @@
                         <span class="settings-header"><h4>Variants</h4></span>
                         <span class="settings-header" style="margin-left: 10px;"><h5>Color</h5></span>
                         <div class="col-md-12">
-                            <label class="col-md-4 settings-label">Type: </label>  
+                            <label class="col-md-4 settings-label">Type: </label>
                             <div class="col-md-8">
                                 <select id="color_type" onchange="if ($(this).val() == 'Static') { $('.static-color').show(); $('.dynamic-color').hide(); } else { $('.static-color').hide(); $('.dynamic-color').show(); }; draw_variability();">
                                     <option>Static</option>
@@ -293,7 +299,7 @@
                                     <div class="col-md-4"><input type="checkbox" id="merged_view_only" checked="checked"></div>
                                 </div>
                         </div>
-                        <button type="button" class="btn btn-primary" onclick="generate_summary();" style="width: 100%; margin-top: 10px;">Generate static summary page</button>
+                        <button type="button" class="btn btn-primary" onclick="generate_summary();" style="width: 100%; margin-top: 10px;"><label class="settings-label" for="scale">Generate static summary page</label></button>
                     </div>
                 </div>
             </div>
