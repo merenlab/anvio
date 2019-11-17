@@ -53,6 +53,15 @@ class TableForVariability(Table):
         return num_entries
 
 
+    def append_entry(self, entry):
+        self.db_entries.append(entry)
+
+        if len(self.db_entries) > self.max_num_entries_in_storage_buffer:
+            # everytime we are here, the contenst of self.db_entries will be stored in the
+            # database
+            self.store()
+
+
     def append(self, profile):
         db_entry = tuple([self.next_id(t.variable_nts_table_name)] + [profile[h] for h in t.variable_nts_table_structure[1:]])
         self.db_entries.append(db_entry)

@@ -356,7 +356,7 @@ class MultipleRuns:
 
             for tpl in sample_variable_nts_table:
                 entry = tuple([variable_nts_table.next_id(tables.variable_nts_table_name)] + list(tpl[1:]))
-                variable_nts_table.db_entries.append(entry)
+                variable_nts_table.append_entry(entry)
 
         variable_nts_table.store()
 
@@ -371,7 +371,7 @@ class MultipleRuns:
 
             for tpl in sample_variable_codons_table:
                 entry = tuple([variable_codons_table.next_id(tables.variable_codons_table_name)] + list(tpl[1:]))
-                variable_codons_table.db_entries.append(entry)
+                variable_codons_table.append_entry(entry)
 
         variable_codons_table.store()
 
