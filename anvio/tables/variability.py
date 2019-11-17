@@ -37,6 +37,13 @@ class TableForVariability(Table):
         self.db_entries = []
         self.set_next_available_id(t.variable_nts_table_name)
 
+        # after getting an instance, we don't want things to keep accumulating
+        # in memory. the purpose of the following variable is to ensure whenever
+        # the number of entries in `self.db_entries` variable exceeds a certain
+        # value, it will be written to the database and the global variable
+        # `self.db_entries` will be emptied, saving significant memory space:
+        self.max_num_entries_in_storage_buffer = 5000
+
 
     def get_num_entries(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
