@@ -338,11 +338,16 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 missing_packages.append(lib)
 
         if missing_packages:
-            raise ConfigError('The following R packages are required in order to run \
-                               this program, but are missing: %s. You can install these \
-                               packages using conda by running the following commands: \
-                               %s' % (', '.join(missing_packages),
-                                      ', '.join(['"%s"' % package_dict[i] for i in missing_packages])))
+            raise ConfigError("The following R packages are required in order to run this program, but seems to be missing: '%s'.\
+                               To the best of her knowledge, anvi'o believes that you can install these packages by running the\
+                               following commands (IF you are using conda): %s. UNFORTUNATELY, in some cases you may continue to\
+                               see this error despite the fact that you have these packages installed :/ It would most likely mean\
+                               that some other issues interfere with their proper usage during run-time. If you have these packages\
+                               installed but you continue seeing this error, please run in your terminal Rscript -e\
+                               \"library(LIBRARY_NAME)\" after replacing `LIBRARY_NAME` with the package name anvi'o keeps complaining\
+                               about. Running this on your terminal will test whether the package is properly loading or not and the\
+                               resulting error messages will likely be much more helpful solving the issue. Apologies for the\
+                               frustration." % (', '.join(missing_packages), ', '.join(['"%s"' % package_dict[i] for i in missing_packages])))
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         output_file_path = A('output_file')
