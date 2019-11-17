@@ -109,7 +109,7 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
     $('#sample_groups').empty();
     $('#sample_groups').attr('created-for-category', category);
 
-    tableHtml = '<table class="table table-condensed"><tr><td>Groups</td><td>Samples</td></tr>';
+    tableHtml = '<table class="table table-condensed"><tr><td><label class="col-md-4 settings-label">Groups</label></td><td><label class="col-md-4 settings-label">Samples</label></td></tr>';
 
     let counter=0;
     for (let group in sample_groups[category]) {
@@ -130,14 +130,14 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
         tableHtml += `
             <tr>
                 <td>
-                    <input class="form-check-input" 
+                    <input class="form-check-input"
                         onclick="create_ngl_views();"
                         checkbox-for="group"
                         id="${category}_${group}"
                         type="checkbox" 
                         data-category="${category}"
                         data-group="${group}"
-                        value="${group}" 
+                        value="${group}"
                         ${ group_checked ? `checked="checked"` : `` }>
                     <label class="form-check-label" for="${category}_${group}">${group}</label>
                 </td>
@@ -182,7 +182,7 @@ function apply_orientation_matrix_to_all_stages(orientationMatrix) {
 }
 
 async function create_ngl_views(fetch_variability = true) {
-    // if fetch_variability, fetch_and_draw_variability is called, otherwise draw_variability i called
+    // if fetch_variability, fetch_and_draw_variability is called, otherwise draw_variability is called
     let selected_groups = $('[checkbox-for="group"]:checked');
     if (selected_groups.length > MAX_NGL_WIDGETS) {
         $('#maximum_ngl_widgets_error').show();
@@ -702,7 +702,7 @@ function create_ui() {
     var defer = $.Deferred();
     let gene_callers_id = $('#gene_callers_id_list').val();
     let engine = $('[name=engine]:checked').val();
-    
+
     backupFilters();
 
    $.ajax({
@@ -750,7 +750,7 @@ function create_ui() {
 
                     $(container).append(`
                         <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
-                            ${item['title']}<br />
+                            <span class="settings-header"><h5>${item['title']}</h5></span><br />
                             <svg id="histogram_${item['name']}" width="100%" height="30" style="position: relative; top: 6;" viewBox="0 0 200 30" preserveAspectRatio="none"></svg>   
                             <input id="${item['name']}" 
                                     type="${item['data_type']}" 
@@ -773,7 +773,7 @@ function create_ui() {
                     
                     $(container).append(`
                         <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
-                            ${item['title']}<br />
+                            <span class="settings-header"><h5>${item['title']}</h5></span><br />
                             ${item['choices'].map((choice) => { return `
                                 <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" onclick="fetch_and_draw_variability();" ${ checked_choices.indexOf(choice) > -1 ? 'checked="checked"' : ''}>
                                 <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>`; }).join('')}
