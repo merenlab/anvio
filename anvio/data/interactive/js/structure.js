@@ -287,10 +287,17 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
             });
         }
 
-        if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() == 'always'){
-            component.addRepresentation("ball+stick", {
-                sele: "sidechainAttached"
-            });
+        if ($('#show_ballstick').is(':checked')) {
+            if ($('#show_ballstick_when').val() == 'always') {
+                component.addRepresentation("ball+stick", {
+                    sele: "sidechainAttached"
+                });
+            } else if ($('#show_ballstick_when').val() == 'variant residue') {
+                var selection = "(" + Object.keys(variability['all']).join(', ') + ")" + " and sidechainAttached";
+                component.addRepresentation("ball+stick", {
+                    sele: selection
+                });
+            }
         }
 
         if (cached_orientation_matrices.hasOwnProperty($('#gene_callers_id_list').val())) {
@@ -308,7 +315,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
             let tooltip = document.getElementById('ngl-tooltip');
 
             if (pickingProxy && pickingProxy.atom) {
-                if (pickingProxy.atom.resno != previous_hovered_residue && $('#show_ballstick_when').val() != 'always') {
+                if (pickingProxy.atom.resno != previous_hovered_residue && !(['always', 'variant residue'].includes($('#show_ballstick_when').val()))) {
                     // remove ball+stick if hovered residue changed or 
                     if (pickingProxy.atom.resno != previous_hovered_residue) {
                         stage.compList[0].reprList.slice(0).forEach((rep) => {
@@ -322,7 +329,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 let residue = pickingProxy.atom.resno;
                 let mp = pickingProxy.mouse.position;
 
-                if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() != 'always') {
+                if ($('#show_ballstick').is(':checked') && !(['always', 'variant residue'].includes($('#show_ballstick_when').val()))) {
                     if ($('#show_ballstick_when').val() == 'hovered residue') {
                         var selection = "(" + residue + ")" + " and sidechainAttached";
                     }
@@ -433,7 +440,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 previous_hovered_residue = residue;
             } else {
                 tooltip.style.display = "none";
-                if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() != 'always'){
+                if ($('#show_ballstick').is(':checked') && !(['always', 'variant residue'].includes($('#show_ballstick_when').val()))){
                     stage.compList[0].reprList.slice(0).forEach((rep) => {
                         if (rep.name == 'ball+stick') {
                             rep.dispose();
