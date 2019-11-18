@@ -274,11 +274,30 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
         }
 
         if ($('#show_backbone').is(':checked')) {
-            component.addRepresentation($('#backbone_type').val(), {
-                color: $('#backbone_color').attr('color'),
-                aspectRatio: 3.0,
-                scale: 1.5
-            });
+            backbone_type = $('#backbone_type').val()
+
+            if (backbone_type == 'rocket+loop') {
+                // custom
+                component.addRepresentation('rocket', {
+                    color: $('#backbone_color').attr('color'),
+                    scale: 1.8,
+                });
+                component.addRepresentation('tube', {
+                    color: $('#backbone_color').attr('color'),
+                    sele: 'not helix',
+                    scale: 2.0,
+                    aspectRatio: 1.0,
+                });
+            } else if (backbone_type == 'custom') {
+                // custom
+                null
+            } else {
+                component.addRepresentation(backbone_type, {
+                    color: $('#backbone_color').attr('color'),
+                    scale: 1.5,
+                    aspectRatio: 3.0,
+                });
+            }
         }
 
         if ($('#show_ballstick').is(':checked')) {
