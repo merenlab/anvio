@@ -28,8 +28,9 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
-def get_list_in_chunks(input_list, num_items_in_each_chunk=1000):
+def get_list_in_chunks(input_list, num_items_in_each_chunk=5000):
     """Yield smaller bits of a list"""
+
     for index in range(0, len(input_list), num_items_in_each_chunk):
         yield input_list[index:index + num_items_in_each_chunk]
 
