@@ -133,7 +133,7 @@
                                     <span class="settings-header" id="middle-color" style="margin-left: 22px;"><h5>Middle</h5></span>
                                     <div class="col-md-12">
                                         <label class="col-md-4 settings-label" style="margin-bottom: 15px">Color: </label>
-                                        <div class="col-md-8"><div class="colorpicker" id="color_middle" color="#38ba72" onchange="draw_variability();" style="background-color: #ffffed"></div></div>
+                                        <div class="col-md-8"><div class="colorpicker" id="color_middle" color="#38ba72" onchange="draw_variability();" style="background-color: #38ba72"></div></div>
                                     </div>
                                 </div>
                                 <span class="settings-header" style="margin-left: 22px;"><h5>Maximum</h5></span>
@@ -202,7 +202,7 @@
                         </div>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Color: </label>  
-                            <div class="col-md-8"><div class="colorpicker" id="backbone_color" color="#4f81ae" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #386496;"></div>
+                            <div class="col-md-8"><div class="colorpicker" id="backbone_color" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab;"></div>
                             </div>
                         </div>
                         <div class="col-md-12">
@@ -210,7 +210,14 @@
                             <div class="col-md-8">
                                 <select id="backbone_type" onchange="create_ngl_views(fetch_variability=false);">
                                     <option>cartoon</option>
+                                    <option>tube</option>
+                                    <option>rope</option>
                                     <option>ribbon</option>
+                                    <option>trace</option>
+                                    <option>point</option>
+                                    <option>rocket</option>
+                                    <option>helixorient</option>
+                                    <option>distance</option>
                                 </select>
                             </div>
                         </div>
@@ -242,6 +249,10 @@
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Opacity: </label>
                             <div class="col-md-8"><input type="text" id="surface_opacity" value="0.25" onblur="create_ngl_views(fetch_variability=false); " /></div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Probe radius: </label>
+                            <div class="col-md-8"><input type="text" id="surface_probe_radius" value="1.4" onblur="create_ngl_views(fetch_variability=false); " /></div>
                         </div>
                         <span class="settings-header" style="margin-left: 10px;"><h5>Ball-Stick</h5></span>
                         <div class="col-md-12">
