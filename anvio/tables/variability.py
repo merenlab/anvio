@@ -37,6 +37,13 @@ class TableForVariability(Table):
         self.db_entries = []
         self.set_next_available_id(t.variable_nts_table_name)
 
+        # after getting an instance, we don't want things to keep accumulating
+        # in memory. the purpose of the following variable is to ensure whenever
+        # the number of entries in `self.db_entries` variable exceeds a certain
+        # value, it will be written to the database and the global variable
+        # `self.db_entries` will be emptied, saving significant memory space:
+        self.max_num_entries_in_storage_buffer = 5000
+
 
     def get_num_entries(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
@@ -46,17 +53,35 @@ class TableForVariability(Table):
         return num_entries
 
 
-    def append(self, profile, quiet=False):
+    def append_entry(self, entry):
+        self.db_entries.append(entry)
+
+        if len(self.db_entries) > self.max_num_entries_in_storage_buffer:
+            # everytime we are here, the contenst of self.db_entries will be stored in the
+            # database
+            self.store()
+
+
+    def append(self, profile):
         db_entry = tuple([self.next_id(t.variable_nts_table_name)] + [profile[h] for h in t.variable_nts_table_structure[1:]])
         self.db_entries.append(db_entry)
         self.num_entries += 1
-        if not quiet and self.num_entries % 100 == 0:
-            self.progress.update('Information for %d SNV sites have been added ...' % self.num_entries)
+
+        if len(self.db_entries) >= self.max_num_entries_in_storage_buffer:
+            # everytime we are here, the contenst of self.db_entries will be stored in the
+            # database
+            self.store()
 
 
     def store(self):
+        if not len(self.db_entries):
+            return
+
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_nts_table_name, self.db_entries)
         database.disconnect()
 
+        if anvio.DEBUG:
+            run.info_single("SNVs: %d entries added to the nt variability table." % len(self.db_entries), mc="green")
 
+        self.db_entries = []
