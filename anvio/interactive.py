@@ -1566,7 +1566,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'departure_from_consensus',
                 'title': 'Departure from consensus',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1576,7 +1576,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'departure_from_reference',
                 'title': 'Departure from reference',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1586,7 +1586,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'n2n1ratio',
                 'title': 'Ratio of 2nd to 1st',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1596,7 +1596,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'prevalence',
                 'title': 'Prevalence',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': False,
                 'merged_only': True,
                 'data_type': 'float',
@@ -1606,21 +1606,21 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'occurrence',
                 'title': 'occurrence',
-                'as_perspective': False,
+                'as_view': False,
                 'as_filter': False,
                 'merged_only': True,
                 'data_type': 'integer',
             },
             {
                 'name': 'contact_numbers',
-                'as_perspective': False,
+                'as_view': False,
                 'as_filter': False,
                 'data_type': 'text',
             },
             {
                 'name': 'mean_normalized_coverage',
                 'title': 'Site coverage normalized by gene average',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1630,7 +1630,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'coverage',
                 'title': 'Site coverage',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 1,
@@ -1640,7 +1640,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'synonymity',
                 'title': 'Synonymity',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1650,7 +1650,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'entropy',
                 'title': 'Entropy',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1660,7 +1660,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'rel_solvent_acc',
                 'title': 'Relative solvent accessibility',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1670,7 +1670,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'sec_struct',
                 'title': 'Secondary structure',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'checkbox',
                 'data_type': 'text',
                 'choices': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']
@@ -1678,7 +1678,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'phi',
                 'title': 'Phi',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 1,
@@ -1688,7 +1688,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'psi',
                 'title': 'Psi',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 1,
@@ -1698,7 +1698,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'BLOSUM62',
                 'title': 'BLOSUM62',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1708,7 +1708,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'BLOSUM90',
                 'title': 'BLOSUM90',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1718,7 +1718,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'codon_order_in_gene',
                 'title': 'Codon index',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1728,7 +1728,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'codon_number',
                 'title': 'Codon number',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1738,7 +1738,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': var.competing_items,
                 'title': 'Competing Amino Acids' if engine == "AA" else 'Competing Codons',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'checkbox',
                 'data_type': 'text',
                 'choices': list(var.data[var.competing_items].value_counts().sort_values(ascending=False).index)
@@ -1746,7 +1746,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'reference',
                 'title': 'Reference',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'checkbox',
                 'data_type': 'text',
                 'choices': list(var.data['reference'].value_counts().sort_values(ascending=False).index)
@@ -1754,7 +1754,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'consensus',
                 'title': 'Consensus',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'checkbox',
                 'data_type': 'text',
                 'choices': list(var.data['consensus'].value_counts().sort_values(ascending=False).index)
@@ -1766,7 +1766,7 @@ class StructureInteractive(VariabilitySuper):
             info.append(
                 {
                     'name': item,
-                    'as_perspective': False,
+                    'as_view': False,
                     'as_filter': False,
                     'data_type': 'integer',
                 },
@@ -1777,21 +1777,21 @@ class StructureInteractive(VariabilitySuper):
             info.extend([
                 {
                     'name': str(x) + '_item',
-                    'as_perspective': False,
+                    'as_view': False,
                     'as_filter': False,
                     'data_type': 'text',
                     'merged_only': True,
                 },
                 {
                     'name': str(x) + '_item_AA',
-                    'as_perspective': False,
+                    'as_view': False,
                     'as_filter': False,
                     'data_type': 'text',
                     'merged_only': True,
                 },
                 {
                     'name': str(x) + '_freq',
-                    'as_perspective': False,
+                    'as_view': False,
                     'as_filter': False,
                     'data_type': 'float',
                     'merged_only': True,
