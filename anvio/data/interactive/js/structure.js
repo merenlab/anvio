@@ -244,27 +244,22 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
         if( component.type !== "structure" ) return;
 
         if ($('#show_surface').is(':checked')) {
-            if ($('#surface_type').val() == 'plain') {
-                component.addRepresentation("surface", {
-                    surfaceType: "av",
-                    color: $('#color_plain').attr('color'),
-                    smooth: 3,
-                    probeRadius: parseFloat($('#surface_probe_radius').val()),
-                    scaleFactor: 3.0,
-                    opacity: parseFloat($('#surface_opacity').val()),
-                    lowResolution: false,
-                });
-            } else {
-                component.addRepresentation("surface", {
-                    surfaceType: "av",
-                    colorScheme: $('#surface_type').val(),
-                    smooth: 3,
-                    probeRadius: parseFloat($('#surface_probe_radius').val()),
-                    scaleFactor: 3.0,
-                    opacity: parseFloat($('#surface_opacity').val()),
-                    lowResolution: false,
-                });
+            surface_rep_params = {
+                surfaceType: "av",
+                smooth: 3,
+                opaqueBack: false,
+                side: 'double',
+                probeRadius: parseFloat($('#surface_probe_radius').val()),
+                scaleFactor: 3.0,
+                opacity: parseFloat($('#surface_opacity').val()),
+                lowResolution: false,
             }
+            if ($('#surface_type').val() == 'plain') {
+                surface_rep_params['color'] = $('#color_plain').attr('color')
+            } else {
+                surface_rep_params['colorScheme'] = $('#surface_type').val()
+            }
+            component.addRepresentation("surface", surface_rep_params);
         }
 
         // FIXME does not work as expected. When loading structure residue info create
