@@ -19,7 +19,6 @@ var sample_groups_backup = {};
 var current_state_name;
 
 
-
 $(document).ready(function() {
     toastr.options = {
         "closeButton": true,
@@ -291,11 +290,6 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
             if ($('#show_ballstick_when').val() == 'always') {
                 component.addRepresentation("ball+stick", {
                     sele: "sidechainAttached"
-                });
-            } else if ($('#show_ballstick_when').val() == 'variant residue') {
-                var selection = "(" + Object.keys(variability['all']).join(', ') + ")" + " and sidechainAttached";
-                component.addRepresentation("ball+stick", {
-                    sele: selection
                 });
             }
         }
@@ -590,6 +584,9 @@ function draw_variability() {
             if (rep.name == 'spacefill') {
                 rep.dispose();
             }
+            if (rep.name == 'ball+stick' && $('#show_ballstick_when').val() == 'variant residue') {
+                rep.dispose();
+            }
         });
 
         if (Object.keys(data).length > 0) {
@@ -676,6 +673,15 @@ function draw_variability() {
 
                 let representation = component.addRepresentation("spacefill", spacefill_options);
                 representation['variability'] = data[index];
+
+                if ($('#show_ballstick').is(':checked')) {
+                    if ($('#show_ballstick_when').val() == 'variant residue') {
+                        var selection = data[index]['codon_number'] + " and sidechainAttached";
+                        component.addRepresentation("ball+stick", {
+                            sele: selection
+                        });
+                    }
+                }
             }
         }
     }
