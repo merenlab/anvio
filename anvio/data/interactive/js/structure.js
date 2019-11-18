@@ -600,6 +600,7 @@ function draw_variability() {
                     if (selected_column_info['data_type'] == 'float' || selected_column_info['data_type'] == 'integer') {
                         let min_value = parseFloat($('#color_min').val());
                         let max_value = parseFloat($('#color_max').val());
+                        let middle_value = (min_value + max_value) / 2;
 
                         if (min_value >= max_value) {
                             $('#dynamic_color_error').show();
@@ -610,10 +611,24 @@ function draw_variability() {
                         let val = (parseFloat(column_value) - min_value) / (max_value - min_value);
                         val = Math.max(0, Math.min(1, val));
 
-                        spacefill_options['color'] = getGradientColor(
-                            $('#color_start').attr('color'),
-                            $('#color_end').attr('color'),
-                            val);
+                        if ($('#show_3_color').is(':checked')) {
+                            if (val <= 0.5) {
+                                spacefill_options['color'] = getGradientColor(
+                                    $('#color_start').attr('color'),
+                                    $('#color_middle').attr('color'),
+                                    val);
+                            } else {
+                                spacefill_options['color'] = getGradientColor(
+                                    $('#color_middle').attr('color'),
+                                    $('#color_end').attr('color'),
+                                    val);
+                            }
+                        } else {
+                            spacefill_options['color'] = getGradientColor(
+                                $('#color_start').attr('color'),
+                                $('#color_end').attr('color'),
+                                val);
+                        }
                     }
                     else
                     {
