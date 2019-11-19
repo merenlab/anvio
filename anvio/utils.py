@@ -2578,6 +2578,13 @@ def is_contigs_db(db_path):
     return True
 
 
+def is_trna_db(db_path):
+    filesnpaths.is_file_exists(db_path)
+    if get_db_type(db_path) != 'trna':
+        raise ConfigError("'%s' is not an anvi'o tRNA database." % db_path)
+    return True
+
+
 def is_pan_or_profile_db(db_path, genes_db_is_also_accepted=False):
     ok_db_types = ['pan', 'profile']
 
