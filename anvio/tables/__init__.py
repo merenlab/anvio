@@ -90,6 +90,10 @@ genes_taxonomy_table_name              = 'genes_taxonomy'
 genes_taxonomy_table_structure         = ['gene_callers_id', 'taxon_id',]
 genes_taxonomy_table_types             = [    'numeric'    ,  'numeric',]
 
+trnaseeds_taxonomy_table_name             = 'trnaseeds_taxonomy'
+trnaseeds_taxonomy_table_structure        = ['trnaseed', 'taxon_id',]
+trnaseeds_taxonomy_table_types            = [ 'text',  'numeric',]
+
 hmm_hits_info_table_name               = 'hmm_hits_info'
 hmm_hits_info_table_structure          = ['source', 'ref' , 'search_type', 'domain', 'genes']
 hmm_hits_info_table_types              = [ 'text' , 'text',    'text'    ,  'text' , 'text' ]       # This one here is the id that apper as in gene_calls table

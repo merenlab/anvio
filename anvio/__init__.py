@@ -2167,6 +2167,7 @@ def get_version_tuples():
     return [("Anvi'o version", "%s (v%s)" % (__codename__, __version__)),
             ("Profile DB version", __profile__version__),
             ("Contigs DB version", __contigs__version__),
+            ("tRNA Seeds DB version", __trnaseeds__version__),
             ("Genes DB version", __genes__version__),
             ("Auxiliary data storage version", __auxiliary_data_version__),
             ("Pan DB version", __pan__version__),
@@ -2178,6 +2179,7 @@ def print_version():
     run.info("Anvi'o version", "%s (v%s)" % (__codename__, __version__), mc='green')
     run.info("Profile DB version", __profile__version__)
     run.info("Contigs DB version", __contigs__version__)
+    run.info("tRNA Seeds DB version", __trnaseeds__version__)
     run.info("Pan DB version", __pan__version__)
     run.info("Genome data storage version", __genomes_storage_version__)
     run.info("Auxiliary data storage version", __auxiliary_data_version__)
@@ -2187,6 +2189,7 @@ def print_version():
 __version__, \
 __codename__, \
 __contigs__version__, \
+__trnaseeds__version__, \
 __pan__version__, \
 __profile__version__, \
 __genes__version__, \

@@ -238,6 +238,11 @@ conserved_amino_acid_groups = {
     'None': []
 }
 
+# the longest known tRNA (selenocysteine) is 101 bp
+# ref: Santesmasses, Mariotti & Guigo, 2017, "Computational identification of the selenocysteine tRNA (tRNASec) in genomes," PLoS Comp. Biol., 13(2): e1005383
+# https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5330540/
+longest_known_trna_length = 101
+
 amino_acid_property_group = {}
 for key in ['A','I','L','V','M','C']:
     amino_acid_property_group[key] = 'Nonpolar'
