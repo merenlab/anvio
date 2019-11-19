@@ -1403,7 +1403,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         pass
 
 
-class StructureInteractive(VariabilitySuper):
+class StructureInteractive(VariabilitySuper, ContigsSuperclass):
     def __init__(self, args, run=run, progress=progress):
         self.run = run
         self.progress = progress
@@ -1432,7 +1432,6 @@ class StructureInteractive(VariabilitySuper):
         self.saavs_only = A('SAAVs_only', bool)
         self.scvs_only = A('SCVs_only', bool)
         self.variability_table_path = A('variability_profile', null)
-        self.no_variability = A('no_variability', bool)
         self.min_departure_from_consensus = A('min_departure_from_consensus', float) or 0
 
         # states
@@ -1440,13 +1439,14 @@ class StructureInteractive(VariabilitySuper):
 
         # For now, only true if self.variability_table_path. Otherwise variability is computed on the fly
         self.store_full_variability_in_memory = True if self.variability_table_path else False
-        self.sample_groups_provided = True if self.profile_db_path else False
         self.full_variability = None
         self.variability_storage = {}
 
         self.num_reported_frequencies = 5
 
         self.sanity_check()
+
+        ContigsSuperclass.__init__(self, self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
         if self.store_full_variability_in_memory:
             self.profile_full_variability_data()
@@ -1464,6 +1464,15 @@ class StructureInteractive(VariabilitySuper):
 
         self.available_samples = self.get_available_samples()
         self.sample_groups = self.create_sample_groups_dict()
+
+        # self.get_gene_function_info(self.available_genes[0])
+
+
+    def get_gene_function_info(self, gene_callers_id):
+        sql_query =  "gene_callers_id=%d" % gene_callers_id
+        gene_function_info = self.contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, sql_query)
+        # items, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False, requested_sources=requested_sources)
+        print(gene_function_info)
 
 
     def filter_full_variability(self):
@@ -1948,13 +1957,13 @@ class StructureInteractive(VariabilitySuper):
             raise ConfigError("Must provide a structure database.")
         utils.is_structure_db(self.structure_db_path)
 
-        if self.no_variability:
-            run.warning("Wow. Seriously? --no-variability? This is why freedom of speech needs to be\
-                         abolished.")
+        if not self.contigs_db_path:
+            raise ConfigError("Must provide a contigs database.")
+        utils.is_contigs_db(self.contigs_db_path)
 
-        elif not self.profile_db_path and not self.variability_table_path:
+        if not self.profile_db_path and not self.variability_table_path:
             raise ConfigError("You have to provide either a variability table generated from\
-                               anvi-gen-variability-profile, or a profile and contigs database from\
+                               anvi-gen-variability-profile, or a profile database from\
                                which sequence variability will be computed.")
 
         if self.variability_table_path:
@@ -1972,10 +1981,6 @@ class StructureInteractive(VariabilitySuper):
                              profile database with the flag `-p`. If you want to create groupings,\
                              you can read about how to create them here:\
                              http://merenlab.org/2017/12/11/additional-data-tables/#layers-additional-data-table.")
-
-        elif self.profile_db_path and not self.contigs_db_path:
-            raise ConfigError("A contigs database must accompany your profile database. Provide one\
-                               with the flag `-c`.")
 
         if self.saavs_only and self.scvs_only:
             raise ConfigError("--SAAVs-only and --SCVs-only are not compatible with one another. Pick one.")
