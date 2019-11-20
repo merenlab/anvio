@@ -1465,14 +1465,28 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         self.available_samples = self.get_available_samples()
         self.sample_groups = self.create_sample_groups_dict()
 
-        # self.get_gene_function_info(self.available_genes[0])
-
 
     def get_gene_function_info(self, gene_callers_id):
-        sql_query =  "gene_callers_id=%d" % gene_callers_id
-        gene_function_info = self.contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, sql_query)
-        # items, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False, requested_sources=requested_sources)
-        print(gene_function_info)
+        """Returns gene function info from the gene_function_calls_dict of ContigsSuperclass
+
+        If gene functions have not been initialized, ContigsSuperclass.init_functions is called
+
+        Notes
+        =====
+        - This initializes genes for the entire contigs database. When this becomes intolerably
+          inefficient, ContigsSuperclass.init_functions should be modified to take a genes of
+          interest flag
+        """
+
+        if not self.gene_function_calls_initiated:
+            self.init_functions()
+
+        return {'functions': self.gene_function_calls_dict.get(gene_callers_id)}
+
+
+    def get_search_results_for_gene_functions(self, search_terms):
+        """FIXME Currently unused"""
+        items, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=True)
 
 
     def filter_full_variability(self):

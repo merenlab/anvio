@@ -63,7 +63,7 @@ $(document).ready(function() {
     }, false );
 
     $('#gene_callers_id_list').on('change', function(ev) {
-        $.when({}).then(load_protein).then(() => {
+        $.when({}).then(load_protein).then(load_gene_function_info).then(() => {
             create_ui();
             load_sample_group_widget($('#sample_groups_list').val());
         });
@@ -87,7 +87,7 @@ $(document).ready(function() {
                 $('#gene_callers_id_list').append(`<option id=${gene_callers_id}>${gene_callers_id}</option>`);
             });
 
-            $.when({}).then(load_protein).then(() => {
+            $.when({}).then(load_protein).then(load_gene_function_info).then(() => {
                 let default_engine = available_engines[0];
                 available_engines.forEach(function(engine) {
                     $('#engine_list').append(`<input type="radio" name="engine" onclick="$.when({}).then(create_ui).then(() => { fetch_and_draw_variability(); });" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
@@ -475,7 +475,7 @@ function load_protein() {
     let gene_callers_id = $('#gene_callers_id_list').val();
     var defer = $.Deferred();
     $('.overlay').show();
-    
+
     $.ajax({
         type: 'GET',
         cache: false,
@@ -485,6 +485,24 @@ function load_protein() {
             histogram_data = data['histograms'];
             pdb_content = data['pdb_content'];
             residue_info = move_codon_number_to_index(JSON.parse(data['residue_info']));
+            defer.resolve();
+        }
+    });
+
+    return defer.promise();
+}
+
+function load_gene_function_info() {
+    let gene_callers_id = $('#gene_callers_id_list').val();
+    var defer = $.Deferred();
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/get_gene_function_info/' + gene_callers_id,
+        success: function(gene_data) {
+            html = get_gene_functions_table_html_for_structure(gene_data);
+            $("#gene_function_info").html(html);
             defer.resolve();
         }
     });
@@ -759,7 +777,7 @@ function create_ui() {
 
     backupFilters();
 
-   $.ajax({
+    $.ajax({
         type: 'POST',
         cache: false,
         url: '/data/get_column_info',
@@ -1045,6 +1063,39 @@ async function make_image(group, sample) {
     return blob;
 }
 
+function get_gene_functions_table_html_for_structure(gene){
+    if (gene.functions == null) {
+        functions_table_html = '<div class="alert alert-info" role="alert" style="margin: 10px;" id="no_function_annotations_warning">Functional annotations: This gene doesn\'t have any.</div>';
+        console.log(functions_table_html)
+        return functions_table_html
+    }
+
+    functions_table_html  = '<table class="table table-striped">';
+    functions_table_html += '<thead><th>Source</th>';
+    functions_table_html += '<th>Accession</th>';
+    functions_table_html += '<th>Annotation</th></thead>';
+    functions_table_html += '<tbody>';
+
+    for (function_source in gene.functions){
+        functions_table_html += '<tr>';
+
+        functions_table_html += '<td><b>' + function_source + '</b></td>';
+        if (gene.functions[function_source]) {
+            functions_table_html += '<td>' + decorateAccession(function_source, gene.functions[function_source][0]) + '</td>';
+            functions_table_html += '<td><em>' + decorateAnnotation(function_source, gene.functions[function_source][1]) + '</em></td>';
+        } else {
+            functions_table_html += '<td>&nbsp;</td>';
+            functions_table_html += '<td>&nbsp;</td>';
+        }
+
+        functions_table_html += '</tr>';
+    }
+
+    functions_table_html += '</tbody></table>';
+
+    return functions_table_html;
+}
+
 
 async function generate_summary() {
     let serialized_groups = serialize_checked_groups();
@@ -1323,3 +1374,4 @@ function loadState()
         }
     });
 }
+

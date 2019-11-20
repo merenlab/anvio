@@ -2678,7 +2678,7 @@ function showGenePopup(element, gene_callers_id) {
                     placement: 'bottom',
                     container: 'body',
                     html: true,
-                    selector: '[rel="popover"]', //Sepcify the selector here
+                    selector: '[rel="popover"]', // Specify the selector here
                     content: function () {
                         return get_gene_functions_table_html(gene_data);
                     }
