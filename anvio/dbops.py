@@ -3399,7 +3399,7 @@ class TRNASeedsDatabase:
         self.progress.update('tick tock ...')
         fasta = u.SequenceSource(trnaseeds_fasta)
         while next(fasta):
-            if not utils.check_seed_names(fasta.id, dont_raise=True):
+            if not utils.check_trnaseed_names(fasta.id, dont_raise=True):
                 self.progress.end()
                 raise ConfigError("At least one of the deflines in your FASTA File does not comply with the 'simple deflines'\
                                    requirement of anvi'o. You can either use the script `anvi-script-reformat-fasta` to take\

@@ -407,6 +407,12 @@ D = {
                       must match to those in other input files. If there is a problem anvi'o will gracefully\
                       complain about it."}
                 ),
+    'trnaseeds-fasta': (
+            ['-f', '--trnaseeds-fasta'],
+            {'metavar': 'FASTA',
+             'required': True,
+             'help': "The FASTA file that contains tRNA reference sequences, which may be clustered from your tRNA-seq samples."}
+                ),
     'view-data': (
             ['-d', '--view-data'],
             {'metavar': 'VIEW_DATA',
@@ -2160,7 +2166,8 @@ def set_version():
            t.genes_db_version, \
            t.auxiliary_data_version, \
            t.genomes_storage_vesion, \
-           t.structure_db_version
+           t.structure_db_version, \
+           t.trnaseeds_db_version
 
 
 def get_version_tuples():
