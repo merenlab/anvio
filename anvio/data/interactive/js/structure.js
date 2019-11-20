@@ -501,8 +501,8 @@ function load_gene_function_info() {
         cache: false,
         url: '/data/get_gene_function_info/' + gene_callers_id,
         success: function(gene_data) {
-            html = get_gene_functions_table_html_for_structure(gene_data);
-            $("#gene_function_info").html(html);
+            var geneFunctionHtml = get_gene_functions_table_html_for_structure(gene_data);
+            $("#gene_function_info").html(geneFunctionHtml);
             defer.resolve();
         }
     });
