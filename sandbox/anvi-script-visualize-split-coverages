@@ -319,8 +319,8 @@ check_chart_type <- function(opts) {
 ## `colors()` as well as valid hex codes.
 check_color_opts <- function(opts) {
   color_opts <- c("coverage_plot_color",
-                  "snv_synonymous_color",
-                  "snv_nonsynonymous_color",
+                  "snv_wobble_pos_color",
+                  "snv_non_wobble_pos_color",
                   "snv_intergenic_color")
 
   for (arg in color_opts) {
@@ -951,9 +951,9 @@ basic_plot <- function(dat, opts) {
         base_pos_in_codon = 0:3,
         snv_color = c(
           opts$snv_intergenic_color,
-          opts$snv_nonsynonymous_color,
-          opts$snv_nonsynonymous_color,
-          opts$snv_synonymous_color
+          opts$snv_non_wobble_pos_color,
+          opts$snv_non_wobble_pos_color,
+          opts$snv_wobble_pos_color
         )
       )
 
@@ -980,6 +980,12 @@ basic_plot <- function(dat, opts) {
         logger$warn("Sample group '%s' had no SNV data!  No SNV data will be plotted for this group!",
                     group)
       }
+    }
+
+    ## Add xlim. FIXME xlim is parsed on the fly right here, but it should be checked before this point
+    if (!is.null(opts[['xlim']])) {
+      xlims <- lapply(unlist(strsplit(opts$xlim[[1]], ',')), as.integer)
+      cov_plot <- cov_plot + xlim(xlims[[1]], xlims[[2]])
     }
 
     ## Tweak the theme.
@@ -1101,6 +1107,12 @@ set_up_opts <- function() {
                 help = "Depending on the visualization strategy, the y-axis of the plot may be scaled to the common max.\
                         Use this flag to let them go free so every single plot has its own maximum \
                         value. [default %default]"),
+    make_option(opt_str = c("-x", "--xlim"),
+                action = "store",
+                type = "character",
+                default = NULL,
+                help = "Define the x-limits (domain) of the plot. If there are multiple splits, the limits refer to post-merged \
+                        positions. Input should be two comma-separated integers (e.g. 2287,4232). [default %default]"),
 
     ## Chart colors
     make_option(opt_str = c("--coverage-plot-color"),
@@ -1109,18 +1121,18 @@ set_up_opts <- function() {
                 default = "#333333",
                 help = "Color for the coverage plot [default %default]"),
     ## SNV colors
-    make_option(opt_str = c("--snv-synonymous-color"),
+    make_option(opt_str = c("--snv-wobble-pos-color"),
                 action = "store",
                 type = "character",
                 ## default = "#77e03a",
                 default = "#749637",
-                help = "Color for the synonymous variants [default %default]"),
-    make_option(opt_str = c("--snv-nonsynonymous-color"),
+                help = "Color for the 3rd position variants [default %default]"),
+    make_option(opt_str = c("--snv-non-wobble-pos-color"),
                 action = "store",
                 type = "character",
                 ## default = "#f8002f",
                 default = "#e33e33",
-                help = "Color for the nonsynonymous variants [default %default]"),
+                help = "Color for the 1st and 2nd position variants [default %default]"),
     make_option(opt_str = c("--snv-intergenic-color"),
                 action = "store",
                 type = "character",
@@ -1259,8 +1271,8 @@ Description:
   - The height of the SNV line represents the departure_from_reference
     column scaled to the max coverage of all splits per sample.
 
-  - Default colors for synonymous, nonsynonymous, and intergenic
-    variants are green, red, and black.
+  - Default colors for 3rd position (wobble position), 1st and 2nd
+    position, and intergenic variants are green, red, and black.
 
   - Required columns include:
     - contig_name
