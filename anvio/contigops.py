@@ -454,13 +454,20 @@ class GenbankToAnvio:
                 else:
                     accession = "None"
 
-                # storing gene product annotation
-                function = gene.qualifiers["product"][0]
+                # storing gene product annotation if present
+                if "product" in gene.qualifiers:
+                    function = gene.qualifiers["product"][0]
+                    # trying to capture all different ways proteins are listed as hypothetical and setting to same thing so can prevent from adding to output functions table below
+                    if function in ["hypothetical", "hypothetical protein", "conserved hypothetical", "conserved hypotheticals", "Conserved hypothetical protein"]:
+                        function = "hypothetical protein"
+                else:
+                    function = "hypothetical protein"
 
-                # if present, adding gene name to product annotation:
+                # if present, adding gene name to product annotation (so long as not a hypothetical, sometimes these names are useful, sometimes they are not):
                 if "gene" in gene.qualifiers:
-                    gene_name=str(gene.qualifiers["gene"][0])
-                    function = function + " (" + gene_name + ")"
+                    if function not in "hypothetical protein":
+                        gene_name=str(gene.qualifiers["gene"][0])
+                        function = function + " (" + gene_name + ")"
 
                 output_gene_calls[self.gene_callers_id] = {'contig': genbank_record.name,
                                                            'start': start,
@@ -490,7 +497,7 @@ class GenbankToAnvio:
         self.run.info('Num GenBank entries processed', num_genbank_records_processed)
         self.run.info('Num gene records found', num_genes_found)
         self.run.info('Num genes reported', num_genes_reported, mc='green')
-        self.run.info('Num genes with functins', num_genes_with_functions, mc='green', nl_after=1)
+        self.run.info('Num genes with functions', num_genes_with_functions, mc='green', nl_after=1)
 
         # time to write these down:
         utils.store_dict_as_FASTA_file(output_fasta,
