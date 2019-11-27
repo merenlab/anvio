@@ -377,21 +377,22 @@ rule anvi_run_ncbi_cogs:
                                      {params.search_with} >> {log} 2>&1""")
 
 
-rule anvi_run_scg_taxonomy:
-    version: anvio.__contigs__version__
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_scg_taxonomy.log"
-    input:
-        # make sure HMMs were done before running this rule
-        hmms_done = ancient(dirs_dict["CONTIGS_DIR"] + "/anvi_run_hmms-{group}.done"),
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
-    output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_scg_taxonomy-{group}.done")
-    params:
-        scg_taxonomy_data_dir = M.get_rule_param('anvi_run_scg_taxonomy', '--scgs-taxonomy-data-dir'),
-    threads: M.T('anvi_run_scg_taxonomy')
-    resources: nodes = M.T('anvi_run_scg_taxonomy'),
-    shell: w.r("""anvi-run-scg-taxonomy -c {input.contigs} \
-                                        -T {threads} \
-                                        {params.scg_taxonomy_data_dir} >> {log} 2>&1""")
+if run_anvi_run_hmms and run_anvi_run_scg_taxonomy:
+    rule anvi_run_scg_taxonomy:
+        version: anvio.__contigs__version__
+        log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_scg_taxonomy.log"
+        input:
+            # make sure HMMs were done before running this rule
+            hmms_done = ancient(dirs_dict["CONTIGS_DIR"] + "/anvi_run_hmms-{group}.done"),
+            contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
+        output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_scg_taxonomy-{group}.done")
+        params:
+            scg_taxonomy_data_dir = M.get_rule_param('anvi_run_scg_taxonomy', '--scgs-taxonomy-data-dir'),
+        threads: M.T('anvi_run_scg_taxonomy')
+        resources: nodes = M.T('anvi_run_scg_taxonomy'),
+        shell: w.r("""anvi-run-scg-taxonomy -c {input.contigs} \
+                                            -T {threads} \
+                                            {params.scg_taxonomy_data_dir} >> {log} 2>&1""")
 
 
 rule anvi_get_sequences_for_gene_calls:
@@ -466,7 +467,7 @@ rule annotate_contigs_database:
 
         # this is here because Meren put it here without really understanding why he was doing it :( 
         # WHAT COULD GO WRONG?
-        scg_taxonomy = rules.anvi_run_scg_taxonomy.output if run_anvi_run_scg_taxonomy else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        scg_taxonomy = rules.anvi_run_scg_taxonomy.output if (run_anvi_run_hmms and run_anvi_run_scg_taxonomy) else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
 
         # I hope that by now, you understand why this is here (hint: it is in order to prevent global warming)
         eggnog_mapper = rules.anvi_script_run_eggnog_mapper.output if run_anvi_script_run_eggnog_mapper else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
