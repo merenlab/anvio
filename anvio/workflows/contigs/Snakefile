@@ -50,7 +50,6 @@ if run_taxonomy_with_centrifuge:
     if not M.get_param_value_from_config(["centrifuge", "db"]):
         raise ConfigError("If you plan to run centrifuge, then you must "\
                           "provide a path for the centrifuge db in the "\
-
                           "config file. See documentation for more details.")
 
 
@@ -465,8 +464,8 @@ rule annotate_contigs_database:
         # this is here just so snakemake would run the ncbi cogs before running this rule
         cogs = rules.anvi_run_ncbi_cogs.output if run_anvi_run_ncbi_cogs else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
 
-        # this is here because Meren put it here without really understanding why he was doing it :( 
-        # WHAT COULD GO WRONG?
+        # this is here because Meren finally understood why it is here thanks to a short-lived wisdom during which
+        # he could see everything. it is gone now. SO GOOD LUCK TO YOU.
         scg_taxonomy = rules.anvi_run_scg_taxonomy.output if (run_anvi_run_hmms and run_anvi_run_scg_taxonomy) else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
 
         # I hope that by now, you understand why this is here (hint: it is in order to prevent global warming)
