@@ -66,7 +66,7 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
     def init(self):
-        ''' backhand stuff (mostly sanity checks) specific for the phylogenomics workflow'''
+        ''' backend stuff (mostly sanity checks) specific for the phylogenomics workflow'''
         super().init()
 
         self.internal_genomes_file = self.get_param_value_from_config('internal_genomes')
