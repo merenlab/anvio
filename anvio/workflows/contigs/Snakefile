@@ -341,7 +341,6 @@ if run_anvi_run_hmms:
                                   {params.installed_hmm_profile} >> {log} 2>&1")
 
 
-
 rule anvi_run_pfams:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_run_pfams.log")
@@ -382,6 +381,8 @@ rule anvi_run_scg_taxonomy:
     version: anvio.__contigs__version__
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_scg_taxonomy.log"
     input:
+        # make sure HMMs were done before running this rule
+        hmms_done = ancient(dirs_dict["CONTIGS_DIR"] + "/anvi_run_hmms-{group}.done"),
         contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
     output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_scg_taxonomy-{group}.done")
     params:
