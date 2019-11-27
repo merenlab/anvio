@@ -90,7 +90,7 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
         self.rule_acceptable_params_dict['anvi_compute_genome_similarity'] = ['run', 'additional_params']
 
     def init(self):
-        ''' backhand stuff (mostly sanity checks) specific for the phylogenomics workflow'''
+        ''' backend stuff (mostly sanity checks) specific for the phylogenomics workflow'''
         super().init()
         self.internal_genomes_file = self.get_param_value_from_config('internal_genomes')
         self.external_genomes_file = self.get_param_value_from_config('external_genomes')
