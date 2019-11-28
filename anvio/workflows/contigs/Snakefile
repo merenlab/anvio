@@ -298,10 +298,10 @@ if run_taxonomy_with_centrifuge:
                                --threads {threads} >> {log} 2>&1")
 
 
-    rule anvi_import_taxonomy:
+    rule anvi_import_taxonomy_for_genes:
         ''' Run anvi-import-taxonomy-for-genes'''
         version: 1.0
-        log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_taxonomy.log"
+        log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_taxonomy_for_genes.log"
         input:
             hits = rules.centrifuge.output.hits,
             report = rules.centrifuge.output.report,
@@ -310,10 +310,10 @@ if run_taxonomy_with_centrifuge:
         # using a flag file because no file is created by this rule.
         # for more information see:
         # http://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#flag-files
-        output: touch(dirs_dict["CONTIGS_DIR"] + "/{group}-anvi_anvi_import_taxonomy.done")
+        output: touch(dirs_dict["CONTIGS_DIR"] + "/{group}-anvi_anvi_import_taxonomy_for_genes.done")
         params: parser = "centrifuge"
-        threads: M.T('anvi_import_taxonomy')
-        resources: nodes = M.T('anvi_import_taxonomy'),
+        threads: M.T('anvi_import_taxonomy_for_genes')
+        resources: nodes = M.T('anvi_import_taxonomy_for_genes'),
         shell: w.r("anvi-import-taxonomy-for-genes -c {input.contigs} \
                                                    -i {input.report} {input.hits} \
                                                    -p {params.parser} >> {log} 2>&1")
@@ -456,7 +456,7 @@ rule annotate_contigs_database:
     log: dirs_dict["LOGS_DIR"] + "/{group}-annotate_contigs_database.log"
     input:
         # this is here just so snakemake would run the taxonomy before running this rule
-        taxonomy = rules.anvi_import_taxonomy.output if run_taxonomy_with_centrifuge else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        taxonomy = rules.anvi_import_taxonomy_for_genes.output if run_taxonomy_with_centrifuge else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
 
         # this is here just so snakemake would run the hmms before running this rule
         hmms = rules.anvi_run_hmms.output if run_anvi_run_hmms else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
