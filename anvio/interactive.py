@@ -1457,6 +1457,8 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         # can save significant memory if available genes is a fraction of genes in full variability
         if self.full_variability:
             self.filter_full_variability()
+            self.available_genes = self.get_available_genes() # genes can be lost during self.filter_full_variability()
+                                                              # so we re-calculate available genes :\
             self.process_full_variability()
 
         # default gene is the first gene of interest
@@ -2004,9 +2006,11 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         """Creates self.full_variability, which houses the full variability... well, the full
            variability of all genes with structures in the structure database
         """
+        verbose, stealth = (True, False) if anvio.DEBUG else (False, True)
+
         self.progress.new("Loading full variability table"); self.progress.update("...")
-        self.full_variability = variabilityops.VariabilityData(self.args, p=terminal.Progress(verbose=False), r=terminal.Run(verbose=False))
-        self.full_variability.stealth_filtering = True
+        self.full_variability = variabilityops.VariabilityData(self.args, p=terminal.Progress(verbose=verbose), r=terminal.Run(verbose=verbose))
+        self.full_variability.stealth_filtering = stealth
         self.progress.end()
 
 
