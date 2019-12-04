@@ -104,6 +104,14 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         data_keys = utils.get_columns_of_TAB_delim_file(additional_data_file_path)
         data_dict = utils.get_TAB_delimited_file_as_dictionary(additional_data_file_path)
 
+        bad_keys = [k for k in data_keys if k.strip() != k]
+        if len(bad_keys):
+            raise ConfigError("Some of the keys in your input file contain white characters at the beginning\
+                               or at the end. This is your lucky day, because anvi'o caught it, and you will\
+                               fix it before continuing, and those weird data keys will not cause any headaches\
+                               in the future. Thank you and you are welcome. Here are the offending keys: %s." % \
+                                        (', '.join(['"%s"' % k for k in bad_keys])))
+
         if not len(data_keys):
             raise ConfigError("There is something wrong with the additional data file for %s at %s.\
                                It does not seem to have any additional keys for data :/" \
