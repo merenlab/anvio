@@ -31,8 +31,8 @@ def main(args):
         table_for_additional_data.list_data_keys()
         sys.exit(0)
 
-    keys_to_remove = [k.strip() for k in args.keys_to_remove.split(',')] if args.keys_to_remove else []
-    groups_to_remove = [k.strip() for k in args.groups_to_remove.split(',')] if args.groups_to_remove else []
+    keys_to_remove = [k for k in args.keys_to_remove.split(',')] if args.keys_to_remove else []
+    groups_to_remove = [k for k in args.groups_to_remove.split(',')] if args.groups_to_remove else []
 
     table_for_additional_data.remove(data_keys_list=keys_to_remove, data_groups_list=groups_to_remove)
 
