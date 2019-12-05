@@ -1585,6 +1585,54 @@ class VariabilitySuper(VariabilityFilter, object):
         return unique_positions_and_frequencies_dict
 
 
+    def filter_batch_parameters(self, filter_params, name='data'):
+        """Filter based on many simultaneous parameters()
+
+        Parameters
+        ==========
+        filter_params : dict
+            The dictionary containing all of the filtering parameters. An extensive example is shown here:
+            {'departure_from_consensus': {'min_departure_from_consensus': '0',
+            'max_departure_from_consensus': '1'}, 'departure_from_reference':
+            {'min_departure_from_reference': '0', 'max_departure_from_reference': '1'}, 'n2n1ratio':
+            {'min_n2n1ratio': '0.01', 'max_n2n1ratio': '1.01'}, 'coverage': {'min_coverage': '8',
+            'max_coverage': '2030'}, 'entropy': {'min_entropy': '0', 'max_entropy': '0.96'},
+            'rel_solvent_acc': {'min_rel_solvent_acc': '0', 'max_rel_solvent_acc': '1'},
+            'sec_struct': {'sec_structs_of_interest': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']},
+            'phi': {'min_phi': '-180', 'max_phi': '180'}, 'psi': {'min_psi': '-180', 'max_psi':
+            '180'}, 'BLOSUM62': {'min_BLOSUM62': '-4', 'max_BLOSUM62': '11'}, 'BLOSUM90':
+            {'min_BLOSUM90': '-6', 'max_BLOSUM90': '11'}, 'codon_order_in_gene':
+            {'min_codon_order_in_gene': '0', 'max_codon_order_in_gene': '396'}, 'codon_number':
+            {'min_codon_number': '1', 'max_codon_number': '397'}, 'competing_aas':
+            {'competing_aass_of_interest': ['IleVal', 'AspGlu', 'AlaSer', 'ArgLys', 'AlaGly',
+            'AspThr', 'MetVal', 'SerThr', 'AsnSer', 'IleLeu', 'AlaVal', 'LeuMet', 'LeuVal',
+            'PheTyr', 'AlaThr', 'AsnThr', 'ProThr', 'AsnLys', 'ProSer', 'CysVal', 'GlnSer',
+            'GlnLys', 'GlyLys', 'IleThr', 'GluSer', 'LysThr', 'AlaPro', 'HisPhe', 'IleMet',
+            'GlnGlu', 'ThrVal']}, 'reference': {'references_of_interest': ['Ile', 'Ala', 'Asp',
+            'Val', 'Glu', 'Lys', 'Gly', 'Ser', 'Thr', 'Arg', 'Asn', 'Leu', 'Tyr', 'Pro', 'Gln',
+            'His']}, 'consensus': {'consensuss_of_interest': ['Ile', 'Ala', 'Glu', 'Val', 'Asp',
+            'Gly', 'Arg', 'Thr', 'Lys', 'Ser', 'Asn', 'Leu', 'Tyr', 'Pro', 'Gln', 'His']}}
+        name : str
+             the string representation of the data you want to filter. By default its 'data', such
+             that self.data is filtered. if you have another dataframe, e.g. self.merged, used
+             'merged'
+        """
+
+
+        if not filter_params:
+            return
+
+        list_of_filter_functions = []
+        F = lambda f, **kwargs: (f, kwargs)
+        for filter_criterion, param_values in filter_params.items():
+            for param_name, param_value in param_values.items():
+                setattr(self, param_name, param_value)
+            list_of_filter_functions.append(F(self.filter_data, name=name, criterion=filter_criterion))
+
+        # V/\
+        self.process(process_functions=list_of_filter_functions, exit_if_data_empty=False)
+
+
     def process(self, process_functions=None, exit_if_data_empty=True):
         """self.data is checked if empty after each function call. if exit_if_data_empty, exists,
            otherwise returns prematurely."""

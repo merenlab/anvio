@@ -2138,16 +2138,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
             self.compute_merged_variability(var, column_info, samples_in_group)
             self.wrangle_merged_variability(var)
 
-            # now set all filter parameters
-            for filter_criterion, param_values in options["filter_params"].items():
-                for param_name, param_value in param_values.items():
-                    setattr(var, param_name, param_value)
-                list_of_filter_functions.append(F(var.filter_data, name='merged', criterion=filter_criterion))
-
-            # ʕ•ᴥ•ʔ
-            if options["filter_params"]:
-                # only filter when there were filter params passed
-                var.process(process_functions=list_of_filter_functions, exit_if_data_empty=False)
+            var.filter_batch_parameters(options['filter_params'], name='merged')
 
             output[group] = {
                 'data': var.merged.to_json(orient='index'),
