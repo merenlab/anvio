@@ -10,7 +10,6 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.workflows.metagenomics import MetagenomicsWorkflow
 from anvio.workflows.pangenomics import PangenomicsWorkflow
-from anvio.workflows.metapangenomics import MetaPangenomicsWorkflow
 from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
 
 
@@ -20,7 +19,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Alon Shaiber"
 __resources__ = [("Tutorial", "http://merenlab.org/2018/07/09/anvio-snakemake-workflows/")]
-__tags__ = ["metagenomics", "phylogenomics", "contigs", "pangenomics", "metapangenomics"]
+__tags__ = ["metagenomics", "phylogenomics", "contigs", "pangenomics"]
 __email__ = "alon.shaiber@gmail.com"
 __description__ = ("Execute, manage, parallelize, and troubleshoot entire \'omics workflows which "
                    "chain together anvi\'o and 3rd party programs.")
@@ -33,7 +32,6 @@ pp = terminal.pretty_print
 workflows_dict = {'contigs': ContigsDBWorkflow,
                   'metagenomics': MetagenomicsWorkflow,
                   'pangenomics': PangenomicsWorkflow,
-                  'metapangenomics': MetaPangenomicsWorkflow,
                   'phylogenomics': PhylogenomicsWorkflow}
 
 
