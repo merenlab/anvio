@@ -33,10 +33,10 @@
         <div class="row">
             <div class="col-md-3 sidebar">
                 <ul class="nav nav-tabs"  role="tablist">
-                  <li role="presentation" class="active"><a href="#tab_main" aria-controls="tab_main" role="tab" data-toggle="tab"><span class="settings-header"><h5>Main</h5></span></a></li>
-                  <li role="presentation"><a href="#tab_filters" aria-controls="tab_filters" role="tab" data-toggle="tab"><span class="settings-header"><h5>Filters</h5></span></a></li>
-                  <li role="presentation"><a href="#tab_views" aria-controls="tab_views" role="tab" data-toggle="tab"><span class="settings-header"><h5>Views</h5></span></a></li>
-                  <li role="presentation"><a href="#tab_summary" aria-controls="tab_summary" role="tab" data-toggle="tab"><span class="settings-header"><h5>Output</h5></span></a></li>
+                  <li role="presentation" class="active"><a href="#tab_main" aria-controls="tab_main" role="tab" data-toggle="tab"><span class="settings-header" id="tab_text"><h4>Main</h4></span></a></li>
+                  <li role="presentation"><a href="#tab_filters" aria-controls="tab_filters" role="tab" data-toggle="tab"><span class="settings-header" id="tab_text"><h4>Filters</h4></span></a></li>
+                  <li role="presentation"><a href="#tab_views" aria-controls="tab_views" role="tab" data-toggle="tab"><span class="settings-header" id="tab_text"><h4>Views</h4></span></a></li>
+                  <li role="presentation"><a href="#tab_summary" aria-controls="tab_summary" role="tab" data-toggle="tab"><span class="settings-header" id="tab_text"><h4>Output</h4></span></a></li>
                 </ul>
                 <div class="tab-content">
                     <div id="tab_main" role="tabpanel" class="tab-pane fade in active">
@@ -55,6 +55,9 @@
                             <div class="row">
                                 <div id="gene_function_info" class="col-md-12 form-row-padding"></div>
                             </div>
+                        </div>
+                        <span class="settings-header"><h4>Protein Model</h4></span>
+                        <div id="model_info">
                         </div>
                         <span class="settings-header"><h4>Variant Type</h4></span>
                         <div class="widget">

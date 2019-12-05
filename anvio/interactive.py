@@ -1486,6 +1486,40 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         return {'functions': self.gene_function_calls_dict.get(gene_callers_id)}
 
 
+    def get_model_info(self, gene_callers_id):
+        """Returns information about the protein model, e.g. template IDs, DOPE_score, etc"""
+
+        structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
+
+        models = structure_db.db.get_table_as_dataframe(
+            'models',
+            columns_of_interest=['GA341_score', 'DOPE_score', 'molpdf', 'picked_as_best'],
+            where_clause='corresponding_gene_call = %d' % gene_callers_id,
+        ).rename(columns={
+            'DOPE_score': 'DOPE',
+            'GA341_score': 'GA341',
+        })
+        models['Models tried'] = models.shape[0]
+        models = models.loc[models['picked_as_best'] == 1, ['DOPE', 'GA341', 'molpdf', 'Models tried']]
+
+        templates = structure_db.db.get_table_as_dataframe(
+            'templates',
+            columns_of_interest=['pdb_id', 'chain_id', 'ppi'],
+            where_clause='corresponding_gene_call = %d' % gene_callers_id,
+        ).rename(columns={
+            'pdb_id': 'PDB',
+            'chain_id': 'Chain',
+            'ppi': '%Identity',
+        })[['PDB', 'Chain', '%Identity']]
+
+        structure_db.disconnect()
+
+        return {
+            'models': models.to_json(orient='index'),
+            'templates': templates.to_json(orient='index'),
+        }
+
+
     def get_search_results_for_gene_functions(self, search_terms):
         """FIXME Currently unused"""
         items, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=True)
