@@ -168,6 +168,7 @@ class BottleApplication(Bottle):
         self.route('/data/get_structure/<gene_callers_id:int>',callback=self.get_structure)
         self.route('/data/get_variability',                    callback=self.get_variability, method='POST')
         self.route('/data/get_gene_function_info/<gene_callers_id:int>',             callback=self.get_gene_function_info)
+        self.route('/data/get_model_info/<gene_callers_id:int>',             callback=self.get_model_info)
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
@@ -1291,6 +1292,10 @@ class BottleApplication(Bottle):
 
     def get_gene_function_info(self, gene_callers_id):
         return json.dumps(self.interactive.get_gene_function_info(gene_callers_id))
+
+
+    def get_model_info(self, gene_callers_id):
+        return json.dumps(self.interactive.get_model_info(gene_callers_id))
 
 
     def filter_gene_clusters(self):

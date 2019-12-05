@@ -63,7 +63,7 @@ $(document).ready(function() {
     }, false );
 
     $('#gene_callers_id_list').on('change', function(ev) {
-        $.when({}).then(load_protein).then(load_gene_function_info).then(() => {
+        $.when({}).then(load_protein).then(load_gene_function_info).then(load_model_info).then(() => {
             create_ui();
             load_sample_group_widget($('#sample_groups_list').val());
         });
@@ -87,7 +87,7 @@ $(document).ready(function() {
                 $('#gene_callers_id_list').append(`<option id=${gene_callers_id}>${gene_callers_id}</option>`);
             });
 
-            $.when({}).then(load_protein).then(load_gene_function_info).then(() => {
+            $.when({}).then(load_protein).then(load_gene_function_info).then(load_model_info).then(() => {
                 let default_engine = available_engines[0];
                 available_engines.forEach(function(engine) {
                     $('#engine_list').append(`<input type="radio" name="engine" onclick="$.when({}).then(create_ui).then(() => { fetch_and_draw_variability(); });" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
@@ -509,6 +509,87 @@ function load_gene_function_info() {
 
     return defer.promise();
 }
+
+function load_model_info() {
+    let gene_callers_id = $('#gene_callers_id_list').val();
+    var defer = $.Deferred();
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/get_model_info/' + gene_callers_id,
+        success: function(model_data) {
+            model_data = model_data;
+            var geneModelHtml = get_model_info_table_html(model_data);
+            $("#model_info").html(geneModelHtml);
+            defer.resolve();
+        }
+    });
+
+    return defer.promise();
+}
+
+function get_model_info_table_html(model_data) {
+    var templates = JSON.parse(model_data['templates']);
+    var models = JSON.parse(model_data['models'])[1];
+
+    var geneModelHtml = '';
+
+    /* TEMPLATES */
+    geneModelHtml += '<div class="widget">'
+    geneModelHtml += '<span class="settings-header"><h4>Templates Used</h4></span>'
+    geneModelHtml += '<table class="table table-condensed" id="model_info_table"><tbody>';
+
+    var header = '<tr>';
+    for (const col_name of Object.keys(templates[0])) {
+        header += '<td><label class="col-md-4 settings-label">' + col_name + '</label></td>';
+    }
+    header += '</tr>';
+    geneModelHtml += header;
+
+    for (var i = 0; i < Object.keys(templates).length; i++) {
+        var row = templates[i];
+        var tr = '<tr>';
+
+        for (const [col_name, value] of Object.entries(row)) {
+            if (col_name == 'PDB') {
+                formatted_value = '<a href="https://www.rcsb.org/structure/' + value + '" target=_"blank">' + value.toUpperCase() + '</a>'
+            } else if (col_name == '%Identity') {
+                formatted_value = Number(value).toFixed(2);
+            } else {
+                formatted_value = value
+            }
+            tr += '<td>' + formatted_value + '</td>'
+        }
+
+        tr += '</tr>'
+        geneModelHtml += tr;
+    }
+
+    geneModelHtml += "</tbody></table></div>";
+
+    /* MODELS */
+    geneModelHtml += '<div class="widget">'
+    geneModelHtml += '<span class="settings-header"><h4>Model Scores</h4></span>'
+    geneModelHtml += '<table class="table table-condensed" id="model_info_table"><tbody>';
+
+    var header = '<tr>';
+    var row = '<tr>';
+    for (const [col_name, value] of Object.entries(models)) {
+        header += '<td><label class="col-md-4 settings-label">' + col_name + '</label></td>';
+        row += '<td>' + Number(value).toFixed(2) + '</td>';
+    }
+    header += '</tr>';
+    row += '</tr>';
+
+    geneModelHtml += header;
+    geneModelHtml += row;
+
+    geneModelHtml += "</tbody></table></div>";
+    return geneModelHtml;
+}
+
+
 
 function serialize_checked_groups() {
     let output = {};
@@ -1066,7 +1147,6 @@ async function make_image(group, sample) {
 function get_gene_functions_table_html_for_structure(gene){
     if (gene.functions == null) {
         functions_table_html = '<div class="alert alert-info" role="alert" style="margin: 10px;" id="no_function_annotations_warning">Functional annotations: This gene doesn\'t have any.</div>';
-        console.log(functions_table_html)
         return functions_table_html
     }
 
