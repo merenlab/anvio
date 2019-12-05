@@ -1823,10 +1823,10 @@ class VariabilitySuper(VariabilityFilter, object):
 
         new_structure, _ = self.get_data_column_structure()
 
-        if not self.include_contig_names_in_output:
+        if not self.include_contig_names_in_output and 'contig_name' in new_structure:
             new_structure.remove('contig_name')
 
-        if not self.include_split_names_in_output:
+        if not self.include_split_names_in_output and 'split_name' in new_structure:
             new_structure.remove('split_name')
 
         # Update entry_id with sequential numbers based on the final ordering of the data:
@@ -1837,7 +1837,7 @@ class VariabilitySuper(VariabilityFilter, object):
         data = data.sort_values(by = ["corresponding_gene_call", "codon_order_in_gene"])
 
         self.progress.update('exporting variable positions table as a TAB-delimited file ...')
-        utils.store_dataframe_as_TAB_delimited_file(data, self.args.output_file, columns=new_structure)
+        utils.store_dataframe_as_TAB_delimited_file(data, self.output_file_path, columns=new_structure)
         self.progress.end()
 
         self.run.info('Num entries reported', pp(len(data.index)))

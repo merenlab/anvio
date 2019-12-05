@@ -669,8 +669,6 @@ function fetch_and_draw_variability() {
             $('.overlay').hide();
         }
     });
-
-    store_variability();
 }
 
 function draw_variability() {
@@ -1182,7 +1180,7 @@ function store_variability() {
     $('.overlay').show();
     let gene_callers_id = $('#gene_callers_id_list').val();
     let engine = $('[name=engine]:checked').val();
-    let output_path = 'test.txt';
+    let output_path = $('#var_output_path').val();
 
     // serialize options programatically
     let options = {
@@ -1200,6 +1198,17 @@ function store_variability() {
         url: '/data/store_variability',
         success: function(msg) {
             $('.overlay').hide();
+            if (typeof(msg['success']) != 'undefined') {
+                $('#store_var_failure').hide();
+                $('#store_var_success').html(msg['success']);
+                $('#store_var_success').show();
+                $('#store_var_success').fadeOut(2000);
+            } else {
+                $('#store_var_failure').html(msg['failure']);
+                $('#store_var_failure').show();
+            }
+            msg = msg
+            console.log(msg)
         },
         error: function(request, status, error) {
             console.log(request, status, error);

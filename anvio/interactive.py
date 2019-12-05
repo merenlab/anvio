@@ -2151,6 +2151,39 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         return output
 
 
+    def store_variability(self, options):
+        """Store the variability currently displayed on the user's screen in a user-specified path"""
+
+        try:
+            filesnpaths.is_output_file_writable(options['path'], ok_if_exists=False)
+
+            self.progress.new('Reporting', discard_previous_if_exists=True)
+            self.progress.update('Currently viewed variants')
+
+            selected_engine = options['engine']
+            gene_callers_id = int(options['gene_callers_id'])
+
+            # prior to filtering, var starts as a copy from variability_storage
+            var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine]['var_object'])
+
+            # add selected samples into the filter parameters dictionary
+            selected_samples = []
+            for group in options['groups']:
+                selected_samples.extend(options['groups'][group])
+            options["filter_params"]['sample_id'] = {'sample_ids_of_interest': selected_samples}
+
+            var.filter_batch_parameters(options['filter_params'])
+            var.output_file_path = options['path']
+            var.report()
+
+            self.progress.end()
+
+            return {'success': 'Success! Saved to %s' % options['path']}
+
+        except Exception as e:
+            return {'failure': 'Error: %s' % e}
+
+
     def get_histograms(self, var_object, column_info_list):
         numpy.seterr(invalid='ignore')
         self.progress.new('Generating %s histograms' % ("SAAV" if var_object.engine else "SCV"))
