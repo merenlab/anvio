@@ -16,7 +16,7 @@
     <script type="text/javascript" src="https://cdn.rawgit.com/arose/ngl/v0.10.4/dist/ngl.js"></script>
     <script type="text/javascript" src="lib/colpick/colpick.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
-    <script src="https://fastcdn.org/FileSaver.js/1.1.20151003/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.js"></script>
     <script type="text/javascript" src="lib/toastr/build/toastr.min.js"></script>
     <script type="text/javascript" src="js/constants.js"></script>
     <script type="text/javascript" src="js/structure.js"></script>
@@ -36,7 +36,7 @@
                   <li role="presentation" class="active"><a href="#tab_main" aria-controls="tab_main" role="tab" data-toggle="tab"><span class="settings-header" id="tab_text"><h4>Main</h4></span></a></li>
                   <li role="presentation"><a href="#tab_filters" aria-controls="tab_filters" role="tab" data-toggle="tab"><span class="settings-header" id="tab_text"><h4>Filters</h4></span></a></li>
                   <li role="presentation"><a href="#tab_views" aria-controls="tab_views" role="tab" data-toggle="tab"><span class="settings-header" id="tab_text"><h4>Views</h4></span></a></li>
-                  <li role="presentation"><a href="#tab_summary" aria-controls="tab_summary" role="tab" data-toggle="tab"><span class="settings-header" id="tab_text"><h4>Output</h4></span></a></li>
+                  <li role="presentation"><a href="#tab_output" aria-controls="tab_output" role="tab" data-toggle="tab"><span class="settings-header" id="tab_text"><h4>Output</h4></span></a></li>
                 </ul>
                 <div class="tab-content">
                     <div id="tab_main" role="tabpanel" class="tab-pane fade in active">
@@ -299,16 +299,16 @@
                             <div class="col-md-8"><input type="checkbox" id="show_residue_labels" onclick="create_ngl_views(fetch_variability=false); " /></div>
                         </div>
                     </div>
-                    <div id="tab_summary" role="tabpanel" class="tab-pane fade">
-                        <div class="col-md-12" style="margin-top: 10px;">
-                            <span class="settings-header">Output</span>
-                            <div class="col-md-12">
-                                <label class="col-md-5 settings-label" for="scale">File Name</label>  
-                                <div class="col-md-7"><input type="input" id="zip_name" value="structure-summary"></div>
+                    <div id="tab_output" role="tabpanel" class="tab-pane fade">
+                        <span class="settings-header"><h4>Render Images</h4></span>
+                        <div class="widget">
+                            <div class="col-md-12" style="margin-top: 10px;">
+                                <div class="col-md-12">
+                                    <label class="col-md-5 settings-label" for="scale">Output Zip File</label>  
+                                    <div class="col-md-7"><input type="input" id="zip_name" value="structure-summary"></div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-12" style="margin-top: 10px;">
-                             <span class="settings-header">Image Rendering Options</span>
+                            <div class="col-md-12" style="margin-top: 10px;">
                                 <div class="col-md-12">
                                     <label class="col-md-8 settings-label" for="scale">Scale</label>  
                                     <div class="col-md-4"><input type="input" id="scale" value="5" size="4"></div>
@@ -329,8 +329,9 @@
                                     <label class="col-md-8 settings-label" for="merged_view_only">Merged view only</label>  
                                     <div class="col-md-4"><input type="checkbox" id="merged_view_only" checked="checked"></div>
                                 </div>
+                            </div>
+                            <button type="button" class="btn btn-primary" onclick="generate_summary();" style="width: 100%; margin-top: 10px;"><label class="settings-label" for="scale">Generate static summary page</label></button>
                         </div>
-                        <button type="button" class="btn btn-primary" onclick="generate_summary();" style="width: 100%; margin-top: 10px;"><label class="settings-label" for="scale">Generate static summary page</label></button>
                     </div>
                 </div>
             </div>

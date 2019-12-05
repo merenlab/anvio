@@ -668,7 +668,9 @@ function fetch_and_draw_variability() {
             console.log(request, status, error);
             $('.overlay').hide();
         }
-    }); 
+    });
+
+    store_variability();
 }
 
 function draw_variability() {
@@ -1176,19 +1178,48 @@ function get_gene_functions_table_html_for_structure(gene){
     return functions_table_html;
 }
 
+function store_variability() {
+    $('.overlay').show();
+    let gene_callers_id = $('#gene_callers_id_list').val();
+    let engine = $('[name=engine]:checked').val();
+    let output_path = 'test.txt';
+
+    // serialize options programatically
+    let options = {
+        'gene_callers_id': gene_callers_id,
+        'engine': engine,
+        'groups': serialize_checked_groups(),
+        'filter_params': serialize_filtering_widgets(),
+        'path': output_path,
+    };
+
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        data: {'options': JSON.stringify(options)},
+        url: '/data/store_variability',
+        success: function(msg) {
+            $('.overlay').hide();
+        },
+        error: function(request, status, error) {
+            console.log(request, status, error);
+            $('.overlay').hide();
+        }
+    }); 
+}
 
 async function generate_summary() {
     let serialized_groups = serialize_checked_groups();
     var zip = new JSZip();
 
     for (let group in stages) {
-        zip.file(`images/${group}/merged.png`, await make_image(group));
+        zip.file($('#zip_name').val() + `/${group}/merged.png`, await make_image(group));
 
         if (!$('#merged_view_only').is(':checked')) {
             // generate per sample.
             for (let i=0; i < serialized_groups[group].length; i++) {
                 let sample_id = serialized_groups[group][i];
-                zip.file(`images/${group}/${sample_id}.png`, await make_image(group, sample_id));
+                zip.file($('#zip_name').val() + `/${group}/${sample_id}.png`, await make_image(group, sample_id));
             }
         }
     }
@@ -1210,7 +1241,7 @@ async function generate_summary() {
 function serializeAuxiliaryInputs() {
     let backup = {};
 
-    ['tab_perspectives', 'tab_summary'].forEach((tab) => {
+    ['tab_views', 'tab_output'].forEach((tab) => {
         backup[tab] = {};
 
         $(`#${tab} :input`).each((index, elem) => {
