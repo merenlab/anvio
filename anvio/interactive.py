@@ -2165,14 +2165,16 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
             # prior to filtering, var starts as a copy from variability_storage
             var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine]['var_object'])
+            var.convert_frequencies_to_counts()
 
             # add selected samples into the filter parameters dictionary
             selected_samples = []
             for group in options['groups']:
                 selected_samples.extend(options['groups'][group])
-            options["filter_params"]['sample_id'] = {'sample_ids_of_interest': selected_samples}
+            options["filter_params"]['sample_id'] = {'sample_ids_of_interest': set(selected_samples)}
 
             var.filter_batch_parameters(options['filter_params'])
+
             var.output_file_path = options['path']
             var.report()
 

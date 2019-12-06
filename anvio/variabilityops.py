@@ -584,7 +584,7 @@ class VariabilitySuper(VariabilityFilter, object):
             self.sanity_check()
 
         # Initialize the contigs super
-        if self.contigs_db_path:
+        if self.contigs_db_path and not self.table_provided:
             dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
 
             if self.splits_of_interest_path:
@@ -746,6 +746,14 @@ class VariabilitySuper(VariabilityFilter, object):
             self.data[freq_columns] = self.data[self.items].divide(self.data['coverage'], axis = 0)
         else:
             self.data[self.items] = self.data[self.items].divide(self.data['coverage'], axis = 0)
+
+
+    def convert_frequencies_to_counts(self):
+        """Convert frequencies back to counts.
+
+        Assumes items were normalized with self.convert_counts_to_frequencies(retain_counts=False)
+        """
+        self.data[self.items] = self.data[self.items].multiply(self.data['coverage'], axis = 0).astype(int)
 
 
     def get_sample_ids_of_interest(self, sample_ids_of_interest_path=""):
