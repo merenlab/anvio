@@ -131,7 +131,6 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
             <tr>
                 <td>
                     <input class="form-check-input"
-                        onclick="create_ngl_views();"
                         checkbox-for="group"
                         id="${category}_${group}"
                         type="checkbox" 
@@ -153,7 +152,6 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
                 <div class="table-group-checkbox" style="display: inline-block; float: left;">
                     <input class="form-check-input" 
                             id="${category}_${group}_${sample}"
-                            onclick="fetch_and_draw_variability();"
                             type="checkbox" 
                             data-category="${category}"
                             data-group="${group}"
@@ -404,10 +402,10 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                             `
                     } else {
                         var tooltip_HTML_variant_freqs_body = `
-                            <tr><td>${variability[group][residue]['0_item_AA']} (${variability[group][residue]['0_item']})</td><td>${variability[group][residue]['0_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['1_item_AA']} (${variability[group][residue]['1_item']})</td><td>${variability[group][residue]['1_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['2_item_AA']} (${variability[group][residue]['2_item']})</td><td>${variability[group][residue]['2_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['3_item_AA']} (${variability[group][residue]['3_item']})</td><td>${variability[group][residue]['3_freq'].toFixed(2)}</td></tr>
+                            <tr><td>${variability[group][residue]['0_item_AA']} (${variability[group][residue]['0_item']})</td><td>${variability[group][residue]['0_freq'].toFixed(3)}</td></tr>
+                            <tr><td>${variability[group][residue]['1_item_AA']} (${variability[group][residue]['1_item']})</td><td>${variability[group][residue]['1_freq'].toFixed(3)}</td></tr>
+                            <tr><td>${variability[group][residue]['2_item_AA']} (${variability[group][residue]['2_item']})</td><td>${variability[group][residue]['2_freq'].toFixed(3)}</td></tr>
+                            <tr><td>${variability[group][residue]['3_item_AA']} (${variability[group][residue]['3_item']})</td><td>${variability[group][residue]['3_freq'].toFixed(3)}</td></tr>
                             `
                     }
                 }
@@ -916,7 +914,7 @@ function create_ui() {
                                     >
                         </div>
                     `);
-                    $(`#${item['name']}`).slider({}).on('slideStop', () => { fetch_and_draw_variability(); });
+                    $(`#${item['name']}`).slider({});
                 }
                 if (item['as_filter'] == 'checkbox') {
                     let checked_choices = item['choices'];
@@ -929,11 +927,11 @@ function create_ui() {
                         <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
                             <span class="settings-header"><h5>${item['title']}</h5></span><br />
                             ${item['choices'].map((choice) => { return `
-                                <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" onclick="fetch_and_draw_variability();" ${ checked_choices.indexOf(choice) > -1 ? 'checked="checked"' : ''}>
+                                <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" ${ checked_choices.indexOf(choice) > -1 ? 'checked="checked"' : ''}>
                                 <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>`; }).join('')}
                             <br />
-                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', true); fetch_and_draw_variability();">Check All</button>
-                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', false); fetch_and_draw_variability();">Uncheck All</button>
+                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', true);">Check All</button>
+                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', false);">Uncheck All</button>
                         </div>
                     `);
 
