@@ -1200,12 +1200,9 @@ function store_variability() {
             $('.overlay').hide();
             if (typeof(msg['success']) != 'undefined') {
                 $('#store_var_failure').hide();
-                $('#store_var_success').html(msg['success']);
-                $('#store_var_success').show();
-                $('#store_var_success').fadeOut(2000);
+                $('#store_var_success').html(msg['success']).show().fadeOut(3000);
             } else {
-                $('#store_var_failure').html(msg['failure']);
-                $('#store_var_failure').show();
+                $('#store_var_failure').html(msg['failure']).show();
             }
             msg = msg
             console.log(msg)
