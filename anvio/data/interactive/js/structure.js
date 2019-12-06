@@ -71,6 +71,7 @@ $(document).ready(function() {
 
     $('#sample_groups_list').on('change', function(ev) {
         backupGroupsWidget();
+        $('.overlay').show();
         load_sample_group_widget($('#sample_groups_list').val());
     });
 
@@ -396,10 +397,10 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                     var tooltip_HTML_variant_freqs_title = `<h5>Variant frequencies</h5>`
                     if ($('[name=engine]:checked').val() == 'AA') {
                         var tooltip_HTML_variant_freqs_body = `
-                            <tr><td>${variability[group][residue]['0_item']}</td><td>${variability[group][residue]['0_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['1_item']}</td><td>${variability[group][residue]['1_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['2_item']}</td><td>${variability[group][residue]['2_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['3_item']}</td><td>${variability[group][residue]['3_freq'].toFixed(2)}</td></tr>
+                            <tr><td>${variability[group][residue]['0_item']}</td><td>${variability[group][residue]['0_freq'].toFixed(3)}</td></tr>
+                            <tr><td>${variability[group][residue]['1_item']}</td><td>${variability[group][residue]['1_freq'].toFixed(3)}</td></tr>
+                            <tr><td>${variability[group][residue]['2_item']}</td><td>${variability[group][residue]['2_freq'].toFixed(3)}</td></tr>
+                            <tr><td>${variability[group][residue]['3_item']}</td><td>${variability[group][residue]['3_freq'].toFixed(3)}</td></tr>
                             `
                     } else {
                         var tooltip_HTML_variant_freqs_body = `
@@ -1204,8 +1205,6 @@ function store_variability() {
             } else {
                 $('#store_var_failure').html(msg['failure']).show();
             }
-            msg = msg
-            console.log(msg)
         },
         error: function(request, status, error) {
             console.log(request, status, error);
@@ -1215,6 +1214,8 @@ function store_variability() {
 }
 
 async function generate_summary() {
+    $('.overlay').show();
+
     let serialized_groups = serialize_checked_groups();
     var zip = new JSZip();
 
@@ -1242,6 +1243,8 @@ async function generate_summary() {
     zip.generateAsync(zip_options).then(function(content) {
         saveAs(content, $('#zip_name').val() + '.zip');
     });
+
+    $('.overlay').hide();
 }
 
 function serializeAuxiliaryInputs() {
@@ -1448,7 +1451,7 @@ function loadState()
             if($(`#sample_groups_list option[id='${state['category']}']`).length > 0) {
                 $('#sample_groups_list').val(state['category']);
             }
-            
+
             if($(`[name=engine][value='${state['engine']}']`).length > 0) {
                 $(`[name=engine][value='${state['engine']}']`).prop('checked', true);
             }
