@@ -15,9 +15,10 @@
     "anvi_cluster_contigs": {
         "run": true,
         "--collection-name": "{driver}",
-        "--driver": "concoct",
+        "--driver": [ "maxbin2", "metabat2" ],
         "--just-do-it": true,
-        "--additional-params-concoct": "--kmer-length 5 --clusters 3"
+        "--additional-params-maxbin2": "--max-iteration 20",
+        "--additional-params-metabat2": "--seed 1"
     },
     "output_dirs": {
         "FASTA_DIR": "02_FASTA_references_mode",
