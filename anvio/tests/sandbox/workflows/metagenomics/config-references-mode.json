@@ -12,6 +12,14 @@
     "anvi_split": {
         "run": true
     },
+    "anvi_cluster_contigs": {
+        "run": true,
+        "--collection-name": "{driver}",
+        "--driver": [ "maxbin2", "metabat2" ],
+        "--just-do-it": true,
+        "--additional-params-maxbin2": "--max-iteration 20",
+        "--additional-params-metabat2": "--seed 1"
+    },
     "output_dirs": {
         "FASTA_DIR": "02_FASTA_references_mode",
         "CONTIGS_DIR": "03_CONTIGS_references_mode",
