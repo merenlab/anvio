@@ -1500,7 +1500,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
             'GA341_score': 'GA341',
         })
         models['Models tried'] = models.shape[0]
-        models = models.loc[models['picked_as_best'] == 1, ['DOPE', 'GA341', 'molpdf', 'Models tried']]
+        models = models.loc[models['picked_as_best'] == 1, ['DOPE', 'GA341', 'molpdf', 'Models tried']].reset_index(drop=True)
 
         templates = structure_db.db.get_table_as_dataframe(
             'templates',

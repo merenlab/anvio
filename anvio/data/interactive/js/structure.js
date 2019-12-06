@@ -531,7 +531,7 @@ function load_model_info() {
 
 function get_model_info_table_html(model_data) {
     var templates = JSON.parse(model_data['templates']);
-    var models = JSON.parse(model_data['models'])[1];
+    var models = JSON.parse(model_data['models'])[0];
 
     var geneModelHtml = '';
 
