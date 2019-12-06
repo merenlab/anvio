@@ -1272,6 +1272,29 @@ rule import_percent_of_reads_mapped:
                                           --just-do-it >> {log} 2>&1
                   """)
 
+
+rule anvi_cluster_contigs:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-{driver}-anvi_cluster_contigs.log")
+    threads: M.T("anvi_cluster_contigs")
+    resources: nodes = M.T("anvi_cluster_contigs")
+    input:
+        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        profile = lambda wildcards: M.profile_databases[wildcards.group]
+    params:
+        driver = '{driver}',
+        collection_name = M.get_rule_param('anvi_cluster_contigs', '--collection-name'),
+        just_do_it = M.get_rule_param('anvi_cluster_contigs', '--just-do-it'),
+        additional_params = lambda wildcards: M.get_param_value_from_config(['anvi_cluster_contigs', M.get_param_name_for_binning_driver(wildcards.driver)])
+    output: touch(os.path.join(dirs_dict['MERGE_DIR'], '{group}' + '-' + '{driver}' + '.done'))
+    shell: w.r("""anvi-cluster-contigs -c {input.contigs} \
+                                       -p {input.profile} \
+                                       --driver {params.driver} \
+                                       {params.collection_name} \
+                                       {params.just_do_it} \
+                                       {params.additional_params} >> {log} 2>&1""")
+
+
 if 'workflows/metagenomics' in workflow.included[0]:
     # check if all program dependencies are met. for this line to be effective,
     # there should be an initial dry run step (which is the default behavior of
