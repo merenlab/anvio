@@ -823,7 +823,8 @@ class VariabilitySuper(VariabilityFilter, object):
             try:
                 splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in (self.genes_of_interest or self.gene_caller_ids)]))
             except KeyError as e:
-                raise ConfigError("Some of the gene caller IDs you provided are not in your contigs database...")
+                not_present_in = 'variability table' if self.table_provided else 'contigs database'
+                raise ConfigError("Some of the gene caller IDs you provided are not in your %s..." % not_present_in)
 
         elif split_source == "bin_id":
             if self.collection_name and not self.bin_id:
