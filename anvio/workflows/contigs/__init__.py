@@ -113,6 +113,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.run_pfams = self.get_param_value_from_config(['anvi_run_pfams', 'run'])
 
+        # warn user regarding risky change of temp dir name
+        w.warning_for_param(self.config, 'anvi_run_ncbi_cogs', '--temporary-dir-path', '{group}')
 
     def init_target_files(self):
         super().init_target_files()

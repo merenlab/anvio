@@ -352,8 +352,6 @@ rule anvi_run_pfams:
     shell: " anvi-run-pfams -c {input} {params.pfam_data_dir} -T {threads} >> {log} 2>&1"
 
 
-
-w.warning_for_param(config, 'anvi_run_ncbi_cogs', '--temporary-dir-path', '{group}')
 rule anvi_run_ncbi_cogs:
     version: anvio.__contigs__version__
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_ncbi_cogs.log"
