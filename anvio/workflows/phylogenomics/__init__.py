@@ -79,6 +79,10 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             self.phylogenomics_sequence_file = os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins.fa")
 
 
+    def init_target_files(self):
+        super().init_target_files()
+
+
     def sanity_checks(self):
         if not self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--gene-names'):
             run.warning('You did not provide a list of genes to use for phylogenomics. This is ok and things might work \

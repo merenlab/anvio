@@ -114,6 +114,10 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.run_pfams = self.get_param_value_from_config(['anvi_run_pfams', 'run'])
 
 
+    def init_target_files(self):
+        super().init_target_files()
+
+
     def sanity_check_contigs_project_name(self):
         contigs_project_name = self.get_param_value_from_config(['anvi_gen_contigs_database', '--project-name'], repress_default=True)
         if contigs_project_name != self.default_config['anvi_gen_contigs_database']['--project-name'] and contigs_project_name is not None:

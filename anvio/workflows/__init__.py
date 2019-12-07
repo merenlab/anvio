@@ -54,6 +54,7 @@ class WorkflowSuperClass:
         self.list_dependencies = A('list_dependencies')
         self.dry_run_only = A('dry_run')
         self.additional_params = A('additional_params')
+        self.target_files = None
 
         if self.additional_params:
             run.warning("OK, SO THIS IS SERIOUS, AND WHEN THINGS ARE SERIOUS THEN WE USE CAPS. \
@@ -122,6 +123,10 @@ class WorkflowSuperClass:
         if not self.slave_mode:
             self.check_config()
             self.check_rule_params()
+
+
+    def init_target_files(self):
+        self.target_files = []
 
 
     def sanity_checks(self):
