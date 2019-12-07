@@ -81,6 +81,7 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
     def init_target_files(self):
         super().init_target_files()
+        self.target_files.append(self.get_phylogenetic_tree_output_file_name())
 
 
     def sanity_checks(self):
@@ -97,3 +98,7 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         if not self.project_name:
             raise ConfigError("You must provide a project_name in your config file.")
+
+
+    def get_phylogenetic_tree_output_file_name(self):
+        return os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
