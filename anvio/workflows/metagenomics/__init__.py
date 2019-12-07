@@ -36,7 +36,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='metagenomics')
 
-        self.target_files = [] # TODO: Once we update all other workflows then this will be initiated in WorkflowSuperClass
         self.samples_information = {}
         self.kraken_annotation_dict = {}
         self.run_krakenuniq = None
@@ -197,7 +196,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
     def init_target_files(self):
-        target_files = []
+        super().init_target_files()
 
         # let's also set the PROFILE databases paths variable here:
         for group in self.group_names:

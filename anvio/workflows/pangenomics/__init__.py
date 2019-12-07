@@ -32,7 +32,6 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='pangenomics')
 
-        self.target_files = [] # TODO: Once we update all other workflows then this will be initiated in WorkflowSuperClass
         self.pan_project_name = None
         self.valid_sequence_sources_for_phylogeny = ['gene_clusters', 'hmm']
         self.sequence_source_for_phylogeny = None
@@ -115,8 +114,9 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
 
         self.init_target_files()
 
+
     def init_target_files(self):
-        target_files = []
+        super().init_target_files()
         target_files.append(os.path.join(self.dirs_dict["PAN_DIR"], self.pan_project_name + "-PAN.db"))
 
         if self.sequence_source_for_phylogeny:
