@@ -2186,6 +2186,27 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
             return {'failure': 'Error: %s' % e}
 
 
+    def store_structure_as_pdb(self, options):
+        """Store the structure currently displayed on the user's screen in a user-specified path"""
+
+        try:
+            filesnpaths.is_output_file_writable(options['path'], ok_if_exists=False)
+
+            self.progress.new('Storing', discard_previous_if_exists=True)
+            self.progress.update('Currently viewed structure')
+
+            gene_callers_id = int(options['gene_callers_id'])
+            structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
+            structure_db.export_pdb_content(gene_callers_id, options['path'], ok_if_exists=False)
+
+            self.progress.end()
+
+            return {'success': 'Success! Saved to %s' % options['path']}
+
+        except Exception as e:
+            return {'failure': 'Error: %s' % e}
+
+
     def get_histograms(self, var_object, column_info_list):
         numpy.seterr(invalid='ignore')
         self.progress.new('Generating %s histograms' % ("SAAV" if var_object.engine else "SCV"))
