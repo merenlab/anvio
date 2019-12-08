@@ -590,7 +590,7 @@ def get_workflow_snake_file_path(workflow):
     return snakefile_path
 
 
-def warning_for_param(config, rule, param, wildcard, our_default=None):
+def check_for_risky_param_change(config, rule, param, wildcard, our_default=None):
     value = A([rule, param], config)
     if value:
         warning_message = 'You chose to define %s for the rule %s in the config file as %s.\
