@@ -52,7 +52,7 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                                         '--align-with': 'famsa',
                                                                         '--concatenate-genes': True,
                                                                         '--get-aa-sequences': True,
-                                                                        '--hmm-sources': 'Campbell_et_al'},
+                                                                        '--hmm-sources': 'Bacteria_71'},
                                     'trimal': {'-gt': 0.5},
                                     'iqtree': {'threads': 8, '-m': 'WAG', '-bb': 1000}})
 
