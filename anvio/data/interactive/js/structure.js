@@ -1211,6 +1211,38 @@ function store_variability() {
     }); 
 }
 
+function store_structure_as_pdb() {
+    $('.overlay').show();
+    let gene_callers_id = $('#gene_callers_id_list').val();
+    let output_path = $('#pdb_output_path').val();
+
+    // serialize options programatically
+    let options = {
+        'gene_callers_id': gene_callers_id,
+        'path': output_path,
+    };
+
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        data: {'options': JSON.stringify(options)},
+        url: '/data/store_structure_as_pdb',
+        success: function(msg) {
+            $('.overlay').hide();
+            if (typeof(msg['success']) != 'undefined') {
+                $('#store_pdb_failure').hide();
+                $('#store_pdb_success').html(msg['success']).show().fadeOut(3000);
+            } else {
+                $('#store_pdb_failure').html(msg['failure']).show();
+            }
+        },
+        error: function(request, status, error) {
+            console.log(request, status, error);
+            $('.overlay').hide();
+        }
+    }); 
+}
+
 async function generate_summary() {
     $('.overlay').show();
 
