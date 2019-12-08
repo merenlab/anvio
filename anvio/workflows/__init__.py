@@ -610,3 +610,17 @@ def get_fields_for_fasta_information():
     # utils.get_TAB_delimited_file_as_dictionary doesn't really care about it.
     return ["path", "external_gene_calls", "gene_functional_annotation"]
 
+
+def get_workflow_object_dict():
+
+    from anvio.workflows.contigs import ContigsDBWorkflow
+    from anvio.workflows.metagenomics import MetagenomicsWorkflow
+    from anvio.workflows.pangenomics import PangenomicsWorkflow
+    from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
+
+    workflows_dict = {'contigs': ContigsDBWorkflow,
+                      'metagenomics': MetagenomicsWorkflow,
+                      'pangenomics': PangenomicsWorkflow,
+                      'phylogenomics': PhylogenomicsWorkflow}
+
+    return workflows_dict
