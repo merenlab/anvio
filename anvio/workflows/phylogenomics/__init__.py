@@ -79,9 +79,8 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             self.phylogenomics_sequence_file = os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins.fa")
 
 
-    def init_target_files(self):
-        super().init_target_files()
-        self.target_files.append(self.get_phylogenetic_tree_output_file_name())
+    def get_phylogenomics_target_files(self):
+        return self.get_phylogenetic_tree_output_file_name()
 
 
     def sanity_checks(self):
