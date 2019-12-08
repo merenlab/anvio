@@ -611,7 +611,7 @@ def get_fields_for_fasta_information():
     return ["path", "external_gene_calls", "gene_functional_annotation"]
 
 
-def get_workflow_object_dict():
+def get_workflow_module_dict():
 
     from anvio.workflows.contigs import ContigsDBWorkflow
     from anvio.workflows.metagenomics import MetagenomicsWorkflow

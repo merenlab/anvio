@@ -28,7 +28,7 @@ pp = terminal.pretty_print
 
 
 def main(args):
-    workflows_dict = w.get_workflow_object_dict()
+    workflows_dict = w.get_workflow_module_dict()
 
     if args.list_workflows:
         run.info("Available workflows", ", ".join(list(workflows_dict.keys())))
