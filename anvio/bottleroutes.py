@@ -167,7 +167,8 @@ class BottleApplication(Bottle):
         self.route('/data/get_column_info',                    callback=self.get_column_info, method='POST')
         self.route('/data/get_structure/<gene_callers_id:int>',callback=self.get_structure)
         self.route('/data/get_variability',                    callback=self.get_variability, method='POST')
-        self.route('/data/store_variability',                    callback=self.store_variability, method='POST')
+        self.route('/data/store_variability',                  callback=self.store_variability, method='POST')
+        self.route('/data/store_structure_as_pdb',             callback=self.store_structure_as_pdb, method='POST')
         self.route('/data/get_gene_function_info/<gene_callers_id:int>',             callback=self.get_gene_function_info)
         self.route('/data/get_model_info/<gene_callers_id:int>',             callback=self.get_model_info)
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
@@ -1294,6 +1295,11 @@ class BottleApplication(Bottle):
     def store_variability(self):
         options = json.loads(request.forms.get('options'))
         return self.interactive.store_variability(options)
+
+        
+    def store_structure_as_pdb(self):
+        options = json.loads(request.forms.get('options'))
+        return self.interactive.store_structure_as_pdb(options)
 
 
     def get_gene_function_info(self, gene_callers_id):
