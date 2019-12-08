@@ -130,7 +130,7 @@ rule metagenomics_workflow_target_rule:
         The final product of the workflow is an anvi'o merged profile directory
         for each group
     '''
-    input: M.target_files
+    input: M.get_metagenomics_target_files()
 
 
 rule iu_gen_configs:
@@ -769,7 +769,7 @@ rule anvi_profile:
     input:
         bam = dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.bam",
         # marking the contigs.db as ancient in order to ignore timestamps.
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
+        contigs = ancient(M.get_contigs_db_path())
     output:
         profile = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db",
         AUXILIARY_DATA = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/AUXILIARY-DATA.db",
@@ -893,7 +893,7 @@ rule gen_readme_file_for_unmerged_groups:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-gen_readme_file_for_unmerged_groups.log")
     input:
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        contigs = ancient(M.get_contigs_db_path()),
         profiles = input_for_anvi_merge,
         percent_of_reads_mapped_imported_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, 'import_percent_of_reads_mapped.done', run_import_percent_of_reads_mapped),
         kraken_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, "import_krakenuniq_taxonomy.done", M.run_krakenuniq)
@@ -925,7 +925,7 @@ rule anvi_merge:
     # The input are all profile databases that belong to the same group
     input:
         # marking the contigs.db as ancient in order to ignore timestamps.
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        contigs = ancient(M.get_contigs_db_path()),
         profiles = input_for_anvi_merge,
         percent_of_reads_mapped_imported_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, 'import_percent_of_reads_mapped.done', run_import_percent_of_reads_mapped),
         kraken_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, "import_krakenuniq_taxonomy.done", M.run_krakenuniq)
@@ -1014,7 +1014,7 @@ rule anvi_import_collection:
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_collection.log"
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        contigs = ancient(M.get_contigs_db_path()),
         collection_file = lambda wildcards: M.collections[wildcards.group]['collection_file']
     output:
         imported_collection_flag = touch(os.path.join(dirs_dict["MERGE_DIR"], \
@@ -1042,7 +1042,7 @@ rule anvi_import_default_collection:
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_default_collection.log"
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        contigs = ancient(M.get_contigs_db_path()),
     output:
         imported_collection_flag = touch(os.path.join(dirs_dict["MERGE_DIR"], \
                                               '{group}', \
@@ -1062,7 +1062,7 @@ rule anvi_summarize:
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_summarize.log")
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        contigs = ancient(M.get_contigs_db_path()),
         imported_collection_flag = lambda wildcards: M.get_collection_import_flag(str(wildcards.group))
     output:
         summary_done = temp(touch(os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-summary.touch")))
@@ -1087,7 +1087,7 @@ rule anvi_split:
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_split.log")
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        contigs = ancient(M.get_contigs_db_path()),
         imported_collection_flag = os.path.join(dirs_dict["MERGE_DIR"], \
                                                 '{group}', \
                                                 'collection-import.done')
@@ -1279,7 +1279,7 @@ rule anvi_cluster_contigs:
     threads: M.T("anvi_cluster_contigs")
     resources: nodes = M.T("anvi_cluster_contigs")
     input:
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        contigs = ancient(M.get_contigs_db_path()),
         profile = lambda wildcards: M.profile_databases[wildcards.group]
     params:
         driver = '{driver}',

@@ -36,7 +36,6 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
         self.valid_sequence_sources_for_phylogeny = ['gene_clusters', 'hmm']
         self.sequence_source_for_phylogeny = None
         self.tree_name = None
-        self.phylogeny_imported_flag = None
 
         # initialize the base class
         PhylogenomicsWorkflow.__init__(self)
@@ -105,6 +104,11 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
             self.pan_project_name = self.project_name
 
         self.sequence_source_for_phylogeny = self.get_param_value_from_config('sequence_source_for_phylogeny')
+        if self.sequence_source_for_phylogeny == 'gene_clusters':
+            GC_sequences = os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-GC-sequences.fa")
+            self.use_hmms_for_phylogeny = False
+            self.phylogenomics_sequence_file = GC_sequences
+
         self.tree_name = self.get_param_value_from_config(['import_phylogenetic_tree_to_pangenome', 'tree_name'])
         self.pan_db_path = os.path.join(self.dirs_dict["PAN_DIR"], self.pan_project_name + "-PAN.db")
         self.input_for_anvi_compute_genome_similarity = {"pan_db": self.pan_db_path}
@@ -112,28 +116,18 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
         self.anvi_compute_genome_similarity_flag = os.path.join(self.dirs_dict["PAN_DIR"], self.project_name + "anvi_compute_genome_similarity.done")
         self.anvi_compute_genome_similarity_output_dir = os.path.join(self.dirs_dict["PAN_DIR"], self.project_name + "-ANI-OUTPUT")
 
-        self.init_target_files()
 
-
-    def init_target_files(self):
-        super().init_target_files()
+    def get_pangenomics_target_files(self):
+        target_files = []
         target_files.append(os.path.join(self.dirs_dict["PAN_DIR"], self.pan_project_name + "-PAN.db"))
 
         if self.sequence_source_for_phylogeny:
-            self.phylogeny_imported_flag = os.path.join(self.dirs_dict["PAN_DIR"], self.project_name + '-' + self.tree_name + "-phylogeny-imported.done")
-            target_files.append(self.phylogeny_imported_flag)
-            if self.sequence_source_for_phylogeny == 'gene_clusters':
-                GC_sequences = os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-GC-sequences.fa")
-                self.use_hmms_for_phylogeny = False
-                self.phylogenomics_sequence_file = GC_sequences
+            target_files.append(self.get_phylogeny_imported_flag())
 
-        import anvio.workflows as w
-        w.D(self.get_param_value_from_config(['anvi_compute_genome_similarity', 'run']))
-        w.D(type(self.get_param_value_from_config(['anvi_compute_genome_similarity', 'run'])))
         if self.get_param_value_from_config(['anvi_compute_genome_similarity', 'run']):
             target_files.append(self.anvi_compute_genome_similarity_flag)
 
-        self.target_files.append(target_files)
+        return target_files
 
 
     def sanity_checks(self):
@@ -148,3 +142,7 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
                 raise ConfigError('%s is not a valid sequence_source_for_phylogeny. \
                                    We only know: %s' % (self.sequence_source_for_phylogeny,\
                                    ', '.join(self.valid_sequence_sources_for_phylogeny)))
+
+
+    def get_phylogeny_imported_flag(self):
+        return os.path.join(self.dirs_dict["PAN_DIR"], self.project_name + '-' + self.tree_name + "-phylogeny-imported.done")

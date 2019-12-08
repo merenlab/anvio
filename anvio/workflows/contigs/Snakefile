@@ -30,31 +30,21 @@ if not slave_mode:
 
 localrules: annotate_contigs_database
 
-# default is NOT running taxonomy with centrifuge
-run_taxonomy_with_centrifuge = M.get_param_value_from_config(["centrifuge", "run"]) == True
 
-# default is running anvi_run_hmms
-run_anvi_run_hmms = M.get_param_value_from_config(["anvi_run_hmms", "run"]) == True
-
-# default is running anvi_run_ncbi_cogs
-run_anvi_run_ncbi_cogs = M.get_param_value_from_config(["anvi_run_ncbi_cogs", "run"]) == True
-#
-# default is running anvi_run_scg_taxonomy
-run_anvi_run_scg_taxonomy = M.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]) == True
-
-# default is NOT running anvi-script-run-eggnog-mapper
-run_anvi_script_run_eggnog_mapper = M.get_param_value_from_config(["anvi_script_run_eggnog_mapper", "run"]) == True
-
-# sanity check for centrifuge db
-if run_taxonomy_with_centrifuge:
-    if not M.get_param_value_from_config(["centrifuge", "db"]):
-        raise ConfigError("If you plan to run centrifuge, then you must "\
-                          "provide a path for the centrifuge db in the "\
-                          "config file. See documentation for more details.")
-
-
-rule generate_and_annotate_contigs_db:
+rule contigs_target_rule:
     input: expand(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done", group=M.group_names)
+
+
+rule annotate_contigs_database:
+    '''This is a dummy rule to mark that annotation was completed for each database
+
+    This allows workflows that inherit the contigs workflow to just track the output
+    of this rule, instead of tracking the individual
+    '''
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-annotate_contigs_database.log"
+    input: lambda wildcards: M.get_contigs_target_files()
+    output: touch(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done")
 
 
 rule gunzip_fasta:
@@ -263,87 +253,83 @@ rule import_external_functions:
     shell: "anvi-import-functions -c {input.contigs} -i {input.gene_functional_annotation} >> {log} 2>&1"
 
 
-if run_taxonomy_with_centrifuge:
-    # If the user wants taxonomy to be assigned with centrifuge
-    # then these following rules would run.
-    rule export_gene_calls_for_centrifuge:
-        ''' Export gene calls and use for centrifuge'''
-        version: 1.0
-        log: dirs_dict["LOGS_DIR"] + "/{group}-export_gene_calls_for_centrifuge.log"
-        # marking the input as ancient in order to ignore timestamps.
-        input: ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
-        # output is temporary. No need to keep this file.
-        output: temp(dirs_dict["CONTIGS_DIR"] + "/{group}-gene-calls.fa")
-        threads: M.T('export_gene_calls_for_centrifuge')
-        resources: nodes = M.T('export_gene_calls_for_centrifuge'),
-        shell: "anvi-get-sequences-for-gene-calls -c {input} -o {output} >> {log} 2>&1"
+rule export_gene_calls_for_centrifuge:
+    ''' Export gene calls and use for centrifuge'''
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-export_gene_calls_for_centrifuge.log"
+    # marking the input as ancient in order to ignore timestamps.
+    input: ancient(M.get_contigs_db_path())
+    # output is temporary. No need to keep this file.
+    output: temp(dirs_dict["CONTIGS_DIR"] + "/{group}-gene-calls.fa")
+    threads: M.T('export_gene_calls_for_centrifuge')
+    resources: nodes = M.T('export_gene_calls_for_centrifuge'),
+    shell: "anvi-get-sequences-for-gene-calls -c {input} -o {output} >> {log} 2>&1"
 
 
-    rule centrifuge:
-        ''' Run centrifuge on the exported gene calls of the contigs.db'''
-        version: 1.0
-        log: dirs_dict["LOGS_DIR"] + "/{group}-centrifuge.log"
-        input: rules.export_gene_calls_for_centrifuge.output
-        output:
-            hits = dirs_dict["CONTIGS_DIR"] + "/{group}-centrifuge_hits.tsv",
-            report = dirs_dict["CONTIGS_DIR"] + "/{group}-centrifuge_report.tsv"
-        params: db=config["centrifuge"]['db']
-        threads: M.T('centrifuge')
-        resources: nodes = M.T('centrifuge'),
-        shell: w.r("centrifuge -f \
-                               -x {params.db} \
-                               {input} \
-                               -S {output.hits} \
-                               --report-file {output.report} \
-                               --threads {threads} >> {log} 2>&1")
+rule centrifuge:
+    ''' Run centrifuge on the exported gene calls of the contigs.db'''
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-centrifuge.log"
+    input: rules.export_gene_calls_for_centrifuge.output
+    output:
+        hits = dirs_dict["CONTIGS_DIR"] + "/{group}-centrifuge_hits.tsv",
+        report = dirs_dict["CONTIGS_DIR"] + "/{group}-centrifuge_report.tsv"
+    params: db=M.get_param_value_from_config(["centrifuge", "db"])
+    threads: M.T('centrifuge')
+    resources: nodes = M.T('centrifuge'),
+    shell: w.r("centrifuge -f \
+                           -x {params.db} \
+                           {input} \
+                           -S {output.hits} \
+                           --report-file {output.report} \
+                           --threads {threads} >> {log} 2>&1")
 
 
-    rule anvi_import_taxonomy_for_genes:
-        ''' Run anvi-import-taxonomy-for-genes'''
-        version: 1.0
-        log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_taxonomy_for_genes.log"
-        input:
-            hits = rules.centrifuge.output.hits,
-            report = rules.centrifuge.output.report,
-            # marking the contigs.db as ancient in order to ignore timestamps.
-            contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
-        # using a flag file because no file is created by this rule.
-        # for more information see:
-        # http://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#flag-files
-        output: touch(dirs_dict["CONTIGS_DIR"] + "/{group}-anvi_anvi_import_taxonomy_for_genes.done")
-        params: parser = "centrifuge"
-        threads: M.T('anvi_import_taxonomy_for_genes')
-        resources: nodes = M.T('anvi_import_taxonomy_for_genes'),
-        shell: w.r("anvi-import-taxonomy-for-genes -c {input.contigs} \
-                                                   -i {input.report} {input.hits} \
-                                                   -p {params.parser} >> {log} 2>&1")
+rule anvi_import_taxonomy_for_genes:
+    ''' Run anvi-import-taxonomy-for-genes'''
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_taxonomy_for_genes.log"
+    input:
+        hits = rules.centrifuge.output.hits,
+        report = rules.centrifuge.output.report,
+        # marking the contigs.db as ancient in order to ignore timestamps.
+        contigs = ancient(M.get_contigs_db_path())
+    # using a flag file because no file is created by this rule.
+    # for more information see:
+    # http://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#flag-files
+    output: touch(dirs_dict["CONTIGS_DIR"] + "/{group}-anvi_anvi_import_taxonomy_for_genes.done")
+    params: parser = "centrifuge"
+    threads: M.T('anvi_import_taxonomy_for_genes')
+    resources: nodes = M.T('anvi_import_taxonomy_for_genes'),
+    shell: w.r("anvi-import-taxonomy-for-genes -c {input.contigs} \
+                                               -i {input.report} {input.hits} \
+                                               -p {params.parser} >> {log} 2>&1")
 
 
-if run_anvi_run_hmms:
-    rule anvi_run_hmms:
-        """ Run anvi-run-hmms"""
-        version: 1.0
-        log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_hmms.log"
-        # marking the input as ancient in order to ignore timestamps.
-        input: ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
-        # using a snakemake flag file as an output since no file is generated
-        # by the rule.
-        output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_hmms-{group}.done")
-        params:
-            installed_hmm_profile = M.get_rule_param("anvi_run_hmms", "--installed-hmm-profile"),
-            hmm_profile_dir = M.get_rule_param("anvi_run_hmms", "--hmm-profile-dir"),
-        threads: M.T('anvi_run_hmms')
-        resources: nodes = M.T('anvi_run_hmms'),
-        shell: w.r("anvi-run-hmms -c {input} \
-                                  -T {threads} \
-                                  {params.hmm_profile_dir} \
-                                  {params.installed_hmm_profile} >> {log} 2>&1")
+rule anvi_run_hmms:
+    """ Run anvi-run-hmms"""
+    version: 1.0
+    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_hmms.log"
+    # marking the input as ancient in order to ignore timestamps.
+    input: ancient(M.get_contigs_db_path())
+    # using a snakemake flag file as an output since no file is generated
+    # by the rule.
+    output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_hmms-{group}.done")
+    params:
+        installed_hmm_profile = M.get_rule_param("anvi_run_hmms", "--installed-hmm-profile"),
+        hmm_profile_dir = M.get_rule_param("anvi_run_hmms", "--hmm-profile-dir"),
+    threads: M.T('anvi_run_hmms')
+    resources: nodes = M.T('anvi_run_hmms'),
+    shell: w.r("anvi-run-hmms -c {input} \
+                              -T {threads} \
+                              {params.hmm_profile_dir} \
+                              {params.installed_hmm_profile} >> {log} 2>&1")
 
 
 rule anvi_run_pfams:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_run_pfams.log")
-    input: ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
+    input: ancient(M.get_contigs_db_path())
     output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "anvi_run_pfams-{group}.done"))
     params:
         pfam_data_dir = M.get_rule_param('anvi_run_pfams', '--pfam-data-dir')
@@ -356,7 +342,7 @@ rule anvi_run_ncbi_cogs:
     version: anvio.__contigs__version__
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_ncbi_cogs.log"
     input:
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
+        contigs = ancient(M.get_contigs_db_path())
     output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_ncbi_cogs-{group}.done")
     params:
         # anvi-run-ncbi-cogs params. See anvi-run-ncbi-cogs help menu for more info.
@@ -374,28 +360,27 @@ rule anvi_run_ncbi_cogs:
                                      {params.search_with} >> {log} 2>&1""")
 
 
-if run_anvi_run_hmms and run_anvi_run_scg_taxonomy:
-    rule anvi_run_scg_taxonomy:
-        version: anvio.__contigs__version__
-        log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_scg_taxonomy.log"
-        input:
-            # make sure HMMs were done before running this rule
-            hmms_done = ancient(dirs_dict["CONTIGS_DIR"] + "/anvi_run_hmms-{group}.done"),
-            contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
-        output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_scg_taxonomy-{group}.done")
-        params:
-            scg_taxonomy_data_dir = M.get_rule_param('anvi_run_scg_taxonomy', '--scgs-taxonomy-data-dir'),
-        threads: M.T('anvi_run_scg_taxonomy')
-        resources: nodes = M.T('anvi_run_scg_taxonomy'),
-        shell: w.r("""anvi-run-scg-taxonomy -c {input.contigs} \
-                                            -T {threads} \
-                                            {params.scg_taxonomy_data_dir} >> {log} 2>&1""")
+rule anvi_run_scg_taxonomy:
+    version: anvio.__contigs__version__
+    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_scg_taxonomy.log"
+    input:
+        # make sure HMMs were done before running this rule
+        hmms_done = ancient(dirs_dict["CONTIGS_DIR"] + "/anvi_run_hmms-{group}.done"),
+        contigs = ancient(M.get_contigs_db_path())
+    output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_scg_taxonomy-{group}.done")
+    params:
+        scg_taxonomy_data_dir = M.get_rule_param('anvi_run_scg_taxonomy', '--scgs-taxonomy-data-dir'),
+    threads: M.T('anvi_run_scg_taxonomy')
+    resources: nodes = M.T('anvi_run_scg_taxonomy'),
+    shell: w.r("""anvi-run-scg-taxonomy -c {input.contigs} \
+                                        -T {threads} \
+                                        {params.scg_taxonomy_data_dir} >> {log} 2>&1""")
 
 
 rule anvi_get_sequences_for_gene_calls:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_get_sequences_for_gene_calls.log"
-    input: ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
+    input: ancient(M.get_contigs_db_path())
     output: temp(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs-aa-sequences.fa")
     threads: M.T('anvi_get_sequences_for_gene_calls')
     resources: nodes = M.T('anvi_get_sequences_for_gene_calls')
@@ -441,41 +426,6 @@ rule anvi_script_run_eggnog_mapper:
         shell("anvi-script-run-eggnog-mapper -c {input.contigs} --annotation {input.eggnog_output}.temp {params.use_version}  >> {log} 2>&1")
 
         shell("rm {input.eggnog_output}.temp 2>{log}")
-
-
-rule annotate_contigs_database:
-    '''
-        This is a dummy rule and it is here just to guarantee that all
-        the contigs annotations will run (according to what was requested
-        in the config file). The main use is to use --until annotate_contigs_database
-        if you just want a contigs databases with all the annotations.
-    '''
-    version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-annotate_contigs_database.log"
-    input:
-        # this is here just so snakemake would run the taxonomy before running this rule
-        taxonomy = rules.anvi_import_taxonomy_for_genes.output if run_taxonomy_with_centrifuge else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
-
-        # this is here just so snakemake would run the hmms before running this rule
-        hmms = rules.anvi_run_hmms.output if run_anvi_run_hmms else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
-
-        # this is here just so snakemake would run the ncbi cogs before running this rule
-        cogs = rules.anvi_run_ncbi_cogs.output if run_anvi_run_ncbi_cogs else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
-
-        # this is here because Meren finally understood why it is here thanks to a short-lived wisdom during which
-        # he could see everything. it is gone now. SO GOOD LUCK TO YOU.
-        scg_taxonomy = rules.anvi_run_scg_taxonomy.output if (run_anvi_run_hmms and run_anvi_run_scg_taxonomy) else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
-
-        # I hope that by now, you understand why this is here (hint: it is in order to prevent global warming)
-        eggnog_mapper = rules.anvi_script_run_eggnog_mapper.output if run_anvi_script_run_eggnog_mapper else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
-
-        # import external functions
-        import_external_functions = M.import_external_functions_flags if M.import_external_functions_flags else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
-
-        # annotate pfams
-        pfams =  rules.anvi_run_pfams.output if M.run_pfams else ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
-    output: touch(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done")
-    shell: "touch {output} >> {log} 2>&1"
 
 
 # generate external genomes storage
