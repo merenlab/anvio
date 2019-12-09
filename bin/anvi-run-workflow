@@ -4,13 +4,10 @@
 import sys
 
 import anvio
+import anvio.workflows as w
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.workflows.contigs import ContigsDBWorkflow
-from anvio.workflows.metagenomics import MetagenomicsWorkflow
-from anvio.workflows.pangenomics import PangenomicsWorkflow
-from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -29,13 +26,10 @@ run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 
-workflows_dict = {'contigs': ContigsDBWorkflow,
-                  'metagenomics': MetagenomicsWorkflow,
-                  'pangenomics': PangenomicsWorkflow,
-                  'phylogenomics': PhylogenomicsWorkflow}
-
 
 def main(args):
+    workflows_dict = w.get_workflow_module_dict()
+
     if args.list_workflows:
         run.info("Available workflows", ", ".join(list(workflows_dict.keys())))
         sys.exit(0)

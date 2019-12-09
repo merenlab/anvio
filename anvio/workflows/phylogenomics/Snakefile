@@ -33,8 +33,8 @@ if not slave_mode:
 localrules: generate_phylogeny
 
 
-rule generate_phylogeny:
-    input: os.path.join(dirs_dict["PHYLO_DIR"], M.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
+rule phylogenomics_target_rule:
+    input: M.get_phylogenomics_target_files()
 
 rule anvi_get_sequences_for_hmm_hits:
     version: 1.0
