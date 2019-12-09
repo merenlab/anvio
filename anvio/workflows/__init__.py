@@ -31,6 +31,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 r = errors.remove_spaces
 
+workflow_config_version = "1"
 
 class WorkflowSuperClass:
     def __init__(self):
@@ -95,8 +96,7 @@ class WorkflowSuperClass:
                 if param not in self.rule_acceptable_params_dict[rule]:
                     self.rule_acceptable_params_dict[rule].append(param)
 
-            general_params_that_all_workflows_must_accept = ['output_dirs', 'max_threads']
-            for param in general_params_that_all_workflows_must_accept:
+            for param in self.get_global_general_params():
                 if param not in self.general_params:
                     self.general_params.append(param)
 
@@ -122,6 +122,11 @@ class WorkflowSuperClass:
         if not self.slave_mode:
             self.check_config()
             self.check_rule_params()
+
+
+    def get_global_general_params(self):
+        ''' Return a list of the general parameters that are always acceptable.'''
+        return ['output_dirs', 'max_threads', 'config_version']
 
 
     def sanity_checks(self):
@@ -272,6 +277,7 @@ class WorkflowSuperClass:
     def get_default_config(self):
         c = self.fill_empty_config_params(self.default_config)
         c["output_dirs"] = self.dirs_dict
+        c["config_version"] = workflow_config_version
         return c
 
 
