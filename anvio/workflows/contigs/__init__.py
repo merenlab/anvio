@@ -106,12 +106,66 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.sanity_check_contigs_project_name()
 
-        self.import_external_functions_flags = [os.path.join(self.dirs_dict["CONTIGS_DIR"],
-                                                group + "-external-functions-imported.done")\
-                                                for group in self.contigs_information \
-                                                if self.contigs_information[group].get('gene_functional_annotation')]
+        # check and warn user regarding risky change of temp dir name
+        w.check_for_risky_param_change(self.config, 'anvi_run_ncbi_cogs', '--temporary-dir-path', '{group}')
 
-        self.run_pfams = self.get_param_value_from_config(['anvi_run_pfams', 'run'])
+
+    def get_contigs_target_files(self):
+        # Add the contigs database as a target file.
+        # This is the only mandatory target file for this workflow.
+        target_files = []
+        target_files.append(self.get_contigs_db_path())
+
+        # Add the optional target files according to user configurations
+        target_files.extend(self.get_contigs_workflow_optional_targets())
+
+        return target_files
+
+
+    def get_contigs_workflow_optional_targets(self):
+        optional_targets = []
+
+        run_taxonomy_with_centrifuge = self.get_param_value_from_config(["centrifuge", "run"]) == True
+        # sanity check for centrifuge db
+        if run_taxonomy_with_centrifuge:
+            if not self.get_param_value_from_config(["centrifuge", "db"]):
+                raise ConfigError("If you plan to run centrifuge, then you must "\
+                                  "provide a path for the centrifuge db in the "\
+                                  "config file. See documentation for more details.")
+
+        if run_taxonomy_with_centrifuge:
+            optional_targets.append(self.dirs_dict["CONTIGS_DIR"] + "/{group}-anvi_anvi_import_taxonomy_for_genes.done")
+
+        run_anvi_run_hmms = self.get_param_value_from_config(["anvi_run_hmms", "run"]) == True
+        if run_anvi_run_hmms:
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "anvi_run_hmms-{group}.done"))
+
+        if self.get_param_value_from_config(["anvi_run_ncbi_cogs", "run"]) == True:
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "anvi_run_ncbi_cogs-{group}.done"))
+
+        run_anvi_run_scg_taxonomy = self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]) == True
+        if run_anvi_run_scg_taxonomy:
+            if not run_anvi_run_hmms:
+                self.run.warning('You chose to run anvi_run_scg_taxonomy, but you didn\'t choose to run\
+                                  anvi_run_hmms. Continue at your own risk. If your contigs databases\
+                                  don\'t have HMM hits stored already then anvi_run_scg_taxonomy will fail.')
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "anvi_run_scg_taxonomy-{group}.done"))
+
+        if self.get_param_value_from_config(["anvi_script_run_eggnog_mapper", "run"]) == True:
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-anvi_script_run_eggnog_mapper.done"))
+
+        # import external functions if provided
+        import_external_functions_flags = [os.path.join(self.dirs_dict["CONTIGS_DIR"],
+                                           group + "-external-functions-imported.done")\
+                                           for group in self.contigs_information \
+                                           if self.contigs_information[group].get('gene_functional_annotation')]
+        if import_external_functions_flags:
+            optional_targets.extend(import_external_functions_flags)
+
+        if self.get_param_value_from_config(['anvi_run_pfams', 'run']):
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "anvi_run_pfams-{group}.done"))
+
+        return optional_targets
 
 
     def sanity_check_contigs_project_name(self):
@@ -126,6 +180,10 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                          the same name, unless you incloded "{group}" in the name you provided\
                          but even then, we did not test that option and we are not sure it would\
                          work...' % contigs_project_name)
+
+
+    def get_contigs_db_path(self):
+        return os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-contigs.db")
 
 
     def get_raw_fasta(self, wildcards, remove_gz_suffix=True):

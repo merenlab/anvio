@@ -36,7 +36,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='metagenomics')
 
-        self.target_files = [] # TODO: Once we update all other workflows then this will be initiated in WorkflowSuperClass
         self.samples_information = {}
         self.kraken_annotation_dict = {}
         self.run_krakenuniq = None
@@ -193,13 +192,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.init_samples_txt()
         self.init_kraken()
         self.init_refereces_txt()
-        self.init_target_files()
 
-
-    def init_target_files(self):
-        target_files = []
-
-        # let's also set the PROFILE databases paths variable here:
+        # Set the PROFILE databases paths variable:
         for group in self.group_names:
             # we need to use the single profile if the group is of size 1.
             self.profile_databases[group] = os.path.join(self.dirs_dict["MERGE_DIR"], group, "PROFILE.db") if self.group_sizes[group] > 1 else \
@@ -207,6 +201,11 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                             group,
                                                             self.samples_information.loc[self.samples_information['group']==group,'sample'].values[0],
                                                             "PROFILE.db")
+
+
+    def get_metagenomics_target_files(self):
+
+        target_files = []
 
         target_files.extend(list(self.profile_databases.values()))
 
@@ -242,9 +241,11 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                   for g in self.collections.keys() if not self.collections[g]['default_collection']]
             target_files.extend(split)
 
-        self.configure_anvi_cluster_contigs()
+        targets_files_for_binning = self.get_target_files_for_anvi_cluster_contigs()
+        if targets_files_for_binning:
+            target_files.extend(targets_files_for_binning)
 
-        self.target_files.extend(target_files)
+        return target_files
 
 
     def get_collection_import_flag(self, group):
@@ -542,7 +543,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         return contigs
 
 
-    def configure_anvi_cluster_contigs(self):
+    def get_target_files_for_anvi_cluster_contigs(self):
         import anvio.workflows as w
         w.D(self.get_param_value_from_config(['anvi_cluster_contigs', 'run']))
         if self.get_param_value_from_config(['anvi_cluster_contigs', 'run']) is not True:
@@ -590,7 +591,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             # if the key word '{driver}' is not in the collection name then it is a static collection name
             example_collection_name = collection_name
         else:
-            # if the key word '{driver}' IS in the collection name, then let's take one 
+            # if the key word '{driver}' IS in the collection name, then let's take one
             # driver as example when we check if the collection name is valid.
             example_collection_name = collection_name.format(driver=requested_drivers[0])
         try:
@@ -601,13 +602,13 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                    error we got: %s' % (collection_name, e))
 
         groups_of_size_one = []
+        target_files = []
         for d in requested_drivers:
             for g in self.group_names:
                 if self.group_sizes[g] > 1:
                     # add flag files of binning to the target files
                     # only if the group is larger than 1 (because otherwise, there is no merged profile)
-                    target_file = self.get_flag_file_for_binning_driver(g, d)
-                    self.target_files.append(target_file)
+                    target_files.append(self.get_flag_file_for_binning_driver(g, d))
                 else:
                     groups_of_size_one.append(g)
         if groups_of_size_one:
@@ -615,8 +616,12 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                          %s, since there is only one sample in this group, and hence there\
                          will be no merged profile, which is required for anvi-cluster-contigs.' % ', '.join(groups_of_size_one))
 
+        return target_files
+
+
     def get_flag_file_for_binning_driver(self, group, driver):
         return os.path.join(self.dirs_dict['MERGE_DIR'], group + '-' + driver + '.done')
+
 
     def get_param_name_for_binning_driver(self, driver):
         return '--additional-params' + '-' + driver

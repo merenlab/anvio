@@ -52,7 +52,7 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                                         '--align-with': 'famsa',
                                                                         '--concatenate-genes': True,
                                                                         '--get-aa-sequences': True,
-                                                                        '--hmm-sources': 'Campbell_et_al'},
+                                                                        '--hmm-sources': 'Bacteria_71'},
                                     'trimal': {'-gt': 0.5},
                                     'iqtree': {'threads': 8, '-m': 'WAG', '-bb': 1000}})
 
@@ -79,6 +79,10 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             self.phylogenomics_sequence_file = os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins.fa")
 
 
+    def get_phylogenomics_target_files(self):
+        return self.get_phylogenetic_tree_output_file_name()
+
+
     def sanity_checks(self):
         if not self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--gene-names'):
             run.warning('You did not provide a list of genes to use for phylogenomics. This is ok and things might work \
@@ -93,3 +97,7 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         if not self.project_name:
             raise ConfigError("You must provide a project_name in your config file.")
+
+
+    def get_phylogenetic_tree_output_file_name(self):
+        return os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")

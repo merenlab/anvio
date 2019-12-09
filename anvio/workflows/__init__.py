@@ -590,7 +590,7 @@ def get_workflow_snake_file_path(workflow):
     return snakefile_path
 
 
-def warning_for_param(config, rule, param, wildcard, our_default=None):
+def check_for_risky_param_change(config, rule, param, wildcard, our_default=None):
     value = A([rule, param], config)
     if value:
         warning_message = 'You chose to define %s for the rule %s in the config file as %s.\
@@ -610,3 +610,17 @@ def get_fields_for_fasta_information():
     # utils.get_TAB_delimited_file_as_dictionary doesn't really care about it.
     return ["path", "external_gene_calls", "gene_functional_annotation"]
 
+
+def get_workflow_module_dict():
+
+    from anvio.workflows.contigs import ContigsDBWorkflow
+    from anvio.workflows.metagenomics import MetagenomicsWorkflow
+    from anvio.workflows.pangenomics import PangenomicsWorkflow
+    from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
+
+    workflows_dict = {'contigs': ContigsDBWorkflow,
+                      'metagenomics': MetagenomicsWorkflow,
+                      'pangenomics': PangenomicsWorkflow,
+                      'phylogenomics': PhylogenomicsWorkflow}
+
+    return workflows_dict
