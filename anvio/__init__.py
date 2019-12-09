@@ -2070,7 +2070,7 @@ D = {
     'config-file': (
             ['-c', '--config-file'],
             {'required': False,
-             'help': "TBD"}
+             'help': "A JSON-formatted configuration file."}
                 ),
     'additional-params': (
             ['-A', '--additional-params'],
