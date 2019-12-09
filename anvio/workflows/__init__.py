@@ -354,23 +354,17 @@ class WorkflowSuperClass:
         f[a] = value
 
 
-    def get_param_value_from_config(self, _list, repress_default=False):
+    def get_param_value_from_config(self, _list):
         '''
             A helper function to make sense of config details.
             string_list is a list of strings (or a single string)
 
             this function checks if the strings in x are nested values in self.config.
             For example if x = ['a','b','c'] then this function checkes if the
-            value self.config['a']['b']['c'] exists, if it does then it is returned
-
-            repress_default - If there is a default defined for the parameter (it would be defined
-            under self.default_config), and the user didn't supply a parameter
-            then the default will be returned. If this flad (repress_default) is set to True
-            then this behaviour is repressed and instead an empty string would be returned.
-
+            value self.config['a']['b']['c'] exists, if it does then it is returned.
+            If it does not exist then None is returned.
         '''
         d = self.config
-        default_dict = self.default_config
         if type(_list) is not list:
             # converting to list for the cases of only one item
             _list = [_list]
@@ -378,15 +372,11 @@ class WorkflowSuperClass:
             a = _list.pop(0)
             default_dict = default_dict[a]
             try:
-                d = d.get(a, None)
+                d = d.get(a, "")
             except:
-                # we continue becuase we want to get the value from the default config
-                continue
+                return ""
 
-        if (d is not None) or repress_default:
-            return d
-        else:
-            return default_dict
+        return d
 
 
     def get_rule_param(self, _rule, _param):
