@@ -40,8 +40,8 @@ class Migrater(object):
 
 
     def get_db_meta(self):
-        if not args.just_do_it and self.db_path.split('.')[-1] not in ['db', 'h5']:
-            raise ConfigError("This program only works with files that end with `.db` extension.")
+        if not args.just_do_it and self.db_path.split('.')[-1] not in ['db', 'h5', 'json']:
+            raise ConfigError("This program only works with files that end with `.db` or `.json` extensions.")
 
         try:
             if self.db_path.endswith('GENOMES.h5'):
@@ -53,6 +53,11 @@ class Migrater(object):
                 self.db_version = int(fp.attrs['version'])
 
                 fp.close()
+            elif self.db_path.endswith('json'):
+                import anvio.workflows as w
+                self.db_type = 'config'
+                workflow_name, config_version = w.get_workflow_name_and_version_from_config(self.db_path, dont_raise=True)
+                self.db_version = int(config_version)
             else:
                 db_conn = db.DB(self.db_path, None, ignore_version=True)
 
