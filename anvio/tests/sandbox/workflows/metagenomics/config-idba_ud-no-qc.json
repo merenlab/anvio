@@ -109,5 +109,6 @@
         "MERGE_DIR": "06_MERGED_idba_ud_no_qc",
         "SHORT_READ_FILTER_DIR": "01_SHORT_READ_FILTER_idba_ud_no_qc",
         "LOGS_DIR": "00_LOGS_idba_ud_no_qc"
-    }
+    },
+    "config_version": "1"
 }

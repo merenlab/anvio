@@ -66,5 +66,6 @@
         "PHYLO_DIR": "01_PHYLOGENOMICS_FIVE_PAN_hmms",
         "PAN_DIR": "03_PAN_FIVE_PAN",
         "LOGS_DIR": "00_LOGS_FIVE_PAN"
-    }
+    },
+    "config_version": "1"
 }
