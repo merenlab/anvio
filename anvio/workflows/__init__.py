@@ -126,7 +126,7 @@ class WorkflowSuperClass:
 
     def get_global_general_params(self):
         ''' Return a list of the general parameters that are always acceptable.'''
-        return ['output_dirs', 'max_threads', 'config_version']
+        return ['output_dirs', 'max_threads', 'config_version', 'workflow_name']
 
 
     def sanity_checks(self):
