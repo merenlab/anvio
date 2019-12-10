@@ -40,6 +40,7 @@ def migrate(config_path):
 
     user_config_v1 = workflow_object.default_config
     user_config_v1.update(workflow_object.config)
+    user_config_v1['config_version'] = '1'
 
     filesnpaths.is_output_file_writable(config_path)
     open(config_path, 'w').write(json.dumps(user_config_v1, indent=4))
