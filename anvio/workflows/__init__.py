@@ -251,6 +251,15 @@ class WorkflowSuperClass:
                                    missing :(")
 
     def check_config(self):
+        if not self.config.get('config_version'):
+            raise ConfigError('Config files must include a config_version. If\
+                               this is news to you, and you don\'t know what\
+                               version your config should be, then consider\
+                               using our script to upgrade you config file.')
+
+        if not self.config.get('workflow_name'):
+            raise ConfigError('Config files must contain a workflow_name.')
+
         acceptable_params = set(self.rules + self.general_params)
         wrong_params = [p for p in self.config if p not in acceptable_params]
         if wrong_params:
@@ -278,6 +287,7 @@ class WorkflowSuperClass:
         c = self.fill_empty_config_params(self.default_config)
         c["output_dirs"] = self.dirs_dict
         c["config_version"] = workflow_config_version
+        c["workflow_name"] = self.name
         return c
 
 
@@ -620,3 +630,17 @@ def get_workflow_module_dict():
                       'phylogenomics': PhylogenomicsWorkflow}
 
     return workflows_dict
+
+
+def get_workflow_name_and_version_from_config(config_file, dont_raise=False):
+    filesnpaths.is_file_json_formatted(config_file)
+    config = json.load(open(config_file))
+    workflow_name = config.get('workflow_name')
+    # Notice that if there is no config_version then we return "0".
+    # This is in order to accomodate early contig files that had no such parameter.
+    version = config.get('config_version', "0")
+
+    if (not dont_raise) and (not workflow_name):
+        raise ConfigError('Config files must contain a workflow_name.')
+
+    return (workflow_name, version)
