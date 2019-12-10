@@ -386,7 +386,6 @@ class WorkflowSuperClass:
             _list = [_list]
         while _list:
             a = _list.pop(0)
-            default_dict = default_dict[a]
             try:
                 d = d.get(a, "")
             except:
@@ -469,7 +468,7 @@ class WorkflowSuperClass:
             internal_genomes_file = self.get_param_value_from_config('internal_genomes')
             external_genomes_file = self.get_param_value_from_config('external_genomes')
 
-            fasta_txt_file = self.get_param_value_from_config('fasta_txt', repress_default=True)
+            fasta_txt_file = self.get_param_value_from_config('fasta_txt)
             if fasta_txt_file and not external_genomes_file:
                 raise ConfigError('You provided a fasta_txt, but didn\'t specify a path for an external-genomes file. \
                                    If you wish to use external genomes, you must specify a name for the external-genomes \
