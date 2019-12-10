@@ -38,12 +38,12 @@ def migrate(config_path):
     workflow_module_dict = w.get_workflow_module_dict()
     workflow_object = workflow_module_dict[workflow_name](args)
 
-    user_config_v1 = workflow_object.default_config
-    user_config_v1.update(workflow_object.config)
-    user_config_v1['config_version'] = '1'
+    new_config = workflow_object.default_config
+    new_config.update(workflow_object.config)
+    new_config['config_version'] = '1'
 
     filesnpaths.is_output_file_writable(config_path)
-    open(config_path, 'w').write(json.dumps(user_config_v1, indent=4))
+    open(config_path, 'w').write(json.dumps(new_config, indent=4))
 
 
     progress.end()
