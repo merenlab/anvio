@@ -119,5 +119,6 @@
         "PROFILE_DIR": "05_ANVIO_PROFILE_megahit",
         "MERGE_DIR": "06_MERGED_megahit",
         "LOGS_DIR": "00_LOGS_megahit"
-    }
+    },
+    "config_version": "1"
 }

@@ -91,5 +91,6 @@
         "MERGE_DIR": "06_MERGED_metaspades_no_qc",
         "TAXONOMY_DIR": "07_TAXONOMY_metaspades_no_qc",
         "LOGS_DIR": "00_LOGS_metaspades_no_qc"
-    }
+    },
+    "config_version": "1"
 }

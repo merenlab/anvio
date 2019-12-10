@@ -54,5 +54,6 @@
     "output_dirs": {
         "PHYLO_DIR": "01_PHYLOGENOMICS",
         "LOGS_DIR": "00_LOGS"
-    }
+    },
+    "config_version": "1"
 }

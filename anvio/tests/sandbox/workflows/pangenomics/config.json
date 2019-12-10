@@ -67,5 +67,6 @@
         "CONTIGS_DIR": "02_CONTIGS",
         "PAN_DIR": "03_PAN",
         "LOGS_DIR": "00_LOGS"
-    }
+    },
+    "config_version": "1"
 }
