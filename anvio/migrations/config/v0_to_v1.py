@@ -46,7 +46,7 @@ def migrate(config_path):
 
 
     progress.end()
-    run.info_single("The config file is now %s. This upgrade brought back any default value that was\
+    run.info_single("The config file version is now %s. This upgrade brought back any default value that was\
                      previously removed from your config file. It will not change anything about the\
                      configuration of the resulting workflow and you can just carry on your work.\
                      " % (next_version), nl_after=1, nl_before=1, mc='green')
