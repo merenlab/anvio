@@ -87,6 +87,7 @@ class Completeness:
         self.source_to_domain = dict([(source, info_table[source]['domain']) for source in self.sources])
         self.domain_to_sources = [(domain, [source for source in self.sources if info_table[source]['domain'] == domain]) for domain in self.domains]
 
+        # compatibility sanity checks 1/2: make sure domains between domain predictor and the contigs database match
         self.domains_missing_in_SCG_domain_predictor = [d for d in self.domains if d not in self.SCG_domain_predictor.SCG_domains]
         self.domains_missing_in_SCGs_run_for_contigs = [d for d in self.SCG_domain_predictor.SCG_domains if d not in self.domains]
 
@@ -119,6 +120,25 @@ class Completeness:
             self.domains.discard(set(self.domains_missing_in_SCGs_run_for_contigs))
 
             self.initialized_properly = False
+
+        # compatibility sanity checks 2/2: make sure sources in domain predictor to those in the contigs database
+        self.sources_missing_in_SCGs_run_for_contigs = [s for s in self.SCG_domain_predictor.SCG_sources if s not in self.sources]
+        self.sources_missing_in_SCG_domain_predictor = [s for s in self.sources if s not in self.SCG_domain_predictor.SCG_sources]
+        if len(self.sources_missing_in_SCGs_run_for_contigs):
+            num_sources_missing = len(self.sources_missing_in_SCGs_run_for_contigs)
+            self.progress.reset()
+            self.run.warning("OK. We have a VERY interesting problem. You have all the SCG domains necessary to run the predictor covered\
+                              in your contigs database, however, %s that are used during the training of the domain predictor does not seem\
+                              to occur in your contigs database :/ Here is the list of HMM sources that are making us upset here: \"%s\".\
+                              This most likely means you are using a new version of anvi'o with older single-copy core gene sources, or you are\
+                              exploring new single-copy core gene sources to see how they behave. That's all good and very exciting, but unfortunately\
+                              anvi'o will not be able to predict domains due to this incompatibility here. You could solve this problem by running\
+                              `anvi-run-hmms` on your contigs database, but you can also live without solving it as anvi'o will continue running\
+                              by not utilizing domain-specific HMMs for completion/redundancy estimates, but giving you all the results all at once." % \
+                                           ('an HMM source' if num_sources_missing == 1 else '%s HMM sources' % num_sources_missing,
+                                            ', '.join(self.sources_missing_in_SCGs_run_for_contigs)))
+            self.initialized_properly = False
+
 
         if source_requested:
             if source_requested not in self.sources:
@@ -165,6 +185,7 @@ class Completeness:
         # a single SCG collection per domain. This can be changed, and we will think about that when it is a necessity. No need
         # to be rocket scientists before the need arises.
         domains_in_hmm_hits = sorted([d for d in hmm_hits if list(hmm_hits[d].values())[0]['num_genes_in_model_with_hits']])
+        sources_in_hmm_hits = sorted(list(set([list(hmm_hits[s].keys())[0] for s in hmm_hits])))
 
         # if this class is initialized improperly, it means there are SCG domains in the contigs database anvi'o does not
         # recognize. but for a given bin, all HMM hits may be coming only from domains anvi'o recognizes. in those cases
@@ -173,8 +194,9 @@ class Completeness:
         # any HMM hits with a domain we don't recognize, and act accordingly.
         if not self.initialized_properly:
             hits_contain_a_domain_missing_from_SCG_domain_predictor = len(set(domains_in_hmm_hits).intersection(set(self.domains_missing_in_SCG_domain_predictor))) > 0
+            hits_contain_a_source_missing_from_SCG_domain_predictor = len(set(sources_in_hmm_hits).intersection(set(self.sources_missing_in_SCG_domain_predictor))) > 0
 
-            if hits_contain_a_domain_missing_from_SCG_domain_predictor:
+            if hits_contain_a_domain_missing_from_SCG_domain_predictor or hits_contain_a_source_missing_from_SCG_domain_predictor:
                 info_text = "NO DOMAIN ESTIMATION BECAUSE THERE IS WEIRD STUFF GOING ON. Anvi'o is having hard time determining the domain for\
                              this particular genomic bin because it includes HMM hits coming from single-copy core gene collection anvi'o did not\
                              know about when the domain predictor was trained :/ This is not a very big deal as anvi'o will continue showing you\
