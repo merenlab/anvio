@@ -1,33 +1,4 @@
 {
-    "fasta_txt": "five-genomes-fasta.txt",
-    "anvi_gen_contigs_database": {
-        "--project-name": "{group}"
-    },
-    "centrifuge": {
-        "threads": 2
-    },
-    "anvi_run_hmms": {
-        "run": true,
-        "threads": 5
-    },
-    "anvi_run_ncbi_cogs": {
-        "run": false
-    },
-    "anvi_run_scg_taxonomy": {
-        "run": true,
-        "threads": 6
-    },
-    "anvi_script_reformat_fasta": {
-        "run": true
-    },
-    "emapper": {
-        "--database": "bact",
-        "--usemem": true,
-        "--override": true
-    },
-    "anvi_script_run_eggnog_mapper": {
-        "--use-version": "0.12.6"
-    },
     "anvi_get_sequences_for_hmm_hits": {
         "--return-best-hit": true,
         "--align-with": "famsa",
@@ -35,6 +6,9 @@
         "--get-aa-sequences": true,
         "--hmm-sources": "Bacteria_71",
         "--min-num-bins-gene-occurs": 5
+    },
+    "anvi_run_ncbi_cogs": {
+        "run": false
     },
     "trimal": {
         "-gt": 0.5,
@@ -51,9 +25,9 @@
     "project_name": "TEST",
     "internal_genomes": "",
     "external_genomes": "external-genomes.txt",
+    "fasta_txt": "five-genomes-fasta.txt",
     "output_dirs": {
         "PHYLO_DIR": "01_PHYLOGENOMICS",
         "LOGS_DIR": "00_LOGS"
-    },
-    "config_version": "1"
+    }
 }
