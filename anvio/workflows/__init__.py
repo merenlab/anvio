@@ -91,7 +91,7 @@ class WorkflowSuperClass:
             if rule not in self.rule_acceptable_params_dict:
                 self.rule_acceptable_params_dict[rule] = []
 
-            params_that_all_rules_must_accept = ['threads']
+            params_that_all_rules_must_accept = self.get_params_that_all_rules_accept()
             for param in params_that_all_rules_must_accept:
                 if param not in self.rule_acceptable_params_dict[rule]:
                     self.rule_acceptable_params_dict[rule].append(param)
@@ -122,6 +122,10 @@ class WorkflowSuperClass:
         if not self.slave_mode:
             self.check_config()
             self.check_rule_params()
+
+
+    def get_params_that_all_rules_accept(self):
+        return ['threads']
 
 
     def get_global_general_params(self):
