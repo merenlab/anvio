@@ -57,7 +57,7 @@ def migrate(config_path):
                 continue
             else:
             # otherwise update config rule parameters
-                new_config[param] = default_config[param].update(config[param])
+                new_config[param] = default_config[param].update(config.get(param,''))
         else:
             # if it's not a dict then it's a general parameter
             # update the general parameter
