@@ -533,9 +533,9 @@ def A(_list, d, default_value = ""):
         _list = [_list]
     while _list:
         a = _list.pop(0)
-        if a in d:
+        try:
             d = d[a]
-        else:
+        except:
             return default_value
     return d
 
