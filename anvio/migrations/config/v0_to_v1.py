@@ -42,6 +42,16 @@ def migrate(config_path):
     new_config.update(workflow_object.config)
     new_config['config_version'] = '1'
 
+    ## Deal with special cases
+    special_params = ['fasta_txt', 'references_for_removal', 'references_mode']
+    for param in special_params:
+        if not workflow_object.get_param_value_from_config(special_params):
+            # this are parameters for which the default values
+            # used to be repressed using "repress_default"
+            # if the user deleted these from their config
+            # then we must delete them here as well.
+            del new_config[param]
+
     filesnpaths.is_output_file_writable(config_path)
     open(config_path, 'w').write(json.dumps(new_config, indent=4))
 
