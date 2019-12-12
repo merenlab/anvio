@@ -37,20 +37,31 @@ def migrate(config_path):
 
     workflow_module_dict = w.get_workflow_module_dict()
     workflow_object = workflow_module_dict[workflow_name](args)
+    config = workflow_object.config
 
-    new_config = workflow_object.default_config
-    new_config.update(workflow_object.config)
+    default_config = workflow_object.default_config
+    new_config = config
     new_config['config_version'] = '1'
 
     ## Deal with special cases
     special_params = ['fasta_txt', 'references_for_removal', 'references_mode']
-    for param in special_params:
-        if not workflow_object.get_param_value_from_config(special_params):
-            # this are parameters for which the default values
-            # used to be repressed using "repress_default"
-            # if the user deleted these from their config
-            # then we must delete them here as well.
-            del new_config[param]
+
+    for param in default_config:
+        if param in special_params:
+        # if the param belongs to special params then we skip it
+            continue
+        elif type(default_config[param]) == dict:
+            if 'run' in default_config[param].keys() and not w.A(['param', 'run'], config):
+            # if this is a rule that has a 'run' parameter then
+            # if run is not set to true in the config then skip this rule
+                continue
+            else:
+            # otherwise update config rule parameters
+                new_config[param] = default_config[param].update(config[param])
+        else:
+            # if it's not a dict then it's a general parameter
+            # update the general parameter
+            new_config[param] = config.get(param, default_config[param])
 
     filesnpaths.is_output_file_writable(config_path)
     open(config_path, 'w').write(json.dumps(new_config, indent=4))
