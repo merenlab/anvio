@@ -15,7 +15,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.migrations import migration_scripts
 
-__description__ = "Migrate an anvi\'o database to a newer version."
+__description__ = "Migrate an anvi\'o database or config file to a newer version."
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -118,7 +118,7 @@ class Migrater(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__description__)
-    parser.add_argument('input', metavar = 'DATABASE', nargs='+', help = "Anvi'o database for migration")
+    parser.add_argument('input', metavar = 'DATABASE', nargs='+', help = "Anvi'o database or config file for migration")
     parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
     parser.add_argument(*anvio.A('target-version'), **anvio.K('target-version'))
     args, unknown = parser.parse_known_args()
