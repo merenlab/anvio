@@ -311,7 +311,7 @@
                             <div class="alert alert-info" role="alert">Store sequence variant data for the current view</div>
                             <div class="col-md-12" style="margin-top: 10px;">
                                 <div class="col-md-12">
-                                    <label class="col-md-5 settings-label" for="scale">Output Path</label>  
+                                    <label class="col-md-5 settings-label" for="scale">Filename</label>  
                                     <div class="col-md-7"><input type="input" id="var_output_path" value="variability.txt"></div>
                                 </div>
                             </div>
@@ -358,14 +358,19 @@
                             <div class="alert alert-info" role="alert">Export a PDB file of the structure</div>
                             <div class="col-md-12" style="margin-top: 10px;">
                                 <div class="col-md-12">
-                                    <label class="col-md-5 settings-label" for="scale">Output Path</label>  
+                                    <label class="col-md-5 settings-label" for="scale">Filename</label>  
                                     <div class="col-md-7"><input type="input" id="pdb_output_path" value="structure.pdb"></div>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-primary" onclick="store_structure_as_pdb();" style="width: 100%; margin-top: 10px;"><label class="settings-label" for="scale">Generate PDB file for current structure</label></button>
+                            <button type="button" class="btn btn-primary" onclick="store_structure_as_pdb('#pdb_output_path', '#store_pdb_success', '#store_pdb_failure');" style="width: 100%; margin-top: 10px;"><label class="settings-label" for="scale">Generate PDB file for current structure</label></button>
                             <div class="clearfix"></div>
                             <div class="alert alert-success" role="alert" style="display: none; margin-top: 10px;" id="store_pdb_success"></div>
                             <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="store_pdb_failure"></div>
+                        </div>
+                        <span class="settings-header"><h4>Generate in PyMOL</h4></span>
+                        <div class="widget">
+                            <div class="alert alert-info" role="alert">Produce script to replicate sequence variant visualization in PyMOL</div>
+                            <button type="button" class="btn btn-primary" onclick="showPymolWindow();" style="width: 100%; margin-top: 10px;"><label class="settings-label" for="scale">Generate script</label></button>
                         </div>
                     </div>
                 </div>
@@ -373,6 +378,44 @@
             <div class="col-md-9 ngl-container-wrapper">
                 <div id="ngl-container">
 
+                </div>
+            </div>
+        </div>
+
+        <!-- PYMOL EXPORT -->
+        <div class="modal fade" id="pymol_export_page">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                        <h4 class="modal-title">Export to PyMOL</h4>
+                    </div>
+
+                    <span class="settings-header" style="margin-right: 15px; margin-left: 15px"><h4>Step 1</h4></span>
+                    <div class="widget" style="margin-left: 15px; margin-right: 15px">
+                        <div class="alert alert-info" role="alert">Click the button below to generate a PDB file in your current directory. Open it in PyMOL.</div>
+                        <div class="col-md-12" style="margin-top: 10px;">
+                            <div class="col-md-12">
+                                <label class="col-md-3 settings-label" for="scale">Filename</label>
+                                <div class="col-md-9"><input type="input" id="pdb_for_pymol_output_path" value="structure.pdb"></div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="store_structure_as_pdb('#pdb_for_pymol_output_path', '#store_pdb_for_pymol_success', '#store_pdb_for_pymol_failure');" style="width: 100%; margin-top: 15px; margin-bottom: 10px"><label class="settings-label" for="scale">Generate PDB file</label></button>
+                        <div class="clearfix"></div>
+                        <div class="alert alert-success" role="alert" style="display: none; margin-top: 10px;" id="store_pdb_for_pymol_success"></div>
+                        <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="store_pdb_for_pymol_failure"></div>
+                    </div>
+
+                    <span class="settings-header" style="margin-right: 15px; margin-left: 15px"><h4>Step 2</h4></span>
+                    <div class="widget" style="margin-left: 15px; margin-right: 15px">
+                        <div class="alert alert-info" role="alert">Copy paste this script into the PyMOL command window.</div>
+                        <div class="modal-body" id="pymol_script_area">
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                    </div>
                 </div>
             </div>
         </div>

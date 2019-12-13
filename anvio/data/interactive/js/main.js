@@ -1696,8 +1696,9 @@ function showCompleteness(bin_id, updateOnly) {
                   '<th>&nbsp;</th>' + 
                   '<th data-sortcolumn="1" data-sortkey="1-0">Domain</th>' + 
                   '<th data-sortcolumn="2" data-sortkey="2-0">Domain Confidence</th>' + 
-                  '<th data-sortcolumn="3" data-sortkey="3-0">Completion</th>' + 
-                  '<th data-sortcolumn="4" data-sortkey="4-0">Redundancy</th>' + 
+                  '<th data-sortcolumn="3" data-sortkey="3-0">HMM Source</th>' + 
+                  '<th data-sortcolumn="4" data-sortkey="4-0">Completion</th>' + 
+                  '<th data-sortcolumn="5" data-sortkey="5-0">Redundancy</th>' + 
               '</tr></thead><tbody>';
 
     for (let source in stats){
@@ -1716,7 +1717,9 @@ function showCompleteness(bin_id, updateOnly) {
         } else {
             msg += "<td data-value='N/A'>N/A</td>";
         }
-        
+
+        msg += "<td data-value='" + stats[source]['source'] + "'>" + stats[source]['source'] + "</td>";
+
         msg += "<td data-value='" + stats[source]['percent_completion'] + "'>" + stats[source]['percent_completion'].toFixed(2) + "%</td>" +
                "<td data-value='" + stats[source]['percent_redundancy'] + "'>" + stats[source]['percent_redundancy'].toFixed(2) + "%</td>";
 
@@ -1733,7 +1736,7 @@ function showCompleteness(bin_id, updateOnly) {
 function showRedundants(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
         updateOnly = false;
-    
+
     if (!bins.cache['completeness'].hasOwnProperty(bin_id))
         return;
 

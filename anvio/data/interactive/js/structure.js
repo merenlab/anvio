@@ -1211,10 +1211,10 @@ function store_variability() {
     }); 
 }
 
-function store_structure_as_pdb() {
+function store_structure_as_pdb(path_id, success_id, failure_id) {
     $('.overlay').show();
     let gene_callers_id = $('#gene_callers_id_list').val();
-    let output_path = $('#pdb_output_path').val();
+    let output_path = $(path_id).val();
 
     // serialize options programatically
     let options = {
@@ -1230,17 +1230,119 @@ function store_structure_as_pdb() {
         success: function(msg) {
             $('.overlay').hide();
             if (typeof(msg['success']) != 'undefined') {
-                $('#store_pdb_failure').hide();
-                $('#store_pdb_success').html(msg['success']).show().fadeOut(3000);
+                $(failure_id).hide();
+                $(success_id).html(msg['success']).show().fadeOut(3000);
             } else {
-                $('#store_pdb_failure').html(msg['failure']).show();
+                $(failure_id).html(msg['failure']).show();
             }
         },
         error: function(request, status, error) {
             console.log(request, status, error);
             $('.overlay').hide();
         }
-    }); 
+    });
+}
+
+function showPymolWindow() {
+    gen_pymol_script_html(gen_pymol_script());
+    $('#pymol_export_page').modal('show');
+}
+
+function gen_pymol_script_html(script) {
+    var pymol_script_html = `
+    <div class="modal-body">
+        <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>${script}</textarea>
+    </div>
+    `
+
+    $("#pymol_script_area").html(pymol_script_html);
+}
+
+function gen_pymol_script() {
+    // from https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
+    function componentToHex(c) {
+        var hex = c.toString(16);
+        if (hex.length < 6) {
+            hex = "0".repeat(6 - hex.length) + hex
+        }
+        return hex;
+    }
+
+    // from https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
+    // NOTE: RGB values are normalized to 1 for PyMOL convention
+    function hexToRgb(hex) {
+        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16) / 256,
+            g: parseInt(result[2], 16) / 256,
+            b: parseInt(result[3], 16) / 256
+        } : null;
+    }
+
+    var bb_color = hexToRgb($('#backbone_color').attr('color'));
+
+    // s is the full PyMOL script string
+    var s = `cmd.set_color('bb_color', [${bb_color.r},${bb_color.g},${bb_color.b}])\n` +
+            `color bb_color, all\n` +
+            `bg_color white\n` +
+            `struct_obj = cmd.get_object_list(selection='(all)')[0]\n`;
+
+    // Add a surface
+    if ($('#show_surface').is(':checked')) {
+        // disregards colorScheme and picks 'plain' surface color
+        var surface_color = hexToRgb($('#color_plain').attr('color'));
+        var surface_transparency = 1 - parseFloat($('#surface_opacity').val());
+        var surface_probe_radius = parseFloat($('#surface_probe_radius').val());
+        s += `cmd.show('surface', struct_obj)\n` +
+             `cmd.set_color('surf_color', [${surface_color.r},${surface_color.g},${surface_color.b}])\n` +
+             `cmd.set('surface_color', 'surf_color', struct_obj)\n` +
+             `set transparency, ${surface_transparency}\n` +
+             `set solvent_radius, ${surface_probe_radius}\n`;
+    }
+
+    // list of the PyMOL objects--one for each group
+    var group_object_list = [];
+
+    for (let group in variability) {
+        let compList = stages[group].compList;
+        let component = compList[0];
+
+        var res_attrs = '';
+        var res_list = [];
+        var group_object = `group_${group}_obj`
+        var group_selection = `group_${group}_sele`
+        group_object_list.push(group_object)
+
+        component.reprList.slice(0).forEach((rep) => {
+            if (rep.name == 'spacefill') {
+                var res = rep.variability.codon_number;
+                var color = hexToRgb(componentToHex(rep.repr.colorValue));
+                var scale = rep.repr.scale;
+
+                res_attrs += `${res}:{'color':[${color.r},${color.g},${color.b}],'scale':${scale}},`;
+                res_list.push(res);
+            }
+        });
+
+        var res_sele = res_list.join('+');
+        s += `res_attrs = {${res_attrs}}\n` +
+             `select ${group_selection}, name CA and resi ${res_sele}\n` +
+             `create ${group_object}, ${group_selection}\n` +
+             `for res in res_attrs: cmd.set_color('${group_object}' + str(res), res_attrs[res]['color'])\n` +
+             `alter ${group_object}, color = cmd.get_color_index('${group_object}' + resi)\n` +
+             `alter ${group_object}, s.sphere_scale = res_attrs[int(resi)]['scale']\n` +
+             `hide everything, ${group_object}\n` +
+             `show spheres, ${group_object}\n` +
+             `cmd.disable('${group_object}')\n`;
+    }
+    s += `cmd.hide('everything', struct_obj)\n` +
+         `cmd.show('cartoon', struct_obj)\n` +
+         `cmd.show('surface', struct_obj)\n` +
+         `cmd.enable('${group_object_list[0]}')\n` +
+         `orient\n` +
+         `rebuild`;
+
+    return s
 }
 
 async function generate_summary() {
