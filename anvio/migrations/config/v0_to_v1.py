@@ -40,7 +40,7 @@ def migrate(config_path):
     config = workflow_object.config
 
     default_config = workflow_object.default_config
-    new_config = config
+    new_config = config.copy()
     new_config['config_version'] = '1'
 
     ## Deal with special cases
@@ -51,13 +51,9 @@ def migrate(config_path):
         # if the param belongs to special params then we skip it
             continue
         elif type(default_config[param]) == dict:
-            if 'run' in default_config[param].keys() and not w.A(['param', 'run'], config):
-            # if this is a rule that has a 'run' parameter then
-            # if run is not set to true in the config then skip this rule
-                continue
-            else:
             # otherwise update config rule parameters
-                new_config[param] = default_config[param].update(config.get(param,''))
+                new_config[param] = default_config[param]
+                new_config[param].update(config.get(param,''))
         else:
             # if it's not a dict then it's a general parameter
             # update the general parameter
