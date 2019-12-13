@@ -59,7 +59,7 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
         self.default_config.update({"fasta_txt": "fasta.txt",
                                     "anvi_pan_genome": {"threads": 7},
                                     "import_phylogenetic_tree_to_pangenome": {'tree_name': 'phylogeny'},
-                                    "anvi-compute-genome-similarity": {"run": False}})
+                                    "anvi_compute_genome_similarity": {"run": False}})
 
         pan_params = ["--project-name", "--genome-names", "--skip-alignments",\
                      "--align-with", "--exclude-partial-gene-calls", "--use-ncbi-blast",\
