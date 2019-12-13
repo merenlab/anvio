@@ -289,6 +289,9 @@ class ContigsDBWorkflow(WorkflowSuperClass):
     def sanity_check_for_fasta_txt(self):
         """ Run sanity checks on the fasta txt file"""
 
+        if not self.contigs_information:
+            raise ConfigError('It looks the fasta_txt file you provided "%s" is empty.' % self.fasta_txt_file)
+
         for name in self.contigs_information.keys():
             u.is_this_name_OK_for_database('fasta.txt entry name', name, stringent=True)
 
