@@ -41,7 +41,9 @@ class Migrater(object):
 
     def get_db_meta(self):
         if not args.just_do_it and self.db_path.split('.')[-1] not in ['db', 'h5', 'json']:
-            raise ConfigError("This program only works with files that end with `.db` or `.json` extensions.")
+            raise ConfigError("This program only works with files that end with `.db` extension.\
+                               But if you sure that, this is in fact an anvi'o database or configfile\
+                               you can use --just-do-it flag at your own risk.")
 
         try:
             if self.db_path.endswith('GENOMES.h5'):
@@ -67,8 +69,7 @@ class Migrater(object):
                 db_conn.disconnect()
         except:
             raise ConfigError('Are you sure "%s" is a database file? Because, you know, probably\
-                                it is not at all.. But if you know what you are doing you can use\
-                                --just-do-it flag.' % self.db_path)
+                                it is not at all.' % self.db_path)
 
 
     def get_target_version(self):
