@@ -529,6 +529,8 @@ if run_idba_ud == True:
                   "{params.similar} {params.max_mismatch} {params.min_pairs} " + \
                   "{params.no_bubble} {params.no_local} {params.no_coverage} " + \
                   "{params.no_correct} {params.pre_correction} >> {log} 2>&1"
+            shell("echo Running the following command: >> {log} 2>&1")
+            shell("echo %s >> {log} 2>&1" % cmd)
             shell(cmd)
             shell("mv {params.temp_dir}/contig.fa {output.contigs} >> {log} 2>&1")
             shell("rm -rf {params.temp_dir}")
