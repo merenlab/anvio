@@ -256,13 +256,13 @@ class WorkflowSuperClass:
 
     def check_config(self):
         if not self.config.get('config_version'):
-            raise ConfigError('Config files must include a config_version. If\
-                               this is news to you, and you don\'t know what\
-                               version your config should be, then consider\
-                               using our script to upgrade your config file.')
+            raise ConfigError("Config files must include a config_version. If this is news to you, and/or you don't know what\
+                               version your config should be, please run in your terminal the command `anvi-migrate %s` to\
+                               upgrade your config file." % (self.config_file))
 
         if not self.config.get('workflow_name'):
-            raise ConfigError('Config files must contain a workflow_name.')
+            raise ConfigError('Config files must contain a workflow_name. You can simply add a line that goes like\
+                               "workflow_name": "metagenomics" wherever appropriate.')
 
         acceptable_params = set(self.rules + self.general_params)
         wrong_params = [p for p in self.config if p not in acceptable_params]
