@@ -31,6 +31,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 r = errors.remove_spaces
 
+workflow_config_version = "1"
 
 class WorkflowSuperClass:
     def __init__(self):
@@ -90,13 +91,12 @@ class WorkflowSuperClass:
             if rule not in self.rule_acceptable_params_dict:
                 self.rule_acceptable_params_dict[rule] = []
 
-            params_that_all_rules_must_accept = ['threads']
+            params_that_all_rules_must_accept = self.get_params_that_all_rules_accept()
             for param in params_that_all_rules_must_accept:
                 if param not in self.rule_acceptable_params_dict[rule]:
                     self.rule_acceptable_params_dict[rule].append(param)
 
-            general_params_that_all_workflows_must_accept = ['output_dirs', 'max_threads']
-            for param in general_params_that_all_workflows_must_accept:
+            for param in self.get_global_general_params():
                 if param not in self.general_params:
                     self.general_params.append(param)
 
@@ -122,6 +122,15 @@ class WorkflowSuperClass:
         if not self.slave_mode:
             self.check_config()
             self.check_rule_params()
+
+
+    def get_params_that_all_rules_accept(self):
+        return ['threads']
+
+
+    def get_global_general_params(self):
+        ''' Return a list of the general parameters that are always acceptable.'''
+        return ['output_dirs', 'max_threads', 'config_version', 'workflow_name']
 
 
     def sanity_checks(self):
@@ -246,6 +255,15 @@ class WorkflowSuperClass:
                                    missing :(")
 
     def check_config(self):
+        if not self.config.get('config_version'):
+            raise ConfigError('Config files must include a config_version. If\
+                               this is news to you, and you don\'t know what\
+                               version your config should be, then consider\
+                               using our script to upgrade your config file.')
+
+        if not self.config.get('workflow_name'):
+            raise ConfigError('Config files must contain a workflow_name.')
+
         acceptable_params = set(self.rules + self.general_params)
         wrong_params = [p for p in self.config if p not in acceptable_params]
         if wrong_params:
@@ -272,6 +290,8 @@ class WorkflowSuperClass:
     def get_default_config(self):
         c = self.fill_empty_config_params(self.default_config)
         c["output_dirs"] = self.dirs_dict
+        c["config_version"] = workflow_config_version
+        c["workflow_name"] = self.name
         return c
 
 
@@ -354,39 +374,28 @@ class WorkflowSuperClass:
         f[a] = value
 
 
-    def get_param_value_from_config(self, _list, repress_default=False):
+    def get_param_value_from_config(self, _list):
         '''
             A helper function to make sense of config details.
             string_list is a list of strings (or a single string)
 
             this function checks if the strings in x are nested values in self.config.
             For example if x = ['a','b','c'] then this function checkes if the
-            value self.config['a']['b']['c'] exists, if it does then it is returned
-
-            repress_default - If there is a default defined for the parameter (it would be defined
-            under self.default_config), and the user didn't supply a parameter
-            then the default will be returned. If this flad (repress_default) is set to True
-            then this behaviour is repressed and instead an empty string would be returned.
-
+            value self.config['a']['b']['c'] exists, if it does then it is returned.
+            If it does not exist then None is returned.
         '''
         d = self.config
-        default_dict = self.default_config
         if type(_list) is not list:
             # converting to list for the cases of only one item
             _list = [_list]
         while _list:
             a = _list.pop(0)
-            default_dict = default_dict[a]
             try:
-                d = d.get(a, None)
+                d = d.get(a, "")
             except:
-                # we continue becuase we want to get the value from the default config
-                continue
+                return ""
 
-        if (d is not None) or repress_default:
-            return d
-        else:
-            return default_dict
+        return d
 
 
     def get_rule_param(self, _rule, _param):
@@ -463,7 +472,7 @@ class WorkflowSuperClass:
             internal_genomes_file = self.get_param_value_from_config('internal_genomes')
             external_genomes_file = self.get_param_value_from_config('external_genomes')
 
-            fasta_txt_file = self.get_param_value_from_config('fasta_txt', repress_default=True)
+            fasta_txt_file = self.get_param_value_from_config('fasta_txt')
             if fasta_txt_file and not external_genomes_file:
                 raise ConfigError('You provided a fasta_txt, but didn\'t specify a path for an external-genomes file. \
                                    If you wish to use external genomes, you must specify a name for the external-genomes \
@@ -524,9 +533,9 @@ def A(_list, d, default_value = ""):
         _list = [_list]
     while _list:
         a = _list.pop(0)
-        if a in d:
+        try:
             d = d[a]
-        else:
+        except:
             return default_value
     return d
 
@@ -624,3 +633,17 @@ def get_workflow_module_dict():
                       'phylogenomics': PhylogenomicsWorkflow}
 
     return workflows_dict
+
+
+def get_workflow_name_and_version_from_config(config_file, dont_raise=False):
+    filesnpaths.is_file_json_formatted(config_file)
+    config = json.load(open(config_file))
+    workflow_name = config.get('workflow_name')
+    # Notice that if there is no config_version then we return "0".
+    # This is in order to accomodate early contig files that had no such parameter.
+    version = config.get('config_version', "0")
+
+    if (not dont_raise) and (not workflow_name):
+        raise ConfigError('Config files must contain a workflow_name.')
+
+    return (workflow_name, version)

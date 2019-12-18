@@ -7,11 +7,13 @@
         "--hmm-profile-dir": ""
     },
     "anvi_run_ncbi_cogs": {
-        "run": false
+        "run": false,
+        "threads": 5
     },
     "anvi_script_reformat_fasta": {
         "run": false
     },
+    "workflow_name": "pangenomics",
     "anvi_get_sequences_for_gene_clusters": {
         "--min-num-genomes-gene-cluster-occurs": 5,
         "--max-num-genes-from-each-genome": 1,
@@ -32,5 +34,42 @@
         "PHYLO_DIR": "01_PHYLOGENOMICS_FIVE_PAN",
         "PAN_DIR": "03_PAN_FIVE_PAN",
         "LOGS_DIR": "00_LOGS_FIVE_PAN"
+    },
+    "config_version": "1",
+    "anvi_gen_contigs_database": {
+        "--project-name": "{group}"
+    },
+    "centrifuge": {
+        "threads": 2
+    },
+    "anvi_run_scg_taxonomy": {
+        "run": true,
+        "threads": 6
+    },
+    "emapper": {
+        "--database": "bact",
+        "--usemem": true,
+        "--override": true
+    },
+    "anvi_script_run_eggnog_mapper": {
+        "--use-version": "0.12.6"
+    },
+    "anvi_get_sequences_for_hmm_hits": {
+        "--return-best-hit": true,
+        "--align-with": "famsa",
+        "--concatenate-genes": true,
+        "--get-aa-sequences": true,
+        "--hmm-sources": "Bacteria_71"
+    },
+    "trimal": {
+        "-gt": 0.5
+    },
+    "iqtree": {
+        "threads": 8,
+        "-m": "WAG",
+        "-bb": 1000
+    },
+    "anvi_pan_genome": {
+        "threads": 7
     }
 }
