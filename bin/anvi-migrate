@@ -41,9 +41,18 @@ class Migrater(object):
 
     def get_db_meta(self):
         if not args.just_do_it and self.db_path.split('.')[-1] not in ['db', 'h5', 'json']:
-            raise ConfigError("This program only works with files that end with `.db` extension.\
-                               But if you sure that, this is in fact an anvi'o database or configfile\
+            raise ConfigError("This program only works with files that end with `.db` or `.json` extensions.\
+                               But if you sure that, this is in fact an anvi'o database or config file\
                                you can use --just-do-it flag at your own risk.")
+
+        file_is_config = False
+        if args.just_do_it:
+            # check if this a config file by checking if it is a JSON formatted file
+            try:
+                filesnpaths.is_file_json_formatted(self.db_path)
+                file_is_config = True
+            except:
+                pass
 
         try:
             if self.db_path.endswith('GENOMES.h5'):
@@ -55,7 +64,7 @@ class Migrater(object):
                 self.db_version = int(fp.attrs['version'])
 
                 fp.close()
-            elif self.db_path.endswith('json'):
+            elif self.db_path.endswith('json') or file_is_config:
                 import anvio.workflows as w
                 self.db_type = 'config'
                 workflow_name, config_version = w.get_workflow_name_and_version_from_config(self.db_path, dont_raise=True)
@@ -68,7 +77,7 @@ class Migrater(object):
 
                 db_conn.disconnect()
         except:
-            raise ConfigError('Are you sure "%s" is a database file? Because, you know, probably\
+            raise ConfigError('Are you sure "%s" is a database or config file? Because, you know, probably\
                                 it is not at all.' % self.db_path)
 
 
