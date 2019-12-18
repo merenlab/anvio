@@ -15,7 +15,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.migrations import migration_scripts
 
-__description__ = "Migrate an anvi\'o database to a newer version."
+__description__ = "Migrate an anvi\'o database or config file to a newer version."
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -40,10 +40,10 @@ class Migrater(object):
 
 
     def get_db_meta(self):
-        if not args.just_do_it and self.db_path.split('.')[-1] not in ['db', 'h5']:
+        if not args.just_do_it and self.db_path.split('.')[-1] not in ['db', 'h5', 'json']:
             raise ConfigError("This program only works with files that end with `.db` extension.\
-                               But if you sure that, this is in fact a anvi'o database you can use\
-                               --just-do-it flag at your own risk.")
+                               But if you sure that, this is in fact an anvi'o database or configfile\
+                               you can use --just-do-it flag at your own risk.")
 
         try:
             if self.db_path.endswith('GENOMES.h5'):
@@ -55,6 +55,11 @@ class Migrater(object):
                 self.db_version = int(fp.attrs['version'])
 
                 fp.close()
+            elif self.db_path.endswith('json'):
+                import anvio.workflows as w
+                self.db_type = 'config'
+                workflow_name, config_version = w.get_workflow_name_and_version_from_config(self.db_path, dont_raise=True)
+                self.db_version = int(config_version)
             else:
                 db_conn = db.DB(self.db_path, None, ignore_version=True)
 
@@ -113,7 +118,7 @@ class Migrater(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__description__)
-    parser.add_argument('input', metavar = 'DATABASE', nargs='+', help = "Anvi'o database for migration")
+    parser.add_argument('input', metavar = 'DATABASE', nargs='+', help = "Anvi'o database or config file for migration")
     parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
     parser.add_argument(*anvio.A('target-version'), **anvio.K('target-version'))
     args, unknown = parser.parse_known_args()

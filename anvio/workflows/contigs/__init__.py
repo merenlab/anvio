@@ -94,7 +94,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
     def init(self):
         super().init()
 
-        self.fasta_txt_file = self.get_param_value_from_config('fasta_txt', repress_default=True)
+        self.fasta_txt_file = self.get_param_value_from_config('fasta_txt')
 
         if self.fasta_txt_file:
             filesnpaths.is_file_exists(self.fasta_txt_file)
@@ -169,7 +169,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
 
     def sanity_check_contigs_project_name(self):
-        contigs_project_name = self.get_param_value_from_config(['anvi_gen_contigs_database', '--project-name'], repress_default=True)
+        contigs_project_name = self.get_param_value_from_config(['anvi_gen_contigs_database', '--project-name'])
         if contigs_project_name != self.default_config['anvi_gen_contigs_database']['--project-name'] and contigs_project_name is not None:
             self.run.warning('You chose to set the "project_name" for your contigs databases\
                          in the config file to %s. You are welcomed to do that, but at your own\
