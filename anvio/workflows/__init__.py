@@ -259,7 +259,7 @@ class WorkflowSuperClass:
             raise ConfigError('Config files must include a config_version. If\
                                this is news to you, and you don\'t know what\
                                version your config should be, then consider\
-                               using our script to upgrade you config file.')
+                               using our script to upgrade your config file.')
 
         if not self.config.get('workflow_name'):
             raise ConfigError('Config files must contain a workflow_name.')
