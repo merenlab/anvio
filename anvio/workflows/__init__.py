@@ -139,6 +139,16 @@ class WorkflowSuperClass:
         pass
 
 
+    def warn_user_regarding_param_with_wildcard_default_value(self, rule_name, param, wildcard_name):
+        try:
+            default_value = self.default_config[rule_name][param]
+        except KeyError:
+            raise ConfigError('Someone is trying to read default values for parameters that\
+                               dont have default values. These are the offending rule names and\
+                               parameter: %s, %s' % (rule_name, param))
+        check_for_risky_param_change(self.config, rule_name, param, wildcard_name, default_value)
+
+ 
     def go(self, skip_dry_run=False):
         """Do the actual running"""
 
@@ -601,7 +611,7 @@ def get_workflow_snake_file_path(workflow):
 
 def check_for_risky_param_change(config, rule, param, wildcard, our_default=None):
     value = A([rule, param], config)
-    if value:
+    if value != our_default:
         warning_message = 'You chose to define %s for the rule %s in the config file as %s.\
                            while this is allowed, know that you are doing so at your own risk.\
                            The reason this is risky is because this rule uses a wildcard/wildcards\

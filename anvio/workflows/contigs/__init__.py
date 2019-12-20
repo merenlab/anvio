@@ -106,8 +106,9 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.sanity_check_contigs_project_name()
 
-        # check and warn user regarding risky change of temp dir name
-        w.check_for_risky_param_change(self.config, 'anvi_run_ncbi_cogs', '--temporary-dir-path', '{group}')
+        # check and warn user regarding risky change of parameters with wildcards as default values
+        self.warn_user_regarding_param_with_wildcard_default_value('anvi_run_ncbi_cogs', '--temporary-dir-path', '{group}')
+        self.warn_user_regarding_param_with_wildcard_default_value('anvi_script_reformat_fasta', '--prefix', '{group}')
 
 
     def get_contigs_target_files(self):
