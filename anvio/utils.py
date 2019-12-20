@@ -10,7 +10,6 @@ import time
 import copy
 import socket
 import shutil
-import psutil
 import smtplib
 import hashlib
 import textwrap
@@ -40,6 +39,13 @@ from anvio.sequence import Composition
 with SuppressAllOutput():
     from ete3 import Tree
 
+# psutil is causing lots of problems for lots of people :/
+with SuppressAllOutput():
+    try:
+        import psutil
+        PSUTIL_OK=True
+    except:
+        PSUTIL_OK=False
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -139,6 +145,9 @@ class Multiprocessing:
 
 
 def get_total_memory_usage():
+    if not PSUTIL_OK:
+        return None
+    
     current_process = psutil.Process(os.getpid())
     mem = current_process.memory_info().rss
     for child in current_process.children(recursive=True):
