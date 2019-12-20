@@ -58,7 +58,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                     "anvi_run_hmms": {"run": True, "threads": 5},
                                     "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
                                     "anvi_run_scg_taxonomy": {"run": True, "threads": 6},
-                                    "anvi_script_reformat_fasta": {"run": True},
+                                    "anvi_script_reformat_fasta": {"run": True, "--prefix": "{group}", "--simplify-names": True},
                                     "emapper": {"--database": "bact", "--usemem": True, "--override": True},
                                     "anvi_script_run_eggnog_mapper": {"--use-version": "0.12.6"}})
 
@@ -78,7 +78,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                          '--use-version']
 
         self.rule_acceptable_params_dict['anvi_script_reformat_fasta'] = \
-                    ['run', '--keep-ids', '--exclude-ids', '--min-len']
+                    ['run', '--keep-ids', '--exclude-ids', '--min-len', "--prefix", "--simplify-names"]
 
 
         gen_contigs_params = ['--description', '--skip-gene-calling', '--external-gene-calls',\
