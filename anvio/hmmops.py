@@ -588,6 +588,7 @@ class SequencesForHMMHits:
             gene_names_in_source.extend([g.strip() for g in self.hmm_hits_info[_hmm_source]['genes'].split(',')])
 
         # the user wants to play rough. FINE. we will concatenate genes for phylogenomic analyses.
+        #   ^^^ FIXME I'm confused. why does this line imply the user wants concatenated genes?
         gene_names = None
 
         # let's get an instance of the aligner early on so we learn about issues before its too late.
@@ -609,7 +610,7 @@ class SequencesForHMMHits:
             gene_names = genes_order
         else:
             self.run.warning("You did not define any gene names. Bold move. Now anvi'o will attempt to report a file with all\
-                              genes defined in all HMM sources. This will likely be quite ugly, so please brace yourself.")
+                              genes defined in your HMM source(s). This will likely be quite ugly, so please brace yourself.")
 
             gene_names = gene_names_in_dict
 
