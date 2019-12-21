@@ -498,7 +498,12 @@ if run_idba_ud == True:
         input:
             fasta = dirs_dict["QC_DIR"] + "/{group}-merged.fa"
         output:
-            contigs = temp(dirs_dict["FASTA_DIR"] + "/{group}/final.contigs.fa")
+            contigs = temp(os.path.join(dirs_dict["FASTA_DIR"], "{group}", "final.contigs.fa")),
+            # idba_ud generates both contigs.fa and scaffolds.fa
+            # the user can choose which one will be used for the rest of the analysis
+            # the other (unused) file will still be kept in it's raw form just in case the user wants it.
+            raw_contigs_or_scaffold = os.path.join(dirs_dict["FASTA_DIR"], "{group}", "contigs.fa") if M.use_scaffold_from_idba_ud \
+                                               else os.path.join(dirs_dict["FASTA_DIR"], "{group}", "scaffolds.fa")
         params:
             temp_dir = temp(dirs_dict["FASTA_DIR"] + "/{group}_TEMP"),
             mink = M.get_rule_param("idba_ud", "--mink"),
@@ -532,7 +537,18 @@ if run_idba_ud == True:
             shell("echo Running the following command: >> {log} 2>&1")
             shell("echo %s >> {log} 2>&1" % cmd)
             shell(cmd)
-            shell("mv {params.temp_dir}/contig.fa {output.contigs} >> {log} 2>&1")
+
+            if M.use_scaffold_from_idba_ud:
+                # we will use scaffolds for the rest of the analysis, but still keep the raw contigs output in case the user will want it later on.
+                use = "scaffold.fa"
+                keep = "contig.fa"
+            else:
+                # we will use contigs and keep the raw scaffolds output
+                use = "contig.fa"
+                keep = "scaffold.fa"
+
+            shell("mv %s %s" % (os.path.join(params.temp_dir, use), output.contigs))
+            shell("mv %s %s" % (os.path.join(params.temp_dir, keep), output.raw_contigs_or_scaffold))
             shell("rm -rf {params.temp_dir}")
 
 
