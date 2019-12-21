@@ -43,7 +43,9 @@
         "threads": 6
     },
     "anvi_script_reformat_fasta": {
-        "run": true
+        "run": true,
+        "--prefix": "{group}",
+        "--simplify-names": true
     },
     "emapper": {
         "--database": "bact",

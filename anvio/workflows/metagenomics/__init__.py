@@ -41,6 +41,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.run_krakenuniq = None
         self.run_metaspades = None
         self.use_scaffold_from_metaspades = None
+        self.use_scaffold_from_idba_ud = None
         self.remove_short_reads_based_on_references = None
         self.references_for_removal_txt = None
         self.references_for_removal = {}
@@ -93,7 +94,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                   "--min_support", "--seed_kmer", "--min_contig",
                                                   "--similar", "--max_mismatch", "--min_pairs",
                                                   "--no_bubble", "--no_local", "--no_coverage",
-                                                  "--no_correct", "--pre_correction"]
+                                                  "--no_correct", "--pre_correction", "use_scaffolds"]
         rule_acceptable_params_dict['bowtie'] = ["additional_params"]
         rule_acceptable_params_dict['samtools_view'] = ["additional_params"]
         rule_acceptable_params_dict['anvi_profile'] = ["--overwrite-output-destinations", "--sample-name", "--report-variability-full",
@@ -168,6 +169,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.sample_names = list(self.samples_information['sample'])
         self.run_metaspades = self.get_param_value_from_config(['metaspades', 'run'])
         self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
+        self.use_scaffold_from_idba_ud = self.get_param_value_from_config(['idba_ud', 'use_scaffolds'])
         self.run_qc = self.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == True
         self.run_summary = self.get_param_value_from_config(['anvi_summarize', 'run']) == True
         self.run_split = self.get_param_value_from_config(['anvi_split', 'run']) == True

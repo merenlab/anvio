@@ -90,18 +90,19 @@ rule anvi_script_reformat_fasta_prefix_only:
         contigs = protected(dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs-prefix-formatted-only.fa"),
         report = dirs_dict["FASTA_DIR"] + "/{group}/{group}-reformat-report.txt"
     params:
-        prefix = "{group}",
+        prefix = M.get_rule_param("anvi_script_reformat_fasta", "--prefix"),
         keep_ids = M.get_rule_param("anvi_script_reformat_fasta", "--keep-ids"),
-        exclude_ids = M.get_rule_param("anvi_script_reformat_fasta", "--exclude-ids")
+        exclude_ids = M.get_rule_param("anvi_script_reformat_fasta", "--exclude-ids"),
+        simplify_names = M.get_rule_param("anvi_script_reformat_fasta", "--simplify-names")
     threads: M.T('anvi_script_reformat_fasta')
     resources: nodes = M.T('anvi_script_reformat_fasta'),
     shell: w.r("""anvi-script-reformat-fasta {input} \
                                              -o {output.contigs} \
                                              -r {output.report} \
-                                             --prefix {params.prefix} \
+                                             {params.prefix} \
                                              {params.exclude_ids} \
                                              {params.keep_ids} \
-                                             --simplify-names >> {log} 2>&1""")
+                                             {params.simplify_names} >> {log} 2>&1""")
 
 
 rule anvi_script_reformat_fasta:
