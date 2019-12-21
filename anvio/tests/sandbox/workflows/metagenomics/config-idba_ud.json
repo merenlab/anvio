@@ -3,6 +3,7 @@
     "idba_ud": {
         "--min_contig": 1000,
         "threads": 11,
+        "use_scaffolds": true,
         "run": true
     },
     "workflow_name": "metagenomics",
