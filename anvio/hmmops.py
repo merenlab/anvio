@@ -588,7 +588,6 @@ class SequencesForHMMHits:
             gene_names_in_source.extend([g.strip() for g in self.hmm_hits_info[_hmm_source]['genes'].split(',')])
 
         # the user wants to play rough. FINE. we will concatenate genes for phylogenomic analyses.
-        #   ^^^ FIXME I'm confused. why does this line imply the user wants concatenated genes?
         gene_names = None
 
         # let's get an instance of the aligner early on so we learn about issues before its too late.
