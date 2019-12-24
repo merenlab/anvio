@@ -468,19 +468,28 @@ class Dereplicate:
 
 
     def dereplicate(self):
-        progress.new('Dereplication', progress_total_items = sum(1 for _ in combinations(self.genome_names, 2)))
+        num_genome_pairs = sum(1 for _ in combinations(self.genome_names, 2))
+        progress.new('Dereplication', progress_total_items=num_genome_pairs)
 
+        counter = 0
         genome_pairs = combinations(self.genome_names, 2)
         for genome1, genome2 in genome_pairs:
-            progress.increment()
-            progress.update('Comparing %s with %s' % (genome1, genome2))
+            if counter % 10000 == 0:
+                progress.increment(increment_to=counter)
+                progress.update('%d / %d pairwise comparisons made' % (counter, num_genome_pairs))
 
             if genome1 == genome2 or self.are_redundant(genome1, genome2):
+                counter += 1
                 continue
 
             similarity = float(self.similarity_matrix[genome1][genome2])
             if similarity > self.similarity_threshold:
                 self.update_clusters(genome1, genome2)
+
+            counter += 1
+
+        progress.increment(increment_to=num_genome_pairs)
+        progress.update('All %d pairwise comparisons have been made' % num_genome_pairs)
 
         # remove empty clusters and rename so that names are sequential
         self.clusters = {cluster: genomes for cluster, genomes in self.clusters.items() if genomes}
