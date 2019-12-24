@@ -336,11 +336,12 @@ class GenomeDescriptions(object):
 
 
     def init_external_genomes(self):
-        self.progress.new('Initializing external genomes')
+        self.progress.new('Initializing external genomes', progress_total_items=len(self.external_genome_names))
         for genome_name in self.external_genome_names:
             c = self.genomes[genome_name]
             c['external_genome'] = True
 
+            self.progress.increment() 
             self.progress.update('working on %s' % (genome_name))
 
             contigs_db_summary = summarizer.ContigSummarizer(c['contigs_db_path']).get_contigs_db_info_dict(gene_caller_to_use=self.gene_caller)
@@ -478,12 +479,18 @@ class GenomeDescriptions(object):
                                                          tpl in self.genomes[genome_name]['gene_calls_from_other_gene_callers'].items()])))
 
             gene_caller = list(self.genomes.values())[0]['gene_caller']
-            self.run.warning("Some of your genomes had gene calls identified by gene callers other than\
-                              the gene caller anvi'o used, which was set to '%s' either by default, or because you asked for it.\
-                              The following genomes contained genes that were not processed (this may be exactly what you expect\
-                              to happen, but if was not, you may need to use the `--gene-caller` flag to make sure anvi'o is using\
-                              the gene caller it should be using): %s." % \
-                                            (gene_caller, ', '.join(info)), header="PLEASE READ CAREFULLY", lc='green')
+            if anvio.DEBUG:
+                self.run.warning("Some of your genomes had gene calls identified by gene callers other than\
+                                  the gene caller anvi'o used, which was set to '%s' either by default, or because you asked for it.\
+                                  The following genomes contained genes that were not processed (this may be exactly what you expect\
+                                  to happen, but if was not, you may need to use the `--gene-caller` flag to make sure anvi'o is using\
+                                  the gene caller it should be using): %s." % \
+                                                (gene_caller, ', '.join(info)), header="PLEASE READ CAREFULLY", lc='green')
+            else:
+                self.run.warning("Some of your genomes had gene calls identified by gene callers other than\
+                                  the anvi'o default, '%s', and will not be processed. Use the `--debug` flag\
+                                  if this sounds important and you would like to see more of this message." % \
+                                                (gene_caller), header="JUST FYI", lc='green')
 
         # check whether every genome has at least one gene call.
         genomes_with_no_gene_calls = [g for g in self.genomes if not self.genomes[g]['num_genes']]
