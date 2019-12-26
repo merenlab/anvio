@@ -855,10 +855,10 @@ Bins.prototype.RedrawBins = function() {
             var startAncestors = new Set(start.GetAncestors());
             var endAncestors = new Set(end.GetAncestors());
             var intersection = new Set([...startAncestors].filter(x => endAncestors.has(x))).values().next().value;
-        }
-
-        if (typeof intersection === 'undefined') {
-            throw `It seems Node:${start.id} and Node:${end.id} does not have common ancestor.`;
+            
+            if (typeof intersection === 'undefined') {
+                throw `It seems Node:${start.id} and Node:${end.id} does not have common ancestor.`;
+            }
         }
 
         var color = document.getElementById('bin_color_' + bins_to_draw[i][2]).getAttribute('color');
