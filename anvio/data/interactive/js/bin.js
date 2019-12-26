@@ -968,12 +968,14 @@ Bins.prototype.RedrawBins = function() {
 
             }
 
+            let backgroundStart = (background_starts_from_branch) ? intersection.xy['x'] : beginning_of_layers;
+
             var rect = drawPhylogramRectangle('bin',
                 'bin_background_' + i,
-                beginning_of_layers,
+                backgroundStart,
                 start.xy['y'] - start.size / 2 + height / 2,
                 height,
-                (show_grid) ? total_radius + outer_ring_margin + outer_ring_size - beginning_of_layers : total_radius - beginning_of_layers,
+                (show_grid) ? total_radius + outer_ring_margin + outer_ring_size - backgroundStart : total_radius - backgroundStart,
                 color,
                 (show_grid) ? 0 : 0.1,
                 false);
