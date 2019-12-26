@@ -1662,7 +1662,7 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
             path = os.path.join(temp_dir, hash_for_output_file + '.fa')
             file_paths.add(path)
 
-            name_to_path[name] = path
+            name_to_path[genome_name] = path
 
             if 'bin_id' in genome_desc.genomes[genome_name]:
                 # Internal genome
