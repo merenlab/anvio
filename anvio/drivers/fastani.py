@@ -129,7 +129,6 @@ class ManyToMany(FastANIDriver):
             for target in ['query', 'reference']:
                 fastANI_output[target] = fastANI_output[target].map(name_conversion_dict)
 
-
         return fastANI_output
 
 
