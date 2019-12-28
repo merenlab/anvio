@@ -1649,6 +1649,7 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
 
     temp_dir = filesnpaths.get_temp_directory_path()
     hash_to_name = {}
+    name_to_path = {}
     genome_names = set([])
     file_paths = set([])
     if genome_desc is not None:
@@ -1660,6 +1661,8 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
 
             path = os.path.join(temp_dir, hash_for_output_file + '.fa')
             file_paths.add(path)
+
+            name_to_path[genome_name] = path
 
             if 'bin_id' in genome_desc.genomes[genome_name]:
                 # Internal genome
@@ -1697,13 +1700,13 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
             path = os.path.join(temp_dir, hash_for_output_file + '.fa')
             file_paths.add(path)
 
+            name_to_path[name] = path
+
             with open(path, 'w') as dest:
                 with open(source, 'r') as src:
                     dest.write(src.read())
 
-    path_dict = dict(zip(genome_names, file_paths))
-
-    return temp_dir, hash_to_name, genome_names, path_dict
+    return temp_dir, hash_to_name, genome_names, name_to_path
 
 
 def get_FASTA_file_as_dictionary(file_path):
