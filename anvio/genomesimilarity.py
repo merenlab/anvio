@@ -191,10 +191,16 @@ class Dereplicate:
                               % (self.program_name, self.similarity_threshold))
 
         if self.representative_method == "Qscore" and not (self.external_genomes or self.internal_genomes):
-                self.representative_method = "similarity"
+                self.representative_method = "centrality"
                 run.warning("Anvi'o must be provided either an external or internal genome collection (or both) to be\
-                             used with Qscore, since this is the only way for anvi'o to learn about completion and\
+                             used with 'Qscore', since this is the only way for anvi'o to learn about completion and\
                              redundancy scores. Anvi'o will switch to 'centrality'")
+
+        if self.representative_method == "length" and not self.sequence_source_provided:
+                self.representative_method = "centrality"
+                run.warning("Anvi'o must be provided a sequence source (external genomes, internal genomes, fasta\
+                             text file, or a combination thereof) to be used with 'length', since this is the only\
+                             way for anvi'o to learn about genome lengths. Anvi'o will switch to 'centrality'")
 
 
     def init_genome_similarity(self):
@@ -573,17 +579,8 @@ class Dereplicate:
 
 
     def pick_representative_with_largest_genome(self, cluster):
-        max_name = cluster[0]
-        max_val = self.genomes_info_dict[max_name]['total_length']
-
-        for name in cluster[1:]:
-            val = self.genomes_info_dict[name]['total_length']
-
-            if val > max_val:
-                max_name = name
-                max_val = val
-
-        return max_name
+        lengths_dict = {name: self.genomes_info_dict[name]['total_length'] for name in cluster}
+        return max(lengths_dict, key = lambda name: lengths_dict.get(name, 0))
 
 
     def pick_representative_with_largest_centrality(self, cluster):
