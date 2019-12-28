@@ -1844,7 +1844,9 @@ function exportSvg(dontDownload) {
     var settings = {};
     settings = last_settings; 
     drawLayerLegend(settings['layers'], settings['views'][current_view], settings['layer-order'], top, left);
-    var detached_clones = $('#samples_tree path.clone').detach();
+    
+    var detached = $('#tree path.clone').detach();
+    var detachedSamples = $('#samples_tree path.clone').detach();
     drawTitle(last_settings);
     drawLegend();
 
@@ -1859,7 +1861,8 @@ function exportSvg(dontDownload) {
     svgCrowbar();
 
     svg.removeAttribute('viewBox');
-    $('#samples_tree').prepend(detached_clones);
+    $('#tree').prepend(detached);
+    $('#samples_tree').prepend(detachedSamples);
     $('#bin_legend').remove();
     $('#layer_legend').remove();
     $('#title_group').remove();
