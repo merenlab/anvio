@@ -906,8 +906,7 @@ D = {
             ['--report-DNA-sequences'],
             {'default': False,
              'action': 'store_true',
-             'help': "By default, this program reports amino acid sequences. You can change that behavior and as for DNA\
-                      sequences instead using this flag."}
+             'help': "By default, this program reports amino acid sequences. Use this flag to report DNA sequences instead."}
                 ),
     'skip-multiple-gene-calls': (
             ['--skip-multiple-gene-calls'],
