@@ -144,6 +144,7 @@ class SummarizerSuperClass(object):
         self.taxonomic_level = A('taxonomic_level') or 't_genus'
         self.cog_data_dir = A('cog_data_dir')
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
+        self.report_DNA_sequences = A('report_DNA_sequences')
         self.delete_output_directory_if_exists = False if A('delete_output_directory_if_exists') == None else A('delete_output_directory_if_exists')
         self.just_do_it = A('just_do_it')
         self.reformat_contig_names = A('reformat_contig_names')
@@ -664,11 +665,11 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                 header.append(function_source + '_ACC')
                 header.append(function_source)
 
-        # if this is not a quick summary, have AA sequences in the output
-        AA_sequences = None
+        # if this is not a quick summary, have sequences in the output
+        sequences = None
         if not self.quick:
-            header.append('aa_sequence')
-            AA_sequences = self.get_sequences_for_gene_clusters(gene_cluster_names=self.gene_cluster_names)
+            header.append('dna_sequence' if self.report_DNA_sequences else 'aa_sequence')
+            sequences = self.get_sequences_for_gene_clusters(gene_cluster_names=self.gene_cluster_names, report_DNA_sequences=self.report_DNA_sequences)
 
         # write the header
         output_file_obj.write(('\t'.join(header) + '\n').encode('utf-8'))
@@ -710,7 +711,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                             entry.append('')
 
                     if not self.quick:
-                        entry.append(AA_sequences[gene_cluster_name][genome_name][gene_caller_id])
+                        entry.append(sequences[gene_cluster_name][genome_name][gene_caller_id])
 
                     output_file_obj.write(('\t'.join([str(e) if e not in [None, 'UNKNOWN'] else '' for e in entry]) + '\n').encode('utf-8'))
                     unique_id += 1
