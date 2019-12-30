@@ -1434,6 +1434,7 @@ function serializeSettings(use_layer_names) {
     state['max-font-size'] = $('#max_font_size').val();
     state['optimize-speed'] = $('#optimize_speed').is(':checked');
     state['show-bin-labels'] = $('#show_bin_labels').is(':checked');
+    state['begins-from-branch'] = $('#begins_from_branch').is(':checked');
     state['bin-labels-font-size'] = $('#bin_labels_font_size').val();
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
     state['estimate-taxonomy'] = $('#estimate_taxonomy').is(':checked');
@@ -2419,6 +2420,9 @@ function processState(state_name, state) {
     }
     if (state.hasOwnProperty('draw-guide-lines')) {
         $('#draw_guide_lines').val(state['draw-guide-lines'])
+    }
+    if (state.hasOwnProperty('begins-from-branch')) {
+        $('#begins_from_branch').val(state['begins-from-branch'])
     }
 
     // reload layers
