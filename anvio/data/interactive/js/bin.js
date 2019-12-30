@@ -842,7 +842,7 @@ Bins.prototype.RedrawBins = function() {
     var bin_labels_font_size = parseFloat($('#bin_labels_font_size').val());
     var autorotate_bin_labels = $('#autorotate_bin_labels')[0].checked;
     var bin_labels_angle = $('#bin_labels_angle').val();
-    var background_starts_from_branch = true;
+    var background_starts_from_branch = $('#begins_from_branch').is(':checked');
     
     var outer_ring_size = parseFloat($('#outer-ring-height').val());
     var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
