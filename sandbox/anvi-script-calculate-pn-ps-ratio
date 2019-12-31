@@ -41,7 +41,7 @@ progress = terminal.Progress()
 run = terminal.Run()
 
 
-def load_variability(args):
+def load_variability(args, contigs_db):
     progress.new("Loading variability")
     var_dict = {}
     columns_to_keep = ['corresponding_gene_call', 'sample_id', 'engine']
@@ -72,7 +72,19 @@ def load_variability(args):
     # concat the two engine-specific dataframes into a master dataframe
     df = pd.concat([var_dict['CDN'].data, var_dict['AA'].data], ignore_index=True)
 
+    # identify gene calls that are partial
+    gene_caller_ids_for_partial_gene_calls = [g for g in df['corresponding_gene_call'].unique() if contigs_db.genes_in_contigs_dict[g]['partial']]
+
+
+    if gene_caller_ids_for_partial_gene_calls:
+        df.drop(df[df['corresponding_gene_call'].isin(gene_caller_ids_for_partial_gene_calls)].index, inplace=True)
+
+        progress.reset()
+        run.warning("%d of your gene calls were 'partial', and were removed from downstream analyses. Here is the complete list of\
+                     gene calls that were removed: '%s'." % (len(gene_caller_ids_for_partial_gene_calls), ', '.join([str(g) for g in gene_caller_ids_for_partial_gene_calls])))
+
     progress.end()
+
     return df
 
 
@@ -101,7 +113,7 @@ def calculate_pN_pS_ratio(args):
 
     # load contigs db and variability tables
     contigs_db = load_contigs_db(args)
-    var_dataframe = load_variability(args)
+    var_dataframe = load_variability(args, contigs_db)
 
     # only genes and samples that are have at least one SCV / SAAV are known to the program
     genes = var_dataframe['corresponding_gene_call'].unique()
