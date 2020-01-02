@@ -1060,7 +1060,15 @@ def get_synonymous_and_non_synonymous_potential(list_of_codons_in_gene, just_do_
                            want to continue anyways, use the just_do_it flag")
 
     synonymous_potential = 0
+    num_ambiguous_codons = 0 # these are codons with Ns or other characters than ATCG
+
     for codon in list_of_codons_in_gene:
+        # first test if it is proper codon
+        if not codon:
+            num_ambiguous_codons += 1
+            continue
+
+        # if we are here, this is a proper codon
         for i, nt in enumerate(codon):
             for mutant_nt in [m for m in 'ACGT' if m != nt]:
 
@@ -1071,8 +1079,9 @@ def get_synonymous_and_non_synonymous_potential(list_of_codons_in_gene, just_do_
                 if constants.codon_to_AA[mutant_codon] == constants.codon_to_AA[codon]:
                     synonymous_potential += 1/3
 
-    non_synonymous_potential = 3 * len(list_of_codons_in_gene) - synonymous_potential
-    return synonymous_potential, non_synonymous_potential
+    non_synonymous_potential = 3 * (len(list_of_codons_in_gene) - num_ambiguous_codons) - synonymous_potential
+
+    return synonymous_potential, non_synonymous_potential, num_ambiguous_codons
 
 
 def get_N50(contig_lengths):
@@ -1531,9 +1540,17 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict):
     list_of_codons = []
     for codon_order in codon_order_to_nt_positions:
         nt_positions = codon_order_to_nt_positions[codon_order]
+
+        # here we cut it from the contig sequence
         reference_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
 
-        list_of_codons.append(constants.codon_to_codon_RC[reference_codon_sequence] if gene_call['direction'] == 'r' else reference_codon_sequence)
+        # NOTE: here we make sure the codon sequence is composed of unambiguous nucleotides.
+        # and we will not inlcude those that contain anything other than proper
+        # nucleotides in the resulting list of codons.
+        if set(reference_codon_sequence).issubset(constants.unambiguous_nucleotides):
+            list_of_codons.append(constants.codon_to_codon_RC[reference_codon_sequence] if gene_call['direction'] == 'r' else reference_codon_sequence)
+        else:
+            list_of_codons.append(None)
 
     return list_of_codons
 
