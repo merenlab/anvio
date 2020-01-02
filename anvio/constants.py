@@ -95,7 +95,8 @@ allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
 digits = string.digits
 complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHDB')
 
-nucleotides = sorted(list('ATCG')) + ['N']
+unambiguous_nucleotides = set(list('ATCG'))
+nucleotides = sorted(list(unambiguous_nucleotides)) + ['N']
 
 AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
                                  'Arg': {"C":6,  "H":14, "N":4, "O":2, "S":0},
