@@ -150,12 +150,23 @@ def calculate_pN_pS_ratio(args):
 
     # calc potential synonymity for each gene
     potential_synonymity_ratio = np.zeros(len(gene_caller_ids))
+    total_ambiguous_codons = 0
     for i, gene_callers_id in enumerate(gene_caller_ids):
         gene_call = contigs_db.genes_in_contigs_dict[gene_callers_id]
 
         codon_list_for_gene = utils.get_list_of_codons_for_gene_call(gene_call, contigs_db.contig_sequences)
-        syn_potential, non_syn_potential = utils.get_synonymous_and_non_synonymous_potential(codon_list_for_gene)
+        syn_potential, non_syn_potential, num_ambiguous_codons = utils.get_synonymous_and_non_synonymous_potential(codon_list_for_gene)
+
+        # we are adding the number of codons in this gene that were not included
+        # in the calculations above as they included ambiguous nucleotides
+        total_ambiguous_codons += num_ambiguous_codons
+
         potential_synonymity_ratio[i] = syn_potential / non_syn_potential
+
+    if total_ambiguous_codons:
+        run.warning("Please note that %d codons among your %d genes included nucleotides\
+                     that were not unambiguous (i.e., 'N's or any other bases than A, T,\
+                     C, or G) and were excluded from synonymity calculations." % (total_ambiguous_codons, len(gene_caller_ids)))
 
     # normalize the SAAV_to_sSCV ratio by the potential synonymity ratio to make pN/pS
     pNpS = SAAV_to_sSCV.multiply(potential_synonymity_ratio, axis=0)
