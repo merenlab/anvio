@@ -93,6 +93,7 @@ class DatabaseInfo:
 
 
     def set_key_value(self):
+        filesnpaths.is_output_file_writable(self.db_path)
         try:
             database = db.DB(self.db_path, None, ignore_version=True)
             db_type = database.get_meta_value("db_type")

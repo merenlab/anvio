@@ -160,8 +160,9 @@ def sanity_check(args):
     if not args.pan_or_profile_db:
         raise ConfigError("You must provide an anvi'o pan or profile database for this to work :(")
 
-    if args.pan_or_profile_db:
-        utils.is_pan_or_profile_db(args.pan_or_profile_db)
+    utils.is_pan_or_profile_db(args.pan_or_profile_db)
+
+    filesnpaths.is_output_file_writable(args.pan_or_profile_db)
 
     if args.contigs_db:
         utils.is_contigs_db(args.contigs_db)
