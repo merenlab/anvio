@@ -48,10 +48,57 @@ class KofamSetup(object):
 
         # ftp path for HMM profiles and KO list
             # for ko list, add /ko_list.gz to end of url
-            # for profiles, add /profiles.tar.gz  to end of url 
+            # for profiles, add /profiles.tar.gz  to end of url
         self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
+        self.files = ['ko_list.gz', 'profiles.tar.gz']
 
 
     def is_database_exists(self):
         if os.path.exists(os.path.join(self.kofam_data_dir, 'K00001.hmm')): # we arbitrarily check for the first profile
             raise ConfigError("It seems you already have KOfam HMM profiles installed in '%s', please use --reset flag if you want to re-download it." % self.kofam_data_dir)
+
+    def download(self):
+        self.run.info("Database URL", self.database_url)
+
+        for file_name in self.files:
+            utils.download_file(self.database_url + '/' + file_name,
+                os.path.join(self.kofam_data_dir, file_name), progress=self.progress, run=self.run)
+
+        self.confirm_downloaded_files()
+        self.decompress_files()
+
+
+    def confirm_downloaded_files(self):
+        print("Not implemented yet")
+        # try:
+        #     checksums_file = read_remote_file(self.database_url + '/md5_checksums', is_gzip=False).strip()
+        #     checksums = {}
+        # except:
+        #     self.run.warning("Checksum file '%s' is not available in FTP, Anvi'o won't be able to verify downloaded files." % (self.database_url + '/md5_checksums'))
+        #     return
+        #
+        # for line in checksums_file.split('\n'):
+        #     checksum, file_name = [item.strip() for item in line.strip().split()]
+        #     checksums[file_name] = checksum
+        #
+        # for file_name in self.files:
+        #     if not filesnpaths.is_file_exists(os.path.join(self.pfam_data_dir, file_name), dont_raise=True):
+        #          # TO DO: Fix messages :(
+        #         raise ConfigError("Have missing file %s, please run --reset" % file_name)
+        #
+        #     hash_on_disk = utils.get_file_md5(os.path.join(self.pfam_data_dir, file_name))
+        #     expected_hash = checksums[file_name]
+        #
+        #     if not expected_hash == hash_on_disk:
+        #         # TO DO: Fix messages :(
+        #         raise ConfigError("Please run with --reset, one file hash doesn't match. %s" % file_name)
+
+
+    def decompress_files(self):
+        # Decompressing Pfam-A.hmm.gz is not necessary, HMMer class works with .gz
+        print("Not implemented yet")
+        # for file_name in ['Pfam.version.gz', 'Pfam-A.clans.tsv.gz']:
+        #     full_path = os.path.join(self.pfam_data_dir, file_name)
+        #
+        #     utils.gzip_decompress_file(full_path)
+        #     os.remove(full_path)
