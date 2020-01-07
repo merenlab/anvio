@@ -67,7 +67,7 @@ class COGs:
         self.available_search_methods = [p for p in self.search_methods_factory.keys() if utils.is_program_exists(p, dont_raise=True)]
 
         if not len(self.available_search_methods):
-            raise ConfigError("None of the serach methods this class could use, which include '%s', seem to be\
+            raise ConfigError("None of the search methods this class could use, which include '%s', seem to be\
                                available on your system :/" % (', '.join(list(self.search_methods_factory.keys()))))
 
         if self.default_search_method not in self.available_search_methods:
@@ -639,4 +639,3 @@ class COGsSetup:
             input("Press ENTER to continue, or press CTRL + C to cancel...\n")
         except:
             sys.exit()
-
