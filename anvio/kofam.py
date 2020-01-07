@@ -46,6 +46,11 @@ class KofamSetup(object):
 
         filesnpaths.gen_output_directory(self.kofam_data_dir, delete_if_exists=args.reset)
 
+        # ftp path for HMM profiles and KO list
+            # for ko list, add /ko_list.gz to end of url
+            # for profiles, add /profiles.tar.gz  to end of url 
+        self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
+
 
     def is_database_exists(self):
         if os.path.exists(os.path.join(self.kofam_data_dir, 'K00001.hmm')): # we arbitrarily check for the first profile
