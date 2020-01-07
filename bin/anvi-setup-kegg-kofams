@@ -1,0 +1,18 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+
+import anvio
+import anvio.kofam as kofam
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Özcan Esen"
+__email__ = "ozcanesen@gmail.com"
+#__provides__ = ## TODO: fill this in
+__description__ = "Download and setup KEGG KOfam HMM profiles."
