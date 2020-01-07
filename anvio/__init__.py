@@ -1457,6 +1457,13 @@ D = {
              'help': "Don't do anything real. Test everything, and stop right before wherever the developer\
                       said 'well, this is enough testing', and decided to print out results."}
                 ),
+    'skip-dry-run': (
+            ['--skip-dry-run'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Don't do a dry run. Just start the workflow! Useful when your job is so big it takes\
+                      hours to do a dry run."}
+                ),
     'verbose': (
             ['--verbose'],
             {'default': False,
