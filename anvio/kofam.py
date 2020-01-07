@@ -40,3 +40,13 @@ class KofamSetup(object):
         # default directory will be called KEGG and will store the KEGG Module data as well
         if not self.kofam_data_dir:
             self.kofam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
+
+        if not args.reset:
+            self.is_database_exists()
+
+        filesnpaths.gen_output_directory(self.kofam_data_dir, delete_if_exists=args.reset)
+
+
+    def is_database_exists(self):
+        if os.path.exists(os.path.join(self.kofam_data_dir, 'K00001.hmm')): # we arbitrarily check for the first profile
+            raise ConfigError("It seems you already have KOfam HMM profiles installed in '%s', please use --reset flag if you want to re-download it." % self.kofam_data_dir)
