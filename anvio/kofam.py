@@ -26,3 +26,11 @@ __email__ = "ozcanesen@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
+
+
+class KofamSetup(object):
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+        self.kofam_data_dir = args.kofam_data_dir
