@@ -34,3 +34,9 @@ class KofamSetup(object):
         self.run = run
         self.progress = progress
         self.kofam_data_dir = args.kofam_data_dir
+
+        filesnpaths.is_program_exists('hmmpress')
+
+        # default directory will be called KEGG and will store the KEGG Module data as well
+        if not self.kofam_data_dir:
+            self.kofam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
