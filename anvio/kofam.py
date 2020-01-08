@@ -64,34 +64,7 @@ class KofamSetup(object):
             utils.download_file(self.database_url + '/' + file_name,
                 os.path.join(self.kofam_data_dir, file_name), progress=self.progress, run=self.run)
 
-        self.confirm_downloaded_files()
         self.decompress_files()
-
-
-    def confirm_downloaded_files(self):
-        print("Not implemented yet")
-        # try:
-        #     checksums_file = read_remote_file(self.database_url + '/md5_checksums', is_gzip=False).strip()
-        #     checksums = {}
-        # except:
-        #     self.run.warning("Checksum file '%s' is not available in FTP, Anvi'o won't be able to verify downloaded files." % (self.database_url + '/md5_checksums'))
-        #     return
-        #
-        # for line in checksums_file.split('\n'):
-        #     checksum, file_name = [item.strip() for item in line.strip().split()]
-        #     checksums[file_name] = checksum
-        #
-        # for file_name in self.files:
-        #     if not filesnpaths.is_file_exists(os.path.join(self.pfam_data_dir, file_name), dont_raise=True):
-        #          # TO DO: Fix messages :(
-        #         raise ConfigError("Have missing file %s, please run --reset" % file_name)
-        #
-        #     hash_on_disk = utils.get_file_md5(os.path.join(self.pfam_data_dir, file_name))
-        #     expected_hash = checksums[file_name]
-        #
-        #     if not expected_hash == hash_on_disk:
-        #         # TO DO: Fix messages :(
-        #         raise ConfigError("Please run with --reset, one file hash doesn't match. %s" % file_name)
 
 
     def decompress_files(self):
