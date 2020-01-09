@@ -70,7 +70,7 @@ class DB:
                                        your anvi'o :(" % self.db_path)
                 else:
                     raise ConfigError("The database at '%s' is outdated (its version is v%s, but your anvi'o installation only knows how to\
-                                       deal with v%s). You can migrate your database without losing any data using the program `anvi-migrate-db`."\
+                                       deal with v%s). You can migrate your database without losing any data using the program `anvi-migrate`."\
                                                % (self.db_path, self.version, client_version))
 
 
