@@ -68,10 +68,9 @@ class KofamSetup(object):
 
 
     def decompress_files(self):
-        # Decompressing Pfam-A.hmm.gz is not necessary, HMMer class works with .gz
         print("Not implemented yet")
-        # for file_name in ['Pfam.version.gz', 'Pfam-A.clans.tsv.gz']:
-        #     full_path = os.path.join(self.pfam_data_dir, file_name)
-        #
-        #     utils.gzip_decompress_file(full_path)
-        #     os.remove(full_path)
+        for file_name in self.files:
+             full_path = os.path.join(self.pfam_data_dir, file_name)
+
+             utils.gzip_decompress_file(full_path)
+             os.remove(full_path)
