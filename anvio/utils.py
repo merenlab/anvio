@@ -6,6 +6,7 @@
 import os
 import sys
 import gzip
+import tarfile
 import time
 import copy
 import socket
@@ -147,7 +148,7 @@ class Multiprocessing:
 def get_total_memory_usage():
     if not PSUTIL_OK:
         return None
-    
+
     current_process = psutil.Process(os.getpid())
     mem = current_process.memory_info().rss
     for child in current_process.children(recursive=True):
@@ -384,6 +385,25 @@ def gzip_decompress_file(input_file_path, output_file_path=None, keep_original=T
         os.remove(input_file_path)
 
     return output_file_path
+
+def tar_extract_file(input_file_path, output_file_path=None, keep_original=True):
+    filesnpaths.is_file_exists(input_file_path)
+
+    if not tarfile.is_tarfile(input_file_path):
+        raise ConfigError("the tar_extract_file function is terribly upset because your input file ('%s') is\
+                            apparently not a tar file 🤷")
+
+    if not output_file_path:
+        raise ConfigError("the tar_extract_file function is displeased because an output file path has not been specified.\
+                            If you are seeing this message, you are probably a developer, so go fix your code please, and \
+                            everyone will be happy then.")
+
+    tf = tarfile.open(input_file_path)
+    tf.extractall(path = output_file_path)
+
+    if not keep_original:
+        os.remove(input_file_path)
+
 
 
 class RunInDirectory(object):
@@ -3054,4 +3074,3 @@ class Mailer:
         self.progress.end()
 
         self.run.info('E-mail', 'Successfully sent to "%s"' % to)
-
