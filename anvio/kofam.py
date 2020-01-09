@@ -54,7 +54,7 @@ class KofamSetup(object):
 
 
     def is_database_exists(self):
-        if os.path.exists(os.path.join(self.kofam_data_dir, 'K00001.hmm')): # we arbitrarily check for the first profile
+        if os.path.exists(os.path.join(self.kofam_data_dir, 'K00001.hmm')): # TODO: update this after determining final structure
             raise ConfigError("It seems you already have KOfam HMM profiles installed in '%s', please use --reset flag if you want to re-download it." % self.kofam_data_dir)
 
     def download(self):
