@@ -129,6 +129,10 @@ class Prodigal:
         else:
             cmd_line.extend(['-p', 'meta'])
 
+        self.run.warning("Anvi'o will use 'prodigal' by Hyatt et al (doi:10.1186/1471-2105-11-119) to identify open\
+                          reading frames in your data. When you publish your findings, please do not forget to properly\
+                          credit their work.", lc='green', header="CITATION")
+
         self.progress.new('Processing')
         self.progress.update('Identifying ORFs in contigs ...')
 
