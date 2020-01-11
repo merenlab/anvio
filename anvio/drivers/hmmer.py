@@ -46,12 +46,11 @@ class HMMer:
             part_file_name = os.path.join(tmp_dir, os.path.basename(target_files_dict[source]))
 
             # create splitted fasta files inside tmp directory
-            self.target_files_dict[source] = utils.split_fasta(target_files_dict[source], 
+            self.target_files_dict[source] = utils.split_fasta(target_files_dict[source],
                                                                parts=self.num_threads_to_use,
                                                                prefix=part_file_name)
 
-
-    def run_hmmscan(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms):
+    def run_hmmscan(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms, in_place=False):
         target = ':'.join([alphabet, context])
 
         if target not in self.target_files_dict:
@@ -81,29 +80,33 @@ class HMMer:
         self.run.info('Temporary work dir', tmp_dir)
         self.run.info('Log file', log_file_path)
 
-        self.progress.new('Unpacking the model into temporary work directory')
-        self.progress.update('...')
-        hmm_file_path = os.path.join(tmp_dir, source + '_hmm.txt')
-        hmm_file = open(hmm_file_path, 'wb')
-        hmm_file.write(gzip.open(hmm, 'rb').read())
-        hmm_file.close()
-        self.progress.end()
+        if not in_place:
+            self.progress.new('Unpacking the model into temporary work directory')
+            self.progress.update('...')
+            hmm_file_path = os.path.join(tmp_dir, source + '_hmm.txt') # referenced below, likely needs to move
+            hmm_file = open(hmm_file_path, 'wb')
+            hmm_file.write(gzip.open(hmm, 'rb').read())
+            hmm_file.close()
+            self.progress.end()
 
-        self.progress.new('Processing')
-        self.progress.update('Compressing the pfam model')
+            self.progress.new('Processing')
+            self.progress.update('Compressing the pfam model')
 
-        cmd_line = ['hmmpress', hmm_file_path]
-        ret_val = utils.run_command(cmd_line, log_file_path)
+            cmd_line = ['hmmpress', hmm_file_path]
+            ret_val = utils.run_command(cmd_line, log_file_path)
 
-        if ret_val:
-            raise ConfigError("The last call did not work quite well. Most probably the version of HMMER you have\
-                               installed is either not up-to-date enough, or too new :/ Just to make sure what went\
-                               wrong please take a look at the log file ('%s'). Please visit %s to see what\
-                               is the latest version availalbe if you think updating HMMER can resolve it. You can\
-                               learn which version of HMMER you have on your system by typing 'hmmpress -h'."\
-                                       % (log_file_path, 'http://hmmer.janelia.org/download.html'))
-        self.progress.end()
-
+            if ret_val:
+                raise ConfigError("The last call did not work quite well. Most probably the version of HMMER you have\
+                                   installed is either not up-to-date enough, or too new :/ Just to make sure what went\
+                                   wrong please take a look at the log file ('%s'). Please visit %s to see what\
+                                   is the latest version availalbe if you think updating HMMER can resolve it. You can\
+                                   learn which version of HMMER you have on your system by typing 'hmmpress -h'."\
+                                           % (log_file_path, 'http://hmmer.janelia.org/download.html'))
+            self.progress.end()
+        else:
+            # check if bunhc of files with different extensions are
+            # in the same directory with hmm
+            print("HMMSCAN run in place not implemented yet")
 
 
         workers = []
@@ -199,5 +202,3 @@ class HMMer:
     def clean_tmp_dirs(self):
         for tmp_dir in self.tmp_dirs:
             shutil.rmtree(tmp_dir)
-
-
