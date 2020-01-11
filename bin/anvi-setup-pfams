@@ -31,6 +31,10 @@ if __name__ == '__main__':
     parser.add_argument('--reset', default=False, action="store_true", help="This program by default attempts to use previously\
                         downloaded files in your Pfam data directory if there are any. If something is wrong for some reason you\
                         can use this to tell anvi'o to remove everything, and start over.")
+    parser.add_argument('--keep_compressed', default=False, help="Whether to keep Pfam HMM profiles in gzipped format. By default, these\
+                        files are decompressed and hmmpressed after being downloaded. If you want them to stay compressed to save space,\
+                        you can use this parameter; however, please keep in mind that this will increase the processing time for `anvi-run-pfams`\
+                        since the profiles will need to be decompressed and hmmpressed every time `anvi-run-pfams` is run.")
 
     args = anvio.get_args(parser)
 
