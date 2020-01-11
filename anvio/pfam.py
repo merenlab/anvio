@@ -9,6 +9,7 @@ import gzip
 import shutil
 import requests
 from io import BytesIO
+import glob
 
 import anvio
 import anvio.dbops as dbops
