@@ -55,6 +55,7 @@ class PfamSetup(object):
         self.run = run
         self.progress = progress
         self.pfam_data_dir = args.pfam_data_dir
+        self.keep_compressed = args.keep_compressed
 
         filesnpaths.is_program_exists('hmmpress')
 
@@ -71,7 +72,7 @@ class PfamSetup(object):
 
 
     def is_database_exists(self):
-        if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')):
+        if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')) or os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm')):
             raise ConfigError("It seems you already have Pfam database installed in '%s', please use --reset flag if you want to re-download it." % self.pfam_data_dir)
 
 
@@ -127,14 +128,24 @@ class PfamSetup(object):
 
 
     def decompress_files(self):
-        # Decompressing Pfam-A.hmm.gz is not necessary, HMMer class works with .gz
+        if self.keep_compressed:
+            # Some folks may want the old behavior of this program that kept the HMM profiles compressed.
+            # This block preserves that way of doing things.
+            for file_name in ['Pfam.version.gz', 'Pfam-A.clans.tsv.gz']:
+                full_path = os.path.join(self.pfam_data_dir, file_name)
+                utils.gzip_decompress_file(full_path, keep_original=False)
+        else:
+            for file_name in self.files:
+                full_path = os.path.join(self.pfam_data_dir, file_name)
 
-        for file_name in ['Pfam.version.gz', 'Pfam-A.clans.tsv.gz']:
-            full_path = os.path.join(self.pfam_data_dir, file_name)
+                if full_path.endswith('.gz'):
+                    utils.gzip_decompress_file(full_path)
+                    os.remove(full_path)
 
-            utils.gzip_decompress_file(full_path)
-            os.remove(full_path)
-
+                for file_path in glob.glob(os.path.join(self.pfam_data_dir, '*')):
+                        if file_path.endswith('.hmm'):
+                            print("HMMPRESS Not implemented here yet")
+                            #TODO HMMPRESS HERE.
 
 class Pfam(object):
     def __init__(self, args, run=run, progress=progress):
