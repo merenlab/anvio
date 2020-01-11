@@ -165,7 +165,7 @@ class Pfam(object):
         if not self.pfam_data_dir:
             self.pfam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Pfam')
 
-        self.is_database_exists()
+        self.run_in_place = self.is_database_exists()
 
         self.run.info('Pfam database directory', self.pfam_data_dir)
 
@@ -174,8 +174,13 @@ class Pfam(object):
 
 
     def is_database_exists(self):
-        if not os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')):
+        if not (os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')) or os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm'))):
             raise ConfigError("It seems you do not have Pfam database installed, please run 'anvi-setup-pfams' to download it.")
+        # here we check if the HMM profile is compressed or not so we can adjust hmmscan behavior accordingly
+        in_place = True
+        if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')):
+            in_place = False
+        return in_place
 
 
     def get_version(self):
