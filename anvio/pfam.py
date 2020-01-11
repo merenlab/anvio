@@ -220,7 +220,11 @@ class Pfam(object):
 
 
     def process(self):
-        hmm_file = os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')
+        hmm_file = os.path.join(self.pfam_data_dir, 'Pfam-A.hmm')
+        # this file may be compressed if keep_compressed was set to True during setup
+        # and if the file is compressed, we cannot run in place
+        if not self.run_in_place:
+            hmm_file = os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')
 
         # initialize contigs database
         class Args: pass
@@ -241,7 +245,7 @@ class Pfam(object):
 
         # run hmmscan
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads)
-        hmm_hits_file = hmmer.run_hmmscan('Pfam', 'AA', 'GENE', None, None, len(self.function_catalog), hmm_file, None, '--cut_ga')
+        hmm_hits_file = hmmer.run_hmmscan('Pfam', 'AA', 'GENE', None, None, len(self.function_catalog), hmm_file, None, '--cut_ga', in_place=self.run_in_place)
 
         if not hmm_hits_file:
             run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But\
