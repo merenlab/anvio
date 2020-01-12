@@ -137,6 +137,11 @@ class Dereplicate:
             raise ConfigError("You want to report all sequences (--report-all), but you also want to skip\
                                reporting all sequences (--skip-fasta-report). Hmmm.")
 
+        if not self.program_name:
+            additional_text = ", even when you are importing results from a previous run"
+            raise ConfigError("You must provide a program name to dereplicate your genomes using the `--program`\
+                               parameter%s. Chocies include %s." % (additional_text if self.ani_dir else '', ', '.join(list(program_class_dictionary.keys()))))
+
         if not any([self.program_name, self.ani_dir, self.mash_dir]):
             raise ConfigError("Anvi'o could not determine how you want to dereplicate\
                               your genomes. Please take a close look at your parameters: either --program needs to be\
