@@ -51,7 +51,7 @@ class Dereplicate:
         self.ani_dir = A('ani_dir', null)
         self.mash_dir = A('mash_dir', null)
         # mode
-        self.program_name = A('program', null) or 'pyANI'
+        self.program_name = A('program', null)
         self.representative_method = A('representative_method', null)
         self.similarity_threshold = A('similarity_threshold', null)
         # fastANI specific
