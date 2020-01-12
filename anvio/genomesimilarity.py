@@ -147,7 +147,7 @@ class Dereplicate:
                               your genomes. Please take a close look at your parameters: either --program needs to be\
                               set, or an importable directory (e.g. --ani-dir, --mash-dir, etc) needs to be provided.")
 
-        if self.program_name not in ['pyANI', 'fastANI', 'sourmash']:
+        if self.program_name not in list(program_class_dictionary.keys()):
             raise ConfigError("Anvi'o is impressed by your dedication to dereplicate your genomes through %s, but\
                               %s is not compatible with `anvi-dereplicate-genomes`. Anvi'o can only work with pyANI\
                               and sourmash separately." % (self.program_name, self.program_name))
