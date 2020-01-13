@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     try:
         setup = kofam.KofamSetup(args)
-        setup.download()
+        setup.setup_profiles()
 
     except ConfigError as e:
         print(e)
