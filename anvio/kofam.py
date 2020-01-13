@@ -85,3 +85,10 @@ class KofamSetup(object):
                 utils.tar_extract_file(full_path, output_file_path = self.kofam_data_dir, keep_original=False)
             else:
                 utils.gzip_decompress_file(full_path, keep_original=False)
+
+
+    def setup_profiles(self):
+        """This is a driver function which executes the Kofam setup process by downloading, decompressing, and hmmpressing the profiles."""
+        self.download()
+        self.decompress_files()
+        # TODO: add concatenation and hmmpress
