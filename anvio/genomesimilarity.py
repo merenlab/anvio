@@ -51,7 +51,7 @@ class Dereplicate:
         self.ani_dir = A('ani_dir', null)
         self.mash_dir = A('mash_dir', null)
         # mode
-        self.program_name = A('program', null) or 'pyANI'
+        self.program_name = A('program', null)
         self.representative_method = A('representative_method', null)
         self.similarity_threshold = A('similarity_threshold', null)
         # fastANI specific
@@ -137,12 +137,17 @@ class Dereplicate:
             raise ConfigError("You want to report all sequences (--report-all), but you also want to skip\
                                reporting all sequences (--skip-fasta-report). Hmmm.")
 
+        if not self.program_name:
+            additional_text = ", even when you are importing results from a previous run"
+            raise ConfigError("You must provide a program name to dereplicate your genomes using the `--program`\
+                               parameter%s. Chocies include %s." % (additional_text if self.ani_dir else '', ', '.join(list(program_class_dictionary.keys()))))
+
         if not any([self.program_name, self.ani_dir, self.mash_dir]):
             raise ConfigError("Anvi'o could not determine how you want to dereplicate\
                               your genomes. Please take a close look at your parameters: either --program needs to be\
                               set, or an importable directory (e.g. --ani-dir, --mash-dir, etc) needs to be provided.")
 
-        if self.program_name not in ['pyANI', 'fastANI', 'sourmash']:
+        if self.program_name not in list(program_class_dictionary.keys()):
             raise ConfigError("Anvi'o is impressed by your dedication to dereplicate your genomes through %s, but\
                               %s is not compatible with `anvi-dereplicate-genomes`. Anvi'o can only work with pyANI\
                               and sourmash separately." % (self.program_name, self.program_name))
