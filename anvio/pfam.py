@@ -145,10 +145,10 @@ class PfamSetup(object):
                     utils.gzip_decompress_file(full_path)
                     os.remove(full_path)
 
-                for file_path in glob.glob(os.path.join(self.pfam_data_dir, '*')):
-                        if file_path.endswith('.hmm'):
-                            print("HMMPRESS Not implemented here yet")
-                            #TODO HMMPRESS HERE.
+            for file_path in glob.glob(os.path.join(self.pfam_data_dir, '*.hmm')):
+                print("HMMPRESS Not implemented here yet")
+                print(file_path)
+                #TODO HMMPRESS HERE.
 
 class Pfam(object):
     def __init__(self, args, run=run, progress=progress):
