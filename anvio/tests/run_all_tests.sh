@@ -621,6 +621,40 @@ anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                     -C CONCOCT \
                     -b Bin_1 \
                     --exclude-samples $files/samples_to_exclude_for_mcg.txt
+
+INFO "Generating mock external genome data"
+cp $files/mock_data_for_pangenomics/{01,02,03}.fa $output_dir/
+cp $files/mock_data_for_pangenomics/external-genomes.txt $output_dir/
+for g in 01 02 03
+do
+    echo -n "$g .. "
+    anvi-gen-contigs-database -f $output_dir/$g.fa \
+                              -o $output_dir/$g.db \
+                              --project-name $g >/dev/null 2>&1
+done; echo
+
+INFO "Dereplicating genomes using pyANI"
+anvi-dereplicate-genomes -o $output_dir/DEREPLICATION_FROM_SCRATCH \
+                         -e $output_dir/external-genomes.txt \
+                         --similarity 0.99 \
+                         --program pyANI
+SHOW_FILE $output_dir/DEREPLICATION_FROM_SCRATCH/CLUSTER_REPORT.txt
+
+INFO "Computing genome similarity"
+anvi-compute-genome-similarity -e $output_dir/external-genomes.txt \
+                               -o $output_dir/GENOME_SIMILARITY_OUTPUT \
+                               --fragment-length 250 \
+                               --min-num-fragments 1 \
+                               --program pyANI
+SHOW_FILE $output_dir/GENOME_SIMILARITY_OUTPUT/ANIb_percentage_identity.txt
+
+INFO "Dereplicating genomes using an existing genome similarity analysis directory"
+anvi-dereplicate-genomes --ani-dir $output_dir/GENOME_SIMILARITY_OUTPUT \
+                         -o $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS \
+                         --similarity 0.99 \
+                         --program pyANI
+SHOW_FILE $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS/CLUSTER_REPORT.txt
+
 INFO 'A dry run with an items order file for the merged profile without any clustering'
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \
