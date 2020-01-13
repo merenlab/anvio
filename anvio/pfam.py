@@ -132,6 +132,8 @@ class PfamSetup(object):
         if self.keep_compressed:
             # Some folks may want the old behavior of this program that kept the HMM profiles compressed.
             # This block preserves that way of doing things.
+            self.run.warning("Just to let you know, you elected to keep the Pfam profiles in gzipped format. This is fine and will save you some space,\
+            but you may experience slower processing times for `anvi-run-pfams`. You have been warned. :)")
             for file_name in ['Pfam.version.gz', 'Pfam-A.clans.tsv.gz']:
                 full_path = os.path.join(self.pfam_data_dir, file_name)
                 utils.gzip_decompress_file(full_path, keep_original=False)
