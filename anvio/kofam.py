@@ -29,6 +29,15 @@ pp = terminal.pretty_print
 
 
 class KofamSetup(object):
+    """ Class for setting up KEGG Kofam HMM profiles. It performs sanity checks and downloads, unpacks, and prepares
+    the profiles for later use by `hmmscan`.
+
+    Parameters
+    ==========
+    args: Namespace object
+        All the arguments supplied by user to anvi-setup-kegg-kofams
+    """
+
     def __init__(self, args, run=run, progress=progress):
         self.args = args
         self.run = run
@@ -54,10 +63,12 @@ class KofamSetup(object):
 
 
     def is_database_exists(self):
+        """This function determines whether the user has already downloaded the Kofam HMM profiles."""
         if os.path.exists(os.path.join(self.kofam_data_dir, 'K00001.hmm')): # TODO: update this after determining final structure
             raise ConfigError("It seems you already have KOfam HMM profiles installed in '%s', please use --reset flag if you want to re-download it." % self.kofam_data_dir)
 
     def download(self):
+        """This function downloads the Kofam profiles."""
         self.run.info("Database URL", self.database_url)
 
         for file_name in self.files:
@@ -68,6 +79,7 @@ class KofamSetup(object):
 
 
     def decompress_files(self):
+        """This function decompresses the Kofam profiles."""
         for file_name in self.files:
             full_path = os.path.join(self.kofam_data_dir, file_name)
 
