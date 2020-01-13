@@ -86,6 +86,13 @@ class KofamSetup(object):
             else:
                 utils.gzip_decompress_file(full_path, keep_original=False)
 
+    def run_hmmpress(self):
+        """This function concatenates the Kofam profiles and runs hmmpress on them."""
+        print("Not implemented yet")
+        log_file_path = os.path.join(self.kofam_data_dir, '00_hmmpress_log.txt')
+        cmd_line = ["cat", os.path.join(self.kofam_data_dir, 'profiles/*.hmm')]
+        ret_val = utils.run_command(cmd_line, log_file_path)
+        # TODO: finish me - need sanity check for all files, concat, and press
 
     def setup_profiles(self):
         """This is a driver function which executes the Kofam setup process by downloading, decompressing, and hmmpressing the profiles."""
