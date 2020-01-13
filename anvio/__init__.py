@@ -303,6 +303,12 @@ D = {
                       requires an explicit mentioning of which one to use. The default is '%s', but it will not be enough if you\
                       if you were a rebel and have used `--external-gene-callers` or something." % constants.default_gene_caller}
                 ),
+    'list-gene-callers': (
+            ['--list-gene-callers'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "List available gene callers in the contigs database and quit."}
+                ),
     'ignore-internal-stop-codons': (
             ['--ignore-internal-stop-codons'],
             {'default': False,
