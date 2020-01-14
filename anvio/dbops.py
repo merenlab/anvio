@@ -3447,15 +3447,10 @@ class ContigsDatabase:
         external_gene_calls = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
         ignore_internal_stop_codons = A('ignore_internal_stop_codons')
-        store_partial_amino_acid_sequences = A('store_partial_amino_acid_sequences')
         prodigal_translation_table = A('prodigal_translation_table')
 
         if external_gene_calls:
             filesnpaths.is_file_exists(external_gene_calls)
-
-        if store_partial_amino_acid_sequences and not external_gene_calls:
-            raise ConfigError("Storing partial amino acid sequences is only relevant when external gene calls are used.\
-                               Please remove this parameter or provide an external gene calls file.")
 
         if external_gene_calls and skip_gene_calling:
             raise ConfigError("You provided a file for external gene calls, and used requested gene calling to be\
@@ -3609,7 +3604,6 @@ class ContigsDatabase:
                 gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(
                     input_file_path=external_gene_calls,
                     ignore_internal_stop_codons=ignore_internal_stop_codons,
-                    store_partial_amino_acid_sequences=store_partial_amino_acid_sequences
                 )
             else:
                 gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()

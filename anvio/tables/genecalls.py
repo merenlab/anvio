@@ -70,7 +70,7 @@ class TablesForGeneCalls(Table):
                                 should be multiply of 3. It is not the case for all, which is a deal breaker.")
 
 
-    def use_external_gene_calls_to_populate_genes_in_contigs_table(self, input_file_path, gene_calls_dict=None, ignore_internal_stop_codons=False, skip_amino_acid_sequences=False, store_partial_amino_acid_sequences=False):
+    def use_external_gene_calls_to_populate_genes_in_contigs_table(self, input_file_path, gene_calls_dict=None, ignore_internal_stop_codons=False, skip_amino_acid_sequences=False):
         """Add genes to the contigs database.
 
         Primary input is either an `input_file_path` for external gene calls, or an
@@ -79,14 +79,23 @@ class TablesForGeneCalls(Table):
         Parameters
         ==========
         input_file_path : str
-            Path to file with following structure:
-                gene_callers_id contig  start   stop    direction       partial source  version
-                0       CACHJY01_000000000016   0       693     r       1       prodigal        v2.6.3
-                1       CACHJY01_000000000016   711     1140    r       0       prodigal        v2.6.3
+            Path to file with one of the following structures.
+
+            Option 1:
+                gene_callers_id contig          start  stop  direction  partial  source    version
+                0               CACHJY01_00016  0      693   r          1        prodigal  v2.6.3
+                1               CACHJY01_00016  711    1140  r          0        prodigal  v2.6.3
+
+            Option 2:
+                gene_callers_id contig          start  stop  direction  partial  source    version  aa_sequence
+                0               CACHJY01_00016  0      693   r          1        prodigal  v2.6.3   MSKKIYFTEYSKVNRLQTISNFTGSA
+                1               CACHJY01_00016  711    1140  r          0        prodigal  v2.6.3   MVNVDYHGLIAGAGSGKTKVLTSRIAHIIK
+
         gene_calls_dict : dict, None
             Alternative to `input_file_path`. If provided, entries will be APPENDED to the database.
             So you need to make sure gene caller ids in your dict does not overlap with the ones in
-            the database.Should look like:
+            the database. Should look like:
+
                 {
                     "1": {
                         "contig": "contig_name",
@@ -95,7 +104,8 @@ class TablesForGeneCalls(Table):
                         "direction": "f",
                         "partial": 0,
                         "source": "source_name",
-                        "version": "unknown"
+                        "version": "unknown",
+                        "aa_sequence": "MSKKIYFTEYSKVNRLQTISNFTGSA"
                     },
 
                     "2": {
@@ -104,14 +114,18 @@ class TablesForGeneCalls(Table):
 
                     (...)
                 }
+
+            All entries are required except "aa_sequence", which is optional. If provided, it should
+            be present for ALL entries, even if it is an empty string. It's presence will be used to
+            populate `gene_amino_acid_sequences`.
+
         ignore_internal_stop_codons : bool, False
             If False, ConfigError will be raised if a stop codon is found inside any gene. If True,
             this is suppressed and the stop codon is replaced with the character `X`.
+
         skip_amino_acid_sequences : bool, False
             Should the gene_amino_acid_sequences table be populated? This may be useful if genes
             that are not translated are being added, such as ribosomal RNA genes, etc.
-        store_partial_amino_acid_sequences : bool, False
-            Should partial genes have reported amino acid sequences?
         """
 
         # by default we assume that this is a pristine run. but if the user sends a dictionary
@@ -126,6 +140,14 @@ class TablesForGeneCalls(Table):
 
             # congrats, we have a dict.
             gene_calls_found = True
+
+            has_aa_seq =  lambda x: True if 'aa_sequence' in x else False
+            num_with_aa_seqs = sum([has_aa_seq(gene_call) for gene_call in gene_calls_dict.values()])
+            num_gene_calls = len(gene_calls_dict)
+            if num_with_aa_seqs != 0 and num_with_aa_seqs != num_gene_calls:
+                raise ConfigError("The gene_calls_dict passed to use_external_gene_calls_to_populate_genes_in_contigs_table\
+                                   has %d entries with 'aa_sequence' and %d without. Either 0 or all (%d) should have \
+                                   'aa_sequence'" % (num_with_aa_seqs, num_gene_calls-num_with_aa_seqs, num_gene_calls))
 
             if not len(gene_calls_dict):
                 # but it is empty ... silly user.
@@ -146,10 +168,17 @@ class TablesForGeneCalls(Table):
 
         # take care of gene calls dict
         if not gene_calls_found:
+            expected_fields = t.genes_in_contigs_table_structure
+            column_mapping = [int, str, int, int, str, int, str, str]
+
+            if 'aa_sequence' in utils.get_columns_of_TAB_delim_file(input_file_path):
+                expected_fields = t.genes_in_contigs_table_structure + ['aa_sequence']
+                column_mapping.append(lambda x: '' if x is None else str(x)) # str(None) is 'None', amazingly
+
             gene_calls_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_path,
-                                                                         expected_fields=t.genes_in_contigs_table_structure,
+                                                                         expected_fields=expected_fields,
                                                                          only_expected_fields=True,
-                                                                         column_mapping=[int, str, int, int, str, int, str, str])
+                                                                         column_mapping=column_mapping)
 
             if not len(gene_calls_dict):
                 raise ConfigError("You provided an external gene calls file, but it returned zero gene calls. Assuming that\
@@ -177,29 +206,30 @@ class TablesForGeneCalls(Table):
             amino_acid_sequences = self.get_amino_acid_sequences_for_genes_in_gene_calls_dict(
                 gene_calls_dict,
                 ignore_internal_stop_codons=ignore_internal_stop_codons,
-                store_partial_amino_acid_sequences=store_partial_amino_acid_sequences
             )
 
         # populate genes_in_contigs, and gene_amino_acid_sequences table in contigs db.
         self.populate_genes_in_contigs_table(gene_calls_dict, amino_acid_sequences, append_to_the_db=append_to_the_db)
 
 
-    def get_amino_acid_sequences_for_genes_in_gene_calls_dict(self, gene_calls_dict, ignore_internal_stop_codons=False, store_partial_amino_acid_sequences=False):
+    def get_amino_acid_sequences_for_genes_in_gene_calls_dict(self, gene_calls_dict, ignore_internal_stop_codons=False):
         '''Recover amino acid sequences for gene calls in a gene_calls_dict.
+
+        If 'aa_sequence' exists as keys in the gene_calls_dict[<key>] objects, this trivially
+        reorganizes the data and returns a sequence dictionary. Otherwise, the sequence dictionary
+        is created by reading all contig sequences into memory. Anvi'o is doing a pretty bad job
+        with memory management in this case :(
 
         Parameters
         ==========
         ignore_internal_stop_codons : bool, False
             If False, ConfigError will be raised if a stop codon is found inside any gene. If True,
             this is suppressed and the stop codon is replaced with the character `X`.
-        store_partial_amino_acid_sequences : bool, False
-            Should partial genes have reported amino acid sequences?
-
-        Notes
-        =====
-        - During this operation we read all contig sequences into the damn memory. anvi'o is doing a
-          pretty bad job with memory management :(
         '''
+
+        if 'aa_sequence' in gene_calls_dict[list(gene_calls_dict.keys())[0]]:
+            # we already have AA sequences
+            return {gene_caller_id: info['aa_sequence'] for gene_caller_id, info in gene_calls_dict.items()}
 
         amino_acid_sequences = {}
 
@@ -228,10 +258,9 @@ class TablesForGeneCalls(Table):
                                     does not appear to be in the contigs FASTA file. How did this happen?" % contig_name)
 
             if gene_call['partial']:
+                amino_acid_sequences[gene_callers_id] = ''
                 number_of_impartial_gene_calls += 1
-                if not store_partial_amino_acid_sequences:
-                    amino_acid_sequences[gene_callers_id] = ''
-                    continue
+                continue
 
             sequence = contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
             if gene_call['direction'] == 'r':
@@ -264,12 +293,8 @@ class TablesForGeneCalls(Table):
                                         (num_genes_with_internal_stops, percent_genes_with_internal_stops, len(gene_calls_dict)))
 
         if number_of_impartial_gene_calls:
-            msg = (
-                'hence the translated amino acid sequences for those were not stored in the database.'
-                if not store_partial_amino_acid_sequences
-                else 'but since it was requested, their amino acid sequences were translated and stored regardless.'
-            )
-            self.run.warning('%d of your %d gene calls were impartial, %s' % (number_of_impartial_gene_calls, len(gene_calls_dict), msg))
+            self.run.warning('%d of your %d gene calls were impartial, hence the translated amino acid sequences for those\
+                              were not stored in the database.' % (number_of_impartial_gene_calls, len(gene_calls_dict)))
 
         return amino_acid_sequences
 
@@ -318,14 +343,14 @@ class TablesForGeneCalls(Table):
             database._exec('''DELETE FROM %s''' % (t.gene_amino_acid_sequences_table_name))
         else:
             # so we are in the append mode. We must remove all the previous entries from genes in contigs
-            # that matches to the incoming sources. otherwhise we may end up with many duplicates in the db.
+            # that matches to the incoming sources. otherwise we may end up with many duplicates in the db.
             sources = set([v['source'] for v in gene_calls_dict.values()])
 
             # basically here we will go through those sources, find gene caller ids associated with them in
             # the genes in contigs table, and then remove entries for those gene caller ids both from the
             # genes in contigs and genes in splits tables.
             for source in sources:
-                gene_caller_ids_for_source = database.get_single_column_from_table(t.genes_in_contigs_table_name, 
+                gene_caller_ids_for_source = database.get_single_column_from_table(t.genes_in_contigs_table_name,
                                                                                    'gene_callers_id',
                                                                                    where_clause="""source='%s'""" % source)
 

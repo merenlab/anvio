@@ -303,6 +303,12 @@ D = {
                       requires an explicit mentioning of which one to use. The default is '%s', but it will not be enough if you\
                       if you were a rebel and have used `--external-gene-callers` or something." % constants.default_gene_caller}
                 ),
+    'list-gene-callers': (
+            ['--list-gene-callers'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "List available gene callers in the contigs database and quit."}
+                ),
     'ignore-internal-stop-codons': (
             ['--ignore-internal-stop-codons'],
             {'default': False,
@@ -314,15 +320,6 @@ D = {
                       not judge you. Instead, it will replace every stop codon residue in the amino acid sequence with an 'X' character.\
                       Please let us know if you used this and things failed, so we can tell you that you shouldn't have really used it\
                       if you didn't like failures at the first place (smiley)."}
-                ),
-    'store-partial-amino-acid-sequences': (
-            ['--store-partial-amino-acid-sequences'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "This is only relevant when you have an external gene calls file. If any genes in your external gene calls file\
-                      are partial, by default their sequences will not be translated, and therefore there will be no amino acid\
-                      sequences stored for such genes. Provide this flag to translate them anyways and store their amino acid\
-                      sequences, even though they may be out of frame."}
                 ),
     'get-samples-stats-only': (
             ['--get-samples-stats-only'],
