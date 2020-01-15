@@ -1320,8 +1320,8 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         SCGTaxonomyContext.__init__(self, self.args)
 
         self.max_target_seqs = 20
-        self.evalue = 1e-05
-        self.min_pct_id = 90
+        self.evalue = float(A('e_value')) if A('e_value') else 1e-05
+        self.min_pct_id = float(A('min_percent_identity')) if A('min_percent_identity') else 90
 
         self.taxonomy_dict = OrderedDict()
 
@@ -1389,7 +1389,8 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
 
         self.run.warning('', header='Parameters for DIAMOND blastp', lc='green')
         self.run.info('Max number of target sequences', self.max_target_seqs)
-        self.run.info('Min bit score to report alignments', self.min_pct_id)
+        self.run.info('Max e-value to report alignments', self.evalue)
+        self.run.info('Min percent identity to report alignments', self.min_pct_id)
         self.run.info('Num aligment tasks running in parallel', self.num_parallel_processes)
         self.run.info('Num CPUs per aligment task', self.num_threads)
         self.run.info('Log file path', log_file_path)
