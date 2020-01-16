@@ -80,7 +80,7 @@ def main(args):
 
     # also append amino acid sequences
     if not args.skip_sequence_reporting:
-        gene_caller_ids_of_interest = gene_calls.index.to_list()
+        gene_caller_ids_of_interest = list(gene_calls.index.values)
         gene_calls['aa_sequence'] = gene_calls.index.map(get_aa_seq_dict(contigs_db, gene_caller_ids_of_interest))
 
     utils.store_dataframe_as_TAB_delimited_file(gene_calls, args.output_file, include_index=True, index_label='gene_callers_id')
