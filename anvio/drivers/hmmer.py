@@ -127,8 +127,10 @@ class HMMer:
                                            % (log_file_path, 'http://hmmer.janelia.org/download.html'))
             self.progress.end()
         else:
-            # check if bunhc of files with different extensions are
-            # in the same directory with hmm
+            # check if all hmmpress files are in the HMM directory
+            self.verify_hmmpress_output(hmm)
+            # we may want to throw a more descriptive error *here* instead of failing in the verify function 
+
             print("HMMSCAN run in place not implemented yet")
 
 
