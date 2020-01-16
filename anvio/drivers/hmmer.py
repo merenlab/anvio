@@ -70,7 +70,7 @@ class HMMer:
                     raise ConfigError("It appears that hmmpress was not properly run on the hmm profiles at %s. The \
                                         file %s does not exist. It is likely that you will have to set up your profiles \
                                         again by running a program such as `anvi-setup-pfams` or `anvi-setup-kegg-kofams`. \
-                                        We are very sorry about this." % (hmm_path, base_path + ext)
+                                        We are very sorry about this." % (hmm_path, base_path + ext))
 
 
     def run_hmmscan(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms, in_place=False):
