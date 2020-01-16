@@ -50,6 +50,7 @@ anvi-db-info $output_dir/CONTIGS.db \
 
 INFO "Exporting gene calls from the contigs database"
 anvi-export-gene-calls -c $output_dir/CONTIGS.db \
+                       --gene-caller prodigal \
                        -o $output_dir/exported_gene_calls.txt
 
 INFO "Exporting contig sequences from the contigs database"
