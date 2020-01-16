@@ -676,8 +676,7 @@ class MODELLER:
                 raise ConfigError("The executable you requested is called `%s`, but anvi'o doesn't agree with you that\
                                    it is a working MODELLER program. That was determined by running the command `%s`, which raised the\
                                    error seen above. If you want to specify a specific MODELLER program, you can specify it with\
-                                   `--modeller-executable`."
-                                       % (self.executable, " ".join(command)))
+                                   `--modeller-executable`." % (self.executable, " ".join(command)))
 
         # no error was raised. now check if output file exists
         try:
