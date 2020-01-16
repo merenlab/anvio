@@ -206,6 +206,8 @@ class Pfam(object):
         in_place = True
         if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')):
             in_place = False
+            self.run.warning("Anvi'o has detected that your Pfam database is currently compressed. It will be unpacked before \
+                                running HMMs.")
         return in_place
 
 
