@@ -379,7 +379,7 @@ class MODELLER:
         os.chdir(self.start_dir)
 
 
-    def tidyup(self): 
+    def tidyup(self):
         """
         get_model.py has been ran. Some of the files in here are unnecessary, some of the names are
         disgusting. rename from "2.B99990001.pdb" to "gene_2_Model001.pdb" if normal model. Rename
@@ -461,7 +461,7 @@ class MODELLER:
                    str(int(very_fast)),
                    self.model_info_path]
 
-        self.run_command(command, 
+        self.run_command(command,
                          script_name = script_name,
                          progress_update = "Calculating 3D model(s)",
                          check_output = [self.model_info_path])
@@ -508,10 +508,10 @@ class MODELLER:
                    self.alignment_pap_path,
                    self.template_family_matrix_path]
 
-        self.run_command(command, 
-                         script_name = script_name, 
+        self.run_command(command,
+                         script_name = script_name,
                          progress_update = "Aligning sequence to template structures",
-                         check_output = [self.alignment_pir_path, 
+                         check_output = [self.alignment_pir_path,
                                          self.alignment_pap_path,
                                          self.template_family_matrix_path])
 
@@ -539,8 +539,8 @@ class MODELLER:
                    self.database_path,
                    self.search_results_path]
 
-        self.run_command(command, 
-                         script_name = script_name, 
+        self.run_command(command,
+                         script_name = script_name,
                          progress_update = "Searching DB for sequence homologs",
                          check_output = [self.search_results_path])
 
@@ -607,8 +607,8 @@ class MODELLER:
                    pir_db_path,
                    bin_db_path]
 
-        self.run_command(command, 
-                         script_name = script_name, 
+        self.run_command(command,
+                         script_name = script_name,
                          progress_update = "Binarizing database",
                          check_output=[bin_db_path])
 
@@ -621,7 +621,7 @@ class MODELLER:
         that script_name is in anvio/data/misc/MODELLER/scripts/ and then copies the script into
         self.directory. Why copy into self.directory? Whenever a script is ran by MODELLER, a log
         file is output in the directory of the script. By copying the script into self.directory,
-        the log is written there instead of anvio/data/misc/MODELLER/scripts/. 
+        the log is written there instead of anvio/data/misc/MODELLER/scripts/.
         """
         if not directory:
             directory = self.directory
@@ -706,9 +706,9 @@ class MODELLER:
                    self.target_fasta_path,
                    self.target_pir_path]
 
-        self.run_command(command, 
-                         script_name = script_name, 
-                         progress_update = "Convert FASTA to MODELLER format", 
+        self.run_command(command,
+                         script_name = script_name,
+                         progress_update = "Convert FASTA to MODELLER format",
                          check_output = [self.target_pir_path])
 
         self.run.info("Target alignment file", os.path.basename(self.target_pir_path), progress=self.progress)
@@ -733,7 +733,7 @@ class MODELLER:
         output, error = process.communicate()
 
         # if MODELLER script gave a traceback, it is caught here and everything is stopped
-        if process.returncode: 
+        if process.returncode:
             self.progress.end()
             error = error.decode('utf-8').strip()
 
