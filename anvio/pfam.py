@@ -169,6 +169,9 @@ class PfamSetup(object):
                 if ret_val:
                     raise ConfigError("Hmm. There was an error while running `hmmpress` on the Pfam HMM profiles. \
                                         Check out the log file ('%s') to see what went wrong." % (log_file_path))
+                else:
+                    # getting rid of the log file because hmmpress was successful
+                    os.remove(log_file_path)
 
 class Pfam(object):
     def __init__(self, args, run=run, progress=progress):
