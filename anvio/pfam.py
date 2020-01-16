@@ -146,9 +146,13 @@ class PfamSetup(object):
                     os.remove(full_path)
 
             for file_path in glob.glob(os.path.join(self.pfam_data_dir, '*.hmm')):
-                print("HMMPRESS Not implemented here yet")
-                print(file_path)
-                #TODO HMMPRESS HERE.
+                cmd_line = ['hmmpress', file_path]
+                log_file_path = os.path.join(self.pfam_data_dir, '00_hmmpress_log.txt')
+                ret_val = utils.run_command(cmd_line, log_file_path)
+
+                if ret_val:
+                    raise ConfigError("Hmm. There was an error while running `hmmpress` on the Pfam HMM profiles. \
+                                        Check out the log file ('%s') to see what went wrong." % (log_file_path))
 
 class Pfam(object):
     def __init__(self, args, run=run, progress=progress):
