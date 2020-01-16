@@ -150,6 +150,14 @@ class PfamSetup(object):
                 full_path = os.path.join(self.pfam_data_dir, file_name)
 
                 if full_path.endswith('.gz'):
+                    if not os.path.exists(full_path) and os.path.exists(full_path[:-3]):
+                        self.run.warning("It seems the file at %s is already de-compressed. Perhaps you already downloaded the Pfam profiles. \
+                        If you want to re-do the Pfam setup, please run this program again and use the --reset flag." \
+                        % (full_path[:-3]))
+                        continue
+                    elif not os.path.exists(full_path):
+                        raise ConfigError("Oh no. The file at %s does not exist. Something is terribly wrong. :( Anvi'o suggests re-running \
+                        this program using the --reset flag." % (full_path))
                     utils.gzip_decompress_file(full_path)
                     os.remove(full_path)
 
