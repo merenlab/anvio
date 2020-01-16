@@ -1484,16 +1484,17 @@ def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
     for i, element in enumerate(seq[:-1]):
         if element in end_chars:
             l, r = min([i, 3]), min([len(seq[:-1])-i, 3])
-            raise ConfigError(error_msg_template % "Premature stop codon at %dth codon \
-                              position (counting from 0). Here is the position in the \
-                              context of the sequence: ...%s[%s]%s..." % \
-                              (i, ''.join(seq[:-1][i-l:i]), element, ''.join(seq[:-1][i+1:i+r+1])))
+            error_msg = error_msg_template % "Premature stop codon at %dth codon position (counting from 0).\
+                                              Here is the position in the context of the sequence: ...%s[%s]%s..." \
+                                                % (i, ''.join(seq[:-1][i-l:i]), element, ''.join(seq[:-1][i+1:i+r+1]))
+            raise ConfigError(error_msg)
+
         if element not in permissible_chars:
             l, r = min([i, 3]), min([len(seq[:-1])-i, 3])
-            raise ConfigError(error_msg_template % "%s at %dth codon position (counting from zero) \
-                              isn't a valid sequence element. Here is the position in the \
-                              context of the sequence: ...%s[%s]%s..." % \
-                              (element, i, ''.join(seq[:-1][i-l:i]), element, ''.join(seq[:-1][i+1:i+r+1])))
+            error_msg = error_msg_template % "%s at %dth codon position (counting from zero) isn't a valid sequence\
+                                              element. Here is the position in the context of the sequence: ...%s[%s]%s..." \
+                                                % (element, i, ''.join(seq[:-1][i-l:i]), element, ''.join(seq[:-1][i+1:i+r+1]))
+            raise ConfigError(error_msg)
 
     if seq[-1] in end_chars:
         if not can_end_with_stop:
