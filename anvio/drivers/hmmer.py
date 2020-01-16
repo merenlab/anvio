@@ -73,14 +73,14 @@ class HMMer:
         self.run.info('Noise cutoff term(s)', noise_cutoff_terms)
         self.run.info('Number of CPUs will be used for search', self.num_threads_to_use)
 
-        # we want to create hmm files in the same direcotry
-        tmp_dir = os.path.dirname(self.target_files_dict[target][0])
-        log_file_path = os.path.join(tmp_dir, '00_log.txt')
-
-        self.run.info('Temporary work dir', tmp_dir)
-        self.run.info('Log file', log_file_path)
-
         if not in_place:
+            # we want to create hmm files in the same direcotry
+            tmp_dir = os.path.dirname(self.target_files_dict[target][0])
+            log_file_path = os.path.join(tmp_dir, '00_log.txt')
+
+            self.run.info('Temporary work dir', tmp_dir)
+            self.run.info('Log file', log_file_path)
+            
             self.progress.new('Unpacking the model into temporary work directory')
             self.progress.update('...')
             hmm_file_path = os.path.join(tmp_dir, source + '_hmm.txt') # referenced below, likely needs to move
