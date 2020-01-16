@@ -64,8 +64,9 @@ def main(args):
             raise ConfigError(msg + "Here are the list of gene caller IDs that's making anvi'o upset: %s" % \
                                     (", ".join([str(g) for g in missing_gene_caller_ids])))
         else:
-            raise ConfigError(msg + "Since this can be a long list in some cases, anvi'o\
-                              will not show you what they are. Unless you use the `--debug` flag.")
+            error_msg = msg + "Since this can be a long list in some cases, anvi'o will not show you what\
+                               they are. Unless you use the `--debug` flag."
+            raise ConfigError(error_msg)
 
     r = ReadsMappingToARange(run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
 
