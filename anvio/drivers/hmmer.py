@@ -133,12 +133,11 @@ class HMMer:
             self.progress.end()
         else:
             # check if all hmmpress files are in the HMM directory
+            self.run.warning('Verifying that %s HMM profiles have been set up properly' % source, lc='green')
             self.verify_hmmpress_output(hmm)
             # we may want to throw a more descriptive error *here* instead of failing in the verify function
 
             hmm_file_path = hmm
-
-            print("HMMSCAN run in place not implemented yet")
 
 
         workers = []
