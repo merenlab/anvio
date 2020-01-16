@@ -6,6 +6,7 @@ import io
 import gzip
 import shutil
 from threading import Thread, Lock
+import glob
 
 import anvio
 import anvio.utils as utils
@@ -50,6 +51,28 @@ class HMMer:
                                                                parts=self.num_threads_to_use,
                                                                prefix=part_file_name)
 
+    def verify_hmmpress_output(self, hmm_path):
+        """This function verifies that the HMM profiles located at hmm_path have been successfully hmmpressed.
+        What this means is that every .hmm profile in the directory has an associated .h3f, .h3i, .h3m, and
+        .h3p file.
+
+        PARAMETERS:
+        hmm_path    string, the path at which the HMM profiles are located
+
+        RETURNS: N/A
+
+        """
+        for file_path in glob.glob(os.path.join(hmm_path, '*.hmm')):
+            base_path = file_path[:-3]
+            expected_extensions = ['h3f', 'h3i', 'h3m', 'h3p']
+            for ext in expected_extensions:
+                if not os.path.exists(base_path + ext):
+                    raise ConfigError("It appears that hmmpress was not properly run on the hmm profiles at %s. The \
+                                        file %s does not exist. It is likely that you will have to set up your profiles \
+                                        again by running a program such as `anvi-setup-pfams` or `anvi-setup-kegg-kofams`. \
+                                        We are very sorry about this." % (hmm_path, base_path + ext)
+
+
     def run_hmmscan(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms, in_place=False):
         target = ':'.join([alphabet, context])
 
@@ -80,7 +103,7 @@ class HMMer:
 
             self.run.info('Temporary work dir', tmp_dir)
             self.run.info('Log file', log_file_path)
-            
+
             self.progress.new('Unpacking the model into temporary work directory')
             self.progress.update('...')
             hmm_file_path = os.path.join(tmp_dir, source + '_hmm.txt') # referenced below, likely needs to move
