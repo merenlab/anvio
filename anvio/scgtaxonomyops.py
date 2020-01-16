@@ -441,7 +441,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         self.frequency_of_scgs_with_taxonomy = OrderedDict(sorted([(g, len(self.scg_name_to_gene_caller_id_dict[g])) for g in self.scg_name_to_gene_caller_id_dict], key = lambda x: x[1], reverse=True))
 
         if self.metagenome_mode or anvio.DEBUG:
-            self.run.info_single("A total of %s single-copy core genes with taxonomic affiliations were successfuly initialized\
+            self.run.info_single("A total of %s single-copy core genes with taxonomic affiliations were successfully initialized\
                                   from the contigs database 🎉 Following shows the frequency of these SCGs: %s." % \
                                             (pp(len(self.gene_callers_id_to_scg_taxonomy_dict)),
                                              ', '.join(["%s (%d)" % (g, self.frequency_of_scgs_with_taxonomy[g]) \
@@ -670,7 +670,7 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
         bin_name_to_split_names_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
         self.run.info_single("%s split names associated with %s bins of in collection '%s' have been \
-                              successfuly recovered 🎊" % (pp(sum([len(v) for v in bin_name_to_split_names_dict.values()])),
+                              successfully recovered 🎊" % (pp(sum([len(v) for v in bin_name_to_split_names_dict.values()])),
                                                            pp(len(bin_name_to_split_names_dict)),
                                                            self.collection_name), nl_before=1)
 
