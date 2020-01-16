@@ -541,7 +541,7 @@ anvi-get-short-reads-mapping-to-a-gene -c $output_dir/CONTIGS.db \
 INFO "Get AA counts for the entire contigs database"
 anvi-get-aa-counts -c $output_dir/CONTIGS.db \
                    -o $output_dir/aa_counts_for_contigs_db.txt
-SHOW_FILE -t $output_dir/aa_counts_for_contigs_db.txt
+SHOW_FILE $output_dir/aa_counts_for_contigs_db.txt
 
 INFO "Get AA counts for bins in collection CONCOCT stored in the merged profile"
 anvi-get-aa-counts -c $output_dir/CONTIGS.db \
