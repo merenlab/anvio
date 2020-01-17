@@ -23,9 +23,9 @@ def migrate(config_path):
     workflow_name, version = w.get_workflow_name_and_version_from_config(config_path, dont_raise=True)
 
     if not workflow_name:
-        raise ConfigError('Your config must include a workflow_name. For example\
-                           if this config file is used for the metagenomics workflow\
-                           then add \'"workflow_name": "metagenomics"\' to your config.')
+        raise ConfigError('Your config must include a workflow_name. For example '
+                          'if this config file is used for the metagenomics workflow '
+                          'then add \'"workflow_name": "metagenomics"\' to your config.')
 
     if version != current_version:
         raise ConfigError("Version of this config file is not %s (hence, this script cannot really do anything)." % current_version)

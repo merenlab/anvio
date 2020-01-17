@@ -104,8 +104,8 @@ class DAS_Tool:
         missing_collections = source_collections - set(c.collections_dict.keys())
 
         if len(missing_collections):
-            raise ConfigError("Some of the collections you wanted are missing in the database.\
-                              Here is the list of missing collections: %s" % (", ".join(missing_collections)))
+            raise ConfigError("Some of the collections you wanted are missing in the database. "
+                             "Here is the list of missing collections: %s" % (", ".join(missing_collections)))
 
         c_names = []
         c_files = []
@@ -136,8 +136,8 @@ class DAS_Tool:
         output_file_name = 'OUTPUT_DASTool_scaffolds2bin.txt'
         output_file_path = J(output_file_name)
         if not os.path.exists(output_file_path):
-            raise ConfigError("One of the critical output files is missing ('%s'). Please take a look at the\
-                               log file: %s" % (output_file_name, log_path))
+            raise ConfigError("One of the critical output files is missing ('%s'). Please take a look at the "
+                              "log file: %s" % (output_file_name, log_path))
 
         clusters = {}
         with open(output_file_path, 'r') as f:

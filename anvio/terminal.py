@@ -248,8 +248,8 @@ class Run:
 
     def log(self, line):
         if not self.log_file_path:
-            self.warning("The run object got a logging request, but it was not inherited with\
-                          a log file path :(")
+            self.warning("The run object got a logging request, but it was not inherited with "
+                         "a log file path :(")
             return
 
         with open(self.log_file_path, "a") as log_file: log_file.write('[%s] %s\n' % (get_date(), CLEAR(line)))
@@ -405,8 +405,8 @@ class Timer:
             checkpoint_key = self.num_checkpoints + 1
 
         if checkpoint_key in self.checkpoints:
-            raise TerminalError('Timer.make_checkpoint :: %s already exists as a checkpoint key.\
-                                 All keys must be unique' % (str(checkpoint_key)))
+            raise TerminalError('Timer.make_checkpoint :: %s already exists as a checkpoint key. '
+                                'All keys must be unique' % (str(checkpoint_key)))
 
         checkpoint = self.timestamp()
 

@@ -38,8 +38,8 @@ class MetaPangenome(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
         if len([p for p in [A('pan_db'), A('genomes_storage')] if not p]):
-            raise ConfigError("MetaPangenome class should be inherited with an `args` object that contains\
-                               an anvi'o pan database (`pan_db`), genomes storage (`genomes_storage`) :/")
+            raise ConfigError("MetaPangenome class should be inherited with an `args` object that contains "
+                              "an anvi'o pan database (`pan_db`), genomes storage (`genomes_storage`) :/")
 
         self.pan_db_path = A('pan_db')
         self.genomes_storage_path = A('genomes_storage')
@@ -94,22 +94,22 @@ class MetaPangenome(object):
         self.descriptions = genomedescriptions.GenomeDescriptions(self.args)
 
         if len(self.descriptions.external_genomes_dict):
-            raise ConfigError("Anvi'o doesn't know how you did it, but you managed to inherit this class with an\
-                               `args` object that describes external genomes. Unfortunately anvi'o metapangneomic\
-                               workflow only works with internal genomes since it is all about making sense of\
-                               pangenomes in the context of metageomes. So this is not really working for us :(")
+            raise ConfigError("Anvi'o doesn't know how you did it, but you managed to inherit this class with an "
+                              "`args` object that describes external genomes. Unfortunately anvi'o metapangneomic "
+                              "workflow only works with internal genomes since it is all about making sense of "
+                              "pangenomes in the context of metageomes. So this is not really working for us :(")
 
         if len(set([g['profile_db_path'] for g in list(self.descriptions.internal_genomes_dict.values())])) > 1:
-            raise ConfigError("There are multiple profile databases in your internal genomes file. We are simply\
-                               not ready to deal with this complexity. If you think this is a mistake, let us know\
-                               and we will work with you to make anvi'o work with multiple profile databases (in\
-                               fact anvi'o is able to make sense of internal genomes across multiple profile\
-                               databases, but we haven't tested it to understand potential caveats associated\
-                               with that level of complexity).")
+            raise ConfigError("There are multiple profile databases in your internal genomes file. We are simply "
+                              "not ready to deal with this complexity. If you think this is a mistake, let us know "
+                              "and we will work with you to make anvi'o work with multiple profile databases (in "
+                              "fact anvi'o is able to make sense of internal genomes across multiple profile "
+                              "databases, but we haven't tested it to understand potential caveats associated "
+                              "with that level of complexity).")
 
         if len(set([g['collection_id'] for g in list(self.descriptions.internal_genomes_dict.values())])) > 1:
-            raise ConfigError("For the sake of simplicity, we expect collection names to be identical in a given\
-                               internal genomes file. Anvi'o is kind of a paranoid, and it apologizes for it.")
+            raise ConfigError("For the sake of simplicity, we expect collection names to be identical in a given "
+                              "internal genomes file. Anvi'o is kind of a paranoid, and it apologizes for it.")
 
         self.descriptions.load_genomes_descriptions(skip_functions=True)
 
@@ -278,8 +278,8 @@ class MetaPangenome(object):
                 for gene_caller_id in self.pan_summary.gene_clusters[gene_cluster_name][internal_genome_name]:
                     if genome_name not in gene_presence_in_the_environment_dict:
                         self.progress.end()
-                        raise ConfigError("Something is wrong... It seems you generated a pangenome with an internal genomes file\
-                                           that is not identical to the internal genomes file you are using to run this program.")
+                        raise ConfigError("Something is wrong... It seems you generated a pangenome with an internal genomes file "
+                                          "that is not identical to the internal genomes file you are using to run this program.")
 
                     status[gene_presence_in_the_environment_dict[genome_name][gene_caller_id]] += 1
             gene_status_frequencies_in_gene_cluster[gene_cluster_name] = status

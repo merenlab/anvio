@@ -41,8 +41,8 @@ def main(args):
     utils.is_contigs_db(args.contigs_db)
 
     if not args.output_file:
-        raise ConfigError("You should provide an output file name so anvi'o does not have to make up a silly\
-                            name :/")
+        raise ConfigError("You should provide an output file name so anvi'o does not have to make up a silly "
+                           "name :/")
 
     filesnpaths.is_output_file_writable(args.output_file)
 
@@ -60,14 +60,14 @@ def main(args):
         sys.exit()
 
     if not args.gene_caller:
-        raise ConfigError("Please provide one or more comma-separated gene callers (--gene-caller). Use \
-                           --list-gene-callers to see your options")
+        raise ConfigError("Please provide one or more comma-separated gene callers (--gene-caller). Use "
+                          "--list-gene-callers to see your options")
 
     requested_sources = args.gene_caller.split(',')
     for requested_source in requested_sources:
         if requested_source not in available_sources:
-            raise ConfigError("%s is not a gene caller in the contigs database. Here is a list of available \
-                              gene callers: %s." % (requested_source, ','.join(available_sources)))
+            raise ConfigError("%s is not a gene caller in the contigs database. Here is a list of available "
+                             "gene callers: %s." % (requested_source, ','.join(available_sources)))
 
     run.info('Gene callers that will be used', ', '.join(requested_sources))
 

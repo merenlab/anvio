@@ -54,8 +54,8 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         self.run.warning(None, 'New %s additional data...' % self.target, lc="yellow")
         keys_already_in_db = [c for c in data_keys_list if c in self.additional_data_keys]
         if len(keys_already_in_db):
-            self.run.warning('The following keys in your data dict will replace the ones that are already\
-                              in your database: %s.' % (', '.join(keys_already_in_db)))
+            self.run.warning('The following keys in your data dict will replace the ones that are already '
+                             'in your database: %s.' % (', '.join(keys_already_in_db)))
 
             self.remove(keys_already_in_db)
 

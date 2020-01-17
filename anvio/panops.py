@@ -168,12 +168,12 @@ class Pangenome(object):
     def check_project_name(self):
         # check the project name:
         if not self.project_name:
-            raise ConfigError("Please set a project name using the `--project-name` parameter, and be prepared to see\
-                               it around as anvi'o will use it for multiple things, such as setting the output directory\
-                               and naming various output files including the database file that will be generated at the\
-                               end of the process. If you set your own output directory name, you can have multiple\
-                               projects in it and all of those projects can use the same intermediate files whenever\
-                               possible.")
+            raise ConfigError("Please set a project name using the `--project-name` parameter, and be prepared to see "
+                              "it around as anvi'o will use it for multiple things, such as setting the output directory "
+                              "and naming various output files including the database file that will be generated at the "
+                              "end of the process. If you set your own output directory name, you can have multiple "
+                              "projects in it and all of those projects can use the same intermediate files whenever "
+                              "possible.")
 
         utils.is_this_name_OK_for_database('pan project name', self.project_name, stringent=False)
 
@@ -208,17 +208,17 @@ class Pangenome(object):
             raise ConfigError("Minimum percent identity value must be of type float :(")
 
         if self.min_percent_identity < 0 or self.min_percent_identity > 100:
-            raise ConfigError("Minimum percent identity must be between 0%% and 100%%. Although your %.2f%% is\
-                               pretty cute, too." % self.min_percent_identity)
+            raise ConfigError("Minimum percent identity must be between 0%% and 100%%. Although your %.2f%% is "
+                              "pretty cute, too." % self.min_percent_identity)
 
 
         if len([c for c in list(self.genomes.values()) if 'genome_hash' not in c]):
-            raise ConfigError("self.genomes does not seem to be a properly formatted dictionary for\
-                               the anvi'o class Pangenome.")
+            raise ConfigError("self.genomes does not seem to be a properly formatted dictionary for "
+                              "the anvi'o class Pangenome.")
 
         if self.enforce_hierarchical_clustering and self.skip_hierarchical_clustering:
-            raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering\
-                               while also asking it to enforce it.")
+            raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering "
+                              "while also asking it to enforce it.")
 
         if self.description_file_path:
             filesnpaths.is_file_plain_text(self.description_file_path)
@@ -241,9 +241,9 @@ class Pangenome(object):
 
 
     def run_blast(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
-        self.run.warning("You elected to use NCBI's blastp for amino acid sequence search. Running blastp will \
-                          be significantly slower than DIAMOND (although, anvi'o developers are convinced that \
-                          you *are* doing the right thing, so, kudos to you).")
+        self.run.warning("You elected to use NCBI's blastp for amino acid sequence search. Running blastp will "
+                         "be significantly slower than DIAMOND (although, anvi'o developers are convinced that "
+                         "you *are* doing the right thing, so, kudos to you).")
         blast = BLAST(unique_AA_sequences_fasta_path, run=self.run, progress=self.progress,
                           num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 
@@ -298,8 +298,8 @@ class Pangenome(object):
                     [mapping[i](fields[i]) for i in range(0, len(mapping))]
             except Exception as e:
                 self.progress.end()
-                raise ConfigError("Something went wrong while processing the blastall output file in line %d.\
-                                    Here is the error from the uppoer management: '''%s'''" % (line_no, e))
+                raise ConfigError("Something went wrong while processing the blastall output file in line %d. "
+                                   "Here is the error from the uppoer management: '''%s'''" % (line_no, e))
             line_no += 1
             all_ids.add(query_id)
             all_ids.add(subject_id)
@@ -312,10 +312,10 @@ class Pangenome(object):
         ids_without_self_search = all_ids - set(self_bit_scores.keys())
         if len(ids_without_self_search):
             search_tool = 'BLAST' if self.use_ncbi_blast else 'DIAMOND'
-            self.run.warning("%s did not retun search results for %d of %d the amino acid sequences in your input FASTA file.\
-                              Anvi'o will do some heuristic magic to complete the missing data in the search output to recover\
-                              from this. But since you are a scientist, here are the amino acid sequence IDs for which %s\
-                              failed to report self search results: %s." \
+            self.run.warning("%s did not retun search results for %d of %d the amino acid sequences in your input FASTA file. "
+                             "Anvi'o will do some heuristic magic to complete the missing data in the search output to recover "
+                             "from this. But since you are a scientist, here are the amino acid sequence IDs for which %s "
+                             "failed to report self search results: %s." \
                                                     % (search_tool, len(ids_without_self_search), len(all_ids), \
                                                        search_tool, ', '.join(ids_without_self_search)))
 
@@ -331,8 +331,8 @@ class Pangenome(object):
             try:
                 genome_name = self.hash_to_genome_name[entry_hash]
             except KeyError:
-                raise ConfigError("Something horrible happened. This can only happend if you started a new analysis with\
-                                    additional genomes without cleaning the previous work directory. Sounds familiar?")
+                raise ConfigError("Something horrible happened. This can only happend if you started a new analysis with "
+                                   "additional genomes without cleaning the previous work directory. Sounds familiar?")
 
             # divide the DNA length of the gene by three to get the AA length, and multiply that by two to get an approximate
             # bit score that would have recovered from a perfect match
@@ -453,16 +453,16 @@ class Pangenome(object):
         ########################################################################################
         if len(gene_clusters_dict) > self.max_num_gene_clusters_for_hierarchical_clustering:
             if self.enforce_hierarchical_clustering:
-                self.run.warning("You have %s gene_clusters, which exceeds the number of gene_clusters anvi'o is comfortable to cluster. But\
-                                  since you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt\
-                                  to create a hierarchical clustering of your gene_clusters anyway. It may take a bit of \
-                                  time. Pour yourself a coffee. Or go to a nice vacation. See you in 10 mins, or next year \
-                                  or never." % pp(len(gene_clusters_dict)))
+                self.run.warning("You have %s gene_clusters, which exceeds the number of gene_clusters anvi'o is comfortable to cluster. But "
+                                 "since you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt "
+                                 "to create a hierarchical clustering of your gene_clusters anyway. It may take a bit of "
+                                 "time. Pour yourself a coffee. Or go to a nice vacation. See you in 10 mins, or next year "
+                                 "or never." % pp(len(gene_clusters_dict)))
             else:
-                self.run.warning("It seems you have %s gene clusters in your pangenome. This exceeds the soft limit\
-                                  of %s for anvi'o to attempt to create a hierarchical clustering of your gene clusters\
-                                  (which becomes the center tree in all anvi'o displays). If you want a hierarchical\
-                                  clustering to be done anyway, please see the flag `--enforce-hierarchical-clustering`." \
+                self.run.warning("It seems you have %s gene clusters in your pangenome. This exceeds the soft limit "
+                                 "of %s for anvi'o to attempt to create a hierarchical clustering of your gene clusters "
+                                 "(which becomes the center tree in all anvi'o displays). If you want a hierarchical "
+                                 "clustering to be done anyway, please see the flag `--enforce-hierarchical-clustering`." \
                                             % (pp(len(gene_clusters_dict)), pp(self.max_num_gene_clusters_for_hierarchical_clustering)))
                 self.skip_hierarchical_clustering = True
 
@@ -670,10 +670,10 @@ class Pangenome(object):
                     % len(self.genomes))
 
         if self.skip_alignments and self.align_with:
-            raise ConfigError("You are asking anvi'o to skip aligning sequences within your gene clusters, and then you \
-                               are also asking it to use '%s' for aligning sequences within your gene clusters. It is easy \
-                               to ignore this and skip the alignment, but anvi'o gets nervous when it realizes her users are \
-                               being inconsistent. Please make up your mind, and come back as the explicit person you are" \
+            raise ConfigError("You are asking anvi'o to skip aligning sequences within your gene clusters, and then you "
+                              "are also asking it to use '%s' for aligning sequences within your gene clusters. It is easy "
+                              "to ignore this and skip the alignment, but anvi'o gets nervous when it realizes her users are "
+                              "being inconsistent. Please make up your mind, and come back as the explicit person you are" \
                                                                             % self.align_with)
 
         self.check_params()
@@ -720,8 +720,8 @@ class Pangenome(object):
                     genome_name = self.hash_to_genome_name[entry_hash]
                 except KeyError:
                     self.progress.end()
-                    raise ConfigError("Something horrible happened. This can only happen if you started a new analysis with\
-                                        additional genomes without cleaning the previous work directory. Sounds familiar?")
+                    raise ConfigError("Something horrible happened. This can only happen if you started a new analysis with "
+                                       "additional genomes without cleaning the previous work directory. Sounds familiar?")
 
                 gene_clusters_dict[gene_cluster].append({'gene_caller_id': int(gene_caller_id), 'gene_cluster_id': gene_cluster, 'genome_name': genome_name, 'alignment_summary': ''})
 
@@ -849,10 +849,10 @@ class Pangenome(object):
                                   anvi'o will generate a FASTA file in a temporary directory with the contents of the\
                                   gene cluster, and will not attempt to delete them later)."
 
-                run.warning("VERY BAD NEWS. The alignment of sequences with '%s' in the gene cluster '%s' failed\
-                             for some reason. Since the real answer to 'why' is too deep in the matrix, there is\
-                             no reliable solution for anvi'o to find it for you, BUT THIS WILL AFFECT YOUR SCIENCE\
-                             GOING FORWARD, SO YOU SHOULD CONSIDER ADDRESSING THIS ISSUE FIRST. %s" % \
+                run.warning("VERY BAD NEWS. The alignment of sequences with '%s' in the gene cluster '%s' failed "
+                            "for some reason. Since the real answer to 'why' is too deep in the matrix, there is "
+                            "no reliable solution for anvi'o to find it for you, BUT THIS WILL AFFECT YOUR SCIENCE "
+                            "GOING FORWARD, SO YOU SHOULD CONSIDER ADDRESSING THIS ISSUE FIRST. %s" % \
                                                        (aligner.__name__, gene_cluster_name, debug_info), nl_before=1)
 
 

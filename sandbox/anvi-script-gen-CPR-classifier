@@ -33,8 +33,8 @@ def main(args):
 
     cols = utils.get_columns_of_TAB_delim_file(args.matrix)
     if cols[0] != "class":
-        raise ConfigError("This file doesn't seem to comply with the expected file format (the second\
-                            column is not 'class').")
+        raise ConfigError("This file doesn't seem to comply with the expected file format (the second "
+                           "column is not 'class').")
 
     d = utils.get_TAB_delimited_file_as_dictionary(args.matrix)
     genome_to_class = dict([(g, d[g]['class']) for g in d])

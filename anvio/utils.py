@@ -270,17 +270,17 @@ def get_port_num(port_num = 0, ip='0.0.0.0', run=run):
         port_num = get_next_available_port_num(constants.default_port_number)
 
         if not port_num:
-            raise ConfigError("Anvi'o searched a bunch of port numbers starting from %d, but failed\
-                                to find an available one for you. Maybe you should specify one :/")
+            raise ConfigError("Anvi'o searched a bunch of port numbers starting from %d, but failed "
+                               "to find an available one for you. Maybe you should specify one :/")
     else:
         if is_port_in_use(port_num):
             raise ConfigError("The port number %d seems to be in use :/" % port_num)
 
     if os.getuid() and port_num < 1024:
-        run.warning("Using the port number %d requires superuser priviliges, which your user does not\
-                     seem to have. Since anvi'o does not know anything about your system configuraiton,\
-                     you are free to go for now. But be prepared for a failed attempt to use this port\
-                     number to serve stuff." % port_num)
+        run.warning("Using the port number %d requires superuser priviliges, which your user does not "
+                    "seem to have. Since anvi'o does not know anything about your system configuraiton, "
+                    "you are free to go for now. But be prepared for a failed attempt to use this port "
+                    "number to serve stuff." % port_num)
 
     return port_num
 
@@ -326,19 +326,19 @@ def is_program_exists(program, dont_raise=False):
     if dont_raise:
         return False
 
-    raise ConfigError("An anvi'o function needs '%s' to be installed on your system, but it doesn't seem to appear\
-                        in your path :/ If you are certain you have it on your system (for instance you can run it\
-                        by typing '%s' in your terminal window), you may want to send a detailed bug report. Sorry!"\
+    raise ConfigError("An anvi'o function needs '%s' to be installed on your system, but it doesn't seem to appear "
+                       "in your path :/ If you are certain you have it on your system (for instance you can run it "
+                       "by typing '%s' in your terminal window), you may want to send a detailed bug report. Sorry!"\
                         % (program, program))
 
 
 def format_cmdline(cmdline):
     """Takes a cmdline for `run_command` or `run_command_STDIN`, and makes it beautiful."""
     if not cmdline or (not isinstance(cmdline, str) and not isinstance(cmdline, list)):
-        raise ConfigError("You made utils::format_cmdline upset. The parameter you sent to run kinda sucks. It should be string\
-                            or list type. Note that the parameter `shell` for subprocess.call in this `run_command` function\
-                            is always False, therefore if you send a string type, it will be split into a list prior to being\
-                            sent to subprocess.")
+        raise ConfigError("You made utils::format_cmdline upset. The parameter you sent to run kinda sucks. It should be string "
+                           "or list type. Note that the parameter `shell` for subprocess.call in this `run_command` function "
+                           "is always False, therefore if you send a string type, it will be split into a list prior to being "
+                           "sent to subprocess.")
 
     if isinstance(cmdline, str):
         cmdline = [str(x) for x in cmdline.split(' ')]
@@ -368,8 +368,8 @@ def gzip_decompress_file(input_file_path, output_file_path=None, keep_original=T
     filesnpaths.is_file_exists(input_file_path)
 
     if not input_file_path.endswith('.gz'):
-        raise ConfigError("gzip_decompress_file function is upset because your input file ('%s') does not\
-                           end with a '.gz' extension :(")
+        raise ConfigError("gzip_decompress_file function is upset because your input file ('%s') does not "
+                          "end with a '.gz' extension :(")
 
     if not output_file_path:
         output_file_path = input_file_path[:-3]
@@ -578,9 +578,9 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
             except KeyError:
                 raise ConfigError("Header ('%s') is not found in the dict :/" % (header))
             except TypeError:
-                raise ConfigError("Your dictionary is not properly formatted to be exported\
-                                    as a TAB-delimited file :/ You ask for '%s', but it is not\
-                                    even a key in the dictionary" % (header))
+                raise ConfigError("Your dictionary is not properly formatted to be exported "
+                                   "as a TAB-delimited file :/ You ask for '%s', but it is not "
+                                   "even a key in the dictionary" % (header))
 
             line.append(str(val) if not isinstance(val, type(None)) else '')
 
@@ -779,8 +779,8 @@ def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expe
                 try:
                     d[index].append(fields[index])
                 except:
-                    raise ConfigError("get_column_data_from_TAB_delim_file is speaking: The file you sent\
-                                        does not have data for the column index %d. Something is wrong :/" % (index))
+                    raise ConfigError("get_column_data_from_TAB_delim_file is speaking: The file you sent "
+                                       "does not have data for the column index %d. Something is wrong :/" % (index))
 
     return d
 
@@ -831,8 +831,8 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     columns = [columns[i] for i in fields_of_interest]
 
     if not len(columns):
-        raise ConfigError("Only a subset (%d) of fields were requested by the caller, but none of them was found\
-                            in the matrix (%s) :/" % (len(cols_to_return), file_path))
+        raise ConfigError("Only a subset (%d) of fields were requested by the caller, but none of them was found "
+                           "in the matrix (%s) :/" % (len(cols_to_return), file_path))
 
     id_counter = 0
     for line in input_matrix.readlines():
@@ -922,8 +922,8 @@ def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_di
     """
     legal_keys = {'mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std'}
     if key not in legal_keys and as_pandas:
-        raise ConfigError("%s is not a valid key for creating a pandas dataframe of values of gene_level_coverage_stats_dict.\
-                            Here is a list of the valid keys: %s" % (key, list(legal_keys)))
+        raise ConfigError("%s is not a valid key for creating a pandas dataframe of values of gene_level_coverage_stats_dict. "
+                           "Here is a list of the valid keys: %s" % (key, list(legal_keys)))
 
     gene_callers_ids = set(gene_level_coverage_stats_dict.keys())
     samples = set(next(iter(gene_level_coverage_stats_dict.values())).keys())
@@ -969,8 +969,8 @@ def get_gene_caller_ids_from_args(gene_caller_ids, delimiter):
         gene_caller_ids_set = set([int(g) for g in gene_caller_ids_set])
     except:
         g = gene_caller_ids_set.pop()
-        raise ConfigError("The gene calls you provided do not look like gene callers anvi'o is used to working with :/ Here is\
-                           one of them: '%s' (%s)." % (g, type(g)))
+        raise ConfigError("The gene calls you provided do not look like gene callers anvi'o is used to working with :/ Here is "
+                          "one of them: '%s' (%s)." % (g, type(g)))
     return gene_caller_ids_set
 
 
@@ -1055,9 +1055,9 @@ def get_synonymous_and_non_synonymous_potential(list_of_codons_in_gene, just_do_
     ['ATG', ..., 'TAG'], which can be generated from utils.get_list_of_codons_for_gene_call
     """
     if not any([list_of_codons_in_gene[-1] == x for x in ['TAG', 'TAA', 'TGA']]) and not just_do_it:
-        raise ConfigError("get_synonymous_and_non_synonymous_potential :: sequence does not end \
-                           with a stop codon and is therefore probably not what you want. If you \
-                           want to continue anyways, use the just_do_it flag")
+        raise ConfigError("get_synonymous_and_non_synonymous_potential :: sequence does not end "
+                          "with a stop codon and is therefore probably not what you want. If you "
+                          "want to continue anyways, use the just_do_it flag")
 
     synonymous_potential = 0
     num_ambiguous_codons = 0 # these are codons with Ns or other characters than ATCG
@@ -1339,8 +1339,8 @@ def get_codon_order_to_nt_positions_dict(gene_call):
     """Returns a dictionary to translate codons in a gene to nucleotide positions"""
 
     if gene_call['partial']:
-        raise ConfigError("get_codon_order_to_nt_positions_dict: this simply will not work\
-                            for partial gene calls, and this on *is* a partial one.")
+        raise ConfigError("get_codon_order_to_nt_positions_dict: this simply will not work "
+                           "for partial gene calls, and this on *is* a partial one.")
 
     start = gene_call['start']
     stop = gene_call['stop']
@@ -1411,8 +1411,8 @@ def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=Fal
     sequence = sequence.upper()
 
     if len(sequence) % 3.0 != 0:
-        raise ConfigError("The sequence corresponds to the gene callers id '%s' does not seem to\
-                            have proper number of nucleotides to be translated :/ Here it is: %s" % (gene_callers_id, sequence))
+        raise ConfigError("The sequence corresponds to the gene callers id '%s' does not seem to "
+                           "have proper number of nucleotides to be translated :/ Here it is: %s" % (gene_callers_id, sequence))
 
     translated_sequence = ''
 
@@ -1527,16 +1527,16 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict):
     codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call)
 
     if gene_call['contig'] not in contig_sequences_dict:
-        raise ConfigError("get_list_of_AAs_for_gene_call: The contig sequences dict sent to\
-                            this function does contain the contig name that appears in the gene call.\
-                            Something is wrong here...")
+        raise ConfigError("get_list_of_AAs_for_gene_call: The contig sequences dict sent to "
+                           "this function does contain the contig name that appears in the gene call. "
+                           "Something is wrong here...")
 
     try:
         contig_sequence = contig_sequences_dict[gene_call['contig']]['sequence']
     except:
-        raise ConfigError("get_list_of_AAs_for_gene_call: The contig sequences dict sent to\
-                            this function does not seem to be an anvi'o contig sequences dict :/ It\
-                            doesn't have the item 'sequence' in it.")
+        raise ConfigError("get_list_of_AAs_for_gene_call: The contig sequences dict sent to "
+                           "this function does not seem to be an anvi'o contig sequences dict :/ It "
+                           "doesn't have the item 'sequence' in it.")
 
     list_of_codons = []
     for codon_order in codon_order_to_nt_positions:
@@ -1596,27 +1596,27 @@ def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_di
 def check_sample_id(sample_id):
     if sample_id:
         if sample_id[0] in constants.digits:
-            raise ConfigError("The sample name ('%s') is not a valid one. Sample names can't start with digits.\
-                               Long story. Please specify a sample name that starts with an ASCII letter (if\
-                               there are no parameters available to you to set the sample name, it may be the\
-                               case that sample name is determined automatically from the input files you have\
-                               provided to whatever anvi'o workflow you were using, in which case you may need\
-                               to change your input file names or something :/)." % sample_id)
+            raise ConfigError("The sample name ('%s') is not a valid one. Sample names can't start with digits. "
+                              "Long story. Please specify a sample name that starts with an ASCII letter (if "
+                              "there are no parameters available to you to set the sample name, it may be the "
+                              "case that sample name is determined automatically from the input files you have "
+                              "provided to whatever anvi'o workflow you were using, in which case you may need "
+                              "to change your input file names or something :/)." % sample_id)
 
         allowed_chars_for_samples = constants.allowed_chars.replace('-', '').replace('.', '')
         if len([c for c in sample_id if c not in allowed_chars_for_samples]):
-            raise ConfigError("The sample name ('%s') contains characters anvi'o does not like. Please\
-                               limit the characters that make up the project name to ASCII letters,\
-                               digits, and the underscore character ('_')." % sample_id)
+            raise ConfigError("The sample name ('%s') contains characters anvi'o does not like. Please "
+                              "limit the characters that make up the project name to ASCII letters, "
+                              "digits, and the underscore character ('_')." % sample_id)
 
 
 def check_collection_name(collection_name):
     try:
         check_sample_id(collection_name)
     except:
-        raise ConfigError('"%s" is not a proper collection name. A proper one should be a single word and not contain\
-                            ANY characters but digits, ASCII letters and underscore character(s). There should not be\
-                            any space characters, and the collection name should not start with a digit.' % collection_name)
+        raise ConfigError('"%s" is not a proper collection name. A proper one should be a single word and not contain '
+                           'ANY characters but digits, ASCII letters and underscore character(s). There should not be '
+                           'any space characters, and the collection name should not start with a digit.' % collection_name)
 
 
 
@@ -1625,8 +1625,8 @@ def is_this_name_OK_for_database(variable_name, content, stringent=True):
         raise ConfigError("But the %s is empty? Come on :(" % variable_name)
 
     if content[0] in constants.digits:
-        raise ConfigError("Sorry, %s can't start with a digit. Long story. Please specify a name\
-                            that starts with an ASCII letter." % variable_name)
+        raise ConfigError("Sorry, %s can't start with a digit. Long story. Please specify a name "
+                           "that starts with an ASCII letter." % variable_name)
 
     if stringent:
         allowed_chars = constants.allowed_chars.replace('.', '').replace('-', '')
@@ -1634,8 +1634,8 @@ def is_this_name_OK_for_database(variable_name, content, stringent=True):
         allowed_chars = constants.allowed_chars.replace('.', '')
 
     if len([c for c in content if c not in allowed_chars]):
-        raise ConfigError("Well, the %s contains characters that anvi'o does not like :/ Please limit the characters\
-                            to ASCII letters, digits, and the underscore ('_') character." % variable_name)
+        raise ConfigError("Well, the %s contains characters that anvi'o does not like :/ Please limit the characters "
+                           "to ASCII letters, digits, and the underscore ('_') character." % variable_name)
 
 
 def check_contig_names(contig_names, dont_raise=False):
@@ -1645,13 +1645,13 @@ def check_contig_names(contig_names, dont_raise=False):
         if dont_raise:
             return False
 
-        raise ConfigError("The name of at least one contig in your BAM file %s anvio does not\
-                            like (%s). Please go back to your original files and make sure that\
-                            the characters in contig names are limited to to ASCII letters,\
-                            digits. Names can also contain underscore ('_'), dash ('-') and dot ('.')\
-                            characters. anvio knows how much work this may require for you to go back and\
-                            re-generate your BAM files and is very sorry for asking you to do that, however,\
-                            it is critical for later steps in the analysis." \
+        raise ConfigError("The name of at least one contig in your BAM file %s anvio does not "
+                           "like (%s). Please go back to your original files and make sure that "
+                           "the characters in contig names are limited to to ASCII letters, "
+                           "digits. Names can also contain underscore ('_'), dash ('-') and dot ('.') "
+                           "characters. anvio knows how much work this may require for you to go back and "
+                           "re-generate your BAM files and is very sorry for asking you to do that, however, "
+                           "it is critical for later steps in the analysis." \
                                 % ("contains multiple characters" if len(characters_anvio_doesnt_like) > 1 else "contains a character",
                                    ", ".join(['"%s"' % c for c in characters_anvio_doesnt_like])))
 
@@ -1661,9 +1661,9 @@ def check_contig_names(contig_names, dont_raise=False):
 def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
     """genome_desc is an instance of GenomeDescriptions"""
     if genome_desc is None and fasta_txt is None:
-        raise ConfigError("Anvi'o was given no internal genomes, no external genomes, and no fasta\
-                          files. Although anvi'o can technically go ahead and create a temporary\
-                          FASTA directory, what's the point if there's nothing to do?")
+        raise ConfigError("Anvi'o was given no internal genomes, no external genomes, and no fasta "
+                         "files. Although anvi'o can technically go ahead and create a temporary "
+                         "FASTA directory, what's the point if there's nothing to do?")
 
     temp_dir = filesnpaths.get_temp_directory_path()
     hash_to_name = {}
@@ -1750,12 +1750,12 @@ def unique_FASTA_file(input_file_path, output_fasta_path=None, names_file_path=N
         names_file_path = output_fasta_path + '.names'
 
     if output_fasta_path == names_file_path:
-        raise ConfigError("I can't unique this. Output FASTA file path can't be identical to\
-                            the names file path...")
+        raise ConfigError("I can't unique this. Output FASTA file path can't be identical to "
+                           "the names file path...")
 
     if output_fasta_path == input_file_path or names_file_path == input_file_path:
-        raise ConfigError("Anvi'o will not unique this. Output FASTA path and names file path should\
-                            be different from the the input file path...")
+        raise ConfigError("Anvi'o will not unique this. Output FASTA path and names file path should "
+                           "be different from the the input file path...")
 
     filesnpaths.is_output_file_writable(output_fasta_path)
     filesnpaths.is_output_file_writable(names_file_path)
@@ -2024,10 +2024,10 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
         raise ConfigError("'expected_fields' variable must be a list (or a set).")
 
     if only_expected_fields and not expected_fields:
-        raise ConfigError("'only_expected_fields' variable guarantees that there are no more fields present\
-                            in the input file but the ones requested with 'expected_fields' variable. If you\
-                            need to use this flag, you must also be explicit about what fields you expect to\
-                            find in the file.")
+        raise ConfigError("'only_expected_fields' variable guarantees that there are no more fields present "
+                           "in the input file but the ones requested with 'expected_fields' variable. If you "
+                           "need to use this flag, you must also be explicit about what fields you expect to "
+                           "find in the file.")
 
     filesnpaths.is_file_plain_text(file_path)
     filesnpaths.is_file_tab_delimited(file_path, separator=separator)
@@ -2049,8 +2049,8 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
         columns = column_names
 
         if num_fields != len(columns):
-            raise  ConfigError("Number of column names declared (%d) differs from the number of columns\
-                                 found (%d) in the matrix ('%s') :/" % (len(columns), num_fields, file_path))
+            raise  ConfigError("Number of column names declared (%d) differs from the number of columns "
+                                "found (%d) in the matrix ('%s') :/" % (len(columns), num_fields, file_path))
 
         # now we set the column names. if the file had its header, we must discard
         # the first line. so here we go:
@@ -2060,23 +2060,23 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
         columns = f.readline().strip('\n').split(separator)
 
     if not empty_header_columns_are_OK and min(map(len, columns)) == 0:
-        raise ConfigError("At least one of the column headers in your tab delimited file '%s'\
-                           is empty." % file_path)
+        raise ConfigError("At least one of the column headers in your tab delimited file '%s' "
+                          "is empty." % file_path)
 
     if expected_fields:
         for field in expected_fields:
             if field not in columns:
-                raise ConfigError("The file '%s' does not contain the right type of header. It was expected\
-                                    to have these: '%s', however it had these: '%s'" % (file_path,
+                raise ConfigError("The file '%s' does not contain the right type of header. It was expected "
+                                   "to have these: '%s', however it had these: '%s'" % (file_path,
                                                                                         ', '.join(expected_fields),
                                                                                         ', '.join(columns[1:])))
 
     if only_expected_fields:
         for field in columns:
             if field not in expected_fields:
-                raise ConfigError("There are more fields in the file '%s' than the expected fields :/\
-                                   Anvi'o is telling you about this because get_TAB_delimited_file_as_dictionary\
-                                   function is called with `only_expected_fields` flag turned on." % (file_path))
+                raise ConfigError("There are more fields in the file '%s' than the expected fields :/ "
+                                  "Anvi'o is telling you about this because get_TAB_delimited_file_as_dictionary "
+                                  "function is called with `only_expected_fields` flag turned on." % (file_path))
 
     d = {}
     line_counter = 0
@@ -2084,14 +2084,14 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
     for line in f.readlines():
         if ascii_only:
             if not is_ascii_only(line):
-                raise ConfigError("The input file conitans non-ascii characters at line number %d. Those lines\
-                                    either should be removed, or edited." % (line_counter + 2))
+                raise ConfigError("The input file conitans non-ascii characters at line number %d. Those lines "
+                                   "either should be removed, or edited." % (line_counter + 2))
 
         line_fields = [f if f else None for f in line.strip('\n').split(separator)]
 
         if line_fields and line_fields[0] == None:
-            raise ConfigError("The line number %d in '%s' has no data in its first column, and this doesn't\
-                               seem right at all :/" % (line_counter + 1, file_path))
+            raise ConfigError("The line number %d in '%s' has no data in its first column, and this doesn't "
+                              "seem right at all :/" % (line_counter + 1, file_path))
 
         if column_mapping:
             column_mapping_for_line_failed = False
@@ -2107,9 +2107,9 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                         failed_lines.append(line_counter + 1)
                         column_mapping_for_line_failed = True
                     else:
-                        raise ConfigError("Mapping function '%s' did not work on value '%s'. These functions can be native\
-                                           Python functions, such as 'str', 'int', or 'float', or anonymous functions\
-                                           defined using lambda notation." % (column_mapping[i], line_fields[i]))
+                        raise ConfigError("Mapping function '%s' did not work on value '%s'. These functions can be native "
+                                          "Python functions, such as 'str', 'int', or 'float', or anonymous functions "
+                                          "defined using lambda notation." % (column_mapping[i], line_fields[i]))
                 except TypeError:
                     if return_failed_lines:
                         failed_lines.append(line_counter + 1)
@@ -2121,8 +2121,8 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                         failed_lines.append(line_counter + 1)
                         column_mapping_for_line_failed = True
                     else:
-                        raise ConfigError("Mapping function '%s' did not like the value '%s' in column number %d\
-                                           of the input matrix '%s' :/" % (column_mapping[i], line_fields[i], i + 1, file_path))
+                        raise ConfigError("Mapping function '%s' did not like the value '%s' in column number %d "
+                                          "of the input matrix '%s' :/" % (column_mapping[i], line_fields[i], i + 1, file_path))
 
             line_fields = updated_line_fields
 
@@ -2135,11 +2135,11 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
             entry_name = line_fields[indexing_field]
 
         if entry_name in d:
-            raise ConfigError("The entry name %s appears more than once in the TAB-delimited file '%s'. We assume that you\
-                               did not do it that purposefully, but if you need this file in this form, then feel free to\
-                               contact us so we can try to find a solution for you. But if you have gotten this error while\
-                               working with HMMs, do not contact us since helping you in that case is beyond us (see the issue\
-                               #1206 for details))." % (entry_name, file_path))
+            raise ConfigError("The entry name %s appears more than once in the TAB-delimited file '%s'. We assume that you "
+                              "did not do it that purposefully, but if you need this file in this form, then feel free to "
+                              "contact us so we can try to find a solution for you. But if you have gotten this error while "
+                              "working with HMMs, do not contact us since helping you in that case is beyond us (see the issue "
+                              "#1206 for details))." % (entry_name, file_path))
 
         d[entry_name] = {}
 
@@ -2164,8 +2164,8 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                 # ask us to add None for these entries via none_for_missing, we are going to make a noise,
                 # otherwise we will tolerate it.
                 if not assign_none_for_missing:
-                    raise ConfigError("Appending entries to the already existing dictionary from file '%s' failed\
-                                        as the entry %s does not appear to be in the file." % (file_path, entry))
+                    raise ConfigError("Appending entries to the already existing dictionary from file '%s' failed "
+                                       "as the entry %s does not appear to be in the file." % (file_path, entry))
                 else:
                     for key in keys:
                         dict_to_append[entry][key] = none_value
@@ -2210,20 +2210,20 @@ def anvio_hmm_target_term_to_alphabet_and_context(target):
     elif len(fields) == 1:
         alphabet = fields[0]
     else:
-        raise ConfigError("HMM stuff is upset with you. There are unexpected number of fields in the target\
-                            file.")
+        raise ConfigError("HMM stuff is upset with you. There are unexpected number of fields in the target "
+                           "file.")
 
     if alphabet not in ['AA', 'DNA', 'RNA']:
-        raise ConfigError("The alphabet in the target file (%s) isnot one of the alphabets anvi'o knows how to\
-                            work with. Here is a list for you to choose from: 'DNA', 'RNA', or 'AA'" % alphabet)
+        raise ConfigError("The alphabet in the target file (%s) isnot one of the alphabets anvi'o knows how to "
+                           "work with. Here is a list for you to choose from: 'DNA', 'RNA', or 'AA'" % alphabet)
 
     if context not in ['GENE', 'CONTIG', None]:
-        raise ConfigError("The context you defined in the target file (%s) does not make any sense to anvi'o.\
-                            It would have, if you had chosen one of these: 'GENE', 'CONTIG'." % context)
+        raise ConfigError("The context you defined in the target file (%s) does not make any sense to anvi'o. "
+                           "It would have, if you had chosen one of these: 'GENE', 'CONTIG'." % context)
 
     if alphabet == 'AA' and context == 'CONTIG':
-        raise ConfigError("You can't use the AA alphabet with the CONTIGS context :/ You need to set your target\
-                            again. 'AA' or 'AA:GENE' would have worked much better.")
+        raise ConfigError("You can't use the AA alphabet with the CONTIGS context :/ You need to set your target "
+                           "again. 'AA' or 'AA:GENE' would have worked much better.")
 
     if not context:
         context = 'GENE'
@@ -2341,27 +2341,27 @@ def get_HMM_sources_dictionary(source_dirs=[]):
             source = source[:-1]
 
         if not PROPER(os.path.basename(source)):
-            raise ConfigError("One of the search database directories ('%s') contains characters in its name\
-                                anvio does not like. Directory names should be at least three characters long\
-                                and must not contain any characters but ASCII letters, digits and\
-                                underscore" % os.path.basename(source))
+            raise ConfigError("One of the search database directories ('%s') contains characters in its name "
+                               "anvio does not like. Directory names should be at least three characters long "
+                               "and must not contain any characters but ASCII letters, digits and "
+                               "underscore" % os.path.basename(source))
 
         expected_files = ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt', 'noise_cutoff_terms.txt']
 
         missing_files = [f for f in expected_files if not os.path.exists(os.path.join(source, f))]
         if missing_files:
-            raise ConfigError("Each search database directory must contain following files: %s'. Yet, the HMM source '%s' seems to\
-                               be missing the follwoing one(s): %s. See this blog post to make sure you are doing it the way it\
-                               should be done: http://merenlab.org/2016/05/21/archaeal-single-copy-genes/" % \
+            raise ConfigError("Each search database directory must contain following files: %s'. Yet, the HMM source '%s' seems to "
+                              "be missing the follwoing one(s): %s. See this blog post to make sure you are doing it the way it "
+                              "should be done: http://merenlab.org/2016/05/21/archaeal-single-copy-genes/" % \
                                             (', '.join(expected_files), os.path.basename(source), ', '.join(missing_files)))
 
         empty_files = [f for f in expected_files if os.stat(os.path.join(source, f)).st_size == 0]
         if empty_files:
-            raise ConfigError("One or more files for the HMM source '%s' seems to be empty. Which creates lots of\
-                               counfusion around these parts of the code. Anvi'o could set some defualts for you,\
-                               but it would be much better if you set your own defaults explicitly. You're not\
-                               sure what would make a good default for your HMM collection? Reach out to\
-                               a developer, and they will help you! Here are the files that are empty: %s." % \
+            raise ConfigError("One or more files for the HMM source '%s' seems to be empty. Which creates lots of "
+                              "counfusion around these parts of the code. Anvi'o could set some defualts for you, "
+                              "but it would be much better if you set your own defaults explicitly. You're not "
+                              "sure what would make a good default for your HMM collection? Reach out to "
+                              "a developer, and they will help you! Here are the files that are empty: %s." % \
                                     (os.path.basename(source), ', '.join(empty_files)))
 
         ref = R('reference.txt')
@@ -2372,25 +2372,25 @@ def get_HMM_sources_dictionary(source_dirs=[]):
 
         domain = None
         if kind == 'singlecopy' and kind.count(':') == 0:
-            raise ConfigError("This HMM profile seems to be a collection of single-copy core genes. Great. But for\
-                               this kind, you must also declare a 'domain' in your 'kind.txt' file. It is simple.\
-                               For instance, you could use 'singlecopy:bacteria', or 'singlecopy:archaea', or\
-                               'singlecopy:myspecificbranch'.")
+            raise ConfigError("This HMM profile seems to be a collection of single-copy core genes. Great. But for "
+                              "this kind, you must also declare a 'domain' in your 'kind.txt' file. It is simple. "
+                              "For instance, you could use 'singlecopy:bacteria', or 'singlecopy:archaea', or "
+                              "'singlecopy:myspecificbranch'.")
         if kind.count(':') == 1:
             kind, domain = kind.split(':')
 
         if not PROPER(kind):
-            raise ConfigError("'kind.txt' defines the kind of search this database offers. The kind term must be a single\
-                                word that is at least three characters long, and must not contain any characters but\
-                                ASCII letters, digits, and underscore. Here are some nice examples: 'singlecopy',\
-                                or 'pathogenicity', or 'noras_selection'. But yours is '%s'." % (kind))
+            raise ConfigError("'kind.txt' defines the kind of search this database offers. The kind term must be a single "
+                               "word that is at least three characters long, and must not contain any characters but "
+                               "ASCII letters, digits, and underscore. Here are some nice examples: 'singlecopy', "
+                               "or 'pathogenicity', or 'noras_selection'. But yours is '%s'." % (kind))
 
         if domain and not PROPER(domain):
-            raise ConfigError("That's lovely that you decided to specify a domain extension for your HMM collection in the\
-                                'kind.txt'. Although, your domain term is not a good one, as it must be a single\
-                                word that is at least three characters long, and without any characters but\
-                                ASCII letters, digits, and underscore. Confused? That's fine. Send an e-mail to the anvi'o\
-                                developers, and they will help you!")
+            raise ConfigError("That's lovely that you decided to specify a domain extension for your HMM collection in the "
+                               "'kind.txt'. Although, your domain term is not a good one, as it must be a single "
+                               "word that is at least three characters long, and without any characters but "
+                               "ASCII letters, digits, and underscore. Confused? That's fine. Send an e-mail to the anvi'o "
+                               "developers, and they will help you!")
 
         genes = get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names=['gene', 'accession', 'hmmsource'])
 
@@ -2423,10 +2423,10 @@ def check_misc_data_keys_for_format(data_keys_list):
         main_key, data_items = key_violates_new_rule.split('!')
         new_rule_compatible_data_keys = ['%s!%s' % (main_key, d) for d in data_items.split(';')]
 
-        raise ConfigError("Oh no :( We recently changed the description of the stacked bar data type, and your input data\
-                           file still has the older version. Here is the list of those that are violating the new format:\
-                           %s. To avoid this issue and to turn them into the new format, you could take '%s', and present\
-                           it as %d separate TAB-delimited entries that look like this: %s. Sorry!" % \
+        raise ConfigError("Oh no :( We recently changed the description of the stacked bar data type, and your input data "
+                          "file still has the older version. Here is the list of those that are violating the new format: "
+                          "%s. To avoid this issue and to turn them into the new format, you could take '%s', and present "
+                          "it as %d separate TAB-delimited entries that look like this: %s. Sorry!" % \
                                             (', '.join(['"%s"' % k for k in obsolete_stackedbar_keys]),
                                              key_violates_new_rule,
                                              len(new_rule_compatible_data_keys),
@@ -2446,17 +2446,17 @@ def sanity_check_hmm_model(model_path, genes):
                 accession_ids_in_model.append(line.split()[1])
 
     if len(accession_ids_in_model) != len(set(accession_ids_in_model)):
-        raise ConfigError("Accession IDs in your HMM model should be unique, however, the `genes.hmm.gz`\
-                           file for `%s` seems to have the same accession ID (the line that starts with `ACC`)\
-                           more than once :(" % (os.path.abspath(model_path).split('/')[-2]))
+        raise ConfigError("Accession IDs in your HMM model should be unique, however, the `genes.hmm.gz` "
+                          "file for `%s` seems to have the same accession ID (the line that starts with `ACC`) "
+                          "more than once :(" % (os.path.abspath(model_path).split('/')[-2]))
 
     if len(genes.difference(genes_in_model)):
-        raise ConfigError("Some gene names in genes.txt file does not seem to be appear in genes.hmm.gz.\
-                           Here is a list of missing gene names: %s" % ', '.join(list(genes.difference(genes_in_model))))
+        raise ConfigError("Some gene names in genes.txt file does not seem to be appear in genes.hmm.gz. "
+                          "Here is a list of missing gene names: %s" % ', '.join(list(genes.difference(genes_in_model))))
 
     if len(genes_in_model.difference(genes)):
-        raise ConfigError("Some gene names in genes.hmm.gz file does not seem to be appear in genes.txt.\
-                           Here is a list of missing gene names: %s" % ', '.join(list(genes_in_model.difference(genes))))
+        raise ConfigError("Some gene names in genes.hmm.gz file does not seem to be appear in genes.txt. "
+                          "Here is a list of missing gene names: %s" % ', '.join(list(genes_in_model.difference(genes))))
 
 
 def get_missing_programs_for_hmm_analysis():
@@ -2495,8 +2495,8 @@ def get_required_version_for_db(db_path):
     db_type = get_db_type(db_path)
 
     if db_type not in t.versions_for_db_types:
-        raise ConfigError("Anvi'o was trying to get the version of the -alleged- anvi'o database '%s', but it failed\
-                            because it turns out it doesn't know anything about this '%s' type." % (db_path, db_type))
+        raise ConfigError("Anvi'o was trying to get the version of the -alleged- anvi'o database '%s', but it failed "
+                           "because it turns out it doesn't know anything about this '%s' type." % (db_path, db_type))
 
     return t.versions_for_db_types[db_type]
 
@@ -2534,8 +2534,8 @@ def get_all_sample_names_from_the_database(db_path):
         return set([s for s in internal_genome_names + external_genome_names if s])
 
     else:
-        raise ConfigError("`get_all_sample_names_from_the_database` function does not know how to deal\
-                            with %s databases." % db_type)
+        raise ConfigError("`get_all_sample_names_from_the_database` function does not know how to deal "
+                           "with %s databases." % db_type)
 
 
 def get_all_item_names_from_the_database(db_path, run=run):
@@ -2548,9 +2548,9 @@ def get_all_item_names_from_the_database(db_path, run=run):
 
     if db_type == 'profile':
         if is_blank_profile(db_path):
-            run.warning("Someone asked for the split names in a blank profile database. Sadly, anvi'o does not keep track\
-                         of split names in blank profile databases. This function will return an empty set as split names\
-                         to not kill your mojo, but whatever you were trying to do will not work :(")
+            run.warning("Someone asked for the split names in a blank profile database. Sadly, anvi'o does not keep track "
+                        "of split names in blank profile databases. This function will return an empty set as split names "
+                        "to not kill your mojo, but whatever you were trying to do will not work :(")
             return set([])
         elif int(database.get_meta_value('merged')):
             all_items = set(database.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'contig'))
@@ -2569,9 +2569,9 @@ def get_all_item_names_from_the_database(db_path, run=run):
 
     if not len(all_items):
         database.disconnect()
-        raise ConfigError("utils::get_all_item_names_from_the_database speaking. Something that should never happen happened :/\
-                           There seems to be nothing in this %s database. Anvi'o is as confused as you are. Please get in touch\
-                           with a developer. They will love this story." % db_path)
+        raise ConfigError("utils::get_all_item_names_from_the_database speaking. Something that should never happen happened :/ "
+                          "There seems to be nothing in this %s database. Anvi'o is as confused as you are. Please get in touch "
+                          "with a developer. They will love this story." % db_path)
 
     database.disconnect()
 
@@ -2597,8 +2597,8 @@ def get_variability_table_engine_type(table_path, dont_raise=False):
     else:
         if dont_raise:
             return ""
-        raise ConfigError("anvi'o does not recognize %s as being a variability table generated by\
-                           anvi-gen-variability-profile." % table_path)
+        raise ConfigError("anvi'o does not recognize %s as being a variability table generated by "
+                          "anvi-gen-variability-profile." % table_path)
 
 
 def is_contigs_db(db_path):
@@ -2618,11 +2618,11 @@ def is_pan_or_profile_db(db_path, genes_db_is_also_accepted=False):
 
     if db_type not in ok_db_types:
         if genes_db_is_also_accepted:
-            raise ConfigError("'%s' is not a pan, profile, or a genes database :/ Anvi'o wants what it wants and this \
-                               '%s' database is not it." % (db_path, db_type))
+            raise ConfigError("'%s' is not a pan, profile, or a genes database :/ Anvi'o wants what it wants and this "
+                              "'%s' database is not it." % (db_path, db_type))
         else:
-            raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble (*cough* 'someone' \
-                                being whoever sent this %s database as a parameter to that command *cough*)." % (db_path, db_type))
+            raise ConfigError("'%s' is neither a pan nor a profile database :/ Someone is in trouble (*cough* 'someone' "
+                               "being whoever sent this %s database as a parameter to that command *cough*)." % (db_path, db_type))
 
     return True
 
@@ -2702,10 +2702,10 @@ def is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path):
     contigs_db.disconnect()
 
     if a_hash != p_hash:
-        raise ConfigError('The contigs database and the profile database does not\
-                           seem to be compatible. More specifically, this contigs\
-                           database is not the one that was used when %s generated\
-                           this profile database (%s != %s).'\
+        raise ConfigError('The contigs database and the profile database does not '
+                          'seem to be compatible. More specifically, this contigs '
+                          'database is not the one that was used when %s generated '
+                          'this profile database (%s != %s).'\
                                % ('anvi-merge' if merged else 'anvi-profile', a_hash, p_hash))
 
     return True
@@ -2725,9 +2725,9 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
     contigs_db.disconnect()
 
     if a_hash != p_hash:
-        raise ConfigError('The contigs and structure databases do not seem compatible.\
-                           More specifically, the contigs database is not the one that\
-                           was used when the structure database was created (%s != %s).'\
+        raise ConfigError('The contigs and structure databases do not seem compatible. '
+                          'More specifically, the contigs database is not the one that '
+                          'was used when the structure database was created (%s != %s).'\
                                % (a_hash, p_hash))
 
     return True
@@ -2739,8 +2739,8 @@ def download_file(url, output_file_path, progress=progress, run=run):
     try:
         response = urllib.request.urlopen(url)
     except Exception as e:
-        raise ConfigError("Something went wrong with your download attempt. Here is the\
-                            problem: '%s'" % e)
+        raise ConfigError("Something went wrong with your download attempt. Here is the "
+                           "problem: '%s'" % e)
 
     file_size = 0
     if 'Content-Length' in response.headers:
@@ -2847,9 +2847,9 @@ def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=ru
         from selenium.webdriver.support import expected_conditions as EC
         from selenium.common.exceptions import TimeoutException
     except:
-        raise ConfigError("You want to export SVGs? Well, you need the Python library 'selenium' to be able to\
-                           do that but you don't have it. If you are lucky, you probably can install it by\
-                           typing 'pip install selenium' or something :/")
+        raise ConfigError("You want to export SVGs? Well, you need the Python library 'selenium' to be able to "
+                          "do that but you don't have it. If you are lucky, you probably can install it by "
+                          "typing 'pip install selenium' or something :/")
 
     if browser_path:
         filesnpaths.is_file_exists(browser_path)
@@ -2902,10 +2902,10 @@ def check_h5py_module():
     try:
         import h5py
     except:
-        raise ConfigError("Please install the Python module `h5py` manually for this migration task to continue.\
-                           The reason why the standard anvi'o installation did not install module is complicated,\
-                           and really unimportant. If you run `pip install h5py` in your Python virtual environmnet\
-                           for anvi'o, and try running the migration program again things should be alright.")
+        raise ConfigError("Please install the Python module `h5py` manually for this migration task to continue. "
+                          "The reason why the standard anvi'o installation did not install module is complicated, "
+                          "and really unimportant. If you run `pip install h5py` in your Python virtual environmnet "
+                          "for anvi'o, and try running the migration program again things should be alright.")
 
 
 def RepresentsInt(s):
@@ -2969,16 +2969,16 @@ class Mailer:
         try:
             config.read(self.config_ini_path)
         except Exception as e:
-            raise ConfigError("Well, the file '%s' does not seem to be a config file at all :/ Here\
-                                is what the parser had to complain about it: %s" % (self.config_ini_path, e))
+            raise ConfigError("Well, the file '%s' does not seem to be a config file at all :/ Here "
+                               "is what the parser had to complain about it: %s" % (self.config_ini_path, e))
 
         section = 'SMTP'
 
         if section not in config.sections():
-            raise ConfigError("The config file '%s' does not seem to have an 'SMTP' section, which\
-                                is essential for Mailer class to learn server and authentication\
-                                settings. Please check the documentation to create a proper config\
-                                file." % self.config_ini_path)
+            raise ConfigError("The config file '%s' does not seem to have an 'SMTP' section, which "
+                               "is essential for Mailer class to learn server and authentication "
+                               "settings. Please check the documentation to create a proper config "
+                               "file." % self.config_ini_path)
 
 
         for option, value in config.items(section):
@@ -2987,8 +2987,8 @@ class Mailer:
             if 'test' in self.config_template[section][option] and not self.config_template[section][option]['test'](value):
                 if 'required' in self.config_template[section][option]:
                     r = self.config_template[section][option]['required']
-                    raise ConfigError('Unexpected value ("%s") for option "%s", under section "%s".\
-                                        What is expected is %s.' % (value, option, section, r))
+                    raise ConfigError('Unexpected value ("%s") for option "%s", under section "%s". '
+                                       'What is expected is %s.' % (value, option, section, r))
                 else:
                     raise ConfigError('Unexpected value ("%s") for option "%s", under section "%s".' % (value, option, section))
 
@@ -3018,8 +3018,8 @@ class Mailer:
                self.server.login(self.username, self.password)
 
         except Exception as e:
-            raise ConfigError("Something went wrong while connecting to the SMTP server :/ This is what we\
-                                know about the problem: %s" % e)
+            raise ConfigError("Something went wrong while connecting to the SMTP server :/ This is what we "
+                               "know about the problem: %s" % e)
 
 
     def disconnect(self):
@@ -3046,8 +3046,8 @@ class Mailer:
             self.server.sendmail(self.from_address, [to], msg.as_string())
         except Exception as e:
             self.progress.end()
-            raise ConfigError("Something went wrong while trying to connet send your e-mail :(\
-                                This is what we know about the problem: %s" % e)
+            raise ConfigError("Something went wrong while trying to connet send your e-mail :( "
+                               "This is what we know about the problem: %s" % e)
 
 
         self.progress.update('Disconnecting ..')

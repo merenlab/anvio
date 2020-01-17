@@ -87,8 +87,8 @@ class ProgramSearch:
 
         for search_term in self.search_terms:
             if len(search_term) < 2:
-                raise ConfigError("Okay, you can't search for something 1 character long. If you're \
-                                   trying to search for everything, use the search term 'ALL'")
+                raise ConfigError("Okay, you can't search for something 1 character long. If you're "
+                                  "trying to search for everything, use the search term 'ALL'")
 
         if self.report:
             self.headers_to_report = ['Program'] + self.report.split(',')
@@ -217,9 +217,9 @@ class ProgramSearch:
         diff = terminal_width - table_width
 
         if diff < 0:
-            run.warning("The above table is wider than your window, so it looks weird. Try making \
-                         your window bigger, zooming out (press - while holding command), or \
-                         specifying fewer columns to report with --report.")
+            run.warning("The above table is wider than your window, so it looks weird. Try making "
+                        "your window bigger, zooming out (press - while holding command), or "
+                        "specifying fewer columns to report with --report.")
         else:
             # Use all of the terminal width
             if 'Description' in self.table.columns:

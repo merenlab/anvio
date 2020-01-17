@@ -97,9 +97,9 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
         self.pan_project_name = self.get_param_value_from_config(["anvi_pan_genome", "--project-name"])
 
         if self.pan_project_name:
-            run.warning('you chose to set the "--project-name" parameter for "anvi_pan_genome". That is ok\
-                         but just so you know, if you haven\'t supplied this, then we would have taken the value\
-                         from "project_name" in your config file to also be the project name for "anvi_pan_genome"')
+            run.warning('you chose to set the "--project-name" parameter for "anvi_pan_genome". That is ok '
+                        'but just so you know, if you haven\'t supplied this, then we would have taken the value '
+                        'from "project_name" in your config file to also be the project name for "anvi_pan_genome"')
         else:
             self.pan_project_name = self.project_name
 
@@ -132,15 +132,15 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
 
     def sanity_checks(self):
         if (not self.internal_genomes_file) and (not self.external_genomes_file):
-            raise ConfigError("You must provide a path to either internal_genomes_file or external_genomes_file\
-                                   or both.")
+            raise ConfigError("You must provide a path to either internal_genomes_file or external_genomes_file "
+                                  "or both.")
         if not self.project_name:
             raise ConfigError("You must provide a project name in your config file.")
 
         if self.sequence_source_for_phylogeny:
             if self.sequence_source_for_phylogeny not in self.valid_sequence_sources_for_phylogeny:
-                raise ConfigError('%s is not a valid sequence_source_for_phylogeny. \
-                                   We only know: %s' % (self.sequence_source_for_phylogeny,\
+                raise ConfigError('%s is not a valid sequence_source_for_phylogeny. '
+                                  'We only know: %s' % (self.sequence_source_for_phylogeny,\
                                    ', '.join(self.valid_sequence_sources_for_phylogeny)))
 
 
