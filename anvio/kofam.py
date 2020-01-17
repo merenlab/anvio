@@ -30,7 +30,16 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-class KofamSetup(object):
+class KofamContext(object):
+    """
+    The purpose of this base class is to define shared functions and file paths for all KOfam operations.
+    """
+    def __init__(self, args):
+        # shared variables for all KOfam subclasses
+        self.kofam_hmm_file = "Kofam.hmm" # name of file containing concatenated KOfam hmms
+
+
+class KofamSetup(KofamContext):
     """ Class for setting up KEGG Kofam HMM profiles. It performs sanity checks and downloads, unpacks, and prepares
     the profiles for later use by `hmmscan`.
 
@@ -45,6 +54,9 @@ class KofamSetup(object):
         self.run = run
         self.progress = progress
         self.kofam_data_dir = args.kofam_data_dir
+
+        # init the base class
+        KofamContext.__init__(self, self.args)
 
         filesnpaths.is_program_exists('hmmpress')
 
@@ -111,7 +123,7 @@ class KofamSetup(object):
         self.confirm_downloaded_files()
 
         self.progress.update('Concatenating HMM profiles into one file...')
-        concat_file_path = os.path.join(self.kofam_data_dir, 'Kofam.hmm') ## this should be a self variable from base class
+        concat_file_path = os.path.join(self.kofam_data_dir, self.kofam_hmm_file) ## this should be a self variable from base class
         utils.concatenate_files(concat_file_path, self.hmm_list, remove_concatenated_files=True) # self.hmm_list should be a self variable from base class
 
         self.progress.end()
