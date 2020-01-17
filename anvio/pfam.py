@@ -201,7 +201,7 @@ class Pfam(object):
         # here we check if the HMM profile is compressed so we can decompress it for next time
         if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')):
             self.run.warning("Anvi'o has detected that your Pfam database is currently compressed. It will now be unpacked before \
-                                running HMMs."))
+                                running HMMs.")
             utils.gzip_decompress_file(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz'), keep_original=False)
 
             cmd_line = ['hmmpress', os.path.join(self.pfam_data_dir, 'Pfam-A.hmm')]
