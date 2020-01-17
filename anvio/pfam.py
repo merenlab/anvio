@@ -56,7 +56,6 @@ class PfamSetup(object):
         self.run = run
         self.progress = progress
         self.pfam_data_dir = args.pfam_data_dir
-        self.keep_compressed = args.keep_compressed
 
         filesnpaths.is_program_exists('hmmpress')
 
@@ -73,8 +72,9 @@ class PfamSetup(object):
 
 
     def is_database_exists(self):
-        if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')) or os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm')):
+        if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm')):
             raise ConfigError("It seems you already have Pfam database installed in '%s', please use --reset flag if you want to re-download it." % self.pfam_data_dir)
+
 
 
     def get_remote_version(self):
@@ -129,49 +129,33 @@ class PfamSetup(object):
 
 
     def decompress_files(self):
-        if self.keep_compressed:
-            # Some folks may want the old behavior of this program that kept the HMM profiles compressed.
-            # This block preserves that way of doing things.
-            self.run.warning("Just to let you know, you elected to keep the Pfam profiles in gzipped format. This is fine and will save you some space,\
-            but you may experience slower processing times for `anvi-run-pfams`. You have been warned. :)")
-            for file_name in ['Pfam.version.gz', 'Pfam-A.clans.tsv.gz']:
-                full_path = os.path.join(self.pfam_data_dir, file_name)
+
+        for file_name in self.files:
+            full_path = os.path.join(self.pfam_data_dir, file_name)
+
+            if full_path.endswith('.gz'):
                 if not os.path.exists(full_path) and os.path.exists(full_path[:-3]):
                     self.run.warning("It seems the file at %s is already de-compressed. Perhaps you already downloaded the Pfam profiles. \
-                    If you want to re-do the Pfam setup, please run this program again and use both the --reset and --keep-compressed flags." \
+                    If you want to re-do the Pfam setup, please run this program again and use the --reset flag." \
                     % (full_path[:-3]))
                     continue
                 elif not os.path.exists(full_path):
                     raise ConfigError("Oh no. The file at %s does not exist. Something is terribly wrong. :( Anvi'o suggests re-running \
                     this program using the --reset flag." % (full_path))
-                utils.gzip_decompress_file(full_path, keep_original=False)
-        else:
-            for file_name in self.files:
-                full_path = os.path.join(self.pfam_data_dir, file_name)
+                utils.gzip_decompress_file(full_path)
+                os.remove(full_path)
 
-                if full_path.endswith('.gz'):
-                    if not os.path.exists(full_path) and os.path.exists(full_path[:-3]):
-                        self.run.warning("It seems the file at %s is already de-compressed. Perhaps you already downloaded the Pfam profiles. \
-                        If you want to re-do the Pfam setup, please run this program again and use the --reset flag." \
-                        % (full_path[:-3]))
-                        continue
-                    elif not os.path.exists(full_path):
-                        raise ConfigError("Oh no. The file at %s does not exist. Something is terribly wrong. :( Anvi'o suggests re-running \
-                        this program using the --reset flag." % (full_path))
-                    utils.gzip_decompress_file(full_path)
-                    os.remove(full_path)
+        for file_path in glob.glob(os.path.join(self.pfam_data_dir, '*.hmm')):
+            cmd_line = ['hmmpress', file_path]
+            log_file_path = os.path.join(self.pfam_data_dir, '00_hmmpress_log.txt')
+            ret_val = utils.run_command(cmd_line, log_file_path)
 
-            for file_path in glob.glob(os.path.join(self.pfam_data_dir, '*.hmm')):
-                cmd_line = ['hmmpress', file_path]
-                log_file_path = os.path.join(self.pfam_data_dir, '00_hmmpress_log.txt')
-                ret_val = utils.run_command(cmd_line, log_file_path)
-
-                if ret_val:
-                    raise ConfigError("Hmm. There was an error while running `hmmpress` on the Pfam HMM profiles. \
-                                        Check out the log file ('%s') to see what went wrong." % (log_file_path))
-                else:
-                    # getting rid of the log file because hmmpress was successful
-                    os.remove(log_file_path)
+            if ret_val:
+                raise ConfigError("Hmm. There was an error while running `hmmpress` on the Pfam HMM profiles. \
+                                    Check out the log file ('%s') to see what went wrong." % (log_file_path))
+            else:
+                # getting rid of the log file because hmmpress was successful
+                os.remove(log_file_path)
 
 class Pfam(object):
     def __init__(self, args, run=run, progress=progress):
