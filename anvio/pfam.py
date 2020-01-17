@@ -201,9 +201,19 @@ class Pfam(object):
         # here we check if the HMM profile is compressed so we can decompress it for next time
         if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')):
             self.run.warning("Anvi'o has detected that your Pfam database is currently compressed. It will now be unpacked before \
-                                running HMMs.")
-            self.decompress_files()
+                                running HMMs."))
+            utils.gzip_decompress_file(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz'), keep_original=False)
 
+            cmd_line = ['hmmpress', os.path.join(self.pfam_data_dir, 'Pfam-A.hmm')]
+            log_file_path = os.path.join(self.pfam_data_dir, '00_hmmpress_log.txt')
+            ret_val = utils.run_command(cmd_line, log_file_path)
+
+            if ret_val:
+                raise ConfigError("Hmm. There was an error while running `hmmpress` on the Pfam HMM profiles. \
+                                    Check out the log file ('%s') to see what went wrong." % (log_file_path))
+            else:
+                # getting rid of the log file because hmmpress was successful
+                os.remove(log_file_path)
 
 
     def get_version(self):
