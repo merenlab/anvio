@@ -22,8 +22,8 @@ __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "Özcan Esen"
-__email__ = "ozcanesen@gmail.com"
+__maintainer__ = "Iva Veseli"
+__email__ = "iveseli@uchicago.edu"
 
 run = terminal.Run()
 progress = terminal.Progress()
