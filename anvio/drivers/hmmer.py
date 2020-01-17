@@ -73,7 +73,7 @@ class HMMer:
                                         We are very sorry about this." % (hmm_path, base_path + ext))
 
 
-    def run_hmmscan(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms, in_place=False):
+    def run_hmmscan(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms):
         target = ':'.join([alphabet, context])
 
         if target not in self.target_files_dict:
@@ -96,48 +96,16 @@ class HMMer:
         self.run.info('Noise cutoff term(s)', noise_cutoff_terms)
         self.run.info('Number of CPUs will be used for search', self.num_threads_to_use)
 
-        # set up variables for later call to hmmscan - values will be filled in depending on whether hmmscan is run in place or not
-        hmm_file_path = None
-
-        # results go in the tmp directory no matter whether run in place or not;
-        # if we don't run in place then the unpacked hmm profiles will go to tmp too
         tmp_dir = os.path.dirname(self.target_files_dict[target][0])
         log_file_path = os.path.join(tmp_dir, '00_log.txt')
 
         self.run.info('Temporary work dir', tmp_dir)
         self.run.info('Log file', log_file_path)
 
-        if not in_place:
-            # we want to create hmm files in the same directory
-            self.progress.new('Unpacking the model into temporary work directory')
-            self.progress.update('...')
-            hmm_file_path = os.path.join(tmp_dir, source + '_hmm.txt') # referenced below, likely needs to move
-            hmm_file = open(hmm_file_path, 'wb')
-            hmm_file.write(gzip.open(hmm, 'rb').read())
-            hmm_file.close()
-            self.progress.end()
 
-            self.progress.new('Processing')
-            self.progress.update('Compressing the pfam model')
-
-            cmd_line = ['hmmpress', hmm_file_path]
-            ret_val = utils.run_command(cmd_line, log_file_path)
-
-            if ret_val:
-                raise ConfigError("The last call did not work quite well. Most probably the version of HMMER you have\
-                                   installed is either not up-to-date enough, or too new :/ Just to make sure what went\
-                                   wrong please take a look at the log file ('%s'). Please visit %s to see what\
-                                   is the latest version availalbe if you think updating HMMER can resolve it. You can\
-                                   learn which version of HMMER you have on your system by typing 'hmmpress -h'."\
-                                           % (log_file_path, 'http://hmmer.janelia.org/download.html'))
-            self.progress.end()
-        else:
-            # check if all hmmpress files are in the HMM directory
-            self.run.warning('Verifying that %s HMM profiles have been set up properly' % source, lc='green')
-            self.verify_hmmpress_output(hmm)
-            # we may want to throw a more descriptive error *here* instead of failing in the verify function
-
-            hmm_file_path = hmm
+        # check if all hmmpress files are in the HMM directory
+        self.verify_hmmpress_output(hmm)
+        # we may want to throw a more descriptive error *here* instead of failing in the verify function
 
 
         workers = []
@@ -163,7 +131,7 @@ class HMMer:
                         '-o', output_file, *noise_cutoff_terms.split(),
                         '--cpu', cores_per_process,
                         '--tblout', shitty_file,
-                        hmm_file_path, part_file]
+                        hmm, part_file]
 
             t = Thread(target=self.hmmscan_worker, args=(part_file,
                                                          cmd_line,

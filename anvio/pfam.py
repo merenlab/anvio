@@ -135,13 +135,15 @@ class PfamSetup(object):
 
             if full_path.endswith('.gz'):
                 if not os.path.exists(full_path) and os.path.exists(full_path[:-3]):
-                    self.run.warning("It seems the file at %s is already de-compressed. Perhaps you already downloaded the Pfam profiles. \
-                    If you want to re-do the Pfam setup, please run this program again and use the --reset flag." \
+                    self.run.warning("It seems the file at %s is already decompressed. You are probably seeing \
+                    this message because Pfams was set up previously on this computer. Hakuna Matata. Anvi'o will \
+                    simply skip decompressing this file at this time. But if you think there is an issue, you can \
+                    re-do the Pfam setup by running `anvi-setup-pfams` again and using the --reset flag." \
                     % (full_path[:-3]))
                     continue
                 elif not os.path.exists(full_path):
                     raise ConfigError("Oh no. The file at %s does not exist. Something is terribly wrong. :( Anvi'o suggests re-running \
-                    this program using the --reset flag." % (full_path))
+                    `anvi-setup-pfams` using the --reset flag." % (full_path))
                 utils.gzip_decompress_file(full_path)
                 os.remove(full_path)
 
@@ -176,9 +178,8 @@ class Pfam(object):
             self.pfam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Pfam')
 
         # here, in the process of checking whether Pfam has been downloaded into the pfam_data_dir,
-        # we also determine whether the profiles have been decompressed + hmmpressed already,
-        # in which case hmmscan should be run in-place
-        self.run_in_place = self.is_database_exists()
+        # we also decompress and hmmpress the profile if it is currently gzipped
+        self.is_database_exists()
 
         self.run.info('Pfam database directory', self.pfam_data_dir)
 
@@ -189,20 +190,20 @@ class Pfam(object):
     def is_database_exists(self):
         """
         This function verifies that pfam_data_dir contains the Pfam hmm profiles and checks whether they are compressed or not.
+        If they are compressed, we decompress them and run hmmpress.
 
         PARAMETERS: N/A
 
-        RETURNS: in_place, boolean, whether hmmscan should be run in-place (.hmm already unpacked) or not
+        RETURNS: N/A
         """
         if not (os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')) or os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm'))):
             raise ConfigError("It seems you do not have Pfam database installed, please run 'anvi-setup-pfams' to download it.")
-        # here we check if the HMM profile is compressed or not so we can adjust hmmscan behavior accordingly
-        in_place = True
+        # here we check if the HMM profile is compressed so we can decompress it for next time
         if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')):
-            in_place = False
-            self.run.warning("Anvi'o has detected that your Pfam database is currently compressed. It will be unpacked before \
+            self.run.warning("Anvi'o has detected that your Pfam database is currently compressed. It will now be unpacked before \
                                 running HMMs.")
-        return in_place
+            self.decompress_files()
+
 
 
     def get_version(self):
@@ -243,10 +244,6 @@ class Pfam(object):
 
     def process(self):
         hmm_file = os.path.join(self.pfam_data_dir, 'Pfam-A.hmm')
-        # this file may be compressed if keep_compressed was set to True during setup
-        # and if the file is compressed, we cannot run in place
-        if not self.run_in_place:
-            hmm_file = os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')
 
         # initialize contigs database
         class Args: pass
@@ -267,7 +264,7 @@ class Pfam(object):
 
         # run hmmscan
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads)
-        hmm_hits_file = hmmer.run_hmmscan('Pfam', 'AA', 'GENE', None, None, len(self.function_catalog), hmm_file, None, '--cut_ga', in_place=self.run_in_place)
+        hmm_hits_file = hmmer.run_hmmscan('Pfam', 'AA', 'GENE', None, None, len(self.function_catalog), hmm_file, None, '--cut_ga')
 
         if not hmm_hits_file:
             run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But\
