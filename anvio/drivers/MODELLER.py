@@ -282,8 +282,8 @@ class MODELLER:
 
         try:
             utils.is_program_exists(self.executable)
-            self.run.info_single("Anvi'o found the executable for MODELLER, `%s`, and will\
-                                  use it." % self.executable, nl_before=1)
+            self.run.info_single("Anvi'o found the executable for MODELLER, `%s`, and will "
+                                 "use it." % self.executable, nl_before=1)
         except ConfigError as e:
             *prefix, sub_version = self.up_to_date_modeller_exec.split('.')
             prefix, sub_version = ''.join(prefix), int(sub_version)

@@ -299,8 +299,8 @@ class ContigsSuperclass(object):
         contigs_shorter_than_M = self.init_contig_sequences(min_contig_length)
 
         if not len(self.splits_basic_info):
-            self.run.info_single("Anvi'o was attempting to initialize split sequences, but the splits basic info dictionary\
-                                  was mysteriously empty. So you are warned.", mc="red")
+            self.run.info_single("Anvi'o was attempting to initialize split sequences, but the splits basic info dictionary "
+                                 "was mysteriously empty. So you are warned.", mc="red")
             return
 
         self.progress.new('Computing split sequences from contigs')
@@ -337,8 +337,8 @@ class ContigsSuperclass(object):
                                                  missing_split_names[0], list(self.splits_basic_info.keys())[0]))
 
             self.progress.end()
-            self.run.info_single("FYI: A subset of split sequences are being initialized (%d of %d the contigs database\
-                                  knows about, to be precise). Nothing to worry about. Probably." \
+            self.run.info_single("FYI: A subset of split sequences are being initialized (%d of %d the contigs database "
+                                 "knows about, to be precise). Nothing to worry about. Probably." \
                                                 % (len(split_names_of_interest), len(self.splits_basic_info)),
                                   mc="cyan", nl_after=1, nl_before=1)
             self.progress.new('Computing split sequences from contigs')
@@ -1413,10 +1413,10 @@ class PanSuperclass(object):
 
         if self.include_gc_identity_as_function:
             self.progress.reset()
-            self.run.info_single("Gene cluster identities are being added as functions into the functions dictionary.\
-                                  Functional annotation resources will include `IDENTITY` as an option. See here why\
-                                  (apart from the fact that you asked for it by using the flag `--include-gc-identity-as-function`):\
-                                  https://github.com/merenlab/anvio/issues/1196", nl_after=1, mc='green')
+            self.run.info_single("Gene cluster identities are being added as functions into the functions dictionary. "
+                                 "Functional annotation resources will include `IDENTITY` as an option. See here why "
+                                 "(apart from the fact that you asked for it by using the flag `--include-gc-identity-as-function`): "
+                                 "https://github.com/merenlab/anvio/issues/1196", nl_after=1, mc='green')
             for gene_cluster_id in self.gene_clusters:
                 for genome_name in self.genome_names:
                     for gene_callers_id in self.gene_clusters[gene_cluster_id][genome_name]:
@@ -1973,9 +1973,9 @@ class PanSuperclass(object):
         if not len(gene_cluster_ids_to_focus):
             self.run.info_single("Gene clusters are initialized for all %d gene clusters in the database." % len(self.gene_clusters), nl_before=1, nl_after=1)
         else:
-            self.run.info_single("A short announcement for the curious: anvi'o found %d gene clusters in the database, attempted to\
-                                  initialize a gene clusters dictionary for %d of them as requested by the user or the programmer, and\
-                                  managed to get back a gene clusters dictionary with %d items. We just hope all these make sense to you." \
+            self.run.info_single("A short announcement for the curious: anvi'o found %d gene clusters in the database, attempted to "
+                                 "initialize a gene clusters dictionary for %d of them as requested by the user or the programmer, and "
+                                 "managed to get back a gene clusters dictionary with %d items. We just hope all these make sense to you." \
                                 % (len(self.gene_cluster_names_in_db), len(gene_cluster_ids_to_focus), len(self.gene_clusters)), nl_after=1, nl_before=1)
 
         # gene cluster names were set when we first initialized the class, but if we are here, it means the user may have
@@ -3960,8 +3960,8 @@ def update_description_in_db(anvio_db_path, description, run=run):
     anvio_db.set_meta_value('description', description)
     anvio_db.disconnect()
 
-    run.info_single("The anvi'o %s database has just been updated with a description that contains %d words\
-                     and %d characters." % (db_type, len(description.split()), len(description)))
+    run.info_single("The anvi'o %s database has just been updated with a description that contains %d words "
+                    "and %d characters." % (db_type, len(description.split()), len(description)))
 
 
 def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split_names=[], database_paths={}, input_directory=None, default_clustering_config=None, \

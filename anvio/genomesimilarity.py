@@ -295,8 +295,8 @@ class Dereplicate:
                 run.warning("The temp directory, %s, is kept. Please don't forget to clean it up "
                             "later" % self.temp_dir, header="Debug")
             else:
-                run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
-                                 like to keep it for testing purposes)', nl_before=1, nl_after=1)
+                run.info_single('Cleaning up the temp directory (you can use `--debug` if you would '
+                                'like to keep it for testing purposes)', nl_before=1, nl_after=1)
 
                 shutil.rmtree(self.temp_dir)
                 self.temp_dir = None

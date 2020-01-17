@@ -379,14 +379,14 @@ def migrate(db_path):
 
     if fully_upgraded:
         shutil.move(samples_db_path, samples_db_path + '.OBSOLETE')
-        run.info_single("Your pan db is now version %s. You no longer need your old samples database (which is now \
-                         renamed to something ugly so you can see it." \
+        run.info_single("Your pan db is now version %s. You no longer need your old samples database (which is now "
+                        "renamed to something ugly so you can see it." \
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
     elif samples_db_path:
-        run.info_single("Your pan db is now version %s. BUT THERE WAS THIS: the actual purpose of this script was to\
-                         incorporate the data in your samples database into your pan database. But for some reason it\
-                         has failed. Probably everything is still alright, but you may have to do that step manually. The\
-                         Error messsage should be somewhere above." % next_version, nl_after=1, nl_before=1, mc='green')
+        run.info_single("Your pan db is now version %s. BUT THERE WAS THIS: the actual purpose of this script was to "
+                        "incorporate the data in your samples database into your pan database. But for some reason it "
+                        "has failed. Probably everything is still alright, but you may have to do that step manually. The "
+                        "Error messsage should be somewhere above." % next_version, nl_after=1, nl_before=1, mc='green')
     else:
         run.info_single("Your pan db is now version %s. BUT WITHOUT the samples database incorporation as you wished."\
                                                     % next_version, nl_after=1, nl_before=1, mc='green')

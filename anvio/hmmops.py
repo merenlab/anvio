@@ -498,10 +498,10 @@ class SequencesForHMMHits:
 
         genes_to_keep = all_genes.difference(genes_to_remove)
 
-        self.run.info_single("Hi! The anvi'o function that was supposed to remove genes that were occurring in\
-                              less than X number of bins due to the use of `--min-num-bins-gene-occurs` is \
-                              speaking. What follows is a report of what happened after anvi'o tried to remove\
-                              genes that were occurring in at least %d of the %d bins you had at this point." \
+        self.run.info_single("Hi! The anvi'o function that was supposed to remove genes that were occurring in "
+                             "less than X number of bins due to the use of `--min-num-bins-gene-occurs` is "
+                             "speaking. What follows is a report of what happened after anvi'o tried to remove "
+                             "genes that were occurring in at least %d of the %d bins you had at this point." \
                                     % (min_num_bins_gene_occurs, len(all_bins)), nl_before=1, nl_after=1)
 
         self.run.info('All genes (%d)' % len(all_genes), ', '.join(all_genes), nl_after=1)
@@ -530,10 +530,10 @@ class SequencesForHMMHits:
 
         bins_to_keep = all_bins.difference(bins_to_remove)
 
-        self.run.info_single("Hi there! The anvi'o function that kills bins is speaking (we are here because you used\
-                              the --max-num-genes-missing-from-bin parameter to remove bins that are not good enough for\
-                              your analysis becasue they are missing lots of genes. What follows is a report of what \
-                              happened.", nl_before=1, nl_after=1)
+        self.run.info_single("Hi there! The anvi'o function that kills bins is speaking (we are here because you used "
+                             "the --max-num-genes-missing-from-bin parameter to remove bins that are not good enough for "
+                             "your analysis becasue they are missing lots of genes. What follows is a report of what "
+                             "happened.", nl_before=1, nl_after=1)
 
         self.run.info('All bins (%d)' % len(all_bins), ', '.join(all_bins), nl_after=1)
         self.run.info('Bins that missed at most %d of %d genes (%d)' % (max_num_genes_missing, len(gene_names), len(bins_to_keep)), ', '.join(bins_to_keep), nl_after=1, mc='green')

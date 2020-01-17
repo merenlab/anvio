@@ -1023,10 +1023,10 @@ class ContigSummarizer(SummarizerSuperClass):
                 process_gene_call(g)
 
         if len(gene_calls_from_other_gene_callers):
-            run.info_single('PLEASE READ CAREFULLY. Contigs db info summary will not include %d gene calls that were\
-                             not identified by "%s", the default gene caller. Other gene calls found in this contigs\
-                             database include, %s. If you are more interested in gene calls in any of those, you should\
-                             indicate that through the `--gene-caller` parameter in your program.' \
+            run.info_single('PLEASE READ CAREFULLY. Contigs db info summary will not include %d gene calls that were '
+                            'not identified by "%s", the default gene caller. Other gene calls found in this contigs '
+                            'database include, %s. If you are more interested in gene calls in any of those, you should '
+                            'indicate that through the `--gene-caller` parameter in your program.' \
                                                                 % (sum(gene_calls_from_other_gene_callers.values()), \
                                                                    gene_caller_to_use, \
                                                                    ', '.join(['%d gene calls by %s' % (tpl[1], tpl[0]) for tpl in gene_calls_from_other_gene_callers.items()])))

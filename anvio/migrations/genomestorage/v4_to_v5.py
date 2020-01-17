@@ -131,8 +131,8 @@ def migrate(db_path):
 
     os.remove(db_path)
 
-    run.info_single("Your genomes storage is now at version %s. The new on is at %s, and anvi'o just removed\
-                     the old one, which was at %s from your disk." % (next_version, genome_storage_db_path, db_path), nl_after=1, nl_before=1, mc='green')
+    run.info_single("Your genomes storage is now at version %s. The new on is at %s, and anvi'o just removed "
+                    "the old one, which was at %s from your disk." % (next_version, genome_storage_db_path, db_path), nl_after=1, nl_before=1, mc='green')
 
 
 if __name__ == '__main__':
