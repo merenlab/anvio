@@ -106,8 +106,13 @@ class KofamSetup(object):
         """This function concatenates the Kofam profiles and runs hmmpress on them."""
         self.progress.new('Preparing Kofam HMM Profiles')
         log_file_path = os.path.join(self.kofam_data_dir, '00_hmmpress_log.txt')
+
         self.progress.update('Verifying that the Kofam directory at %s contains all HMM profiles' % self.kofam_data_dir)
         self.confirm_downloaded_files()
+
+        self.progress.update('Concatenating HMM profiles into one file...')
+        concat_file_path = os.path.join(self.kofam_data_dir, 'Kofam.hmm') ## this should be a self variable from base class
+        utils.concatenate_files(concat_file_path, self.hmm_list, remove_concatenated_files=True) # self.hmm_list should be a self variable from base class
 
         self.progress.end()
 
@@ -115,4 +120,5 @@ class KofamSetup(object):
         """This is a driver function which executes the Kofam setup process by downloading, decompressing, and hmmpressing the profiles."""
         self.download()
         self.decompress_files()
+        # TODO: set up ko_list dict, file list
         # TODO: add concatenation and hmmpress
