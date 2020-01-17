@@ -16,6 +16,8 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from anvio.errors import ConfigError, FilesNPathsError
+
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
 __license__ = "GPL 3.0"
@@ -86,13 +88,28 @@ class KofamSetup(object):
             else:
                 utils.gzip_decompress_file(full_path, keep_original=False)
 
+    def confirm_downloaded_files(self):
+        """This function verifies that all Kofam profiles have been properly downloaded. It is intended to be run
+        after the files have been decompressed. The profiles directory should contain hmm files from K00001.hmm to
+        K23763.hmm with some exceptions."""
+        skip_list = [17, 47, 56, 80, 92, 110] # the KO profiles that don't exist, based on ko_list
+        for k in range(1,23764): # there is likely a better way to do this. Perhaps we should process the ko_list file into a dict first
+            if k not in skip_list:
+                hmm_path = os.path.join(self.kofam_data_dir, "profiles/K%05d.hmm" % k)
+                if not os.path.exists(hmm_path):
+                    raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong \
+                                        while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset \
+                                        flag." % (hmm_path))
+
+
     def run_hmmpress(self):
         """This function concatenates the Kofam profiles and runs hmmpress on them."""
-        print("Not implemented yet")
+        self.progress.new('Preparing Kofam HMM Profiles')
         log_file_path = os.path.join(self.kofam_data_dir, '00_hmmpress_log.txt')
-        cmd_line = ["cat", os.path.join(self.kofam_data_dir, 'profiles/*.hmm')]
-        ret_val = utils.run_command(cmd_line, log_file_path)
-        # TODO: finish me - need sanity check for all files, concat, and press
+        self.progress.update('Verifying that the Kofam directory at %s contains all HMM profiles' % self.kofam_data_dir)
+        self.confirm_downloaded_files()
+
+        self.progress.end()
 
     def setup_profiles(self):
         """This is a driver function which executes the Kofam setup process by downloading, decompressing, and hmmpressing the profiles."""
