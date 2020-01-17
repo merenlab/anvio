@@ -102,11 +102,11 @@ class tRNAScanSE:
             self.run.warning("Anvi'o failed to learn the version of %s installed on this system :/")
 
         if version_found not in self.tested_versions:
-            self.run.warning("The version of %s installed on your system ('%s') is not one of those that we tested its anvi'o driver\
-                              with. Anvi'o will continue to try to run everything as if this didn't happen. If you see this warning\
-                              but everything works fine, let us know so we can include this version number into the list of 'tested'\
-                              version numbers. If you see an unexpexted error, please consider installing one of these versions\
-                              of tRNAScan-SE (and again please let us know anyway so we can address it for later): '%s'" % \
+            self.run.warning("The version of %s installed on your system ('%s') is not one of those that we tested its anvi'o driver "
+                             "with. Anvi'o will continue to try to run everything as if this didn't happen. If you see this warning "
+                             "but everything works fine, let us know so we can include this version number into the list of 'tested' "
+                             "version numbers. If you see an unexpexted error, please consider installing one of these versions "
+                             "of tRNAScan-SE (and again please let us know anyway so we can address it for later): '%s'" % \
                                            (self.program_name, version_found, ', '.join(list(self.tested_versions))))
 
         self.installed_version = version_found
@@ -152,9 +152,9 @@ class tRNAScanSE:
                 fields = [f.strip() for f in line.split('\t')]
 
                 if not len(fields) == 10:
-                    raise ConfigError("The expected output of tRNAScan-SE includes exactly 10 columns. However, the output\
-                                       anvi'o is working contains at least one line with %d columns :/ This doesn't look\
-                                       good. Here is the list of columns data of that line for your reference: '%s'." \
+                    raise ConfigError("The expected output of tRNAScan-SE includes exactly 10 columns. However, the output "
+                                      "anvi'o is working contains at least one line with %d columns :/ This doesn't look "
+                                      "good. Here is the list of columns data of that line for your reference: '%s'." \
                                                             % (len(fields), fields))
 
                 d[entry_no] = {'contig': fields[0],
@@ -194,9 +194,9 @@ class tRNAScanSE:
                    '-o', self.output_file_path,
                    '--thread', self.num_threads]
 
-        self.run.warning("Anvi'o will use 'tRNAScan-SE' by Chan and Lowe (doi:10.1007/978-1-4939-9173-0_1) to identify tRNA\
-                          sequences in your data. When you publish your findings, please do not forget to properly credit\
-                          their work.", lc='green', header="CITATION")
+        self.run.warning("Anvi'o will use 'tRNAScan-SE' by Chan and Lowe (doi:10.1007/978-1-4939-9173-0_1) to identify tRNA "
+                         "sequences in your data. When you publish your findings, please do not forget to properly credit "
+                         "their work.", lc='green', header="CITATION")
 
         self.progress.new('Running tRNAScan-SE')
         self.progress.update('...')
@@ -206,8 +206,8 @@ class tRNAScanSE:
         self.progress.end()
 
         if exit_code:
-            raise ConfigError("tRNAScan-SE finished with a non-zero exit code, which indicates that something went\
-                               wrong with it :/ Please check the log file to see learn more :/")
+            raise ConfigError("tRNAScan-SE finished with a non-zero exit code, which indicates that something went "
+                              "wrong with it :/ Please check the log file to see learn more :/")
 
         d = self.parse_output()
 

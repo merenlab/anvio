@@ -46,8 +46,8 @@ class SCGDomainClassifier(object):
                 raise ConfigError("You should not initialize the domain training class with a input classifier path (`args.classifier`).")
 
             if not self.genomes_dir:
-                raise ConfigError("You must provide a genomes directory. Please read the help menu if you are not sure\
-                                   how the contents of this directory should look like.")
+                raise ConfigError("You must provide a genomes directory. Please read the help menu if you are not sure "
+                                  "how the contents of this directory should look like.")
 
             filesnpaths.is_output_file_writable(self.classifier_output_path)
             filesnpaths.is_file_exists(self.genomes_dir)
@@ -63,11 +63,11 @@ class SCGDomainClassifier(object):
                 filesnpaths.is_file_exists(self.input_classifier_path)
             else:
                 if not filesnpaths.is_file_exists(self.input_classifier_path, dont_raise=True):
-                    raise ConfigError("Somehow, this anvi'o installation dose not seem to have a SCG domain classifier. This is one of\
-                                       those anvi'o things that should never happen. If you are an anvi'o user, please feel free to panic :(\
-                                       If you are an anvi'o developer, what you need to do is to follow the instructions in \
-                                       `anvi-script-gen-scg-domain-classifier` with a reasonable set of genomes and store the resulting\
-                                       classifier at the default anvi'o path of /blah/blah/anvio/data/%s." % (default_classifier_path))
+                    raise ConfigError("Somehow, this anvi'o installation dose not seem to have a SCG domain classifier. This is one of "
+                                      "those anvi'o things that should never happen. If you are an anvi'o user, please feel free to panic :( "
+                                      "If you are an anvi'o developer, what you need to do is to follow the instructions in "
+                                      "`anvi-script-gen-scg-domain-classifier` with a reasonable set of genomes and store the resulting "
+                                      "classifier at the default anvi'o path of /blah/blah/anvio/data/%s." % (default_classifier_path))
 
             self.rf = RF(self.input_classifier_path, r=self.run, p=self.progress)
             self.rf.initialize_classifier()
@@ -80,17 +80,17 @@ class SCGDomainClassifier(object):
         self.SCG_domain_to_source = dict([(hmm_data.sources[source]['domain'], source) for source in self.SCG_sources])
 
         if not len(self.SCG_sources):
-            raise ConfigError("There is something wrong :( There is not even a single SCG source found. Usually\
-                               anvi'o comes with multiple of them :/")
+            raise ConfigError("There is something wrong :( There is not even a single SCG source found. Usually "
+                              "anvi'o comes with multiple of them :/")
 
         if len(self.SCG_sources) == 1:
-            raise ConfigError("There is only a single SCG source in your anvi'o installation. It is OK if you are\
-                               being a hacker and playing with things, but there is no logic behind creating a\
-                               classifier with a single class.")
+            raise ConfigError("There is only a single SCG source in your anvi'o installation. It is OK if you are "
+                              "being a hacker and playing with things, but there is no logic behind creating a "
+                              "classifier with a single class.")
 
         if len(self.SCG_domains) != len(set(self.SCG_domains)):
-            raise ConfigError("Something is wrong. For each domain, there must be a single sinlge-copy core gene\
-                               source.")
+            raise ConfigError("Something is wrong. For each domain, there must be a single sinlge-copy core gene "
+                              "source.")
 
         self.data, self.labels, self.features  = [], [], []
 
@@ -145,9 +145,9 @@ class Train(SCGDomainClassifier):
         unexpected_domain_dirs = [domain for domain in domain_dirs if domain not in self.SCG_domains]
         if len(unexpected_domain_dirs):
             self.progress.reset()
-            self.run.warning("THIS IS VERY IMPORTANT! In the directory where you have all the domain directories to\
-                              train a new domain classifier, anvi'o found domain directories that did not match any\
-                              known domains. Here is the list of orphan domains we are talking about here: \"%s.\".\
+            self.run.warning("THIS IS VERY IMPORTANT! In the directory where you have all the domain directories to "
+                             "train a new domain classifier, anvi'o found domain directories that did not match any "
+                             "known domains. Here is the list of orphan domains we are talking about here: \"%s.\".\
                               This process will continue to train a classifier, but this is a serious problem as anvi'o\
                               will simply ignore all orphan domains. This is becuase the current single copy-core gene\
                               collections anvi'o knows and cares about do not include those orphan domains. Hence, the\
@@ -167,10 +167,10 @@ class Train(SCGDomainClassifier):
 
             if len(self.contigs_dbs[domain]) < 20:
                 self.progress.reset()
-                self.run.warning("The number of contigs databases found for the domain '%s' is %d. You should consider\
-                             increasing the number of genomes you include for this domain. A robust classifier\
-                             will require similar number of genomes for each domain that capture the diversity\
-                             of the domain they represent. Say, at least 20 gneomes per domain is a good start." \
+                self.run.warning("The number of contigs databases found for the domain '%s' is %d. You should consider "
+                            "increasing the number of genomes you include for this domain. A robust classifier "
+                            "will require similar number of genomes for each domain that capture the diversity "
+                            "of the domain they represent. Say, at least 20 gneomes per domain is a good start." \
                                     % (domain, len(self.contigs_dbs[domain])))
 
             self.progress.update("Making sure contigs dbs are contigs dbs")
@@ -234,19 +234,19 @@ class Predict(SCGDomainClassifier):
         SCGDomainClassifier.__init__(self, args, run, progress)
 
         if self.rf.features != self.features:
-            raise ConfigError("There is something terribly wrong here :/ The SCG features anvi'o learned from your contigs database\
-                               and those that are stored in your random forest classifier at '%s' seem to differ from each other.\
-                               This can only happen if you have an older or newer classifier installed on your system compared to\
-                               your contigs database. How you got there is quite curious really. But if you want to solve it quickly\
-                               you can try to re-run `anvi-run-hmms` program on your contigs database. If that also doesn't solve your\
-                               problem, you should get in touch with an anvi'o developer :(")
+            raise ConfigError("There is something terribly wrong here :/ The SCG features anvi'o learned from your contigs database "
+                              "and those that are stored in your random forest classifier at '%s' seem to differ from each other. "
+                              "This can only happen if you have an older or newer classifier installed on your system compared to "
+                              "your contigs database. How you got there is quite curious really. But if you want to solve it quickly "
+                              "you can try to re-run `anvi-run-hmms` program on your contigs database. If that also doesn't solve your "
+                              "problem, you should get in touch with an anvi'o developer :(")
 
         missing_classes = [c for c in self.SCG_domains if c not in self.rf.classes]
         if len(missing_classes):
-            raise ConfigError("The classifier on your disk is missing some of the mandatory information in it :/ For instance, the\
-                               following SCG domains are not defined in it: '%s'. One way to fix this could be re-training the\
-                               random forest with `anvi-script-gen-scg-domain-classifier` with a reasonable set of genomes. Don't\
-                               forget to store the resulting classifier at the default anvi'o path of /blah/blah/anvio/data/%s." \
+            raise ConfigError("The classifier on your disk is missing some of the mandatory information in it :/ For instance, the "
+                              "following SCG domains are not defined in it: '%s'. One way to fix this could be re-training the "
+                              "random forest with `anvi-script-gen-scg-domain-classifier` with a reasonable set of genomes. Don't "
+                              "forget to store the resulting classifier at the default anvi'o path of /blah/blah/anvio/data/%s." \
                                         % (', '.join(missing_classes), self.input_classifier_path))
 
 

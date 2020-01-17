@@ -92,8 +92,8 @@ class BLAST:
     def check_output(self, expected_output, process='blast'):
         if not os.path.exists(expected_output):
             self.progress.end()
-            raise ConfigError("Pfft. Something probably went wrong with '%s' process since one of the expected output files are missing.\
-                               Please check the log file here: '%s'" % (process, self.run.log_file_path))
+            raise ConfigError("Pfft. Something probably went wrong with '%s' process since one of the expected output files are missing. "
+                              "Please check the log file here: '%s'" % (process, self.run.log_file_path))
 
 
     def makedb(self, output_db_path=None):

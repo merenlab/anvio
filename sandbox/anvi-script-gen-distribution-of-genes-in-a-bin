@@ -56,11 +56,11 @@ def main(args):
     max_detection_of_genome = max(detection_across_metagenomes.values())
     if not len(num_metagenomes_above_min_detection):
         not_enough_detection = True
-        run.warning("This genome is not detected in any of the %d metgenomes you have more than %.2f of its fraction. In fact, its\
-                     average detection is %.2f across all metagenomes, %.2f being the maximum. Well, you can take a look at the\
-                     anvi-summarize output if you would like to learn more. The bottom line is this: the metagenomes you have in this\
-                     project are not the best ones to investigate the occurrence of the genes in this genome in the environment. So.\
-                     This program will give you quite useless output files, but anvi'o hopes that you will enjoy them anyway :(" %\
+        run.warning("This genome is not detected in any of the %d metgenomes you have more than %.2f of its fraction. In fact, its "
+                    "average detection is %.2f across all metagenomes, %.2f being the maximum. Well, you can take a look at the "
+                    "anvi-summarize output if you would like to learn more. The bottom line is this: the metagenomes you have in this "
+                    "project are not the best ones to investigate the occurrence of the genes in this genome in the environment. So. "
+                    "This program will give you quite useless output files, but anvi'o hopes that you will enjoy them anyway :(" %\
                             (num_metagenomes, min_detection, average_detection_of_genome, max_detection_of_genome))
     else:
         not_enough_detection = False

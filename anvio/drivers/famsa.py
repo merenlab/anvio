@@ -63,8 +63,8 @@ class FAMSA:
 
         if output[0:5] != 'FAMSA' or output[-6:].strip() != "Done!":
             with open(log_file_path, "a") as log_file: log_file.write('# THIS IS THE OUTPUT YOU ARE LOOKING FOR:\n\n%s\n' % (output))
-            raise ConfigError("Drivers::FAMSA: Something is worng :/ The output does not like the expected output\
-                               for a proper FAMSA run. You can find the output in this log file: %s" % (log_file_path))
+            raise ConfigError("Drivers::FAMSA: Something is worng :/ The output does not like the expected output "
+                              "for a proper FAMSA run. You can find the output in this log file: %s" % (log_file_path))
 
         alignments = {}
 

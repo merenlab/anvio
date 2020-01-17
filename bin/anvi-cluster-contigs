@@ -131,15 +131,15 @@ def prepare_input_files(temp_path, profile_db, contigs_db):
 
 def main(args, unknown):
     if not args.just_do_it:
-        raise ConfigError("This is an experimental module and is not yet fully tested. Alternatively you could\
-                           use external binning algorithms with raw data or data exported from anvi'o (i.e., see program \
-                           `anvi-export-splits-and-coverages`) and import your clusters into anvi'o with `anvi-import-collection`.\
-                           If you still wish to try this workflow on your own risk, please run `anvi-cluster-contigs` with\
-                           the flag `--just-do-it`. Anvi'o developers thank you for your understanding and help.")
+        raise ConfigError("This is an experimental module and is not yet fully tested. Alternatively you could "
+                          "use external binning algorithms with raw data or data exported from anvi'o (i.e., see program "
+                          "`anvi-export-splits-and-coverages`) and import your clusters into anvi'o with `anvi-import-collection`. "
+                          "If you still wish to try this workflow on your own risk, please run `anvi-cluster-contigs` with "
+                          "the flag `--just-do-it`. Anvi'o developers thank you for your understanding and help.")
     else:
-        run.warning("You are running an experimental workflow not every part of which may be fully and thoroughly tested :)\
-                     Please scrutinize your output carefully after analysis, and keep us posted if you see things that\
-                     surprise you.")
+        run.warning("You are running an experimental workflow not every part of which may be fully and thoroughly tested :) "
+                    "Please scrutinize your output carefully after analysis, and keep us posted if you see things that "
+                    "surprise you.")
 
     collection_name = args.collection_name.strip()
     if not len(collection_name):
@@ -147,9 +147,9 @@ def main(args, unknown):
     try:
         utils.check_sample_id(collection_name)
     except:
-        raise ConfigError('"%s" is not a proper collection name. A proper one should be a single word and not contain\
-                            ANY characters but digits, ASCII letters and underscore character(s). There should not be\
-                            any space characters, and the collection name should not start with a digit.' % collection_name)
+        raise ConfigError('"%s" is not a proper collection name. A proper one should be a single word and not contain '
+                           'ANY characters but digits, ASCII letters and underscore character(s). There should not be '
+                           'any space characters, and the collection name should not start with a digit.' % collection_name)
 
     utils.is_profile_db_and_contigs_db_compatible(args.profile_db, args.contigs_db)
 
@@ -177,9 +177,9 @@ def main(args, unknown):
 
     cluster_type = getattr(binning_module, 'cluster_type', False)
     if not cluster_type or cluster_type not in ['contig', 'split']:
-        raise ConfigError("Anvi'o doesn't know what type of cluster this module returns.\
-                          Please define an 'cluster_type' class variable containing either\
-                          'contig' or 'split'.")
+        raise ConfigError("Anvi'o doesn't know what type of cluster this module returns. "
+                         "Please define an 'cluster_type' class variable containing either "
+                         "'contig' or 'split'.")
 
     working_dir = filesnpaths.get_temp_directory_path()
 
@@ -197,14 +197,14 @@ def main(args, unknown):
 
     citation = getattr(binning_module, 'citation', False)
     if citation:
-        run.warning("Anvi'o is now passing all your data to the binning module '%s'. If you publish results \
-                     from this workflow, please do not forget to reference the following citation." % binning_module_name,
+        run.warning("Anvi'o is now passing all your data to the binning module '%s'. If you publish results "
+                    "from this workflow, please do not forget to reference the following citation." % binning_module_name,
                      header='CITATION', lc='green')
         run.info_single("%s" % binning_module.citation, nl_after=1, mc='green')
     else:
-        raise ConfigError("The module %s does not seem to have any citation information. If you are currently developing a new\
-                           module please address this in your code. If you are a user, please consider dropping a line to anvi'o\
-                           developers." % (binning_module_name))
+        raise ConfigError("The module %s does not seem to have any citation information. If you are currently developing a new "
+                          "module please address this in your code. If you are a user, please consider dropping a line to anvi'o "
+                          "developers." % (binning_module_name))
 
     clusters = binning_module.cluster(input_files, sub_args, working_dir, threads=args.num_threads)
 
@@ -217,9 +217,9 @@ def main(args, unknown):
         c = TablesForCollections(args.profile_db)
         c.delete(collection_name)
 
-        raise ConfigError("Binning algorithm '%s' did not return any clusters :( There will not be any collection\
-                           in your profie database for these results. Please take a look at the help menu and sanity\
-                           check your parameters for this binning algorithm." % (driver))
+        raise ConfigError("Binning algorithm '%s' did not return any clusters :( There will not be any collection "
+                          "in your profie database for these results. Please take a look at the help menu and sanity "
+                          "check your parameters for this binning algorithm." % (driver))
 
     store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver, cluster_type)
 

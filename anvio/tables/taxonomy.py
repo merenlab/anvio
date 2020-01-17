@@ -71,8 +71,8 @@ class TablesForGeneLevelTaxonomy(Table, TaxonNamesTable):
         self.source = source
 
         if not self.genes_are_called:
-            raise ConfigError("Something is wrong. The contigs database says that genes were now called, and here\
-                                you are trying to populate taxonomy tables for genes. No, thanks.")
+            raise ConfigError("Something is wrong. The contigs database says that genes were now called, and here "
+                               "you are trying to populate taxonomy tables for genes. No, thanks.")
 
         self.init_gene_calls_dict()
 
@@ -89,8 +89,8 @@ class TablesForGeneLevelTaxonomy(Table, TaxonNamesTable):
         # test whether there are already genes tables populated
         taxonomy_source = database.get_meta_value('gene_level_taxonomy_source')
         if taxonomy_source:
-            self.run.warning('Previous taxonomy information from "%s" is being replaced with the incoming data\
-                              through "%s".' % (taxonomy_source, self.source))
+            self.run.warning('Previous taxonomy information from "%s" is being replaced with the incoming data '
+                             'through "%s".' % (taxonomy_source, self.source))
             database._exec('''DELETE FROM %s''' % (t.splits_taxonomy_table_name))
             database._exec('''DELETE FROM %s''' % (t.taxon_names_table_name))
             database._exec('''DELETE FROM %s''' % (t.genes_taxonomy_table_name))
@@ -140,30 +140,30 @@ class TablesForGeneLevelTaxonomy(Table, TaxonNamesTable):
         run.info("Num gene caller ids in the incoming data", pp(len(gene_caller_ids_in_taxonomy_dict)))
 
         if gene_caller_ids_missing_in_db:
-            raise ConfigError("Taxonomy information for genes you are trying to import into the database contains\
-                                %s gene caller ids that do not appear to be in the database. This is a step you must\
-                                be very careful to make sure you are not importing annotations for genes that have\
-                                nothing to do with your contigs database. To make sure of that, you should always work\
-                                with `anvi-get-dna-sequences-for-gene-calls` or `anvi-get-aa-sequences-for-gene-calls` programs\
-                                to get the data to annotate. For instance one of the gene caller ids you have in your\
-                                input data that does not appear in the database is this one: '%s'. Anvi'o hopes it makes\
-                                sense to you, because it definitely does not make any sense to anvi'o :("\
+            raise ConfigError("Taxonomy information for genes you are trying to import into the database contains "
+                               "%s gene caller ids that do not appear to be in the database. This is a step you must "
+                               "be very careful to make sure you are not importing annotations for genes that have "
+                               "nothing to do with your contigs database. To make sure of that, you should always work "
+                               "with `anvi-get-dna-sequences-for-gene-calls` or `anvi-get-aa-sequences-for-gene-calls` programs "
+                               "to get the data to annotate. For instance one of the gene caller ids you have in your "
+                               "input data that does not appear in the database is this one: '%s'. Anvi'o hopes it makes "
+                               "sense to you, because it definitely does not make any sense to anvi'o :("\
                                                         % (len(gene_caller_ids_missing_in_db), str(gene_caller_ids_missing_in_db.pop())))
 
         # check whether input matrix dict
         keys_found =  list(self.taxon_names_dict.values())[0].keys()
         missing_keys = [key for key in t.taxon_names_table_structure[1:] if key not in keys_found]
         if len(missing_keys):
-            raise ConfigError("Anvi'o is trying to get ready to create tables for taxonomy, but there is something\
-                                wrong :( The taxonomy names dict (one of the required input dictionaries to the class\
-                                seems to be missing a one or more keys that are necessary to finish the job. Here is \
-                                a list of missing keys: %s. The complete list of input keys should contain these: %s."\
+            raise ConfigError("Anvi'o is trying to get ready to create tables for taxonomy, but there is something "
+                               "wrong :( The taxonomy names dict (one of the required input dictionaries to the class "
+                               "seems to be missing a one or more keys that are necessary to finish the job. Here is "
+                               "a list of missing keys: %s. The complete list of input keys should contain these: %s."\
                                         % (', '.join(missing_keys), ', '.join(t.taxon_names_table_structure[1:])))
 
         if not len(self.taxon_names_dict):
-            raise ConfigError("Anvi'o is trying to get ready to create tables for taxonomy, but taxonomy names dict\
-                                (one of the required input dictionaries to the class responsible for this task) seems\
-                                to be empty.")
+            raise ConfigError("Anvi'o is trying to get ready to create tables for taxonomy, but taxonomy names dict "
+                               "(one of the required input dictionaries to the class responsible for this task) seems "
+                               "to be empty.")
 
 
     def populate_splits_taxonomy_table(self):

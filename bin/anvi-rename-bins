@@ -57,21 +57,21 @@ def main(args):
         sys.exit()
 
     if not prefix:
-        raise ConfigError("Anvi'o is having hard time believing that you called this function without\
-                            a prefix to rename bins in the collection '%s'." % collection_name_to_read)
+        raise ConfigError("Anvi'o is having hard time believing that you called this function without "
+                           "a prefix to rename bins in the collection '%s'." % collection_name_to_read)
 
     utils.is_this_name_OK_for_database('prefix for bins', prefix)
 
     if not report_file_path:
-        raise ConfigError("You must provide an output file name to report file changes. It may or may not\
-                            be useful to you, but let's don't take unnecessary risks, eh? (you can use the\
-                            `--report-file` parameter)")
+        raise ConfigError("You must provide an output file name to report file changes. It may or may not "
+                           "be useful to you, but let's don't take unnecessary risks, eh? (you can use the "
+                           "`--report-file` parameter)")
 
     filesnpaths.is_output_file_writable(report_file_path)
 
     if collection_name_to_read == collection_name_to_write:
-        raise ConfigError("Well :( Collection name to read from can't be identical to the collection name\
-                            you want to use to store updated bin names. You know. It kinda defeats the purpose.")
+        raise ConfigError("Well :( Collection name to read from can't be identical to the collection name "
+                           "you want to use to store updated bin names. You know. It kinda defeats the purpose.")
 
     if not collection_name_to_read:
         raise ConfigError("You must provide a collection name to read from.")
@@ -82,26 +82,26 @@ def main(args):
     utils.is_this_name_OK_for_database('collection name two write', collection_name_to_write)
 
     if  collection_name_to_read not in collections.collections_dict:
-        raise ConfigError("%s is not a valid collection name, because it doesn't exist :(. See a\
-                            list of available ones with '--list-collections' flag" % collection_name_to_read)
+        raise ConfigError("%s is not a valid collection name, because it doesn't exist :(. See a "
+                           "list of available ones with '--list-collections' flag" % collection_name_to_read)
 
     if  collection_name_to_write in collections.collections_dict:
-        raise ConfigError("The new collection name %s is already in the database. You must choose a new\
-                            collection name." % collection_name_to_write)
+        raise ConfigError("The new collection name %s is already in the database. You must choose a new "
+                           "collection name." % collection_name_to_write)
 
     completeness = Completeness(contigs_db_path)
 
     if not len(completeness.sources):
-        raise ConfigError("HMM's were not run for this contigs database :/ Without that, how can this poor program can rename bins based on\
-                            their completion estimates? :(")
+        raise ConfigError("HMM's were not run for this contigs database :/ Without that, how can this poor program can rename bins based on "
+                           "their completion estimates? :(")
 
-    run.warning('This run will use the completion and redundancy estimate\
-                     recovered from the single-copy core gene collection that provides the highest\
-                     completion estimate.')
+    run.warning('This run will use the completion and redundancy estimate '
+                    'recovered from the single-copy core gene collection that provides the highest '
+                    'completion estimate.')
 
     if not len(completeness.sources):
-        raise ConfigError("It seems the contigs database does not contain HMM hits for\
-                            any of the single copy core gene collections :/ Bad news.")
+        raise ConfigError("It seems the contigs database does not contain HMM hits for "
+                           "any of the single copy core gene collections :/ Bad news.")
 
 
     contigs_db = dbops.ContigsSuperclass(args, r = run, p = progress)
@@ -183,10 +183,10 @@ def main(args):
     run.info('Report', '%s' % (report_file_path))
 
     if dry_run:
-        run.warning('This was a dry run. So nothing is updated in the profile database, but now there is\
-                     a fancy report file that shows how your bins would have been renamed. Please take a\
-                     look at it and make sure things seem just like the way you want. Once you are satisfied\
-                     you can run the program without the --dry-run flag.')
+        run.warning('This was a dry run. So nothing is updated in the profile database, but now there is '
+                    'a fancy report file that shows how your bins would have been renamed. Please take a '
+                    'look at it and make sure things seem just like the way you want. Once you are satisfied '
+                    'you can run the program without the --dry-run flag.')
 
         return
 

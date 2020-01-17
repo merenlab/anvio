@@ -65,12 +65,12 @@ class DB:
             self.version = self.get_version()
             if str(self.version) != str(client_version) and not ignore_version:
                 if int(self.version) > int(client_version):
-                    raise ConfigError("Bad news of the day: the database at %s was generated with an anvi'o version that is 'newer' than\
-                                       the one you are actively using right now. We know, you hate to hear this, but you need to upgrade\
-                                       your anvi'o :(" % self.db_path)
+                    raise ConfigError("Bad news of the day: the database at %s was generated with an anvi'o version that is 'newer' than "
+                                      "the one you are actively using right now. We know, you hate to hear this, but you need to upgrade "
+                                      "your anvi'o :(" % self.db_path)
                 else:
-                    raise ConfigError("The database at '%s' is outdated (its version is v%s, but your anvi'o installation only knows how to\
-                                       deal with v%s). You can migrate your database without losing any data using the program `anvi-migrate`."\
+                    raise ConfigError("The database at '%s' is outdated (its version is v%s, but your anvi'o installation only knows how to "
+                                      "deal with v%s). You can migrate your database without losing any data using the program `anvi-migrate`."\
                                                % (self.db_path, self.version, client_version))
 
 
@@ -268,9 +268,9 @@ class DB:
                 0          no       2                 2          no       2
         """
         if table_name not in self.get_table_names():
-            raise ConfigError("insert_rows_from_dataframe :: A table with the name {} does\
-                               not exist in the database you requested. {} are the tables\
-                               existent in the database".\
+            raise ConfigError("insert_rows_from_dataframe :: A table with the name {} does "
+                              "not exist in the database you requested. {} are the tables "
+                              "existent in the database".\
                                format(table_name, ", ".join(self.get_table_names())))
 
         if not list(dataframe.columns) and not raise_if_no_columns:
@@ -278,20 +278,20 @@ class DB:
             return
 
         if len(set(dataframe.columns)) != len(list(dataframe.columns)):
-            raise ConfigError("insert_rows_from_dataframe :: There is at least one duplicate column\
-                               name in the dataframe. Here is the list of columns: [{}].".\
+            raise ConfigError("insert_rows_from_dataframe :: There is at least one duplicate column "
+                              "name in the dataframe. Here is the list of columns: [{}].".\
                                format(", ".join(list(dataframe.columns))))
 
         if set(dataframe.columns) != set(self.get_table_structure(table_name)):
-            raise ConfigError("insert_rows_from_dataframe :: The columns in the dataframe\
-                               do not equal the columns (structure) of the requested table.\
-                               The columns from each are respectively ({}); and ({}).".\
+            raise ConfigError("insert_rows_from_dataframe :: The columns in the dataframe "
+                              "do not equal the columns (structure) of the requested table. "
+                              "The columns from each are respectively ({}); and ({}).".\
                                format(", ".join(list(dataframe.columns)),
                                       ", ".join(self.get_table_structure(table_name))))
 
         if key and key not in dataframe.columns:
-            raise ConfigError("insert_rows_from_dataframe :: key ({}) is not a column of your\
-                               dataframe. The columns in your dataframe are [{}].".\
+            raise ConfigError("insert_rows_from_dataframe :: key ({}) is not a column of your "
+                              "dataframe. The columns in your dataframe are [{}].".\
                                format(key, ", ".join(list(dataframe.columns))))
 
         elif key:
@@ -382,8 +382,8 @@ class DB:
 
         if len(columns_to_return) == 1:
             if error_if_no_data:
-                raise ConfigError("get_table_as_dict :: after removing an column that was not mentioned in the columns\
-                                    of interest by the client, nothing was left to return...")
+                raise ConfigError("get_table_as_dict :: after removing an column that was not mentioned in the columns "
+                                   "of interest by the client, nothing was left to return...")
             else:
                 return {}
 
@@ -413,15 +413,15 @@ class DB:
             if len(unique_keys) != len(rows):
                 if anvio.FIX_SAD_TABLES:
                     if 'hmm' in table_name:
-                        raise ConfigError("You asked anvi'o to fix sad tables, but the sad table you're trying to fix happens to\
-                                           be related to HMM operations in anvi'o, where supposedly unique entries tie together\
-                                           multiple tables. Long story short, solving this while ensuring everything is done right\
-                                           is quite difficult and there is no reason to take any risks. The best you can do is to\
-                                           remove all HMMs from your contigs database, and re-run them with a single instance of\
-                                           `anvi-run-hmms` command (you can use multiple threads, but you shouldn't send multiple\
-                                           `anvi-run-hmms` to your cluster to be run on the same contigs database in parallel --\
-                                           that's what led you to this point at the first place). Apologies for this bioinformatics\
-                                           poo poo :( It is all on us.")
+                        raise ConfigError("You asked anvi'o to fix sad tables, but the sad table you're trying to fix happens to "
+                                          "be related to HMM operations in anvi'o, where supposedly unique entries tie together "
+                                          "multiple tables. Long story short, solving this while ensuring everything is done right "
+                                          "is quite difficult and there is no reason to take any risks. The best you can do is to "
+                                          "remove all HMMs from your contigs database, and re-run them with a single instance of "
+                                          "`anvi-run-hmms` command (you can use multiple threads, but you shouldn't send multiple "
+                                          "`anvi-run-hmms` to your cluster to be run on the same contigs database in parallel -- "
+                                          "that's what led you to this point at the first place). Apologies for this bioinformatics "
+                                          "poo poo :( It is all on us.")
 
                     self.run.info_single("You have sad tables. You have used `--fix-sad-tables` flag. Now anvi'o will try to fix them...", mc="red")
 
@@ -446,17 +446,17 @@ class DB:
                                      errors and you wish to contact us for that, please don't forget to mention that you did try\
                                      to fix your sad tables.", mc="green")
                 else:
-                    raise ConfigError("This is one of the core functions of anvi'o you never want to hear from, but there seems\
-                                       to be something wrong with the table '%s' that you are trying to read from. While there\
-                                       are %d items in this table, there are only %d unique keys, which means some of them are\
-                                       going to be overwritten when this function creates a final dictionary of data to return.\
-                                       This often happens when the user runs multiple processes in parallel that tries to write\
-                                       to the same table. For instance, running a separate instance of `anvi-run-hmms` on the same\
-                                       contigs database with different HMM profiles. Anvi'o is very sad for not handling this\
-                                       properly, but such database tables need fixin' before things can continue :( If you would\
-                                       like anvi'o to try to fix this, please run the same command you just run with the flag\
-                                       `--fix-sad-tables`. If you do that it is a great idea to backup your original database\
-                                       and then very carefully check the results to make sure things do not look funny." \
+                    raise ConfigError("This is one of the core functions of anvi'o you never want to hear from, but there seems "
+                                      "to be something wrong with the table '%s' that you are trying to read from. While there "
+                                      "are %d items in this table, there are only %d unique keys, which means some of them are "
+                                      "going to be overwritten when this function creates a final dictionary of data to return. "
+                                      "This often happens when the user runs multiple processes in parallel that tries to write "
+                                      "to the same table. For instance, running a separate instance of `anvi-run-hmms` on the same "
+                                      "contigs database with different HMM profiles. Anvi'o is very sad for not handling this "
+                                      "properly, but such database tables need fixin' before things can continue :( If you would "
+                                      "like anvi'o to try to fix this, please run the same command you just run with the flag "
+                                      "`--fix-sad-tables`. If you do that it is a great idea to backup your original database "
+                                      "and then very carefully check the results to make sure things do not look funny." \
                                                     % (table_name, len(rows), len(unique_keys)))
 
         #
@@ -522,8 +522,8 @@ class DB:
 
         if len(columns_to_return) == 1:
             if error_if_no_data:
-                raise ConfigError("get_table_as_dataframe :: after removing a column that was not mentioned in the columns\
-                                    of interest by the client, nothing was left to return...")
+                raise ConfigError("get_table_as_dataframe :: after removing a column that was not mentioned in the columns "
+                                   "of interest by the client, nothing was left to return...")
             else:
                 return {}
 

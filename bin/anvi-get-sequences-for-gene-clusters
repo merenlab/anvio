@@ -37,18 +37,18 @@ def main(args):
         raise ConfigError('You should either declare a single gene cluster name, or gene cluster names in a file')
 
     if (args.gene_cluster_id or args.gene_cluster_ids_file) and args.collection_name:
-        raise ConfigError('You can either declare specific list of gene clusters to work with (through `--gene-cluster-id` or `--gene-cluster-ids-file`) or\
-                           go the collection way using parameters `--collection-name` and `--bin-name`. Those are not to be\
-                           mixed. If you need to know what collections are available in the pan database, use the flag \
-                           `--list-collections`.')
+        raise ConfigError('You can either declare specific list of gene clusters to work with (through `--gene-cluster-id` or `--gene-cluster-ids-file`) or '
+                          'go the collection way using parameters `--collection-name` and `--bin-name`. Those are not to be '
+                          'mixed. If you need to know what collections are available in the pan database, use the flag '
+                          '`--list-collections`.')
 
     if not args.output_file:
         args.output_file = os.path.join(os.path.dirname(os.path.abspath(args.pan_db)), 'gene-cluster-alignments-output-with-an-ugly-name.fa')
 
     if not args.concatenate_gene_clusters and args.align_with:
-        raise ConfigError("If you are not asking for concatenated gene clusters, then you really don't need to specify an aligner.\
-                           Yes, anvi'o could ignore that flag and move on, but who would we become if we get used to ignoring those\
-                           little signs of 'I am not sure what I am doing'?")
+        raise ConfigError("If you are not asking for concatenated gene clusters, then you really don't need to specify an aligner. "
+                          "Yes, anvi'o could ignore that flag and move on, but who would we become if we get used to ignoring those "
+                          "little signs of 'I am not sure what I am doing'?")
 
     filesnpaths.is_output_file_writable(args.output_file)
 
@@ -60,8 +60,8 @@ def main(args):
         progress.end()
 
         if not args.bin_id:
-            raise ConfigError("When you use a collection name, you must also declare a bin id :/ You don't know what bin you want? Use the flag\
-                               `--list-bins`.")
+            raise ConfigError("When you use a collection name, you must also declare a bin id :/ You don't know what bin you want? Use the flag "
+                              "`--list-bins`.")
 
         pan.collections.is_bin_in_collection(collection_name=args.collection_name, bin_name=args.bin_id)
         collection_dict = pan.collections.get_collection_dict(args.collection_name)
