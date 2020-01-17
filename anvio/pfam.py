@@ -72,7 +72,7 @@ class PfamSetup(object):
 
 
     def is_database_exists(self):
-        if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm')):
+        if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm') or os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz'))):
             raise ConfigError("It seems you already have Pfam database installed in '%s', please use --reset flag if you want to re-download it." % self.pfam_data_dir)
 
 
