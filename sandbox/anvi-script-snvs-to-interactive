@@ -139,8 +139,8 @@ def main(args):
 
     if args.random:
         if args.random >= len(profile):
-            run.info_single("You set a number to randomly subset your data, but it is larger than the actual number of\
-                             positions. So anvi'o will gracefully ignore that parameter.", nl_before=1, nl_after=1)
+            run.info_single("You set a number to randomly subset your data, but it is larger than the actual number of "
+                            "positions. So anvi'o will gracefully ignore that parameter.", nl_before=1, nl_after=1)
             args.random = None
         else:
             run.info('Random sampling', 'Unique positions will be subsampled to %s.' % pp(args.random))

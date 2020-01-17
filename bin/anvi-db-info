@@ -70,13 +70,13 @@ class DatabaseInfo:
                 else:
                     run.info(key, self.db_self[key]["value"])
 
-            run.info_single("Please remember that it is never a good idea to change these values. But in\
-                             some cases it may be absolutely necessary to update something here, and a\
-                             programmer may ask you to run this program and do it. But even then, you\
-                             should be very skeptical. For instance, if the programmer asks you to change\
-                             the values for 'num_contigs', or 'kmer_size', it would mean that they likely\
-                             hate you and want you to fail. So please be extremely careful changing any\
-                             of these values.", mc='red', nl_before=1)
+            run.info_single("Please remember that it is never a good idea to change these values. But in "
+                            "some cases it may be absolutely necessary to update something here, and a "
+                            "programmer may ask you to run this program and do it. But even then, you "
+                            "should be very skeptical. For instance, if the programmer asks you to change "
+                            "the values for 'num_contigs', or 'kmer_size', it would mean that they likely "
+                            "hate you and want you to fail. So please be extremely careful changing any "
+                            "of these values.", mc='red', nl_before=1)
 
     def get_db_self(self):
         try:
@@ -141,8 +141,8 @@ class DatabaseInfo:
                                     (self.self_key, db_type, self.self_value))
 
         if not self.just_do_it:
-            self.run.info_single('If you like what you see up there, please use the `--just-do-it`\
-                                  flag to make it happen.')
+            self.run.info_single('If you like what you see up there, please use the `--just-do-it` '
+                                 'flag to make it happen.')
             sys.exit(0)
 
         database = db.DB(self.db_path, None, ignore_version=True)

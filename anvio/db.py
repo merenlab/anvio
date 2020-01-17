@@ -91,12 +91,12 @@ class DB:
         while(check_counter < check_limit and filesnpaths.is_file_exists(journal_path, dont_raise=True)):
             if check_counter == 0:
                 # print only once
-                self.run.info_single("It seems the database at '%s' currently used by another proccess\
-                               for writing operations. Anvi'o refuses to work with this database to avoid corrupting it. \
-                               If you think this is a mistake, you may stop this process and delete the lock file at '%s' after making sure \
-                               no other active process using it for writing. In case this program is ran by automatic workflow manager like snakemake \
-                               Anvi'o will periodically check if the journal file still exists for total of %d minutes. If database is still not writable \
-                               after that time, Anvi'o will stop running. " % (os.path.abspath(self.db_path), os.path.abspath(journal_path), int(check_limit/60)))
+                self.run.info_single("It seems the database at '%s' currently used by another proccess "
+                              "for writing operations. Anvi'o refuses to work with this database to avoid corrupting it. "
+                              "If you think this is a mistake, you may stop this process and delete the lock file at '%s' after making sure "
+                              "no other active process using it for writing. In case this program is ran by automatic workflow manager like snakemake "
+                              "Anvi'o will periodically check if the journal file still exists for total of %d minutes. If database is still not writable "
+                              "after that time, Anvi'o will stop running. " % (os.path.abspath(self.db_path), os.path.abspath(journal_path), int(check_limit/60)))
 
             time.sleep(check_interval)
             check_counter += check_interval
@@ -222,8 +222,8 @@ class DB:
         for chunk in get_list_in_chunks(values):
             if anvio.DEBUG:
                 self.progress.reset()
-                self.run.info_single("Adding the chunk %d with %d entries of %d total is being added to the db with\
-                                      the SQL command '%s'." \
+                self.run.info_single("Adding the chunk %d with %d entries of %d total is being added to the db with "
+                                     "the SQL command '%s'." \
                                     % (chunk_counter, len(chunk), len(values), sql_query), nl_before=1)
 
             self.cursor.executemany(sql_query, chunk)
@@ -441,10 +441,10 @@ class DB:
                     # enter corrected data
                     self._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(table_structure))), rows)
 
-                    self.run.info_single("If you are seeing this line, it means anvi'o managed to fix those sad tables. No more sad!\
-                                     But please make double sure that nothing looks funny in your results. If you start getting\
-                                     errors and you wish to contact us for that, please don't forget to mention that you did try\
-                                     to fix your sad tables.", mc="green")
+                    self.run.info_single("If you are seeing this line, it means anvi'o managed to fix those sad tables. No more sad! "
+                                    "But please make double sure that nothing looks funny in your results. If you start getting "
+                                    "errors and you wish to contact us for that, please don't forget to mention that you did try "
+                                    "to fix your sad tables.", mc="green")
                 else:
                     raise ConfigError("This is one of the core functions of anvi'o you never want to hear from, but there seems "
                                       "to be something wrong with the table '%s' that you are trying to read from. While there "

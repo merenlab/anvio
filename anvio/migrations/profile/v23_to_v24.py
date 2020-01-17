@@ -159,12 +159,12 @@ def migrate(db_path):
     progress.end()
 
     if full_upgrade:
-        run.info_single("Your profile db is now version %s. You can learn more about what happened here\
-                         by taking a look at this issue: https://github.com/merenlab/anvio/issues/800" \
+        run.info_single("Your profile db is now version %s. You can learn more about what happened here "
+                        "by taking a look at this issue: https://github.com/merenlab/anvio/issues/800" \
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
     else:
-        run.info_single("Your profile db is now version %s. But essentially nothing really happened to your\
-                         database since it was a blank profile (which is OK, move along)." \
+        run.info_single("Your profile db is now version %s. But essentially nothing really happened to your "
+                        "database since it was a blank profile (which is OK, move along)." \
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
 
 

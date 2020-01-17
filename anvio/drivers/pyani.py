@@ -89,8 +89,8 @@ class PyANI:
                               "output directory :( You may find some clues in the log file?")
 
         if not self.quiet:
-            self.run.info_single("Output matrices for the following items are stored in the output\
-                                  directory: %s <success kid meme.png>." % \
+            self.run.info_single("Output matrices for the following items are stored in the output "
+                                 "directory: %s <success kid meme.png>." % \
                                             (', '.join(["'%s'" % m.replace('_', ' ') for m in matrices])), nl_before=1, mc='green')
 
         # restore old working directory

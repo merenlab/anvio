@@ -56,9 +56,9 @@ def migrate(db_path):
     contigs_db.disconnect()
 
     progress.end()
-    run.info_single("The contigs database is now %s. This upgrade added one more table to your contigs database\
-                     so it can store additional information about the taxonomic affiliation of SCGs\
-                     in it." % (next_version), nl_after=1, nl_before=1, mc='green')
+    run.info_single("The contigs database is now %s. This upgrade added one more table to your contigs database "
+                    "so it can store additional information about the taxonomic affiliation of SCGs "
+                    "in it." % (next_version), nl_after=1, nl_before=1, mc='green')
 
 
 if __name__ == '__main__':

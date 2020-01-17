@@ -441,8 +441,8 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         self.frequency_of_scgs_with_taxonomy = OrderedDict(sorted([(g, len(self.scg_name_to_gene_caller_id_dict[g])) for g in self.scg_name_to_gene_caller_id_dict], key = lambda x: x[1], reverse=True))
 
         if self.metagenome_mode or anvio.DEBUG:
-            self.run.info_single("A total of %s single-copy core genes with taxonomic affiliations were successfully initialized\
-                                  from the contigs database 🎉 Following shows the frequency of these SCGs: %s." % \
+            self.run.info_single("A total of %s single-copy core genes with taxonomic affiliations were successfully initialized "
+                                 "from the contigs database 🎉 Following shows the frequency of these SCGs: %s." % \
                                             (pp(len(self.gene_callers_id_to_scg_taxonomy_dict)),
                                              ', '.join(["%s (%d)" % (g, self.frequency_of_scgs_with_taxonomy[g]) \
                                                                 for g in self.frequency_of_scgs_with_taxonomy])), nl_before=1)
@@ -669,8 +669,8 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         bins_taxonomy_dict = {}
 
         bin_name_to_split_names_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
-        self.run.info_single("%s split names associated with %s bins of in collection '%s' have been \
-                              successfully recovered 🎊" % (pp(sum([len(v) for v in bin_name_to_split_names_dict.values()])),
+        self.run.info_single("%s split names associated with %s bins of in collection '%s' have been "
+                             "successfully recovered 🎊" % (pp(sum([len(v) for v in bin_name_to_split_names_dict.values()])),
                                                            pp(len(bin_name_to_split_names_dict)),
                                                            self.collection_name), nl_before=1)
 
@@ -1013,8 +1013,8 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
                               "are working with a database that is not suitable for what you wish to do here :(")
         else:
             self.progress.reset()
-            self.run.info_single("Anvi'o will now attempt to recover SCG coverages from the profile database, which\
-                                  contains %d samples." % (len(self.sample_names_in_profile_db)), nl_before=1, nl_after=1)
+            self.run.info_single("Anvi'o will now attempt to recover SCG coverages from the profile database, which "
+                                 "contains %d samples." % (len(self.sample_names_in_profile_db)), nl_before=1, nl_after=1)
 
         scg_coverages_across_samples_dict = {}
 
@@ -1223,9 +1223,9 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
                               "output: %s" % (len(missing_msa_gene_names), ', '.join(missing_msa_gene_names), self.msa_individual_genes_dir_path))
         else:
             self.progress.reset()
-            self.run.info_single("Good news! The conversion dict and the FASTA files it requires seem to be in place.\
-                                  Anvi'o is now ready to to merge %d FASTA files that correspond to %d SCGs, and\
-                                  create individual search databases for them." % \
+            self.run.info_single("Good news! The conversion dict and the FASTA files it requires seem to be in place. "
+                                 "Anvi'o is now ready to to merge %d FASTA files that correspond to %d SCGs, and "
+                                 "create individual search databases for them." % \
                                         (len(msa_individual_gene_names_required), len(locally_known_HMMs_to_remote_FASTAs)), nl_before=1, nl_after=1, mc="green")
 
         # Merge FASTA files that should be merged. This is defined in the conversion dictionary.
@@ -1287,12 +1287,12 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
         shutil.rmtree(temp_dir)
 
         self.progress.end()
-        self.run.info_single("Every FASTA is now turned into a fancy search database. It means you are now allowed to run \
-                              `anvi-run-scg-taxonomy` on anvi'o contigs databases. This workflow is very new, and there are\
-                              caveats to it just like every other computational approach you use to make sense of complex 'omics\
-                              data. To better understand those caveats you should read our online documentation a bit. If you see\
-                              things that concerns you, please let anvi'o developers know. They love bad news. If you get good\
-                              results from this workflow, thank to those who contributed to the GTDB.", nl_after=1, mc="green")
+        self.run.info_single("Every FASTA is now turned into a fancy search database. It means you are now allowed to run "
+                             "`anvi-run-scg-taxonomy` on anvi'o contigs databases. This workflow is very new, and there are "
+                             "caveats to it just like every other computational approach you use to make sense of complex 'omics "
+                             "data. To better understand those caveats you should read our online documentation a bit. If you see "
+                             "things that concerns you, please let anvi'o developers know. They love bad news. If you get good "
+                             "results from this workflow, thank to those who contributed to the GTDB.", nl_after=1, mc="green")
 
 
     def clean_up(self):
