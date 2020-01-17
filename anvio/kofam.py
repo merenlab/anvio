@@ -52,7 +52,7 @@ class KofamSetup(object):
         if not self.kofam_data_dir:
             self.kofam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
 
-        if not args.reset:
+        if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
 
         filesnpaths.gen_output_directory(self.kofam_data_dir, delete_if_exists=args.reset)
