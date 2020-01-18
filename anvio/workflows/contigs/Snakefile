@@ -162,10 +162,10 @@ rule reformat_external_gene_calls_table:
         for g in external_gene_calls:
             contig_name = external_gene_calls[g]['contig']
             if contig_name not in contig_dict:
-                raise ConfigError('When proccessing external gene calls for %s \
-                                   we bumped into the following problem: The \
-                                   following contig name: "%s" appears in your external \
-                                   gene calls file, but not in your fasta file.' % (wildcards.group, contig_name))
+                raise ConfigError('When proccessing external gene calls for %s '
+                                  'we bumped into the following problem: The '
+                                  'following contig name: "%s" appears in your external '
+                                  'gene calls file, but not in your fasta file.' % (wildcards.group, contig_name))
             new_contig_name = contig_dict[contig_name]
             if new_contig_name in contigs:
                 new_external_gene_calls[g] = external_gene_calls[g].copy()

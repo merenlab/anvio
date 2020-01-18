@@ -41,9 +41,9 @@ class Migrater(object):
 
     def get_db_meta(self):
         if not args.just_do_it and self.db_path.split('.')[-1] not in ['db', 'h5', 'json']:
-            raise ConfigError("This program only works with files that end with `.db` or `.json` extensions.\
-                               But if you sure that, this is in fact an anvi'o database or config file\
-                               you can use --just-do-it flag at your own risk.")
+            raise ConfigError("This program only works with files that end with `.db` or `.json` extensions. "
+                              "But if you sure that, this is in fact an anvi'o database or config file "
+                              "you can use --just-do-it flag at your own risk.")
 
         file_is_config = False
         if args.just_do_it:
@@ -77,8 +77,8 @@ class Migrater(object):
 
                 db_conn.disconnect()
         except:
-            raise ConfigError('Are you sure "%s" is a database or config file? Because, you know, probably\
-                                it is not at all.' % self.db_path)
+            raise ConfigError('Are you sure "%s" is a database or config file? Because, you know, probably '
+                               'it is not at all.' % self.db_path)
 
 
     def get_target_version(self):
@@ -107,8 +107,8 @@ class Migrater(object):
             script_name = "v%s_to_v%s" % (i, i + 1)
 
             if not self.db_type in migration_scripts or not script_name in migration_scripts[self.db_type]:
-                raise ConfigError("Anvi'o can not find a migrate script required \
-                    for this operation. (DB Type: %s, Script name: %s) " % (self.db_type, script_name))
+                raise ConfigError("Anvi'o can not find a migrate script required "
+                   "for this operation. (DB Type: %s, Script name: %s) " % (self.db_type, script_name))
 
             tasks.append(script_name)
 

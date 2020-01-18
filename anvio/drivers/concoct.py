@@ -130,8 +130,8 @@ class CONCOCT:
         output_file_name = 'clustering_gt%s.csv' % threshold
         output_file_path = J(output_file_name)
         if not os.path.exists(output_file_path):
-            raise ConfigError("One of the critical output files is missing ('%s'). Please take a look at the\
-                               log file: %s" % (output_file_name, log_path))
+            raise ConfigError("One of the critical output files is missing ('%s'). Please take a look at the "
+                              "log file: %s" % (output_file_name, log_path))
 
         with open(output_file_path, 'r') as f:
             lines = f.readlines()[1:]

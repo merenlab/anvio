@@ -159,11 +159,11 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
             self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
         except IndexError as e:
-            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. \
-                               This is what we know: '%s'" % (self.samples_txt_file, e))
+            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
+                              "This is what we know: '%s'" % (self.samples_txt_file, e))
         if 'sample' not in list(self.samples_information.columns):
-            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. \
-                               We are not sure what's wrong, but we can't find a column with title 'sample'." % self.samples_txt_file)
+            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
+                              "We are not sure what's wrong, but we can't find a column with title 'sample'." % self.samples_txt_file)
 
 
         # get a list of the sample names
@@ -274,11 +274,11 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             self.group_names = self.sample_names
 
         if self.fasta_txt_file and not self.references_mode:
-            raise ConfigError("In order to use reference fasta files you must set\
-                           \"'references_mode': true\" in your config file, yet\
-                           you didn't, but at the same time you supplied the following\
-                           fasta_txt: %s. So we don't know what to do with this\
-                           fasta_txt" % self.fasta_txt_file)
+            raise ConfigError("In order to use reference fasta files you must set "
+                          "\"'references_mode': true\" in your config file, yet "
+                          "you didn't, but at the same time you supplied the following "
+                          "fasta_txt: %s. So we don't know what to do with this "
+                          "fasta_txt" % self.fasta_txt_file)
 
         # Collecting information regarding groups.
         if "group" in self.samples_information.columns:
@@ -293,17 +293,17 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                 # the names of fasta.
                 mismatch = set(self.group_names) - set(self.contigs_information.keys())
                 if mismatch:
-                    raise ConfigError("Group names specified in the samples.txt \
-                                       file must match the names of fasta \
-                                       in the fasta.txt file. These are the \
-                                       mismatches: %s" % mismatch)
+                    raise ConfigError("Group names specified in the samples.txt "
+                                      "file must match the names of fasta "
+                                      "in the fasta.txt file. These are the "
+                                      "mismatches: %s" % mismatch)
                 groups_in_contigs_information_but_not_in_samples_txt = set(self.contigs_information.keys()) - set(self.group_names)
                 if groups_in_contigs_information_but_not_in_samples_txt:
-                    run.warning('The following group names appear in your fasta_txt\
-                                 but do not appear in your samples_txt. Maybe this is\
-                                 ok with you, but we thought you should know. This means\
-                                 that the metagenomics workflow will simply ignore these\
-                                 groups.')
+                    run.warning('The following group names appear in your fasta_txt '
+                                'but do not appear in your samples_txt. Maybe this is '
+                                'ok with you, but we thought you should know. This means '
+                                'that the metagenomics workflow will simply ignore these '
+                                'groups.')
 
         else:
             if self.references_mode:
@@ -316,9 +316,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             else:
                 # if no groups were specified then each sample would be assembled
                 # separately
-                run.warning("No groups were specified in your samples_txt. This is fine.\
-                             But we thought you should know. Any assembly will be performed\
-                             on individual samples (i.e. NO co-assembly).")
+                run.warning("No groups were specified in your samples_txt. This is fine. "
+                            "But we thought you should know. Any assembly will be performed "
+                            "on individual samples (i.e. NO co-assembly).")
                 self.samples_information['group'] = self.samples_information['sample']
                 self.group_names = list(self.sample_names)
                 self.group_sizes = dict.fromkeys(self.group_names,1)
@@ -335,37 +335,37 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             # the megahit output is temporary, and if we dont run
             # reformat_fasta we will delete the output of meghit at the
             # end of the workflow without saving a copy.
-            raise ConfigError("You can't skip reformat_fasta in assembly mode \
-                                please change your config.json file")
+            raise ConfigError("You can't skip reformat_fasta in assembly mode "
+                               "please change your config.json file")
 
 
     def init_samples_txt(self):
         if 'sample' not in self.samples_information.columns.values:
-            raise ConfigError("You know what. This '%s' file does not look anything like\
-                               a samples file." % self.samples_txt_file)
+            raise ConfigError("You know what. This '%s' file does not look anything like "
+                              "a samples file." % self.samples_txt_file)
 
         if len(self.samples_information['sample']) != len(set(self.samples_information['sample'])):
-            raise ConfigError("Names of samples in your samples_txt file must be unique. \
-                               It looks like some names appear twice in your file: %s" % self.samples_txt_file)
+            raise ConfigError("Names of samples in your samples_txt file must be unique. "
+                              "It looks like some names appear twice in your file: %s" % self.samples_txt_file)
 
         for sample in self.samples_information['sample']:
             try:
                 u.check_sample_id(sample)
             except ConfigError as e:
-                raise ConfigError("While processing the samples txt file ('%s'), anvi'o ran into the following error: \
-                                   %s" % (self.samples_txt_file, e))
+                raise ConfigError("While processing the samples txt file ('%s'), anvi'o ran into the following error: "
+                                  "%s" % (self.samples_txt_file, e))
 
         if 'r1' not in self.samples_information.columns or 'r2' not in self.samples_information:
-            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. \
-                               We are not sure what's wrong, but we expected to find columns with \
-                               titles 'r1' and 'r2' and we did not find such columns." % self.samples_txt_file)
+            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
+                              "We are not sure what's wrong, but we expected to find columns with "
+                              "titles 'r1' and 'r2' and we did not find such columns." % self.samples_txt_file)
 
         fastq_file_names = list(self.samples_information['r1']) + list(self.samples_information['r2'])
         bad_fastq_names = [s for s in fastq_file_names if (not s.endswith('.fastq') and not s.endswith('.fastq.gz'))]
         if bad_fastq_names:
-            run.warning("We noticed some of your sequence files in '%s' do not end with either '.fastq' \
-                         or '.fastq.gz'. That's okay, but anvi'o decided it should warn you. Here are the first \
-                         5 such files that have unconventional file extensions: %s." \
+            run.warning("We noticed some of your sequence files in '%s' do not end with either '.fastq' "
+                        "or '.fastq.gz'. That's okay, but anvi'o decided it should warn you. Here are the first "
+                        "5 such files that have unconventional file extensions: %s." \
                          % (self.samples_txt_file, ', '.join(bad_fastq_names[:5])))
 
 
@@ -376,42 +376,42 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         if kraken_txt:
             if self.get_param_value_from_config(['krakenuniq', 'run']) == True:
-                raise ConfigError("You supplied a kraken_txt file (\"%s\") but you set krakenuniq \
-                                   to run in the config file. anvi'o is confused and \
-                                   is officially going on a strike. Ok, let's clarify, \
-                                   having a kraken_txt file means you already ran krakenuniq \
-                                   and want us to use those results, and yet you set krakenuniq \
-                                   to run again? why? Ok, time to strike. Bye!" % kraken_txt)
+                raise ConfigError("You supplied a kraken_txt file (\"%s\") but you set krakenuniq "
+                                  "to run in the config file. anvi'o is confused and "
+                                  "is officially going on a strike. Ok, let's clarify, "
+                                  "having a kraken_txt file means you already ran krakenuniq "
+                                  "and want us to use those results, and yet you set krakenuniq "
+                                  "to run again? why? Ok, time to strike. Bye!" % kraken_txt)
 
             # if a kraken_txt was supplied then let's run kraken by default
             self.run_krakenuniq = True
 
             kraken_annotation_dict = u.get_TAB_delimited_file_as_dictionary(kraken_txt)
             if next(iter(next(iter(kraken_annotation_dict.values())).keys())) != "path":
-                raise ConfigError("Your kraken annotation file, '%s', is not formatted properly \
-                                   anvi'o expected it to have two columns only and the second column \
-                                   should have a header 'path'." % kraken_txt)
+                raise ConfigError("Your kraken annotation file, '%s', is not formatted properly "
+                                  "anvi'o expected it to have two columns only and the second column "
+                                  "should have a header 'path'." % kraken_txt)
             samples_in_kraken_txt = set(kraken_annotation_dict.keys())
             # get a list of the sample names
             sample_names = set(self.samples_information['sample'])
 
             wrong_samples_in_kraken_txt = samples_in_kraken_txt - sample_names
             if wrong_samples_in_kraken_txt:
-                raise ConfigError("Your kraken annotation file, '%s', contains samples that \
-                                   are not in your samples_txt file, '%s'. Here is an example \
-                                   of such a sample: %s." % (kraken_txt, self.get_param_value_from_config('samples_txt'), next(iter(wrong_samples_in_kraken_txt))))
+                raise ConfigError("Your kraken annotation file, '%s', contains samples that "
+                                  "are not in your samples_txt file, '%s'. Here is an example "
+                                  "of such a sample: %s." % (kraken_txt, self.get_param_value_from_config('samples_txt'), next(iter(wrong_samples_in_kraken_txt))))
 
             missing_samples_in_kraken_txt = sample_names - samples_in_kraken_txt
             if missing_samples_in_kraken_txt:
-                raise ConfigError("Your kraken annotation file, '%s', is missing samples that \
-                                   are in your samples_txt file, '%s'. This is not allowed. \
-                                   Here is an example of such a sample: %s." % (kraken_txt, self.get_param_value_from_config('samples_txt'), wrong_samples_in_kraken_txt[0]))
+                raise ConfigError("Your kraken annotation file, '%s', is missing samples that "
+                                  "are in your samples_txt file, '%s'. This is not allowed. "
+                                  "Here is an example of such a sample: %s." % (kraken_txt, self.get_param_value_from_config('samples_txt'), wrong_samples_in_kraken_txt[0]))
             self.kraken_annotation_dict = kraken_annotation_dict
 
         if self.get_param_value_from_config(['krakenuniq', 'run']):
             if not self.get_param_value_from_config(['krakenuniq', '--db']):
-                raise ConfigError('In order to run krakenuniq, you must provide a path to \
-                                   a database using the --db parameter in the config file.')
+                raise ConfigError('In order to run krakenuniq, you must provide a path to '
+                                  'a database using the --db parameter in the config file.')
 
 
     def load_collections(self):
@@ -419,12 +419,12 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         collections = u.get_TAB_delimited_file_as_dictionary(self.collections_txt)
         bad_groups = [g for g in collections if g not in self.group_names]
         if bad_groups:
-                raise ConfigError('Some of the names in your collection_txt \
-                                   file ("%s") don\'t match the names of the \
-                                   groups in your samples_txt/fasta_txt. \
-                                   Here are the names that don\'t match: %s. \
-                                   And here are the group names we expect to find: \
-                                   %s' % (self.collections_txt, ', '.join(bad_groups), ', '.join(self.group_names)))
+                raise ConfigError('Some of the names in your collection_txt '
+                                  'file ("%s") don\'t match the names of the '
+                                  'groups in your samples_txt/fasta_txt. '
+                                  'Here are the names that don\'t match: %s. '
+                                  'And here are the group names we expect to find: '
+                                  '%s' % (self.collections_txt, ', '.join(bad_groups), ', '.join(self.group_names)))
         for group in collections:
             default_collection = collections[group].get('default_collection')
 
@@ -432,21 +432,21 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                 # User can specify either a default collection OR collection from file
                 not_allowed_params = {'collection_name', 'collection_file', 'bins_info', 'contigs_mode'}
                 if any([collections[group][key] for key in not_allowed_params if key in collections[group].keys()]):
-                    raise ConfigError('We encountered the following problem with your \
-                                       collections_txt file ("%s"): you can choose \
-                                       either using a default collection OR importing \
-                                       a collection from a file. Yet, for "%s", you specificy \
-                                       a default collection AND also specify some of the following \
-                                       parameters: %s.' % (self.collections_txt, group, ", ".join(not_allowed_params)))
+                    raise ConfigError('We encountered the following problem with your '
+                                      'collections_txt file ("%s"): you can choose '
+                                      'either using a default collection OR importing '
+                                      'a collection from a file. Yet, for "%s", you specificy '
+                                      'a default collection AND also specify some of the following '
+                                      'parameters: %s.' % (self.collections_txt, group, ", ".join(not_allowed_params)))
 
                 collections[group]['collection_name'] = 'DEFAULT'
                 collections[group]['contigs_mode'] = ''
 
             else:
                 if not filesnpaths.is_file_exists(collections[group]['collection_file'], dont_raise=True):
-                    raise ConfigError('We encountered the following problem with your \
-                                       collections_txt file ("%s"): you did not specify \
-                                       a valid collection file for "%s".' % (self.collections_txt, group))
+                    raise ConfigError('We encountered the following problem with your '
+                                      'collections_txt file ("%s"): you did not specify '
+                                      'a valid collection file for "%s".' % (self.collections_txt, group))
 
                 if not collections[group]['collection_name']:
                     raise ConfigError('You must specify a name for each collection in your collections_txt')
@@ -473,14 +473,14 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             try:
                 u.check_sample_id(sample)
             except ConfigError as e:
-                raise ConfigError("While processing the references for removal txt file ('%s'), anvi'o ran into the following error: \
-                                   %s" % (self.samples_txt_file, e))
+                raise ConfigError("While processing the references for removal txt file ('%s'), anvi'o ran into the following error: "
+                                  "%s" % (self.samples_txt_file, e))
 
         files_that_end_with_gz = []
         for ref_dict in self.references_for_removal.values():
             if 'path' not in ref_dict:
-                raise ConfigError('Yor references for removal txt file is not formatted properly. It must have only two columns \
-                                   with the headers "reference" and "path".')
+                raise ConfigError('Yor references for removal txt file is not formatted properly. It must have only two columns '
+                                  'with the headers "reference" and "path".')
             if ref_dict['path'].endswith('.gz'):
                 filesnpaths.is_file_exists(ref_dict['path'])
                 files_that_end_with_gz.append(ref_dict['path'])
@@ -489,20 +489,20 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                 filesnpaths.is_file_fasta_formatted(ref_dict['path'])
 
         if files_that_end_with_gz:
-            run.warning('The following reference for removal files are compressed: %s. \
-                         That\'s fine, but it means that we will skip the \
-                         sanity check to verify that this is actually \
-                         a properly formatted fasta file. Things are \
-                         probably Ok, this is just one of these occasions \
-                         in which anvi\'o is oversharing.' % ', '.join(files_that_end_with_gz))
+            run.warning('The following reference for removal files are compressed: %s. '
+                        'That\'s fine, but it means that we will skip the '
+                        'sanity check to verify that this is actually '
+                        'a properly formatted fasta file. Things are '
+                        'probably Ok, this is just one of these occasions '
+                        'in which anvi\'o is oversharing.' % ', '.join(files_that_end_with_gz))
 
         if self.references_mode:
             # Make sure that the user didn't give the same name to references and references_for_removal
             ref_name_in_both = [r for r in self.references_for_removal if r in self.contigs_information]
             if ref_name_in_both:
-                raise ConfigError('You must have unique names for your fasta files in your fasta txt file \
-                                   and your references for removal txt file. These are the names that appear \
-                                   in both: %s' % ', '.join(ref_name_in_both))
+                raise ConfigError('You must have unique names for your fasta files in your fasta txt file '
+                                  'and your references for removal txt file. These are the names that appear '
+                                  'in both: %s' % ', '.join(ref_name_in_both))
         dont_remove = self.get_param_value_from_config(['remove_short_reads_based_on_references', 'dont_remove_just_map'])
         if not dont_remove:
             self.remove_short_reads_based_on_references = True
@@ -554,8 +554,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         w.D('hi2')
         requested_drivers = self.get_param_value_from_config(['anvi_cluster_contigs', '--driver'])
         if not requested_drivers:
-            raise ConfigError('You must specify a driver for anvi_cluster_contigs. \
-                               You specified \'"run": true\' for anvi_cluster_contigs, \
+            raise ConfigError('You must specify a driver for anvi_cluster_contigs. '
+                              'You specified \'"run": true\' for anvi_cluster_contigs, \
                                but provided no driver.')
 
         if type(requested_drivers) != list:
@@ -563,8 +563,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         incompatible_drivers = [d for d in requested_drivers if d not in list(driver_modules['binning'].keys())]
         if incompatible_drivers:
-            raise ConfigError('The following drivers were listed in the config file for rule anvi_cluster_contigs \
-                               but they are not familiar to anvi\'o: %s' % ', '.join(incompatible_drivers))
+            raise ConfigError('The following drivers were listed in the config file for rule anvi_cluster_contigs '
+                              'but they are not familiar to anvi\'o: %s' % ', '.join(incompatible_drivers))
 
         # TODO: we should make sure drivers are installed. Maybe Ozcan or Meren are willing to do this?
 
@@ -573,18 +573,18 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             additional_parameters = self.get_param_value_from_config(['anvi_cluster_contigs', self.get_param_name_for_binning_driver(d)])
             if additional_parameters:
                 if d not in requested_drivers:
-                    raise ConfigError('You set the following parameters: "%s" for %s, but you did not \
-                                      specify it as one of the drivers that should be used by anvi_cluster_contigs. \
-                                      In order to reduce room for mistakes, we don\'t allow this.' % (additional_parameters, d))
+                    raise ConfigError('You set the following parameters: "%s" for %s, but you did not '
+                                     'specify it as one of the drivers that should be used by anvi_cluster_contigs. '
+                                     'In order to reduce room for mistakes, we don\'t allow this.' % (additional_parameters, d))
 
         collection_name = self.get_param_value_from_config(['anvi_cluster_contigs', '--collection-name'])
         if '{driver}' not in collection_name:
             if len(requested_drivers) > 1:
-                raise ConfigError('When using multiple binning algorithms, the --collection-name \
-                                   for rule anvi_cluster_contigs must contain \
-                                   the key word "{driver}" (including those curly brackets). \
-                                   It appears you changed the --collection-name, which by \
-                                   default is simply "{driver}" to: "%s". That\'s fine, \
+                raise ConfigError('When using multiple binning algorithms, the --collection-name '
+                                  'for rule anvi_cluster_contigs must contain '
+                                  'the key word "{driver}" (including those curly brackets). '
+                                  'It appears you changed the --collection-name, which by '
+                                  'default is simply "{driver}" to: "%s". That\'s fine, \
                                    but only as long as you have "{driver}" appear somewhere in \
                                    the name, because otherwise the collections made by different \
                                    binning algorithms would try to override each other, since they \
@@ -599,9 +599,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         try:
             u.check_collection_name(example_collection_name)
         except ConfigError as e:
-            raise ConfigError('%s is not an acceptable collection name for anvi_cluster_contigs.\
-                   We tried it for one of the drivers you requested and this is the\
-                   error we got: %s' % (collection_name, e))
+            raise ConfigError('%s is not an acceptable collection name for anvi_cluster_contigs. '
+                  'We tried it for one of the drivers you requested and this is the '
+                  'error we got: %s' % (collection_name, e))
 
         groups_of_size_one = []
         target_files = []
@@ -614,9 +614,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                 else:
                     groups_of_size_one.append(g)
         if groups_of_size_one:
-            run.warning('You requested to run anvi_cluster_contigs, but it will not run for\
-                         %s, since there is only one sample in this group, and hence there\
-                         will be no merged profile, which is required for anvi-cluster-contigs.' % ', '.join(groups_of_size_one))
+            run.warning('You requested to run anvi_cluster_contigs, but it will not run for '
+                        '%s, since there is only one sample in this group, and hence there '
+                        'will be no merged profile, which is required for anvi-cluster-contigs.' % ', '.join(groups_of_size_one))
 
         return target_files
 

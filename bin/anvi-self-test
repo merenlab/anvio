@@ -42,8 +42,8 @@ def __catch_sig(signum, frame):
 
 def main(args):
     if args.suite not in tests:
-        raise ConfigError("Well, the test suite '%s' is not something anvi'o knows about :/ Here is a list\
-                            of tests available if you would like to try again: %s" % (args.suite, ', '.join(list(tests.keys()))))
+        raise ConfigError("Well, the test suite '%s' is not something anvi'o knows about :/ Here is a list "
+                           "of tests available if you would like to try again: %s" % (args.suite, ', '.join(list(tests.keys()))))
 
     tests_dir_path = os.path.dirname(anvio.tests.__file__)
 
@@ -51,8 +51,8 @@ def main(args):
 
     for test in list(itertools.chain(*list(tests.values()))):
         if test not in test_files_found:
-            raise FilesNPathsError("Anvi'o failed to locate the test file for '%s' ('%s')... What a\
-                                     terrible start :( (it was looking for it under '%s')." \
+            raise FilesNPathsError("Anvi'o failed to locate the test file for '%s' ('%s')... What a "
+                                    "terrible start :( (it was looking for it under '%s')." \
                                                 % (test, tests[test], tests_dir_path))
 
     temporary_output_dir = filesnpaths.get_temp_directory_path()
@@ -63,11 +63,11 @@ def main(args):
         for test in tests[args.suite]:
             exitcode = subprocess.call('./%s %s' % (test, temporary_output_dir), shell=True)
             if exitcode != 0:
-                raise ConfigError("According to the exit code ('%s'), anvi'o suspects that something may have gone wrong while \
-                                   running your tests :/ We hope that the reason is clear to you from the lines above. But if you\
-                                   don't see anything obvious, and especially if the test ended up running until the end with\
-                                   reasonable looking final results, you shouldn't worry too much about this error. Life\
-                                   is short and we all can worry just a bit less." % str(exitcode))
+                raise ConfigError("According to the exit code ('%s'), anvi'o suspects that something may have gone wrong while "
+                                  "running your tests :/ We hope that the reason is clear to you from the lines above. But if you "
+                                  "don't see anything obvious, and especially if the test ended up running until the end with "
+                                  "reasonable looking final results, you shouldn't worry too much about this error. Life "
+                                  "is short and we all can worry just a bit less." % str(exitcode))
     except KeyboardInterrupt:
         pass
 

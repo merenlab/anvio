@@ -229,8 +229,8 @@ class AnvioPrograms:
 
             self.all_program_filepaths = sorted(list(set(self.main_program_filepaths + self.script_filepaths)))
         except:
-            raise ConfigError("Something is wrong. Either your installation or anvi'o setup on this computer is missing some of\
-                               the fundamental programs, or your configuration is broken :/")
+            raise ConfigError("Something is wrong. Either your installation or anvi'o setup on this computer is missing some of "
+                              "the fundamental programs, or your configuration is broken :/")
 
         if not len(self.main_program_filepaths) or not len(self.script_filepaths):
             raise ConfigError("Somethings fishy is happening. This script is unable to find things that want to be found :(")
@@ -245,8 +245,8 @@ class AnvioPrograms:
             self.all_program_filepaths = [p for p in self.all_program_filepaths if os.path.basename(p) in self.program_names_to_focus]
 
             if not len(self.all_program_filepaths):
-                raise ConfigError("No anvi'o programs left to analyze after changing the focus to your list of program names.\
-                                   Probably there is a typo or something :/")
+                raise ConfigError("No anvi'o programs left to analyze after changing the focus to your list of program names. "
+                                  "Probably there is a typo or something :/")
 
 
     def create_program_classes(self, okay_if_no_meta=False, quiet=False):
@@ -274,17 +274,17 @@ class AnvioPrograms:
         self.progress.end()
 
         if not meta_count and not okay_if_no_meta:
-            raise ConfigError("None of the %d anvi'o programs found contained any provides or\
-                               requires statements :/" % len(self.all_program_filepaths))
+            raise ConfigError("None of the %d anvi'o programs found contained any provides or "
+                              "requires statements :/" % len(self.all_program_filepaths))
 
         if not quiet:
-            self.run.info_single("Of %d programs found, %d did contain provides and/or requires \
-                                  statements." % (len(self.all_program_filepaths), meta_count),
+            self.run.info_single("Of %d programs found, %d did contain provides and/or requires "
+                                 "statements." % (len(self.all_program_filepaths), meta_count),
                                   nl_after=1, nl_before=1)
         if anvio.DEBUG:
             absentees = ', '.join(list(set([os.path.basename(p) for p in self.all_program_filepaths]) - set([p.name for p in self.programs])))
-            self.run.info_single("Here is a list of programs that do not contain any information\
-                                  about themselves: %s" % (absentees), nl_after=1, nl_before=1, mc="red")
+            self.run.info_single("Here is a list of programs that do not contain any information "
+                                 "about themselves: %s" % (absentees), nl_after=1, nl_before=1, mc="red")
 
 
 
@@ -367,9 +367,9 @@ class Program:
 class Item:
     def __init__(self, item_id, internal=True, optional=True, single=True):
         if item_id not in ANVIO_ITEMS:
-            raise ConfigError("Ehem. Anvi'o does not know about item '%s'. There are two was this could happen:\
-                               one, you made a type (easy to fix), two, you just added a new program into anvi'o\
-                               but have not yet updated `anvio/programs.py`." % item_id)
+            raise ConfigError("Ehem. Anvi'o does not know about item '%s'. There are two was this could happen: "
+                              "one, you made a type (easy to fix), two, you just added a new program into anvi'o "
+                              "but have not yet updated `anvio/programs.py`." % item_id)
 
         item = ANVIO_ITEMS[item_id]
         self.id = item_id
@@ -497,8 +497,8 @@ class ProgramsVignette(AnvioPrograms):
                     usage, description, params, output = parse_help_output(output)
                 except Exception as e:
                     progress.end()
-                    run.warning("The program '%s' does not seem to have the expected help menu output. Skipping to the next.\
-                                 For the curious, this was the error message: '%s'" % (program.name, str(e).strip()))
+                    run.warning("The program '%s' does not seem to have the expected help menu output. Skipping to the next. "
+                                "For the curious, this was the error message: '%s'" % (program.name, str(e).strip()))
                     continue
 
             d[program.name] = {'usage': usage,

@@ -74,14 +74,14 @@ def is_distance_and_linkage_compatible(distance, linkage):
 
 def is_linkage_method_OK(linkage):
     if linkage not in linkage_methods:
-        raise ConfigError("Linkage '%s' is not one of the linkage methods anvi'o recognizes :/ Here\
-                            is a list of all the available ones: %s" % (linkage, ', '.join(linkage_methods)))
+        raise ConfigError("Linkage '%s' is not one of the linkage methods anvi'o recognizes :/ Here "
+                           "is a list of all the available ones: %s" % (linkage, ', '.join(linkage_methods)))
 
 
 def is_distance_metric_OK(distance):
     if distance not in distance_metrics:
-        raise ConfigError("Distance '%s' is not one of the metrics anvi'o recognizes :/ Here\
-                            is a list of all the available ones: %s" % (distance, ', '.join(distance_metrics)))
+        raise ConfigError("Distance '%s' is not one of the metrics anvi'o recognizes :/ Here "
+                           "is a list of all the available ones: %s" % (distance, ', '.join(distance_metrics)))
 
 
 def get_newick_tree_data_for_dict(d, transpose=False, linkage=constants.linkage_method_default, distance=constants.distance_metric_default, norm='l1'):

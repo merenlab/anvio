@@ -76,9 +76,9 @@ class Kaiju(Parser):
 
         if not num_correct_lines:
             os.remove(corrected_temp_file_path)
-            raise ConfigError("Something must have been wrong with you input file. Not a single line in it\
-                               matched to what the kaiju parsers expects (a proper file should have eight\
-                               TAB-delimited columns).")
+            raise ConfigError("Something must have been wrong with you input file. Not a single line in it "
+                              "matched to what the kaiju parsers expects (a proper file should have eight "
+                              "TAB-delimited columns).")
 
         return corrected_temp_file_path
 
@@ -109,11 +109,11 @@ class Kaiju(Parser):
         """
 
         if not self.just_do_it:
-            raise ConfigError("Anvi'o assumes you used this exact parameter during your kaiju run: \
-                               '-r superkingdom,phylum,class,order,family,genus,species'. If you\
-                               haven't, you will run into trouble later. If you are positive that\
-                               you did include that parameter to your run, re-run this program with\
-                               `--just-do-it` flag.")
+            raise ConfigError("Anvi'o assumes you used this exact parameter during your kaiju run: "
+                              "'-r superkingdom,phylum,class,order,family,genus,species'. If you "
+                              "haven't, you will run into trouble later. If you are positive that "
+                              "you did include that parameter to your run, re-run this program with "
+                              "`--just-do-it` flag.")
 
         # THIS IS IMPORTANT.
         levels_of_taxonomy = constants.levels_of_taxonomy
@@ -152,14 +152,14 @@ class Kaiju(Parser):
 
         random_phylum_names = set([taxonomy_dict[e]['t_phylum'] for e in random.sample(list(taxonomy_dict.keys()), 20)])
 
-        self.run.warning("Good news: anvi'o finished parsing kaiju taxonomy output. Bad news: it has no idea whether\
-                          it did well or not. Because the user can ask kaiju to report certain taxonomic levels, but\
-                          can't ask anvi'o to utilize that information. So anvi'o always assumes you started from\
-                          the domain-level, and followed the conventional levels of taxonomy. Here is your question. We\
-                          randomly picked some phylum names from your input taoxnomy as anvi'o parsed them. Here they are:\
-                          '%s'. Do they look like phylum names to you? If they don't, you are in very big trouble :( The\
-                          best way to get yourself out of trouble is to immediately press CTRL-C, turn your computer off,\
-                          and move permanently to Cuba since you are done here (if you are already in Cuba, please let\
-                          us know for more instructions)." % ', '.join(random_phylum_names), header="Good news, bad news, and a question", lc="yellow")
+        self.run.warning("Good news: anvi'o finished parsing kaiju taxonomy output. Bad news: it has no idea whether "
+                         "it did well or not. Because the user can ask kaiju to report certain taxonomic levels, but "
+                         "can't ask anvi'o to utilize that information. So anvi'o always assumes you started from "
+                         "the domain-level, and followed the conventional levels of taxonomy. Here is your question. We "
+                         "randomly picked some phylum names from your input taoxnomy as anvi'o parsed them. Here they are: "
+                         "'%s'. Do they look like phylum names to you? If they don't, you are in very big trouble :( The "
+                         "best way to get yourself out of trouble is to immediately press CTRL-C, turn your computer off, "
+                         "and move permanently to Cuba since you are done here (if you are already in Cuba, please let "
+                         "us know for more instructions)." % ', '.join(random_phylum_names), header="Good news, bad news, and a question", lc="yellow")
 
         return TaxonomyHelper(taxonomy_dict).get_genes_taxonomy_and_taxon_names_dicts()

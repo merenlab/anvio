@@ -57,17 +57,17 @@ class TablesForGeneCalls(Table):
             raise ConfigError("Keys of a gene calls dict must be integers!")
 
         if False in [x['direction'] in ['f', 'r'] for x in list(gene_calls_dict.values())]:
-            raise ConfigError("The values in 'direction' column can't be anything but 'f' (for forward)\
-                                or 'r' (for reverse). You have other stuff, and it is not cool.")
+            raise ConfigError("The values in 'direction' column can't be anything but 'f' (for forward) "
+                               "or 'r' (for reverse). You have other stuff, and it is not cool.")
 
         if False in [x['stop'] > x['start'] for x in list(gene_calls_dict.values())]:
-            raise ConfigError("For each gene call, the stop position must be bigger than the start position.\
-                                Your gene calls dict does not conform to that. If you have reverse gene calls\
-                                you must use the 'direction' column to declare that.")
+            raise ConfigError("For each gene call, the stop position must be bigger than the start position. "
+                               "Your gene calls dict does not conform to that. If you have reverse gene calls "
+                               "you must use the 'direction' column to declare that.")
 
         if False in [(x['stop'] - float(x['start'])) % 3.0 == 0 for x in list(gene_calls_dict.values())]:
-            raise ConfigError("Something is wrong with your gene calls. For every gene call, the (stop - start)\
-                                should be multiply of 3. It is not the case for all, which is a deal breaker.")
+            raise ConfigError("Something is wrong with your gene calls. For every gene call, the (stop - start) "
+                               "should be multiply of 3. It is not the case for all, which is a deal breaker.")
 
 
     def use_external_gene_calls_to_populate_genes_in_contigs_table(self, input_file_path, gene_calls_dict=None, ignore_internal_stop_codons=False, skip_amino_acid_sequences=False):
@@ -145,24 +145,24 @@ class TablesForGeneCalls(Table):
             num_with_aa_seqs = sum([has_aa_seq(gene_call) for gene_call in gene_calls_dict.values()])
             num_gene_calls = len(gene_calls_dict)
             if num_with_aa_seqs != 0 and num_with_aa_seqs != num_gene_calls:
-                raise ConfigError("The gene_calls_dict passed to use_external_gene_calls_to_populate_genes_in_contigs_table\
-                                   has %d entries with 'aa_sequence' and %d without. Either 0 or all (%d) should have \
-                                   'aa_sequence'" % (num_with_aa_seqs, num_gene_calls-num_with_aa_seqs, num_gene_calls))
+                raise ConfigError("The gene_calls_dict passed to use_external_gene_calls_to_populate_genes_in_contigs_table "
+                                  "has %d entries with 'aa_sequence' and %d without. Either 0 or all (%d) should have "
+                                  "'aa_sequence'" % (num_with_aa_seqs, num_gene_calls-num_with_aa_seqs, num_gene_calls))
 
             if not len(gene_calls_dict):
                 # but it is empty ... silly user.
-                self.run.info_single("'Use external gene calls' function found an empty gene calls dict, returning\
-                                      prematurely and assuming you know what's up. If you don't, stop here and try to\
-                                      identify what decisions you've made might have led you to this weird point your\
-                                      workflow (or 'life', totally up to you and your mood, but anvi'o thinks you've\
-                                      done great so far.", nl_before=1, nl_after=1)
+                self.run.info_single("'Use external gene calls' function found an empty gene calls dict, returning "
+                                     "prematurely and assuming you know what's up. If you don't, stop here and try to "
+                                     "identify what decisions you've made might have led you to this weird point your "
+                                     "workflow (or 'life', totally up to you and your mood, but anvi'o thinks you've "
+                                     "done great so far.", nl_before=1, nl_after=1)
                 return
 
 
         if (not input_file_path and not gene_calls_found) or (input_file_path and gene_calls_found):
-            raise ConfigError("You must provide either an input file, or an gene calls dict to process external\
-                               gene calls. You called `use_external_gene_calls_to_populate_genes_in_contigs_table`\
-                               with wrong parameters.")
+            raise ConfigError("You must provide either an input file, or an gene calls dict to process external "
+                              "gene calls. You called `use_external_gene_calls_to_populate_genes_in_contigs_table` "
+                              "with wrong parameters.")
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress, simple=True)
 
@@ -181,12 +181,12 @@ class TablesForGeneCalls(Table):
                                                                          column_mapping=column_mapping)
 
             if not len(gene_calls_dict):
-                raise ConfigError("You provided an external gene calls file, but it returned zero gene calls. Assuming that\
-                                   this is an error, anvi'o will stop here and complain. If this is not an error and you\
-                                   in fact expected this, the proper way of doing this is to use `--skip-gene-calls` flag,\
-                                   instead of providing an emtpy external gene calls file. You don't agree? You need this\
-                                   for some weird step for you weird pipeline? Let us know, and we will consider changing\
-                                   this.")
+                raise ConfigError("You provided an external gene calls file, but it returned zero gene calls. Assuming that "
+                                  "this is an error, anvi'o will stop here and complain. If this is not an error and you "
+                                  "in fact expected this, the proper way of doing this is to use `--skip-gene-calls` flag, "
+                                  "instead of providing an emtpy external gene calls file. You don't agree? You need this "
+                                  "for some weird step for you weird pipeline? Let us know, and we will consider changing "
+                                  "this.")
 
             self.run.info("External gene calls", "%d gene calls recovered and will be processed." % len(gene_calls_dict))
         else:
@@ -254,8 +254,8 @@ class TablesForGeneCalls(Table):
             if contig_name not in contig_sequences:
                 # remove the partial contigs database so things don't get screwed later
                 os.remove(self.db_path)
-                raise ConfigError("You are in big trouble :( The contig name '%s' in your external gene callers file\
-                                    does not appear to be in the contigs FASTA file. How did this happen?" % contig_name)
+                raise ConfigError("You are in big trouble :( The contig name '%s' in your external gene callers file "
+                                   "does not appear to be in the contigs FASTA file. How did this happen?" % contig_name)
 
             if gene_call['partial']:
                 amino_acid_sequences[gene_callers_id] = ''
@@ -275,26 +275,26 @@ class TablesForGeneCalls(Table):
                     num_genes_with_internal_stops += 1
                 else:
                     os.remove(self.db_path)
-                    raise ConfigError("Oops. Anvi'o run into an amino acid sequence (that corresponds to the gene callers id '%s')\
-                                       which had an internal stop codon :/ This usually indicates that your external gene calls\
-                                       have problems. If you still want to continue, you can ask anvi'o to ignore internal stop\
-                                       codons on your own risk. It will probably look very ugly on your screen, but here is the\
-                                       DNA sequence for that gene in case you don't trust anvi'o (which only would be fair since\
-                                       anvi'o does not trust you either): %s" % (str(gene_callers_id), sequence))
+                    raise ConfigError("Oops. Anvi'o run into an amino acid sequence (that corresponds to the gene callers id '%s') "
+                                      "which had an internal stop codon :/ This usually indicates that your external gene calls "
+                                      "have problems. If you still want to continue, you can ask anvi'o to ignore internal stop "
+                                      "codons on your own risk. It will probably look very ugly on your screen, but here is the "
+                                      "DNA sequence for that gene in case you don't trust anvi'o (which only would be fair since "
+                                      "anvi'o does not trust you either): %s" % (str(gene_callers_id), sequence))
 
             amino_acid_sequences[gene_callers_id] = amino_acid_sequence
 
         if num_genes_with_internal_stops:
             percent_genes_with_internal_stops = num_genes_with_internal_stops * 100.0 / len(gene_calls_dict)
-            self.run.warning("Please read this carefully: Your external gene calls contained open reading frames with internal\
-                              stop codons, and you asked anvi'o to ignore those. Anvi'o replaced internal stop codons with 'X'\
-                              characters, and stored them in the contigs database that way. %d of your genes, which corresponded\
-                              to %.2f%% of the total %d genes, had internal stop codons. We hope you are happy." % \
+            self.run.warning("Please read this carefully: Your external gene calls contained open reading frames with internal "
+                             "stop codons, and you asked anvi'o to ignore those. Anvi'o replaced internal stop codons with 'X' "
+                             "characters, and stored them in the contigs database that way. %d of your genes, which corresponded "
+                             "to %.2f%% of the total %d genes, had internal stop codons. We hope you are happy." % \
                                         (num_genes_with_internal_stops, percent_genes_with_internal_stops, len(gene_calls_dict)))
 
         if number_of_impartial_gene_calls:
-            self.run.warning('%d of your %d gene calls were impartial, hence the translated amino acid sequences for those\
-                              were not stored in the database.' % (number_of_impartial_gene_calls, len(gene_calls_dict)))
+            self.run.warning('%d of your %d gene calls were impartial, hence the translated amino acid sequences for those '
+                             'were not stored in the database.' % (number_of_impartial_gene_calls, len(gene_calls_dict)))
 
         return amino_acid_sequences
 
@@ -321,8 +321,8 @@ class TablesForGeneCalls(Table):
             remove_fasta_after_processing = True
 
         if self.debug:
-            self.run.info_single('--debug flag is [ON], which means temporary directories generated by\
-                                 this run will not be removed', nl_after=2)
+            self.run.info_single('--debug flag is [ON], which means temporary directories generated by '
+                                'this run will not be removed', nl_after=2)
 
         gene_caller = genecalling.GeneCaller(self.contigs_fasta, gene_caller=gene_caller, args=self.args, debug=self.debug)
 

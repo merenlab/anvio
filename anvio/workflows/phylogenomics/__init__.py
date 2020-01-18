@@ -85,15 +85,15 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
     def sanity_checks(self):
         if not self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--gene-names'):
-            run.warning('You did not provide a list of genes to use for phylogenomics. This is ok and things might work \
-                        but we wanted to make sure this is intended. If you change your mind, you can provide a list of genes \
-                        by using the "--gene-names" parameter of rule anvi_get_sequences_for_hmm_hits.')
+            run.warning('You did not provide a list of genes to use for phylogenomics. This is ok and things might work '
+                       'but we wanted to make sure this is intended. If you change your mind, you can provide a list of genes '
+                       'by using the "--gene-names" parameter of rule anvi_get_sequences_for_hmm_hits.')
 
         if not self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--return-best-hit'):
-            run.warning('You changed the value for --return-best-hit for the rule anvi_get_sequences_for_hmm_hits \
-                         to something other than the default value, which is "true", while we allow you to do it \
-                         this is likely to break things, we trust that you know what you are doing, but advise you \
-                         to proceed with caution.')
+            run.warning('You changed the value for --return-best-hit for the rule anvi_get_sequences_for_hmm_hits '
+                        'to something other than the default value, which is "true", while we allow you to do it '
+                        'this is likely to break things, we trust that you know what you are doing, but advise you '
+                        'to proceed with caution.')
 
         if not self.project_name:
             raise ConfigError("You must provide a project_name in your config file.")

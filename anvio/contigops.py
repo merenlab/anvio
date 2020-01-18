@@ -268,18 +268,18 @@ class GenbankToAnvioWrapper:
 
         columns = utils.get_columns_of_TAB_delim_file(self.metadata_file_path)
         if 'organism_name' not in columns or 'local_filename' not in columns:
-            raise ConfigError("The metadata file you provided does not look like a metadata\
-                               file output from the program `ncbi-genome-download` :/ Why?\
-                               Because anvi'o expects that file to have at least the following\
-                               two columns in it: 'organism_name' and 'local_filename'.")
+            raise ConfigError("The metadata file you provided does not look like a metadata "
+                              "file output from the program `ncbi-genome-download` :/ Why? "
+                              "Because anvi'o expects that file to have at least the following "
+                              "two columns in it: 'organism_name' and 'local_filename'.")
 
         metadata = utils.get_TAB_delimited_file_as_dictionary(self.metadata_file_path)
 
         for entry in metadata:
             if not os.path.exists(metadata[entry]['local_filename']):
-                raise ConfigError("At least one of the files in your metadata input does not seem to be\
-                                   where they think they are :/ Please make sure the entry %s and others\
-                                   point to proper local file paths..." % entry)
+                raise ConfigError("At least one of the files in your metadata input does not seem to be "
+                                  "where they think they are :/ Please make sure the entry %s and others "
+                                  "point to proper local file paths..." % entry)
 
         self.run.info('Num entries in metadata', len(metadata))
 
@@ -306,9 +306,9 @@ class GenbankToAnvioWrapper:
             g = GenbankToAnvio(args, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
 
             if final_name in output_fasta_dict:
-                raise ConfigError("The final name '%s' for your genome has alrady been used by\
-                                   another one :/ This should never happen unless your metadata\
-                                   contains entries with identical accession numbers...")
+                raise ConfigError("The final name '%s' for your genome has alrady been used by "
+                                  "another one :/ This should never happen unless your metadata "
+                                  "contains entries with identical accession numbers...")
             output_fasta_dict[final_name] = g.process()
 
         self.progress.end()
@@ -355,11 +355,11 @@ class GenbankToAnvio:
 
     def sanity_check(self):
         if self.output_file_prefix and (self.output_fasta_path or self.output_functions_path or self.output_gene_calls_path):
-            raise ConfigError("Your arguments contain an output file prefix, and other output file paths. You can either\
-                               define a prefix, and the output files would be named accordingly (such as 'PREFIX-extenral-gene-calls',\
-                               'PREFIX-external-functions.txt', and 'PREFIX-contigs.fa'), ORRR you can set output file names\
-                               or paths for each of these files independently. You can also leave it as is for default file names to\
-                               be used. But you can't mix everything together and confuse us here.")
+            raise ConfigError("Your arguments contain an output file prefix, and other output file paths. You can either "
+                              "define a prefix, and the output files would be named accordingly (such as 'PREFIX-extenral-gene-calls', "
+                              "'PREFIX-external-functions.txt', and 'PREFIX-contigs.fa'), ORRR you can set output file names "
+                              "or paths for each of these files independently. You can also leave it as is for default file names to "
+                              "be used. But you can't mix everything together and confuse us here.")
 
         self.output_fasta_path = self.output_fasta_path or 'contigs.fa'
         self.output_functions_path = self.output_functions_path or 'external-functions.txt'
@@ -378,9 +378,9 @@ class GenbankToAnvio:
 
         files_already_exist = [f for f in [self.output_fasta_path, self.output_functions_path, self.output_gene_calls_path] if os.path.exists(f)]
         if len(files_already_exist):
-            raise ConfigError("Some of the output files already exist :/ Anvi'o feels uneasy about simply overwriting\
-                               them and would like to outsource that risk to you. Please either use different output\
-                               file names, or delete these files and come back: '%s'" % (', '.join(files_already_exist)))
+            raise ConfigError("Some of the output files already exist :/ Anvi'o feels uneasy about simply overwriting "
+                              "them and would like to outsource that risk to you. Please either use different output "
+                              "file names, or delete these files and come back: '%s'" % (', '.join(files_already_exist)))
 
 
     def process(self):
@@ -400,8 +400,8 @@ class GenbankToAnvio:
             else:
                 genbank_file_object = SeqIO.parse(open(self.input_genbank_path, "r"), "genbank")
         except Exception as e:
-            raise ConfigError("Someone didn't like your unput 'genbank' file :/ Here's what they said\
-                               about it: '%s'." % e)
+            raise ConfigError("Someone didn't like your unput 'genbank' file :/ Here's what they said "
+                              "about it: '%s'." % e)
 
         for genbank_record in genbank_file_object:
             num_genbank_records_processed += 1
@@ -490,9 +490,9 @@ class GenbankToAnvio:
                 self.gene_callers_id += 1
 
         if num_genbank_records_processed == 0:
-            raise ConfigError("It seems there was no records in your input genbank file :/ Are you sure you\
-                               gave the right file path that actually resolves to a genbank formatted\
-                               text file?")
+            raise ConfigError("It seems there was no records in your input genbank file :/ Are you sure you "
+                              "gave the right file path that actually resolves to a genbank formatted "
+                              "text file?")
 
         self.run.info('Num GenBank entries processed', num_genbank_records_processed)
         self.run.info('Num gene records found', num_genes_found)
@@ -518,9 +518,9 @@ class GenbankToAnvio:
         else:
             self.output_gene_calls_path = None
             self.output_functions_path = None
-            self.run.warning("Anvi'o couldn't find any gene calles in the GenBank file, hence you will get\
-                              no output files for external gene calls or functions :/ We hope you can\
-                              survive this terrible terrible news :(")
+            self.run.warning("Anvi'o couldn't find any gene calles in the GenBank file, hence you will get "
+                             "no output files for external gene calls or functions :/ We hope you can "
+                             "survive this terrible terrible news :(")
 
         self.run.info_single('Mmmmm ☘ ', nl_before=1, nl_after=1)
 

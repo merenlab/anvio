@@ -38,8 +38,8 @@ def main(args):
         sys.exit()
 
     if not args.collection_name:
-        raise ConfigError("You must declare a colection name. Use --list-collections flag\
-                            to list available ones.")
+        raise ConfigError("You must declare a colection name. Use --list-collections flag "
+                           "to list available ones.")
 
     c.sanity_check(args.collection_name)
 
@@ -54,8 +54,8 @@ def main(args):
         raise ConfigError("Anvi'o needs a list of bin names to merge :/")
 
     if not args.new_bin_name:
-        raise ConfigError("Anvi'o needs a new bin name. Or it will make up one for you, and you\
-                           know what happens anvi'o makes stuff up.")
+        raise ConfigError("Anvi'o needs a new bin name. Or it will make up one for you, and you "
+                          "know what happens anvi'o makes stuff up.")
 
     bin_names_list = [b.strip() for b in args.bin_names_list.split(',')]
     run.info('Bins to merge', ', '.join(bin_names_list))

@@ -47,10 +47,10 @@ def main(args):
     num_contigs = 0
     while next(fasta):
         if not utils.check_contig_names(fasta.id, dont_raise=True):
-            raise ConfigError("At least one of the deflines in your FASTA File does not comply with the 'simple deflines'\
-                               requirement of anvi'o. You can either use the script `anvi-script-reformat-fasta` to take\
-                               care of this issue, or do it manually, but you must know that anvi'o is very upset for\
-                               making you deal with this. Here is more info on simple deflines %s" % \
+            raise ConfigError("At least one of the deflines in your FASTA File does not comply with the 'simple deflines' "
+                              "requirement of anvi'o. You can either use the script `anvi-script-reformat-fasta` to take "
+                              "care of this issue, or do it manually, but you must know that anvi'o is very upset for "
+                              "making you deal with this. Here is more info on simple deflines %s" % \
                                    ('http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file'))
         num_contigs += 1
     fasta.reset()
@@ -79,11 +79,11 @@ def main(args):
             f.write(clusterings[report_name])
 
     if anvio.DEBUG:
-        run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
-                     later" % temp_dir, header="Debug")
+        run.warning("The temp directory, %s, is kept. Please don't forget to clean it up "
+                    "later" % temp_dir, header="Debug")
     else:
-        run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
-                         like to keep it for testing purposes)', nl_before=1, nl_after=1)
+        run.info_single('Cleaning up the temp directory (you can use `--debug` if you would '
+                        'like to keep it for testing purposes)', nl_before=1, nl_after=1)
         shutil.rmtree(temp_dir)
 
 

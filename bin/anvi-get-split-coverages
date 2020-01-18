@@ -44,16 +44,16 @@ def main(args):
         raise ConfigError("You must either declare a split name, or a bin name in a collection for this to work")
 
     if (args.collection_name or args.bin_id) and not (args.collection_name and args.bin_id):
-        raise ConfigError("If you are declaring a collection name, you also need to declare a bin name, and vice\
-                           versa.")
+        raise ConfigError("If you are declaring a collection name, you also need to declare a bin name, and vice "
+                          "versa.")
 
     if args.collection_name and not args.contigs_db:
-        raise ConfigError("If you want to work with a collection, you should also provide a contigs database. You\
-                           can tell it is necessary by the way it is like right there in the help menu.")
+        raise ConfigError("If you want to work with a collection, you should also provide a contigs database. You "
+                          "can tell it is necessary by the way it is like right there in the help menu.")
 
     if args.split_name and (args.collection_name or args.bin_id):
-        raise ConfigError("So you ask both for a split name and then ask for splits in a bin :/ You know who\
-                           doesn't like that? Anvi'o. Anvi'o doesn't like that.")
+        raise ConfigError("So you ask both for a split name and then ask for splits in a bin :/ You know who "
+                          "doesn't like that? Anvi'o. Anvi'o doesn't like that.")
 
     if not args.output_file:
         raise ConfigError("You must declare an output file name. Because.")
@@ -61,10 +61,10 @@ def main(args):
     filesnpaths.is_output_file_writable(args.output_file)
 
     if not profile_db.auxiliary_profile_data_available:
-        raise ConfigError("In order to get what you want from this program, you need the auxiliary\
-                           data file associated with this profile to be present. Now this program\
-                           will quit gracefully, and will let you imagine what might have gone\
-                           wrong.")
+        raise ConfigError("In order to get what you want from this program, you need the auxiliary "
+                          "data file associated with this profile to be present. Now this program "
+                          "will quit gracefully, and will let you imagine what might have gone "
+                          "wrong.")
 
 
     split_names = []

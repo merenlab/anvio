@@ -44,8 +44,8 @@ class MCL:
     def check_output(self, expected_output, process='diamond'):
         if not os.path.exists(expected_output):
             self.progress.end()
-            raise ConfigError("Pfft. Something probably went wrong with MCL's '%s' since one of the expected output files are missing.\
-                                Please check the log file here: '%s." % (process, self.run.log_file_path))
+            raise ConfigError("Pfft. Something probably went wrong with MCL's '%s' since one of the expected output files are missing. "
+                               "Please check the log file here: '%s." % (process, self.run.log_file_path))
 
 
     def get_clusters_dict(self):

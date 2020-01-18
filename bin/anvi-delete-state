@@ -39,13 +39,13 @@ def main(args):
         sys.exit()
 
     if not args.state:
-        raise ConfigError("Well, you need to provide the state name you want to delete for this program to work.\
-                           You don't know which state name you want to get rid of? We heard that the '--list-states'\
-                           flag helps for that.")
+        raise ConfigError("Well, you need to provide the state name you want to delete for this program to work. "
+                          "You don't know which state name you want to get rid of? We heard that the '--list-states' "
+                          "flag helps for that.")
 
     if not args.state in states:
-        raise ConfigError("The state name '%s' does not seem to appear in this database. But we have %s instead:\
-                            %s." % ((args.state, 'this one' if len(states) == 1 else 'these ones', ', '.join(list(states.keys())))))
+        raise ConfigError("The state name '%s' does not seem to appear in this database. But we have %s instead: "
+                           "%s." % ((args.state, 'this one' if len(states) == 1 else 'these ones', ', '.join(list(states.keys())))))
 
     states_access.remove_state(args.state)
 

@@ -55,9 +55,9 @@ def filter_FASTA_by_blast_results(args):
     cols = outfmt.split(" ")
     required_cols = ['qseqid', 'bitscore', 'length', 'qlen', 'pident']
     if len([c for c in required_cols if c not in cols]):
-        raise ConfigError("According to your `outfmt` parameter, columns in your BLAST output table\
-                           lack one or more important stuff. These columns must be present in your\
-                           output table (see help for details): %s." % ', '.join(required_cols))
+        raise ConfigError("According to your `outfmt` parameter, columns in your BLAST output table "
+                          "lack one or more important stuff. These columns must be present in your "
+                          "output table (see help for details): %s." % ', '.join(required_cols))
 
     filesnpaths.is_file_tab_delimited(blast_output_file_path, expected_number_of_fields=len(cols))
 

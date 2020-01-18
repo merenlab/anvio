@@ -37,12 +37,12 @@ def main(args):
         emapper.populate_annotations_dict(args.annotation)
         emapper.store_annotations_in_db(drop_previous_annotations=args.drop_previous_annotations)
     else:
-        raise ConfigError("Although the codebase is ready on the anvi'o side (at least when this note was written on\
-                            December 2016, the eggnog-mapper will not run properly due to some technical issues beyond\
-                            anvi'o. Although you can still run it by hand, and then use this script with the resulting\
-                            output file usin gthe '--annotation' parameter. That way you can still import EggNOG\
-                            annotations into your contigs database. Meanwhile we will try to address this problem, and\
-                            hopoefully remove this note.")
+        raise ConfigError("Although the codebase is ready on the anvi'o side (at least when this note was written on "
+                           "December 2016, the eggnog-mapper will not run properly due to some technical issues beyond "
+                           "anvi'o. Although you can still run it by hand, and then use this script with the resulting "
+                           "output file usin gthe '--annotation' parameter. That way you can still import EggNOG "
+                           "annotations into your contigs database. Meanwhile we will try to address this problem, and "
+                           "hopoefully remove this note.")
         output_dir = filesnpaths.get_temp_directory_path()
 
         emapper = EggNOGMapper(args)

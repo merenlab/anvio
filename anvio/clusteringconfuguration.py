@@ -155,10 +155,10 @@ class ClusteringConfiguration:
                 m['id_to_sample'], m['sample_to_id'], m['cols'], m['vectors'] = get_vectors(m['path'], m['columns_to_use'], master_rows)
 
                 if len(m['vectors']) != len(master_rows):
-                    raise ConfigError('The content of rows differed between input matrices. So I tried to\
-                                        match all other matrices to the matrix with the smallest number of\
-                                        rows (which was "%s"). However, not all other matrices contained\
-                                        the small set of rows.' % (master_matrix))
+                    raise ConfigError('The content of rows differed between input matrices. So I tried to '
+                                       'match all other matrices to the matrix with the smallest number of '
+                                       'rows (which was "%s"). However, not all other matrices contained '
+                                       'the small set of rows.' % (master_matrix))
         else:
             self.master_rows = sorted(self.matrices_dict[self.matrices[0]]['sample_to_id'].keys())
 
@@ -224,8 +224,8 @@ class ClusteringConfiguration:
             if 'test' in config_template[template_class][option] and not config_template[template_class][option]['test'](value):
                 if 'required' in config_template[template_class][option]:
                     r = config_template[template_class][option]['required']
-                    raise ConfigError('Unexpected value ("%s") for option "%s", under section "%s".\
-                                        What is expected is %s.' % (value, option, section, r))
+                    raise ConfigError('Unexpected value ("%s") for option "%s", under section "%s". '
+                                       'What is expected is %s.' % (value, option, section, r))
                 else:
                     raise ConfigError('Unexpected value ("%s") for option "%s", under section "%s".' % (value, option, section))
 
@@ -242,8 +242,8 @@ class ClusteringConfiguration:
             try:
                 alias, matrix = section.split()
             except:
-                raise ConfigError('Each section must have "alias" and "matrix" fields separated by\
-                                    a white space.')
+                raise ConfigError('Each section must have "alias" and "matrix" fields separated by '
+                                   'a white space.')
             self.matrix_paths[alias] = os.path.join(self.input_directory, matrix)
 
 
@@ -258,15 +258,15 @@ class ClusteringConfiguration:
                     database = database[1:]
 
                     if database not in self.db_paths:
-                        raise ConfigError('anvio could not recover the actual path of the database\
-                                            (!%s) referenced in the config file, because the database\
-                                            paths variable sent from the client does not have an entry\
-                                            for it :( There are two options. One is to get a db_paths\
-                                            dictionary sent to this class that contains a key for %s\
-                                            with the full path to the dataase as a value. Or the table\
-                                            "%s" can be exported to a TAB-delimited matrix and declared in\
-                                            the config file. If you are experimenting and stuck here, please\
-                                            see the documentation or send an e-mail to the developers.'\
+                        raise ConfigError('anvio could not recover the actual path of the database '
+                                           '(!%s) referenced in the config file, because the database '
+                                           'paths variable sent from the client does not have an entry '
+                                           'for it :( There are two options. One is to get a db_paths '
+                                           'dictionary sent to this class that contains a key for %s '
+                                           'with the full path to the dataase as a value. Or the table '
+                                           '"%s" can be exported to a TAB-delimited matrix and declared in '
+                                           'the config file. If you are experimenting and stuck here, please '
+                                           'see the documentation or send an e-mail to the developers.'\
                                                                                 % (database, database, table))
                     database_path = self.db_paths[database]
                 else:
@@ -299,13 +299,13 @@ class ClusteringConfiguration:
 
                 if self.row_ids_of_interest:
                     if table_form == 'dataframe':
-                        raise ConfigError("Oops .. anvi'o does not know how to deal with specific row ids of interest when a table\
-                                           refernced from a clustering recipe is in dataframe form :(")
+                        raise ConfigError("Oops .. anvi'o does not know how to deal with specific row ids of interest when a table "
+                                          "refernced from a clustering recipe is in dataframe form :(")
                     table_rows = [r for r in table_rows if r[0] in self.row_ids_of_interest]
 
                 if not len(table_rows):
-                    raise ConfigError("It seems the table '%s' in the database it was requested from is empty. This\
-                                        is not good. Here is the section that is not working for you: '%s' :/" \
+                    raise ConfigError("It seems the table '%s' in the database it was requested from is empty. This "
+                                       "is not good. Here is the section that is not working for you: '%s' :/" \
                                                                 % (table, section))
 
                 tmp_file_path = filesnpaths.get_temp_file_path()
@@ -341,8 +341,8 @@ class ClusteringConfiguration:
             alias, matrix = section.split()
 
             if not os.path.exists(self.matrix_paths[alias]):
-                raise ConfigError('The matrix file "%s" you mentioned in %s has not been found in the\
-                                    input directory :/' % (matrix, os.path.basename(self.config_file_path)))
+                raise ConfigError('The matrix file "%s" you mentioned in %s has not been found in the '
+                                   'input directory :/' % (matrix, os.path.basename(self.config_file_path)))
 
             self.check_section(config, section, 'matrix')
 
@@ -351,16 +351,16 @@ class ClusteringConfiguration:
             columns_to_use_str = self.get_option(config, section, 'columns_to_use', str)
             columns_to_use = [c.strip() for c in columns_to_use_str.split(',')] if columns_to_use_str else None
             if columns_to_use and not cols_present(columns_to_use, self.matrix_paths[alias]):
-                raise ConfigError('One or more of the columns declared for "%s" in the config file\
-                                    seem(s) to be missing in the matrix :/' % (matrix))
+                raise ConfigError('One or more of the columns declared for "%s" in the config file '
+                                   'seem(s) to be missing in the matrix :/' % (matrix))
 
 
         # 'ratio' must be defined either for all, or for none of the matrices
         with_ratio = len([True for section in sections if self.get_option(config, section, 'ratio', int)])
         if with_ratio and with_ratio != len(sections):
-            raise ConfigError('Ratio value must be defined either for all, or none of the matrices. In your\
-                                configuration only %d of %d matrices have ratio values defined. Either remove\
-                                all, or complete the remaining one%s.' % (with_ratio, len(sections),
+            raise ConfigError('Ratio value must be defined either for all, or none of the matrices. In your '
+                               'configuration only %d of %d matrices have ratio values defined. Either remove '
+                               'all, or complete the remaining one%s.' % (with_ratio, len(sections),
                                                                           's' if (len(sections) - with_ratio) > 1 else ''))
 
 
