@@ -677,16 +677,32 @@ if M.get_param_value_from_config(['megahit', 'run']) == True:
             shell("rm -rf {params.temp_dir}")
 
 
+def build_expected_bowtie_build_output_file(rev=False):
+    """Build string template for the expected output file of bowtie build
+
+    Returns a string such as 'some_dir/{group}/{group}-contigs.rev.{i}.bt2'
+
+    Parameters
+    ==========
+    rev : bool
+        Is it a .rev file?
+    """
+    additional_params = M.get_param_value_from_config(["bowtie_build", "additional_params"])
+    ext_suffix = 'l' if '--large-index' in additional_params else ''
+    prefix = '.rev' if rev else ''
+    return dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs" + prefix + '.{i}.bt2' + ext_suffix
+
+
 rule bowtie_build:
-    """ Run bowtie-build on the contigs fasta"""
-    # TODO: consider runnig this as a shadow rule
+    """Run bowtie-build on the contigs fasta"""
+    # TODO: consider running this as a shadow rule
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-bowtie_build.log"
     input: M.get_fasta
     # I touch this file because the files created have different suffix
     output:
-        o1 = expand(dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs" + '.{i}.bt2', i=[1,2,3,4], group="{group}"),
-        o2 = expand(dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs" + '.rev.{i}.bt2', i=[1,2], group="{group}")
+        o1 = expand(build_expected_bowtie_build_output_file(), i=[1,2,3,4], group="{group}"),
+        o2 = expand(build_expected_bowtie_build_output_file(rev=True), i=[1,2], group="{group}")
     params:
         prefix = dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs",
         additional_params = M.get_param_value_from_config(["bowtie_build", "additional_params"])
@@ -697,7 +713,7 @@ rule bowtie_build:
 
 def input_for_bowtie(wildcards):
     '''Creating a dictionary containing the input files for bowtie.'''
-    d = {'build_output': dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs.1.bt2".format(group=wildcards.group)}
+    d = {'build_output': build_expected_bowtie_build_output_file().format(i=1, group=wildcards.group)}
     if wildcards.group in M.references_for_removal:
         post_reference_based_short_read_removal = False
     else:
@@ -708,7 +724,7 @@ def input_for_bowtie(wildcards):
 
 
 rule bowtie:
-    """ Run mapping with bowtie2"""
+    """Run mapping with bowtie2"""
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-bowtie.log"
     input: unpack(input_for_bowtie)
