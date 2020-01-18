@@ -103,20 +103,20 @@ class MultipleRuns:
         proper = [p for p in self.input_profile_db_paths if p not in improper]
 
         if len(improper) == len(self.input_profile_db_paths):
-            raise ConfigError("None of the databases you asked anvi'o to merge were single, non-blank anvi'o profiles. If you\
-                               are not testing anvi'o and yet found yourself here, it is safe to assume that something somewhere\
-                               in your workflow is quite wrong :/")
+            raise ConfigError("None of the databases you asked anvi'o to merge were single, non-blank anvi'o profiles. If you "
+                              "are not testing anvi'o and yet found yourself here, it is safe to assume that something somewhere "
+                              "in your workflow is quite wrong :/")
 
         if not len(proper) > 1:
-            raise ConfigError("Anvi'o can only merge single, non-blank anvi'o profiles. You have only one database that fits into that\
-                               criterion. So there is nothing really to merge here. Yes?")
+            raise ConfigError("Anvi'o can only merge single, non-blank anvi'o profiles. You have only one database that fits into that "
+                              "criterion. So there is nothing really to merge here. Yes?")
 
         if improper:
-            self.run.warning("Pleae read carefuly. You sent %d profile databases to anvi'o merger to be merged. However, not\
-                              all of them were single, non-blank anvi'o profiles. Anvi'o removed %d of them, and will merge\
-                              only the remaining %d. At the end of this warning you will find a list of paths to those databases\
-                              anvi'o excluded from merging. If you are not happy with that, please carefully examine what went wrong.\
-                              Here are all the paths for excluded databases: %s." \
+            self.run.warning("Pleae read carefuly. You sent %d profile databases to anvi'o merger to be merged. However, not "
+                             "all of them were single, non-blank anvi'o profiles. Anvi'o removed %d of them, and will merge "
+                             "only the remaining %d. At the end of this warning you will find a list of paths to those databases "
+                             "anvi'o excluded from merging. If you are not happy with that, please carefully examine what went wrong. "
+                             "Here are all the paths for excluded databases: %s." \
                                             % (len(self.input_profile_db_paths), len(improper), len(proper), ', '.join(["'%s'" % p for p in improper])))
 
         # replace input profile database paths with proper paths:
@@ -125,9 +125,9 @@ class MultipleRuns:
 
     def __populate_layer_additional_data_dict_for_taxonomic_data_groups(self, data_group_names):
         if data_group_names:
-            self.run.warning("Anvi'o found %d data groups for taxonomy (%s), and will do its best to make sure they\
-                              get worked into the merged profile database. A moment of zero promises but crossed\
-                              fingers (which is the best way to avoid most computational poopsies)." % \
+            self.run.warning("Anvi'o found %d data groups for taxonomy (%s), and will do its best to make sure they "
+                             "get worked into the merged profile database. A moment of zero promises but crossed "
+                             "fingers (which is the best way to avoid most computational poopsies)." % \
                                                 (len(data_group_names), ', '.join(data_group_names)),
                               header="GOOD NEWS",
                               lc="green")
@@ -184,13 +184,13 @@ class MultipleRuns:
             # tables.
             if data_group_name == 'default' and 'total_reads_mapped' not in layer_additional_data_keys:
                 self.progress.end()
-                raise ConfigError("While trying to learn everything there is to learn about layer additional data in single\
-                                   profiles to be merged, anvi'o realized that 'total_reads_mapped' is not common to all \
-                                   profile databases :( This is bad, becasue this indicates there is something terribly\
-                                   wrong with one or more of your single profile databases. If you are a programmer trying to\
-                                   mimic anvi'o single profiles, you will have to look at the code of the profiler a bit more\
-                                   carefully. If you are a user, well, you are *really* in trouble... Send us an e-mail or\
-                                   something?")
+                raise ConfigError("While trying to learn everything there is to learn about layer additional data in single "
+                                  "profiles to be merged, anvi'o realized that 'total_reads_mapped' is not common to all "
+                                  "profile databases :( This is bad, becasue this indicates there is something terribly "
+                                  "wrong with one or more of your single profile databases. If you are a programmer trying to "
+                                  "mimic anvi'o single profiles, you will have to look at the code of the profiler a bit more "
+                                  "carefully. If you are a user, well, you are *really* in trouble... Send us an e-mail or "
+                                  "something?")
 
             # otherwise, let's create a final data dictionary for these assholes in this data group based on
             # thier common keys.
@@ -222,11 +222,11 @@ class MultipleRuns:
             if missing_default_data_group_is_OK:
                 pass
             else:
-                 raise ConfigError("There is something wrong with your input databases. The group name 'default'\
-                                    should be common to all of them, but it doesn't seem to be the case :/ How did\
-                                    you end up with an anvi'o single profile database that doesn't have the 'default'\
-                                    group in its additional layer data table? It is very likely that your profiling\
-                                    step failed for some reason for one or more of your databases :(")
+                 raise ConfigError("There is something wrong with your input databases. The group name 'default' "
+                                   "should be common to all of them, but it doesn't seem to be the case :/ How did "
+                                   "you end up with an anvi'o single profile database that doesn't have the 'default' "
+                                   "group in its additional layer data table? It is very likely that your profiling "
+                                   "step failed for some reason for one or more of your databases :(")
 
         taxonomic_data_groups = set(constants.levels_of_taxonomy).intersection(data_groups_common_to_all_profile_dbs)
         regular_data_groups = data_groups_common_to_all_profile_dbs.difference(taxonomic_data_groups)
@@ -258,8 +258,8 @@ class MultipleRuns:
             raise ConfigError("Anvi'o couldn't find the contigs database where you said it would be :/")
 
         if self.enforce_hierarchical_clustering and self.skip_hierarchical_clustering:
-            raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering\
-                                while also asking it to enforce it.")
+            raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering "
+                               "while also asking it to enforce it.")
 
         self.check_dbs_to_be_merged()
 
@@ -269,9 +269,9 @@ class MultipleRuns:
 
         self.sample_ids_found_in_input_dbs = sorted([v['sample_id'] for v in list(self.profile_dbs_info_dict.values())])
         if len(self.profile_dbs_info_dict) != len(set(self.sample_ids_found_in_input_dbs)):
-            raise ConfigError("Sample ids in each single profile database to be merged must be unique. But it is not the case\
-                               with your input :/ Here are the sample names in case you would like to find out which ones occur\
-                               more than once: '%s'" % (', '.join(self.sample_ids_found_in_input_dbs)))
+            raise ConfigError("Sample ids in each single profile database to be merged must be unique. But it is not the case "
+                              "with your input :/ Here are the sample names in case you would like to find out which ones occur "
+                              "more than once: '%s'" % (', '.join(self.sample_ids_found_in_input_dbs)))
 
         # test open the contigs database (and learn its hash while doing it) to make sure we don't have
         # a deal breaker just yet
@@ -292,18 +292,18 @@ class MultipleRuns:
             v = set([r[k] for r in list(self.profile_dbs_info_dict.values())])
             if len(v) > 1:
                 if anvio.FORCE:
-                    self.run.warning("Anvio'o found out that %s is not identical across all your profiles, but since you\
-                                      have used the `--force` flag, it will continue with the merge. This is very\
-                                      dangerous, and even if merging finishes succesfully, it does not mean you can trust\
-                                      your results to be error free. We believe you are prepared to deal with potential\
-                                      implications of forcing things because you are awesome." % p, lc="cyan")
+                    self.run.warning("Anvio'o found out that %s is not identical across all your profiles, but since you "
+                                     "have used the `--force` flag, it will continue with the merge. This is very "
+                                     "dangerous, and even if merging finishes succesfully, it does not mean you can trust "
+                                     "your results to be error free. We believe you are prepared to deal with potential "
+                                     "implications of forcing things because you are awesome." % p, lc="cyan")
                 else:
-                    raise ConfigError("Ouch. %s are not identical for all profiles to be merged, which is a \
-                                       deal breaker. All profiles that are going to be merged must be\
-                                       run with identical flags and parameters :/ You really shouldn't but if you want to\
-                                       try to force things because you believe this is due to a misunderstanding, you can\
-                                       use the flag --force. While you are considering this as an option, please also\
-                                       remember that this we advice against it.." % p)
+                    raise ConfigError("Ouch. %s are not identical for all profiles to be merged, which is a "
+                                      "deal breaker. All profiles that are going to be merged must be "
+                                      "run with identical flags and parameters :/ You really shouldn't but if you want to "
+                                      "try to force things because you believe this is due to a misunderstanding, you can "
+                                      "use the flag --force. While you are considering this as an option, please also "
+                                      "remember that this we advice against it.." % p)
 
         # get split names from one of the profile databases. split names must be identical across all
         self.split_names = sorted(list(utils.get_all_item_names_from_the_database(list(self.profile_dbs_info_dict.keys())[0])))
@@ -312,22 +312,22 @@ class MultipleRuns:
         hashes_for_profile_dbs = set([r['contigs_db_hash'] for r in self.profile_dbs_info_dict.values()])
         if len(hashes_for_profile_dbs) != 1:
             if None in hashes_for_profile_dbs:
-                raise ConfigError("It seems there is at least one run in the mix that was profiled using an\
-                                          contigs database, and at least one other that was profiled without using\
-                                          one. This is not good. All runs must be profiled using the same contigs\
-                                          database, or all runs must be profiled without a contigs database :/")
+                raise ConfigError("It seems there is at least one run in the mix that was profiled using an "
+                                         "contigs database, and at least one other that was profiled without using "
+                                         "one. This is not good. All runs must be profiled using the same contigs "
+                                         "database, or all runs must be profiled without a contigs database :/")
             else:
-                raise ConfigError("It seems these runs were profiled using different contigs databases (or\
-                                          different versions of the same contigs database). All runs must be\
-                                          profiled using the same contigs database, or all runs must be profiled\
-                                          without a contigs database :/")
+                raise ConfigError("It seems these runs were profiled using different contigs databases (or "
+                                         "different versions of the same contigs database). All runs must be "
+                                         "profiled using the same contigs database, or all runs must be profiled "
+                                         "without a contigs database :/")
 
 
         # make sure the hash for contigs db is identical across all profile databases:
         if list(hashes_for_profile_dbs)[0] != contigs_db_hash:
-            raise ConfigError("The contigs database you provided, which is identified with hash '%s', does\
-                                      not seem to match the run profiles you are trying to merge, which share the\
-                                      hash identifier of '%s'. What's up with that?" % (contigs_db_hash, list(hashes_for_profile_dbs)[0]))
+            raise ConfigError("The contigs database you provided, which is identified with hash '%s', does "
+                                     "not seem to match the run profiles you are trying to merge, which share the "
+                                     "hash identifier of '%s'. What's up with that?" % (contigs_db_hash, list(hashes_for_profile_dbs)[0]))
 
         # do we have a description file?
         if self.description_file_path:
@@ -383,11 +383,11 @@ class MultipleRuns:
         AUX = lambda x: os.path.join(os.path.dirname(x), 'AUXILIARY-DATA.db')
 
         if False in [filesnpaths.is_file_exists(AUX(p), dont_raise=True) for p in self.profile_dbs_info_dict]:
-            self.run.warning("Some of your single profile databases to be merged are missing auxiliary data files associated with them. Did you\
-                              download them from somewhere and forgot to download the AUXILIARY-DATA.db files? Well. That's fine. Anvi'o will\
-                              continue merging your profiles without split coverages (which means you will not be able to inspect nucleotide\
-                              level coverage values and some other bells and whistles). If you want, you can kill this process now with CTRL+C\
-                              and redo it with all database files in proper places.")
+            self.run.warning("Some of your single profile databases to be merged are missing auxiliary data files associated with them. Did you "
+                             "download them from somewhere and forgot to download the AUXILIARY-DATA.db files? Well. That's fine. Anvi'o will "
+                             "continue merging your profiles without split coverages (which means you will not be able to inspect nucleotide "
+                             "level coverage values and some other bells and whistles). If you want, you can kill this process now with CTRL+C "
+                             "and redo it with all database files in proper places.")
 
             return None
 
@@ -420,11 +420,11 @@ class MultipleRuns:
         smallest_non_zero_sample_size = min([v for v in self.total_reads_mapped_per_sample.values() if v] or [0])
 
         if smallest_non_zero_sample_size == 0 and not self.skip_hierarchical_clustering:
-            self.run.warning("It seems none of the single profiles you are trying to merge has more than zero reads :/\
-                              Anvi'o will let this pass, assuming you have some grand plans with these data. But to\
-                              make sure nothing explode during downstream analyses, it will set the flag\
-                              `--skip-hierarchical-clustering` to True (so there will be no hierarchical clustering\
-                              data available in your merged profile database).", header="HIERARCHICAL CLUSTERING WARNING")
+            self.run.warning("It seems none of the single profiles you are trying to merge has more than zero reads :/ "
+                             "Anvi'o will let this pass, assuming you have some grand plans with these data. But to "
+                             "make sure nothing explode during downstream analyses, it will set the flag "
+                             "`--skip-hierarchical-clustering` to True (so there will be no hierarchical clustering "
+                             "data available in your merged profile database).", header="HIERARCHICAL CLUSTERING WARNING")
             self.skip_hierarchical_clustering = True
 
         for input_profile_db_path in self.profile_dbs_info_dict:
@@ -432,8 +432,8 @@ class MultipleRuns:
             self.normalization_multiplier[input_profile_db_path] = (smallest_non_zero_sample_size or 1) * 1.0 / (self.total_reads_mapped_per_sample[sample_id] or (smallest_non_zero_sample_size or 1))
 
         PRETTY = lambda x: ', '.join(['%s: %.2f' % (self.profile_dbs_info_dict[s]['sample_id'], x[s]) for s in sorted(list(x.keys()))])
-        self.run.warning("Anvi'o just set the normalization values for each sample based on how many mapped reads they contained.\
-                          This information will only be used to calculate the normalized coverage table. Here are those values: %s" %\
+        self.run.warning("Anvi'o just set the normalization values for each sample based on how many mapped reads they contained. "
+                         "This information will only be used to calculate the normalized coverage table. Here are those values: %s" %\
                                             PRETTY(self.normalization_multiplier))
 
 
@@ -464,18 +464,18 @@ class MultipleRuns:
         self.total_length = C('total_length')
 
         if self.num_splits > self.max_num_splits_for_hierarchical_clustering and not self.enforce_hierarchical_clustering:
-            self.run.warning("It seems you have more than %s splits in your samples to be merged. This is the\
-                              soft limit for anvi'o to attempt to create a hierarchical clustering of your splits\
-                              (which becomes the center tree in all anvi'o displays). If you want a hierarchical\
-                              clustering to be done anyway, please see the flag `--enforce-hierarchical-clustering`.\
-                              But more importantly, please take a look at the anvi'o tutorial to make sure you know\
-                              your better options to analyze large metagenomic datasets with anvi'o." \
+            self.run.warning("It seems you have more than %s splits in your samples to be merged. This is the "
+                             "soft limit for anvi'o to attempt to create a hierarchical clustering of your splits "
+                             "(which becomes the center tree in all anvi'o displays). If you want a hierarchical "
+                             "clustering to be done anyway, please see the flag `--enforce-hierarchical-clustering`. "
+                             "But more importantly, please take a look at the anvi'o tutorial to make sure you know "
+                             "your better options to analyze large metagenomic datasets with anvi'o." \
                                                                 % pp(self.max_num_splits_for_hierarchical_clustering))
             self.skip_hierarchical_clustering = True
 
         if self.num_splits > self.max_num_splits_for_hierarchical_clustering and self.enforce_hierarchical_clustering:
-            self.run.warning("Becasue you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt\
-                              to create a hierarchical clustering of your %s splits. It may take a bit of time..." \
+            self.run.warning("Becasue you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt "
+                             "to create a hierarchical clustering of your %s splits. It may take a bit of time..." \
                                                                 % pp(self.num_splits))
 
         self.total_reads_mapped_per_sample = dict([(s, self.layer_additional_data_dict['default'][s]['total_reads_mapped']) for s in self.layer_additional_data_dict['default']])
@@ -608,16 +608,16 @@ class MultipleRuns:
         self.progress.end()
 
         if not len(layer_orders_data_dict):
-            self.run.warning("This may or may not be important: anvi'o attempted to generate orders for your\
-                              samples based on the view data, however, it failed :/")
+            self.run.warning("This may or may not be important: anvi'o attempted to generate orders for your "
+                             "samples based on the view data, however, it failed :/")
             return
 
         if len(failed_attempts):
-            self.run.warning("While anvi'o was trying to generate clusterings of samples based on view data\
-                              available in the merged profile, clustering of some of the essential data\
-                              failed. It is likely not a very big deal, but you shall be the judge of it.\
-                              Anvi'o now proceeds to store layers order information for those view items\
-                              the clustering in fact worked. Here is the list of stuff that failed: '%s'"\
+            self.run.warning("While anvi'o was trying to generate clusterings of samples based on view data "
+                             "available in the merged profile, clustering of some of the essential data "
+                             "failed. It is likely not a very big deal, but you shall be the judge of it. "
+                             "Anvi'o now proceeds to store layers order information for those view items "
+                             "the clustering in fact worked. Here is the list of stuff that failed: '%s'"\
                               % (', '.join(failed_attempts)))
 
         # add the layer orders quietly

@@ -58,8 +58,8 @@ class TablesForViews(Table):
 
         if not append_mode:
             if view_name and view_name in views_in_db:
-                raise ConfigError("TablesForViews speaking: Yo yo yo. You already have a view in the db '%s' called '%s'.\
-                                    You can't create another one before you get rid of the existing one, because rules."\
+                raise ConfigError("TablesForViews speaking: Yo yo yo. You already have a view in the db '%s' called '%s'. "
+                                   "You can't create another one before you get rid of the existing one, because rules."\
                                                                             % (self.db_path, view_name))
 
             # first create the data table:
@@ -73,9 +73,9 @@ class TablesForViews(Table):
             # a new flag, such as `ok_if_exists` and call it in this context as
             # `ok_if_exists=append_mode`.
             if not append_mode:
-                raise ConfigError("Something bad happened when anvi'o was trying to create table `%s` in database\
-                                   '%s'. Here is how the part of the code that was about this described the\
-                                   problem: '%s'." % (table_name, self.db_path, str(e)))
+                raise ConfigError("Something bad happened when anvi'o was trying to create table `%s` in database "
+                                  "'%s'. Here is how the part of the code that was about this described the "
+                                  "problem: '%s'." % (table_name, self.db_path, str(e)))
 
         db_entries = [tuple([item] + [data_dict[item][h] for h in table_structure[1:]]) for item in data_dict]
 
@@ -93,11 +93,11 @@ class TablesForViews(Table):
                 for entry in db_entries:
                     temp_file.write('\t'.join([str(e) for e in entry]) + '\n')
 
-            raise ConfigError("Something bad happened while anvi'o was trying to insert %d entries with %s into the\
-                               table '%s' which contained a table structure with %d columns in '%s' :( This\
-                               is the error we got back from the database module: \"%s\". Anvi'o created a temporary\
-                               file for you so you can see the contents of the db_entries it tried to add to the\
-                               database, which is here: '%s'." % \
+            raise ConfigError("Something bad happened while anvi'o was trying to insert %d entries with %s into the "
+                              "table '%s' which contained a table structure with %d columns in '%s' :( This "
+                              "is the error we got back from the database module: \"%s\". Anvi'o created a temporary "
+                              "file for you so you can see the contents of the db_entries it tried to add to the "
+                              "database, which is here: '%s'." % \
                                     (len(db_entries), columns_text, table_name, len(table_structure), self.db_path, e, temp_file_output_path))
 
         if view_name and view_name not in views_in_db:

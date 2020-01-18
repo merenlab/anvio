@@ -84,28 +84,28 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.blank = A('blank_profile')
 
         if not self.blank and self.contigs_shall_be_clustered and self.skip_hierarchical_clustering:
-            raise ConfigError("You are confused, and confusing anvi'o, too. You can't as hierarchical clustering\
-                               to be performed with one flag, and try to skip it with another one :(")
+            raise ConfigError("You are confused, and confusing anvi'o, too. You can't as hierarchical clustering "
+                              "to be performed with one flag, and try to skip it with another one :(")
 
         if self.blank and self.contigs_shall_be_clustered and self.skip_hierarchical_clustering:
-            raise ConfigError("So you want to generate a blank profile, and you both want hierarchical clustering\
-                               of your contigs to be performed, and skipped. No.")
+            raise ConfigError("So you want to generate a blank profile, and you both want hierarchical clustering "
+                              "of your contigs to be performed, and skipped. No.")
 
         if self.blank and self.contigs_shall_be_clustered:
-            raise ConfigError("When the blank profile is asked to be generated, there is no need to ask for the\
-                               hierarchical clustering of contigs. It is going to be done by default. If it is\
-                               not changing anything, why is anvi'o upset with you? Because. Let's don't use flags\
-                               we don't need.")
+            raise ConfigError("When the blank profile is asked to be generated, there is no need to ask for the "
+                              "hierarchical clustering of contigs. It is going to be done by default. If it is "
+                              "not changing anything, why is anvi'o upset with you? Because. Let's don't use flags "
+                              "we don't need.")
 
         if self.max_coverage_depth >= auxiliarydataops.COVERAGE_MAX_VALUE:
-            raise ConfigError("The value %s for the maximum coverage depth is not going to work :/ While the maximum\
-                               depth of coverage for anvi'o to care about is a soft cut-off (hence you have some level\
-                               of freedom through the parameter `--max-coverage-depth`), there are database limitations\
-                               anvi'o must consider and can not change. The maximum value allowed in the database for\
-                               coverage information is 65536. Hence, you should set your depth of coverage to something \
-                               that is less than this value. In addition, it is also recommended to leave a little gap\
-                               and don't go beyond 90%% of this hard limit (that's why anvi'o will keep telling you,\
-                               \"%s is nice, but %s is the best I can do\" when you try to exceed that)." \
+            raise ConfigError("The value %s for the maximum coverage depth is not going to work :/ While the maximum "
+                              "depth of coverage for anvi'o to care about is a soft cut-off (hence you have some level "
+                              "of freedom through the parameter `--max-coverage-depth`), there are database limitations "
+                              "anvi'o must consider and can not change. The maximum value allowed in the database for "
+                              "coverage information is 65536. Hence, you should set your depth of coverage to something "
+                              "that is less than this value. In addition, it is also recommended to leave a little gap "
+                              "and don't go beyond 90%% of this hard limit (that's why anvi'o will keep telling you, "
+                              "\"%s is nice, but %s is the best I can do\" when you try to exceed that)." \
                                         % (pp(self.max_coverage_depth), pp(self.max_coverage_depth), pp(auxiliarydataops.COVERAGE_MAX_VALUE)))
 
 
@@ -147,9 +147,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # if genes are not called, yet the user is asking for codon frequencies to be profiled, we give
         # a warning and force-turn that flag off.
         if (not self.a_meta['genes_are_called']) and self.profile_SCVs:
-            self.run.warning("You asked the codon frequencies to be profiled, but genes were not called\
-                              for your contigs database. Anvi'o is assigning `False` to the profile-codon-frequncies\
-                              flag, overruling your request like a boss.")
+            self.run.warning("You asked the codon frequencies to be profiled, but genes were not called "
+                             "for your contigs database. Anvi'o is assigning `False` to the profile-codon-frequncies "
+                             "flag, overruling your request like a boss.")
             self.profile_SCVs = False
 
         # following variable will be populated while the variable positions table is computed
@@ -165,9 +165,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
     def init_dirs_and_dbs(self):
         if not self.contigs_db_path:
-            raise ConfigError("You can not run profiling without a contigs database. You can create\
-                                one using 'anvi-gen-contigs-database'. Not sure how? Please see the\
-                                tutorial: http://merenlab.org/2015/05/02/anvio-tutorial/")
+            raise ConfigError("You can not run profiling without a contigs database. You can create "
+                               "one using 'anvi-gen-contigs-database'. Not sure how? Please see the "
+                               "tutorial: http://merenlab.org/2015/05/02/anvio-tutorial/")
 
         if self.description_file_path:
             filesnpaths.is_file_plain_text(self.description_file_path)
@@ -251,14 +251,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('profile_SCVs', self.profile_SCVs)
         self.run.info('report_variability_full', self.report_variability_full)
 
-        self.run.warning("Your minimum contig length is set to %s base pairs. So anvi'o will not take into\
-                          consideration anything below that. If you need to kill this an restart your\
-                          analysis with another minimum contig length value, feel free to press CTRL+C." \
+        self.run.warning("Your minimum contig length is set to %s base pairs. So anvi'o will not take into "
+                         "consideration anything below that. If you need to kill this an restart your "
+                         "analysis with another minimum contig length value, feel free to press CTRL+C." \
                                                 % (pp(self.min_contig_length)))
 
         if self.max_contig_length < sys.maxsize:
-            self.run.warning("Your maximum contig length is set to %s base pairs. Which means anvi'o will remove\
-            any contigs that are longer than this value." % pp(self.max_contig_length))
+            self.run.warning("Your maximum contig length is set to %s base pairs. Which means anvi'o will remove "
+           "any contigs that are longer than this value." % pp(self.max_contig_length))
 
         # this is kinda important. we do not run full-blown profile function if we are dealing with a summarized
         # profile...
@@ -361,9 +361,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
     def check_contigs_without_any_gene_calls(self, contig_names):
         if not self.a_meta['genes_are_called']:
-            self.run.warning("The contigs database '%s' does not contain any gene calls. Which means the profiling step\
-                              will not be able to characterize 'gene coverages'. If you are OK with this, anvi'o will be\
-                              OK with it as well." % (self.contigs_db_path))
+            self.run.warning("The contigs database '%s' does not contain any gene calls. Which means the profiling step "
+                             "will not be able to characterize 'gene coverages'. If you are OK with this, anvi'o will be "
+                             "OK with it as well." % (self.contigs_db_path))
             return
 
         contig_names = set(contig_names)
@@ -372,10 +372,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if len(contigs_without_any_gene_calls):
             import random
             P = lambda x: 'are %d contigs' % (x) if x > 1 else 'there is one contig'
-            self.run.warning('According to the data generated in the contigs database, there %s in your BAM file\
-                              with 0 gene calls. Which may not be unusual if (a) some of your contigs are very short,\
-                              or (b) your the gene caller was not capable of dealing with the type of data you had.\
-                              If you would like to take a look yourself, here is one contig that is missing any genes: %s"' %\
+            self.run.warning('According to the data generated in the contigs database, there %s in your BAM file '
+                             'with 0 gene calls. Which may not be unusual if (a) some of your contigs are very short, '
+                             'or (b) your the gene caller was not capable of dealing with the type of data you had. '
+                             'If you would like to take a look yourself, here is one contig that is missing any genes: %s"' %\
                                       (P(len(contigs_without_any_gene_calls)), random.choice(contigs_without_any_gene_calls)))
 
 
@@ -412,10 +412,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
             except:
                 pass
 
-            raise ConfigError("Anvi'o applied your min/max lenght criteria for contigs to filter out the bad ones\
-                               and has bad news: not a single contig in your contigs database was greater than %s\
-                               and smaller than %s nts :( So this profiling attempt did not really go anywhere.\
-                               Please remove your half-baked output directory if it is still there: '%s'." \
+            raise ConfigError("Anvi'o applied your min/max lenght criteria for contigs to filter out the bad ones "
+                              "and has bad news: not a single contig in your contigs database was greater than %s "
+                              "and smaller than %s nts :( So this profiling attempt did not really go anywhere. "
+                              "Please remove your half-baked output directory if it is still there: '%s'." \
                                         % (pp(self.min_contig_length), pp(self.max_contig_length), self.output_directory))
         else:
             self.contig_names = [self.contig_names[i] for i in contigs_with_good_lengths]
@@ -475,12 +475,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # mentioned here: http://merenlab.org/2015/05/01/anvio-tutorial/#preparation
         for contig_name in self.contig_names:
             if contig_name not in self.contig_names_in_contigs_db:
-                raise ConfigError("At least one contig name in your BAM file does not match contig names stored in the\
-                                    contigs database. For instance, this is one contig name found in your BAM file: '%s',\
-                                    and this is another one found in your contigs database: '%s'. You may be using an\
-                                    contigs database for profiling that has nothing to do with the BAM file you are\
-                                    trying to profile, or you may have failed to fix your contig names in your FASTA file\
-                                    prior to mapping, which is described here: %s"\
+                raise ConfigError("At least one contig name in your BAM file does not match contig names stored in the "
+                                   "contigs database. For instance, this is one contig name found in your BAM file: '%s', "
+                                   "and this is another one found in your contigs database: '%s'. You may be using an "
+                                   "contigs database for profiling that has nothing to do with the BAM file you are "
+                                   "trying to profile, or you may have failed to fix your contig names in your FASTA file "
+                                   "prior to mapping, which is described here: %s"\
                                         % (contig_name, self.contig_names_in_contigs_db.pop(), 'http://goo.gl/Q9ChpS'))
 
         self.run.info('num_contigs_after_M', self.num_contigs, display_only=True)
@@ -801,9 +801,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
     def check_args(self):
         if self.blank:
-            self.run.warning("You are about to generate a blank profile. This is what we do when we have nothing\
-                              but a contigs database to play with. Because anvi'o is lazy, it will not check the\
-                              rest of the parameters you may have declred. Most of them will not matter.")
+            self.run.warning("You are about to generate a blank profile. This is what we do when we have nothing "
+                             "but a contigs database to play with. Because anvi'o is lazy, it will not check the "
+                             "rest of the parameters you may have declred. Most of them will not matter.")
 
             if not self.output_directory:
                 raise ConfigError("If you want to generate a blank profile, you need to declare an output diretory path.")
@@ -833,8 +833,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self.max_contig_length >= 100:
             raise ConfigError("Maximum contig length can't be less than 100 base pairs.")
         if self.min_contig_length >= self.max_contig_length:
-            raise ConfigError("Maximum contig length (%s) must be larger than the minimum\
-                               contig length (%s). Seriously though." % (pp(self.max_contig_length), pp(self.min_contig_length)))
+            raise ConfigError("Maximum contig length (%s) must be larger than the minimum "
+                              "contig length (%s). Seriously though." % (pp(self.max_contig_length), pp(self.min_contig_length)))
 
         if self.num_threads < 1:
             raise ConfigError("Nice try. Obviously, number of threds can not be less than 1.")
@@ -843,8 +843,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.queue_size = self.num_threads * 2
 
         if not self.write_buffer_size:
-            self.run.warning("You set the write buffer size to 0. Which means, the profiling data will be kept in memory until\
-                              the very end of the processing.")
+            self.run.warning("You set the write buffer size to 0. Which means, the profiling data will be kept in memory until "
+                             "the very end of the processing.")
 
         if self.write_buffer_size < 0:
             raise ConfigError('No. Write buffer size can not have a negative value.')

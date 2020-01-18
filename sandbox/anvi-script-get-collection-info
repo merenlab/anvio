@@ -11,9 +11,9 @@ __status__ = "Deprecated"
 __description__ = "Replaced by 'anvi-estimate-genome-completeness'"
 
 def main():
-    raise ConfigError("This program is now known as 'anvi-estimate-genome-completeness'. At least\
-                       we made sure you can re-run the same command line above by only replacing\
-                       the program name.")
+    raise ConfigError("This program is now known as 'anvi-estimate-genome-completeness'. At least "
+                      "we made sure you can re-run the same command line above by only replacing "
+                      "the program name.")
 
 if __name__ == '__main__':
     try:

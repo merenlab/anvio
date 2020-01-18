@@ -83,8 +83,8 @@ def migrate(db_path):
                          this message is talking about, then you have nothing to worry about." \
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
     else:
-        run.info_single("Your profile db is now version %s. But essentially nothing really happened to your\
-                         database since it was a blank profile (which is OK, move along)." \
+        run.info_single("Your profile db is now version %s. But essentially nothing really happened to your "
+                        "database since it was a blank profile (which is OK, move along)." \
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
 
 

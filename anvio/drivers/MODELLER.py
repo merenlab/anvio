@@ -172,8 +172,8 @@ class MODELLER:
 
         if not len(self.top_seq_matches):
             self.progress.end()
-            self.run.warning("No structures of the homologous proteins (templates) were downloadable. Probably something \
-                              is wrong. Maybe you are not connected to the internet. Stopping here.")
+            self.run.warning("No structures of the homologous proteins (templates) were downloadable. Probably something "
+                             "is wrong. Maybe you are not connected to the internet. Stopping here.")
             raise self.EndModeller
 
         self.run.info("Structures downloaded for", ", ".join([code[0] for code in self.top_seq_matches]), progress=self.progress)
@@ -186,8 +186,8 @@ class MODELLER:
         parameters used :: self.percent_identical_cutoff, self.max_number_templates
         """
         if not self.percent_identical_cutoff or not self.max_number_templates:
-            raise ConfigError("parse_search_results::You initiated this class without providing values for percent_identical_cutoff \
-                               and max_number_templates, which is required for this function.")
+            raise ConfigError("parse_search_results::You initiated this class without providing values for percent_identical_cutoff "
+                              "and max_number_templates, which is required for this function.")
 
         self.progress.update("Parsing and filtering homologs")
 
@@ -222,9 +222,9 @@ class MODELLER:
         matches_after_filter = len(search_df)
         if not matches_after_filter:
             self.progress.end()
-            self.run.warning("Gene {} did not have a search result with proper percent identicalness above or equal \
-                              to {}%. The best match was chain {} of https://www.rcsb.org/structure/{}, which had a\
-                              proper percent identicalness of {:.2f}%. No structure will be modelled.".\
+            self.run.warning("Gene {} did not have a search result with proper percent identicalness above or equal "
+                             "to {}%. The best match was chain {} of https://www.rcsb.org/structure/{}, which had a "
+                             "proper percent identicalness of {:.2f}%. No structure will be modelled.".\
                               format(self.corresponding_gene_call,
                                      self.percent_identical_cutoff,
                                      id_of_max_pident[1],
@@ -273,8 +273,8 @@ class MODELLER:
         # All MODELLER scripts are housed in self.script_folder
         self.scripts_folder = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
         if utils.filesnpaths.is_dir_empty(self.scripts_folder):
-            raise ConfigError("Anvi'o houses all its MODELLER scripts in {}, but your directory \
-                               contains no scripts. Why you do dat?")
+            raise ConfigError("Anvi'o houses all its MODELLER scripts in {}, but your directory "
+                              "contains no scripts. Why you do dat?")
 
         # check that MODELLER exists
         if self.args.__dict__['modeller_executable'] if 'modeller_executable' in self.args.__dict__ else None:
@@ -282,27 +282,27 @@ class MODELLER:
 
         try:
             utils.is_program_exists(self.executable)
-            self.run.info_single("Anvi'o found the executable for MODELLER, `%s`, and will\
-                                  use it." % self.executable, nl_before=1)
+            self.run.info_single("Anvi'o found the executable for MODELLER, `%s`, and will "
+                                 "use it." % self.executable, nl_before=1)
         except ConfigError as e:
             *prefix, sub_version = self.up_to_date_modeller_exec.split('.')
             prefix, sub_version = ''.join(prefix), int(sub_version)
             for alternate_version in reversed(range(sub_version - 10, sub_version + 10)):
                 alternate_program = prefix + '.' + str(alternate_version)
                 if utils.is_program_exists(alternate_program, dont_raise=True):
-                    self.run.warning("Anvi'o didn't find %s to be a proper program, but it did \
-                                      find a similarly named program %s, that it will use \
-                                      instead." % (self.executable, alternate_program),
+                    self.run.warning("Anvi'o didn't find %s to be a proper program, but it did "
+                                     "find a similarly named program %s, that it will use "
+                                     "instead." % (self.executable, alternate_program),
                                      header='Alternate MODELLER executable found')
                     self.executable = alternate_program
                     break
             else:
-                raise ConfigError("Anvi'o needs a MODELLER program to be installed on your system. You didn't specify one\
-                                   (which can be done with `--modeller-executable`), so anvi'o tried the most recent version\
-                                   it knows about: '%s'. If you are certain you have it on your system (for instance you can run it\
-                                   by typing '%s' in your terminal window), you may want to send a detailed bug report. If you\
-                                   don't have it on your system, check out these installation instructions on our website:\
-                                   http://merenlab.org/2016/06/18/installing-third-party-software/#modeller" % (self.executable, self.executable))
+                raise ConfigError("Anvi'o needs a MODELLER program to be installed on your system. You didn't specify one "
+                                  "(which can be done with `--modeller-executable`), so anvi'o tried the most recent version "
+                                  "it knows about: '%s'. If you are certain you have it on your system (for instance you can run it "
+                                  "by typing '%s' in your terminal window), you may want to send a detailed bug report. If you "
+                                  "don't have it on your system, check out these installation instructions on our website: "
+                                  "http://merenlab.org/2016/06/18/installing-third-party-software/#modeller" % (self.executable, self.executable))
 
         self.is_executable_a_MODELLER_program()
 
@@ -312,8 +312,8 @@ class MODELLER:
         # make sure target_fasta is valid
         target_fasta = u.SequenceSource(self.target_fasta_path, lazy_init=False)
         if target_fasta.total_seq != 1:
-            raise ConfigError("MODELLER::The input FASTA file must have exactly one sequence.\
-                               You provided one with {}.".format(target_fasta.total_seq))
+            raise ConfigError("MODELLER::The input FASTA file must have exactly one sequence. "
+                              "You provided one with {}.".format(target_fasta.total_seq))
 
         # (not sanity check but we get self.corresponding_gene_call since target_fasta is opened)
         while next(target_fasta):
@@ -325,12 +325,12 @@ class MODELLER:
             self.run.warning("You realize that deviation is given in angstroms, right? You chose {}".format(self.deviation))
 
         if self.very_fast and self.num_models > 1:
-            self.run.warning("Since you chose --very-fast, there will be little difference, if at all, between models. You \
-                              can potentially save a lot of time by setting --num-models to 1.")
+            self.run.warning("Since you chose --very-fast, there will be little difference, if at all, between models. You "
+                             "can potentially save a lot of time by setting --num-models to 1.")
 
         if self.percent_identical_cutoff <= 20:
-            self.run.warning("Two completely unrelated sequences of same length can expect to have around 10% proper \
-                              percent identicalness... Having this parameter below 20% is probably a bad idea.")
+            self.run.warning("Two completely unrelated sequences of same length can expect to have around 10% proper "
+                             "percent identicalness... Having this parameter below 20% is probably a bad idea.")
 
 
     def pick_best_model(self):
@@ -568,12 +568,12 @@ class MODELLER:
 
         if not pir_exists and not bin_exists:
             self.progress.clear()
-            self.run.warning("Anvi'o looked in {} for a database with the name {} and with an extension \
-                              of either .bin or .pir, but didn't find anything matching that \
-                              criteria. Anvi'o will try and download the best database it knows of from \
-                              https://salilab.org/modeller/downloads/pdb_95.pir.gz and use that. \
-                              You can checkout https://salilab.org/modeller/ for more info about the pdb_95 \
-                              database".format(self.database_dir, self.modeller_database))
+            self.run.warning("Anvi'o looked in {} for a database with the name {} and with an extension "
+                             "of either .bin or .pir, but didn't find anything matching that "
+                             "criteria. Anvi'o will try and download the best database it knows of from "
+                             "https://salilab.org/modeller/downloads/pdb_95.pir.gz and use that. "
+                             "You can checkout https://salilab.org/modeller/ for more info about the pdb_95 "
+                             "database".format(self.database_dir, self.modeller_database))
 
             db_download_path = os.path.join(self.database_dir, "pdb_95.pir.gz")
             utils.download_file("https://salilab.org/modeller/downloads/pdb_95.pir.gz", db_download_path)
@@ -583,8 +583,8 @@ class MODELLER:
 
         if pir_exists and not bin_exists:
             self.progress.clear()
-            self.run.warning("Your database is not in binary format. That means accessing its contents is slower \
-                              than it could be. Anvi'o is going to make a binary format. Just FYI")
+            self.run.warning("Your database is not in binary format. That means accessing its contents is slower "
+                             "than it could be. Anvi'o is going to make a binary format. Just FYI")
             self.run_binarize_database(pir_db_path, bin_db_path)
             return
 
@@ -665,27 +665,27 @@ class MODELLER:
             if is_licence_key_error:
                 # its a valid modeller program with no license key
                 license_target_file = error.split('\n')[-1]
-                raise ConfigError("You're making progress and anvi'o is proud of you! You just need to validate your MODELLER\
-                                   with a license key (it's free). Please go to https://salilab.org/modeller/registration.html\
-                                   to register for a new license. After you receive an e-mail with your key, please open '%s'\
-                                   and replace the characters XXXXX with your own key. Save the file and try again. " % license_target_file)
+                raise ConfigError("You're making progress and anvi'o is proud of you! You just need to validate your MODELLER "
+                                  "with a license key (it's free). Please go to https://salilab.org/modeller/registration.html "
+                                  "to register for a new license. After you receive an e-mail with your key, please open '%s' "
+                                  "and replace the characters XXXXX with your own key. Save the file and try again. " % license_target_file)
 
             else:
                 error = "\n" + "\n".join(error.split('\n'))
                 print(terminal.c(error, color='red'))
-                raise ConfigError("The executable you requested is called `%s`, but anvi'o doesn't agree with you that\
-                                   it is a working MODELLER program. That was determined by running the command `%s`, which raised the\
-                                   error seen above. If you want to specify a specific MODELLER program, you can specify it with\
-                                   `--modeller-executable`." % (self.executable, " ".join(command)))
+                raise ConfigError("The executable you requested is called `%s`, but anvi'o doesn't agree with you that "
+                                  "it is a working MODELLER program. That was determined by running the command `%s`, which raised the "
+                                  "error seen above. If you want to specify a specific MODELLER program, you can specify it with "
+                                  "`--modeller-executable`." % (self.executable, " ".join(command)))
 
         # no error was raised. now check if output file exists
         try:
             filesnpaths.is_file_exists(test_output)
         except FilesNPathsError:
-            raise ConfigError("The executable you requested is called `%s`, but anvi'o doesn't agree with you that\
-                               it is a working MODELLER program. That was determined by running the command `%s`, which did not\
-                               output the file expected. If you want to specify a specific MODELLER program, you can specify it with\
-                               `--modeller-executable`." % (self.executable, " ".join(command)))
+            raise ConfigError("The executable you requested is called `%s`, but anvi'o doesn't agree with you that "
+                              "it is a working MODELLER program. That was determined by running the command `%s`, which did not "
+                              "output the file expected. If you want to specify a specific MODELLER program, you can specify it with "
+                              "`--modeller-executable`." % (self.executable, " ".join(command)))
 
 
     def run_fasta_to_pir(self):
@@ -740,8 +740,8 @@ class MODELLER:
             error = "\n" + "\n".join(error.split('\n'))
             print(terminal.c(error, color='red'))
             self.out["structure_exists"] = False
-            raise ModellerScriptError("The MODELLER script {} did not execute properly. Hopefully it is clear \
-                                       from the above error message. No structure is going to be modelled."\
+            raise ModellerScriptError("The MODELLER script {} did not execute properly. Hopefully it is clear "
+                                      "from the above error message. No structure is going to be modelled."\
                                        .format(script_name))
 
         # If we made it this far, the MODELLER script ran to completion. Now check outputs exist

@@ -47,8 +47,8 @@ class FastANIDriver:
 
         self.check_programs()
 
-        self.run.warning("Anvi'o will use 'fastANI' by Jain et al. (DOI: 10.1038/s41467-018-07641-9) to compute ANI. \
-                          If you publish your findings, please do not forget to properly credit their work.", lc='green', header="CITATION")
+        self.run.warning("Anvi'o will use 'fastANI' by Jain et al. (DOI: 10.1038/s41467-018-07641-9) to compute ANI. "
+                         "If you publish your findings, please do not forget to properly credit their work.", lc='green', header="CITATION")
 
 
     def check_programs(self):
@@ -185,8 +185,8 @@ class ManyToMany(FastANIDriver):
         self.progress.end()
 
         if int(exit_code):
-            raise ConfigError("fastANI returned with non-zero exit code, there may be some errors. \
-                    please check the log file for details.")
+            raise ConfigError("fastANI returned with non-zero exit code, there may be some errors. "
+                   "please check the log file for details.")
 
         self.fastANI_output = self.load_output_as_dataframe(output_path, name_conversion_dict)
         utils.store_dataframe_as_TAB_delimited_file(self.fastANI_output, output_path)

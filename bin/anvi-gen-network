@@ -31,10 +31,10 @@ class NetworkDescriptonSamples:
     def __init__(self, args, skip_auto_init=False):
         self.args = args
 
-        run.warning("This is not a mature anvi'o program. Please don't use it for anything serious without\
-                     making sure you are on top of its limitations. If your current research question requires\
-                     you to generate network descriptions for your data, please let us know so maybe we can\
-                     work together to develop this tool towards a meaningful direction.")
+        run.warning("This is not a mature anvi'o program. Please don't use it for anything serious without "
+                    "making sure you are on top of its limitations. If your current research question requires "
+                    "you to generate network descriptions for your data, please let us know so maybe we can "
+                    "work together to develop this tool towards a meaningful direction.")
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
@@ -50,9 +50,9 @@ class NetworkDescriptonSamples:
             sys.exit()
 
         if not self.annotation_source:
-            raise ConfigError("You must use a single functional annotation source for this to work. If you\
-                               are not sure what is available in your contigs database, run this program with\
-                               the flag '--list-annotation-sources'.")
+            raise ConfigError("You must use a single functional annotation source for this to work. If you "
+                              "are not sure what is available in your contigs database, run this program with "
+                              "the flag '--list-annotation-sources'.")
 
         self.functions = {'labels': {}}
 
@@ -68,8 +68,8 @@ class NetworkDescriptonSamples:
         self.contigs_db = dbops.ContigsSuperclass(self.args)
 
         if not self.profile_db.p_meta['merged'] or self.profile_db.p_meta['blank']:
-            raise ConfigError("The profile database describes a single run. Current implementation of this\
-                               program restricts its use to merged runs. Sorry :/")
+            raise ConfigError("The profile database describes a single run. Current implementation of this "
+                              "program restricts its use to merged runs. Sorry :/")
 
         self.profile_db.init_gene_level_coverage_stats_dicts()
         self.contigs_db.init_functions([self.annotation_source])

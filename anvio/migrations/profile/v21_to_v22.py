@@ -105,14 +105,14 @@ def migrate(db_path):
     profile_db.disconnect()
 
     if fully_upgraded:
-        run.info_single("Your profile db is now version %s. Anvi'o just created a new, up-to-date auxiliary data file (which ends with \
-                         extension .db), and deleted the old one (the one that ended with the extension .h5))" \
+        run.info_single("Your profile db is now version %s. Anvi'o just created a new, up-to-date auxiliary data file (which ends with "
+                        "extension .db), and deleted the old one (the one that ended with the extension .h5))" \
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
     else:
-        run.info_single("Your profile db is now version %s. BUT THERE WAS THIS: the actual purpose of this script was to upgrade your\
-                         AUXILIARY-DATA.h5 file, but it was not where it was supposed to be. Anvi'o upgraded your profile.db alone,\
-                         but as a consequence you will not be able to use its auxiliary data with this profile database. If you care\
-                         about it, you should find the old profile database, and upgrade it along with its auxiliary data" \
+        run.info_single("Your profile db is now version %s. BUT THERE WAS THIS: the actual purpose of this script was to upgrade your "
+                        "AUXILIARY-DATA.h5 file, but it was not where it was supposed to be. Anvi'o upgraded your profile.db alone, "
+                        "but as a consequence you will not be able to use its auxiliary data with this profile database. If you care "
+                        "about it, you should find the old profile database, and upgrade it along with its auxiliary data" \
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
 
 

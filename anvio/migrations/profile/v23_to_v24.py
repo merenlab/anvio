@@ -54,8 +54,8 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         self.run.warning(None, 'New %s additional data...' % self.target, lc="yellow")
         keys_already_in_db = [c for c in data_keys_list if c in self.additional_data_keys]
         if len(keys_already_in_db):
-            self.run.warning('The following keys in your data dict will replace the ones that are already\
-                              in your database: %s.' % (', '.join(keys_already_in_db)))
+            self.run.warning('The following keys in your data dict will replace the ones that are already '
+                             'in your database: %s.' % (', '.join(keys_already_in_db)))
 
             self.remove(keys_already_in_db)
 
@@ -159,12 +159,12 @@ def migrate(db_path):
     progress.end()
 
     if full_upgrade:
-        run.info_single("Your profile db is now version %s. You can learn more about what happened here\
-                         by taking a look at this issue: https://github.com/merenlab/anvio/issues/800" \
+        run.info_single("Your profile db is now version %s. You can learn more about what happened here "
+                        "by taking a look at this issue: https://github.com/merenlab/anvio/issues/800" \
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
     else:
-        run.info_single("Your profile db is now version %s. But essentially nothing really happened to your\
-                         database since it was a blank profile (which is OK, move along)." \
+        run.info_single("Your profile db is now version %s. But essentially nothing really happened to your "
+                        "database since it was a blank profile (which is OK, move along)." \
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
 
 

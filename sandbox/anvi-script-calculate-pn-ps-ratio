@@ -80,8 +80,8 @@ def load_variability(args, contigs_db):
         df.drop(df[df['corresponding_gene_call'].isin(gene_caller_ids_for_partial_gene_calls)].index, inplace=True)
 
         progress.reset()
-        run.warning("%d of your gene calls were 'partial', and were removed from downstream analyses. Here is the complete list of\
-                     gene calls that were removed: '%s'." % (len(gene_caller_ids_for_partial_gene_calls), ', '.join([str(g) for g in gene_caller_ids_for_partial_gene_calls])))
+        run.warning("%d of your gene calls were 'partial', and were removed from downstream analyses. Here is the complete list of "
+                    "gene calls that were removed: '%s'." % (len(gene_caller_ids_for_partial_gene_calls), ', '.join([str(g) for g in gene_caller_ids_for_partial_gene_calls])))
 
     progress.end()
 
@@ -164,9 +164,9 @@ def calculate_pN_pS_ratio(args):
         potential_synonymity_ratio[i] = syn_potential / non_syn_potential
 
     if total_ambiguous_codons:
-        run.warning("Please note that %d codons among your %d genes included nucleotides\
-                     that were not unambiguous (i.e., 'N's or any other bases than A, T,\
-                     C, or G) and were excluded from synonymity calculations." % (total_ambiguous_codons, len(gene_caller_ids)))
+        run.warning("Please note that %d codons among your %d genes included nucleotides "
+                    "that were not unambiguous (i.e., 'N's or any other bases than A, T, "
+                    "C, or G) and were excluded from synonymity calculations." % (total_ambiguous_codons, len(gene_caller_ids)))
 
     # normalize the SAAV_to_sSCV ratio by the potential synonymity ratio to make pN/pS
     pNpS = SAAV_to_sSCV.multiply(potential_synonymity_ratio, axis=0)

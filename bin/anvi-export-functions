@@ -63,8 +63,8 @@ def main(args):
 
         missing_sources = [s for s in requested_sources if s not in annotation_sources]
         if len(missing_sources):
-            raise ConfigError("One or more of the annotation sources you requested does not appear to be in the\
-                                contigs database :/ Here is the list: %s." % (', '.join(missing_sources)))
+            raise ConfigError("One or more of the annotation sources you requested does not appear to be in the "
+                               "contigs database :/ Here is the list: %s." % (', '.join(missing_sources)))
 
         run.info('Requested sources', '%s.' % (', '.join(requested_sources)))
 

@@ -96,9 +96,9 @@ for a in available_assemblers:
         number_of_assemblers_in_config_file += 1
         assembly_software_in_config.append(a)
 if number_of_assemblers_in_config_file > 1:
-    raise ConfigError("This workflow supports the usage of only one assembly \
-                        software, yet all the following software are  \
-                        included in your config file: %s. Please include only one." % assembly_software_in_config)
+    raise ConfigError("This workflow supports the usage of only one assembly "
+                       "software, yet all the following software are "
+                       "included in your config file: %s. Please include only one." % assembly_software_in_config)
 
 
 # by default fastq files will be zipped after qc is done
@@ -113,13 +113,13 @@ run_megahit = M.get_param_value_from_config(['megahit', 'run']) == True
 if not M.references_mode and number_of_assemblers_in_config_file!=1 :
     # Sanity check for assembly mode
     # Make sure that user specified an assembler
-    raise ConfigError("You didn't specify any assembler for your metagenomes, and yet\
-                       your config file shows you are not using references_mode. If you\
-                       already have your assemblies or reference fasta files, then maybe\
-                       you need to add '\"references_mode\": true', and a '\"fasta_txt\": \
-                       \"name-of-your-fasta-txt-file\"' to your config file. Otherwise,\
-                       if you do mean to use assembly, please set 'run: true' for one of the,\
-                       following available assemblers: %s" % ', '.join(available_assemblers))
+    raise ConfigError("You didn't specify any assembler for your metagenomes, and yet "
+                      "your config file shows you are not using references_mode. If you "
+                      "already have your assemblies or reference fasta files, then maybe "
+                      "you need to add '\"references_mode\": true', and a '\"fasta_txt\": "
+                      "\"name-of-your-fasta-txt-file\"' to your config file. Otherwise, "
+                      "if you do mean to use assembly, please set 'run: true' for one of the "
+                      "following available assemblers: %s" % ', '.join(available_assemblers))
 
 ruleorder: import_percent_of_reads_mapped > import_krakenuniq_taxonomy
 
@@ -188,9 +188,9 @@ def get_fastq(sample, zipped=run_gzip_fastqs, post_reference_based_short_read_re
         # if no QC and no reference based short read removal is requested, use raw input
         d = get_raw_fastq(sample)
         if len(d['r1']) > 1 or len(d['r2']) > 1:
-            raise ConfigError('You are skipping QC, but some of your samples (for example %s) are composed of more than 1 pair of fastq files \
-                   this is not allowed. Please first merge all the fastq files corresponding to a single sample (or just use QC, and the \
-                   merging will be done for you).' % sample)
+            raise ConfigError('You are skipping QC, but some of your samples (for example %s) are composed of more than 1 pair of fastq files '
+                  'this is not allowed. Please first merge all the fastq files corresponding to a single sample (or just use QC, and the '
+                  'merging will be done for you).' % sample)
         d = {'r1': d['r1'][0],
              'r2': d['r2'][0]}
     return d
@@ -241,12 +241,12 @@ def need_to_uncompress_fastqs(r1, r2):
     # is not compressed and snakemake will schedule fq2fa rule before gzip rule
     files_that_end_with_gz = [f for f in [r1, r2] if f.endswith('.gz')]
     if len(files_that_end_with_gz) == 1:
-        raise ConfigError("Something seems very bad: one of the pair fastq files\
-                           is compressed and the other one is not. This is the \
-                           compressed one: %s" % files_that_end_with_gz[0])
+        raise ConfigError("Something seems very bad: one of the pair fastq files "
+                          "is compressed and the other one is not. This is the "
+                          "compressed one: %s" % files_that_end_with_gz[0])
     elif len(files_that_end_with_gz) == 2:
-        run.warning("The following fastq files are compressed and will now \
-                     be uncompressed using gunzip: %s." % files_that_end_with_gz)
+        run.warning("The following fastq files are compressed and will now "
+                    "be uncompressed using gunzip: %s." % files_that_end_with_gz)
         return True
     return False
 
@@ -771,23 +771,24 @@ rule anvi_init_bam:
 
 sample_name = M.get_param_value_from_config(['anvi_profile', '--sample-name'])
 if sample_name != M.default_config['anvi_profile']['--sample-name'] and sample_name is not None:
-    run.warning('You chose to set the "--sample-name" for your profile databases\
-                 in the config file to %s. You are welcomed to do that, but at your own\
-                 risk. Just so you know, by default the sample name would match\
-                 the name defined either in the samples_txt, by choosing to provide\
-                 a different name, it means that all your profile databases would have\
-                 the same name, unless you incloded "{sample}" in the name you provided\
-                 but even then, we did not test that option and we are not sure it would\
-                 work...' % sample_name)
+    run.warning('You chose to set the "--sample-name" for your profile databases '
+                'in the config file to %s. You are welcomed to do that, but at your own '
+                'risk. Just so you know, by default the sample name would match '
+                'the name defined either in the samples_txt, by choosing to provide '
+                'a different name, it means that all your profile databases would have '
+                'the same name, unless you incloded "{sample}" in the name you provided '
+                'but even then, we did not test that option and we are not sure it would '
+                'work...' % sample_name)
 
 
 def get_cluster_contigs_param(wildcards):
     """ helper function to sort out whether to cluster contigs for a single profile database"""
     if M.get_param_value_from_config(['anvi_profile', '--cluster-contigs']):
-        run.warning('You chose to set the value for --cluster-contigs as %s. You can do that if you\
-                     choose to, but just so you know, if you don\'t provide a value then \
-                     the workflow would automatically cluster contigs for profile databases\
-                     that are not merged (i.e. profiles that belong to groups of size 1).')
+        run.warning('You chose to set the value for --cluster-contigs as %s. You can do that if you '
+                    'choose to, but just so you know, if you don\'t provide a value then '
+                    'the workflow would automatically cluster contigs for profile databases '
+                    'that are not merged (i.e. profiles that belong to groups of size 1).' \
+                    % M.get_param_value_from_config(['anvi_profile', '--cluster-contigs']))
         cluster_contigs = M.get_rule_param('anvi_profile', '--cluster-contigs')
     else:
         # if profiling to individual assembly then clustering contigs
@@ -912,8 +913,8 @@ def remove_empty_profile_databases(profiles, group):
 
     if not profiles:
         # if there are no profiles to merge then notify the user
-        run.warning('It seems that all your profiles are empty for the \
-                     contigs database: %s.db. And so cannot be merged.' \
+        run.warning('It seems that all your profiles are empty for the '
+                    'contigs database: %s.db. And so cannot be merged.' \
                      % group)
 
     run.info('Number of non-empty profile databases', len(profiles))
@@ -1255,12 +1256,12 @@ rule import_percent_of_reads_mapped:
     resources: nodes = M.T('import_percent_of_reads_mapped')
     run:
         if not filesnpaths.is_file_exists(params.bowtie_log, dont_raise=True):
-            raise ConfigError('We expected to find the log file for bowtie2 here: %s\
-                         but it is not there. This means we can\'t find out what \
-                         percentage of short reads mapped to the fasta file. \
-                         If you are confused, feel free to contact us. \
-                         To avoid this error you can skip this step by setting the "run" parameter for this rule \
-                         (import_percent_of_reads_mapped) to "false" in your config file.' % params.bowtie_log)
+            raise ConfigError('We expected to find the log file for bowtie2 here: %s '
+                        'but it is not there. This means we can\'t find out what '
+                        'percentage of short reads mapped to the fasta file. '
+                        'If you are confused, feel free to contact us. '
+                        'To avoid this error you can skip this step by setting the "run" parameter for this rule '
+                        '(import_percent_of_reads_mapped) to "false" in your config file.' % params.bowtie_log)
 
         else:
             shell("""
@@ -1288,13 +1289,13 @@ rule import_percent_of_reads_mapped:
 
             additional_data = pd.read_csv(output.layers_additional_data, sep='\t', index_col=None)
             if 'total_reads_mapped' not in additional_data.columns:
-                raise ConfigError('The layers additional data for %s doesn\'t contain a column \
-                                   "total_reads_mapped". This is really weird, and we cannot \
-                                   think of why this happened (maybe you deleted it somehow?). \
-                                   Feel free to contact an anvio developer in order to troubleshoot \
-                                   this. Otherwise, if you wish to continue, you can just skip this \
-                                   step by setting the "run" parameter for the rule import_percent_of_reads_mapped \
-                                   to "false".' % input.profile)
+                raise ConfigError('The layers additional data for %s doesn\'t contain a column '
+                                  '"total_reads_mapped". This is really weird, and we cannot '
+                                  'think of why this happened (maybe you deleted it somehow?). '
+                                  'Feel free to contact an anvio developer in order to troubleshoot '
+                                  'this. Otherwise, if you wish to continue, you can just skip this '
+                                  'step by setting the "run" parameter for the rule import_percent_of_reads_mapped '
+                                  'to "false".' % input.profile)
 
             additional_data['percent_mapped'] = 100 * additional_data['total_reads_mapped'] / additional_data['total_num_reads']
             additional_data.to_csv(output.layers_additional_data_updated, sep='\t', index=False)

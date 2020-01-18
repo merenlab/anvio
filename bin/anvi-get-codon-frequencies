@@ -61,21 +61,21 @@ class ReportCodonFrequencies:
             filesnpaths.is_file_exists(self.bam_file_path)
 
         if self.merens_codon_normalization and self.percent_normalize:
-            raise ConfigError("You can't use both `--merens-codon-normalization` and `--percent-normalize`. Please\
-                               read the help menu and pick one (you will get bonus points if you pick meren's\
-                               normalization because why not)")
+            raise ConfigError("You can't use both `--merens-codon-normalization` and `--percent-normalize`. Please "
+                              "read the help menu and pick one (you will get bonus points if you pick meren's "
+                              "normalization because why not)")
 
         if self.merens_codon_normalization and self.return_AA_frequencies_instead:
-            raise ConfigError("The flag `--merens-codon-normalization` is only relevant if you are working with codon\
-                               frequencies :/")
+            raise ConfigError("The flag `--merens-codon-normalization` is only relevant if you are working with codon "
+                              "frequencies :/")
 
         self.c = ContigsSuperclass(args)
 
         self.gene_caller_ids = set([])
         if self.gene_caller_id:
             if self.gene_caller_id not in self.c.genes_in_contigs_dict:
-                raise ConfigError("Your contigs database named '%s' does not know anythinga bout the gene caller id\
-                                   '%s' :/" % (self.c.a_meta['project_name'], str(self.gene_caller_id)))
+                raise ConfigError("Your contigs database named '%s' does not know anythinga bout the gene caller id "
+                                  "'%s' :/" % (self.c.a_meta['project_name'], str(self.gene_caller_id)))
             else:
                 self.gene_caller_ids = [self.gene_caller_id]
         else:
@@ -130,8 +130,8 @@ class ReportCodonFrequencies:
                             residue_frequencies[gene_callers_id][codon] = round(residue_frequencies[gene_callers_id][codon] * 100.0 / codons_of_interest_total, 3)
 
         if len(partial_genes_skipped):
-            self.run.warning("%d of %d genes were skipped and will not be in the final report since they were\
-                             'partial' gene calls." % (len(partial_genes_skipped), len(self.gene_caller_ids)))
+            self.run.warning("%d of %d genes were skipped and will not be in the final report since they were "
+                            "'partial' gene calls." % (len(partial_genes_skipped), len(self.gene_caller_ids)))
 
         if not len(residue_frequencies):
             raise ConfigError("Anvi'o has no residue frequencies to work with :(")
@@ -142,10 +142,10 @@ class ReportCodonFrequencies:
 
     def from_BAM_file(self):
         if len(self.gene_caller_ids) > 1:
-            raise ConfigError("If you are working with a BAM file, you must unfortunately declare a single gene caller\
-                               ID since this anvi'o class is not yet smart to be able to deal with multiple gene calls when\
-                               working with BAM files. Please send us an e-mail if you need this feature, and we will\
-                               implement it for you!")
+            raise ConfigError("If you are working with a BAM file, you must unfortunately declare a single gene caller "
+                              "ID since this anvi'o class is not yet smart to be able to deal with multiple gene calls when "
+                              "working with BAM files. Please send us an e-mail if you need this feature, and we will "
+                              "implement it for you!")
 
         gene_callers_id = self.gene_caller_ids[0]
         bam_file_object = bamops.BAMFileObject(self.bam_file_path).get()
@@ -154,9 +154,9 @@ class ReportCodonFrequencies:
         gene_call = self.c.genes_in_contigs_dict[gene_callers_id]
 
         if gene_call['partial']:
-            raise ConfigError('This seems to be a partial gene call. Sorry :/ Partial gene calls are tricky to work with\
-                               since not every gene caller is able to report appropriate frame within to reliably report\
-                               codons.')
+            raise ConfigError('This seems to be a partial gene call. Sorry :/ Partial gene calls are tricky to work with '
+                              'since not every gene caller is able to report appropriate frame within to reliably report '
+                              'codons.')
 
         self.run.info('Working with', 'Amino acids' if self.return_AA_frequencies_instead else 'Codons')
 

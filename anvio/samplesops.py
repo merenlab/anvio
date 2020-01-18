@@ -196,18 +196,18 @@ class SamplesInformation:
                     self.samples_order_dict['>> ' + attribute] = {'newick': '', 'basic': ','.join([t[1] for t in sorted(sample_attribute_tuples)])}
                     self.samples_order_dict['>> ' + attribute + ' (reverse)'] = {'newick': '', 'basic': ','.join([t[1] for t in sorted(sample_attribute_tuples, reverse=True)])}
                 except TypeError:
-                    raise SamplesError("OK. Anvi'o has good and bad news. The bad news is that your samples information\
-                                        is kaput, because one of the columns in it has mixed data types (not everything has the\
-                                        same type). The good news is that we know what column is that: it is the column '%s'.\
-                                        Please take a look." % attribute)
+                    raise SamplesError("OK. Anvi'o has good and bad news. The bad news is that your samples information "
+                                       "is kaput, because one of the columns in it has mixed data types (not everything has the "
+                                       "same type). The good news is that we know what column is that: it is the column '%s'. "
+                                       "Please take a look." % attribute)
 
 
     def populate_from_input_files(self, samples_information_path=None, samples_order_path=None, single_order_path=None, single_order_name=None):
         if not samples_information_path and not samples_order_path and not single_order_path:
-            raise SamplesError("At least one of the input files must be declared to create or to update an\
-                                anvi'o samples information database :/ But maybe not. Maybe anvi'o should be\
-                                able to create an empty samples information database, too. Do you need this?\
-                                Write to us!")
+            raise SamplesError("At least one of the input files must be declared to create or to update an "
+                               "anvi'o samples information database :/ But maybe not. Maybe anvi'o should be "
+                               "able to create an empty samples information database, too. Do you need this? "
+                               "Write to us!")
 
         self.process_samples_information_file(samples_information_path)
         self.process_samples_order_file(samples_order_path)
@@ -222,9 +222,9 @@ class SamplesInformation:
     def sanity_check(self):
         if self.sample_names_in_samples_information_file and self.sample_names_in_samples_order_file:
             if sorted(self.sample_names_in_samples_information_file) != sorted(self.sample_names_in_samples_order_file):
-                raise SamplesError('OK. Samples described in the information file and order file are not identical :/\
-                                     Here are the %d sample names in the information file: "%s", versus the %d sample\
-                                     names in the orders file: "%s". And here is the difference: "%s".'\
+                raise SamplesError('OK. Samples described in the information file and order file are not identical :/ '
+                                    'Here are the %d sample names in the information file: "%s", versus the %d sample '
+                                    'names in the orders file: "%s". And here is the difference: "%s".'\
                                                             % (len(self.sample_names_in_samples_information_file),
                                                                self.sample_names_in_samples_information_file,
                                                                len(self.sample_names_in_samples_order_file),
@@ -235,8 +235,8 @@ class SamplesInformation:
             # we still don't have a default order. we will try to recover from that here
             # by looking into what we have in the samples order informaiton
             if not len(self.samples_order_dict):
-                raise SamplesError("Something is missing. Anvi'o is having hard time coming up with a default samples\
-                                    order for the samples database.")
+                raise SamplesError("Something is missing. Anvi'o is having hard time coming up with a default samples "
+                                   "order for the samples database.")
 
             a_basic_order = [o['basic'].split(',') if o['basic'] else None for o in list(self.samples_order_dict.values())][0]
             a_tree_order = utils.get_names_order_from_newick_tree([o['newick'] if o['newick'] else None for o in list(self.samples_order_dict.values())][0])

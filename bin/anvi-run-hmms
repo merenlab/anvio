@@ -46,8 +46,8 @@ def main(args):
     # then check whether we are going to use the default HMM profiles, or run it for a new one.
     sources = {}
     if args.hmm_profile_dir and args.installed_hmm_profile:
-        raise ConfigError("You must select either an installed HMM profile, or provide a path for a profile directory.\
-                           But not both :/")
+        raise ConfigError("You must select either an installed HMM profile, or provide a path for a profile directory. "
+                          "But not both :/")
     elif args.hmm_profile_dir:
         if not os.path.exists(args.hmm_profile_dir):
             raise ConfigError('No such file or directory: "%s"' % args.hmm_profile_dir)
@@ -58,8 +58,8 @@ def main(args):
                                                                                                     for s in sources])))
     elif args.installed_hmm_profile:
         if args.installed_hmm_profile not in available_hmm_sources:
-            raise ConfigError("You managed to find a profile that is not actually installed :/ Available ones are\
-                               these: %s." % (', '.join(available_hmm_sources)))
+            raise ConfigError("You managed to find a profile that is not actually installed :/ Available ones are "
+                              "these: %s." % (', '.join(available_hmm_sources)))
 
         sources = {args.installed_hmm_profile: hmm_data.sources[args.installed_hmm_profile]}
     else:

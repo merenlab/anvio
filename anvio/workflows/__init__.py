@@ -36,8 +36,8 @@ workflow_config_version = "1"
 class WorkflowSuperClass:
     def __init__(self):
         if 'args' not in self.__dict__:
-            raise ConfigError("You need to initialize `WorkflowSuperClass` from within a class that\
-                               has a member `self.args`.")
+            raise ConfigError("You need to initialize `WorkflowSuperClass` from within a class that "
+                              "has a member `self.args`.")
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         # FIXME: it is redundant to have both config and config_file
@@ -57,12 +57,12 @@ class WorkflowSuperClass:
         self.additional_params = A('additional_params')
 
         if self.additional_params:
-            run.warning("OK, SO THIS IS SERIOUS, AND WHEN THINGS ARE SERIOUS THEN WE USE CAPS. \
-                         WE SEE THAT YOU ARE USING --additional-params AND THAT'S GREAT, BUT WE \
-                         WANT TO REMIND YOU THAT ANYTHING THAT FOLLOWS --additional-params WILL \
-                         BE CONSIDERED AS A snakemake PARAM THAT IS TRANSFERRED TO snakemake DIRECTLY. \
-                         So make sure that these don't include anything that you didn't mean to \
-                         include as an additional param: %s." % ', '.join(str(i) for i in self.additional_params))
+            run.warning("OK, SO THIS IS SERIOUS, AND WHEN THINGS ARE SERIOUS THEN WE USE CAPS. "
+                        "WE SEE THAT YOU ARE USING --additional-params AND THAT'S GREAT, BUT WE "
+                        "WANT TO REMIND YOU THAT ANYTHING THAT FOLLOWS --additional-params WILL "
+                        "BE CONSIDERED AS A snakemake PARAM THAT IS TRANSFERRED TO snakemake DIRECTLY. "
+                        "So make sure that these don't include anything that you didn't mean to "
+                        "include as an additional param: %s." % ', '.join(str(i) for i in self.additional_params))
 
         if self.save_workflow_graph:
             self.dry_run_only = True
@@ -109,9 +109,9 @@ class WorkflowSuperClass:
             self.save_default_config_in_json_format(self.default_config_output_path)
             sys.exit()
         elif not self.config:
-            raise ConfigError("You need a config file to run this :/ If you need help to start preparing\
-                               a config file for the anvi'o %s workflow, you can try the `--get-default-config`\
-                               flag." % (self.name))
+            raise ConfigError("You need a config file to run this :/ If you need help to start preparing "
+                              "a config file for the anvi'o %s workflow, you can try the `--get-default-config` "
+                              "flag." % (self.name))
 
         self.dirs_dict.update(self.config.get("output_dirs", ''))
 
@@ -143,9 +143,9 @@ class WorkflowSuperClass:
         try:
             default_value = self.default_config[rule_name][param]
         except KeyError:
-            raise ConfigError('Someone is trying to read default values for parameters that\
-                               dont have default values. These are the offending rule names and\
-                               parameter: %s, %s' % (rule_name, param))
+            raise ConfigError('Someone is trying to read default values for parameters that '
+                              'dont have default values. These are the offending rule names and '
+                              'parameter: %s, %s' % (rule_name, param))
         check_for_risky_param_change(self.config, rule_name, param, wildcard_name, default_value)
 
  
@@ -220,9 +220,9 @@ class WorkflowSuperClass:
             try:
                 line_of_interest = [line_no for line_no in range(0, len(lines)) if lines[line_no].startswith('digraph')][0]
             except IndexError:
-                raise ConfigError("Oh no. Anvi'o was trying to generate a DAG output for you, but something must have\
-                                   gone wrong in a step prior. Something tells anvi'o that if you take a look at the\
-                                   log file here, you may be able to figure it out: '%s'. Sorry!" % log_file_path)
+                raise ConfigError("Oh no. Anvi'o was trying to generate a DAG output for you, but something must have "
+                                  "gone wrong in a step prior. Something tells anvi'o that if you take a look at the "
+                                  "log file here, you may be able to figure it out: '%s'. Sorry!" % log_file_path)
             open(workflow_graph_output_file_path_prefix + '.dot', 'w').write(''.join(lines[line_of_interest:]))
 
             self.run.info('Workflow DOT file', workflow_graph_output_file_path_prefix + '.dot')
@@ -233,10 +233,10 @@ class WorkflowSuperClass:
                 os.remove(dot_log_file)
                 self.run.info('Workflow PNG file', workflow_graph_output_file_path_prefix + '.png')
             else:
-                self.run.warning("Well, anvi'o was going to try to save a nice PNG file for your workflow\
-                                  graph, but clearly you don't have `dot` installed on your system. That's OK. You\
-                                  have your dot file now, and you can Google 'how to view dot file on [your operating\
-                                  system goes here]', and install necessary programs (like .. `dot`).")
+                self.run.warning("Well, anvi'o was going to try to save a nice PNG file for your workflow "
+                                 "graph, but clearly you don't have `dot` installed on your system. That's OK. You "
+                                 "have your dot file now, and you can Google 'how to view dot file on [your operating "
+                                 "system goes here]', and install necessary programs (like .. `dot`).")
 
         os.remove(log_file_path)
 
@@ -261,32 +261,32 @@ class WorkflowSuperClass:
             if dont_raise:
                 return
             else:
-                raise ConfigError("This workflow will not run without those missing programs are no longer\
-                                   missing :(")
+                raise ConfigError("This workflow will not run without those missing programs are no longer "
+                                  "missing :(")
 
     def check_config(self):
         if not self.config.get('config_version'):
-            raise ConfigError("Config files must include a config_version. If this is news to you, and/or you don't know what\
-                               version your config should be, please run in your terminal the command `anvi-migrate %s` to\
-                               upgrade your config file." % (self.config_file))
+            raise ConfigError("Config files must include a config_version. If this is news to you, and/or you don't know what "
+                              "version your config should be, please run in your terminal the command `anvi-migrate %s` to "
+                              "upgrade your config file." % (self.config_file))
 
         if not self.config.get('workflow_name'):
-            raise ConfigError('Config files must contain a workflow_name. You can simply add a line that goes like\
-                               "workflow_name": "metagenomics" wherever appropriate.')
+            raise ConfigError('Config files must contain a workflow_name. You can simply add a line that goes like '
+                              '"workflow_name": "metagenomics" wherever appropriate.')
 
         acceptable_params = set(self.rules + self.general_params)
         wrong_params = [p for p in self.config if p not in acceptable_params]
         if wrong_params:
-            raise ConfigError("Some of the parameters in your config file are not familiar to us. \
-                               Here is a list of the wrong parameters: %s. This workflow only accepts \
-                               the following general parameters: %s. And these are the rules in this \
-                               workflow: %s." % (wrong_params, self.general_params, self.rules))
+            raise ConfigError("Some of the parameters in your config file are not familiar to us. "
+                              "Here is a list of the wrong parameters: %s. This workflow only accepts "
+                              "the following general parameters: %s. And these are the rules in this "
+                              "workflow: %s." % (wrong_params, self.general_params, self.rules))
 
         wrong_dir_names = [d for d in self.config.get("output_dirs", '') if d not in self.dirs_dict]
         if wrong_dir_names:
-            raise ConfigError("Some of the directory names in your config file are not familiar to us. \
-                               Here is a list of the wrong directories: %s. This workflow only has \
-                               the following directories: %s." % (" ".join(wrong_dir_names), " ".join(list(self.dirs_dict.keys()))))
+            raise ConfigError("Some of the directory names in your config file are not familiar to us. "
+                              "Here is a list of the wrong directories: %s. This workflow only has "
+                              "the following directories: %s." % (" ".join(wrong_dir_names), " ".join(list(self.dirs_dict.keys()))))
 
         ## make sure max_threads is an integer number
         max_threads = self.get_param_value_from_config('max_threads')
@@ -315,10 +315,10 @@ class WorkflowSuperClass:
 
             bad_params = [p for p in self.forbidden_params.get(rule) if p in params]
             if bad_params:
-                raise ConfigError("You are not allowed to set the following parameter/s: \
-                                   %s for rule %s. These parameters are hard-coded. If you \
-                                   are confused or upset please refer to an anvi'o developer \
-                                   or a friend for support." % (', '.join(bad_params), rule))
+                raise ConfigError("You are not allowed to set the following parameter/s: "
+                                  "%s for rule %s. These parameters are hard-coded. If you "
+                                  "are confused or upset please refer to an anvi'o developer "
+                                  "or a friend for support." % (', '.join(bad_params), rule))
 
 
     def check_rule_params(self):
@@ -326,9 +326,9 @@ class WorkflowSuperClass:
             if rule in self.config:
                 wrong_params = [p for p in self.config[rule] if p not in self.rule_acceptable_params_dict[rule]]
                 if wrong_params:
-                    raise ConfigError("some of the parameters in your config file for rule %s are not familiar to us. \
-                                Here is a list of the wrong parameters: %s. The only acceptable \
-                                parameters for this rule are %s." % (rule, wrong_params, self.rule_acceptable_params_dict[rule]))
+                    raise ConfigError("some of the parameters in your config file for rule %s are not familiar to us. "
+                               "Here is a list of the wrong parameters: %s. The only acceptable "
+                               "parameters for this rule are %s." % (rule, wrong_params, self.rule_acceptable_params_dict[rule]))
 
                 self.check_additional_params(rule)
 
@@ -443,8 +443,8 @@ class WorkflowSuperClass:
                 else:
                     return int(threads)
             except:
-                raise ConfigError('"threads" must be an integer number. In your config file you provided "%s" for \
-                                   the number of threads for rule "%s"' % (threads, rule_name))
+                raise ConfigError('"threads" must be an integer number. In your config file you provided "%s" for '
+                                  'the number of threads for rule "%s"' % (threads, rule_name))
         else:
             return 1
 
@@ -460,9 +460,9 @@ class WorkflowSuperClass:
         '''
         if args:
             if len(self.__dict__):
-                raise ConfigError("Something is wrong. You are ineriting %s from \
-                                   within another class, yet you are providing an `args` parameter.\
-                                   This is not alright." % type(self))
+                raise ConfigError("Something is wrong. You are ineriting %s from "
+                                  "within another class, yet you are providing an `args` parameter. "
+                                  "This is not alright." % type(self))
             self.args = args
             self.name = workflow_name
             WorkflowSuperClass.__init__(self)
@@ -470,12 +470,12 @@ class WorkflowSuperClass:
             self.progress = progress
         else:
             if not len(self.__dict__):
-                raise ConfigError("When you are *not* inheriting %s from within\
-                                   a super class, you must provide an `args` parameter." % type(self))
+                raise ConfigError("When you are *not* inheriting %s from within "
+                                  "a super class, you must provide an `args` parameter." % type(self))
             if 'name' not in self.__dict__:
-                raise ConfigError("The super class trying to inherit %s does not\
-                                   have a set `self.name`. Which means there may be other things\
-                                   wrong with it, hence anvi'o refuses to continue." % type(self))
+                raise ConfigError("The super class trying to inherit %s does not "
+                                  "have a set `self.name`. Which means there may be other things "
+                                  "wrong with it, hence anvi'o refuses to continue." % type(self))
 
 
     def get_internal_and_external_genomes_files(self):
@@ -484,10 +484,10 @@ class WorkflowSuperClass:
 
             fasta_txt_file = self.get_param_value_from_config('fasta_txt')
             if fasta_txt_file and not external_genomes_file:
-                raise ConfigError('You provided a fasta_txt, but didn\'t specify a path for an external-genomes file. \
-                                   If you wish to use external genomes, you must specify a name for the external-genomes \
-                                   file, using the "external_genomes" parameter in your config file. Just to clarify: \
-                                   the external genomes file doesn\'t have to exist, since we will create it for you, \
+                raise ConfigError('You provided a fasta_txt, but didn\'t specify a path for an external-genomes file. '
+                                  'If you wish to use external genomes, you must specify a name for the external-genomes '
+                                  'file, using the "external_genomes" parameter in your config file. Just to clarify: '
+                                  'the external genomes file doesn\'t have to exist, since we will create it for you, \
                                    by using the information you supplied in the "fasta_txt" file, but you must specify \
                                    a name for the external-genomes file. For example, you could use "external_genomes": "external-genomes.txt", \
                                    but feel free to be creative.')
