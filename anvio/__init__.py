@@ -635,7 +635,7 @@ D = {
                       if you do not specify anything."}
                 ),
     'kofam-data-dir': (
-            ['--koam-data-dir'],
+            ['--kofam-data-dir'],
             {'default': None,
              'type': str,
              'help': "The directory path for your KOfam setup. Anvi'o will try to use the default path\
