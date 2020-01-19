@@ -64,7 +64,7 @@ class KofamContext(object):
         Here is an example of the dictionary structure:
         self.ko_dict["K00001"]["threshold"] = 329.57
         """
-        
+
         self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
         self.ko_skip_list = self.get_ko_skip_list()
 
@@ -221,3 +221,10 @@ class KofamRunHMMs(KofamContext):
         KofamContext.__init__(self, self.args)
 
         filesnpaths.is_program_exists('hmmscan')
+
+        # verify that Kofam HMM profiles have been set up
+        if not os.path.exists(self.kofam_hmm_file_path):
+            raise ConfigError("Anvi'o is unable to find the Kofam.hmm file at %s. This can happen one of two ways. Either you \
+                                didn't specify the correct Kofam data directory using the flag --kofam-data-dir, or you haven't \
+                                yet set up the Kofam data by running `anvi-setup-kegg-kofams`. Hopefully you now know what to do \
+                                to fix this problem. :) " % self.kofam_data_dir)
