@@ -232,3 +232,29 @@ class KofamRunHMMs(KofamContext):
                                 to fix this problem. :) " % self.kofam_data_dir)
 
         utils.is_contigs_db(self.contigs_db_path)
+
+        self.setup_ko_dict() # read the ko_list file into self.ko_dict
+
+    def process_kofam_hmms(self):
+        """This is a driver function for running HMMs against the KOfam database and processing the hits into the
+        provided contigs DB"""
+
+        tmp_directory_path = filesnpaths.get_temp_directory_path()
+        contigs_db = dbops.ContigsSuperclass(self.args) # initialize contigs db
+
+        # get AA sequences as FASTA
+        target_files_dict = {'AA:GENE': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
+        contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['AA:GENE'],
+                                                                   simple_headers=True,
+                                                                   rna_alphabet=False,
+                                                                   report_aa_sequences=True)
+
+        # run hmmscan
+        hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads)
+        hmm_hits_file = hmmer.run_hmmscan('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, '--cut_ga')
+        ## TODO: here we have an issue. the number of genes in our HMM model (len(self.ko_dict) is wrong, because ko_dict (derived from ko_list)
+        ## does not contain the same number of entries as there were .hmm files originally in the downloaded KOfam profiles...
+        ## As far as I can tell this argument is not used for much except for printing out the value, but it would be nice if it was right
+
+        # get an instance of gene functions table
+        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
