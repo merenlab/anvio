@@ -170,13 +170,24 @@ class KofamSetup(KofamContext):
         self.confirm_downloaded_files()
 
         self.progress.update('Concatenating HMM profiles into one file...')
-        concat_file_path = os.path.join(self.kofam_data_dir, self.kofam_hmm_file_path)
         hmm_list = [os.path.join(self.kofam_data_dir, "profiles/%s.hmm" % k) for k in self.ko_dict.keys() if k not in self.ko_skip_list]
-        utils.concatenate_files(concat_file_path, hmm_list, remove_concatenated_files=False)
+        utils.concatenate_files(self.kofam_hmm_file_path, hmm_list, remove_concatenated_files=False)
 
         # there is no reason to keep the original HMM profiles around, unless we are debugging
         if not anvio.DEBUG:
             shutil.rmtree((os.path.join(self.kofam_data_dir, "profiles")))
+
+        self.progress.update('Running hmmpress...')
+        cmd_line = ['hmmpress', self.kofam_hmm_file_path]
+        log_file_path = os.path.join(self.kofam_data_dir, '00_hmmpress_log.txt')
+        ret_val = utils.run_command(cmd_line, log_file_path)
+
+        if ret_val:
+            raise ConfigError("Hmm. There was an error while running `hmmpress` on the Kofam HMM profiles. \
+                                Check out the log file ('%s') to see what went wrong." % (log_file_path))
+        else:
+            # getting rid of the log file because hmmpress was successful
+            os.remove(log_file_path)
 
         self.progress.end()
 
