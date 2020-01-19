@@ -230,3 +230,5 @@ class KofamRunHMMs(KofamContext):
                                 didn't specify the correct Kofam data directory using the flag --kofam-data-dir, or you haven't \
                                 yet set up the Kofam data by running `anvi-setup-kegg-kofams`. Hopefully you now know what to do \
                                 to fix this problem. :) " % self.kofam_data_dir)
+
+        utils.is_contigs_db(self.contigs_db_path)
