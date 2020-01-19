@@ -311,3 +311,12 @@ class KofamRunHMMs(KofamContext):
             self.run.warning("KOfam class has no hits to process. Returning empty handed, but still adding KOfam as \
                               a functional source.")
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
+
+        if anvio.DEBUG:
+            run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up\
+                         later" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
+        else:
+            run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
+                             like to keep it for testing purposes)', nl_before=1, nl_after=1)
+            shutil.rmtree(tmp_directory_path)
+            hmmer.clean_tmp_dirs()
