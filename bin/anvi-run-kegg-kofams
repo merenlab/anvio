@@ -23,6 +23,7 @@ __description__ = "Run KOfam HMMs on an anvi'o contigs database."
 @time_program
 def main(args):
     p = kofam.KofamRunHMMs(args)
+    p.process_kofam_hmms()
 
 if __name__ == '__main__':
     import argparse
