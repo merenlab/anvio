@@ -123,15 +123,14 @@ class KofamSetup(KofamContext):
     def confirm_downloaded_files(self):
         """This function verifies that all Kofam profiles have been properly downloaded. It is intended to be run
         after the files have been decompressed. The profiles directory should contain hmm files from K00001.hmm to
-        K23763.hmm with some exceptions."""
-        skip_list = [17, 47, 56, 80, 92, 110] # the KO profiles that don't exist, based on ko_list
-        for k in range(1,23764): # there is likely a better way to do this. Perhaps we should process the ko_list file into a dict first
-            if k not in skip_list:
-                hmm_path = os.path.join(self.kofam_data_dir, "profiles/K%05d.hmm" % k)
-                if not os.path.exists(hmm_path):
-                    raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong \
-                                        while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset \
-                                        flag." % (hmm_path))
+        K23763.hmm with some exceptions; all KO numbers from ko_list file should be included."""
+        ko_nums = self.ko_dict.keys()
+        for k in ko_nums:
+            hmm_path = os.path.join(self.kofam_data_dir, "profiles/%s.hmm" % k)
+            if not os.path.exists(hmm_path):
+                raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong \
+                                while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset \
+                                flag." % (hmm_path))
 
 
     def run_hmmpress(self):
