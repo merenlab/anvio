@@ -261,3 +261,12 @@ class KofamRunHMMs(KofamContext):
 
         # get an instance of gene functions table
         gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
+
+        if not hmm_hits_file:
+            run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But\
+                             now anvi'o will add KOfam as a functional source with no hits, clean the temporary directories\
+                             and gracefully quit.", nl_before=1, nl_after=1)
+            shutil.rmtree(tmp_directory_path)
+            hmmer.clean_tmp_dirs()
+            gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
+            return
