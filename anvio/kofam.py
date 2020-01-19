@@ -176,7 +176,7 @@ class KofamSetup(KofamContext):
 
         # there is no reason to keep the original HMM profiles around, unless we are debugging
         if not anvio.DEBUG:
-            os.remove(os.path.join(self.kofam_data_dir, "profiles"))
+            shutil.rmtree((os.path.join(self.kofam_data_dir, "profiles")))
 
         self.progress.end()
 
