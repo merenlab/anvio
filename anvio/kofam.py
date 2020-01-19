@@ -195,5 +195,4 @@ class KofamSetup(KofamContext):
         """This is a driver function which executes the Kofam setup process by downloading, decompressing, and hmmpressing the profiles."""
         self.download()
         self.decompress_files()
-        # TODO: set up ko_list dict, file list
-        # TODO: add concatenation and hmmpress
+        self.run_hmmpress()
