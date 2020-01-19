@@ -270,3 +270,7 @@ class KofamRunHMMs(KofamContext):
             hmmer.clean_tmp_dirs()
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
             return
+
+        # parse hmmscan output
+        parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE')
+        search_results_dict = parser.get_search_results()
