@@ -197,3 +197,22 @@ class KofamSetup(KofamContext):
         self.download()
         self.decompress_files()
         self.run_hmmpress()
+
+class KofamRunHMMs(KofamContext):
+    """ Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DBs
+    for later metabolism prediction.
+
+    Parameters
+    ==========
+    args: Namespace object
+        All the arguments supplied by user to anvi-run-kegg-kofams
+    """
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        # init the base class
+        KofamContext.__init__(self, self.args)
+
+        filesnpaths.is_program_exists('hmmscan')
