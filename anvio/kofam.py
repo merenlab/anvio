@@ -221,6 +221,7 @@ class KofamRunHMMs(KofamContext):
         self.progress = progress
         self.contigs_db_path = args.contigs_db
         self.num_threads = args.num_threads
+        self.ko_dict = None # should be set up by setup_ko_dict()
 
         # init the base class
         KofamContext.__init__(self, self.args)
@@ -237,6 +238,21 @@ class KofamRunHMMs(KofamContext):
         utils.is_contigs_db(self.contigs_db_path)
 
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
+
+    def get_annotation_from_ko_dict(self, knum, ok_if_missing_from_dict=False):
+        if not self.ko_dict:
+            raise ConfigError("Oops! The ko_list file has not been properly loaded, so get_annotation_from_ko_dict() is \
+                                extremely displeased and unable to function properly. Please refrain from calling this \
+                                function until after setup_ko_dict() has been called.")
+
+        if not knum in self.ko_dict:
+            if ok_if_missing_from_dict:
+                return "Unkown function with KO num" % knum
+            else:
+                raise ConfigError("It seems hmmscan found a KO number that does not exist\
+                                   in the KOfam ko_list file: %s" % knum)
+
+        return self.ko_dict[knum]['definition']
 
     def process_kofam_hmms(self):
         """This is a driver function for running HMMs against the KOfam database and processing the hits into the
