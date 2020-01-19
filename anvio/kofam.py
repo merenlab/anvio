@@ -126,7 +126,7 @@ class KofamSetup(KofamContext):
 
     def is_database_exists(self):
         """This function determines whether the user has already downloaded the Kofam HMM profiles."""
-        if os.path.exists(os.path.join(self.kofam_data_dir, 'profiles/K00001.hmm')): # TODO: update this after determining final structure
+        if os.path.exists(self.kofam_hmm_file_path):
             raise ConfigError("It seems you already have KOfam HMM profiles installed in '%s', please use --reset flag if you want to re-download it." % self.kofam_data_dir)
 
     def download(self):
