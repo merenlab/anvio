@@ -44,7 +44,10 @@ class KofamContext(object):
         self.kofam_hmm_file_path = os.path.join(self.kofam_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
         self.ko_list_file_path = os.path.join(self.kofam_data_dir, "ko_list")
 
+    def setup_ko_dict(self):
         """
+        The purpose of this function is to process the ko_list file into usable form by Kofam sub-classes.
+
         The ko_list file (which is downloaded along with the KOfam HMM profiles) contains important
         information for each KEGG Orthology number (KO, or knum), incuding pre-defined scoring thresholds
         for limiting HMM hits and annotation information.
@@ -61,6 +64,7 @@ class KofamContext(object):
         Here is an example of the dictionary structure:
         self.ko_dict["K00001"]["threshold"] = 329.57
         """
+        
         self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
         self.ko_skip_list = self.get_ko_skip_list()
 
@@ -196,6 +200,7 @@ class KofamSetup(KofamContext):
         """This is a driver function which executes the Kofam setup process by downloading, decompressing, and hmmpressing the profiles."""
         self.download()
         self.decompress_files()
+        self.setup_ko_dict()
         self.run_hmmpress()
 
 class KofamRunHMMs(KofamContext):
