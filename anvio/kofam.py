@@ -290,3 +290,24 @@ class KofamRunHMMs(KofamContext):
         # parse hmmscan output
         parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE')
         search_results_dict = parser.get_search_results()
+
+        # add functions to database
+        functions_dict = {}
+        counter = 0
+        for hmm_hit in search_results_dict.values():
+            functions_dict[counter] = {
+                'gene_callers_id': hmm_hit['gene_callers_id'],
+                'source': 'KOfam',
+                'accession': hmm_hit['gene_hmm_id'],
+                'function': self.get_annotation_from_ko_dict(hmm_hit['gene_hmm_id'], ok_if_missing_from_catalog=True),
+                'e_value': hmm_hit['e_value'],
+            }
+
+            counter += 1
+
+        if functions_dict:
+            gene_function_calls_table.create(functions_dict)
+        else:
+            self.run.warning("KOfam class has no hits to process. Returning empty handed, but still adding KOfam as \
+                              a functional source.")
+            gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
