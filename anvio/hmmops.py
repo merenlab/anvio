@@ -603,9 +603,10 @@ class SequencesForHMMHits:
             genes_in_genes_order_but_missing_in_hmm_source = [g for g in genes_order if g not in gene_names_in_source]
             if len(genes_in_genes_order_but_missing_in_hmm_source):
                 raise ConfigError("One or more gene names in the genes order list does seem to appear among the genes described "
-                                  "by the HMM source %s (which translates to 'terrible news'). Here are the genes that cause this "
-                                  "issue if you want to fix this: '%s'" \
-                                              % (hmm_source, ', '.join(genes_in_genes_order_but_missing_in_hmm_source)))
+                                  "by the HMM sources (which translates to 'terrible news'). Here are the genes that cause this "
+                                  "issue if you want to fix this: '%s' (and here are the HMM sources you have been using for this "
+                                  "operation in case it helps: '%s')." \
+                                              % (', '.join(genes_in_genes_order_but_missing_in_hmm_source), ', '.join(self.sources)))
             gene_names = genes_order
         else:
             self.run.warning("You did not define any gene names. Bold move. Now anvi'o will attempt to report a file with all "
