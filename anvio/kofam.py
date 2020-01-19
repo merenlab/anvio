@@ -247,7 +247,7 @@ class KofamRunHMMs(KofamContext):
 
         if not knum in self.ko_dict:
             if ok_if_missing_from_dict:
-                return "Unkown function with KO num" % knum
+                return "Unknown function with KO num" % knum
             else:
                 raise ConfigError("It seems hmmscan found a KO number that does not exist\
                                    in the KOfam ko_list file: %s" % knum)
