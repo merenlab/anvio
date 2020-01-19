@@ -58,11 +58,38 @@ class KofamContext(object):
 
         This is a dictionary (indexed by knum) of dictionaries(indexed by column name).
         Here is an example of the dictionary structure:
-        self.ko_dict[K00001][threshold] = 329.57
+        self.ko_dict["K00001"]["threshold"] = 329.57
         """
         self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
+        self.ko_skip_list = self.get_ko_skip_list()
 
+    def get_ko_skip_list(self):
+        """
+        The purpose of this function is to determine which KO numbers have no associated data in the ko_list file.
+        That is, their ko_list entries look like this, with hypens in all but the first and last columns:
 
+        K14936	-	-	-	-	-	-	-	-	-	-	small nucleolar RNA snR191
+        K15035	-	-	-	-	-	-	-	-	-	-	transfer-messenger RNA
+        K15841	-	-	-	-	-	-	-	-	-	-	small regulatory RNA GlmY
+        K15851	-	-	-	-	-	-	-	-	-	-	quorum regulatory RNA Qrr
+        K16736	-	-	-	-	-	-	-	-	-	-	bantam
+        K16863	-	-	-	-	-	-	-	-	-	-	microRNA 21
+
+        These are RNAs.
+
+        Returns: skip_list  list of strings, each string is a KO number
+        """
+        col_names_to_check = ["threshold","score_type","profile_type","F-measure","nseq","nseq_used","alen","mlen","eff_nseq","re/pos"]
+        skip_list = []
+        for k in self.ko_dict.keys():
+            should_skip = True
+            for c in col_names_to_check:
+                if not self.ko_dict[k][c] == "-":
+                    should_skip = False
+                    break # here we stop checking this KO num because we already found a value in our columns of interest
+            if should_skip: # should be True unless we found a value above
+                skip_list.append(k)
+        return skip_list
 
 class KofamSetup(KofamContext):
     """ Class for setting up KEGG Kofam HMM profiles. It performs sanity checks and downloads, unpacks, and prepares
@@ -126,11 +153,12 @@ class KofamSetup(KofamContext):
         K23763.hmm with some exceptions; all KO numbers from ko_list file should be included."""
         ko_nums = self.ko_dict.keys()
         for k in ko_nums:
-            hmm_path = os.path.join(self.kofam_data_dir, "profiles/%s.hmm" % k)
-            if not os.path.exists(hmm_path):
-                raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong \
-                                while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset \
-                                flag." % (hmm_path))
+            if k not in self.ko_skip_list:
+                hmm_path = os.path.join(self.kofam_data_dir, "profiles/%s.hmm" % k)
+                if not os.path.exists(hmm_path):
+                    raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong \
+                                    while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset \
+                                    flag." % (hmm_path))
 
 
     def run_hmmpress(self):
