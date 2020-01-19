@@ -35,8 +35,33 @@ class KofamContext(object):
     The purpose of this base class is to define shared functions and file paths for all KOfam operations.
     """
     def __init__(self, args):
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        # default directory will be called KEGG and will store the KEGG Module data as well
+        self.kofam_data_dir = A('kofam_data_dir') or os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
+
         # shared variables for all KOfam subclasses
-        self.kofam_hmm_file = "Kofam.hmm" # name of file containing concatenated KOfam hmms
+        self.kofam_hmm_file_path = os.path.join(self.kofam_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
+        self.ko_list_file_path = os.path.join(self.kofam_data_dir, "ko_list")
+
+        """
+        The ko_list file (which is downloaded along with the KOfam HMM profiles) contains important
+        information for each KEGG Orthology number (KO, or knum), incuding pre-defined scoring thresholds
+        for limiting HMM hits and annotation information.
+
+        It looks something like this:
+
+        knum	threshold	score_type	profile_type	F-measure	nseq	nseq_used	alen	mlen	eff_nseq	re/pos	definition
+        K00001	329.57	domain	trim	0.231663	1473	1069	1798	371	17.12	0.590	alcohol dehydrogenase [EC:1.1.1.1]
+
+        Since this information is useful for both the setup process (we need to know all the knums) and HMM process,
+        all Kofam subclasses need to have access to this dictionary.
+
+        This is a dictionary (indexed by knum) of dictionaries(indexed by column name).
+        Here is an example of the dictionary structure:
+        self.ko_dict[K00001][threshold] = 329.57
+        """
+        self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
+
 
 
 class KofamSetup(KofamContext):
@@ -53,16 +78,11 @@ class KofamSetup(KofamContext):
         self.args = args
         self.run = run
         self.progress = progress
-        self.kofam_data_dir = args.kofam_data_dir
 
         # init the base class
         KofamContext.__init__(self, self.args)
 
         filesnpaths.is_program_exists('hmmpress')
-
-        # default directory will be called KEGG and will store the KEGG Module data as well
-        if not self.kofam_data_dir:
-            self.kofam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
 
         if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
