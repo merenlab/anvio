@@ -216,6 +216,8 @@ class KofamRunHMMs(KofamContext):
         self.args = args
         self.run = run
         self.progress = progress
+        self.contigs_db_path = args.contigs_db
+        self.num_threads = args.num_threads
 
         # init the base class
         KofamContext.__init__(self, self.args)
