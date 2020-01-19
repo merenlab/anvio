@@ -9,6 +9,7 @@ import os
 import gzip
 import shutil
 import requests
+import glob
 
 import anvio
 import anvio.dbops as dbops
@@ -170,7 +171,7 @@ class KofamSetup(KofamContext):
         self.confirm_downloaded_files()
 
         self.progress.update('Concatenating HMM profiles into one file...')
-        hmm_list = [os.path.join(self.kofam_data_dir, "profiles/%s.hmm" % k) for k in self.ko_dict.keys() if k not in self.ko_skip_list]
+        hmm_list = [k for k in glob.glob(os.path.join(self.kofam_data_dir, 'profiles/*.hmm'))]
         utils.concatenate_files(self.kofam_hmm_file_path, hmm_list, remove_concatenated_files=False)
 
         # there is no reason to keep the original HMM profiles around, unless we are debugging
