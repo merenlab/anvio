@@ -174,6 +174,10 @@ class KofamSetup(KofamContext):
         hmm_list = [os.path.join(self.kofam_data_dir, "profiles/%s.hmm" % k) for k in self.ko_dict.keys() if k not in self.ko_skip_list]
         utils.concatenate_files(concat_file_path, hmm_list, remove_concatenated_files=False)
 
+        # there is no reason to keep the original HMM profiles around, unless we are debugging
+        if not anvio.DEBUG:
+            os.remove(os.path.join(self.kofam_data_dir, "profiles"))
+
         self.progress.end()
 
     def setup_profiles(self):
