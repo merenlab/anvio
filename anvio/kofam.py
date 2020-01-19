@@ -275,6 +275,10 @@ class KofamRunHMMs(KofamContext):
         ## does not contain the same number of entries as there were .hmm files originally in the downloaded KOfam profiles...
         ## As far as I can tell this argument is not used for much except for printing out the value, but it would be nice if it was right
 
+        # TODO: this code runs nicely (error-free) but returns no HMM hits. Not sure yet if there is an issue with the code or if my partial contigs
+        # DB legitimately has no hits. This note is here so that I remember to investigate tomorrow when I am not brain-dead from coding in a train
+        # for five hours :) (ps I think looking into this noise_cutoff_terms parameter could be wise)
+
         # get an instance of gene functions table
         gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
 
