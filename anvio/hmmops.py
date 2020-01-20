@@ -561,7 +561,7 @@ class SequencesForHMMHits:
         return Aligners().select(align_with)
 
 
-    def __store_concatenated_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator = 'XXX', genes_order=None, align_with=None, just_do_it=False):
+    def __store_concatenated_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, partition_file_path=None, wrap=120, separator = 'XXX', genes_order=None, align_with=None, just_do_it=False):
         """Generates concatenated sequences from `hmm_sequences_dict_for_splits` dict.
 
            Please do NOT directly access to this function, and use `store_hmm_sequences_into_FASTA`
@@ -680,8 +680,11 @@ class SequencesForHMMHits:
 
         f.close()
 
+        if partition_file_path:
+            utils.gen_NEXUS_format_partition_file_for_phylogenomics(partition_file_path, [(g, gene_lengths[g]) for g in gene_names], separator, run=self.run, progress=self.progress)
 
-    def __store_individual_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator = 'XXX', genes_order=None, align_with=None):
+
+    def __store_individual_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, separator = 'XXX', genes_order=None, align_with=None):
         """Stores every sequence in hmm_sequences_dict_for_splits into the `output_file_path`.
 
            Please do NOT directly access to this function, and use `store_hmm_sequences_into_FASTA`
@@ -722,10 +725,11 @@ class SequencesForHMMHits:
         f.close()
 
 
-    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator=None, genes_order=None, align_with=None, just_do_it=False):
+    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, partition_file_path=None, separator=None, genes_order=None, align_with=None, just_do_it=False):
         """Stores HMM sequences into a FASTA file."""
 
         filesnpaths.is_output_file_writable(output_file_path)
+        filesnpaths.is_output_file_writable(partition_file_path) if partition_file_path else None
 
         if wrap and not isinstance(wrap, int):
             raise ConfigError('"wrap" has to be an integer instance')
@@ -745,6 +749,6 @@ class SequencesForHMMHits:
                                       "very unconventional and cool analysis." % (', '.join(non_unique_genes)))
 
         if concatenate_genes:
-            self.__store_concatenated_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order, align_with, just_do_it)
+            self.__store_concatenated_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, partition_file_path, wrap, separator, genes_order, align_with, just_do_it)
         else:
-            self.__store_individual_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order, align_with)
+            self.__store_individual_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, separator, genes_order, align_with)

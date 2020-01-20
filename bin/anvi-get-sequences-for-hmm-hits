@@ -83,6 +83,11 @@ def main(args):
                               "hit for a gene in a given genome. Anvi'o could have set this flag on your behalf, but it just "
                               "is not that kind of a platform :/")
 
+    if not args.concatenate_genes and args.partition_file:
+        raise ConfigError("Partition files are only relevant when you use the flag `--concatenate-genes`.")
+
+    filesnpaths.is_output_file_writable(args.partition_file) if args.partition_file else None
+
     if args.concatenate_genes:
         # test whether we know about the aligner early on
         from anvio.drivers import Aligners
@@ -216,6 +221,7 @@ def main(args):
     s.store_hmm_sequences_into_FASTA(hmm_sequences_dict,
                                      args.output_file,
                                      concatenate_genes=args.concatenate_genes,
+                                     partition_file_path=args.partition_file,
                                      separator=separator,
                                      wrap=None if args.no_wrap else 120,
                                      genes_order=list(gene_names) if len(gene_names) else None,
@@ -274,6 +280,7 @@ if __name__ == '__main__':
                                        using the `gene-names` argument. Each concatenated sequence will be separated from the other\
                                        ones by the `separator`.")
     groupG.add_argument(*anvio.A('concatenate-genes'), **anvio.K('concatenate-genes'))
+    groupG.add_argument(*anvio.A('partition-file'), **anvio.K('partition-file'))
     groupG.add_argument(*anvio.A('max-num-genes-missing-from-bin'), **anvio.K('max-num-genes-missing-from-bin'))
     groupG.add_argument(*anvio.A('min-num-bins-gene-occurs'), **anvio.K('min-num-bins-gene-occurs'))
     groupG.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
