@@ -1765,7 +1765,7 @@ def gen_NEXUS_format_partition_file_for_phylogenomics(partition_file_path, seque
         for sequence_name, sequence_length in sequence_lengths:
             partition_file.write("    charset %s = %d-%d;\n" % (sequence_name, index, index + sequence_length - 1))
             index += (sequence_length + len(separator))
-        partition_file.write("    end;\n")
+        partition_file.write("end;\n")
 
     progress.reset()
     run.info("Partition file", partition_file_path, mc='yellow')
