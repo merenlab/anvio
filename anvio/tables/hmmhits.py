@@ -68,6 +68,9 @@ class TablesForHMMHits(Table):
 
 
     def populate_search_tables(self, sources={}):
+        # make sure the output file is OK to write.
+        filesnpaths.is_output_file_writable(self.db_path, ok_if_exists=True)
+
         # if we end up generating a temporary file for amino acid sequences:
         if not len(sources):
             import anvio.data.hmm
