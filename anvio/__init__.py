@@ -907,6 +907,17 @@ D = {
              'help': "Concatenate output gene clusters in the same order to create a multi-gene alignment output that is suitable "
                      "for phylogenomic analyses."}
                 ),
+    'partition-file': (
+            ['--partition-file'],
+            {'metavar': 'FILE_PATH',
+             'default': None,
+             'type': str,
+             'help': "Some commonly used software for phylogenetic analyeses (e.g., IQ-TREE, RAxML, etc) allow users to "
+             "specify/test different substitution models for each gene of a concatenated multiple sequence alignments. For "
+             "this, they use a special file format called a 'partition file', which indicates the site for each gene in the "
+             "alignment. You can use this parameter to declare an output path for anvi'o to report a NEXUS format partition "
+             "file in addition to your FASTA output (requested by Massimiliano Molari in #1333)."}
+                ),
     'report-DNA-sequences': (
             ['--report-DNA-sequences'],
             {'default': False,
