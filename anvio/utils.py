@@ -1727,6 +1727,52 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
     return temp_dir, hash_to_name, genome_names, name_to_path
 
 
+def gen_NEXUS_format_partition_file_for_phylogenomics(partition_file_path, sequence_lengths, separator='', run=run, progress=progress):
+    """ Generates a NEXUS-formatted partition file for phylogenomics. See
+        https://github.com/merenlab/anvio/issues/1333 for details
+
+    Parameters
+    ==========
+    partition_file_path: `str`
+        File path to be generated.
+    sequence_lengths: `list` of `tuples`
+        A list that contins sequence names and lenghts as tuples. I.e.,
+        [('seq_1', 100), ('seq_2', 42), ...]
+    separator: `str`
+        Characters used to separate sequences from each other in a multi-alignment
+        file.
+    run: `object`
+        Anvi'o run object
+    run: `progress`
+        Anvi'o progress object
+
+    Returns
+    =======
+    None
+    """    
+
+    filesnpaths.is_output_file_writable(partition_file_path)
+
+    if not isinstance(sequence_lengths, list):
+        raise ConfigError("Sequence lengths must be passed as a list of tuples.")
+
+    if not isinstance(sequence_lengths[0], tuple):
+        raise ConfigError("Sequence lengths must be passed as a list of tuples.")
+
+    with open(partition_file_path, 'w') as partition_file:
+        partition_file.write("#nexus\nbegin sets;\n")
+        index = 1
+        for sequence_name, sequence_length in sequence_lengths:
+            partition_file.write("    charset %s = %d-%d;\n" % (sequence_name, index, index + sequence_length - 1))
+            index += (sequence_length + len(separator))
+        partition_file.write("    charpartition models = %s;\nend;\n" % (', '.join(['[MODEL]:%s' % tpl[0] for tpl in sequence_lengths])))
+
+    progress.reset()
+    run.info("Partition file", partition_file_path, mc='yellow')
+    run.info_single("Your partition file is ready. Please do not forget to replace placeholders for model names ('[MODEL]') "
+                    "in this file with appropriate model names prior to your phylogenomic analysis.", nl_before=1, nl_after=1)
+
+
 def get_FASTA_file_as_dictionary(file_path):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_fasta_formatted(file_path)
