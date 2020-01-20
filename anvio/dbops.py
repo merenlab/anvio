@@ -1217,9 +1217,12 @@ class PanSuperclass(object):
 
     def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_clusters_dict=None, skip_alignments=False, \
                                                 output_file_path=None, report_DNA_sequences=False, align_with=None, \
-                                                separator=None):
+                                                separator=None, partition_file_path=None):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
+
+        if partition_file_path:
+            filesnpaths.is_output_file_writable(partition_file_path)
 
         if not separator:
             separator = 'NNN' if report_DNA_sequences else 'XXX'
@@ -1251,6 +1254,7 @@ class PanSuperclass(object):
         for genome_name in self.genome_names:
             output_buffer[genome_name] = StringIO()
 
+        gene_cluster_representative_seq_lengths = []
         gene_cluster_names = list(sequences_dict.keys())
         for gene_cluster_name in gene_cluster_names:
             multiple_gene_calls = False
@@ -1289,15 +1293,26 @@ class PanSuperclass(object):
                     if not sequence_length:
                         sequence_length = len(aligned_sequences[genome_name])
 
+            gene_cluster_representative_seq_lengths.append((gene_cluster_name, sequence_length),)
+
             for genome_name in self.genome_names:
                 if len(sequences_dict[gene_cluster_name][genome_name]) == 1:
-                    output_buffer[genome_name].write(get_first_value(sequences_dict[gene_cluster_name][genome_name]))
+                    sequence = get_first_value(sequences_dict[gene_cluster_name][genome_name])
                 else:
-                    output_buffer[genome_name].write("-" * sequence_length)
+                    sequence = "-" * sequence_length
+
+                output_buffer[genome_name].write(sequence)
 
                 if not gene_cluster_name == gene_cluster_names[-1]:
                     output_buffer[genome_name].write(separator)
 
+        # see https://github.com/merenlab/anvio/issues/1333
+        if partition_file_path:
+            utils.gen_NEXUS_format_partition_file_for_phylogenomics(partition_file_path,
+                                                                    gene_cluster_representative_seq_lengths,
+                                                                    separator,
+                                                                    run=self.run,
+                                                                    progress=self.progress)
 
         if not self.gene_clusters_gene_alignments_available:
             progress.end()
