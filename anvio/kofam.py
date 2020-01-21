@@ -174,7 +174,8 @@ class KofamSetup(KofamContext):
     def confirm_downloaded_files(self):
         """This function verifies that all Kofam profiles have been properly downloaded. It is intended to be run
         after the files have been decompressed. The profiles directory should contain hmm files from K00001.hmm to
-        K23763.hmm with some exceptions; all KO numbers from ko_list file should be included."""
+        K23763.hmm with some exceptions; all KO numbers from ko_list file (except those in ko_skip_list) should be
+        included."""
         ko_nums = self.ko_dict.keys()
         for k in ko_nums:
             if k not in self.ko_skip_list:
