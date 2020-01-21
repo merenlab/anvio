@@ -69,11 +69,11 @@ class KofamContext(object):
         """
 
         self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
-        self.ko_skip_list = self.get_ko_skip_list()
+        self.ko_skip_list, self.ko_no_threshold_list = self.get_ko_skip_list()
 
     def get_ko_skip_list(self):
         """
-        The purpose of this function is to determine which KO numbers have no associated data in the ko_list file.
+        The purpose of this function is to determine which KO numbers have no associated data or just no score threshold in the ko_list file.
         That is, their ko_list entries look like this, with hypens in all but the first and last columns:
 
         K14936	-	-	-	-	-	-	-	-	-	-	small nucleolar RNA snR191
@@ -85,19 +85,32 @@ class KofamContext(object):
 
         These are RNAs.
 
-        Returns: skip_list  list of strings, each string is a KO number
+        Or, their ko_list entries look like this, with no score threshold (but the rest of the data is not completely blank):
+
+        K23749 - - - - 1 1 2266 2266 0.39 0.592 spectinabilin polyketide synthase system NorC [EC:2.3.1.290]
+
+        Returns:
+        skip_list  list of strings, each string is a KO number
+        no_threshold_list   list of strings, each string is a KO number
         """
         col_names_to_check = ["threshold","score_type","profile_type","F-measure","nseq","nseq_used","alen","mlen","eff_nseq","re/pos"]
         skip_list = []
+        no_threshold_list = []
         for k in self.ko_dict.keys():
             should_skip = True
+            no_threshold = False
             for c in col_names_to_check:
                 if not self.ko_dict[k][c] == "-":
                     should_skip = False
                     break # here we stop checking this KO num because we already found a value in our columns of interest
+
+                if c == "threshold":
+                    no_threshold = True # if we got to this line of code, there is a '-' in the threshold column
             if should_skip: # should be True unless we found a value above
                 skip_list.append(k)
-        return skip_list
+            elif no_threshold:
+                no_threshold_list.append(k)
+        return skip_list, no_threshold_list
 
 class KofamSetup(KofamContext):
     """ Class for setting up KEGG Kofam HMM profiles. It performs sanity checks and downloads, unpacks, and prepares
