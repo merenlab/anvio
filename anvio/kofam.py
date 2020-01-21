@@ -234,12 +234,13 @@ class KofamSetup(KofamContext):
                 no_data_file_list.append(hmm_file)
 
         # now we concatenate the orphan KO hmms into the orphan data directory
+        remove_old_files = not anvio.DEBUG # if we are running in debug mode, we will not remove the individual hmm files after concatenation
         if no_kofam_file_list:
-            utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=False)
+            utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=remove_old_files)
         if no_threshold_file_list:
-            utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=False)
+            utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=remove_old_files)
         if no_data_file_list:
-            utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=False)
+            utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=remove_old_files)
 
 
 
