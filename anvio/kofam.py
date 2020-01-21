@@ -216,9 +216,9 @@ class KofamSetup(KofamContext):
 
         no_kofam_path = os.path.join(self.orphan_data_dir, "00_hmm_profiles_with_no_ko_fams.hmm")
         no_kofam_file_list = []
-        no_threshold_path = os.path.join(self.orphan_data_dir, "02_hmm_profiles_with_ko_fams_with_no_threshold.txt")
+        no_threshold_path = os.path.join(self.orphan_data_dir, "02_hmm_profiles_with_ko_fams_with_no_threshold.hmm")
         no_threshold_file_list = []
-        no_data_path = os.path.join(self.orphan_data_dir, "03_hmm_profiles_with_ko_fams_with_no_data.txt")
+        no_data_path = os.path.join(self.orphan_data_dir, "03_hmm_profiles_with_ko_fams_with_no_data.hmm")
         no_data_file_list = []
 
         hmm_list = [k for k in glob.glob(os.path.join(self.kofam_data_dir, 'profiles/*.hmm'))]
@@ -233,7 +233,13 @@ class KofamSetup(KofamContext):
                 was mostly blank. Oh well, it will be moved to the orphan files directory at %s.", % (hmm_file, self.orphan_data_dir))
                 no_data_file_list.append(hmm_file)
 
-        
+        # now we concatenate the orphan KO hmms into the orphan data directory
+        if no_kofam_file_list:
+            utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=False)
+        if no_threshold_file_list:
+            utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=False)
+        if no_data_file_list:
+            utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=False)
 
 
 
