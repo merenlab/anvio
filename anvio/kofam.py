@@ -70,6 +70,9 @@ class KofamContext(object):
 
         self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
         self.ko_skip_list, self.ko_no_threshold_list = self.get_ko_skip_list()
+        # here we remove KOs from the dictionary if they are in the skip list or no threshold list
+        [self.ko_dict.pop(ko) for ko in self.ko_skip_list]
+        [self.ko_dict.pop(ko) for ko in self.ko_no_threshold_list]
 
     def get_ko_skip_list(self):
         """
