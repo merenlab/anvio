@@ -1,11 +1,6 @@
 # coding: utf-8
 """An interface for tRNAScan-SE"""
 
-import os
-import pandas as pd
-
-from itertools import product
-
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -34,27 +29,24 @@ class tRNAScanSE:
         The program name that gives access to tRNAscan-SE functionality
     """
 
-    def __init__(self, args, program_name='tRNAscan-SE', run=None, progress=None):
+    def __init__(self, args, program_name='tRNAscan-SE', run=None, progress=None, skip_sanity_check=False):
         self.program_name = program_name
 
         self.tested_versions = ['2.0.5']
 
-        P = lambda p: os.path.abspath(os.path.expanduser(p))
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.num_threads = A('num_threads') or 1
-        self.fasta_file_path = P(A('fasta_file') or filesnpaths.get_temp_file_path(just_the_path=True))
-        self.output_file_path = P(A('output_file') or filesnpaths.get_temp_file_path(just_the_path=True))
-        self.log_file_path = P(A('log_file') or filesnpaths.get_temp_file_path(just_the_path=True))
-        self.cutoff_score = A('cutoff_score') or 20
+        self.fasta_file_path = A('fasta_file')
+        self.trna_hits_file_path = A('trna_hits_file')
+        self.log_file_path = A('log_file')
+        self.cutoff_score = A('trna_cutoff_score') or 20
         self.quiet = A('quiet')
-
-        self.keep_output_file = A('output_file')
-        self.keep_log_file = A('log_file')
 
         self.run = run or terminal.Run(verbose=(not self.quiet))
         self.progress = progress or terminal.Progress(not self.quiet)
 
-        self.sanity_check()
+        if not skip_sanity_check:
+            self.sanity_check()
 
 
     def sanity_check(self):
@@ -71,6 +63,10 @@ class tRNAScanSE:
 
         self.check_programs()
 
+        for name, variable in [('a log file', self.log_file_path), ('a FASTA file path', self.fasta_file_path)]:
+            if not variable:
+                raise ConfigError("A proper instance of this driver must have %s variable set." % name)
+
         filesnpaths.is_output_file_writable(self.log_file_path)
         filesnpaths.is_file_exists(self.fasta_file_path)
 
@@ -81,12 +77,6 @@ class tRNAScanSE:
 
         if self.cutoff_score < 20 or self.cutoff_score > 100:
             raise ConfigError("The cutoff score must be between 20 and 100.")
-
-        self.run.info("Input FASTA", self.fasta_file_path)
-        self.run.info("Cutoff score", self.cutoff_score)
-        self.run.info("Num threads to use", self.num_threads)
-        self.run.info("Output file [%s]" % ("temp file" if not self.keep_output_file else "user defined"), self.output_file_path)
-        self.run.info("Log file path [%s]" % ("temp file" if not self.keep_log_file else "user defined"), self.log_file_path)
 
 
     def check_programs(self):
@@ -125,7 +115,7 @@ class tRNAScanSE:
             A Dictionary of hits
         """
 
-        num_lines = filesnpaths.get_num_lines_in_file(self.output_file_path)
+        num_lines = filesnpaths.get_num_lines_in_file(self.trna_hits_file_path)
 
         if not num_lines:
             self.run.warning("No tRNA genes found in tRNAScan-SE output.")
@@ -134,7 +124,7 @@ class tRNAScanSE:
         d = {}
 
         self.progress.new("Parsing the output ...")
-        with open(self.output_file_path) as output:
+        with open(self.trna_hits_file_path) as output:
             # first three lines are garbage
             for i in range(0, 3):
                 output.readline()
@@ -157,12 +147,12 @@ class tRNAScanSE:
                                       "good. Here is the list of columns data of that line for your reference: '%s'." \
                                                             % (len(fields), fields))
 
-                d[entry_no] = {'contig': fields[0],
+                d[entry_no] = {'contig_name': fields[0],
                                'trna_no': fields[1],
                                'start': int(fields[2]),
                                'stop': int(fields[3]),
                                'amino_acid': fields[4],
-                               'codon': fields[5],
+                               'anticodon': fields[5],
                                'score': float(fields[8])}
 
         self.progress.end()
@@ -185,13 +175,13 @@ class tRNAScanSE:
             A Dictionary of hits
         """
 
-        filesnpaths.is_output_file_writable(self.output_file_path, ok_if_exists=False)
+        filesnpaths.is_output_file_writable(self.trna_hits_file_path, ok_if_exists=False)
 
         command = [self.program_name,
                    self.fasta_file_path,
                    '--score', self.cutoff_score,
                    '-G',
-                   '-o', self.output_file_path,
+                   '-o', self.trna_hits_file_path,
                    '--thread', self.num_threads]
 
         self.run.warning("Anvi'o will use 'tRNAScan-SE' by Chan and Lowe (doi:10.1007/978-1-4939-9173-0_1) to identify tRNA "
@@ -210,13 +200,6 @@ class tRNAScanSE:
                               "wrong with it :/ Please check the log file to see learn more :/")
 
         d = self.parse_output()
-
-        # CLEANUP
-        if not self.keep_output_file and not anvio.DEBUG:
-            os.remove(self.output_file_path)
-
-        if not self.keep_log_file and not anvio.DEBUG:
-            os.remove(self.log_file_path)
 
         return d
 
