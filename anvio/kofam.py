@@ -225,13 +225,14 @@ class KofamSetup(KofamContext):
         for hmm_file in hmm_list:
             ko = re.search('profiles/(K\d{5})\.hmm', hmm_file).group(1)
             if ko not in self.ko_dict.keys():
-                no_kofam_file_list.append(hmm_file)
-            elif ko in self.ko_no_threshold_list:
-                no_threshold_file_list.append(hmm_file)
-            elif ko in self.ko_skip_list: # these should not have been downloaded, but if they were we will move them
-                self.run.warning("Interesting. The KOfam HMM profile %s was downloaded even though its entry in the `ko_list` file\
-                was mostly blank. Oh well, it will be moved to the orphan files directory at %s." % (hmm_file, self.orphan_data_dir))
-                no_data_file_list.append(hmm_file)
+                if ko in self.ko_no_threshold_list:
+                    no_threshold_file_list.append(hmm_file)
+                elif ko in self.ko_skip_list: # these should not have been downloaded, but if they were we will move them
+                    self.run.warning("Interesting. The KOfam HMM profile %s was downloaded even though its entry in the `ko_list` file\
+                    was mostly blank. Oh well, it will be moved to the orphan files directory at %s." % (hmm_file, self.orphan_data_dir))
+                    no_data_file_list.append(hmm_file)
+                else:
+                    no_kofam_file_list.append(hmm_file)
 
         # now we concatenate the orphan KO hmms into the orphan data directory
         remove_old_files = not anvio.DEBUG # if we are running in debug mode, we will not remove the individual hmm files after concatenation
