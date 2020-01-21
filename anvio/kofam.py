@@ -228,8 +228,6 @@ class KofamSetup(KofamContext):
                 if ko in self.ko_no_threshold_list:
                     no_threshold_file_list.append(hmm_file)
                 elif ko in self.ko_skip_list: # these should not have been downloaded, but if they were we will move them
-                    self.run.warning("Interesting. The KOfam HMM profile %s was downloaded even though its entry in the `ko_list` file\
-                    was mostly blank. Oh well, it will be moved to the orphan files directory at %s." % (hmm_file, self.orphan_data_dir))
                     no_data_file_list.append(hmm_file)
                 else:
                     no_kofam_file_list.append(hmm_file)
@@ -238,10 +236,23 @@ class KofamSetup(KofamContext):
         remove_old_files = not anvio.DEBUG # if we are running in debug mode, we will not remove the individual hmm files after concatenation
         if no_kofam_file_list:
             utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=remove_old_files)
+            self.run.warning("Please note that while anvi'o was building your databases, she found %d \
+                            HMM profiles that did not have any matching KOfam entries. We have removed those HMM \
+                            profiles from the final database. You can find them under the directory '%s'."
+                            % (len(no_kofam_file_list), self.orphan_data_dir))
+
         if no_threshold_file_list:
             utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=remove_old_files)
+            self.run.warning("Please note that while anvi'o was building your databases, she found %d \
+                            KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM \
+                            profiles from the final database. You can find them under the directory '%s'."
+                            % (len(no_threshold_file_list), self.orphan_data_dir))
         if no_data_file_list:
             utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=remove_old_files)
+            self.run.warning("Please note that while anvi'o was building your databases, she found %d \
+                            HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. \
+                            We have removed those HMM profiles from the final database. You can find them under the directory '%s'."
+                            % (len(no_data_file_list), self.orphan_data_dir))
 
         # report orphan files
         self.run.warning("Please note that while anvi'o was building your databases, she found %d \
