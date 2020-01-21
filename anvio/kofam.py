@@ -42,6 +42,7 @@ class KofamContext(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         # default directory will be called KEGG and will store the KEGG Module data as well
         self.kofam_data_dir = A('kofam_data_dir') or os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
+        self.orphan_data_dir = os.path.join(self.kofam_data_dir, "orphan_data")
 
         # shared variables for all KOfam subclasses
         self.kofam_hmm_file_path = os.path.join(self.kofam_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
@@ -70,6 +71,20 @@ class KofamContext(object):
 
         self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
         self.ko_skip_list, self.ko_no_threshold_list = self.get_ko_skip_list()
+
+        # if we are currently setting up KOfams, we should generate a text file with the ko_list entries
+        # of the KOs that have no scoring threshold
+        if self.__class__.__name__ in ['KofamSetup']:
+            orphan_ko_dict = {ko:self.ko_dict[ko] for ko in self.ko_skip_list}
+            orphan_ko_dict.update({ko:self.ko_dict[ko] for ko in self.ko_no_threshold_list})
+
+            if not os.path.exists(self.orphan_data_dir): # should not happen but we check just in case
+                raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist \
+                yet, but it needs to in order for the setup_ko_dict() function to work.")
+            orphan_ko_path = os.path.join(self.orphan_data_dir, "01_ko_fams_with_no_threshold.txt")
+            orphan_ko_headers = ["threshold","score_type","profile_type","F-measure","nseq","nseq_used","alen","mlen","eff_nseq","re/pos", "definition"]
+            utils.store_dict_as_TAB_delimited_file(orphan_ko_dict, orphan_ko_path, key_header="knum", headers=orphan_ko_headers)
+
         # here we remove KOs from the dictionary if they are in the skip list or no threshold list
         [self.ko_dict.pop(ko) for ko in self.ko_skip_list]
         [self.ko_dict.pop(ko) for ko in self.ko_no_threshold_list]
@@ -139,6 +154,7 @@ class KofamSetup(KofamContext):
             self.is_database_exists()
 
         filesnpaths.gen_output_directory(self.kofam_data_dir, delete_if_exists=args.reset)
+        filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
 
         # ftp path for HMM profiles and KO list
             # for ko list, add /ko_list.gz to end of url
