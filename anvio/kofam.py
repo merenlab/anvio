@@ -230,7 +230,7 @@ class KofamSetup(KofamContext):
                 no_threshold_file_list.append(hmm_file)
             elif ko in self.ko_skip_list: # these should not have been downloaded, but if they were we will move them
                 self.run.warning("Interesting. The KOfam HMM profile %s was downloaded even though its entry in the `ko_list` file\
-                was mostly blank. Oh well, it will be moved to the orphan files directory at %s.", % (hmm_file, self.orphan_data_dir))
+                was mostly blank. Oh well, it will be moved to the orphan files directory at %s." % (hmm_file, self.orphan_data_dir))
                 no_data_file_list.append(hmm_file)
 
         # now we concatenate the orphan KO hmms into the orphan data directory
