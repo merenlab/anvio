@@ -1445,6 +1445,21 @@ D = {
              'type': str,
              'help': "File path to store debug/output messages."}
                 ),
+    'trna-hits-file': (
+            ['--trna-hits-file'],
+            {'metavar': 'FILE_PATH',
+             'default': None,
+             'type': str,
+             'help': "File path to store raw hits from tRNA scan."}
+                ),
+    'trna-cutoff-score': (
+            ['--trna-cutoff-score'],
+            {'metavar': 'INT',
+             'default': 20,
+             'type': int,
+             'help': "Minimum score to assume a hit comes from a proper tRNA gene (passed to the tRNAScan-SE). "
+                     "The default is %(default)d. It can get any value between 0-100."}
+                ),
     'output-db-path': (
             ['-o', '--output-db-path'],
             {'metavar': 'DB_FILE_PATH',
