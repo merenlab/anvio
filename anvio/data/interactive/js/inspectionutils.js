@@ -271,7 +271,7 @@ function drawArrows(_start, _stop) {
         color = 'firebrick';
       }
       else if (gene.source == 'Transfer_RNAs') {
-        color = 'firebrick';
+        color = '#226ab2';
       }
       else if (gene.functions !== null) {
         color = 'green';
