@@ -242,6 +242,13 @@ class KofamSetup(KofamContext):
         if no_data_file_list:
             utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=remove_old_files)
 
+        # report orphan files
+        self.run.warning("Please note that while anvi'o was building your databases, she found %d \
+                        ko_fam entries that did not have any matching HMM profiles, and another %d of them \
+                        that did not have any threshold to remove weak hits. We have removed those %d HMM \
+                        profiles from the final database. You can find entries for each of these categories under the directory '%s'."
+                        % (len(no_kofam_file_list), len(no_threshold_file_list), len(no_kofam_file_list) + len(no_threshold_file_list), self.orphan_data_dir))
+
 
 
     def run_hmmpress(self):
