@@ -10,6 +10,7 @@ import gzip
 import shutil
 import requests
 import glob
+import re
 
 import anvio
 import anvio.dbops as dbops
@@ -80,7 +81,7 @@ class KofamContext(object):
 
             if not os.path.exists(self.orphan_data_dir): # should not happen but we check just in case
                 raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist \
-                yet, but it needs to in order for the setup_ko_dict() function to work.")
+                yet, but it needs to in order for the setup_ko_dict() function to work." % self.orphan_data_dir)
             orphan_ko_path = os.path.join(self.orphan_data_dir, "01_ko_fams_with_no_threshold.txt")
             orphan_ko_headers = ["threshold","score_type","profile_type","F-measure","nseq","nseq_used","alen","mlen","eff_nseq","re/pos", "definition"]
             utils.store_dict_as_TAB_delimited_file(orphan_ko_dict, orphan_ko_path, key_header="knum", headers=orphan_ko_headers)
@@ -201,6 +202,40 @@ class KofamSetup(KofamContext):
                                     while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset \
                                     flag." % (hmm_path))
 
+    def move_orphan_files(self):
+        """
+        This function moves the following to the orphan files directory:
+            - profiles that do not have ko_list entries
+            - profiles whose ko_list entries have no scoring threshold (in ko_no_threshold_list)
+        And, the following profiles should not have been downloaded, but we check if they exist and move any that do:
+            - profiles whose ko_list entries have no data at all (in ko_skip_list)
+        """
+        if not os.path.exists(self.orphan_data_dir): # should not happen but we check just in case
+            raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist \
+            yet, but it needs to in order for the move_orphan_files() function to work." % self.orphan_data_dir)
+
+        no_kofam_path = os.path.join(self.orphan_data_dir, "00_hmm_profiles_with_no_ko_fams.hmm")
+        no_kofam_file_list = []
+        no_threshold_path = os.path.join(self.orphan_data_dir, "02_hmm_profiles_with_ko_fams_with_no_threshold.txt")
+        no_threshold_file_list = []
+        no_data_path = os.path.join(self.orphan_data_dir, "03_hmm_profiles_with_ko_fams_with_no_data.txt")
+        no_data_file_list = []
+
+        hmm_list = [k for k in glob.glob(os.path.join(self.kofam_data_dir, 'profiles/*.hmm'))]
+        for hmm_file in hmm_list:
+            ko = re.search('profiles/(K\d{5})\.hmm', hmm_file).group(1)
+            if ko not in self.ko_dict.keys():
+                no_kofam_file_list.append(hmm_file)
+            elif ko in self.ko_no_threshold_list:
+                no_threshold_file_list.append(hmm_file)
+            elif ko in self.ko_skip_list: # these should not have been downloaded, but if they were we will move them
+                self.run.warning("Interesting. The KOfam HMM profile %s was downloaded even though its entry in the `ko_list` file\
+                was mostly blank. Oh well, it will be moved to the orphan files directory at %s.", % (hmm_file, self.orphan_data_dir))
+                no_data_file_list.append(hmm_file)
+
+        
+
+
 
     def run_hmmpress(self):
         """This function concatenates the Kofam profiles and runs hmmpress on them."""
@@ -209,6 +244,9 @@ class KofamSetup(KofamContext):
 
         self.progress.update('Verifying that the Kofam directory at %s contains all HMM profiles' % self.kofam_data_dir)
         self.confirm_downloaded_files()
+
+        self.progress.update('Handling orphan files')
+        self.move_orphan_files()
 
         self.progress.update('Concatenating HMM profiles into one file...')
         hmm_list = [k for k in glob.glob(os.path.join(self.kofam_data_dir, 'profiles/*.hmm'))]
