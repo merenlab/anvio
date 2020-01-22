@@ -8,6 +8,7 @@ import os
 import re
 import io
 import gzip
+import numpy
 import string
 import argparse
 
@@ -107,19 +108,33 @@ class Contig:
 
 
     def analyze_coverage(self, bam):
-        contig_coverage = []
+        with anvio.terminal.TimeCode(success_msg="old: ") as old_time:
+            contig_coverage = []
 
-        counter = 1
-        for split in self.splits:
-            split.coverage = Coverage()
-            split.coverage.run(bam, split, 
-                            ignore_orphans=self.ignore_orphans, 
-                            max_coverage_depth=self.max_coverage_depth)
-            contig_coverage.extend(split.coverage.c)
+            counter = 1
+            for split in self.splits:
+                split.coverage = Coverage()
+                split.coverage.run(bam, split,
+                                   ignore_orphans=self.ignore_orphans,
+                                   max_coverage_depth=self.max_coverage_depth)
+                contig_coverage.extend(split.coverage.c)
 
-            counter += 1
+                counter += 1
 
-        self.coverage.process_c(contig_coverage)
+            contig_coverage = numpy.asarray(contig_coverage)
+            self.coverage.process_c(contig_coverage)
+
+        with anvio.terminal.TimeCode(success_msg="new: ") as new_time:
+            contig_coverage = numpy.zeros(self.length)
+
+            for split in self.splits:
+                split.coverage = Coverage()
+                split.coverage.run(bam, split, ignore_orphans=self.ignore_orphans, max_coverage_depth=self.max_coverage_depth)
+                contig_coverage[split.start:split.end] = split.coverage.c
+
+            self.coverage.process_c(contig_coverage)
+
+        print(old_time.time - new_time.time)
 
 
     def analyze_auxiliary(self, bam):
