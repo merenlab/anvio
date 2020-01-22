@@ -3,7 +3,6 @@
 """Classes and functions for handling, storing, and retrieving atomic data
    from contigs and splits. Also includes classes to deal with external
    contig data such as GenbankToAnvio."""
-timesave=[]
 
 import os
 import re
@@ -109,42 +108,12 @@ class Contig:
 
 
     def analyze_coverage(self, bam):
-        global timesave
-        with anvio.terminal.TimeCode(success_msg='old: ', quiet=True) as old_time:
-            contig_coverage = numpy.zeros(self.length).astype(int)
+        self.coverage.run(bam, self, ignore_orphans=self.ignore_orphans, max_coverage_depth=self.max_coverage_depth)
 
-            old_splits = []
-            for split in self.splits:
-                split.coverage = Coverage()
-                split.coverage.run(bam, split, ignore_orphans=self.ignore_orphans, max_coverage_depth=self.max_coverage_depth)
-                contig_coverage[split.start:split.end] = split.coverage.c
-                old_splits.append(split.coverage.c)
-
-            self.coverage.process_c(contig_coverage)
-            old_contig = contig_coverage
-
-        with anvio.terminal.TimeCode(success_msg='new: ', quiet=True) as new_time:
-
-            self.coverage.run(bam, self, ignore_orphans=self.ignore_orphans, max_coverage_depth=self.max_coverage_depth)
-
-            new_splits = []
-            for split in self.splits:
-                split.coverage = Coverage()
-                split.coverage.c = self.coverage.c[split.start:split.end]
-                split.coverage.process_c(split.coverage.c)
-                new_splits.append(split.coverage.c)
-
-            new_contig = self.coverage.c
-
-        dt = old_time.time.total_seconds() - new_time.time.total_seconds()
-        timesave.append(dt)
-        print('')
-        print(f'{len(self.splits)} split(s)')
-        print('{:.3f} seconds saved'.format(dt))
-        print('{:.3f} total running seconds saved'.format(sum(timesave)))
-        assert numpy.array_equal(new_contig, old_contig)
-        for i, j in zip(old_splits, new_splits):
-            assert numpy.array_equal(i, j)
+        for split in self.splits:
+            split.coverage = Coverage()
+            split.coverage.c = self.coverage.c[split.start:split.end]
+            split.coverage.process_c(split.coverage.c)
 
 
     def analyze_auxiliary(self, bam):
