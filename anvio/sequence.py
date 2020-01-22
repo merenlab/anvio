@@ -138,7 +138,7 @@ class Composition:
 
 class Coverage:
     def __init__(self):
-        self.c = [] # list of coverage values
+        self.c = None # becomes a numpy array of coverage values
         self.outlier_positions = set([]) # set of positions along the sequence, coverage values of which
                                          # are classified as outliers; see `get_indices_for_outlier_values`
         self.min = 0
@@ -151,24 +151,49 @@ class Coverage:
 
 
     def run(self, bam, split, ignore_orphans=False, max_coverage_depth=constants.max_depth_for_coverage):
-        coverage_profile = {}
+        with anvio.terminal.TimeCode(success_msg='new: ', quiet=True) as new_time:
+            # a coverage array the size of the split is allocated in memory
+            self.c = numpy.zeros(split.end - split.start).astype(int)
 
-        for pileupcolumn in bam.pileup(split.parent, split.start, split.end, 
-                                       ignore_orphans=ignore_orphans, max_depth=max_coverage_depth):
-            if pileupcolumn.pos < split.start or pileupcolumn.pos >= split.end:
-                continue
+            for pileupcolumn in bam.pileup(split.parent, split.start, split.end, ignore_orphans=ignore_orphans, max_depth=max_coverage_depth):
+                if pileupcolumn.pos < split.start or pileupcolumn.pos >= split.end:
+                    continue
 
-            coverage_profile[pileupcolumn.pos] = pileupcolumn.n
+                self.c[pileupcolumn.pos - split.start] = pileupcolumn.n
 
-        for i in range(split.start, split.end):
-            if i in coverage_profile:
-                self.c.append(coverage_profile[i])
-            else:
-                self.c.append(0)
 
-        if self.c:
-            split.explicit_length = len(self.c)
-            self.process_c(self.c)
+            if len(self.c):
+                split.explicit_length = len(self.c)
+                self.process_c(self.c)
+
+            new = self.c
+
+        with anvio.terminal.TimeCode(success_msg='old: ', quiet=True) as old_time:
+            coverage_profile = {}
+            self.c = []
+
+            for pileupcolumn in bam.pileup(split.parent, split.start, split.end, 
+                                           ignore_orphans=ignore_orphans, max_depth=max_coverage_depth):
+                if pileupcolumn.pos < split.start or pileupcolumn.pos >= split.end:
+                    continue
+
+                coverage_profile[pileupcolumn.pos] = pileupcolumn.n
+
+            for i in range(split.start, split.end):
+                if i in coverage_profile:
+                    self.c.append(coverage_profile[i])
+                else:
+                    self.c.append(0)
+
+            if self.c:
+                split.explicit_length = len(self.c)
+                self.process_c(self.c)
+
+            old = self.c
+
+        print(old_time.time-new_time.time)
+        assert numpy.array_equal(old, new)
+
 
     def process_c(self, c):
         c = numpy.asarray(c)
