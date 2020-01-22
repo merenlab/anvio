@@ -108,14 +108,36 @@ class Contig:
 
 
     def analyze_coverage(self, bam):
-        contig_coverage = numpy.zeros(self.length).astype(int)
+        with anvio.terminal.TimeCode(success_msg='old: ') as old_time:
+            contig_coverage = numpy.zeros(self.length).astype(int)
 
-        for split in self.splits:
-            split.coverage = Coverage()
-            split.coverage.run(bam, split, ignore_orphans=self.ignore_orphans, max_coverage_depth=self.max_coverage_depth)
-            contig_coverage[split.start:split.end] = split.coverage.c
+            old_splits = []
+            for split in self.splits:
+                split.coverage = Coverage()
+                split.coverage.run(bam, split, ignore_orphans=self.ignore_orphans, max_coverage_depth=self.max_coverage_depth)
+                contig_coverage[split.start:split.end] = split.coverage.c
+                old_splits.append(split.coverage.c)
 
-        self.coverage.process_c(contig_coverage)
+            self.coverage.process_c(contig_coverage)
+            old_contig = contig_coverage
+
+        with anvio.terminal.TimeCode(success_msg='new: ') as new_time:
+
+            self.coverage.run(bam, self, ignore_orphans=self.ignore_orphans, max_coverage_depth=self.max_coverage_depth)
+
+            new_splits = []
+            for split in self.splits:
+                split.coverage = Coverage()
+                split.coverage.c = self.coverage.c[split.start:split.end]
+                split.coverage.process_c(split.coverage.c)
+                new_splits.append(split.coverage.c)
+
+            new_contig = self.coverage.c
+
+        print(old_time.time - new_time.time)
+        assert numpy.array_equal(new_contig, old_contig)
+        for i, j in zip(old_splits, new_splits):
+            assert numpy.array_equal(i, j)
 
 
     def analyze_auxiliary(self, bam):
