@@ -124,8 +124,10 @@ class Contig:
             contig_coverage = numpy.asarray(contig_coverage)
             self.coverage.process_c(contig_coverage)
 
+            old = contig_coverage
+
         with anvio.terminal.TimeCode(success_msg="new: ") as new_time:
-            contig_coverage = numpy.zeros(self.length)
+            contig_coverage = numpy.zeros(self.length).astype(int)
 
             for split in self.splits:
                 split.coverage = Coverage()
@@ -134,7 +136,10 @@ class Contig:
 
             self.coverage.process_c(contig_coverage)
 
+            new = contig_coverage
+
         print(old_time.time - new_time.time)
+        assert numpy.array_equal(old, new)
 
 
     def analyze_auxiliary(self, bam):
