@@ -11,6 +11,8 @@ from itertools import permutations
 import anvio
 import anvio.constants as constants
 
+from anvio.errors import ConfigError
+
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
@@ -150,18 +152,61 @@ class Coverage:
         self.mean_Q2Q3 = 0.0
 
 
-    def run(self, bam, split, ignore_orphans=False, max_coverage_depth=constants.max_depth_for_coverage):
-        # a coverage array the size of the split is allocated in memory
-        self.c = numpy.zeros(split.end - split.start).astype(int)
+    def run(self, bam, contig_or_split, start=None, end=None, ignore_orphans=False, max_coverage_depth=constants.max_depth_for_coverage):
+        """Loop through the bam pileup and calculate coverage over a defined region of a contig or split
 
-        for pileupcolumn in bam.pileup(split.parent, split.start, split.end, ignore_orphans=ignore_orphans, max_depth=max_coverage_depth):
-            if pileupcolumn.pos < split.start or pileupcolumn.pos >= split.end:
+        Parameters
+        ==========
+        bam : pysam.Samfile
+
+        contig_or_split : anvio.contigops.Split or anvio.contigops.Contig or str
+            If Split object is passed, and `start` or `end` are None, they are automatically set to
+            contig_or_split.start and contig_or_split.end. If str object is passed, it is assumed to
+            be a contig name
+
+        start : int
+            The index start of where coverage is calculated. Relative to the contig, even when
+            `contig_or_split` is a Split object. 
+
+        end : int
+            The index end of where coverage is calculated. Relative to the contig, even when
+            `contig_or_split` is a Split object.
+        """
+
+        if isinstance(contig_or_split, anvio.contigops.Split):
+            contig_name = contig_or_split.parent
+            if not start: start = contig_or_split.start
+            if not end: end = contig_or_split.end
+
+        elif isinstance(contig_or_split, anvio.contigops.Contig):
+            contig_name = contig_or_split.name
+            if not start: start = 0
+            if not end: end = contig_or_split.length
+
+        elif isinstance(contig_or_split, str):
+            contig_name = contig_or_split
+            if contig_name not in bam.references:
+                raise ConfigError('Coverage.run :: Your contig %s was not found in the bam file' % contig_name)
+            if not start: start = 0
+            if not end: end = dict(zip(bam.references, bam.lengths))[contig_name]
+
+        else:
+            raise ConfigError("Coverage.run :: You can't pass an object of type %s as contig_or_split" % type(contig_or_split))
+
+        # a coverage array the size of the defined range is allocated in memory
+        self.c = numpy.zeros(end - start).astype(int)
+
+        for pileupcolumn in bam.pileup(contig_name, start, end, ignore_orphans=ignore_orphans, max_depth=max_coverage_depth):
+            if pileupcolumn.pos < start or pileupcolumn.pos >= end:
                 continue
 
-            self.c[pileupcolumn.pos - split.start] = pileupcolumn.n
+            self.c[pileupcolumn.pos - start] = pileupcolumn.n
 
         if len(self.c):
-            split.explicit_length = len(self.c)
+            try:
+                contig_or_split.explicit_length = len(self.c)
+            except AttributeError:
+                pass
             self.process_c(self.c)
 
 
