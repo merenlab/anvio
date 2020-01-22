@@ -453,9 +453,24 @@ function getNamedLayerDefaults(layer, attribute, default_value, group)
 
     /* Some ad-hoc manipulation of special hmms_ single hmm layers */
     if (layer.substring(0, 5) == "hmms_"){
+        if (attribute == 'type') return 'intensity';
         if (attribute == 'height') return '150';
         if (attribute == 'norm')   return 'sqrt';
-        if (attribute == 'color')  return '#882222'
+
+        if (layer.substring(0, 13) == "hmms_Transfer"){
+            console.log(layer, attribute);
+            if (attribute == 'color-start')  return '#bfd9f3';
+            if (attribute == 'color')  return '#226ab2';
+        }
+        else if (layer.substring(0, 14) == "hmms_Ribosomal"){
+            if (attribute == 'color-start')  return '#FFDDDD';
+            if (attribute == 'color')  return '#882222';
+        }
+        else {
+            if (attribute == 'color')  return '#444444';
+            if (attribute == 'color-start')  return '#DDDDDD';
+        }
+
     }
 
     if (layer in named_layers)
