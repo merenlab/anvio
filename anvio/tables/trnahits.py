@@ -18,6 +18,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.drivers.trnscan_se as trnascan_se
 
 from anvio.tables.hmmhits import TablesForHMMHits
+from anvio.tables.genefunctions import TableForGeneFunctions
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -187,13 +188,46 @@ class TablesForTransferRNAs:
                                                                                                                   skip_amino_acid_sequences=True)
         tables_for_hmm_hits.append(self.source_name, self.reference, self.kind_of_search, self.domain, self.all_genes_searched_against, search_results_dict)
 
+
+        # when the code comes all the way here, the entries in the search results dict already look like
+        # this, so we have a gene callers id for the newly generate genes for tRNAs. we will use it
+        # to populate a functions dict and submit it to the contigs database as well:
+        #
+        #     {'contig_name': 'Bfragilis_0100_000000000001',
+        #      'trna_no': '1',
+        #      'start': 135361,
+        #      'stop': 135433,
+        #      'amino_acid': 'Thr',
+        #      'anticodon': 'CGT',
+        #      'score': 67.6,
+        #      'gene_name': 'Thr_ACG',
+        #      'e_value': 67.6,
+        #      'gene_hmm_id': '-',
+        #      'gene_callers_id': 4502}
+        #
+        functions_dict = {}
+        for entry_id in search_results_dict:
+            entry = search_results_dict[entry_id]
+
+            function_text = 'tRNA gene for amino acid %s (codon: %s; anticodon:%s; score:%.1f)' % (entry['amino_acid'], codon, entry['anticodon'], entry['score'])
+
+            functions_dict[entry_id] = {'gene_callers_id': entry['gene_callers_id'],
+                                        'source': self.source_name,
+                                        'accession': '%s_%d' % (aa_codon, entry['gene_callers_id']),
+                                        'function': function_text,
+                                        'e_value': 0.0}
+
+        gene_function_calls_table = TableForGeneFunctions(contigs_db_path, self.run, self.progress)
+        gene_function_calls_table.create(functions_dict)
+
+
         if not anvio.DEBUG:
             self.clean_tmp_directory()
             self.run.info_single("Temp directory is now cleaned (if you would like to keep it the "
-                                 "next time use the flag `--debug`).")
+                                 "next time use the flag `--debug`).", nl_before=1)
         else:
             self.run.info_single("Due to the `--debug` flag, anvi'o did not remove the temoporary files "
-                                 "directory (which is still at '%s')." % (self.tmp_directory_path))
+                                 "directory (which is still at '%s')." % (self.tmp_directory_path), nl_before=1)
 
     def clean_tmp_directory(self):
         shutil.rmtree(self.tmp_directory_path)
