@@ -198,6 +198,9 @@ class Coverage:
 
         for pileupcolumn in bam.pileup(contig_name, start, end, ignore_orphans=ignore_orphans, max_depth=max_coverage_depth):
             if pileupcolumn.pos < start or pileupcolumn.pos >= end:
+                # NOTE It is not understood what causes the pileup iterator to give pileup positions
+                #      outside of the explicitly defined start and end. These positions are
+                #      nevertheless a minority
                 continue
 
             self.c[pileupcolumn.pos - start] = pileupcolumn.n
