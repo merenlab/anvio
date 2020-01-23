@@ -33,14 +33,6 @@ class ComputeCoverage(object):
 
         self.args = args
         self.sanity_check()
-
-        if self.args.contig_name:
-            self.input_type = 'contig_name'
-        elif self.args.contigs_of_interest:
-            self.input_type = 'contigs_of_interest'
-        elif self.args.collection_txt:
-            self.input_type = 'collection_txt'
-
         self.f = self.init_output()
 
         self.bam = pysam.Samfile(self.args.bam_file, 'rb')
@@ -55,7 +47,21 @@ class ComputeCoverage(object):
         if sum([has_arg(x) for x in ('contig_name', 'contigs_of_interest', 'collection_txt')]) != 1:
             raise ConfigError("Provide input for exactly one of --contig-name, --contigs-of-interest, or --collections-txt")
 
+        if self.args.contig_name:
+            self.input_type = 'contig_name'
+        elif self.args.contigs_of_interest:
+            self.input_type = 'contigs_of_interest'
+        else:
+            self.input_type = 'collection_txt'
+
         filesnpaths.is_file_exists(self.args.bam_file)
+
+        self.run.info('BAM file', self.args.bam_file)
+        self.run.info('Input type', self.input_type)
+        self.run.info('Coverage will be reported for each', self.args.method)
+
+        if (self.input_type == 'contig_name' or self.input_type == 'contigs_of_interest') and self.args.method == 'bin':
+            raise ConfigError("Choosing --method bin is only available with --collection-txt")
 
 
     def get_column_names(self):
@@ -114,6 +120,8 @@ class ComputeCoverage(object):
         ==========
         contig_name : str
         """
+        self.progress.increment()
+        self.progress.update('%s (%d/%d)' % (contig_name, self.progress.progress_current_item, self.progress.progress_total_items))
 
         cov = seq.Coverage()
         cov.run(self.bam, contig_name)
@@ -153,21 +161,29 @@ class ComputeCoverage(object):
         elif self.input_type == 'collection_txt':
             self.process_collection_txt()
 
+        self.progress.end()
+        self.run.info_single('Output file %s has been written' % self.args.output, nl_before=1)
+
 
     def process_contig(self):
         m = self.args.method
         contig_name = self.args.contig_name
 
+        self.progress.new('Processing', progress_total_items=1)
+
         if m == 'contig':
             self.run_contig_method_for_contig(contig_name, (contig_name, ))
         else: # m == 'pos'
             self.run.warning("Warning, your file will contain %d lines" % self.lengths[contig_name])
+
             self.run_pos_method_for_contig(contig_name, tuple())
 
 
     def process_contigs_of_interest(self):
         m = self.args.method
         contigs_of_interest = self.setup_contigs_of_interest()
+
+        self.progress.new('Processing', progress_total_items=len(contigs_of_interest))
 
         if m == 'contig':
             for contig_name in contigs_of_interest:
@@ -205,6 +221,8 @@ class ComputeCoverage(object):
         collection = self.setup_collection_txt()
 
         d = {k: v for k, v in self.lengths.items() if k in collection['contig_name'].to_list()}
+
+        self.progress.new('Processing', progress_total_items=len(collection['contig_name']))
 
         if m == 'bin':
             for bin_name, contigs_in_bin in collection.groupby('bin')['contig_name']:
