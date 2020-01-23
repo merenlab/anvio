@@ -25,12 +25,12 @@ __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 __description__ = ("Get nucleotide-level, contig-level, or bin-level coverage values from a BAM file")
 
-run = terminal.Run()
-progress = terminal.Progress()
-
 
 class ComputeCoverage(object):
-    def __init__(self, args):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.run = run
+        self.progress = progress
+
         self.args = args
         self.sanity_check()
         self.set_column_names_and_formatters()
@@ -241,7 +241,7 @@ class ComputeCoverage(object):
 
 @terminal.time_program
 def main(args):
-    c = ComputeCoverage(args)
+    c = ComputeCoverage(args, terminal.Run(), terminal.Progress())
     c.process()
 
 
