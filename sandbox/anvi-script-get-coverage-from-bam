@@ -260,7 +260,6 @@ class ComputeCoverage(object):
         return collection
 
 
-
 @terminal.time_program
 def main(args):
     c = ComputeCoverage(args, terminal.Run(), terminal.Progress())
