@@ -33,6 +33,14 @@ class ComputeCoverage(object):
 
         self.args = args
         self.sanity_check()
+
+        if self.args.contig_name:
+            self.input_type = 'contig_name'
+        elif self.args.contigs_of_interest:
+            self.input_type = 'contigs_of_interest'
+        elif self.args.collection_txt:
+            self.input_type = 'collection_txt'
+
         self.f = self.init_output()
 
         self.bam = pysam.Samfile(self.args.bam_file, 'rb')
@@ -51,19 +59,19 @@ class ComputeCoverage(object):
 
 
     def get_column_names(self):
-        if self.args.contig_name:
+        if self.input_type == 'contig_name':
             if self.args.method == 'pos':
                 colnames = ('pos', 'coverage')
             elif self.args.method == 'contig':
                 colnames = ('contig', 'coverage')
 
-        elif self.args.contigs_of_interest:
+        elif self.input_type == 'contigs_of_interest':
             if self.args.method == 'pos':
                 colnames = ('contig', 'pos', 'coverage')
             elif self.args.method == 'contig':
                 colnames = ('contig', 'coverage')
 
-        elif self.args.collection_txt:
+        elif self.input_type == 'collection_txt':
             if self.args.method == 'pos':
                 colnames = ('bin', 'contig', 'pos', 'coverage')
             elif self.args.method == 'contig':
@@ -138,12 +146,11 @@ class ComputeCoverage(object):
 
 
     def process(self):
-        if self.args.contig_name:
-            
+        if self.input_type == 'contig_name':
             self.process_contig()
-        elif self.args.contigs_of_interest:
+        elif self.input_type == 'contigs_of_interest':
             self.process_contigs_of_interest()
-        elif self.args.collection_txt:
+        elif self.input_type == 'collection_txt':
             self.process_collection_txt()
 
 
@@ -154,7 +161,7 @@ class ComputeCoverage(object):
         if m == 'contig':
             self.run_contig_method_for_contig(contig_name, (contig_name, ))
         else: # m == 'pos'
-            run.warning("Warning, your file will contain %d lines" % self.lengths[contig_name])
+            self.run.warning("Warning, your file will contain %d lines" % self.lengths[contig_name])
             self.run_pos_method_for_contig(contig_name, tuple())
 
 
@@ -169,7 +176,7 @@ class ComputeCoverage(object):
         else: # m == 'pos'
             d = {k: v for k, v in self.lengths.items() if k in contigs_of_interest}
 
-            run.warning("Warning, your file will contain %d lines" % sum(d.values()))
+            self.run.warning("Warning, your file will contain %d lines" % sum(d.values()))
 
             for contig_name in contigs_of_interest:
                 self.run_pos_method_for_contig(contig_name, (contig_name, ))
@@ -220,7 +227,7 @@ class ComputeCoverage(object):
                     self.run_contig_method_for_contig(contig_name, (bin_name, contig_name))
 
         else: # m == 'pos'
-            run.warning("Warning, your file will contain %d lines" % sum(d.values()))
+            self.run.warning("Warning, your file will contain %d lines" % sum(d.values()))
 
             for bin_name, contigs_in_bin in collection.groupby('bin')['contig_name']:
                 for i, contig_name in enumerate(contigs_in_bin):
