@@ -50,32 +50,24 @@ class ComputeCoverage(object):
         if self.args.contig_name:
             if self.args.method == 'pos':
                 colnames = ('pos', 'coverage')
-                formatters = ('%s', '%s')
             elif self.args.method == 'contig':
                 colnames = ('contig', 'coverage')
-                formatters = ('%s', '%s')
 
         elif self.args.contigs_of_interest:
             if self.args.method == 'pos':
                 colnames = ('contig', 'pos', 'coverage')
-                formatters = ('%s', '%s', '%s')
             elif self.args.method == 'contig':
                 colnames = ('contig', 'coverage')
-                formatters = ('%s', '%s')
 
         elif self.args.collection_txt:
             if self.args.method == 'pos':
                 colnames = ('bin', 'contig', 'pos', 'coverage')
-                formatters = ('%s', '%s', '%s', '%s')
             elif self.args.method == 'contig':
                 colnames = ('bin', 'contig', 'coverage')
-                formatters = ('%s', '%s', '%s')
             elif self.args.method == 'bin':
                 colnames = ('bin', 'coverage')
-                formatters = ('%s', '%s')
 
         self.colnames = colnames
-        self.formatters = formatters
 
 
     def is_contigs_in_bam(self, contigs):
@@ -143,6 +135,7 @@ class ComputeCoverage(object):
 
     def process(self):
         if self.args.contig_name:
+            
             self.process_contig()
         elif self.args.contigs_of_interest:
             self.process_contigs_of_interest()
