@@ -2950,16 +2950,28 @@ class ProfileSuperclass(object):
             for bin_id in collection:
                 # populate averages per bin
                 averages = copy.deepcopy(samples_template)
+
+                # These weights are used to properly account for differences in split lengths.
+                # Consider table_name == 'mean_coverage', for a bin with 2 splits. Without
+                # weighting, if one split is length 100 with coverage 100 and the other is length
+                # 900 wth coverage 500, the mean_coverage for this bin is (100 + 500)/2 = 300. But
+                # more accurately, mean_coverage of this bin is 100*[100/1000] + 500*[900/1000] =
+                # 460
+                weights = []
+
                 for split_name in collection[bin_id]:
                     if split_name not in table_data:
                         continue
+
+                    weights.append(self.splits_basic_info[split_name]['length'])
 
                     for sample_name in samples_template:
                         averages[sample_name].append(table_data[split_name][sample_name])
 
                 # finalize averages per bin:
                 for sample_name in samples_template:
-                    averages[sample_name] = numpy.mean([a or 0 for a in averages[sample_name]])
+                    # weights is automatically normalized in numpy.average such that sum(weights) == 1
+                    averages[sample_name] = numpy.average([a or 0 for a in averages[sample_name]], weights=weights)
 
                 self.collection_profile[bin_id][table_name] = averages
 
