@@ -291,7 +291,7 @@ if __name__ == '__main__':
 
     group3 = parser.add_argument_group(
         'OPTION #3',
-        ("Use this to characterize coverage for a list of contigs")
+        ("Use this to characterize coverage for a collection of contig sets (bins)")
     )
     group3.add_argument(
         '-C',
@@ -305,7 +305,7 @@ if __name__ == '__main__':
 
     groupM = parser.add_argument_group(
         'METHOD',
-        ("Do you want to report coverage at a nucleotide level? Contig averages?"
+        ("Do you want to report coverage at a nucleotide level? Contig averages? "
          "Bin averages? Pick the method here.")
     )
     groupM.add_argument(
@@ -320,9 +320,9 @@ if __name__ == '__main__':
     )
 
     groupO = parser.add_argument_group(
-        'METHOD',
-        ("Do you want to report coverage at a nucleotide level? Contig averages?"
-         "Bin averages? Pick the method here.")
+        'OUTPUT',
+        ("Your output file is decided here. Keep in mind if you use --method pos, this "
+         "file will contain as many lines as there are nucleotides defined by your input option")
     )
     groupO.add_argument(
         '-o',
