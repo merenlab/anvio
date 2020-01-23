@@ -33,7 +33,6 @@ class ComputeCoverage(object):
 
         self.args = args
         self.sanity_check()
-        self.set_column_names_and_formatters()
         self.f = self.init_output()
 
         self.bam = pysam.Samfile(self.args.bam_file, 'rb')
@@ -43,10 +42,15 @@ class ComputeCoverage(object):
 
 
     def sanity_check(self):
-        pass
+        has_arg = lambda x: True if self.args.__dict__.get(x) else False
+
+        if sum([has_arg(x) for x in ('contig_name', 'contigs_of_interest', 'collection_txt')]) != 1:
+            raise ConfigError("Provide input for exactly one of --contig-name, --contigs-of-interest, or --collections-txt")
+
+        filesnpaths.is_file_exists(self.args.bam_file)
 
 
-    def set_column_names_and_formatters(self):
+    def get_column_names(self):
         if self.args.contig_name:
             if self.args.method == 'pos':
                 colnames = ('pos', 'coverage')
@@ -67,7 +71,7 @@ class ComputeCoverage(object):
             elif self.args.method == 'bin':
                 colnames = ('bin', 'coverage')
 
-        self.colnames = colnames
+        return colnames
 
 
     def is_contigs_in_bam(self, contigs):
@@ -82,7 +86,7 @@ class ComputeCoverage(object):
     def init_output(self):
         # write the headers
         f = open(self.args.output, 'w')
-        f.write('\t'.join(self.colnames) + '\n')
+        f.write('\t'.join(self.get_column_names()) + '\n')
         f.close()
 
         # reopen file in append mode
