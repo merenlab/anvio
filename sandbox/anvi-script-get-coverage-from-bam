@@ -203,7 +203,7 @@ class ComputeCoverage(object):
         filesnpaths.is_file_exists(args.contigs_of_interest)
         contigs_of_interest = [x.strip() for x in open(args.contigs_of_interest).readlines()]
 
-        if not self.args.skip_contig_check:
+        if not self.args.skip_contigs_check:
             self.is_contigs_in_bam(contigs_of_interest)
 
         return contigs_of_interest
