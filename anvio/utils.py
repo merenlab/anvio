@@ -2594,9 +2594,9 @@ def is_contigs_db(db_path):
     return True
 
 
-def is_trna_db(db_path):
+def is_tRNA_db(db_path):
     filesnpaths.is_file_exists(db_path)
-    if get_db_type(db_path) != 'trna':
+    if get_db_type(db_path) != 'tRNA':
         raise ConfigError("'%s' is not an anvi'o tRNA database." % db_path)
     return True
 

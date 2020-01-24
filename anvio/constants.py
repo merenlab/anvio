@@ -97,6 +97,20 @@ complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHD
 
 nucleotides = sorted(list('ATCG')) + ['N']
 
+WC_base_pairs = {
+    'A': ('T',),
+    'T': ('A',),
+    'C': ('G',),
+    'G': ('C',)
+}
+# In tRNA, wobble base pairing, including G/U, is common
+WC_plus_wobble_base_pairs = {
+    'A': ('T',),
+    'T': ('A', 'G'),
+    'C': ('G',),
+    'G': ('C', 'T')
+}
+
 AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
                                  'Arg': {"C":6,  "H":14, "N":4, "O":2, "S":0},
                                  'Asn': {"C":4,  "H":8,  "N":2, "O":3, "S":0},

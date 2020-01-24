@@ -20,6 +20,7 @@ pan_db_version = "13"
 auxiliary_data_version = "2"
 structure_db_version = "1"
 genomes_storage_vesion = "6"
+tRNA_db_version = "1"
 trnaseeds_db_version = "1"
 
 versions_for_db_types = {'contigs': contigs_db_version,
@@ -29,6 +30,7 @@ versions_for_db_types = {'contigs': contigs_db_version,
                          'pan': pan_db_version,
                          'genomestorage': genomes_storage_vesion,
                          'auxiliary data for coverages': auxiliary_data_version,
+                         'tRNA': tRNA_db_version,
                          'trnaseeds': trnaseeds_db_version}
 
 ####################################################################################################
@@ -62,7 +64,7 @@ splits_info_table_structure            = ['split', 'order_in_parent' , 'start' ,
 splits_info_table_types                = ['text' ,     'numeric     ','numeric','numeric', 'numeric',   'numeric' ,      'numeric'     ,  'text'  ]
 
 
-# following tables deal with open reading frames found in contis by a gene caller (such as prodigal), and their functional annotations and stuff.
+# following tables deal with open reading frames found in contigs by a gene caller (such as prodigal), and their functional annotations and stuff.
 
 genes_in_contigs_table_name             = 'genes_in_contigs'
 genes_in_contigs_table_structure        = ['gene_callers_id', 'contig', 'start' , 'stop'  , 'direction', 'partial', 'source', 'version']
