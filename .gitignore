@@ -1,6 +1,7 @@
 .*
 *.pyc
 *.so
+.env
 /build/
 /dist/
 test-output/

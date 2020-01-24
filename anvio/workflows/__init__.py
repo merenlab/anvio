@@ -441,7 +441,7 @@ class WorkflowSuperClass:
         '''
         if args:
             if len(self.__dict__):
-                raise ConfigError("Something is wrong. You are ineriting %s from \
+                raise ConfigError("Something is wrong. You are inheriting %s from \
                                    within another class, yet you are providing an `args` parameter.\
                                    This is not alright." % type(self))
             self.args = args
