@@ -98,7 +98,7 @@ class ComputeCoverage(object):
         for contig_name in contigs:
             if contig_name not in self.bam.references:
                 raise ConfigError("%s is not in your bam file. Make sure you're using contig names "
-                                  "and not split names.")
+                                  "and not split names." % contig_name)
 
 
     def init_output(self):
