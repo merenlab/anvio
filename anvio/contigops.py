@@ -159,9 +159,9 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, bam, parent_outlier_positions, 
-                 min_coverage=10, 
-                 report_variability_full=False, 
+    def __init__(self, split, bam, parent_outlier_positions,
+                 min_coverage=10,
+                 report_variability_full=False,
                  ignore_orphans=False,
                  max_coverage_depth=constants.max_depth_for_coverage):
         self.v = []
@@ -182,7 +182,7 @@ class Auxiliary:
     def run(self, bam):
         ratios = []
 
-        for pileupcolumn in bam.pileup(self.split.parent, self.split.start, self.split.end, 
+        for pileupcolumn in bam.pileup(self.split.parent, self.split.start, self.split.end,
                                     ignore_orphans=self.ignore_orphans, max_depth=self.max_coverage_depth):
 
             pos_in_contig = pileupcolumn.pos
