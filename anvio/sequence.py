@@ -3,7 +3,10 @@
 
 '''Primitive classes for basic DNA sequence properties.'''
 
+test = []
+
 import numpy
+import pysamstats
 import collections
 
 from itertools import permutations
@@ -193,17 +196,33 @@ class Coverage:
         else:
             raise ConfigError("Coverage.run :: You can't pass an object of type %s as contig_or_split" % type(contig_or_split))
 
-        # a coverage array the size of the defined range is allocated in memory
-        self.c = numpy.zeros(end - start).astype(int)
+        with anvio.terminal.TimeCode(quiet=True) as old:
+            # a coverage array the size of the defined range is allocated in memory
+            self.c = numpy.zeros(end - start).astype(int)
 
-        for pileupcolumn in bam.pileup(contig_name, start, end, ignore_orphans=ignore_orphans, max_depth=max_coverage_depth):
-            if pileupcolumn.pos < start or pileupcolumn.pos >= end:
-                # NOTE It is not understood what causes the pileup iterator to give pileup positions
-                #      outside of the explicitly defined start and end. These positions are
-                #      nevertheless a minority
-                continue
+            for pileupcolumn in bam.pileup(contig_name, start, end, ignore_orphans=ignore_orphans, max_depth=max_coverage_depth):
+                if pileupcolumn.pos < start or pileupcolumn.pos >= end:
+                    continue
 
-            self.c[pileupcolumn.pos - start] = pileupcolumn.n
+                self.c[pileupcolumn.pos - start] = pileupcolumn.n
+
+        with anvio.terminal.TimeCode(quiet=True) as new:
+            self.cc = pysamstats.load_coverage(
+                bam,
+                chrom=contig_name,
+                start=start,
+                end=end,
+                pad=True, 
+                fields=['reads_all']
+            )
+
+        global test
+        dt = old.time.total_seconds() - new.time.total_seconds()
+        print('')
+        test.append(dt)
+        print(f"{dt} seconds saved")
+        print(f"{sum(test)} total running seconds saved")
+        assert numpy.array_equal(self.cc, self.c)
 
         if len(self.c):
             try:
