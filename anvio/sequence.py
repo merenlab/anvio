@@ -3,6 +3,8 @@
 
 '''Primitive classes for basic DNA sequence properties.'''
 
+test = []
+
 import numpy
 import collections
 
@@ -172,6 +174,7 @@ class Coverage:
             The index end of where coverage is calculated. Relative to the contig, even when
             `contig_or_split` is a Split object.
         """
+        global test
 
         if isinstance(contig_or_split, anvio.contigops.Split):
             contig_name = contig_or_split.parent
@@ -193,17 +196,27 @@ class Coverage:
         else:
             raise ConfigError("Coverage.run :: You can't pass an object of type %s as contig_or_split" % type(contig_or_split))
 
-        # a coverage array the size of the defined range is allocated in memory
-        self.c = numpy.zeros(end - start).astype(int)
+        with anvio.terminal.TimeCode(quiet=True) as old:
+            # a coverage array the size of the defined range is allocated in memory
+            self.c = numpy.zeros(end - start).astype(int)
 
-        for pileupcolumn in bam.pileup(contig_name, start, end, ignore_orphans=ignore_orphans, max_depth=max_coverage_depth):
-            if pileupcolumn.pos < start or pileupcolumn.pos >= end:
-                # NOTE It is not understood what causes the pileup iterator to give pileup positions
-                #      outside of the explicitly defined start and end. These positions are
-                #      nevertheless a minority
-                continue
+            for pileupcolumn in bam.pileup(contig_name, start, end, ignore_orphans=ignore_orphans, max_depth=max_coverage_depth):
+                if pileupcolumn.pos < start or pileupcolumn.pos >= end:
+                    # NOTE It is not understood what causes the pileup iterator to give pileup positions
+                    #      outside of the explicitly defined start and end. These positions are
+                    #      nevertheless a minority
+                    continue
 
-            self.c[pileupcolumn.pos - start] = pileupcolumn.n
+                self.c[pileupcolumn.pos - start] = pileupcolumn.n
+
+        with anvio.terminal.TimeCode(quiet=True) as new:
+            dummy = bam.count_coverage(contig_name, start, end)
+
+        print('')
+        dt = old.time.total_seconds() - new.time.total_seconds()
+        test.append(dt)
+        print(f'{dt} seconds saved')
+        print(f'{sum(test)} total running seconds saved')
 
         if len(self.c):
             try:
