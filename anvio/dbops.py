@@ -3290,24 +3290,24 @@ class TRNASeedsDatabase:
     def __init__(self, db_path, run=run, progress=progress, quiet=True, skip_init=False):
         self.db = None
         self.db_path = db_path
-        
+
         self.run = run
         self.progress = progress
         self.quiet = quiet
-        
+
         self.meta = {}
-        
+
         if not skip_init:
             self.init()
-            
-            
+
+
     def init(self):
         if os.path.exists(self.db_path):
             utils.is_trnaseeds_db(self.db_path)
             self.db = db.DB(self.db_path, anvio.__trnaseeds__version__)
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
-            
+
             try:
                 for key in ['num_trnaseeds', 'total_length', 'taxonomy_was_run']:
                     self.meta[key] = int(self.meta[key])
@@ -3327,7 +3327,7 @@ class TRNASeedsDatabase:
             self.run.info('tRNA seeds database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
             self.run.info('Number of tRNA trnaseeds', self.meta['num_trnaseeds'], quiet=self.quiet)
             self.run.info('Total number of nucleotides', self.meta['total_length'], quiet=self.quiet)
-            
+
         else:
             self.db = None
 
@@ -3356,8 +3356,8 @@ class TRNASeedsDatabase:
         self.db.create_table(t.trnaseeds_info_table_name, t.trnaseeds_info_table_structure, t.trnaseeds_info_table_types)
 
         return self.db
-    
-    
+
+
     def create(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         trnaseeds_fasta = A('trnaseeds_fasta')
@@ -3492,8 +3492,54 @@ class TRNASeedsDatabase:
 
     def disconnect(self):
         self.db.disconnect()
-            
-            
+
+
+class tRNADatabase:
+    def __init__(self, db_path, run=run, progress=progress, quiet=True, skip_init=False):
+        self.db = None
+        self.db_path = db_path
+
+        self.run = run
+        self.progress = progress
+        self.quiet = quiet
+
+        self.meta = {}
+
+        if not skip_init:
+            self.init()
+
+    def init(self):
+        if os.path.exists(self.db_path):
+            utils.is_tRNA_db(self.db_path)
+            self.db = db.DB(self.db_path, anvio.__tRNA__version__)
+            meta_table = self.db.get_table_as_dict('self')
+            self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
+
+            try:
+                for key in []:
+                    self.meta[key] = int(self.meta[key])
+            except KeyError:
+                raise ConfigError("Oh no :( There is a tRNA database here at '%s', but it seems to be broken :( It is very"
+                                  "likely that the process that was trying to create this database failed, and left behind"
+                                  "this unfinished thingy (if you would like to picture its state you should imagine the baby"
+                                  "Voldemort at King's Cross). Well, anvi'o believes it is best if you make it go away with"
+                                  "fire, and try whatever you were trying before you got this error one more time with a"
+                                  "proper tRNA database. End of sad news. Bye now." % self.db_path)
+
+            if 'creation_date' not in self.meta:
+                raise ConfigError("The tRNA database ('%s') seems to be corrupted :/ This happens if the process that\
+                                    that generates the database ends prematurely. Most probably, you will need to generate\
+                                    the tRNA database from scratch. Sorry!" % (self.db_path))
+
+            self.run.info("tRNA database", "An existing database, %s, has been initiated." % self.db_path, quiet=self.quiet)
+            self.run.info("Sample name", self.meta['sample name'], quiet=self.quiet)
+        else:
+            self.db = None
+
+
+
+
+
 class ContigsDatabase:
     """To create an empty contigs database and/or access one."""
     def __init__(self, db_path, run=run, progress=progress, quiet=True, skip_init=False):
