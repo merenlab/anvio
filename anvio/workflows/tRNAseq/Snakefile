@@ -1,0 +1,191 @@
+# -*- coding: utf-8
+
+import anvio
+import anvio.terminal as terminal
+
+
+__author__ = "Samuel Miller"
+__copyright__ = "Copyright 2017, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Samuel Miller"
+__email__ = "samuelmiller10@gmail.com"
+
+
+import argparse
+import anvio.workflows as w
+import anvio.terminal as terminal
+import anvio.utils as u
+import os.path
+import pandas as pd
+
+from anvio.workflows.tRNAseq import tRNASeqWorkflow
+from anvio.errors import ConfigError
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+slave_mode = False if 'workflows/tRNAseq' in workflow.included[0] else True
+
+if not slave_mode:
+    # it is important that this comes before the include statement since
+    # M is defined here and will also be used in the contigs workflow
+    M = tRNASeqWorkflow(argparse.Namespace(config=config))
+    M.init()
+    dirs_dict = M.dirs_dict
+
+
+rule tRNAseq_workflow_target_rule:
+    '''
+        The target rule for the workflow.
+    '''
+    input: M.target_files
+
+
+rule make_iu_input:
+    ''' Create the simple samples file needed for Illumina-utils from samples_txt '''
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "make_iu_input.log")
+    # the input file is marked as 'ancient' so snakemake wouldn't run it
+    # just because a new samples_txt file was created
+    input: ancient(M.get_param_value_from_config(['samples_txt']))
+    output: expand("{DIR}/iu_samples_input.txt", DIR=dirs_dict['QC_DIR'])
+    threads: M.T('make_iu_input')
+    resources: nodes = M.T('make_iu_input')
+    run:
+        sample_df = pd.read_csv(input[0], sep='\t', index_col=False)
+        sample_df['sample'] = sample_df['sample'] + '_' + sample_df['split']
+        sample_df[['sample', 'r1', 'r2']].to_csv(output[0], sep='\t', index=False)
+
+
+rule iu_gen_configs:
+    '''
+        Generating a config file for each sample split.
+
+        Notice that this step is run only once and generates the config files for all sample splits
+    '''
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "iu_gen_configs.log")
+    # the input file is marked as 'ancient' so snakemake wouldn't run it
+    # just because a new path-to-raw-fastq-files.txt file was created.
+    input: ancient(expand("{DIR}/iu_samples_input.txt", DIR=dirs_dict['QC_DIR']))
+    output: expand("{DIR}/{sample}_{split}.ini", DIR=dirs_dict['QC_DIR'], sample=M.sample_names, split=M.valid_splits)
+    params:
+        dir=dirs_dict['QC_DIR'],
+        r1_prefix = M.get_rule_param('iu_gen_configs', '--r1-prefix'),
+        r2_prefix = M.get_rule_param('iu_gen_configs', '--r2-prefix')
+    threads: M.T('iu_gen_configs')
+    resources: nodes = M.T('iu_gen_configs')
+    shell: "iu-gen-configs {input} -o {params.dir} {params.r1_prefix} {params.r2_prefix} >> {log} 2>&1"
+
+
+def get_raw_fastq(sample, split):
+    ''' return a dict with the path to the raw fastq files'''
+    df = M.samples_information
+    r1 = df[df['sample'] == sample][df['split'] == split]['r1'].iat[0]
+    r2 = df[df['sample'] == sample][df['split'] == split]['r2'].iat[0]
+    return {'r1': r1, 'r2': r2}
+
+
+def get_qc_input(sample, split):
+    ''' return a dict with input for qc rule'''
+    d = {'ini': ancient(os.path.join(dirs_dict['QC_DIR'], "%s_%s.ini" % (sample, split)))}
+    d.update(get_raw_fastq(sample, split))
+    return d
+
+
+rule iu_merge_pairs:
+    ''' Run QC using iu-merge-pairs. '''
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-iu_merge_pairs.log")
+    # marking the config file as "ancient" so QC wouldn't run just because a new config file was produced.
+    input: unpack(lambda wildcards: get_qc_input(wildcards.sample, wildcards.split))
+    output:
+        qc_output_merged = os.path.join(dirs_dict['QC_DIR'], "{sample}_{split}_MERGED"),
+        stats = os.path.join(dirs_dict['QC_DIR'], "{sample}_{split}_STATS")
+    params:
+        marker_gene_stringent = M.get_rule_param('iu_merge_pairs', '--marker-gene-stringent'),
+        max_num_mismatches = M.get_rule_param('iu_merge_pairs', '--max-num-mismatches'),
+        trim_suffix = M.get_rule_param('iu_merge_pairs', '--trim-suffix'),
+        report_r1_prefixes = M.get_rule_param('iu_merge_pairs', '--report-r1-prefixes'),
+        report_r2_prefixes = M.get_rule_param('iu_merge_pairs', '--report-r2-prefixes')
+    threads: M.T('iu_merge_pairs')
+    resources: nodes = M.T('iu_merge_pairs')
+    shell:
+        """
+        iu-merge-pairs {input.ini} {params.marker_gene_stringent} {params.max_num_mismatches} {params.trim_suffix} {params.report_r1_prefixes} {params.report_r2_prefixes} >> {log} 2>&1
+        """
+
+
+def uncompress_fastqs_if_needed(r1, r2):
+    # Checking if any of the input files are compressed
+    # this should only happen if QC is not performed in this snakemake session
+    # because if QC is performed in this session then the output of iu-filter-quality
+    # is not compressed and snakemake will schedule fq2fa rule before gzip rule
+    files_that_end_with_gz = [f for f in [r1, r2] if f.endswith('.gz')]
+    if len(files_that_end_with_gz) == 1:
+        raise ConfigError("Something seems very bad: "
+                          "one of the pair fastq files is compressed and the other one is not. "
+                          "This is the compressed one: %s" % files_that_end_with_gz[0])
+    elif len(files_that_end_with_gz) == 2:
+        run.warning("The following fastq files are compressed "
+                    "and will now be uncompressed using gunzip: "
+                    "%s." % files_that_end_with_gz)
+        return True
+    return False
+
+
+def uncompress_fastqs_if_needed(r1, r2, log):
+    if uncompress_fastqs_if_needed(r1, r2):
+        r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
+        r2_unzipped = r2.replace('.fastq.gz', '_temp.fastq')
+        shell("gunzip < %s > %s 2>> %s" % (r1, r1_unzipped, log))
+        shell("gunzip < %s > %s 2>> %s" % (r2, r2_unzipped, log))
+        r1 = r1_unzipped
+        r2 = r2_unzipped
+    return r1, r2
+
+
+rule gen_qc_report:
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "gen_qc_report.log")
+    input: expand(os.path.join(dirs_dict['QC_DIR'], "{sample}_{split}_STATS"), sample=M.sample_names, split=M.valid_splits)
+    output: os.path.join(dirs_dict['QC_DIR'], "qc-report.txt")
+    threads: M.T('gen_qc_report')
+    resources: nodes = M.T('gen_qc_report')
+    run:
+        report_dict = {}
+        headers = []
+        for i, filename in enumerate(input):
+            sample_split = os.path.basename(filename).split("_STATS")[0]
+            report_dict[sample_split] = {}
+            file_headers = []
+            with open(filename) as f:
+                firstline = True
+                for line in f:
+                    if line == '\n':
+                        break
+                    line_frags = line.rstrip().split(' ...')
+                    header = line_frags[0]
+                    file_headers.append(header)
+                    number = line_frags[1].split('\t')[1]
+                    report_dict[sample_split][header] = number
+            if i == 0:
+                headers = file_headers
+            else:
+                if file_headers != headers:
+                    raise ConfigError("The difference in output headers between STATS files "
+                                      "indicates an inconsistency in how files were processed by 'iu-merge-pairs'. "
+                                      "These files, for example, have a difference between their headers: "
+                                      "%s and %s" % (input[i], input[i - 1]))
+        u.store_dict_as_TAB_delimited_file(report_dict, output[0], headers=['sample + split'] + headers)
+
+
+if 'workflows/tRNAseq' in workflow.included[0]:
+    # check if all program dependencies are met. for this line to be effective,
+    # there should be an initial dry run step (which is the default behavior of
+    # the `WorkflowSuperClass`, so you are most likely covered).
+    M.check_workflow_program_dependencies(workflow, dont_raise=True)

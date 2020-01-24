@@ -12,6 +12,7 @@ from anvio.workflows.metagenomics import MetagenomicsWorkflow
 from anvio.workflows.pangenomics import PangenomicsWorkflow
 from anvio.workflows.metapangenomics import MetaPangenomicsWorkflow
 from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
+from anvio.workflows.tRNAseq import tRNASeqWorkflow
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -34,7 +35,8 @@ workflows_dict = {'contigs': ContigsDBWorkflow,
                   'metagenomics': MetagenomicsWorkflow,
                   'pangenomics': PangenomicsWorkflow,
                   'metapangenomics': MetaPangenomicsWorkflow,
-                  'phylogenomics': PhylogenomicsWorkflow}
+                  'phylogenomics': PhylogenomicsWorkflow,
+                  'tRNAseq': tRNASeqWorkflow}
 
 
 def main(args):
