@@ -31,6 +31,8 @@ class ComputeCoverage(object):
         self.run = run
         self.progress = progress
 
+        self.progress.new('Initializing')
+
         self.args = args
         self.sanity_check()
         self.f = self.init_output()
@@ -39,6 +41,8 @@ class ComputeCoverage(object):
 
         # lengths is {contig_name: contig_length} of each contig in the bam
         self.lengths = dict(zip(self.bam.references, self.bam.lengths))
+
+        self.progress.end()
 
 
     def sanity_check(self):
@@ -190,10 +194,6 @@ class ComputeCoverage(object):
                 self.run_contig_method_for_contig(contig_name, (contig_name, ))
 
         else: # m == 'pos'
-            d = {k: v for k, v in self.lengths.items() if k in contigs_of_interest}
-
-            self.run.warning("Warning, your file will contain %d lines" % sum(d.values()))
-
             for contig_name in contigs_of_interest:
                 self.run_pos_method_for_contig(contig_name, (contig_name, ))
 
@@ -203,7 +203,8 @@ class ComputeCoverage(object):
         filesnpaths.is_file_exists(args.contigs_of_interest)
         contigs_of_interest = [x.strip() for x in open(args.contigs_of_interest).readlines()]
 
-        self.is_contigs_in_bam(contigs_of_interest)
+        if not self.args.skip_contig_check:
+            self.is_contigs_in_bam(contigs_of_interest)
 
         return contigs_of_interest
 
@@ -220,8 +221,6 @@ class ComputeCoverage(object):
         m = self.args.method
         collection = self.setup_collection_txt()
 
-        d = {k: v for k, v in self.lengths.items() if k in collection['contig_name'].to_list()}
-
         self.progress.new('Processing', progress_total_items=len(collection['contig_name']))
 
         if m == 'bin':
@@ -230,7 +229,7 @@ class ComputeCoverage(object):
                 contig_coverages = np.zeros(len(contigs_in_bin))
 
                 # get a contig length array for weighting
-                contig_lengths = np.array([d[c] for c in contigs_in_bin])
+                contig_lengths = np.array([self.lengths[c] for c in contigs_in_bin])
 
                 for i, contig_name in enumerate(contigs_in_bin):
                     contig_coverages[i] = np.mean(self.get_nt_coverage_of_contig(contig_name))
@@ -245,8 +244,6 @@ class ComputeCoverage(object):
                     self.run_contig_method_for_contig(contig_name, (bin_name, contig_name))
 
         else: # m == 'pos'
-            self.run.warning("Warning, your file will contain %d lines" % sum(d.values()))
-
             for bin_name, contigs_in_bin in collection.groupby('bin')['contig_name']:
                 for i, contig_name in enumerate(contigs_in_bin):
                     self.run_pos_method_for_contig(contig_name, (bin_name, contig_name))
@@ -255,7 +252,9 @@ class ComputeCoverage(object):
     def setup_collection_txt(self):
         filesnpaths.is_file_exists(args.collection_txt)
         collection = pd.read_csv(args.collection_txt, sep='\t', names=('contig_name', 'bin'))
-        self.is_contigs_in_bam(collection['contig_name'])
+
+        if not self.args.skip_contigs_check:
+            self.is_contigs_in_bam(collection['contig_name'])
 
         return collection
 
@@ -348,6 +347,17 @@ if __name__ == '__main__':
         help = ("Output tab-delimited file path. Will overwrite existing files.")
     )
 
+    groupE = parser.add_argument_group(
+        'EXTRAS',
+        ("All the misfits")
+    )
+    groupE.add_argument(
+        '--skip-contigs-check',
+        action='store_true',
+        help = ("Checking to see that your collection text or contigs of interest file has correct "
+                "names can take a really long time if you have a large enough number of contigs. Use "
+                "this flag to forego checking, and find out the hard way.")
+    )
     args = anvio.get_args(parser)
 
     try:
