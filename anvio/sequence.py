@@ -175,20 +175,20 @@ class Coverage:
 
         if isinstance(contig_or_split, anvio.contigops.Split):
             contig_name = contig_or_split.parent
-            if not start: start = contig_or_split.start
-            if not end: end = contig_or_split.end
+            start = contig_or_split.start if not start else start
+            end = contig_or_split.end if not end else end
 
         elif isinstance(contig_or_split, anvio.contigops.Contig):
             contig_name = contig_or_split.name
-            if not start: start = 0
-            if not end: end = contig_or_split.length
+            start = 0 if not start else start
+            end = contig_or_split.length if not end else end
 
         elif isinstance(contig_or_split, str):
             contig_name = contig_or_split
             if contig_name not in bam.references:
                 raise ConfigError('Coverage.run :: Your contig %s was not found in the bam file' % contig_name)
-            if not start: start = 0
-            if not end: end = dict(zip(bam.references, bam.lengths))[contig_name]
+            start = 0 if not start else start
+            end = dict(zip(bam.references, bam.lengths))[contig_name] if not end else end
 
         else:
             raise ConfigError("Coverage.run :: You can't pass an object of type %s as contig_or_split" % type(contig_or_split))
