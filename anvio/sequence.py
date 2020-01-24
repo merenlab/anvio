@@ -207,14 +207,12 @@ class Coverage:
                 self.c[pileupcolumn.pos - start] = pileupcolumn.n
 
         with anvio.terminal.TimeCode(quiet=True) as new:
-            self.cc = pysamstats.load_coverage(
-                bam,
-                chrom=contig_name,
-                start=start,
-                end=end,
-                pad=True, 
-                fields=['reads_all']
-            )
+            # a coverage array the size of the defined range is allocated in memory
+            self.c = numpy.zeros(end - start).astype(int)
+
+            for read in bam.fetch(contig_name, start, end):
+                self.cc[read.reference_start:read.reference_end] += 1
+
 
         global test
         dt = old.time.total_seconds() - new.time.total_seconds()
