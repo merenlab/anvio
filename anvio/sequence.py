@@ -160,7 +160,7 @@ class Coverage:
 
         Parameters
         ==========
-        bam : pysam.Samfile
+        bam : pysam.Samfile (deprecated) or pysam.AlignmentFile
 
         contig_or_split : anvio.contigops.Split or anvio.contigops.Contig or str
             If Split object is passed, and `start` or `end` are None, they are automatically set to
