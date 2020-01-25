@@ -51,7 +51,7 @@ class TablesForTransferRNAs:
 
         # just to make sure we have what it takes to continue later:
         trnascandriver = trnascan_se.tRNAScanSE(self.args, skip_sanity_check=True)
-        trnascandriver.check_programs()
+        trnascandriver.check_programs(quiet=True)
 
         self.tmp_directory_path = filesnpaths.get_temp_directory_path()
 
