@@ -225,7 +225,7 @@ class TablesForTransferRNAs:
                                         'function': function_text,
                                         'e_value': 0.0}
 
-        gene_function_calls_table = TableForGeneFunctions(contigs_db_path, self.run, self.progress)
+        gene_function_calls_table = TableForGeneFunctions(contigs_db_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
         gene_function_calls_table.create(functions_dict)
 
 
@@ -236,6 +236,7 @@ class TablesForTransferRNAs:
         else:
             self.run.info_single("Due to the `--debug` flag, anvi'o did not remove the temoporary files "
                                  "directory (which is still at '%s')." % (self.tmp_directory_path), nl_before=1)
+
 
     def clean_tmp_directory(self):
         shutil.rmtree(self.tmp_directory_path)
