@@ -3,10 +3,7 @@
 
 '''Primitive classes for basic DNA sequence properties.'''
 
-test = []
-
 import numpy
-import pysamstats
 import collections
 
 from itertools import permutations
@@ -155,7 +152,7 @@ class Coverage:
         self.mean_Q2Q3 = 0.0
 
 
-    def run(self, bam, contig_or_split, start=None, end=None, ignore_orphans=False, max_coverage_depth=constants.max_depth_for_coverage):
+    def run(self, bam, contig_or_split, start=None, end=None, ignore_orphans=False):
         """Loop through the bam pileup and calculate coverage over a defined region of a contig or split
 
         Parameters
@@ -196,31 +193,11 @@ class Coverage:
         else:
             raise ConfigError("Coverage.run :: You can't pass an object of type %s as contig_or_split" % type(contig_or_split))
 
-        with anvio.terminal.TimeCode(quiet=True) as old:
-            # a coverage array the size of the defined range is allocated in memory
-            self.c = numpy.zeros(end - start).astype(int)
+        # a coverage array the size of the defined range is allocated in memory
+        self.c = numpy.zeros(end - start).astype(int)
 
-            for pileupcolumn in bam.pileup(contig_name, start, end, ignore_orphans=ignore_orphans, max_depth=max_coverage_depth):
-                if pileupcolumn.pos < start or pileupcolumn.pos >= end:
-                    continue
-
-                self.c[pileupcolumn.pos - start] = pileupcolumn.n
-
-        with anvio.terminal.TimeCode(quiet=True) as new:
-            # a coverage array the size of the defined range is allocated in memory
-            self.c = numpy.zeros(end - start).astype(int)
-
-            for read in bam.fetch(contig_name, start, end):
-                self.cc[read.reference_start:read.reference_end] += 1
-
-
-        global test
-        dt = old.time.total_seconds() - new.time.total_seconds()
-        print('')
-        test.append(dt)
-        print(f"{dt} seconds saved")
-        print(f"{sum(test)} total running seconds saved")
-        assert numpy.array_equal(self.cc, self.c)
+        for read in bam.fetch(contig_name, start, end):
+            self.c[read.reference_start:read.reference_end] += 1
 
         if len(self.c):
             try:

@@ -108,7 +108,7 @@ class Contig:
 
 
     def analyze_coverage(self, bam):
-        self.coverage.run(bam, self, ignore_orphans=self.ignore_orphans, max_coverage_depth=self.max_coverage_depth)
+        self.coverage.run(bam, self, ignore_orphans=self.ignore_orphans)
 
         for split in self.splits:
             split.coverage = Coverage()
