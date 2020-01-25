@@ -159,6 +159,12 @@ class TablesForTransferRNAs:
             entry['gene_name'] = aa_codon
             entry['e_value'] = entry['score']
             entry['gene_hmm_id'] = '-'
+            if entry['stop'] > entry['start']:
+                # so we are forward
+                entry['start'] = entry['start'] - 1 # setting the pythonic start.
+            else:
+                # so this one is reverse
+                entry['stop'] = entry['stop'] - 1
 
         for entry_id in entries_to_remove:
             search_results_dict.pop(entry_id)
