@@ -270,6 +270,9 @@ function drawArrows(_start, _stop) {
       if (gene.source == 'Ribosomal_RNAs') {
         color = 'firebrick';
       }
+      else if (gene.source == 'Transfer_RNAs') {
+        color = '#226ab2';
+      }
       else if (gene.functions !== null) {
         color = 'green';
       }
@@ -318,7 +321,7 @@ function drawArrows(_start, _stop) {
 
     $('[data-toggle="popover"]').on('shown.bs.popover', function (e) {
       var popover = $(e.target).data("bs.popover").$tip;
-      
+
       if ($(popover).css('top').charAt(0) === '-') {
         $(popover).css('top', '0px');
       }
