@@ -79,14 +79,14 @@ class tRNAScanSE:
             raise ConfigError("The cutoff score must be between 20 and 100.")
 
 
-    def check_programs(self):
+    def check_programs(self, quiet=False):
         utils.is_program_exists(self.program_name)
 
         output, ret_code = utils.get_command_output_from_shell('%s -h' % self.program_name)
-
         try:
             version_found = output.split(b'\n')[1].split()[1].split(b':')[0].lower().decode("utf-8")
-            self.run.info('%s version found' % self.program_name, version_found, mc="green", nl_after=1)
+            if not quiet:
+                self.run.info('%s version found' % self.program_name, version_found, mc="green", nl_after=1)
         except:
             version_found = 'Unknown'
             self.run.warning("Anvi'o failed to learn the version of %s installed on this system :/")
