@@ -1,11 +1,11 @@
 {
-    "version": "0.2.1",
+    "version": "3",
     "tree-type": "circlephylogram",
     "order-by": "tnf-cov:euclidean:ward",
     "current-view": "mean_coverage",
     "angle-min": "0",
     "angle-max": "270",
-    "tree-radius": "1312",
+    "tree-radius": "1500",
     "tree-height": "0",
     "tree-width": "0",
     "layer-margin": "15",
@@ -16,54 +16,32 @@
     "show-grid-for-bins": false,
     "grid-color": "#FFFFFF",
     "grid-width": "1",
-    "samples-order": null,
+    "samples-order": "custom",
     "max-font-size": "60",
     "optimize-speed": true,
     "show-bin-labels": true,
+    "begins-from-branch": true,
     "bin-labels-font-size": "128",
     "autorotate-bin-labels": true,
+    "estimate-taxonomy": false,
     "bin-labels-angle": "0",
-    "background-opacity": "0.3",
-    "max-font-size-label": "120",
+    "background-opacity": "0.15",
+    "max-font-size-label": "90",
     "draw-guide-lines": "no",
     "layer-order": [
         "__parent__",
-        "taxonomy",
         "length",
         "gc_content",
         "SAMPLE_01",
         "SAMPLE_02",
         "SAMPLE_03",
-        "hmmx_external_hmm_genes_ABC_tran",
-        "hmmx_external_hmm_genes_MFS_1",
-        "hmmx_Ribosomal_RNAs_Archaeal_16S_rRNA",
-        "hmmx_Ribosomal_RNAs_Archaeal_23S_rRNA",
-        "hmmx_Ribosomal_RNAs_Archaeal_5S_rRNA",
-        "hmmx_Ribosomal_RNAs_Archaeal_5_8S_rRNA",
-        "hmmx_Ribosomal_RNAs_Bacterial_16S_rRNA",
-        "hmmx_Ribosomal_RNAs_Bacterial_23S_rRNA",
-        "hmmx_Ribosomal_RNAs_Bacterial_5S_rRNA",
-        "hmmx_Ribosomal_RNAs_Eukaryotic_28S_rRNA",
-        "hmmx_Ribosomal_RNAs_Eukaryotic_5S_rRNA",
-        "hmmx_Ribosomal_RNAs_Eukaryotic_5_8S_rRNA",
-        "hmmx_Ribosomal_RNAs_Mitochondrial_12S_rRNA",
-        "hmmx_Ribosomal_RNAs_Mitochondrial_16S_rRNA"
+        "hmms_Ribosomal_RNAs",
+        "hmms_Transfer_RNAs",
+        "hmms_external_hmm_genes",
+        "taxonomy"
     ],
-    "categorical_data_colors": {
-        "taxonomy": {
-            "null": "#ffffff",
-            "Bifidobacterium": "#b3f296"
-        }
-    },
     "stack_bar_colors": {},
     "layers": {
-        "taxonomy": {
-            "color": "#000000",
-            "height": "30",
-            "margin": "15",
-            "type": "color",
-            "color-start": "#DDDDDD"
-        },
         "length": {
             "color": "#414141",
             "height": "80",
@@ -72,29 +50,29 @@
             "color-start": "#FFFFFF"
         },
         "gc_content": {
-            "color": "#004a0f",
+            "color": "#005203",
             "height": "180",
             "margin": "15",
-            "type": "bar",
-            "color-start": "#FFFFFF"
+            "type": "intensity",
+            "color-start": "#e8e8e8"
         },
         "SAMPLE_01": {
             "color": "#000000",
-            "height": "220",
+            "height": "250",
             "margin": "30",
             "type": "bar",
             "color-start": "#FFFFFF"
         },
         "SAMPLE_02": {
             "color": "#000000",
-            "height": "220",
+            "height": "250",
             "margin": "15",
             "type": "bar",
             "color-start": "#FFFFFF"
         },
         "SAMPLE_03": {
             "color": "#000000",
-            "height": "220",
+            "height": "250",
             "margin": "15",
             "type": "bar",
             "color-start": "#FFFFFF"
@@ -103,115 +81,37 @@
             "height": "50",
             "margin": "15"
         },
-        "hmmx_external_hmm_genes_ABC_tran": {
-            "color": "#420042",
-            "height": "20",
-            "margin": "5",
-            "type": "bar",
-            "color-start": "#FFFFFF"
-        },
-        "hmmx_external_hmm_genes_MFS_1": {
-            "color": "#420042",
-            "height": "20",
-            "margin": "5",
-            "type": "bar",
-            "color-start": "#FFFFFF"
-        },
-        "hmmx_Ribosomal_RNAs_Archaeal_16S_rRNA": {
+        "hmms_Ribosomal_RNAs": {
             "color": "#882222",
-            "height": "20",
-            "margin": "5",
-            "type": "bar",
-            "color-start": "#FFFFFF"
+            "height": "150",
+            "margin": "30",
+            "type": "intensity",
+            "color-start": "#FFDDDD"
         },
-        "hmmx_Ribosomal_RNAs_Archaeal_23S_rRNA": {
-            "color": "#882222",
-            "height": "20",
-            "margin": "5",
-            "type": "bar",
-            "color-start": "#FFFFFF"
+        "hmms_Transfer_RNAs": {
+            "color": "#226ab2",
+            "height": "150",
+            "margin": "15",
+            "type": "intensity",
+            "color-start": "#bfd9f3"
         },
-        "hmmx_Ribosomal_RNAs_Archaeal_5S_rRNA": {
-            "color": "#882222",
-            "height": "20",
-            "margin": "5",
-            "type": "bar",
-            "color-start": "#FFFFFF"
+        "hmms_external_hmm_genes": {
+            "color": "#3b003b",
+            "height": "150",
+            "margin": "15",
+            "type": "intensity",
+            "color-start": "#f5e1f5"
         },
-        "hmmx_Ribosomal_RNAs_Archaeal_5_8S_rRNA": {
-            "color": "#882222",
-            "height": "20",
-            "margin": "5",
-            "type": "bar",
-            "color-start": "#FFFFFF"
-        },
-        "hmmx_Ribosomal_RNAs_Bacterial_16S_rRNA": {
-            "color": "#882222",
-            "height": "20",
-            "margin": "5",
-            "type": "bar",
-            "color-start": "#FFFFFF"
-        },
-        "hmmx_Ribosomal_RNAs_Bacterial_23S_rRNA": {
-            "color": "#882222",
-            "height": "20",
-            "margin": "5",
-            "type": "bar",
-            "color-start": "#FFFFFF"
-        },
-        "hmmx_Ribosomal_RNAs_Bacterial_5S_rRNA": {
-            "color": "#882222",
-            "height": "20",
-            "margin": "5",
-            "type": "bar",
-            "color-start": "#FFFFFF"
-        },
-        "hmmx_Ribosomal_RNAs_Eukaryotic_28S_rRNA": {
-            "color": "#882222",
-            "height": "20",
-            "margin": "5",
-            "type": "bar",
-            "color-start": "#FFFFFF"
-        },
-        "hmmx_Ribosomal_RNAs_Eukaryotic_5S_rRNA": {
-            "color": "#882222",
-            "height": "20",
-            "margin": "5",
-            "type": "bar",
-            "color-start": "#FFFFFF"
-        },
-        "hmmx_Ribosomal_RNAs_Eukaryotic_5_8S_rRNA": {
-            "color": "#882222",
-            "height": "20",
-            "margin": "5",
-            "type": "bar",
-            "color-start": "#FFFFFF"
-        },
-        "hmmx_Ribosomal_RNAs_Mitochondrial_12S_rRNA": {
-            "color": "#882222",
-            "height": "20",
-            "margin": "5",
-            "type": "bar",
-            "color-start": "#FFFFFF"
-        },
-        "hmmx_Ribosomal_RNAs_Mitochondrial_16S_rRNA": {
-            "color": "#882222",
-            "height": "20",
-            "margin": "5",
-            "type": "bar",
-            "color-start": "#FFFFFF"
+        "taxonomy": {
+            "color": "#000000",
+            "height": "0",
+            "margin": "15",
+            "type": "color",
+            "color-start": "#DDDDDD"
         }
     },
     "views": {
         "mean_coverage": {
-            "taxonomy": {
-                "min": {
-                    "disabled": false
-                },
-                "max": {
-                    "disabled": false
-                }
-            },
             "length": {
                 "normalization": "none",
                 "min": {
@@ -275,19 +175,8 @@
                     "disabled": false
                 }
             },
-            "hmmx_external_hmm_genes_ABC_tran": {
-                "normalization": "none",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "1",
-                    "disabled": false
-                }
-            },
-            "hmmx_external_hmm_genes_MFS_1": {
-                "normalization": "none",
+            "hmms_Ribosomal_RNAs": {
+                "normalization": "sqrt",
                 "min": {
                     "value": "0",
                     "disabled": false
@@ -297,8 +186,8 @@
                     "disabled": false
                 }
             },
-            "hmmx_Ribosomal_RNAs_Archaeal_16S_rRNA": {
-                "normalization": "none",
+            "hmms_Transfer_RNAs": {
+                "normalization": "sqrt",
                 "min": {
                     "value": "0",
                     "disabled": false
@@ -308,230 +197,302 @@
                     "disabled": false
                 }
             },
-            "hmmx_Ribosomal_RNAs_Archaeal_23S_rRNA": {
-                "normalization": "none",
+            "hmms_external_hmm_genes": {
+                "normalization": "sqrt",
                 "min": {
                     "value": "0",
                     "disabled": false
                 },
                 "max": {
-                    "value": "0",
+                    "value": "1.4142135623730951",
                     "disabled": false
                 }
             },
-            "hmmx_Ribosomal_RNAs_Archaeal_5S_rRNA": {
-                "normalization": "none",
+            "taxonomy": {
                 "min": {
-                    "value": "0",
                     "disabled": false
                 },
                 "max": {
-                    "value": "0",
-                    "disabled": false
-                }
-            },
-            "hmmx_Ribosomal_RNAs_Archaeal_5_8S_rRNA": {
-                "normalization": "none",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "0",
-                    "disabled": false
-                }
-            },
-            "hmmx_Ribosomal_RNAs_Bacterial_16S_rRNA": {
-                "normalization": "none",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "0",
-                    "disabled": false
-                }
-            },
-            "hmmx_Ribosomal_RNAs_Bacterial_23S_rRNA": {
-                "normalization": "none",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "0",
-                    "disabled": false
-                }
-            },
-            "hmmx_Ribosomal_RNAs_Bacterial_5S_rRNA": {
-                "normalization": "none",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "0",
-                    "disabled": false
-                }
-            },
-            "hmmx_Ribosomal_RNAs_Eukaryotic_28S_rRNA": {
-                "normalization": "none",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "0",
-                    "disabled": false
-                }
-            },
-            "hmmx_Ribosomal_RNAs_Eukaryotic_5S_rRNA": {
-                "normalization": "none",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "0",
-                    "disabled": false
-                }
-            },
-            "hmmx_Ribosomal_RNAs_Eukaryotic_5_8S_rRNA": {
-                "normalization": "none",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "0",
-                    "disabled": false
-                }
-            },
-            "hmmx_Ribosomal_RNAs_Mitochondrial_12S_rRNA": {
-                "normalization": "none",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "0",
-                    "disabled": false
-                }
-            },
-            "hmmx_Ribosomal_RNAs_Mitochondrial_16S_rRNA": {
-                "normalization": "none",
-                "min": {
-                    "value": "0",
-                    "disabled": false
-                },
-                "max": {
-                    "value": "0",
                     "disabled": false
                 }
             }
         }
     },
     "samples-categorical-colors": {
-        "visits": {
-            "even": "#bdbdbd",
-            "odd": "#2b2b2b"
+        "default": {
+            "visits": {
+                "even": "#a0d8e5",
+                "odd": "#4a9dc9"
+            }
         }
     },
     "samples-stack-bar-colors": {
-        "bars!bar1;bar2;bar3": [
-            "#0095ff",
-            "#ff0000",
-            "#3ab800"
-        ]
+        "default": {
+            "bars!bar1;bar2;bar3": {
+                "bar1": "#a9f9dd",
+                "bar2": "#9c6cd4",
+                "bar3": "#f7d571"
+            }
+        }
     },
     "samples-edge-length-normalization": true,
     "samples-ignore-branch-length": false,
     "samples-tree-height": "400",
     "samples-layer-order": [
-        "num_SNVs_reported",
-        "total_reads_mapped",
-        "percent_mapped_reads",
-        "visits",
-        "bars!bar1;bar2;bar3"
+        {
+            "layer_name": "total_reads_mapped",
+            "group": "default"
+        },
+        {
+            "layer_name": "num_SNVs_reported",
+            "group": "default"
+        },
+        {
+            "layer_name": "percent_mapped_reads",
+            "group": "default"
+        },
+        {
+            "layer_name": "visits",
+            "group": "default"
+        },
+        {
+            "layer_name": "bars!bar1;bar2;bar3",
+            "group": "default"
+        },
+        {
+            "layer_name": "t_domain!Bacteria",
+            "group": "t_domain"
+        },
+        {
+            "layer_name": "t_order!Bifidobacteriales;Bacillales",
+            "group": "t_order"
+        },
+        {
+            "layer_name": "t_genus!Listeria;Bifidobacterium",
+            "group": "t_genus"
+        },
+        {
+            "layer_name": "t_species!Unknown_t_genus_Bifidobacterium;Unknown_t_genus_Listeria;Bifidobacterium_adolescentis",
+            "group": "t_species"
+        },
+        {
+            "layer_name": "t_class!Actinobacteria;Bacilli",
+            "group": "t_class"
+        },
+        {
+            "layer_name": "t_family!Bifidobacteriaceae;Listeriaceae",
+            "group": "t_family"
+        },
+        {
+            "layer_name": "t_phylum!Firmicutes;Actinobacteria",
+            "group": "t_phylum"
+        }
     ],
     "samples-layers": {
-        "num_SNVs_reported": {
-            "data-type": "numeric",
-            "height": 300,
-            "margin": 15,
-            "normalization": "none",
-            "color": "#570000",
-            "min": {
-                "value": 0,
-                "disabled": false
+        "default": {
+            "total_reads_mapped": {
+                "data-type": "numeric",
+                "height": 500,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#004c59",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 24870,
+                    "disabled": false
+                },
+                "type": "bar",
+                "color-start": "#EFEFEF"
             },
-            "max": {
-                "value": 34,
-                "disabled": false
+            "num_SNVs_reported": {
+                "data-type": "numeric",
+                "height": 500,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#96004b",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 34,
+                    "disabled": false
+                },
+                "type": "bar",
+                "color-start": "#EFEFEF"
             },
-            "type": "bar",
-            "color-start": "#FFFFFF"
-        },
-        "total_reads_mapped": {
-            "data-type": "numeric",
-            "height": 300,
-            "margin": 15,
-            "normalization": "none",
-            "color": "#800080",
-            "min": {
-                "value": 0,
-                "disabled": false
+            "percent_mapped_reads": {
+                "data-type": "numeric",
+                "height": 500,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#540054",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 95,
+                    "disabled": false
+                },
+                "type": "bar",
+                "color-start": "#EFEFEF"
             },
-            "max": {
-                "value": 24870,
-                "disabled": false
+            "visits": {
+                "data-type": "categorical",
+                "height": 80,
+                "margin": 15,
+                "min": {
+                    "value": null,
+                    "disabled": false
+                },
+                "max": {
+                    "value": null,
+                    "disabled": false
+                }
             },
-            "type": "bar",
-            "color-start": "#FFFFFF"
-        },
-        "percent_mapped_reads": {
-            "data-type": "numeric",
-            "height": 300,
-            "margin": 15,
-            "normalization": "none",
-            "color": "#6dc732",
-            "min": {
-                "value": 0,
-                "disabled": false
-            },
-            "max": {
-                "value": 95,
-                "disabled": false
-            },
-            "type": "bar",
-            "color-start": "#FFFFFF"
-        },
-        "visits": {
-            "data-type": "categorical",
-            "height": 80,
-            "margin": 15,
-            "min": {
-                "value": null,
-                "disabled": false
-            },
-            "max": {
-                "value": null,
-                "disabled": false
+            "bars!bar1;bar2;bar3": {
+                "data-type": "stack-bar",
+                "height": 500,
+                "margin": 15,
+                "normalization": "none",
+                "min": {
+                    "value": null,
+                    "disabled": false
+                },
+                "max": {
+                    "value": null,
+                    "disabled": false
+                }
             }
         },
-        "bars!bar1;bar2;bar3": {
-            "data-type": "stack-bar",
-            "height": 500,
-            "margin": 15,
-            "normalization": "none",
-            "min": {
-                "value": null,
-                "disabled": false
-            },
-            "max": {
-                "value": null,
-                "disabled": false
+        "t_domain": {
+            "t_domain!Bacteria": {
+                "data-type": "numeric",
+                "height": 500,
+                "margin": 15,
+                "normalization": "none",
+                "color": "#919191",
+                "min": {
+                    "value": 0,
+                    "disabled": false
+                },
+                "max": {
+                    "value": 9155,
+                    "disabled": false
+                },
+                "type": "bar",
+                "color-start": "#EFEFEF"
+            }
+        },
+        "t_order": {
+            "t_order!Bifidobacteriales;Bacillales": {
+                "data-type": "stack-bar",
+                "height": 500,
+                "margin": 15,
+                "normalization": "none",
+                "min": {
+                    "value": null,
+                    "disabled": false
+                },
+                "max": {
+                    "value": null,
+                    "disabled": false
+                }
+            }
+        },
+        "t_genus": {
+            "t_genus!Listeria;Bifidobacterium": {
+                "data-type": "stack-bar",
+                "height": 500,
+                "margin": 15,
+                "normalization": "none",
+                "min": {
+                    "value": null,
+                    "disabled": false
+                },
+                "max": {
+                    "value": null,
+                    "disabled": false
+                }
+            }
+        },
+        "t_species": {
+            "t_species!Unknown_t_genus_Bifidobacterium;Unknown_t_genus_Listeria;Bifidobacterium_adolescentis": {
+                "data-type": "stack-bar",
+                "height": 500,
+                "margin": 15,
+                "normalization": "none",
+                "min": {
+                    "value": null,
+                    "disabled": false
+                },
+                "max": {
+                    "value": null,
+                    "disabled": false
+                }
+            }
+        },
+        "t_class": {
+            "t_class!Actinobacteria;Bacilli": {
+                "data-type": "stack-bar",
+                "height": 500,
+                "margin": 15,
+                "normalization": "none",
+                "min": {
+                    "value": null,
+                    "disabled": false
+                },
+                "max": {
+                    "value": null,
+                    "disabled": false
+                }
+            }
+        },
+        "t_family": {
+            "t_family!Bifidobacteriaceae;Listeriaceae": {
+                "data-type": "stack-bar",
+                "height": 500,
+                "margin": 15,
+                "normalization": "none",
+                "min": {
+                    "value": null,
+                    "disabled": false
+                },
+                "max": {
+                    "value": null,
+                    "disabled": false
+                }
+            }
+        },
+        "t_phylum": {
+            "t_phylum!Firmicutes;Actinobacteria": {
+                "data-type": "stack-bar",
+                "height": 500,
+                "margin": 15,
+                "normalization": "none",
+                "min": {
+                    "value": null,
+                    "disabled": false
+                },
+                "max": {
+                    "value": null,
+                    "disabled": false
+                }
             }
         }
+    },
+    "samples-groups": {
+        "default": true,
+        "t_class": false,
+        "t_domain": false,
+        "t_family": false,
+        "t_genus": false,
+        "t_order": false,
+        "t_phylum": false,
+        "t_species": false
     }
 }
