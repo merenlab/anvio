@@ -72,8 +72,7 @@ anvi-show-collections-and-bins -p $output_dir/SAMPLES-MERGED/PROFILE.db
 INFO "Firing up the interactive interface"
 # fire up the browser to show how does the merged samples look like.
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
-                 -c $output_dir/CONTIGS.db \
-                 --split-hmm-layers
+                 -c $output_dir/CONTIGS.db
 
 INFO "Summarizing CONCOCT results"
 anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED-SUMMARY -C 'CONCOCT' --init-gene-coverages
