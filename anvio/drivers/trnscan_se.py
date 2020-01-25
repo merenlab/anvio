@@ -130,6 +130,7 @@ class tRNAScanSE:
                 output.readline()
 
             entry_no = 0
+            num_introns = 0
             while 1:
                 self.progress.update(entry_no)
                 line = output.readline().strip('\n')
@@ -169,6 +170,7 @@ class tRNAScanSE:
         self.progress.end()
 
         self.run.info("Num tRNA genes parsed", entry_no)
+        self.run.info("Num tRNA genes with introns", num_introns, nl_after=1)
 
         return d
 
