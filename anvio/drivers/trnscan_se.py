@@ -153,7 +153,18 @@ class tRNAScanSE:
                                'stop': int(fields[3]),
                                'amino_acid': fields[4],
                                'anticodon': fields[5],
+                               'intron_start': int(fields[6]),
+                               'intron_end': int(fields[7]),
                                'score': float(fields[8])}
+
+                if d[entry_no]['intron_start']:
+                    num_introns += 1
+                    if d[entry_no]['start'] < d[entry_no]['stop']:
+                        d[entry_no]['intron_start'] = int(fields[6]) - d[entry_no]['start']
+                        d[entry_no]['intron_end'] = int(fields[7]) - int(fields[6])
+                    else:
+                        d[entry_no]['intron_start'] = d[entry_no]['start'] - int(fields[6])
+                        d[entry_no]['intron_end'] = int(fields[6]) - int(fields[7]) 
 
         self.progress.end()
 
