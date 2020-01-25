@@ -74,16 +74,23 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description=__description__)
 
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parser.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))
-    parser.add_argument(*anvio.A('installed-hmm-profile'), **anvio.K('installed-hmm-profile', {'help': "When you run this\
+    groupA = parser.add_argument_group("DB", "An anvi'o contigs adtabase to populate with HMM hits")
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+
+    groupB = parser.add_argument_group("HMM OPTIONS", "If you have your own HMMs, or if you would like to run only a set of "
+                                                      "default anvi'o HMM profiles rather than running them all, this is "
+                                                      "your stop.")
+    groupB.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))
+    groupB.add_argument(*anvio.A('installed-hmm-profile'), **anvio.K('installed-hmm-profile', {'help': "When you run this\
                                   program without any parameter, it runs all %d HMM profiles installed on your system. If\
                                   you want only a specific one to run, you can select it by using this parameter. These\
                                   are the currently available ones: %s." % \
                                                 (len(available_hmm_sources),
                                                  ', '.join(['"%s" (type: %s)' % (s, hmm_data.sources[s]['kind']) \
                                                                                     for s in available_hmm_sources]))}))
-    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupD = parser.add_argument_group("PERFORMANCE", "Stuff everyone forgets to set and then get upset with how slow "
+                                                      "science goes.")
+    groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
     args = anvio.get_args(parser)
 
