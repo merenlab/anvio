@@ -1460,6 +1460,12 @@ D = {
              'help': "Minimum score to assume a hit comes from a proper tRNA gene (passed to the tRNAScan-SE). "
                      "The default is %(default)d. It can get any value between 0-100."}
                 ),
+    'skip-scanning-trnas': (
+            ['--skip-scanning-trnas'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Don't scan tRNAs. Leave them be."}
+                ),
     'output-db-path': (
             ['-o', '--output-db-path'],
             {'metavar': 'DB_FILE_PATH',
