@@ -215,7 +215,9 @@ class TablesForTransferRNAs:
         for entry_id in search_results_dict:
             entry = search_results_dict[entry_id]
 
-            function_text = 'tRNA gene for amino acid %s (codon: %s; anticodon:%s; score:%.1f)' % (entry['amino_acid'], codon, entry['anticodon'], entry['score'])
+            function_text = 'tRNA gene for amino acid %s (codon: %s; anticodon:%s; score:%.1f; intron_start:%d; intron_end:%d)' \
+                                            % (entry['amino_acid'], codon, entry['anticodon'], \
+                                               entry['score'], entry['intron_start'], entry['intron_end'])
 
             functions_dict[entry_id] = {'gene_callers_id': entry['gene_callers_id'],
                                         'source': self.source_name,
