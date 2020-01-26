@@ -152,7 +152,7 @@ class Coverage:
         self.mean_Q2Q3 = 0.0
 
 
-    def run(self, bam, contig_or_split, start=None, end=None, ignore_orphans=False):
+    def run(self, bam, contig_or_split, start=None, end=None, method='approximate', **kwargs):
         """Loop through the bam pileup and calculate coverage over a defined region of a contig or split
 
         Parameters
@@ -194,10 +194,14 @@ class Coverage:
             raise ConfigError("Coverage.run :: You can't pass an object of type %s as contig_or_split" % type(contig_or_split))
 
         # a coverage array the size of the defined range is allocated in memory
-        self.c = numpy.zeros(end - start).astype(int)
+        c = numpy.zeros(end - start).astype(int)
 
-        for read in bam.fetch(contig_name, start, end):
-            self.c[read.reference_start:read.reference_end] += 1
+        if method == 'approximate':
+            self.c = self._approximate_routine(c, bam, contig_name, start, end)
+        elif method == 'accurate':
+            self.c = self._accurate_routine(c, bam, contig_name, start, end)
+        elif method == 'accurate2':
+            self.c = self._accurate_routine2(c, bam, contig_name, start, end, **kwargs)
 
         if len(self.c):
             try:
@@ -205,6 +209,43 @@ class Coverage:
             except AttributeError:
                 pass
             self.process_c(self.c)
+
+
+    def _approximate_routine(self, c, bam, contig_name, start, end):
+        for read in bam.fetch(contig_name, start, end):
+            c[read.reference_start:read.reference_end] += 1
+
+        return c
+
+
+    def _accurate_routine(self, c, bam, contig_name, start, end):
+        """Routine that accounts for gaps in the alignment
+
+        Notes
+        =====
+        - This strategy was also considered, but is much slower because it uses fancy-indexing
+          https://jakevdp.github.io/PythonDataScienceHandbook/02.07-fancy-indexing.html:
+
+          for read in bam.fetch(contig_name, start, end):
+              r = read.get_reference_positions()
+              c[r] += 1
+        """
+
+        for read in bam.fetch(contig_name, start, end):
+            for block in read.get_blocks():
+                c[block[0]:block[1]] += 1
+
+        return c
+
+
+    def _accurate_routine2(self, c, bam, contig_name, start, end, ignore_orphans):
+        for pileupcolumn in bam.pileup(contig_name, start, end, ignore_orphans=ignore_orphans):
+            if pileupcolumn.pos < start or pileupcolumn.pos >= end:
+                continue
+
+            c[pileupcolumn.pos - start] = pileupcolumn.n
+
+        return c
 
 
     def process_c(self, c):
