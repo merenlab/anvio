@@ -152,7 +152,7 @@ class Coverage:
         self.mean_Q2Q3 = 0.0
 
 
-    def run(self, bam, contig_or_split, start=None, end=None, method='approximate', **kwargs):
+    def run(self, bam, contig_or_split, start=None, end=None, method='accurate', **kwargs):
         """Loop through the bam pileup and calculate coverage over a defined region of a contig or split
 
         Parameters
@@ -171,6 +171,10 @@ class Coverage:
         end : int
             The index end of where coverage is calculated. Relative to the contig, even when
             `contig_or_split` is a Split object.
+
+        method : string
+            How do you want to calculate? Options: ('accurate', 'approximate'). 'accurate' accounts
+            for gaps in the alignment, 'approximate' does not.
         """
 
         if isinstance(contig_or_split, anvio.contigops.Split):
@@ -200,8 +204,8 @@ class Coverage:
             self.c = self._approximate_routine(c, bam, contig_name, start, end)
         elif method == 'accurate':
             self.c = self._accurate_routine(c, bam, contig_name, start, end)
-        elif method == 'accurate2':
-            self.c = self._accurate_routine2(c, bam, contig_name, start, end, **kwargs)
+        else:
+            raise ConfigError("Coverage :: %s is not a valid method.")
 
         if len(self.c):
             try:
@@ -234,16 +238,6 @@ class Coverage:
         for read in bam.fetch(contig_name, start, end):
             for block in read.get_blocks():
                 c[block[0]:block[1]] += 1
-
-        return c
-
-
-    def _accurate_routine2(self, c, bam, contig_name, start, end, ignore_orphans):
-        for pileupcolumn in bam.pileup(contig_name, start, end, ignore_orphans=ignore_orphans):
-            if pileupcolumn.pos < start or pileupcolumn.pos >= end:
-                continue
-
-            c[pileupcolumn.pos - start] = pileupcolumn.n
 
         return c
 
