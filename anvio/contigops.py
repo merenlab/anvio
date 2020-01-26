@@ -131,17 +131,33 @@ class Contig:
         x = anvio.terminal.compare_times(x)
         print(x)
 
-
         self.coverage.run(bam, self, method='accurate2', ignore_orphans=self.ignore_orphans)
         c = self.coverage.c
-        self.coverage.run(bam, self, method='approximate')
+        self.coverage.run(bam, self, method='accurate')
         cc = self.coverage.c
-        assert numpy.array_equal(c, cc)
 
         for split in self.splits:
             split.coverage = Coverage()
             split.coverage.c = self.coverage.c[split.start:split.end]
             split.coverage.process_c(split.coverage.c)
+
+            if split.name == 'cluster_000005_CACHEF01_000000000007_split_00001':
+                c_split = c[split.start:split.end]
+                cc_split = cc[split.start:split.end]
+                print('asdfasdfasdf')
+                print('asdfasdfasdf')
+                print('asdfasdfasdf')
+                print('asdfasdfasdf')
+
+                print(len(numpy.nonzero(c_split - cc_split)[0]))
+                print(numpy.sum(c_split - cc_split))
+                print(numpy.nonzero(c_split - cc_split))
+                print(c_split[numpy.nonzero(c_split - cc_split)[0][0]])
+                print(cc_split[numpy.nonzero(c_split - cc_split)[0][0]])
+                print('asdfasdfasdf')
+                print('asdfasdfasdf')
+                print('asdfasdfasdf')
+                print('asdfasdfasdf')
 
 
     def analyze_auxiliary(self, bam):
