@@ -108,7 +108,35 @@ class Contig:
 
 
     def analyze_coverage(self, bam):
-        self.coverage.run(bam, self, ignore_orphans=self.ignore_orphans)
+        x = [
+            (
+                'oldschool',
+                self.coverage.run,
+                [bam, self],
+                {'method': 'accurate2', 'ignore_orphans':self.ignore_orphans}
+            ),
+            (
+                'accurate',
+                self.coverage.run,
+                [bam, self],
+                {'method': 'accurate'}
+            ),
+            (
+                'approximate',
+                self.coverage.run,
+                [bam, self],
+                {'method': 'approximate'}
+            ),
+        ]
+        x = anvio.terminal.compare_times(x)
+        print(x)
+
+
+        self.coverage.run(bam, self, method='accurate2', ignore_orphans=self.ignore_orphans)
+        c = self.coverage.c
+        self.coverage.run(bam, self, method='approximate')
+        cc = self.coverage.c
+        assert numpy.array_equal(c, cc)
 
         for split in self.splits:
             split.coverage = Coverage()
