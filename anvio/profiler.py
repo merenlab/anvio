@@ -673,7 +673,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         last_memory_update = int(time.time())
 
         self.progress.update('contigs are being processed ...')
-        self.progress.increment(recieved_contigs)
         while recieved_contigs < self.num_contigs:
             try:
                 contig = output_queue.get()
@@ -691,6 +690,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     memory_usage = utils.get_total_memory_usage()
                     last_memory_update = int(time.time())
 
+                self.progress.increment(recieved_contigs)
                 self.progress.update('%d of %d contigs ⚙  / MEM ☠️  %s' % \
                             (recieved_contigs, self.num_contigs, memory_usage or '??'))
 
