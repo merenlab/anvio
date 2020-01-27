@@ -254,14 +254,6 @@ class KofamSetup(KofamContext):
                             We have removed those HMM profiles from the final database. You can find them under the directory '%s'."
                             % (len(no_data_file_list), self.orphan_data_dir))
 
-        # report orphan files
-        self.run.warning("Please note that while anvi'o was building your databases, she found %d \
-                        ko_fam entries that did not have any matching HMM profiles, and another %d of them \
-                        that did not have any threshold to remove weak hits. We have removed those %d HMM \
-                        profiles from the final database. You can find entries for each of these categories under the directory '%s'."
-                        % (len(no_kofam_file_list), len(no_threshold_file_list), len(no_kofam_file_list) + len(no_threshold_file_list), self.orphan_data_dir))
-
-
 
     def run_hmmpress(self):
         """This function concatenates the Kofam profiles and runs hmmpress on them."""
