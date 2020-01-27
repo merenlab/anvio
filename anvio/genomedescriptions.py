@@ -499,4 +499,6 @@ class GenomeDescriptions(object):
                               "contain no gene calls into a genomes, hence, we are going to stop here and ask you to remove these "
                               "genomes from your analysis first: %s. If you think this is a dumb thing to do, and they should be "
                               "in the genomes storage for reasons you know and we don't, please get in touch with us, and we will "
-                              "be happy to reconsider." % (len(genomes_with_no_gene_calls), len(self.genomes), ', '.join(genomes_with_no_gene_calls)))
+                              "be happy to reconsider. If you think this is happening because you didn't set the right gene caller "
+                              "you can always take a look at the gene caller sources in a given contigs database by running the "
+                              "program `anvi-db-info`" % (len(genomes_with_no_gene_calls), len(self.genomes), ', '.join(genomes_with_no_gene_calls)))
