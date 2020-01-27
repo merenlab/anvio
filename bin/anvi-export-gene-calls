@@ -5,7 +5,6 @@ import sys
 import pandas as pd
 
 import anvio
-import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -40,16 +39,7 @@ def main(args):
     utils.is_contigs_db(args.contigs_db)
 
     if args.list_gene_callers:
-        gene_caller_sources = dbops.ContigsDatabase(args.contigs_db).db.get_frequencies_of_values_from_a_column(t.genes_in_contigs_table_name, 'source')
-
-        run.warning(None, header="AVAILABLE GENE CALLERS", lc="green")
-
-        if not len(gene_caller_sources):
-            run.info_single("This contigs db does not have any gene calls :/")
-        else:
-            for gene_caller_source, num_genes in gene_caller_sources[::-1]:
-                run.info_single("'%s' (%s gene calls)" % (gene_caller_source, pp(num_genes)))
-
+        dbops.ContigsDatabase(args.contigs_db).list_gene_caller_sources()
         sys.exit()
 
     if not args.output_file:
