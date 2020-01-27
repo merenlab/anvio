@@ -3344,6 +3344,7 @@ class ContigsDatabase:
                                   "fire, and try whatever you were trying before you got this error one more time with a "
                                   "proper contigs database. End of sad news. Bye now." % self.db_path)
 
+            self.meta['gene_callers'] = self.db.get_frequencies_of_values_from_a_column(t.genes_in_contigs_table_name, 'source')[::-1]
             self.meta['gene_function_sources'] = [s.strip() for s in self.meta['gene_function_sources'].split(',')] if self.meta['gene_function_sources'] else None
 
             if 'creation_date' not in self.meta:
@@ -3434,6 +3435,19 @@ class ContigsDatabase:
                 }
 
         self.remove_data_from_db(tables_dict)
+
+
+    def list_gene_caller_sources(self):
+        run.warning(None, header="AVAILABLE GENE CALLERS", lc="green")
+
+        gene_caller_sources = self.meta['gene_callers']
+
+        if not len(gene_caller_sources):
+            self.run.info_single("This contigs db does not have any gene calls :/")
+        else:
+            for gene_caller_source, num_genes in gene_caller_sources:
+                self.run.info_single("'%s' (%s gene calls)" % (gene_caller_source, pp(num_genes)),
+                                     nl_after = 1 if gene_caller_source == gene_caller_sources[-1][0] else 0)
 
 
     def remove_data_from_db(self, tables_dict):
