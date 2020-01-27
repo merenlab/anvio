@@ -4,10 +4,13 @@
    from contigs and splits. Also includes classes to deal with external
    contig data such as GenbankToAnvio."""
 
+test = 0
+
 import os
 import re
 import io
 import gzip
+import numpy
 import string
 import argparse
 
@@ -116,7 +119,6 @@ class Contig:
 
 
     def analyze_auxiliary(self, bam):
-        counter = 1
         for split in self.splits:
             split.auxiliary = Auxiliary(split,
                                         bam,
@@ -125,8 +127,6 @@ class Contig:
                                         report_variability_full=self.report_variability_full,
                                         ignore_orphans=self.ignore_orphans,
                                         max_coverage_depth=self.max_coverage_depth)
-
-            counter += 1
 
 
 class Split:
@@ -175,19 +175,113 @@ class Auxiliary:
         self.ignore_orphans = ignore_orphans
         self.max_coverage_depth = max_coverage_depth
 
+        self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
+
+        x = [
+            ('fast', self.run2, (bam, ), {}),
+            ('fast2', self.run3, (bam, ), {}),
+            ('slow', self.run, (bam, ), {}),
+        ]
+        print(anvio.terminal.compare_times(x))
+
         self.run(bam)
+
+
+    def run3(self, bam):
+        start, end = self.split.start, self.split.end
+
+        # make an array with as many rows as there are nucleotides in the split, and as many rows as
+        # there are nucleotide types. Each nucleotide (A, C, T, G, (maybe more...)) gets its own row
+        # which is defined by the self.nt_to_array_index dictionary
+        nt_array_shape = (len(constants.nucleotides), end-start)
+        nt_array = numpy.zeros(nt_array_shape)
+
+        for read in bam.fetch(self.split.parent, start, end):
+            read_start = read.reference_start
+            aligned_positions = read.get_reference_positions()
+
+            # `sequence` is the read sequence with soft clipping removed, but it it is otherwise
+            # 'unaligned' to the reference. To align it to specific positions in the reference we
+            # have to parse the cigar string to build `aligned_sequence`, which gives us the base
+            # contributed by this read at each of its aligned positions, `aligned_positions`
+            # read up on cigar operations here:
+            # https://pysam.readthedocs.io/en/latest/api.html#pysam.AlignedSegment.cigartuples
+            sequence = read.query_alignment_sequence
+
+            counter = 0
+            for operation, length in read.cigartuples:
+                if operation == 0:
+                    for idx in range(read_start + counter, read_start + counter + length - 1):
+                        nt = sequence[counter]
+                        nt_array[self.nt_to_array_index[nt], idx] += 1
+                        counter += 1
+                elif operation == 1:
+                    # there is an insertion in the read
+                    counter += length
+                elif operation == 2:
+                    # there is a gap in the read
+                    pass
+                else:
+                    # FIXME
+                    pass
+
+
+    def run2(self, bam):
+        start, end = self.split.start, self.split.end
+
+        # make an array with as many rows as there are nucleotides in the split, and as many rows as
+        # there are nucleotide types. Each nucleotide (A, C, T, G, (maybe more...)) gets its own row
+        # which is defined by the self.nt_to_array_index dictionary
+        nt_array_shape = (len(constants.nucleotides), end-start)
+        nt_array = numpy.zeros(nt_array_shape)
+
+        for read in bam.fetch(self.split.parent, start, end):
+            read_start = read.reference_start
+            aligned_positions = read.get_reference_positions()
+
+            # `sequence` is the read sequence with soft clipping removed, but it it is otherwise
+            # 'unaligned' to the reference. To align it to specific positions in the reference we
+            # have to parse the cigar string to build `aligned_sequence`, which gives us the base
+            # contributed by this read at each of its aligned positions, `aligned_positions`.
+            # read up on cigar operations here:
+            # https://pysam.readthedocs.io/en/latest/api.html#pysam.AlignedSegment.cigartuples
+            sequence = read.query_alignment_sequence
+
+            aligned_sequence, counter = '', 0
+            for operation, length in read.cigartuples:
+                if operation == 0:
+                    # there is a mapping segment
+                    aligned_sequence += sequence[counter:(counter + length)]
+                    counter += length
+                elif operation == 1:
+                    # there is an insertion in the read
+                    counter += length
+                elif operation == 2:
+                    # there is a gap in the read
+                    pass
+                else:
+                    # FIXME
+                    pass
+
+            aligned_sequence_as_index = [self.nt_to_array_index[nt] for nt in aligned_sequence]
+            for seq, pos in zip(aligned_sequence_as_index, aligned_positions):
+                nt_array[seq, pos] += 1
 
 
     def run(self, bam):
         ratios = []
 
         for pileupcolumn in bam.pileup(self.split.parent, self.split.start, self.split.end,
-                                    ignore_orphans=self.ignore_orphans, max_depth=self.max_coverage_depth):
+                                       ignore_orphans=self.ignore_orphans, max_depth=self.max_coverage_depth):
 
             pos_in_contig = pileupcolumn.pos
             if pos_in_contig < self.split.start or pos_in_contig >= self.split.end:
                 continue
 
+            # NOTES
+            # - pileupread.alignment returns AlignedSegment object (ouch)
+            # - valid_nts is a list of the nts at pileupread.query_position with length equal to coverage
+            # - ColumnProfile takes ''.join(valid_nts) and a position
             valid_nts = [pileupread.alignment.seq[pileupread.query_position] for pileupread in pileupcolumn.pileups if not pileupread.is_del and not pileupread.is_refskip]
 
             coverage = len(valid_nts)

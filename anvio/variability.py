@@ -57,7 +57,7 @@ def get_competing_items(reference, items_frequency_tuples_list=[]):
 
        This function will return None if there is no varaition and the most frequent
        item is equal to the reference. But will NOT return None if there is no
-       variation AND the most frequence item is different than the reference.
+       variation AND the most frequent item is different than the reference.
 
        `items_frequency_tuples_list` MUST BE SORTED & should look like this:
 
