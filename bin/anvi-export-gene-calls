@@ -27,6 +27,7 @@ __description__ = "Export gene calls from an anvi'o contigs database."
 
 run = terminal.Run()
 progress = terminal.Progress()
+pp = terminal.pretty_print
 
 
 def get_aa_seq_dict(contigs_db, gene_caller_ids):
@@ -37,6 +38,19 @@ def get_aa_seq_dict(contigs_db, gene_caller_ids):
 
 def main(args):
     utils.is_contigs_db(args.contigs_db)
+
+    if args.list_gene_callers:
+        gene_caller_sources = dbops.ContigsDatabase(args.contigs_db).db.get_frequencies_of_values_from_a_column(t.genes_in_contigs_table_name, 'source')
+
+        run.warning(None, header="AVAILABLE GENE CALLERS", lc="green")
+
+        if not len(gene_caller_sources):
+            run.info_single("This contigs db does not have any gene calls :/")
+        else:
+            for gene_caller_source, num_genes in gene_caller_sources[::-1]:
+                run.info_single("'%s' (%s gene calls)" % (gene_caller_source, pp(num_genes)))
+
+        sys.exit()
 
     if not args.output_file:
         raise ConfigError("You should provide an output file name so anvi'o does not have to make up a silly "
@@ -52,10 +66,6 @@ def main(args):
     # convert gene calls initialized in ContigsSuperclass to dataframe
     gene_calls = pd.DataFrame(contigs_db.genes_in_contigs_dict).T
     available_sources = gene_calls['source'].unique()
-
-    if args.list_gene_callers:
-        run.info_single('Available gene calls are: [%s]' % ','.join(available_sources), nl_before=1)
-        sys.exit()
 
     if not args.gene_caller:
         raise ConfigError("Please provide one or more comma-separated gene callers (--gene-caller). Use "
