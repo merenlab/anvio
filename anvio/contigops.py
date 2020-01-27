@@ -8,7 +8,6 @@ import os
 import re
 import io
 import gzip
-import numpy
 import string
 import argparse
 
@@ -36,9 +35,9 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
+
 OK_CHARS_FOR_ORGANISM_NAME = string.ascii_letters + string.digits + '_'
 OK_CHARS_FOR_ACCESSION = OK_CHARS_FOR_ORGANISM_NAME
-
 
 variability_test_class_default = VariablityTestFactory(params={'b': 2, 'm': 1.45, 'c': 0.05})
 variability_test_class_null = VariablityTestFactory(params=None) # get everything for every coverage level
