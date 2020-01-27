@@ -347,6 +347,12 @@ class DB:
         return response.fetchall()
 
 
+    def get_frequencies_of_values_from_a_column(self, table_name, column_name):
+        response = self._exec('''select %s, COUNT(*) from %s group by %s''' % (column_name, table_name, column_name))
+
+        return response.fetchall()
+
+
     def get_table_column_types(self, table_name):
         response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
         return [t[2] for t in response.fetchall()]
