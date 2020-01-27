@@ -78,6 +78,17 @@ class DatabaseInfo:
                             "hate you and want you to fail. So please be extremely careful changing any "
                             "of these values.", mc='red', nl_before=1)
 
+        # It wouldn't hurt to print out some DB specific information?
+        if self.db_type == 'contigs':
+            # try-excepting here since this program is supposed to be able to run even on
+            # broken databases. so if the following code cause issues because the DB is broken
+            # this program shouldn't crash.
+            try:
+                dbops.ContigsDatabase(self.db_path).list_gene_caller_sources()
+            except:
+                pass
+
+
     def get_db_self(self):
         try:
             database = db.DB(self.db_path, None, ignore_version=True)
