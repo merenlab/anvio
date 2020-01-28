@@ -32,7 +32,7 @@ import anvio.fastalib as u
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.terminal import Run, Progress, SuppressAllOutput, get_date
+from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequence import Composition
 
@@ -1110,6 +1110,54 @@ def get_time_to_date(local_time, fmt='%Y-%m-%d %H:%M:%S'):
         raise ConfigError("utils::get_time_to_date is called with bad local_time.")
 
     return time.strftime(fmt, time.localtime(local_time))
+
+
+def compare_times(calls, as_matrix=False, as_datetime=False):
+    """Compare times between function calls
+
+    Parameters
+    ==========
+    calls : list of tuples
+        Each element should be a (name, function, args, kwargs) tuples. If there are no args or
+        kwargs, the element should look like (name, function, [], {})
+
+    as_matrix : bool, False
+        If True, results are output as a pandas matrix, where each element is a time difference between
+        calls. Otherwise, a dictionary is returned
+
+    as_datetime : bool, False
+        If True, times are datetime objects (by default they are floats [seconds])
+
+    Returns
+    =======
+    times : pd.DataFrame or dict
+        If as_matrix, pd.DataFrame is returned, where times[i, j] is how much faster i is than j.
+        Otherwise, dictionary of {name: time} is returned
+    """
+
+    call_times = []
+    names = []
+    for call in calls:
+        name, function, args, kwargs = call
+        names.append(name)
+        with TimeCode(quiet=True) as t:
+            function(*args, **kwargs)
+
+        call_times.append(t.time.total_seconds() if not as_datetime else t.time)
+
+    if not as_matrix:
+        return dict(zip(names, call_times))
+
+    matrix = []
+    for i, time in enumerate(call_times):
+        row = []
+
+        for j, time in enumerate(call_times):
+            row.append(call_times[j] - call_times[i] if i > j else 'NA')
+
+        matrix.append(row)
+
+    return pd.DataFrame(matrix, columns=names, index=names)
 
 
 def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
