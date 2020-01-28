@@ -6,11 +6,12 @@
 
 test = 0
 
+
 import os
 import re
 import io
 import gzip
-import numpy
+import numpy as np
 import string
 import argparse
 
@@ -176,6 +177,7 @@ class Auxiliary:
         self.max_coverage_depth = max_coverage_depth
 
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
+        self.array_index_to_nt = {v: k for k, v in self.nt_to_array_index.items()}
 
         x = [
             ('fast', self.run2, (bam, ), {}),
@@ -194,33 +196,41 @@ class Auxiliary:
         # there are nucleotide types. Each nucleotide (A, C, T, G, (maybe more...)) gets its own row
         # which is defined by the self.nt_to_array_index dictionary
         nt_array_shape = (len(constants.nucleotides), end-start)
-        nt_array = numpy.zeros(nt_array_shape)
+        nt_array = np.zeros(nt_array_shape)
 
         for read in bam.fetch(self.split.parent, start, end):
-            read_start = read.reference_start
             aligned_positions = read.get_reference_positions()
 
-            # `sequence` is the read sequence with soft clipping removed, but it it is otherwise
+            # `read_seq` is the read read_seq with soft clipping removed, but it it is otherwise
             # 'unaligned' to the reference. To align it to specific positions in the reference we
             # have to parse the cigar string to build `aligned_sequence`, which gives us the base
             # contributed by this read at each of its aligned positions, `aligned_positions`
             # read up on cigar operations here:
             # https://pysam.readthedocs.io/en/latest/api.html#pysam.AlignedSegment.cigartuples
-            sequence = read.query_alignment_sequence
+            read_seq = read.query_alignment_sequence
 
-            counter = 0
+            read_seq_index = 0
+            pos_in_contig = read.reference_start
+
             for operation, length in read.cigartuples:
                 if operation == 0:
-                    for idx in range(read_start + counter, read_start + counter + length - 1):
-                        nt = sequence[counter]
-                        nt_array[self.nt_to_array_index[nt], idx] += 1
-                        counter += 1
+                    for i in range(read_seq_index, read_seq_index + length):
+                        nt = read_seq[i]
+                        nt_array[self.nt_to_array_index[nt], pos_in_contig] += 1
+
+                        read_seq_index += 1
+                        pos_in_contig += 1
+
                 elif operation == 1:
                     # there is an insertion in the read
-                    counter += length
+                    read_seq_index += length
+                    continue
+
                 elif operation == 2:
                     # there is a gap in the read
-                    pass
+                    pos_in_contig += length
+                    continue
+
                 else:
                     # FIXME
                     pass
@@ -228,12 +238,17 @@ class Auxiliary:
 
     def run2(self, bam):
         start, end = self.split.start, self.split.end
+        split_length = self.split.length
+
+        # FIXME
+        np.set_printoptions(threshold=np.inf)
+        # FIXME
 
         # make an array with as many rows as there are nucleotides in the split, and as many rows as
         # there are nucleotide types. Each nucleotide (A, C, T, G, (maybe more...)) gets its own row
         # which is defined by the self.nt_to_array_index dictionary
-        nt_array_shape = (len(constants.nucleotides), end-start)
-        nt_array = numpy.zeros(nt_array_shape)
+        nt_array_shape = (len(constants.nucleotides), split_length)
+        nt_array = np.zeros(nt_array_shape)
 
         for read in bam.fetch(self.split.parent, start, end):
             read_start = read.reference_start
@@ -266,6 +281,51 @@ class Auxiliary:
             aligned_sequence_as_index = [self.nt_to_array_index[nt] for nt in aligned_sequence]
             for seq, pos in zip(aligned_sequence_as_index, aligned_positions):
                 nt_array[seq, pos] += 1
+
+        # the reference sequence cast as indices
+        ref_seq_as_index = np.array([self.nt_to_array_index[nt] for nt in self.split.sequence])
+
+        # coverage
+        coverage = np.sum(nt_array, axis=0)
+
+        # store all positions above threshold coverage
+        positions_above_coverage_threshold = np.where(coverage >= self.min_coverage)[0]
+        num_positions = len(positions_above_coverage_threshold)
+
+        # subset variability arrays by positions_above_coverage_threshold
+        nt_array = nt_array[:, positions_above_coverage_threshold]
+        coverage = coverage[positions_above_coverage_threshold]
+        ref_seq_as_index = ref_seq_as_index[positions_above_coverage_threshold]
+
+        # dfc
+        reference_coverage = nt_array[ref_seq_as_index, np.arange(num_positions)]
+        departure_from_consensus = 1 - reference_coverage/coverage
+
+        # competing nts
+        # as a first pass, sort the row indices (-nt_array is used to sort from highest -> lowest)
+        competing_nts_as_index = np.argsort(-nt_array, axis=0)
+        # take the top 2 items
+        competing_nts_as_index = competing_nts_as_index[:2, :]
+        # get the coverage of the second item
+        coverage_second_item = nt_array[competing_nts_as_index[1, :], np.arange(num_positions)]
+        # if the coverage of the second item is 0, set the second index equal to the first
+        competing_nts_as_index[1, :] = np.where(coverage_second_item == 0, competing_nts_as_index[0, :], competing_nts_as_index[1, :])
+        # sort the competing nts
+        competing_nts_as_index = np.sort(competing_nts_as_index, axis=0)
+        # make the competing nts list
+        nts_1 = [self.array_index_to_nt[index_1] for index_1 in competing_nts_as_index[0, :]]
+        nts_2 = [self.array_index_to_nt[index_2] for index_2 in competing_nts_as_index[1, :]]
+        competing_nts = np.fromiter((nt_1 + nt_2 for nt_1, nt_2 in zip(nts_1, nts_2)), np.dtype('<U2'), count=num_positions)
+        # If the second item is 0, and the reference is the first item, set competing_nts to None.
+        # This can easily be checked by seeing if reference_coverage == coverage
+        competing_nts = np.where(reference_coverage == coverage, None, competing_nts)
+
+        print('\n'*4)
+
+        #competing_nts = [''.join(pos) for pos in competing_nts_as_index[]]
+
+
+
 
 
     def run(self, bam):
