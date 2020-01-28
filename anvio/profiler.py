@@ -117,7 +117,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.contig_names_of_interest = set([c.strip() for c in open(args.contigs_of_interest).readlines()\
                                                                            if c.strip() and not c.startswith('#')])
         else:
-            self.contig_names_of_interest = None
+            self.contig_names_of_interest = set([])
 
         if self.list_contigs_and_exit:
             self.list_contigs()
@@ -128,7 +128,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # Initialize contigs db
         dbops.ContigsSuperclass.__init__(self, self.args, r=self.run, p=self.progress)
-        self.init_contig_sequences()
+        self.init_contig_sequences(contig_names_of_interest=self.contig_names_of_interest)
         self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
 
         self.bam = None
