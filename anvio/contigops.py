@@ -179,12 +179,11 @@ class Auxiliary:
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
         self.array_index_to_nt = {v: k for k, v in self.nt_to_array_index.items()}
 
-        x = [
-            ('fast', self.run2, (bam, ), {}),
-            ('fast2', self.run3, (bam, ), {}),
-            ('slow', self.run, (bam, ), {}),
-        ]
-        print(anvio.terminal.compare_times(x))
+        #x = [
+        #    ('fast', self.run2, (bam, ), {}),
+        #    ('slow', self.run, (bam, ), {}),
+        #]
+        #print(utils.compare_times(x, iterations_per_call=1))
 
         self.run(bam)
 
@@ -200,7 +199,6 @@ class Auxiliary:
 
         for read in bam.fetch(self.split.parent, start, end):
             aligned_positions = read.get_reference_positions()
-
             # `read_seq` is the read read_seq with soft clipping removed, but it it is otherwise
             # 'unaligned' to the reference. To align it to specific positions in the reference we
             # have to parse the cigar string to build `aligned_sequence`, which gives us the base
@@ -237,7 +235,6 @@ class Auxiliary:
 
 
     def run2(self, bam):
-        start, end = self.split.start, self.split.end
         split_length = self.split.length
 
         # FIXME
@@ -250,9 +247,16 @@ class Auxiliary:
         nt_array_shape = (len(constants.nucleotides), split_length)
         nt_array = np.zeros(nt_array_shape)
 
-        for read in bam.fetch(self.split.parent, start, end):
+        print()
+        print(self.split.name)
+
+        for read in bam.fetch(self.split.parent, self.split.start, self.split.end):
             read_start = read.reference_start
             aligned_positions = read.get_reference_positions()
+
+
+            print(f'range is {self.split.start}->{self.split.end}; found {min(aligned_positions)} and {max(aligned_positions)}')
+
 
             # `sequence` is the read sequence with soft clipping removed, but it it is otherwise
             # 'unaligned' to the reference. To align it to specific positions in the reference we
@@ -279,6 +283,7 @@ class Auxiliary:
                     pass
 
             aligned_sequence_as_index = [self.nt_to_array_index[nt] for nt in aligned_sequence]
+
             for seq, pos in zip(aligned_sequence_as_index, aligned_positions):
                 nt_array[seq, pos] += 1
 
@@ -320,9 +325,6 @@ class Auxiliary:
         # This can easily be checked by seeing if reference_coverage == coverage
         competing_nts = np.where(reference_coverage == coverage, None, competing_nts)
 
-        print('\n'*4)
-
-        #competing_nts = [''.join(pos) for pos in competing_nts_as_index[]]
 
 
 
