@@ -1112,7 +1112,7 @@ def get_time_to_date(local_time, fmt='%Y-%m-%d %H:%M:%S'):
     return time.strftime(fmt, time.localtime(local_time))
 
 
-def compare_times(calls, as_matrix=False, as_datetime=False):
+def compare_times(calls, as_matrix=False, iterations_per_call=1):
     """Compare times between function calls
 
     Parameters
@@ -1125,8 +1125,8 @@ def compare_times(calls, as_matrix=False, as_datetime=False):
         If True, results are output as a pandas matrix, where each element is a time difference between
         calls. Otherwise, a dictionary is returned
 
-    as_datetime : bool, False
-        If True, times are datetime objects (by default they are floats [seconds])
+    iterations_per_call : int, 1
+        How many times should each function call be ran? Time will be averaged
 
     Returns
     =======
@@ -1135,28 +1135,31 @@ def compare_times(calls, as_matrix=False, as_datetime=False):
         Otherwise, dictionary of {name: time} is returned
     """
 
-    call_times = []
-    names = []
-    for call in calls:
+    call_times = np.zeros((len(calls), iterations_per_call))
+    names, *_ = zip(*calls)
+    for i, call in enumerate(calls):
         name, function, args, kwargs = call
-        names.append(name)
-        try:
-            with TimeCode(quiet=True) as t:
-                function(*args, **kwargs)
-        except:
-            raise ConfigError("compare_times :: function call with name '%s' failed." % name)
 
-        call_times.append(t.time.total_seconds() if not as_datetime else t.time)
+        for j in range(iterations_per_call):
+            try:
+                with TimeCode(quiet=True) as t:
+                    function(*args, **kwargs)
+            except:
+                raise ConfigError("compare_times :: function call with name '%s' failed." % name)
+
+            call_times[i, j] = t.time.total_seconds()
+
+    averaged_call_times = np.mean(call_times, axis=1)
 
     if not as_matrix:
-        return dict(zip(names, call_times))
+        return dict(zip(names, averaged_call_times))
 
     matrix = []
     for i, time in enumerate(call_times):
         row = []
 
         for j, time in enumerate(call_times):
-            row.append(call_times[j] - call_times[i] if i > j else 'NA')
+            row.append(averaged_call_times[j] - averaged_call_times[i] if i > j else 'NA')
 
         matrix.append(row)
 
