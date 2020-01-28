@@ -1140,8 +1140,11 @@ def compare_times(calls, as_matrix=False, as_datetime=False):
     for call in calls:
         name, function, args, kwargs = call
         names.append(name)
-        with TimeCode(quiet=True) as t:
-            function(*args, **kwargs)
+        try:
+            with TimeCode(quiet=True) as t:
+                function(*args, **kwargs)
+        except:
+            raise ConfigError("compare_times :: function call with name '%s' failed." % name)
 
         call_times.append(t.time.total_seconds() if not as_datetime else t.time)
 
