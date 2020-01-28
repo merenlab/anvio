@@ -662,56 +662,6 @@ class TimeCode(object):
         self.run.info_single(msg + str(self.time), nl_before=1, mc=color, level=return_code)
 
 
-def compare_times(calls, as_matrix=False, as_datetime=False):
-    """Compare times between function calls
-
-    Parameters
-    ==========
-    calls : list of tuples
-        Each element should be a (name, function, args, kwargs) tuples. If there are no args or
-        kwargs, the element should look like (name, function, [], {})
-
-    as_matrix : bool, False
-        If True, results are output as a pandas matrix, where each element is a time difference between
-        calls. Otherwise, a dictionary is returned
-
-    as_datetime : bool, False
-        If True, times are datetime objects (by default they are floats [seconds])
-
-    Returns
-    =======
-    times : pd.DataFrame or dict
-        If as_matrix, pd.DataFrame is returned, where times[i, j] is how much faster i is than j.
-        Otherwise, dictionary of {name: time} is returned
-    """
-
-    call_times = []
-    names = []
-    for call in calls:
-        name, function, args, kwargs = call
-        names.append(name)
-        with TimeCode(quiet=True) as t:
-            function(*args, **kwargs)
-
-        call_times.append(t.time.total_seconds() if not as_datetime else t.time)
-
-    if not as_matrix:
-        return dict(zip(names, call_times))
-
-    import pandas as pd
-
-    matrix = []
-    for i, time in enumerate(call_times):
-        row = []
-
-        for j, time in enumerate(call_times):
-            row.append(call_times[j] - call_times[i] if i > j else 'NA')
-
-        matrix.append(row)
-
-    return pd.DataFrame(matrix, columns=names, index=names)
-
-
 def time_program(program_method):
     """
     A decorator used to time anvio programs. See below for example.
