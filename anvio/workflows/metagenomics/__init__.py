@@ -15,7 +15,7 @@ from anvio import utils as u
 from anvio.drivers import driver_modules
 from anvio.workflows import WorkflowSuperClass
 from anvio.workflows.contigs import ContigsDBWorkflow
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -261,12 +261,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
     def init_refereces_txt(self):
-        if self.references_mode:
-            try:
-                filesnpaths.is_file_exists(self.fasta_txt_file)
-            except FilesNPathsError as e:
-                raise ConfigError('In references mode you must supply a fasta_txt file.')
-
+        if self.references_mode and not filesnpaths.is_file_exists(self.fasta_txt_file, dont_raise=True):
+            raise ConfigError('In references mode you must supply a fasta_txt file.')
 
         if not self.references_mode:
             # if it is reference mode then the group names have been assigned in the contigs Snakefile
