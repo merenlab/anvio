@@ -240,7 +240,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         if self.run_split:
             split = [os.path.join(self.dirs_dict["SPLIT_PROFILES_DIR"],\
                                   g + "-split.done")\
-                                  for g in self.collections.keys() if not self.collections[g]['default_collection']]
+                                  for g in self.collections.keys() if not 'default_collection' in self.collections[g]]
             target_files.extend(split)
 
         targets_files_for_binning = self.get_target_files_for_anvi_cluster_contigs()
