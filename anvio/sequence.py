@@ -112,6 +112,171 @@ class Codon:
         return dist
 
 
+class Read:
+    def __init__(self, read):
+        """Class for manipulating reads
+
+        Parameters
+        ==========
+        read : pysam.AlignedSegment
+        """
+        self.read = read
+
+
+    def __getattr__(self, attr):
+        try:
+            return getattr(self.read, attr)
+        except AttributeError:
+            return getattr(self, attr)
+
+
+    def trim(self, trim_by, side='left'):
+        """Trims self.read by either the left or right
+
+        Modifies the attributes 'query_alignment_sequence' and 'cigartuples' of self.read. Do not
+        expect more than this!
+
+        Parameters
+        ==========
+        trim_by : int
+            The number of REFERENCE bases you would like to trim the read by
+
+        side : str, 'left'
+            Either 'left' or 'right' side.
+        """
+        cigar_tuples = self.read.cigartuples
+        read_sequence = self.read.query_alignment_sequence
+
+        tuple_indices_to_remove = []
+        trimmed_tuple = None
+        count = trim_by
+        m, n = 0, 0
+
+        if side == 'right':
+            read_sequence = read_sequence[::-1]
+            cigar_tuples = cigar_tuples[::-1]
+
+        for i, cigar_tuple in enumerate(cigar_tuples):
+            operation, length = cigar_tuple
+            tuple_indices_to_remove.append(i)
+
+            if operation == 0:
+                if length > count:
+                    trimmed_tuple = (operation, length - count)
+                    count = 0
+                    break
+                else:
+                    count -= length
+
+            elif operation == 1:
+                m += length
+
+            elif operation == 2:
+                if length > count:
+                    trimmed_tuple = (operation, length - count)
+                    n += length - count
+                    count = 0
+                    break
+                else:
+                    count -= length
+                    n += length
+
+            if count == 0:
+                break
+
+        cigar_tuples = [cigar_tuple for i, cigar_tuple in enumerate(cigar_tuples) if i not in tuple_indices_to_remove]
+        if trimmed_tuple:
+            cigar_tuples.insert(0, trimmed_tuple)
+
+        read_sequence = read_sequence[trim_by + m - n:]
+
+        if side == 'right':
+            read_sequence = read_sequence[::-1]
+            cigar_tuples = cigar_tuples[::-1]
+
+        # overwrite the attributes of self.read
+        self.read.cigartuples = cigar_tuples
+        self.read.query_alignment_sequence = read_sequence
+
+
+class ReadOpsTest:
+    """Small test class for Read"""
+
+    def make_read(self, cigartuples):
+        class Read: pass
+        read = Read()
+        read.query_alignment_sequence = 'AACCTTGG'
+        read.cigartuples = cigartuples
+
+        return read
+
+
+    def test_trim(self):
+        """
+        [(0,8)]
+        =======
+        A A C C T T G G
+        A C T G A C T G A C T G = reference
+
+        [(0,2), (1,4), (0,2)]
+        =====================
+        A A C C T T G G
+        A C - - - - T G A C T G A C T G = reference
+
+        [(0,1), (1,3), (2,2), (0,4)]
+        ============================
+        A A C C - - T T G G
+        A - - - C T G A C T G A C T G = reference
+
+        [(0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,2), (1,1), (0,1)]
+        ===============================================================
+        A - A - C - C - T T G G
+        A C T G A C T G A C - T G = reference
+        """
+
+        test_sets = [
+            {
+                'input_cigartuples': [(0,8)],
+                'output_tuples_left': [(0,5)],
+                'output_sequence_left': 'CTTGG',
+                'output_tuples_right': [(0,5)],
+                'output_sequence_right': 'AACCT',
+            },
+            {
+                'input_cigartuples': [(0,2), (1,4), (0,2)],
+                'output_tuples_left': [(0,1)],
+                'output_sequence_left': 'G',
+                'output_tuples_right': [(0,1)],
+                'output_sequence_right': 'A',
+            },
+            {
+                'input_cigartuples': [(0,1), (1,3), (2,2), (0,4)],
+                'output_tuples_left': [(0,4)],
+                'output_sequence_left': 'TTGG',
+                'output_tuples_right': [(0,1), (1,3), (2,2), (0,1)],
+                'output_sequence_right': 'AACCT',
+            },
+            {
+                'input_cigartuples': [(0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,2), (1,1), (0,1)],
+                'output_tuples_left': [(2,1), (0,1), (2,1), (0,1), (2,1), (0,2), (1,1), (0,1)],
+                'output_sequence_left': 'CCTTGG',
+                'output_tuples_right': [(0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,1), (2,1)],
+                'output_sequence_right': 'AACC',
+            },
+        ]
+
+        for test_set in test_sets:
+            read = Read(self.make_read(test_set['input_cigartuples']))
+            read.trim(trim_by=3, side='left')
+            assert read.query_alignment_sequence == test_set['output_sequence_left']
+            assert read.cigartuples == test_set['output_tuples_left']
+
+            read = Read(self.make_read(test_set['input_cigartuples']))
+            read.trim(trim_by=3, side='right')
+            assert read.query_alignment_sequence == test_set['output_sequence_right']
+            assert read.cigartuples == test_set['output_tuples_right']
+
+
 class Composition:
     def __init__(self, sequence):
         self.sequence = sequence
