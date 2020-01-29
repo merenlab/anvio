@@ -24,7 +24,7 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.sequence import Coverage
+from anvio.sequence import Coverage, Read
 from anvio.errors import ConfigError
 from anvio.variability import ColumnProfile
 from anvio.variability import VariablityTestFactory
@@ -179,114 +179,50 @@ class Auxiliary:
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
         self.array_index_to_nt = {v: k for k, v in self.nt_to_array_index.items()}
 
-        #x = [
-        #    ('fast', self.run2, (bam, ), {}),
-        #    ('slow', self.run, (bam, ), {}),
-        #]
-        #print(utils.compare_times(x, iterations_per_call=1))
+        x = [
+            ('fast', self.run2, (bam, ), {}),
+            ('slow', self.run, (bam, ), {}),
+        ]
+        print(utils.compare_times(x, iterations_per_call=1))
 
         self.run(bam)
-
-
-    def run3(self, bam):
-        start, end = self.split.start, self.split.end
-
-        # make an array with as many rows as there are nucleotides in the split, and as many rows as
-        # there are nucleotide types. Each nucleotide (A, C, T, G, (maybe more...)) gets its own row
-        # which is defined by the self.nt_to_array_index dictionary
-        nt_array_shape = (len(constants.nucleotides), end-start)
-        nt_array = np.zeros(nt_array_shape)
-
-        for read in bam.fetch(self.split.parent, start, end):
-            aligned_positions = read.get_reference_positions()
-            # `read_seq` is the read read_seq with soft clipping removed, but it it is otherwise
-            # 'unaligned' to the reference. To align it to specific positions in the reference we
-            # have to parse the cigar string to build `aligned_sequence`, which gives us the base
-            # contributed by this read at each of its aligned positions, `aligned_positions`
-            # read up on cigar operations here:
-            # https://pysam.readthedocs.io/en/latest/api.html#pysam.AlignedSegment.cigartuples
-            read_seq = read.query_alignment_sequence
-
-            read_seq_index = 0
-            pos_in_contig = read.reference_start
-
-            for operation, length in read.cigartuples:
-                if operation == 0:
-                    for i in range(read_seq_index, read_seq_index + length):
-                        nt = read_seq[i]
-                        nt_array[self.nt_to_array_index[nt], pos_in_contig] += 1
-
-                        read_seq_index += 1
-                        pos_in_contig += 1
-
-                elif operation == 1:
-                    # there is an insertion in the read
-                    read_seq_index += length
-                    continue
-
-                elif operation == 2:
-                    # there is a gap in the read
-                    pos_in_contig += length
-                    continue
-
-                else:
-                    # FIXME
-                    pass
 
 
     def run2(self, bam):
         split_length = self.split.length
 
-        # FIXME
         np.set_printoptions(threshold=np.inf)
-        # FIXME
 
         # make an array with as many rows as there are nucleotides in the split, and as many rows as
-        # there are nucleotide types. Each nucleotide (A, C, T, G, (maybe more...)) gets its own row
-        # which is defined by the self.nt_to_array_index dictionary
+        # there are nucleotide types. Each nucleotide (A, C, T, G, N) gets its own row which is
+        # defined by the self.nt_to_array_index dictionary
         nt_array_shape = (len(constants.nucleotides), split_length)
         nt_array = np.zeros(nt_array_shape)
 
-        print()
-        print(self.split.name)
-
+        reads = 0
+        trimmed = 0
         for read in bam.fetch(self.split.parent, self.split.start, self.split.end):
-            read_start = read.reference_start
-            aligned_positions = read.get_reference_positions()
+            reads += 1
+            read = Read(read)
 
+            overhang_left = self.split.start - read.reference_start
+            overhang_right = read.reference_end - self.split.end
 
-            print(f'range is {self.split.start}->{self.split.end}; found {min(aligned_positions)} and {max(aligned_positions)}')
+            if overhang_left > 0:
+                trimmed += 1
+                read.trim(trim_by=overhang_left, side='left')
 
+            if overhang_right > 0:
+                trimmed += 1
+                read.trim(trim_by=overhang_right, side='right')
 
-            # `sequence` is the read sequence with soft clipping removed, but it it is otherwise
-            # 'unaligned' to the reference. To align it to specific positions in the reference we
-            # have to parse the cigar string to build `aligned_sequence`, which gives us the base
-            # contributed by this read at each of its aligned positions, `aligned_positions`.
-            # read up on cigar operations here:
-            # https://pysam.readthedocs.io/en/latest/api.html#pysam.AlignedSegment.cigartuples
-            sequence = read.query_alignment_sequence
-
-            aligned_sequence, counter = '', 0
-            for operation, length in read.cigartuples:
-                if operation == 0:
-                    # there is a mapping segment
-                    aligned_sequence += sequence[counter:(counter + length)]
-                    counter += length
-                elif operation == 1:
-                    # there is an insertion in the read
-                    counter += length
-                elif operation == 2:
-                    # there is a gap in the read
-                    pass
-                else:
-                    # FIXME
-                    pass
-
+            aligned_sequence = read.get_aligned_sequence()
             aligned_sequence_as_index = [self.nt_to_array_index[nt] for nt in aligned_sequence]
 
-            for seq, pos in zip(aligned_sequence_as_index, aligned_positions):
-                nt_array[seq, pos] += 1
+            for seq, pos in zip(aligned_sequence_as_index, read.reference_positions):
+                nt_array[seq, pos - self.split.start] += 1
 
+        print(f"{trimmed} of {reads} reads were trimmed")
         # the reference sequence cast as indices
         ref_seq_as_index = np.array([self.nt_to_array_index[nt] for nt in self.split.sequence])
 
