@@ -113,24 +113,71 @@ class Codon:
 
 
 class Read:
-    def __init__(self, read):
+    def __init__(self, read, _run_test_class=False):
         """Class for manipulating reads
+
+        Some of these class methods parse and manipulate cigar strings. You can read up on cigar
+        operations here:
+        https://pysam.readthedocs.io/en/latest/api.html#pysam.AlignedSegment.cigartuples
 
         Parameters
         ==========
         read : pysam.AlignedSegment
+
+        _run_test_class : bool, False
+            For developers. During instantiation of class instance ReadTestClass will be run
         """
-        self.read = read
+        if _run_test_class:
+            test = ReadTestClass()
+            test.test_trim()
 
-        if not hasattr(read, 'reference_positions'):
-            self.read.reference_positions = self.read.get_reference_positions()
+        self.r = read
+
+        # redefine all properties of interest explicitly from pysam.AlignedSegment object as
+        # attributes of this class. The reason for this is that some of the AlignedSegment
+        # attributes have no __set__ methods, so are read only. Since this class is designed to
+        # modify some of these attributes, and since we want to maintain consistency across
+        # attributes, all attributes of interest are redefined here
+        self.query_alignment_sequence = self.r.query_alignment_sequence
+        self.cigartuples = self.r.cigartuples
+        self.reference_positions = self.r.get_reference_positions()
+        self.reference_start = self.r.reference_start
+        self.reference_end = self.r.reference_end
 
 
-    def __getattr__(self, attr):
-        try:
-            return getattr(self.read, attr)
-        except AttributeError:
-            return getattr(self, attr)
+    def get_aligned_sequence(self):
+        """Get the aligned sequence at each position in self.reference_positions
+
+        Notes
+        =====
+        - This method exists because self.read.query_alignment_sequence is the read sequence with
+          soft clipping removed, but it is otherwise 'unaligned' to the reference. For example,
+          self.read.query_alignment_sequence does not even necessarily have the same length as
+          self.read.get_reference_positions() due to indels. To get the aligned sequence, we have to
+          parse the cigar string to build `aligned_sequence`, which gives us the base
+          contributed by this read at each of its aligned positions.
+        """
+        sequence = self.query_alignment_sequence
+        cigar_tuples = self.cigartuples
+        aligned_sequence = ''
+
+        read_pos = 0
+        for operation, length in cigar_tuples:
+            if operation == 0:
+                # there is a mapping segment
+                aligned_sequence += sequence[read_pos:(read_pos + length)]
+                read_pos += length
+            elif operation == 1:
+                # there is an insertion in the read
+                read_pos += length
+            elif operation == 2:
+                # there is a gap in the read
+                pass
+            else:
+                # FIXME
+                pass
+
+        return aligned_sequence
 
 
     def trim(self, trim_by, side='left'):
@@ -152,9 +199,9 @@ class Read:
         side : str, 'left'
             Either 'left' or 'right' side.
         """
-        cigar_tuples = self.read.cigartuples
-        read_sequence = self.read.query_alignment_sequence
-        reference_positions = self.read.reference_positions
+        cigar_tuples = self.cigartuples
+        read_sequence = self.query_alignment_sequence
+        reference_positions = self.reference_positions
 
         tuple_indices_to_remove = []
         trimmed_tuple = None
@@ -208,21 +255,25 @@ class Read:
             cigar_tuples = cigar_tuples[::-1]
             reference_positions = reference_positions[::-1]
 
-        # overwrite the attributes of self.read
-        self.read.cigartuples = cigar_tuples
-        self.read.query_alignment_sequence = read_sequence
-        self.read.reference_positions = reference_positions
+        # overwrite the attributes of self
+        self.cigartuples = cigar_tuples
+        self.query_alignment_sequence = read_sequence
+        self.reference_positions = reference_positions
 
 
 class ReadTestClass:
     """Small test class for Read"""
 
     def make_read(self, cigartuples, reference_positions):
-        class Read: pass
+        class Read:
+            def get_reference_positions(self):
+                return reference_positions
+
         read = Read()
         read.query_alignment_sequence = 'AACCTTGG'
         read.cigartuples = cigartuples
-        read.reference_positions = reference_positions
+        read.reference_start = None # unused
+        read.reference_end = None # unused
 
         return read
 
