@@ -216,13 +216,34 @@ class Auxiliary:
                 trimmed += 1
                 read.trim(trim_by=overhang_right, side='right')
 
+            if overhang_right > 0 or overhang_left > 0:
+                trim = True
+            else:
+                trim = False
+
             aligned_sequence = read.get_aligned_sequence()
             aligned_sequence_as_index = [self.nt_to_array_index[nt] for nt in aligned_sequence]
+            reference_positions_in_split = [pos - self.split.start for pos in read.reference_positions]
 
-            for seq, pos in zip(aligned_sequence_as_index, read.reference_positions):
-                nt_array[seq, pos - self.split.start] += 1
+            for seq, pos in zip(aligned_sequence_as_index, reference_positions_in_split):
+                nt_array[seq, pos] += 1
 
-        print(f"{trimmed} of {reads} reads were trimmed")
+            split_seq = ''
+            for pos in reference_positions_in_split:
+                split_seq += self.split.sequence[pos]
+
+            for ref, ali in zip(split_seq, aligned_sequence):
+                print('\t'.join([ref, ali, str(ref == ali)]))
+            print(f"read was trimmed: {trim}")
+            print('\n')
+
+
+        print("=" * len(f"{trimmed} of {reads} reads were trimmed ^^^^"))
+        print("=" * len(f"{trimmed} of {reads} reads were trimmed ^^^^"))
+        print(f"{trimmed} of {reads} reads were trimmed ^^^^")
+        print("=" * len(f"{trimmed} of {reads} reads were trimmed ^^^^"))
+        print("=" * len(f"{trimmed} of {reads} reads were trimmed ^^^^"))
+        print('\n'*4)
         # the reference sequence cast as indices
         ref_seq_as_index = np.array([self.nt_to_array_index[nt] for nt in self.split.sequence])
 
