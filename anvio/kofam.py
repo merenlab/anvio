@@ -359,11 +359,7 @@ class KofamRunHMMs(KofamContext):
 
         # run hmmscan
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads)
-        hmm_hits_file = hmmer.run_hmmscan('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, '--cut_ga')
-
-        # TODO: this code runs nicely (error-free) but returns no HMM hits. Not sure yet if there is an issue with the code or if my partial contigs
-        # DB legitimately has no hits. This note is here so that I remember to investigate tomorrow when I am not brain-dead from coding in a train
-        # for five hours :) (ps I think looking into this noise_cutoff_terms parameter could be wise)
+        hmm_hits_file = hmmer.run_hmmscan('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, None)
 
         # get an instance of gene functions table
         gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
