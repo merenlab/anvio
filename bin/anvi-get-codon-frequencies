@@ -148,7 +148,7 @@ class ReportCodonFrequencies:
                               "implement it for you!")
 
         gene_callers_id = self.gene_caller_ids[0]
-        bam_file_object = bamops.BAMFileObject(self.bam_file_path).get()
+        bam_file_object = bamops.BAMFileObject(self.bam_file_path)
         self.c.init_contig_sequences(gene_caller_ids_of_interest=set([gene_callers_id]))
 
         gene_call = self.c.genes_in_contigs_dict[gene_callers_id]
