@@ -26,8 +26,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.sequence import Coverage, Read
 from anvio.errors import ConfigError
-from anvio.variability import ColumnProfile
-from anvio.variability import VariablityTestFactory
+from anvio.variability import ColumnProfile, VariablityTestFactory, ProcessAlleleCounts
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -177,7 +176,6 @@ class Auxiliary:
         self.max_coverage_depth = max_coverage_depth
 
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
-        self.array_index_to_nt = {v: k for k, v in self.nt_to_array_index.items()}
 
         x = [
             ('fast', self.run2, (bam, ), {}),
@@ -191,100 +189,35 @@ class Auxiliary:
     def run2(self, bam):
         split_length = self.split.length
 
-        np.set_printoptions(threshold=np.inf)
+        #np.set_printoptions(threshold=np.inf)
 
         # make an array with as many rows as there are nucleotides in the split, and as many rows as
         # there are nucleotide types. Each nucleotide (A, C, T, G, N) gets its own row which is
         # defined by the self.nt_to_array_index dictionary
-        nt_array_shape = (len(constants.nucleotides), split_length)
-        nt_array = np.zeros(nt_array_shape)
+        allele_counts_array_shape = (len(constants.nucleotides), split_length)
+        allele_counts_array = np.zeros(allele_counts_array_shape)
 
-        reads = 0
-        trimmed = 0
         for read in bam.fetch(self.split.parent, self.split.start, self.split.end):
-            reads += 1
             read = Read(read)
 
             overhang_left = self.split.start - read.reference_start
             overhang_right = read.reference_end - self.split.end
 
             if overhang_left > 0:
-                trimmed += 1
                 read.trim(trim_by=overhang_left, side='left')
 
             if overhang_right > 0:
-                trimmed += 1
                 read.trim(trim_by=overhang_right, side='right')
-
-            if overhang_right > 0 or overhang_left > 0:
-                trim = True
-            else:
-                trim = False
 
             aligned_sequence = read.get_aligned_sequence()
             aligned_sequence_as_index = [self.nt_to_array_index[nt] for nt in aligned_sequence]
             reference_positions_in_split = [pos - self.split.start for pos in read.reference_positions]
 
             for seq, pos in zip(aligned_sequence_as_index, reference_positions_in_split):
-                nt_array[seq, pos] += 1
+                allele_counts_array[seq, pos] += 1
 
-            split_seq = ''
-            for pos in reference_positions_in_split:
-                split_seq += self.split.sequence[pos]
-
-            for ref, ali in zip(split_seq, aligned_sequence):
-                print('\t'.join([ref, ali, str(ref == ali)]))
-            print(f"read was trimmed: {trim}")
-            print('\n')
-
-
-        print("=" * len(f"{trimmed} of {reads} reads were trimmed ^^^^"))
-        print("=" * len(f"{trimmed} of {reads} reads were trimmed ^^^^"))
-        print(f"{trimmed} of {reads} reads were trimmed ^^^^")
-        print("=" * len(f"{trimmed} of {reads} reads were trimmed ^^^^"))
-        print("=" * len(f"{trimmed} of {reads} reads were trimmed ^^^^"))
-        print('\n'*4)
-        # the reference sequence cast as indices
-        ref_seq_as_index = np.array([self.nt_to_array_index[nt] for nt in self.split.sequence])
-
-        # coverage
-        coverage = np.sum(nt_array, axis=0)
-
-        # store all positions above threshold coverage
-        positions_above_coverage_threshold = np.where(coverage >= self.min_coverage)[0]
-        num_positions = len(positions_above_coverage_threshold)
-
-        # subset variability arrays by positions_above_coverage_threshold
-        nt_array = nt_array[:, positions_above_coverage_threshold]
-        coverage = coverage[positions_above_coverage_threshold]
-        ref_seq_as_index = ref_seq_as_index[positions_above_coverage_threshold]
-
-        # dfc
-        reference_coverage = nt_array[ref_seq_as_index, np.arange(num_positions)]
-        departure_from_consensus = 1 - reference_coverage/coverage
-
-        # competing nts
-        # as a first pass, sort the row indices (-nt_array is used to sort from highest -> lowest)
-        competing_nts_as_index = np.argsort(-nt_array, axis=0)
-        # take the top 2 items
-        competing_nts_as_index = competing_nts_as_index[:2, :]
-        # get the coverage of the second item
-        coverage_second_item = nt_array[competing_nts_as_index[1, :], np.arange(num_positions)]
-        # if the coverage of the second item is 0, set the second index equal to the first
-        competing_nts_as_index[1, :] = np.where(coverage_second_item == 0, competing_nts_as_index[0, :], competing_nts_as_index[1, :])
-        # sort the competing nts
-        competing_nts_as_index = np.sort(competing_nts_as_index, axis=0)
-        # make the competing nts list
-        nts_1 = [self.array_index_to_nt[index_1] for index_1 in competing_nts_as_index[0, :]]
-        nts_2 = [self.array_index_to_nt[index_2] for index_2 in competing_nts_as_index[1, :]]
-        competing_nts = np.fromiter((nt_1 + nt_2 for nt_1, nt_2 in zip(nts_1, nts_2)), np.dtype('<U2'), count=num_positions)
-        # If the second item is 0, and the reference is the first item, set competing_nts to None.
-        # This can easily be checked by seeing if reference_coverage == coverage
-        competing_nts = np.where(reference_coverage == coverage, None, competing_nts)
-
-
-
-
+        nt_split_profile = ProcessAlleleCounts(allele_counts_array, self.nt_to_array_index, self.split.sequence)
+        nt_split_profile.process()
 
 
     def run(self, bam):
