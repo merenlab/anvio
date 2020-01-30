@@ -127,11 +127,18 @@ class HMMer:
             output_file = part_file + '_output'
             shitty_file = part_file + '_shitty'
 
-            cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else 'hmmscan',
-                        '-o', output_file, *noise_cutoff_terms.split(),
-                        '--cpu', cores_per_process,
-                        '--tblout', shitty_file,
-                        hmm, part_file]
+            if noise_cutoff_terms:
+                cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else 'hmmscan',
+                            '-o', output_file, *noise_cutoff_terms.split(),
+                            '--cpu', cores_per_process,
+                            '--tblout', shitty_file,
+                            hmm, part_file]
+            else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
+                cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else 'hmmscan',
+                            '-o', output_file, 
+                            '--cpu', cores_per_process,
+                            '--tblout', shitty_file,
+                            hmm, part_file]
 
             t = Thread(target=self.hmmscan_worker, args=(part_file,
                                                          cmd_line,
