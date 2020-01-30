@@ -17,6 +17,7 @@ import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
+import anvio.sequence as sequence
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
@@ -242,6 +243,27 @@ class BAMFileObject(pysam.AlignmentFile):
             self.mapped
         except ValueError:
             raise ConfigError("It seems the BAM file is not indexed. See 'anvi-init-bam' script.")
+
+
+    def fetch_and_trim(self, contig_name, start, end, *args, **kwargs):
+        """Returns an read iterator that trims overhanging reads
+
+        Like pysam.AlignmeFile.fetch(), except trims reads that overhang the start and end of the
+        defined region so that they fit inside the start and stop
+        """
+        for read in self.fetch(contig_name, start, end):
+            read = sequence.Read(read)
+
+            overhang_left = start - read.reference_start
+            overhang_right = read.reference_end - end
+
+            if overhang_left > 0:
+                read.trim(trim_by=overhang_left, side='left')
+
+            if overhang_right > 0:
+                read.trim(trim_by=overhang_right, side='right')
+
+            yield read
 
 
 class LinkMers:
