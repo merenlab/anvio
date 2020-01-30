@@ -414,7 +414,6 @@ class Coverage:
         self.routine_dict = {
             'approximate': self._approximate_routine,
             'accurate': self._accurate_routine,
-            'pileup': self._pileup_routine,
         }
 
 
@@ -439,9 +438,9 @@ class Coverage:
             `contig_or_split` is a Split object.
 
         method : string
-            How do you want to calculate? Options: ('accurate', 'approximate', 'pileup'). 'accurate'
-            accounts for gaps in the alignment, 'approximate' does not. For others, see associated
-            methods and pass special parameters they take through **kwargs
+            How do you want to calculate? Options: ('accurate', 'approximate'). 'accurate' accounts
+            for gaps in the alignment, 'approximate' does not. For others, see associated methods
+            and pass special parameters they take through **kwargs
         """
 
         if isinstance(contig_or_split, anvio.contigops.Split):
@@ -502,23 +501,6 @@ class Coverage:
         for read in bam.fetch(contig_name, start, end):
             for block in read.get_blocks():
                 c[block[0]:block[1]] += 1
-
-        return c
-
-
-    def _pileup_routine(self, c, bam, contig_name, start, end, ignore_orphans=False, max_coverage_depth=constants.max_depth_for_coverage):
-        """Routine that loops through each reference position
-
-        Notes
-        =====
-        - This routine is very slow compared to _accurate_routine and _approximate_routine.
-        """
-
-        for pileupcolumn in bam.pileup(contig_name, start, end, ignore_orphans=ignore_orphans, max_depth=max_coverage_depth):
-            if pileupcolumn.pos < start or pileupcolumn.pos >= end:
-                continue
-
-            c[pileupcolumn.pos - start] = pileupcolumn.n
 
         return c
 
