@@ -377,10 +377,11 @@ class Timer:
         >>> complete: True
         >>> ETA: 00 seconds
     """
-    def __init__(self, required_completion_score = None):
+    def __init__(self, required_completion_score = None, initial_checkpoint_key = 0):
         self.timer_start = self.timestamp()
-        self.last_checkpoint_key = 0
-        self.checkpoints = OrderedDict([(self.last_checkpoint_key, self.timer_start)])
+        self.initial_checkpoint_key = initial_checkpoint_key
+        self.last_checkpoint_key = self.initial_checkpoint_key
+        self.checkpoints = OrderedDict([(initial_checkpoint_key, self.timer_start)])
         self.num_checkpoints = 0
 
         self.required_completion_score = required_completion_score
@@ -395,7 +396,8 @@ class Timer:
         return datetime.datetime.fromtimestamp(time.time())
 
 
-    def timedelta_to_checkpoint(self, timestamp, checkpoint_key=0):
+    def timedelta_to_checkpoint(self, timestamp, checkpoint_key=None):
+        if not checkpoint_key: checkpoint_key = self.initial_checkpoint_key
         timedelta = timestamp - self.checkpoints[checkpoint_key]
         return timedelta
 
@@ -424,6 +426,19 @@ class Timer:
             self.complete = True
 
         return checkpoint
+
+
+    def gen_report(self):
+        run = Run()
+        checkpoint_last = self.initial_checkpoint_key
+        for checkpoint_key, checkpoint in self.checkpoints.items():
+            if checkpoint_key == self.initial_checkpoint_key:
+                continue
+
+            run.info(str(checkpoint_key), '+%s' % self.timedelta_to_checkpoint(checkpoint, checkpoint_key=checkpoint_last))
+            checkpoint_last = checkpoint_key
+
+        run.info('Total elapsed', '=%s' % self.timedelta_to_checkpoint(checkpoint, checkpoint_key=self.initial_checkpoint_key))
 
 
     def calculate_time_remaining(self, infinite_default = '∞:∞:∞'):
