@@ -372,8 +372,13 @@ class KofamRunHMMs(KofamContext):
             run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But\
                              now anvi'o will add KOfam as a functional source with no hits, clean the temporary directories\
                              and gracefully quit.", nl_before=1, nl_after=1)
-            shutil.rmtree(tmp_directory_path)
-            hmmer.clean_tmp_dirs()
+            if not anvio.DEBUG:
+                shutil.rmtree(tmp_directory_path)
+                hmmer.clean_tmp_dirs()
+            else:
+                self.run.warning("Because you ran this script with the --debug flag, anvi'o will not clean up the temporary\
+                directory located at %s. She hopes that you will be responsible for cleaning up this directory yourself \
+                after you are finished debugging :)" % tmp_directory_path)
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
             return
 
