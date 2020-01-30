@@ -326,7 +326,7 @@ class LinkMers:
 
         for input_file in self.input_file_paths:
             sample_id = filesnpaths.get_name_from_file_path(input_file)
-            bam_file_object = BAMFileObject(input_file).get()
+            bam_file_object = BAMFileObject(input_file)
 
             self.run.info('input_bam_path', input_file)
             self.run.info('sample_id', sample_id)
@@ -364,7 +364,7 @@ class LinkMers:
     def list_contigs(self):
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
-        bam_file_object = BAMFileObject(self.input_file_paths[0]).get()
+        bam_file_object = BAMFileObject(self.input_file_paths[0])
         self.progress.end()
 
         contig_names = bam_file_object.references
@@ -480,7 +480,7 @@ class GetReadsFromBAM:
         for bam_file_path in self.input_bam_files:
             bam_file_name = filesnpaths.get_name_from_file_path(bam_file_path)
 
-            bam_file_object = BAMFileObject(bam_file_path).get()
+            bam_file_object = BAMFileObject(bam_file_path)
 
             self.progress.update('Creating a dictionary of matching short reads in %s ...' % bam_file_name)
 
@@ -575,7 +575,7 @@ class GetReadsFromBAM:
         error_message = None
         for bam_file_path in self.input_bam_files:
             try:
-                bam_file_object = BAMFileObject(bam_file_path).get()
+                bam_file_object = BAMFileObject(bam_file_path)
                 bam_file_object.close()
             except ConfigError as e:
                 bad_bam_files.append(bam_file_path)
@@ -624,7 +624,7 @@ class ReadsMappingToARange:
         data = []
 
         for input_bam_path in input_bam_paths:
-            bam_file_object = BAMFileObject(input_bam_path).get()
+            bam_file_object = BAMFileObject(input_bam_path)
 
             sample_id = filesnpaths.get_name_from_file_path(input_bam_path)
 
