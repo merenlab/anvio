@@ -547,7 +547,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
     @staticmethod
     def profile_contig_worker(self, available_index_queue, output_queue):
-        bam_file = pysam.Samfile(self.input_file_path, 'rb')
+        bam_file = bamops.BAMFileObject(self.input_file_path, 'rb').get()
 
         while True:
             index = available_index_queue.get(True)
@@ -583,7 +583,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     for column_profile in list(split.column_profiles.values()):
                         pos_in_contig = column_profile['pos_in_contig']
                         column_profile['in_partial_gene_call'], \
-                        column_profile['in_complete_gene_call'],\
+                        column_profile['in_complete_gene_call'], \
                         column_profile['base_pos_in_codon'] = self.get_nt_position_info(contig.name, pos_in_contig)
 
                         column_profile['sample_id'] = self.sample_id
