@@ -550,6 +550,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         bam_file = bamops.BAMFileObject(self.input_file_path)
 
         while True:
+            timer = terminal.Timer(initial_checkpoint_key='Start')
+
             index = available_index_queue.get(True)
             contig_name = self.contig_names[index]
             contig = contigops.Contig(contig_name)
@@ -560,6 +562,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             contig.report_variability_full = self.report_variability_full
             contig.ignore_orphans = self.ignore_orphans
             contig.max_coverage_depth = self.max_coverage_depth
+            timer.make_checkpoint('Initialization')
 
             # populate contig with empty split objects and
             for split_name in self.contig_name_to_splits[contig_name]:
@@ -567,17 +570,23 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
                 split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
                 contig.splits.append(split)
+            timer.make_checkpoint('Split objects initialized')
 
             # analyze coverage for each split
             contig.analyze_coverage(bam_file)
+            timer.make_checkpoint('Coverage done')
 
             # test the mean coverage of the contig.
             if contig.coverage.mean < self.min_mean_coverage:
-                 output_queue.put(None)
-                 continue
+                output_queue.put(None)
+                if anvio.DEBUG:
+                    timer.gen_report()
+                continue
 
             if not self.skip_SNV_profiling:
                 contig.analyze_auxiliary(bam_file)
+                timer.make_checkpoint('Auxiliary analyzed')
+
                 codons_in_genes_to_profile_SCVs = set([])
                 for split in contig.splits:
                     for column_profile in list(split.column_profiles.values()):
@@ -611,6 +620,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                 # save this information for later use
                                 codons_in_genes_to_profile_SCVs.add((gene_callers_id, column_profile['codon_order_in_gene']),)
 
+                timer.make_checkpoint('Auxiliary loose ends finished')
+
                 codon_frequencies = bamops.CodonFrequencies()
 
                 codons_in_genes_to_profile_SCVs_dict = {}
@@ -630,6 +641,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     if self.profile_SCVs:
                         contig.codon_frequencies_dict[gene_callers_id] = codon_frequencies.process_gene_call(bam_file, gene_call, self.contig_sequences[contig_name]['sequence'], codons_to_profile)
 
+                timer.make_checkpoint('SCVs calculated')
+
             output_queue.put(contig)
 
             for split in contig.splits:
@@ -639,6 +652,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
             del contig.splits[:]
             del contig.coverage
             del contig
+
+            timer.make_checkpoint('Cache emptied')
+
+            if anvio.DEBUG:
+                timer.gen_report()
 
         # we are closing this object here for clarity, although w
         # are not really closing it since the code never reaches here
