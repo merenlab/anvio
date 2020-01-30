@@ -251,7 +251,7 @@ class BAMFileObject(pysam.AlignmentFile):
         Like pysam.AlignmeFile.fetch(), except trims reads that overhang the start and end of the
         defined region so that they fit inside the start and stop
         """
-        for read in self.fetch(contig_name, start, end):
+        for read in self.fetch(contig_name, start, end, *args, **kwargs):
             read = sequence.Read(read)
 
             overhang_left = start - read.reference_start
