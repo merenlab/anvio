@@ -360,9 +360,6 @@ class KofamRunHMMs(KofamContext):
         # run hmmscan
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads)
         hmm_hits_file = hmmer.run_hmmscan('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, '--cut_ga')
-        ## TODO: here we have an issue. the number of genes in our HMM model (len(self.ko_dict) is wrong, because ko_dict (derived from ko_list)
-        ## does not contain the same number of entries as there were .hmm files originally in the downloaded KOfam profiles...
-        ## As far as I can tell this argument is not used for much except for printing out the value, but it would be nice if it was right
 
         # TODO: this code runs nicely (error-free) but returns no HMM hits. Not sure yet if there is an issue with the code or if my partial contigs
         # DB legitimately has no hits. This note is here so that I remember to investigate tomorrow when I am not brain-dead from coding in a train
