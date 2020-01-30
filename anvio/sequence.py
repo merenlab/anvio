@@ -444,7 +444,9 @@ class Coverage:
 
         Parameters
         ==========
-        bam : pysam.Samfile (deprecated) or pysam.AlignmentFile
+        bam : bamops.BAMFileObject
+            Init such an object the way you would a pysam.AlignmentFile, i.e. bam =
+            bamops.BAMFileObject(path_to_bam)
 
         contig_or_split : anvio.contigops.Split or anvio.contigops.Contig or str
             If Split object is passed, and `start` or `end` are None, they are automatically set to
@@ -464,6 +466,9 @@ class Coverage:
             for gaps in the alignment, 'approximate' does not. For others, see associated methods
             and pass special parameters they take through **kwargs
         """
+
+        # if there are defined start and ends we have to trim reads so their ranges fit inside self.c
+        iterator = bam.fetch if (start is None and end is None) else bam.fetch_and_trim
 
         if isinstance(contig_or_split, anvio.contigops.Split):
             contig_name = contig_or_split.parent
@@ -490,7 +495,7 @@ class Coverage:
         if not routine:
             raise ConfigError("Coverage :: %s is not a valid method.")
 
-        self.c = routine(c, bam, contig_name, start, end, **kwargs)
+        self.c = routine(c, bam, contig_name, start, end, iterator, **kwargs)
 
         if len(self.c):
             try:
@@ -500,18 +505,26 @@ class Coverage:
             self.process_c(self.c)
 
 
-    def _approximate_routine(self, c, bam, contig_name, start, end):
-        for read in bam.fetch(contig_name, start, end):
+    def _approximate_routine(self, c, bam, contig_name, start, end, iterator):
+        """Routine that does not account for gaps in alignment
+
+        Notes
+        =====
+        - Should typically not be called explicitly. Use run instead
+        """
+
+        for read in iterator(contig_name, start, end):
             c[read.reference_start:read.reference_end] += 1
 
         return c
 
 
-    def _accurate_routine(self, c, bam, contig_name, start, end):
+    def _accurate_routine(self, c, bam, contig_name, start, end, iterator):
         """Routine that accounts for gaps in the alignment
 
         Notes
         =====
+        - Should typically not be called explicitly. Use run instead
         - This strategy was also considered, but is much slower because it uses fancy-indexing
           https://jakevdp.github.io/PythonDataScienceHandbook/02.07-fancy-indexing.html:
 
@@ -520,7 +533,7 @@ class Coverage:
               c[r] += 1
         """
 
-        for read in bam.fetch(contig_name, start, end):
+        for read in iterator(contig_name, start, end):
             for block in read.get_blocks():
                 c[block[0]:block[1]] += 1
 
