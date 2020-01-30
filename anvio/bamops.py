@@ -611,11 +611,13 @@ class GetReadsFromBAM:
 
 class ReadsMappingToARange:
     """Returns all reads from BAM that maps to a range in a contig"""
+
     def __init__(self, run=run, progress=progress):
         self.data = []
 
         self.run = run
         self.progress = progress
+
 
     def process_range(self, input_bam_paths, contig_name, start, end):
         if end <= start:
