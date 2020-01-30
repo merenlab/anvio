@@ -145,6 +145,28 @@ class Read:
         self.reference_end = self.r.reference_end
 
 
+    def get_blocks(self):
+        """Mimic the get_blocks function from AlignedSegment.
+
+        Calculates directly from self.reference_positions
+
+        Modified from:
+        https://stackoverflow.com/questions/7352684/how-to-find-the-groups-of-consecutive-elements-from-an-array-in-numpy/7353335#7353335
+
+        Examples
+        ========
+        def consecutive(data, stepsize=1):
+            return [(x[0], x[-1]+1) for x in numpy.split(data, numpy.where(numpy.diff(data) != stepsize)[0]+1)]
+
+        a = numpy.array([0, 47, 48, 49, 50, 97, 98, 99])
+        consecutive(a)
+
+        >>> [(0, 1), (47, 51), (97, 100)]
+        """
+
+        return [(x[0], x[-1] + 1) for x in numpy.split(self.reference_positions, numpy.where(numpy.diff(self.reference_positions) != 1)[0] + 1)]
+
+
     def get_aligned_sequence(self):
         """Get the aligned sequence at each position in self.reference_positions
 
