@@ -228,28 +228,20 @@ class LinkMersData:
             self.data.append((contig_name, positions, data))
 
 
-class BAMFileObject:
-    def __init__(self, input_bam_path, run=run, progress=progress):
-        self.run = run
-        self.progress = progress
-
+class BAMFileObject(pysam.AlignmentFile):
+    def __init__(self, input_bam_path):
         self.input_bam_path = input_bam_path
-
         filesnpaths.is_file_exists(input_bam_path)
 
-    def get(self):
         try:
-            bam_file_object = pysam.AlignmentFile(self.input_bam_path, 'rb')
+            pysam.AlignmentFile.__init__(self)
         except ValueError as e:
             raise ConfigError('Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (self.input_bam_path, e))
 
         try:
-            bam_file_object.mapped
+            self.mapped
         except ValueError:
-            self.progress.end()
             raise ConfigError("It seems the BAM file is not indexed. See 'anvi-init-bam' script.")
-
-        return bam_file_object
 
 
 class LinkMers:

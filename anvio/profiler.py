@@ -445,7 +445,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def init_profile_from_BAM(self):
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
-        self.bam = bamops.BAMFileObject(self.input_file_path, run=self.run, progress=self.progress).get()
+        self.bam = bamops.BAMFileObject(self.input_file_path)
         self.num_reads_mapped = self.bam.mapped
         self.progress.end()
 
@@ -547,7 +547,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
     @staticmethod
     def profile_contig_worker(self, available_index_queue, output_queue):
-        bam_file = bamops.BAMFileObject(self.input_file_path, 'rb').get()
+        bam_file = bamops.BAMFileObject(self.input_file_path)
 
         while True:
             index = available_index_queue.get(True)
