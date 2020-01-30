@@ -97,10 +97,10 @@ class HMMer:
         self.run.info('Number of CPUs will be used for search', self.num_threads_to_use)
 
         tmp_dir = os.path.dirname(self.target_files_dict[target][0])
-        log_file_path = os.path.join(tmp_dir, '00_log.txt')
+        log_file_path = os.path.join(tmp_dir, '*_log')
 
         self.run.info('Temporary work dir', tmp_dir)
-        self.run.info('Log file', log_file_path)
+        self.run.info('Log files', log_file_path)
 
 
         # check if all hmmpress files are in the HMM directory
