@@ -336,7 +336,7 @@ class KofamRunHMMs(KofamContext):
 
         if not knum in self.ko_dict:
             if ok_if_missing_from_dict:
-                return "Unknown function with KO num" % knum
+                return "Unknown function with KO num %s" % knum
             else:
                 raise ConfigError("It seems hmmscan found a KO number that does not exist\
                                    in the KOfam ko_list file: %s" % knum)
@@ -373,8 +373,8 @@ class KofamRunHMMs(KofamContext):
                 hmmer.clean_tmp_dirs()
             else:
                 self.run.warning("Because you ran this script with the --debug flag, anvi'o will not clean up the temporary\
-                directory located at %s. She hopes that you will be responsible for cleaning up this directory yourself \
-                after you are finished debugging :)" % tmp_directory_path, header="Debug")
+                directories located at %s and %s. Please be responsible for cleaning up this directory yourself \
+                after you are finished debugging :)" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
             return
 
@@ -390,7 +390,7 @@ class KofamRunHMMs(KofamContext):
                 'gene_callers_id': hmm_hit['gene_callers_id'],
                 'source': 'KOfam',
                 'accession': hmm_hit['gene_hmm_id'],
-                'function': self.get_annotation_from_ko_dict(hmm_hit['gene_hmm_id'], ok_if_missing_from_catalog=True),
+                'function': self.get_annotation_from_ko_dict(hmm_hit['gene_hmm_id'], ok_if_missing_from_dict=True),
                 'e_value': hmm_hit['e_value'],
             }
 
