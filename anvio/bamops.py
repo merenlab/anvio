@@ -239,7 +239,7 @@ class BAMFileObject:
 
     def get(self):
         try:
-            bam_file_object = pysam.Samfile(self.input_bam_path, 'rb')
+            bam_file_object = pysam.AlignmentFile(self.input_bam_path, 'rb')
         except ValueError as e:
             raise ConfigError('Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (self.input_bam_path, e))
 
