@@ -3,6 +3,7 @@
 
 """Classes to make sense of single nucleotide variation"""
 
+import numpy as np
 
 from collections import Counter
 
@@ -102,6 +103,132 @@ def get_competing_items(reference, items_frequency_tuples_list=[]):
         else:
             second_most_frequent_item = items_frequency_tuples_list[1][0]
             return sorted([most_frequent_item, second_most_frequent_item])
+
+
+class ProcessAlleleCounts:
+    def __init__(self, allele_counts, allele_to_array_index, sequence, min_coverage=None):
+        """A class to process raw variability information for a given allele counts array
+
+        FIXME
+        """
+        self.allele_counts = allele_counts
+        self.allele_to_array_index = allele_to_array_index
+        self.array_index_to_allele = {v: k for k, v in self.allele_to_array_index.items()}
+        self.sequence = sequence
+        self.min_coverage = min_coverage
+
+        # the sequence cast as indices
+        self.sequence_as_index = np.array([allele_to_array_index[item] for item in self.sequence])
+
+        if len(self.sequence) != self.allele_counts.shape[1]:
+            raise ConfigError("ProcessAlleleCounts :: allele_counts has %d positions, but sequence has %d." \
+                              % (len(self.sequence), self.allele_counts.shape[1]))
+
+
+    def subset_arrays_by_positions(self, positions, *arrays):
+        out = []
+        for array in arrays:
+            if array.ndim == 1:
+                out.append(array[positions])
+            else:
+                out.append(array[:, positions])
+
+        return tuple(out)
+
+
+    def process(self):
+        coverage = self.get_coverage()
+
+        positions_above_coverage_threshold = self.get_positions_above_coverage_threshold(self.min_coverage)
+        num_positions = len(positions_above_coverage_threshold)
+
+        if num_positions != len(self.sequence):
+            self.sequence_as_index, self.allele_counts, coverage = \
+                self.subset_arrays_by_positions(positions_above_coverage_threshold,
+                                                self.sequence_as_index,
+                                                self.allele_counts,
+                                                coverage)
+
+        reference_coverage = self.get_reference_coverage()
+        departure_from_consensus = self.get_departure_from_consensus(reference_coverage, coverage)
+        competing_items = self.get_competing_items(reference_coverage, coverage)
+
+
+    def get_coverage(self):
+        return np.sum(self.allele_counts, axis=0)
+
+
+    def get_reference_coverage(self):
+        return self.allele_counts[self.sequence_as_index, np.arange(self.allele_counts.shape[1])]
+
+
+    def get_departure_from_consensus(self, reference_coverage=None, coverage=None):
+        if reference_coverage is None:
+            reference_coverage = self.get_reference_coverage()
+
+        if coverage is None:
+            coverage = self.get_coverage()
+
+        return 1 - reference_coverage/coverage
+
+
+    def get_competing_items(self, reference_coverage=None, coverage=None):
+        if reference_coverage is None:
+            reference_coverage = self.get_reference_coverage()
+
+        if coverage is None:
+            coverage = self.get_coverage()
+
+        n = self.allele_counts.shape[1]
+
+        # as a first pass, sort the row indices (-allele_counts_array is used to sort from highest -> lowest)
+        competing_items_as_index = np.argsort(-self.allele_counts, axis=0)
+
+        # take the top 2 items
+        competing_items_as_index = competing_items_as_index[:2, :]
+
+        # get the coverage of the second item
+        coverage_second_item = self.allele_counts[competing_items_as_index[1, :], np.arange(n)]
+
+        # if the coverage of the second item is 0, set the second index equal to the first
+        competing_items_as_index[1, :] = np.where(coverage_second_item == 0, competing_items_as_index[0, :], competing_items_as_index[1, :])
+
+        # sort the competing nts
+        competing_items_as_index = np.sort(competing_items_as_index, axis=0)
+
+        # make the competing nts list
+        nts_1 = [self.array_index_to_allele[index_1] for index_1 in competing_items_as_index[0, :]]
+        nts_2 = [self.array_index_to_allele[index_2] for index_2 in competing_items_as_index[1, :]]
+        competing_items = np.fromiter((nt_1 + nt_2 for nt_1, nt_2 in zip(nts_1, nts_2)), np.dtype('<U2'), count=n)
+
+        # If the second item is 0, and the reference is the first item, set competing_items to None.
+        # This can easily be checked by seeing if reference_coverage == coverage
+        competing_items = np.where(reference_coverage == coverage, None, competing_items)
+
+        return competing_items
+
+
+    def get_positions_above_coverage_threshold(self, threshold=None):
+        if not threshold:
+            if self.min_coverage:
+                threshold = self.min_coverage
+            else:
+                # no threshold given, give all positions
+                return np.arange(len(self.sequence))
+
+        return np.where(coverage >= min_coverage)[0]
+
+
+        # if we came all the way down here, we want this position to be reported as a variable
+        # nucleotide position.
+        self.profile['worth_reporting'] = True
+
+        if test_class:
+            # BUT THEN if there is a test class, we have to check whether we have enough coverage to be confident
+            # to suggest that this variable position should be reported, and flip that report flag
+            min_acceptable_departure_from_consensus = test_class.min_acceptable_departure_from_consensus(self.profile['coverage'])
+            if departure_from_reference < min_acceptable_departure_from_consensus:
+                self.profile['worth_reporting'] = False
 
 
 class ColumnProfile:
