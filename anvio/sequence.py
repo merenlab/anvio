@@ -281,6 +281,8 @@ class Read:
         self.cigartuples = cigar_tuples
         self.query_alignment_sequence = read_sequence
         self.reference_positions = reference_positions
+        self.reference_start = reference_positions[0]
+        self.reference_end = reference_positions[-1]
 
 
 class ReadTestClass:
@@ -294,8 +296,8 @@ class ReadTestClass:
         read = Read()
         read.query_alignment_sequence = 'AACCTTGG'
         read.cigartuples = cigartuples
-        read.reference_start = None # unused
-        read.reference_end = None # unused
+        read.reference_start = 0 # unused
+        read.reference_end = 0 # unused
 
         return read
 
