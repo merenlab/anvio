@@ -183,10 +183,16 @@ class Auxiliary:
         ]
         print(utils.compare_times(x, iterations_per_call=1))
 
-        self.run(bam)
+        self.run2(bam)
 
 
     def run2(self, bam):
+        """Run auxiliary
+
+        Parameters
+        ==========
+        bam : bamops.BAMFileObject
+        """
         split_length = self.split.length
 
         #np.set_printoptions(threshold=np.inf)
@@ -197,18 +203,7 @@ class Auxiliary:
         allele_counts_array_shape = (len(constants.nucleotides), split_length)
         allele_counts_array = np.zeros(allele_counts_array_shape)
 
-        for read in bam.fetch(self.split.parent, self.split.start, self.split.end):
-            read = Read(read)
-
-            overhang_left = self.split.start - read.reference_start
-            overhang_right = read.reference_end - self.split.end
-
-            if overhang_left > 0:
-                read.trim(trim_by=overhang_left, side='left')
-
-            if overhang_right > 0:
-                read.trim(trim_by=overhang_right, side='right')
-
+        for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
             aligned_sequence = read.get_aligned_sequence()
             aligned_sequence_as_index = [self.nt_to_array_index[nt] for nt in aligned_sequence]
             reference_positions_in_split = [pos - self.split.start for pos in read.reference_positions]
