@@ -374,7 +374,7 @@ class KofamRunHMMs(KofamContext):
             else:
                 self.run.warning("Because you ran this script with the --debug flag, anvi'o will not clean up the temporary\
                 directory located at %s. She hopes that you will be responsible for cleaning up this directory yourself \
-                after you are finished debugging :)" % tmp_directory_path)
+                after you are finished debugging :)" % tmp_directory_path, header="Debug")
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
             return
 
