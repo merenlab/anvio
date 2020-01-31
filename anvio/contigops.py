@@ -183,7 +183,7 @@ class Auxiliary:
         ]
         print(utils.compare_times(x, iterations_per_call=1))
 
-        self.run2(bam)
+        self.run(bam)
 
 
     def run2(self, bam):
@@ -194,8 +194,6 @@ class Auxiliary:
         bam : bamops.BAMFileObject
         """
         split_length = self.split.length
-
-        #np.set_printoptions(threshold=np.inf)
 
         # make an array with as many rows as there are nucleotides in the split, and as many rows as
         # there are nucleotide types. Each nucleotide (A, C, T, G, N) gets its own row which is
@@ -211,7 +209,12 @@ class Auxiliary:
             for seq, pos in zip(aligned_sequence_as_index, reference_positions_in_split):
                 allele_counts_array[seq, pos] += 1
 
-        nt_split_profile = ProcessAlleleCounts(allele_counts_array, self.nt_to_array_index, self.split.sequence)
+        nt_split_profile = ProcessAlleleCounts(
+            allele_counts_array,
+            self.nt_to_array_index,
+            self.split.sequence,
+            min_coverage=self.min_coverage,
+        )
         nt_split_profile.process()
 
 

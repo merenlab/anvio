@@ -514,8 +514,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.run.info('input_bam', None)
         self.run.info('output_dir', self.output_directory, display_only=True)
-        self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
-        self.run.info('num_contigs', pp(self.num_contigs))
 
         # check for the -M parameter.
         self.remove_contigs_based_on_min_max_contig_length()
