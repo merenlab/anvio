@@ -54,6 +54,7 @@ class TableForVariability(Table):
 
 
     def append_entry(self, entry):
+        """FIXME This needs documentation to explain difference between append and append_entry"""
         self.db_entries.append(entry)
 
         if len(self.db_entries) > self.max_num_entries_in_storage_buffer:
