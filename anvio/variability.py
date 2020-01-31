@@ -4,6 +4,7 @@
 """Classes to make sense of single nucleotide variation"""
 
 import numpy as np
+import pandas as pd
 
 from collections import Counter
 
@@ -48,16 +49,20 @@ class VariablityTestFactory:
 
 
 class ProcessAlleleCounts:
-    def __init__(self, allele_counts, allele_to_array_index, sequence, min_coverage=None):
+    def __init__(self, allele_counts, allele_to_array_index, sequence, min_coverage=None, test_class=None):
         """A class to process raw variability information for a given allele counts array
 
         FIXME
         """
+        self.data = {}
+
         self.allele_counts = allele_counts
         self.allele_to_array_index = allele_to_array_index
         self.array_index_to_allele = {v: k for k, v in self.allele_to_array_index.items()}
         self.sequence = sequence
         self.min_coverage = min_coverage
+        self.test_class = test_class
+        self.positions = np.arange(len(sequence))
 
         # the sequence cast as indices
         self.sequence_as_index = np.array([allele_to_array_index[item] for item in self.sequence])
@@ -67,13 +72,13 @@ class ProcessAlleleCounts:
                               % (len(self.sequence), self.allele_counts.shape[1]))
 
 
-    def subset_arrays_by_positions(self, positions, *arrays):
+    def subset_by_index(self, indices, *arrays):
         out = []
         for array in arrays:
             if array.ndim == 1:
-                out.append(array[positions])
+                out.append(array[indices])
             else:
-                out.append(array[:, positions])
+                out.append(array[:, indices])
 
         return tuple(out)
 
@@ -81,21 +86,41 @@ class ProcessAlleleCounts:
     def process(self):
         coverage = self.get_coverage()
 
-        positions_above_coverage_threshold = self.get_positions_above_coverage_threshold(coverage, self.min_coverage)
-        num_positions = len(positions_above_coverage_threshold)
+        indices_to_keep = self.get_indices_above_coverage_threshold(coverage, self.min_coverage)
+        num_good_coverage = len(indices_to_keep)
 
-        if num_positions != len(self.sequence):
-            self.sequence_as_index, self.allele_counts, coverage = \
-                self.subset_arrays_by_positions(positions_above_coverage_threshold,
-                                                self.sequence_as_index,
-                                                self.allele_counts,
-                                                coverage)
+        if num_good_coverage != len(self.positions):
+            # Some positions were not well covered. Remove them
+            target = (self.positions, self.sequence_as_index, self.allele_counts, coverage)
+
+            self.positions, self.sequence_as_index, self.allele_counts, coverage = \
+                self.subset_by_index(indices_to_keep, *target)
 
         reference_coverage = self.get_reference_coverage()
-        departure_from_consensus = self.get_departure_from_consensus(reference_coverage, coverage)
+        departure_from_reference = self.get_departure_from_reference(reference_coverage, coverage)
+
+        indices_to_keep = self.get_positions_worth_reporting(coverage, departure_from_reference)
+        num_worth_reporting = len(indices_to_keep)
+
+        if num_worth_reporting != num_good_coverage:
+            # Some positions were not worth reporting. Remove them
+            target = (self.positions, self.sequence_as_index, self.allele_counts, coverage, reference_coverage, departure_from_reference)
+
+            self.positions, self.sequence_as_index, self.allele_counts, coverage, reference_coverage, departure_from_reference = \
+                self.subset_by_index(indices_to_keep, *target)
+
         competing_items = self.get_competing_items(reference_coverage, coverage)
 
+        self.data.update({
+            'pos': self.positions,
+            'reference': [self.array_index_to_allele[x] for x in self.sequence_as_index],
+            'coverage': coverage,
+            'departure_from_reference': departure_from_reference,
+            'competing_items': competing_items,
+        })
 
+        for index, item in self.array_index_to_allele.items():
+            self.data[item] = self.allele_counts[index, :]
 
 
     def get_coverage(self):
@@ -106,7 +131,7 @@ class ProcessAlleleCounts:
         return self.allele_counts[self.sequence_as_index, np.arange(self.allele_counts.shape[1])]
 
 
-    def get_departure_from_consensus(self, reference_coverage=None, coverage=None):
+    def get_departure_from_reference(self, reference_coverage=None, coverage=None):
         if reference_coverage is None:
             reference_coverage = self.get_reference_coverage()
 
@@ -152,7 +177,7 @@ class ProcessAlleleCounts:
         return competing_items
 
 
-    def get_positions_above_coverage_threshold(self, coverage=None, threshold=None):
+    def get_indices_above_coverage_threshold(self, coverage=None, threshold=None):
         if coverage is None:
             coverage = self.get_coverage()
 
@@ -166,62 +191,13 @@ class ProcessAlleleCounts:
         return np.where(coverage >= threshold)[0]
 
 
-    def get_worth_reporting_array(self):
-        return 
+    def get_positions_worth_reporting(self, coverage, departure_from_reference):
+        worth_reporting = np.array([True] * len(coverage))
 
+        if not self.test_class:
+            return worth_reporting
 
-        # if we came all the way down here, we want this position to be reported as a variable
-        # nucleotide position.
-        self.profile['worth_reporting'] = True
+        threshold = self.test_class.get_min_acceptable_departure_from_consensus(coverage)
 
-        if test_class:
-            # BUT THEN if there is a test class, we have to check whether we have enough coverage to be confident
-            # to suggest that this variable position should be reported, and flip that report flag
-            min_acceptable_departure_from_consensus = test_class.min_acceptable_departure_from_consensus(self.profile['coverage'])
-            if departure_from_reference < min_acceptable_departure_from_consensus:
-                self.profile['worth_reporting'] = False
+        return np.where(departure_from_reference >= threshold)[0]
 
-
-class ColumnProfile:
-    """A class to report raw variability information for a given nucleotide position"""
-
-    def __init__(self, column, reference, coverage=None, pos=None, split_name=None, sample_id=None, test_class=None):
-        # make sure we have coverage value regardless of user's input:
-        coverage = coverage if coverage else len(column)
-
-        if len(reference) != 1:
-            raise ConfigError("ColumnProfile class is upset. The reference must be a single base.")
-
-        self.profile = {'sample_id': sample_id, 'split_name': split_name, 'pos': pos, 'reference': reference,
-                        'coverage': coverage, 'departure_from_reference': 0, 'competing_nts': None, 'worth_reporting': False}
-
-        nt_counts = Counter(column)
-        for nt in nucleotides:
-            self.profile[nt] = nt_counts[nt]
-
-        # sort nts based on their frequency
-        nts_sorted = nt_counts.most_common()
-
-        competing_nts = get_competing_items(reference, nts_sorted)
-        if not competing_nts:
-            # there is no action here, we can return without further processing.
-            return
-
-        self.profile['competing_nts'] = ''.join(competing_nts)
-
-        # here we quantify the ratio of frequencies of non-reference-nts observed in this column
-        # to the overall coverage, and store it as `departure_from_reference`:
-        total_frequency_of_all_bases_but_the_reference = sum([tpl[1] for tpl in nts_sorted if tpl[0] != reference])
-        departure_from_reference = total_frequency_of_all_bases_but_the_reference / coverage
-        self.profile['departure_from_reference'] = departure_from_reference
-
-        # if we came all the way down here, we want this position to be reported as a variable
-        # nucleotide position.
-        self.profile['worth_reporting'] = True
-
-        if test_class:
-            # BUT THEN if there is a test class, we have to check whether we have enough coverage to be confident
-            # to suggest that this variable position should be reported, and flip that report flag
-            min_acceptable_departure_from_consensus = test_class.min_acceptable_departure_from_consensus(self.profile['coverage'])
-            if departure_from_reference < min_acceptable_departure_from_consensus:
-                self.profile['worth_reporting'] = False
