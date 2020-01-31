@@ -41,6 +41,7 @@ null_progress = terminal.Progress(verbose=False)
 null_run = terminal.Run(verbose=False)
 pp = terminal.pretty_print
 
+
 class BAMProfiler(dbops.ContigsSuperclass):
     """Creates an über class for BAM file operations"""
     def __init__(self, args, r=terminal.Run(width=35), p=terminal.Progress()):
@@ -328,8 +329,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         for contig in self.contigs:
             for split in contig.splits:
-                for column_profile in list(split.column_profiles.values()):
-                    variable_nts_table.append(column_profile)
+                if not split.has_variability:
+                    continue
+
+                for entry_key in range(split.num_variability_entries):
+                    [  ]
+                entries = dict(zip(split.column_profiles.keys(), zip(*split.column_profiles.values())))
+                for entry in entries:
+                    variable_nts_table.append(entry)
 
         variable_nts_table.store()
 
@@ -587,36 +594,47 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                 codons_in_genes_to_profile_SCVs = set([])
                 for split in contig.splits:
-                    for column_profile in list(split.column_profiles.values()):
-                        pos_in_contig = column_profile['pos_in_contig']
-                        column_profile['in_partial_gene_call'], \
-                        column_profile['in_complete_gene_call'], \
-                        column_profile['base_pos_in_codon'] = self.get_nt_position_info(contig.name, pos_in_contig)
+                    if split.num_variability_entries == 0:
+                        continue
 
-                        column_profile['sample_id'] = self.sample_id
-                        column_profile['corresponding_gene_call'] = -1 # this means there is no gene call that corresponds to this
-                                                                       # nt position, which will be updated in the following lines.
-                                                                       # yeah, we use '-1', because genecaller ids start from 0 :/
-                        column_profile['codon_order_in_gene'] = -1
+                    v = split.column_profiles
+                    v['sample_id'] = self.sample_id
+                    v['pos_in_contig'] = v['pos'] + split.start
 
-                        # if this particular position (`pos_in_contig`) falls within a COMPLETE gene call,
-                        # we would like to find out which unique gene caller id(s) match to this position.
-                        if column_profile['in_complete_gene_call']:
-                            corresponding_gene_caller_ids = self.get_corresponding_gene_caller_ids_for_base_position(contig.name, pos_in_contig)
+                    v['in_partial_gene_call'], v['in_complete_gene_call'], v['base_pos_in_codon'] = \
+                        zip(*(self.get_nt_position_info(contig.name, pos) for pos in v['pos_in_contig']))
 
-                            # if there are more than one corresponding gene call, this usually indicates an assembly error
-                            # just to be on the safe side, we will not report a corresopnding unique gene callers id for this
-                            # position
-                            if len(corresponding_gene_caller_ids) == 1:
-                                # if we are here, it means this nucleotide position is in a complete gene call. we will do two things here.
-                                # first, we will store the gene_callers_id that corresponds to this nt position, and then we will store the
-                                # order of the corresponding codon in the gene for this nt position.
-                                gene_callers_id = corresponding_gene_caller_ids[0]
-                                column_profile['corresponding_gene_call'] = gene_callers_id
-                                column_profile['codon_order_in_gene'] = self.get_corresponding_codon_order_in_gene(gene_callers_id, contig.name, pos_in_contig)
 
-                                # save this information for later use
-                                codons_in_genes_to_profile_SCVs.add((gene_callers_id, column_profile['codon_order_in_gene']),)
+                    #for column_profile in list(split.column_profiles.values()):
+                    #    pos_in_contig = column_profile['pos_in_contig']
+                    #    column_profile['in_partial_gene_call'], \
+                    #    column_profile['in_complete_gene_call'], \
+                    #    column_profile['base_pos_in_codon'] = self.get_nt_position_info(contig.name, pos_in_contig)
+
+                    #    column_profile['sample_id'] = self.sample_id
+                    #    column_profile['corresponding_gene_call'] = -1 # this means there is no gene call that corresponds to this
+                    #                                                   # nt position, which will be updated in the following lines.
+                    #                                                   # yeah, we use '-1', because genecaller ids start from 0 :/
+                    #    column_profile['codon_order_in_gene'] = -1
+
+                    #    # if this particular position (`pos_in_contig`) falls within a COMPLETE gene call,
+                    #    # we would like to find out which unique gene caller id(s) match to this position.
+                    #    if column_profile['in_complete_gene_call']:
+                    #        corresponding_gene_caller_ids = self.get_corresponding_gene_caller_ids_for_base_position(contig.name, pos_in_contig)
+
+                    #        # if there are more than one corresponding gene call, this usually indicates an assembly error
+                    #        # just to be on the safe side, we will not report a corresopnding unique gene callers id for this
+                    #        # position
+                    #        if len(corresponding_gene_caller_ids) == 1:
+                    #            # if we are here, it means this nucleotide position is in a complete gene call. we will do two things here.
+                    #            # first, we will store the gene_callers_id that corresponds to this nt position, and then we will store the
+                    #            # order of the corresponding codon in the gene for this nt position.
+                    #            gene_callers_id = corresponding_gene_caller_ids[0]
+                    #            column_profile['corresponding_gene_call'] = gene_callers_id
+                    #            column_profile['codon_order_in_gene'] = self.get_corresponding_codon_order_in_gene(gene_callers_id, contig.name, pos_in_contig)
+
+                    #            # save this information for later use
+                    #            codons_in_genes_to_profile_SCVs.add((gene_callers_id, column_profile['codon_order_in_gene']),)
 
                 timer.make_checkpoint('Auxiliary loose ends finished')
 
