@@ -26,7 +26,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.sequence import Coverage, Read
 from anvio.errors import ConfigError
-from anvio.variability import ColumnProfile, VariablityTestFactory, ProcessAlleleCounts
+from anvio.variability import VariablityTestFactory, ProcessAlleleCounts
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -124,9 +124,7 @@ class Contig:
                                         bam,
                                         parent_outlier_positions=self.coverage.outlier_positions,
                                         min_coverage=self.min_coverage_for_variability,
-                                        report_variability_full=self.report_variability_full,
-                                        ignore_orphans=self.ignore_orphans,
-                                        max_coverage_depth=self.max_coverage_depth)
+                                        report_variability_full=self.report_variability_full)
 
 
 class Split:
@@ -140,8 +138,9 @@ class Split:
         self.length = end - start
         self.explicit_length = 0
         self.abundance = 0.0
-        self.column_profiles = {}
         self.auxiliary = None
+        self.num_variability_entries = 0
+
 
     def get_atomic_data_dict(self):
         d = {'std_coverage': self.coverage.std,
@@ -158,47 +157,31 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, bam, parent_outlier_positions,
-                 min_coverage=10,
-                 report_variability_full=False,
-                 ignore_orphans=False,
-                 max_coverage_depth=constants.max_depth_for_coverage):
-        self.v = []
-        self.rep_seq = ''
+    def __init__(self, split, bam, parent_outlier_positions, min_coverage=10, report_variability_full=False):
         self.split = split
         self.variation_density = 0.0
         self.parent_outlier_positions = parent_outlier_positions
-        self.competing_nucleotides = {}
         self.min_coverage = min_coverage
-        self.column_profile = self.split.column_profiles
         self.report_variability_full = report_variability_full
-        self.ignore_orphans = ignore_orphans
-        self.max_coverage_depth = max_coverage_depth
 
+        self.column_profiles = {}
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
-
-        x = [
-            ('fast', self.run2, (bam, ), {}),
-            ('slow', self.run, (bam, ), {}),
-        ]
-        print(utils.compare_times(x, iterations_per_call=1))
 
         self.run(bam)
 
 
-    def run2(self, bam):
+    def run(self, bam):
         """Run auxiliary
 
         Parameters
         ==========
         bam : bamops.BAMFileObject
         """
-        split_length = self.split.length
 
         # make an array with as many rows as there are nucleotides in the split, and as many rows as
         # there are nucleotide types. Each nucleotide (A, C, T, G, N) gets its own row which is
         # defined by the self.nt_to_array_index dictionary
-        allele_counts_array_shape = (len(constants.nucleotides), split_length)
+        allele_counts_array_shape = (len(constants.nucleotides), self.split.length)
         allele_counts_array = np.zeros(allele_counts_array_shape)
 
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
@@ -209,16 +192,24 @@ class Auxiliary:
             for seq, pos in zip(aligned_sequence_as_index, reference_positions_in_split):
                 allele_counts_array[seq, pos] += 1
 
-        nt_split_profile = ProcessAlleleCounts(
+        test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
+
+        nt_profile = ProcessAlleleCounts(
             allele_counts_array,
             self.nt_to_array_index,
             self.split.sequence,
             min_coverage=self.min_coverage,
+            test_class=test_class
         )
-        nt_split_profile.process()
+
+        nt_profile.process()
+        self.split.column_profiles = nt_profile.data
+
+        self.split.num_variability_entries = len(nt_profile.data['coverage'])
+        self.variation_density = self.split.num_variability_entries * 1000.0 / self.split.length
 
 
-    def run(self, bam):
+    def run_old(self, bam):
         ratios = []
 
         for pileupcolumn in bam.pileup(self.split.parent, self.split.start, self.split.end,
