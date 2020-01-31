@@ -47,58 +47,6 @@ class VariablityTestFactory:
         return (1 / b) ** (coverage ** (1 / b) - m) + c
 
 
-def get_competing_items(reference, items_frequency_tuples_list=[]):
-    """Resolves competing nts and aas.
-
-       This function will return None if there is no varaition and the most frequent
-       item is equal to the reference. But will NOT return None if there is no
-       variation AND the most frequent item is different than the reference.
-
-       `items_frequency_tuples_list` MUST BE SORTED & should look like this:
-
-            >>> [('Val', 69), ('Asn', 0), ('Gln', 0), ('Cys', 0), ('Glu', 0), ...]
-
-        See issue #544 (https://github.com/merenlab/anvio/issues/544) for test data.
-
-    """
-
-    num_items = len(items_frequency_tuples_list)
-    if not num_items:
-        raise ConfigError("Wat. You sent an empty list to `get_competing_items` :(")
-
-    # get the most frequent base
-    most_frequent_item = items_frequency_tuples_list[0][0]
-
-    if (num_items == 1 or not items_frequency_tuples_list[1][1]) and most_frequent_item == reference:
-        # ^^^^^ the list has only one item, or the second item has 0 frequency ^^^^^
-        # so there is no variation, and the most frequent base IS the reference.
-        # nothing to see here.
-        return None
-    elif (num_items == 1 or not items_frequency_tuples_list[1][1]) and most_frequent_item != reference:
-        # ^^^^^ the list has only one item, or the second item has 0 frequency ^^^^^
-        # again, there is no variation, but the most frequent base DIFFERS from the reference.
-        # much more interesting. We are not returning None here, becasue we do not want this
-        # information to be confused wit hthe true case of no variation (see the case above).
-        return [most_frequent_item, most_frequent_item]
-    else:
-        # the only other option is to have multiple bases in items_frequency_tuples_list.
-        # competing nts are simply the most frequent two nucleotides in the column.
-        # clearly, the `reference` nucleotide (which is the observed nucleotide in
-        # the contig for this particular `pos`) may not be one of these. but here,
-        # we don't care about that.
-
-        # FIXME: CONGRATULATIONS. YOU DID FIND THE NTH SHITTIEST PIECE OF CODE IN THIS
-        #        REPOSITORY. IF YOU SEND US AN E-MAIL, SOMEONE WILL RESPOND WITH A
-        #        FORMAL APOLOGY FOR THIS MONSTROSITY.
-        if num_items > 2 and items_frequency_tuples_list[1][1] == items_frequency_tuples_list[2][1]:
-            frequency_of_the_second = items_frequency_tuples_list[1][1]
-            second_most_frequent_items = sorted([tpl[0] for tpl in items_frequency_tuples_list if tpl[1] == frequency_of_the_second and tpl[0] != most_frequent_item], reverse=True)
-            return sorted([most_frequent_item, second_most_frequent_items[0]])
-        else:
-            second_most_frequent_item = items_frequency_tuples_list[1][0]
-            return sorted([most_frequent_item, second_most_frequent_item])
-
-
 class ProcessAlleleCounts:
     def __init__(self, allele_counts, allele_to_array_index, sequence, min_coverage=None):
         """A class to process raw variability information for a given allele counts array
