@@ -23,34 +23,28 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 class VariablityTestFactory:
-    """an experimental class to make sense whether the nucleotide variation in a column
-       is meaningful beyond sequencing errors, given the coverage of that position."""
     def __init__(self, params={'b': 3, 'm': 1.45, 'c': 0.05}):
         self.params = params
-        self.coverage_upper_limit = 500
-
-        # for fast access
-        if params:
-            self.cov_var_map_dict = dict([(c, self.curve(c)) for c in range(0, self.coverage_upper_limit + 1)])
-        else:
-            self.cov_var_map_dict = dict([(c, 0) for c in range(0, self.coverage_upper_limit + 1)])
 
 
-    def min_acceptable_departure_from_consensus(self, coverage):
-        """Returns a minimum departure from consensus ratio for a given coverage
-           based on test factory settings."""
-        if coverage >= self.coverage_upper_limit:
-            coverage = self.coverage_upper_limit
+    def get_min_acceptable_departure_from_consensus(self, coverage):
+        """Get minimum allowable departure from consensus
 
-        return self.cov_var_map_dict[coverage]
+        Notes
+        =====
+        - 0 returned if self.params is None
+        - https://www.desmos.com/calculator/qwocua4zi5
+        - https://i.imgur.com/zd04pui.png
+        """
+        if self.params is None:
+            if hasattr(coverage, '__len__'):
+                return np.zeros(len(coverage))
+            else:
+                return 0
 
-
-    def curve(self, coverage):
-        # https://www.desmos.com/calculator/qwocua4zi5
-        # and/or https://i.imgur.com/zd04pui.png
         b, m, c = self.params['b'], self.params['m'], self.params['c']
-        y = ((1 / b) ** ((coverage ** (1 / b)) - m)) + c
-        return y
+
+        return (1 / b) ** (coverage ** (1 / b) - m) + c
 
 
 def get_competing_items(reference, items_frequency_tuples_list=[]):
@@ -139,7 +133,7 @@ class ProcessAlleleCounts:
     def process(self):
         coverage = self.get_coverage()
 
-        positions_above_coverage_threshold = self.get_positions_above_coverage_threshold(self.min_coverage)
+        positions_above_coverage_threshold = self.get_positions_above_coverage_threshold(coverage, self.min_coverage)
         num_positions = len(positions_above_coverage_threshold)
 
         if num_positions != len(self.sequence):
@@ -152,6 +146,8 @@ class ProcessAlleleCounts:
         reference_coverage = self.get_reference_coverage()
         departure_from_consensus = self.get_departure_from_consensus(reference_coverage, coverage)
         competing_items = self.get_competing_items(reference_coverage, coverage)
+
+
 
 
     def get_coverage(self):
@@ -208,15 +204,22 @@ class ProcessAlleleCounts:
         return competing_items
 
 
-    def get_positions_above_coverage_threshold(self, threshold=None):
-        if not threshold:
+    def get_positions_above_coverage_threshold(self, coverage=None, threshold=None):
+        if coverage is None:
+            coverage = self.get_coverage()
+
+        if threshold is None:
             if self.min_coverage:
                 threshold = self.min_coverage
             else:
                 # no threshold given, give all positions
                 return np.arange(len(self.sequence))
 
-        return np.where(coverage >= min_coverage)[0]
+        return np.where(coverage >= threshold)[0]
+
+
+    def get_worth_reporting_array(self):
+        return 
 
 
         # if we came all the way down here, we want this position to be reported as a variable
