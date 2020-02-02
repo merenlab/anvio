@@ -52,7 +52,7 @@ class ProcessAlleleCounts:
     def __init__(self, allele_counts, allele_to_array_index, sequence, min_coverage=None, test_class=None):
         """A class to process raw variability information for a given allele counts array
 
-        FIXME
+        Use inheriting classes ProcessNucleotideCounts, ProcessAminoAcidCounts, and ProcessCodonCounts
         """
         self.data = {}
 
@@ -201,3 +201,32 @@ class ProcessAlleleCounts:
 
         return np.where(departure_from_reference >= threshold)[0]
 
+
+class ProcessNucleotideCounts(ProcessAlleleCounts):
+    def __init__(self, *args, **kwargs):
+        ProcessAlleleCounts.__init__(self, *args, **kwargs)
+        self._process = ProcessAlleleCounts.process
+
+    def process(self):
+        self._process(self)
+        self.data['competing_nts'] = self.data.pop('competing_items')
+
+
+class ProcessAminoAcidCounts(ProcessAlleleCounts):
+    def __init__(self, *args, **kwargs):
+        ProcessAlleleCounts.__init__(self, *args, **kwargs)
+        self._process = ProcessAlleleCounts.process
+
+    def process(self):
+        self._process(self)
+        self.data['competing_aas'] = self.data.pop('competing_items')
+
+
+class ProcessCodonCounts(ProcessAlleleCounts):
+    def __init__(self, *args, **kwargs):
+        ProcessAlleleCounts.__init__(self, *args, **kwargs)
+        self._process = ProcessAlleleCounts.process
+
+    def process(self):
+        self._process(self)
+        self.data['competing_codons'] = self.data.pop('competing_items')
