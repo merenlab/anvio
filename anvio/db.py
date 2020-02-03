@@ -110,6 +110,7 @@ class DB:
 
 
     def drop_table(self, table_name):
+        """Delete a table in the database if it exists"""
         self._exec('''DROP TABLE IF EXISTS %s;''' % table_name)
 
 
