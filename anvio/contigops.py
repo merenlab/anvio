@@ -115,6 +115,7 @@ class Contig:
         for split in self.splits:
             split.coverage = Coverage()
             split.coverage.c = self.coverage.c[split.start:split.end]
+            split.coverage.is_outlier_in_parent = self.coverage.is_outlier[split.start:split.end]
             split.coverage.process_c(split.coverage.c)
 
 
@@ -200,6 +201,10 @@ class Auxiliary:
             self.split.sequence,
             min_coverage=self.min_coverage,
             test_class=test_class,
+            data = {
+                'cov_outlier_in_split': self.split.coverage.is_outlier,
+                'cov_outlier_in_contig': self.split.coverage.is_outlier_in_parent,
+            }
         )
 
         nt_profile.process()
