@@ -76,9 +76,10 @@ class ProcessAlleleCounts:
             information related to variability. If the user has _other_ data for each position in
             this sequence, they can pass it with parameter. For example, if the user has a
             True/False _array_ (not list) that states whether each position is an outlier position
-            relative to a contig, they could pass a dictionary {'outlier_in_contig': np.array([True,
-            True, ...])}, where the array is the same length as `sequence`. This array will be added
-            to self.d, and will be appropriately filtered alongside the other variables
+            relative to a contig, they could pass a dictionary {'cov_outlier_in_contig':
+            np.array([True, True, ...])}, where the array is the same length as `sequence`. This
+            array will be added to self.d, and will be appropriately filtered alongside the other
+            variables
 
         Notes
         =====
@@ -88,6 +89,14 @@ class ProcessAlleleCounts:
           inheriting classes ProcessNucleotideCounts, ProcessAminoAcidCounts, and ProcessCodonCounts
         """
 
+        self.d = copy.copy(data)
+
+        for key in self.d:
+            if len(self.d[key]) != allele_counts.shape[1]:
+                raise ConfigError("ProcessAlleleCounts :: key '%s' in your passed data dictionary \
+                                   has %d positions, but sequence has %d." \
+                                   % (key, len(sequence), len(self.d[key])))
+
         if len(sequence) != allele_counts.shape[1]:
             raise ConfigError("ProcessAlleleCounts :: allele_counts has %d positions, but sequence has %d." \
                               % (len(sequence), allele_counts.shape[1]))
@@ -95,7 +104,6 @@ class ProcessAlleleCounts:
         self.min_coverage = min_coverage
         self.test_class = test_class
 
-        self.d = copy.copy(data)
         self.d['pos'] = np.arange(len(sequence))
         self.d['allele_counts'] = allele_counts
         self.d['sequence_as_index'] = np.array([allele_to_array_index[item] for item in sequence])

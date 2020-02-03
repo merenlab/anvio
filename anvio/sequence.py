@@ -164,7 +164,8 @@ class Read:
         >>> [(0, 1), (47, 51), (97, 100)]
         """
 
-        return [(x[0], x[-1] + 1) for x in numpy.split(self.reference_positions, numpy.where(numpy.diff(self.reference_positions) != 1)[0] + 1)]
+        split = numpy.split(self.reference_positions, numpy.where(numpy.diff(self.reference_positions) != 1)[0] + 1)
+        return [(x[0], x[-1] + 1) for x in split]
 
 
     def get_aligned_sequence(self):
@@ -550,7 +551,9 @@ class Coverage:
         self.std = numpy.std(c)
         self.detection = 1 - (float(collections.Counter(c)[0]) / len(c))
 
+        # FIXME Is this legacy if we calc is_outlier instead?
         self.outlier_positions = get_indices_for_outlier_values(c)
+        self.is_outlier = get_list_of_outliers(c) # this is an array not a list
 
         if c.size < 4:
             self.mean_Q2Q3 = self.mean
