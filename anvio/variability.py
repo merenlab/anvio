@@ -205,28 +205,25 @@ class ProcessAlleleCounts:
 class ProcessNucleotideCounts(ProcessAlleleCounts):
     def __init__(self, *args, **kwargs):
         ProcessAlleleCounts.__init__(self, *args, **kwargs)
-        self._process = ProcessAlleleCounts.process
 
     def process(self):
-        self._process(self)
+        ProcessAlleleCounts.process(self)
         self.data['competing_nts'] = self.data.pop('competing_items')
 
 
 class ProcessAminoAcidCounts(ProcessAlleleCounts):
     def __init__(self, *args, **kwargs):
         ProcessAlleleCounts.__init__(self, *args, **kwargs)
-        self._process = ProcessAlleleCounts.process
 
     def process(self):
-        self._process(self)
+        ProcessAlleleCounts.process(self)
         self.data['competing_aas'] = self.data.pop('competing_items')
 
 
 class ProcessCodonCounts(ProcessAlleleCounts):
     def __init__(self, *args, **kwargs):
         ProcessAlleleCounts.__init__(self, *args, **kwargs)
-        self._process = ProcessAlleleCounts.process
 
     def process(self):
-        self._process(self)
+        ProcessAlleleCounts.process(self)
         self.data['competing_codons'] = self.data.pop('competing_items')
