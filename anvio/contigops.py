@@ -199,13 +199,13 @@ class Auxiliary:
             self.nt_to_array_index,
             self.split.sequence,
             min_coverage=self.min_coverage,
-            test_class=test_class
+            test_class=test_class,
         )
 
         nt_profile.process()
-        self.split.column_profiles = nt_profile.data
+        self.split.column_profiles = nt_profile.d
 
-        self.split.num_variability_entries = len(nt_profile.data['coverage'])
+        self.split.num_variability_entries = len(nt_profile.d['coverage'])
         self.variation_density = self.split.num_variability_entries * 1000.0 / self.split.length
 
 
