@@ -52,7 +52,15 @@ class ProcessAlleleCounts:
     def __init__(self, allele_counts, allele_to_array_index, sequence, min_coverage=None, test_class=None):
         """A class to process raw variability information for a given allele counts array
 
-        Use inheriting classes ProcessNucleotideCounts, ProcessAminoAcidCounts, and ProcessCodonCounts
+        Creates self.data, a dictionary of equal length arrays that describes information related to
+        variability.
+
+        Notes
+        =====
+        - Originally self.data was a pandas dataframe. While this approach made the code very
+          readable and simple to write, it was extremely slow.
+        - If you are analyzing nucleotide, amino acid, or codon variability, you should use the
+          inheriting classes ProcessNucleotideCounts, ProcessAminoAcidCounts, and ProcessCodonCounts
         """
         self.data = {}
 
@@ -84,6 +92,7 @@ class ProcessAlleleCounts:
 
 
     def process(self):
+        """The main function call of this class. Populates self.data"""
         coverage = self.get_coverage()
 
         indices_to_keep = self.get_indices_above_coverage_threshold(coverage, self.min_coverage)
