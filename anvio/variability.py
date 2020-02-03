@@ -3,6 +3,7 @@
 
 """Classes to make sense of single nucleotide variation"""
 
+import copy
 import numpy as np
 import pandas as pd
 
@@ -49,95 +50,112 @@ class VariablityTestFactory:
 
 
 class ProcessAlleleCounts:
-    def __init__(self, allele_counts, allele_to_array_index, sequence, min_coverage=None, test_class=None):
+    def __init__(self, allele_counts, allele_to_array_index, sequence, min_coverage=None, test_class=None, data={}):
         """A class to process raw variability information for a given allele counts array
 
-        Creates self.data, a dictionary of equal length arrays that describes information related to
+        Creates self.d, a dictionary of equal-length arrays that describes information related to
         variability.
+
+        Parameters
+        ==========
+        allele_counts : array-like
+            An allele counts array. Each column is a position in the sequence, and each row is an
+            allele (e.g. A, C, T, G, N if alleles are nucleotides).
+        allele_to_array_index : dict
+            Which allele belongs at which row index? If A is row 0, C is row 1, etc, the dictionary
+            should be {'A': 0, 'C': 1, ...}.
+        sequence : str
+            What sequence is this for? It should have length equal to number of columns of
+            allele_counts
+        min_coverage : int, None
+            If not None, positions below this coverage value will be filtered out
+        test_class : VariablityTestFactory, None
+            If not None, positions will be filtered out if they are deemed not worth reporting
+        data : dict, {}
+            This class creates self.d, a dictionary of equal length arrays that describes
+            information related to variability. If the user has _other_ data for each position in
+            this sequence, they can pass it with parameter. For example, if the user has a
+            True/False _array_ (not list) that states whether each position is an outlier position
+            relative to a contig, they could pass a dictionary {'outlier_in_contig': np.array([True,
+            True, ...])}, where the array is the same length as `sequence`. This array will be added
+            to self.d, and will be appropriately filtered alongside the other variables
 
         Notes
         =====
-        - Originally self.data was a pandas dataframe. While this approach made the code very
+        - Originally self.d was a pandas dataframe. While this approach made the code very
           readable and simple to write, it was extremely slow.
         - If you are analyzing nucleotide, amino acid, or codon variability, you should use the
           inheriting classes ProcessNucleotideCounts, ProcessAminoAcidCounts, and ProcessCodonCounts
         """
-        self.data = {}
 
-        self.allele_counts = allele_counts
-        self.allele_to_array_index = allele_to_array_index
-        self.array_index_to_allele = {v: k for k, v in self.allele_to_array_index.items()}
-        self.sequence = sequence
+        if len(sequence) != allele_counts.shape[1]:
+            raise ConfigError("ProcessAlleleCounts :: allele_counts has %d positions, but sequence has %d." \
+                              % (len(sequence), allele_counts.shape[1]))
+
         self.min_coverage = min_coverage
         self.test_class = test_class
-        self.positions = np.arange(len(sequence))
 
-        # the sequence cast as indices
-        self.sequence_as_index = np.array([allele_to_array_index[item] for item in self.sequence])
+        self.d = copy.copy(data)
+        self.d['pos'] = np.arange(len(sequence))
+        self.d['allele_counts'] = allele_counts
+        self.d['sequence_as_index'] = np.array([allele_to_array_index[item] for item in sequence])
 
-        if len(self.sequence) != self.allele_counts.shape[1]:
-            raise ConfigError("ProcessAlleleCounts :: allele_counts has %d positions, but sequence has %d." \
-                              % (len(self.sequence), self.allele_counts.shape[1]))
-
-
-    def subset_by_index(self, indices, *arrays):
-        out = []
-        for array in arrays:
-            if array.ndim == 1:
-                out.append(array[indices])
-            else:
-                out.append(array[:, indices])
-
-        return tuple(out)
+        # dictionaries to convert to/from array-row-index and allele
+        self.allele_to_array_index = allele_to_array_index
+        self.array_index_to_allele = {v: k for k, v in self.allele_to_array_index.items()}
 
 
     def process(self):
-        """The main function call of this class. Populates self.data"""
-        coverage = self.get_coverage()
+        """The main function call of this class. Populates self.d"""
 
-        indices_to_keep = self.get_indices_above_coverage_threshold(coverage, self.min_coverage)
-        num_good_coverage = len(indices_to_keep)
+        self.d['coverage'] = self.get_coverage()
 
-        if num_good_coverage != len(self.positions):
-            # Some positions were not well covered. Remove them
-            target = (self.positions, self.sequence_as_index, self.allele_counts, coverage)
+        # Filter if some positions are not well-covered
+        indices_to_keep = self.get_indices_above_coverage_threshold(self.d['coverage'], self.min_coverage)
+        self.filter_or_dont(indices_to_keep)
 
-            self.positions, self.sequence_as_index, self.allele_counts, coverage = \
-                self.subset_by_index(indices_to_keep, *target)
+        self.d['reference_coverage'] = self.get_reference_coverage()
+        self.d['departure_from_reference'] = self.get_departure_from_reference(self.d['reference_coverage'], self.d['coverage'])
 
-        reference_coverage = self.get_reference_coverage()
-        departure_from_reference = self.get_departure_from_reference(reference_coverage, coverage)
+        # Filter if some positions were not worth reporting
+        indices_to_keep = self.get_positions_worth_reporting(self.d['coverage'], self.d['departure_from_reference'])
+        self.filter_or_dont(indices_to_keep)
 
-        indices_to_keep = self.get_positions_worth_reporting(coverage, departure_from_reference)
-        num_worth_reporting = len(indices_to_keep)
+        self.d['competing_items'] = self.get_competing_items(self.d['reference_coverage'], self.d['coverage'])
 
-        if num_worth_reporting != num_good_coverage:
-            # Some positions were not worth reporting. Remove them
-            target = (self.positions, self.sequence_as_index, self.allele_counts, coverage, reference_coverage, departure_from_reference)
-
-            self.positions, self.sequence_as_index, self.allele_counts, coverage, reference_coverage, departure_from_reference = \
-                self.subset_by_index(indices_to_keep, *target)
-
-        competing_items = self.get_competing_items(reference_coverage, coverage)
-
-        self.data.update({
-            'pos': self.positions,
-            'reference': [self.array_index_to_allele[x] for x in self.sequence_as_index],
-            'coverage': coverage,
-            'departure_from_reference': departure_from_reference,
-            'competing_items': competing_items,
-        })
-
+        # each allele gets its own key in self.d
         for index, item in self.array_index_to_allele.items():
-            self.data[item] = self.allele_counts[index, :]
+            self.d[item] = self.d['allele_counts'][index, :]
+
+        # Delete intermediate keys
+        del self.d['allele_counts']
+        del self.d['sequence_as_index']
+        del self.d['reference_coverage']
+
+
+    def filter_by_index(self, indices):
+        for key in self.d:
+            if self.d[key].ndim == 1:
+                self.d[key] = self.d[key][indices]
+            else:
+                self.d[key] = self.d[key][:, indices]
+
+
+    def filter_or_dont(self, indices):
+        """Filter if indices is a subset of indices in self.d"""
+
+        if len(indices) == len(self.d['pos']):
+            return
+
+        self.filter_by_index(indices)
 
 
     def get_coverage(self):
-        return np.sum(self.allele_counts, axis=0)
+        return np.sum(self.d['allele_counts'], axis=0)
 
 
     def get_reference_coverage(self):
-        return self.allele_counts[self.sequence_as_index, np.arange(self.allele_counts.shape[1])]
+        return self.d['allele_counts'][self.d['sequence_as_index'], np.arange(self.d['allele_counts'].shape[1])]
 
 
     def get_departure_from_reference(self, reference_coverage=None, coverage=None):
@@ -157,16 +175,16 @@ class ProcessAlleleCounts:
         if coverage is None:
             coverage = self.get_coverage()
 
-        n = self.allele_counts.shape[1]
+        n = self.d['allele_counts'].shape[1]
 
         # as a first pass, sort the row indices (-allele_counts_array is used to sort from highest -> lowest)
-        competing_items_as_index = np.argsort(-self.allele_counts, axis=0)
+        competing_items_as_index = np.argsort(-self.d['allele_counts'], axis=0)
 
         # take the top 2 items
         competing_items_as_index = competing_items_as_index[:2, :]
 
         # get the coverage of the second item
-        coverage_second_item = self.allele_counts[competing_items_as_index[1, :], np.arange(n)]
+        coverage_second_item = self.d['allele_counts'][competing_items_as_index[1, :], np.arange(n)]
 
         # if the coverage of the second item is 0, set the second index equal to the first
         competing_items_as_index[1, :] = np.where(coverage_second_item == 0, competing_items_as_index[0, :], competing_items_as_index[1, :])
@@ -195,7 +213,7 @@ class ProcessAlleleCounts:
                 threshold = self.min_coverage
             else:
                 # no threshold given, give all positions
-                return np.arange(len(self.sequence))
+                return np.arange(len(self.d['sequence_as_index']))
 
         return np.where(coverage >= threshold)[0]
 
@@ -217,7 +235,7 @@ class ProcessNucleotideCounts(ProcessAlleleCounts):
 
     def process(self):
         ProcessAlleleCounts.process(self)
-        self.data['competing_nts'] = self.data.pop('competing_items')
+        self.d['competing_nts'] = self.d.pop('competing_items')
 
 
 class ProcessAminoAcidCounts(ProcessAlleleCounts):
@@ -226,7 +244,7 @@ class ProcessAminoAcidCounts(ProcessAlleleCounts):
 
     def process(self):
         ProcessAlleleCounts.process(self)
-        self.data['competing_aas'] = self.data.pop('competing_items')
+        self.d['competing_aas'] = self.d.pop('competing_items')
 
 
 class ProcessCodonCounts(ProcessAlleleCounts):
@@ -235,4 +253,4 @@ class ProcessCodonCounts(ProcessAlleleCounts):
 
     def process(self):
         ProcessAlleleCounts.process(self)
-        self.data['competing_codons'] = self.data.pop('competing_items')
+        self.d['competing_codons'] = self.d.pop('competing_items')
