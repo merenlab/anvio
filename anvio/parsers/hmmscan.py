@@ -88,7 +88,7 @@ class HMMScan(Parser):
                     else:
                         self.run.warning("Oh dear. The Kofam profile %s has a strange score_type value: %s. The only accepted values \
                         for this type are 'full' or 'domain', so anvi'o cannot parse the hits to this profile. All hits will be kept \
-                        regardless of bit score. You have been warned." % (hit['gene_name'], score_type)
+                        regardless of bit score. You have been warned." % (hit['gene_name'], score_type))
 
                     if keep:
                         entry = {'entry_id': entry_id,
