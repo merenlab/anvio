@@ -380,7 +380,7 @@ class KofamRunHMMs(KofamContext):
 
         # parse hmmscan output
         parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE')
-        search_results_dict = parser.get_search_results()
+        search_results_dict = parser.get_search_results(ko_list_dict=self.ko_dict)
 
         # add functions to database
         functions_dict = {}
