@@ -16,11 +16,15 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
+run = anvio.terminal.Run()
+
 
 class HMMScan(Parser):
     def __init__(self, hmm_scan_hits_txt, alphabet='AA', context='GENE'):
         self.alphabet = alphabet
         self.context = context
+
+        self.run = run
 
         files_expected = {'hits': hmm_scan_hits_txt}
 
@@ -135,7 +139,7 @@ class HMMScan(Parser):
                 entry_id += 1
                 annotations_dict[entry_id] = entry
 
-        print("Number of weak hits removed", num_hits_removed)
-        print("Number of hits in annotation dict ", len(annotations_dict.keys()))
+        self.run.info("Number of weak hits removed", num_hits_removed)
+        self.run.info("Number of hits in annotation dict ", len(annotations_dict.keys()))
 
         return annotations_dict
