@@ -50,7 +50,7 @@ class VariablityTestFactory:
 
 
 class ProcessAlleleCounts:
-    def __init__(self, allele_counts, allele_to_array_index, sequence, min_coverage=None, test_class=None, data={}):
+    def __init__(self, allele_counts, allele_to_array_index, sequence, min_coverage=None, test_class=None, additonal_per_position_data={}):
         """A class to process raw variability information for a given allele counts array
 
         Creates self.d, a dictionary of equal-length arrays that describes information related to
@@ -71,7 +71,7 @@ class ProcessAlleleCounts:
             If not None, positions below this coverage value will be filtered out
         test_class : VariablityTestFactory, None
             If not None, positions will be filtered out if they are deemed not worth reporting
-        data : dict, {}
+        additonal_per_position_data : dict, {}
             This class creates self.d, a dictionary of equal length arrays that describes
             information related to variability. If the user has _other_ data for each position in
             this sequence, they can pass it with parameter. For example, if the user has a
@@ -89,7 +89,7 @@ class ProcessAlleleCounts:
           inheriting classes ProcessNucleotideCounts, ProcessAminoAcidCounts, and ProcessCodonCounts
         """
 
-        self.d = copy.copy(data)
+        self.d = copy.copy(additonal_per_position_data)
 
         for key in self.d:
             if len(self.d[key]) != allele_counts.shape[1]:
