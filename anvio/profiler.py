@@ -98,6 +98,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
                               "not changing anything, why is anvi'o upset with you? Because. Let's don't use flags "
                               "we don't need.")
 
+        # FIXME Does this matter now? pileup is the reason there is a max_coverage_depth parameter,
+        # but not there is no limit on coverage through fetch calls. Discuss with @meren before
+        # merge
         if self.max_coverage_depth >= auxiliarydataops.COVERAGE_MAX_VALUE:
             raise ConfigError("The value %s for the maximum coverage depth is not going to work :/ While the maximum "
                               "depth of coverage for anvi'o to care about is a soft cut-off (hence you have some level "
@@ -329,34 +332,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         for contig in self.contigs:
             for split in contig.splits:
-                if not split.has_variability:
+                if split.num_variability_entries == 0:
                     continue
 
-                for entry_key in range(split.num_variability_entries):
-                    [  ]
-                entries = dict(zip(split.column_profiles.keys(), zip(*split.column_profiles.values())))
+                # FIXME extremely slow; consider casting as dataframe
+                # e.g. database.insert_rows_from_dataframe(anvio.tables.variable_nts_table_name, df)
+                entries = zip(*split.column_profiles.values())
                 for entry in entries:
-                    variable_nts_table.append(entry)
+                    entry_dict = dict(zip(split.column_profiles.keys(), entry))
+                    variable_nts_table.append(entry_dict)
 
         variable_nts_table.store()
-
-
-    def generate_variabile_nts_table_2(self):
-        if self.skip_SNV_profiling:
-            return
-
-        variable_nts_table = TableForVariability(self.profile_db_path, progress=null_progress)
-
-        database = db.DB(self.profile_db_path, utils.get_required_version_for_db(self.profile_db_path))
-        for contig in self.contigs:
-            for split in contig.splits:
-                if not split.num_variability_entries:
-                    continue
-
-                df = pd.DataFrame(split.column_profiles)
-                df['entry_id'] = range(df.shape[0])
-
-                database.insert_rows_from_dataframe(anvio.tables.variable_nts_table_name, df)
 
 
     def store_split_coverages(self):
@@ -594,7 +580,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             contig = contigops.Contig(contig_name)
             contig.length = self.contig_lengths[index]
             contig.split_length = self.a_meta['split_length']
-            contig.min_coverage_for_variability =  self.min_coverage_for_variability
+            contig.min_coverage_for_variability = self.min_coverage_for_variability
             contig.skip_SNV_profiling = self.skip_SNV_profiling
             contig.report_variability_full = self.report_variability_full
             contig.ignore_orphans = self.ignore_orphans
@@ -632,12 +618,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     if split.num_variability_entries == 0:
                         continue
 
-                    v = split.column_profiles
-                    v['sample_id'] = self.sample_id
-                    v['pos_in_contig'] = v['pos'] + split.start
-
-                    v['in_partial_gene_call'], v['in_complete_gene_call'], v['base_pos_in_codon'] = \
-                        zip(*(self.get_nt_position_info(contig.name, pos) for pos in v['pos_in_contig']))
+                    d = split.column_profiles
+                    d['split_name'] = [split.name] * split.num_variability_entries
+                    d['sample_id'] = [self.sample_id] * split.num_variability_entries
+                    d['pos_in_contig'] = d['pos'] + split.start
 
 
                     #for column_profile in list(split.column_profiles.values()):
