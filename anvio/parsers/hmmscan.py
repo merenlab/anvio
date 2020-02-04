@@ -70,7 +70,9 @@ class HMMScan(Parser):
         # search_table_structure = ['entry_id', 'source', 'alphabet', 'contig', 'gene_callers_id' 'gene_name', 'gene_hmm_id', 'e_value']
 
         entry_id = 0
+        num_hits_removed = 0 # a counter for the number of hits we don't add to the annotation dictionary
         for hit in list(self.dicts['hits'].values()):
+            entry = None
             if self.context == 'GENE':
                 # This is for KEGG Kofams. Here we only add the hit to the annotations_dict if the appropriate bit score is above the
                 # threshold set in ko_list_dict (which is indexed by ko num, aka gene_name in the hits dict)
@@ -80,10 +82,10 @@ class HMMScan(Parser):
                     threshold = ko_list_dict[knum]['threshold']
                     keep = True
                     if score_type == 'full':
-                        if hit['bit_score'] < threshold:
+                        if hit['bit_score'] < float(threshold):
                             keep = False
                     elif score_type == 'domain':
-                        if hit['dom_bit_score'] < threshold:
+                        if hit['dom_bit_score'] < float(threshold):
                             keep = False
                     else:
                         self.run.warning("Oh dear. The Kofam profile %s has a strange score_type value: %s. The only accepted values \
@@ -96,6 +98,8 @@ class HMMScan(Parser):
                                  'gene_hmm_id': hit['gene_hmm_id'],
                                  'gene_callers_id': hit['gene_callers_id'],
                                  'e_value': hit['e_value']}
+                    else:
+                        num_hits_removed += 1
 
                 elif ko_list_dict and hit['gene_name'] not in ko_list_dict.keys():
                     # this should never happen, in an ideal world where everything is filled with butterflies and happiness
@@ -127,7 +131,11 @@ class HMMScan(Parser):
             else:
                 raise ConfigError("Anvi'o does not know how to parse %s:%s" % (self.alphabet, self.context))
 
-            entry_id += 1
-            annotations_dict[entry_id] = entry
+            if entry:
+                entry_id += 1
+                annotations_dict[entry_id] = entry
+
+        print("Number of weak hits removed", num_hits_removed)
+        print("Number of hits in annotation dict ", len(annotations_dict.keys()))
 
         return annotations_dict
