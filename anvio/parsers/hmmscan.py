@@ -72,11 +72,50 @@ class HMMScan(Parser):
         entry_id = 0
         for hit in list(self.dicts['hits'].values()):
             if self.context == 'GENE':
-                entry = {'entry_id': entry_id,
-                         'gene_name': hit['gene_name'],
-                         'gene_hmm_id': hit['gene_hmm_id'],
-                         'gene_callers_id': hit['gene_callers_id'],
-                         'e_value': hit['e_value']}
+                # This is for KEGG Kofams. Here we only add the hit to the annotations_dict if the appropriate bit score is above the
+                # threshold set in ko_list_dict (which is indexed by ko num, aka gene_name in the hits dict)
+                if ko_list_dict and hit['gene_name'] in ko_list_dict.keys():
+                    knum =  hit['gene_name']
+                    score_type = ko_list_dict[knum]['score_type']
+                    threshold = ko_list_dict[knum]['threshold']
+                    keep = True
+                    if score_type == 'full':
+                        if hit['bit_score'] < threshold:
+                            keep = False
+                    elif score_type == 'domain':
+                        if hit['dom_bit_score'] < threshold:
+                            keep = False
+                    else:
+                        self.run.warning("Oh dear. The Kofam profile %s has a strange score_type value: %s. The only accepted values \
+                        for this type are 'full' or 'domain', so anvi'o cannot parse the hits to this profile. All hits will be kept \
+                        regardless of bit score. You have been warned." % (hit['gene_name'], score_type)
+
+                    if keep:
+                        entry = {'entry_id': entry_id,
+                                 'gene_name': hit['gene_name'],
+                                 'gene_hmm_id': hit['gene_hmm_id'],
+                                 'gene_callers_id': hit['gene_callers_id'],
+                                 'e_value': hit['e_value']}
+
+                elif ko_list_dict and hit['gene_name'] not in ko_list_dict.keys():
+                    # this should never happen, in an ideal world where everything is filled with butterflies and happiness
+                    self.run.warning("Hmm. While parsing your Kofam hits, it seems the Kofam profile %s was not found in the ko_list dictionary. \
+                    This should probably not ever happen, and you should contact a developer as soon as possible to figure out what \
+                    is going on. But for now, anvi'o is going to keep all hits to this profile. Consider those hits with a grain of salt, \
+                    as not all of them may be good." % hit['gene_name'])
+                    entry = {'entry_id': entry_id,
+                             'gene_name': hit['gene_name'],
+                             'gene_hmm_id': hit['gene_hmm_id'],
+                             'gene_callers_id': hit['gene_callers_id'],
+                             'e_value': hit['e_value']}
+
+                else:
+                    # but in Pfams, we don't care, we just keep all hits
+                    entry = {'entry_id': entry_id,
+                             'gene_name': hit['gene_name'],
+                             'gene_hmm_id': hit['gene_hmm_id'],
+                             'gene_callers_id': hit['gene_callers_id'],
+                             'e_value': hit['e_value']}
             elif self.context == 'CONTIG' and (self.alphabet == 'DNA' or self.alphabet == 'RNA'):
                 entry = {'entry_id': entry_id,
                          'gene_name': hit['gene_name'],
