@@ -90,8 +90,6 @@ class Contig:
         self.min_coverage_for_variability = 10
         self.skip_SNV_profiling = False
         self.report_variability_full = False
-        self.ignore_orphans = False
-        self.max_coverage_depth = constants.max_depth_for_coverage
         self.codon_frequencies_dict = {}
 
 
@@ -141,6 +139,7 @@ class Split:
         self.abundance = 0.0
         self.auxiliary = None
         self.num_variability_entries = 0
+        self.per_position_info = {} # stores per nt info that is not coverage
 
 
     def get_atomic_data_dict(self):
@@ -193,6 +192,12 @@ class Auxiliary:
             for seq, pos in zip(aligned_sequence_as_index, reference_positions_in_split):
                 allele_counts_array[seq, pos] += 1
 
+        additional_per_position_data = self.split.per_position_info
+        additional_per_position_data.update({
+            'cov_outlier_in_split': self.split.coverage.is_outlier,
+            'cov_outlier_in_contig': self.split.coverage.is_outlier_in_parent,
+        })
+
         test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
 
         nt_profile = ProcessAlleleCounts(
@@ -201,10 +206,7 @@ class Auxiliary:
             self.split.sequence,
             min_coverage=self.min_coverage,
             test_class=test_class,
-            data = {
-                'cov_outlier_in_split': self.split.coverage.is_outlier,
-                'cov_outlier_in_contig': self.split.coverage.is_outlier_in_parent,
-            }
+            additonal_per_position_data = additional_per_position_data,
         )
 
         nt_profile.process()
