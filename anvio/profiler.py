@@ -341,6 +341,24 @@ class BAMProfiler(dbops.ContigsSuperclass):
         variable_nts_table.store()
 
 
+    def generate_variabile_nts_table_2(self):
+        if self.skip_SNV_profiling:
+            return
+
+        variable_nts_table = TableForVariability(self.profile_db_path, progress=null_progress)
+
+        database = db.DB(self.profile_db_path, utils.get_required_version_for_db(self.profile_db_path))
+        for contig in self.contigs:
+            for split in contig.splits:
+                if not split.num_variability_entries:
+                    continue
+
+                df = pd.DataFrame(split.column_profiles)
+                df['entry_id'] = range(df.shape[0])
+
+                database.insert_rows_from_dataframe(anvio.tables.variable_nts_table_name, df)
+
+
     def store_split_coverages(self):
         for contig in self.contigs:
             for split in contig.splits:
@@ -550,6 +568,20 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         return return_path
 
+
+    def populate_per_position_info_for_contig(self, contig):
+        """Stores info available to the ContigsSuperClass into contigops.Split objects"""
+
+        if self.skip_SNV_profiling:
+            return
+
+        nt_info = self.get_nt_array_info(contig.name)
+        for split in contig.splits:
+            split.per_position_info['in_partial_gene_call'] = nt_info[split.start:split.end, 0]
+            split.per_position_info['in_complete_gene_call'] = nt_info[split.start:split.end, 1]
+            split.per_position_info['base_pos_in_codon'] = nt_info[split.start:split.end, 2]
+
+
     @staticmethod
     def profile_contig_worker(self, available_index_queue, output_queue):
         bam_file = bamops.BAMFileObject(self.input_file_path)
@@ -567,15 +599,18 @@ class BAMProfiler(dbops.ContigsSuperclass):
             contig.report_variability_full = self.report_variability_full
             contig.ignore_orphans = self.ignore_orphans
             contig.max_coverage_depth = self.max_coverage_depth
-            timer.make_checkpoint('Initialization')
+            timer.make_checkpoint('Initialization done')
 
-            # populate contig with empty split objects and
+            # populate contig with empty split objects
             for split_name in self.contig_name_to_splits[contig_name]:
                 s = self.splits_basic_info[split_name]
                 split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
                 split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
                 contig.splits.append(split)
             timer.make_checkpoint('Split objects initialized')
+
+            self.populate_per_position_info_for_contig(contig)
+            timer.make_checkpoint('Per nt split info added')
 
             # analyze coverage for each split
             contig.analyze_coverage(bam_file)
