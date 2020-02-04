@@ -443,17 +443,21 @@ class ContigsSuperclass(object):
 
 
     def get_nt_position_info(self, contig_name, pos_in_contig):
-        """This function returns a tuple with three items for each nucleotide position.
+        """Returns a tuple with 3 pieces of information for a given nucleotide position.
 
-            (in_partial_gene_call, in_complete_gene_call, base_pos_in_codon)
+        This function accesses the self.nt_positions_info dictionary of arrays (each key is a contig
+        name) to return the tuple: (in_partial_gene_call, in_complete_gene_call, base_pos_in_codon).
 
-        See `init_nt_position_info_dict` for more info."""
+        Notes
+        =====
+        - If you plan on calling this function many times, consider instead `self.get_nt_array_info`
+        """
 
         if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
             return (0, 0, 0)
 
         if not self.nt_positions_info:
-            raise ConfigError("get_nt_position_info: I am asked to return stuff, but self.nt_position_info is None!")
+            raise ConfigError("get_nt_position_info :: I am asked to return stuff, but self.nt_positions_info is None!")
 
         position_info = self.nt_positions_info[contig_name][pos_in_contig]
 
@@ -467,6 +471,49 @@ class ContigsSuperclass(object):
             return (0, 1, 2)
         if position_info == 1:
             return (0, 1, 3)
+
+
+    def get_nt_array_info(self, contig_name):
+        """Returns an array containing 3 pieces of info for _every_ nt position in a contig
+
+        This functions returns a 3xN array, where N is the length of the specified contig.
+
+                           in_partial_gene_call
+                            |   in_complete_gene_call
+                            |    |   base_pos_in_codon
+                            |    |    |
+           position 1 ---[[0,   1,   1],
+           position 2 --- [0,   1,   2],
+           position 3 --- [0,   1,   3],
+           position 4 --- [0,   1,   1],
+                             ....
+           position N --- [0,   0,   0]]
+
+        Notes
+        =====
+        - If you are interested in just a few nt positions, consider instead
+          `self.get_nt_position_info`
+        """
+
+        if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
+            contig_length = len(self.contig_sequences[contig_name])
+            return numpy.zeros((contig_length, 3))
+
+        if not self.nt_positions_info:
+            raise ConfigError("get_nt_array_info :: I am asked to return stuff, but "
+                              "self.nt_position_info is None!")
+
+        if not contig_name in self.nt_positions_info:
+            raise ConfigError("get_nt_array_info :: Contig %s was not found in "
+                              "self.nt_positions_info" % contig_name)
+
+        out = numpy.zeros((len(self.nt_positions_info[contig_name]), 3))
+        out[self.nt_positions_info == 8, :] = numpy.array([1,0,0])
+        out[self.nt_positions_info == 4, :] = numpy.array([0,1,1])
+        out[self.nt_positions_info == 2, :] = numpy.array([0,1,2])
+        out[self.nt_positions_info == 1, :] = numpy.array([0,1,3])
+
+        return out
 
 
     def init_functions(self, requested_sources=[], dont_panic=False):
