@@ -825,7 +825,7 @@ class ContigsSuperclass(object):
                 direction = self.genes_in_contigs_dict[gene_caller_id]['direction']
 
                 if direction == 'r':
-                    codon_order_in_gene = (stop - start) - numpy.floor((positions - start) / 3) - 1
+                    codon_order_in_gene = (stop - start) / 3 - numpy.floor((positions - start) / 3) - 1
                 else:
                     codon_order_in_gene = numpy.floor((positions - start) / 3)
 
