@@ -330,8 +330,8 @@ class GenbankToAnvio:
         self.output_fasta_path = A('output_fasta')
         self.output_functions_path = A('output_functions')
         self.output_gene_calls_path = A('output_gene_calls')
-        self.source = A('annotations_source') or 'NCBI_PGAP'
-        self.version = A('annotations_source') or 'v4.6'
+        self.source = A('annotation_source') or 'NCBI_PGAP'
+        self.version = A('annotation_version') or 'v4.6'
 
         # gene callers id start from 0. you can change your instance
         # prior to processing the genbank file to start from another
