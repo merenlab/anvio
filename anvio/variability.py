@@ -135,6 +135,8 @@ class ProcessAlleleCounts:
         for index, item in self.array_index_to_allele.items():
             self.d[item] = self.d['allele_counts'][index, :]
 
+        self.d['reference'] = [self.array_index_to_allele[x] for x in self.d['sequence_as_index']]
+
         # Delete intermediate keys
         del self.d['allele_counts']
         del self.d['sequence_as_index']
