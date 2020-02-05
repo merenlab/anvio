@@ -7,8 +7,9 @@
 import os
 import time
 import math
-import sqlite3
+import numpy
 import pandas as pd
+import sqlite3
 
 import anvio
 import anvio.tables as tables
@@ -16,7 +17,6 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -26,6 +26,11 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
+
+
+# Converts numpy numbers into storable python types that sqlite3 is expecting
+sqlite3.register_adapter(numpy.int64, int)
+sqlite3.register_adapter(numpy.float64, float)
 
 
 def get_list_in_chunks(input_list, num_items_in_each_chunk=5000):
