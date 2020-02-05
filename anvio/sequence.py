@@ -442,7 +442,7 @@ class Coverage:
         }
 
 
-    def run(self, bam, contig_or_split, start=None, end=None, method='accurate', **kwargs):
+    def run(self, bam, contig_or_split, start=None, end=None, method='accurate', max_coverage=None, **kwargs):
         """Loop through the bam pileup and calculate coverage over a defined region of a contig or split
 
         Parameters
@@ -499,6 +499,10 @@ class Coverage:
             raise ConfigError("Coverage :: %s is not a valid method.")
 
         self.c = routine(c, bam, contig_name, start, end, iterator, **kwargs)
+
+        if max_coverage is not None:
+            if numpy.max(self.c) > max_coverage:
+                self.c[self.c > max_coverage] = max_coverage
 
         if len(self.c):
             try:

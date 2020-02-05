@@ -108,7 +108,7 @@ class Contig:
 
 
     def analyze_coverage(self, bam):
-        self.coverage.run(bam, self, method='accurate')
+        self.coverage.run(bam, self, method='accurate', max_coverage=anvio.auxiliarydataops.COVERAGE_MAX_VALUE)
 
         for split in self.splits:
             split.coverage = Coverage()
