@@ -627,7 +627,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                     gene_call = self.genes_in_contigs_dict[gene_callers_id]
                     contig_name = gene_call['contig']
-                    contig.codon_frequencies_dict[gene_callers_id] = codon_frequencies.process_gene_call(bam_file, gene_call, self.contig_sequences[contig_name]['sequence'], codons_to_profile)
+                    if self.profile_SCVs:
+                        contig.codon_frequencies_dict[gene_callers_id] = codon_frequencies.process_gene_call(bam_file, gene_call, self.contig_sequences[contig_name]['sequence'], codons_to_profile)
 
             output_queue.put(contig)
 
