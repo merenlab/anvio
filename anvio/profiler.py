@@ -561,11 +561,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling:
             return
 
-        nt_info = self.get_nt_array_info(contig.name)
+        nt_info = self.get_gene_info_for_each_position(contig.name)
+
         for split in contig.splits:
-            split.per_position_info['in_partial_gene_call'] = nt_info[split.start:split.end, 0]
-            split.per_position_info['in_complete_gene_call'] = nt_info[split.start:split.end, 1]
-            split.per_position_info['base_pos_in_codon'] = nt_info[split.start:split.end, 2]
+            split.per_position_info['in_partial_gene_call'] = nt_info['in_partial_gene_call'][split.start:split.end]
+            split.per_position_info['in_complete_gene_call'] = nt_info['in_complete_gene_call'][split.start:split.end]
+            split.per_position_info['base_pos_in_codon'] = nt_info['base_pos_in_codon'][split.start:split.end]
+            split.per_position_info['corresponding_gene_call'] = nt_info['corresponding_gene_call'][split.start:split.end]
+            split.per_position_info['codon_order_in_gene'] = nt_info['codon_order_in_gene'][split.start:split.end]
 
 
     @staticmethod
