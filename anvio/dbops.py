@@ -450,7 +450,7 @@ class ContigsSuperclass(object):
 
         Notes
         =====
-        - If you plan on calling this function many times, consider instead `self.get_nt_array_info`
+        - If you plan on calling this function many times, consider instead `self.get_gene_info_for_each_position`
         """
 
         if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
@@ -471,49 +471,6 @@ class ContigsSuperclass(object):
             return (0, 1, 2)
         if position_info == 1:
             return (0, 1, 3)
-
-
-    def get_nt_array_info(self, contig_name):
-        """Returns an array containing 3 pieces of info for _every_ nt position in a contig
-
-        This functions returns a 3xN array, where N is the length of the specified contig.
-
-                           in_partial_gene_call
-                            |   in_complete_gene_call
-                            |    |   base_pos_in_codon
-                            |    |    |
-           position 1 ---[[0,   1,   1],
-           position 2 --- [0,   1,   2],
-           position 3 --- [0,   1,   3],
-           position 4 --- [0,   1,   1],
-                             ....
-           position N --- [0,   0,   0]]
-
-        Notes
-        =====
-        - If you are interested in just a few nt positions, consider instead
-          `self.get_nt_position_info`
-        """
-
-        if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
-            contig_length = len(self.contig_sequences[contig_name])
-            return numpy.zeros((contig_length, 3))
-
-        if not self.nt_positions_info:
-            raise ConfigError("get_nt_array_info :: I am asked to return stuff, but "
-                              "self.nt_position_info is None!")
-
-        if not contig_name in self.nt_positions_info:
-            raise ConfigError("get_nt_array_info :: Contig %s was not found in "
-                              "self.nt_positions_info" % contig_name)
-
-        out = numpy.zeros((len(self.nt_positions_info[contig_name]), 3))
-        out[self.nt_positions_info == 8, :] = numpy.array([1,0,0])
-        out[self.nt_positions_info == 4, :] = numpy.array([0,1,1])
-        out[self.nt_positions_info == 2, :] = numpy.array([0,1,2])
-        out[self.nt_positions_info == 1, :] = numpy.array([0,1,3])
-
-        return out
 
 
     def init_functions(self, requested_sources=[], dont_panic=False):
@@ -799,6 +756,132 @@ class ContigsSuperclass(object):
         corresponding_gene_calls = [gene_callers_id for (gene_callers_id, start, stop) in gene_start_stops_in_contig if pos_in_contig >= start and pos_in_contig < stop]
 
         return corresponding_gene_calls
+
+
+    def get_gene_info_for_each_position(self, contig_name, info='all'):
+        """For a given contig, calculate per-position gene info
+
+        Returns a dictionary of arrays, each with length equal to the contig length. Each key in the
+        dictionary describes a different piece of gene info. By default, the dictionary has the
+        following keys:
+
+            'corresponding_gene_call' : To what gene_caller_id does the nt belong (-1 if there are 0
+                                        or multiple gene calls)?
+            'codon_order_in_gene'     : To which codon does the nt belong (0-indexed, -1 if
+                                        corresponding_gene_call is -1)?
+            'in_partial_gene_call'    : Does this position lie in a gene that is partial (0 or 1)?
+            'in_complete_gene_call'   : Does this position lie in a gene that is complete (0 or 1)?
+            'base_pos_in_codon'       : To what codon position (1, 2, or 3) does the nt belong (0 if
+                                        corresponding_gene_call is -1)?
+
+        Parameters
+        ==========
+        contig_name : str
+
+        info : list, 'all'
+            A list of desired info names. By default, 'all' corresponds to
+            ['corresponding_gene_call', 'codon_order_in_gene', 'in_partial_gene_call',
+            'in_complete_gene_call', 'base_pos_in_codon']
+
+        Notes
+        =====
+        - If you are interested in just a few nt positions, use instead the "per-nucleotide"
+          functions `get_nt_position_info`, `get_corresponding_gene_caller_ids_for_base_position`,
+          and `get_corresponding_codon_order_in_gene`
+        """
+
+        available_info = [
+            'corresponding_gene_call',
+            'codon_order_in_gene',
+            'in_partial_gene_call',
+            'in_complete_gene_call',
+            'base_pos_in_codon'
+        ]
+
+        if info == 'all':
+            column_names = available_info
+        else:
+            for i in info:
+                if i not in available_info:
+                    raise ConfigError("get_gene_info_for_each_position :: %s is not an available choice for info" % i)
+            column_names = info
+
+        output = {}
+        contig_length = len(self.contig_sequences[contig_name]['sequence'])
+
+        if 'corresponding_gene_call' in column_names or 'codon_order_in_gene' in column_names:
+            data_shape = (contig_length, 2)
+            data = -numpy.ones(data_shape).astype(int)
+
+            # First we populate the splice of `data` corresponding to each gene call and set the
+            # "gene_caller_id" and "codon_order_in_gene" columns. This ignores the fact that gene
+            # calls may overlap.
+
+            gene_calls = self.get_gene_start_stops_in_contig(contig_name)
+
+            for gene_caller_id, start, stop in gene_calls:
+                positions = numpy.arange(start, stop)
+
+                direction = self.genes_in_contigs_dict[gene_caller_id]['direction']
+
+                if direction == 'r':
+                    codon_order_in_gene = (stop - start) - numpy.floor((positions - start) / 3) - 1
+                else:
+                    codon_order_in_gene = numpy.floor((positions - start) / 3)
+
+                data[start:stop, 0] = gene_caller_id
+                data[start:stop, 1] = codon_order_in_gene
+
+            # Next, we compare each gene call to every other gene call. If they overlap, find the
+            # overlapping region and set both the "gene_caller_id" and the "codon_order_in_gene" to
+            # -1.  This conservatively says, "If there are two gene calls corresponding to a
+            # nucleotide position, anvi'o will simply say it does not belong to any gene."
+
+            gene_calls_to_compare = gene_calls.copy()
+
+            for gene_call_1 in gene_calls:
+                _, start1, stop1 = gene_call_1
+                gene_calls_to_compare.remove(gene_call_1)
+
+                for _, start2, stop2 in gene_calls_to_compare:
+                    if ((start1 < stop2  and stop1 > start2) or (stop1  > start2 and stop2 > start1)):
+                        # There is overlap
+                        data[max(start1, start2):min(stop1, stop2), :] = -1
+
+            # Recast the requested info into `output` and move on
+            for i, c in enumerate(['corresponding_gene_call', 'codon_order_in_gene']):
+                if c in column_names:
+                    output[c] = data[:, i]
+
+
+        if any([c in ['in_partial_gene_call', 'in_complete_gene_call', 'base_pos_in_codon'] for c in column_names]):
+            if not self.nt_positions_info:
+                raise ConfigError("get_gene_info_for_each_position :: I am asked to return stuff, but "
+                                  "self.nt_position_info is None!")
+
+            if not contig_name in self.nt_positions_info:
+                raise ConfigError("get_gene_info_for_each_position :: Contig %s was not found in "
+                                  "self.nt_positions_info" % contig_name)
+
+            data_shape = (contig_length, 3)
+            data = numpy.zeros(data_shape).astype(int)
+
+            if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
+                # In these cases everything gets 0
+                pass
+            else:
+                data[self.nt_positions_info[contig_name] == 8, :] = numpy.array([1,0,0])
+                data[self.nt_positions_info[contig_name] == 4, :] = numpy.array([0,1,1])
+                data[self.nt_positions_info[contig_name] == 2, :] = numpy.array([0,1,2])
+                data[self.nt_positions_info[contig_name] == 1, :] = numpy.array([0,1,3])
+
+            # Recast the requested info into `output` and move on
+            for i, c in enumerate(['in_partial_gene_call', 'in_complete_gene_call', 'base_pos_in_codon']):
+                if c in column_names:
+                    output[c] = data[:, i]
+            output['info'] = self.nt_positions_info[contig_name]
+
+        return output
 
 
     def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, reverse_complement_if_necessary=True, include_aa_sequences=False):
