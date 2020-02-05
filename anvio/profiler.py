@@ -604,10 +604,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
                         continue
 
                     d = split.column_profiles
+
+                    # Add these data ad-hoc, since they are so simple
                     d['split_name'] = [split.name] * split.num_variability_entries
                     d['sample_id'] = [self.sample_id] * split.num_variability_entries
                     d['pos_in_contig'] = d['pos'] + split.start
-
 
                     #for column_profile in list(split.column_profiles.values()):
                     #    pos_in_contig = column_profile['pos_in_contig']
@@ -668,6 +669,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             for split in contig.splits:
                 del split.coverage
                 del split.auxiliary
+                del split.per_position_info
+                del split.column_profiles
                 del split
             del contig.splits[:]
             del contig.coverage

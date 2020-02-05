@@ -139,6 +139,7 @@ class Split:
         self.abundance = 0.0
         self.auxiliary = None
         self.num_variability_entries = 0
+        self.column_profiles = {}
         self.per_position_info = {} # stores per nt info that is not coverage
 
 
