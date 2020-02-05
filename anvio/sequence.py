@@ -557,7 +557,7 @@ class Coverage:
 
         # FIXME Is this legacy if we calc is_outlier instead?
         self.outlier_positions = get_indices_for_outlier_values(c)
-        self.is_outlier = get_list_of_outliers(c) # this is an array not a list
+        self.is_outlier = get_list_of_outliers(c).astype(int) # this is an array not a list
 
         if c.size < 4:
             self.mean_Q2Q3 = self.mean
