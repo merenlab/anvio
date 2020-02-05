@@ -26,7 +26,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.sequence import Coverage, Read
 from anvio.errors import ConfigError
-from anvio.variability import VariablityTestFactory, ProcessAlleleCounts
+from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -200,7 +200,7 @@ class Auxiliary:
 
         test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
 
-        nt_profile = ProcessAlleleCounts(
+        nt_profile = ProcessNucleotideCounts(
             allele_counts_array,
             self.nt_to_array_index,
             self.split.sequence,
