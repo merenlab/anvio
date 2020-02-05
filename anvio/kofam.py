@@ -389,8 +389,8 @@ class KofamRunHMMs(KofamContext):
             functions_dict[counter] = {
                 'gene_callers_id': hmm_hit['gene_callers_id'],
                 'source': 'KOfam',
-                'accession': hmm_hit['gene_hmm_id'],
-                'function': self.get_annotation_from_ko_dict(hmm_hit['gene_hmm_id'], ok_if_missing_from_dict=True),
+                'accession': hmm_hit['gene_name'],
+                'function': self.get_annotation_from_ko_dict(hmm_hit['gene_name'], ok_if_missing_from_dict=True),
                 'e_value': hmm_hit['e_value'],
             }
 
