@@ -163,6 +163,9 @@ class KofamSetup(KofamContext):
         self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
         self.files = ['ko_list.gz', 'profiles.tar.gz']
 
+        # Kegg Orthology text file
+        self.kegg_orthology_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00001.keg&format=htext&filedir="
+
 
     def is_database_exists(self):
         """This function determines whether the user has already downloaded the Kofam HMM profiles."""
@@ -176,6 +179,9 @@ class KofamSetup(KofamContext):
         for file_name in self.files:
             utils.download_file(self.database_url + '/' + file_name,
                 os.path.join(self.kofam_data_dir, file_name), progress=self.progress, run=self.run)
+
+        # download the kegg orthology file
+        utils.download_file(self.kegg_orthology_download_path, os.path.join(self.kofam_data_dir, "ko00001.keg"), progress=self.progress, run=self.run)
 
 
     def decompress_files(self):
