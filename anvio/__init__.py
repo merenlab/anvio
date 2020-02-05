@@ -372,15 +372,6 @@ D = {
              'action': 'store_true',
              'help': "Ignore orphan reads (paired reads that are not in a proper pair). The default is to include orphans."}
                 ),
-    'max-coverage-depth': (
-            ['-m', '--max-coverage-depth'],
-            {'default': 8000,
-             'metavar': 'INT',
-             'type': int,
-             'help': "Max depth of coverage to consider when reading from the BAM file. It means, nucleotide positions with "
-                     "coverages that exceed this value will have a flat coverage that is equal to this value. The default "
-                     "is %(default)d."}
-                ),
     'drop-previous-annotations': (
             ['--drop-previous-annotations'],
             {'default': False,
