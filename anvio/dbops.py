@@ -666,8 +666,20 @@ class ContigsSuperclass(object):
 
 
     def get_corresponding_codon_order_in_gene(self, gene_caller_id, contig_name, pos_in_contig):
-        """Takes a gene caller id, a contig name, and a nucleotide position in that contig,
-           and returns the order of codon the nucleotide matches to."""
+        """Returns the order of codon a given nucleotide belongs to.
+
+        Parameters
+        ==========
+        gene_caller_id : int
+
+        contig_name : str
+
+        pos_in_contig : int
+
+        Notes
+        =====
+        - If calling many times, consider `self.get_gene_info_for_each_position`
+        """
 
         if not isinstance(pos_in_contig, int):
             raise ConfigError("get_corresponding_codon_order_in_gene :: pos_in_contig must be of type 'int'")
@@ -771,7 +783,14 @@ class ContigsSuperclass(object):
 
 
     def get_corresponding_gene_caller_ids_for_base_position(self, contig_name, pos_in_contig):
-        """For a given nucleotide position and contig name, returns all matching gene caller ids"""
+        """For a given nucleotide position and contig name, returns all matching gene caller ids
+
+        Notes
+        =====
+        - If you're calling this function many times, consider using
+          self.get_gene_info_for_each_position
+        """
+
         gene_start_stops_in_contig = self.get_gene_start_stops_in_contig(contig_name)
 
         if not gene_start_stops_in_contig:
