@@ -193,8 +193,8 @@ class Auxiliary:
 
         additional_per_position_data = self.split.per_position_info
         additional_per_position_data.update({
-            'cov_outlier_in_split': self.split.coverage.is_outlier,
-            'cov_outlier_in_contig': self.split.coverage.is_outlier_in_parent,
+            'cov_outlier_in_split': self.split.coverage.is_outlier.astype(int),
+            'cov_outlier_in_contig': self.split.coverage.is_outlier_in_parent.astype(int),
         })
 
         test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
