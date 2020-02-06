@@ -590,7 +590,6 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
     return output_path
 
 
-
 def convert_numpy_array_to_binary_blob(array, compress=True):
     if compress:
         return gzip.compress(memoryview(array), compresslevel=1)
@@ -1442,6 +1441,30 @@ def convert_sequence_indexing(index, source="M0", destination="M1"):
         return convert(index, -1)
 
     return index
+
+
+def get_blocks(array):
+    """Returns blocks of consecutive numbers
+
+    Modified from:
+    https://stackoverflow.com/questions/7352684/how-to-find-the-groups-of-consecutive-elements-from-an-array-in-numpy/7353335#7353335
+
+    Parameters
+    ==========
+    array : array-like
+
+    Examples
+    ========
+
+    a = np.array([0, 47, 48, 49, 50, 97, 98, 99])
+    get_blocks(a)
+
+    >>> [(0, 1), (47, 51), (97, 100)]
+    """
+
+    split = np.split(array, np.where(np.diff(array) != 1)[0] + 1)
+    return [(x[0], x[-1] + 1) for x in split]
+
 
 def convert_SSM_to_single_accession(matrix_data):
     """
@@ -2779,7 +2802,6 @@ def get_enriched_groups(props, reps):
         returns a boolean vector where each group that has proportion above
         the "expected" (i.e. the overall proportion) is True and the rest are False.
     '''
-    import numpy as np
     # if the function doesn't occur at all then test_statistic is zero and p-value is 1
     if not np.count_nonzero(props):
         return np.zeros(len(props))
