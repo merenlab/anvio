@@ -433,8 +433,6 @@ class Composition:
 class Coverage:
     def __init__(self):
         self.c = None # becomes a numpy array of coverage values
-        self.outlier_positions = set([]) # set of positions along the sequence, coverage values of which
-                                         # are classified as outliers; see `get_indices_for_outlier_values`
         self.min = 0
         self.max = 0
         self.std = 0.0
@@ -562,9 +560,7 @@ class Coverage:
         self.std = numpy.std(c)
         self.detection = 1 - (float(collections.Counter(c)[0]) / len(c))
 
-        # FIXME Is this legacy if we calc is_outlier instead?
-        self.outlier_positions = get_indices_for_outlier_values(c)
-        self.is_outlier = get_list_of_outliers(c).astype(int) # this is an array not a list
+        self.is_outlier = get_list_of_outliers(c) # this is an array not a list
 
         if c.size < 4:
             self.mean_Q2Q3 = self.mean
