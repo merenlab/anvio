@@ -203,8 +203,9 @@ class Read:
                 # there is a gap in the read
                 pass
             else:
-                # FIXME
-                pass
+                # FIXME these conditions have not yet been observed and may fuck up everything.
+                # During developement this raises ConfigError.
+                raise ConfigError("The shittiest thing in the world happened and you have do something about it, Evan.")
 
         return aligned_sequence
 
