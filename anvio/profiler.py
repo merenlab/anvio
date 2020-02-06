@@ -598,48 +598,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 contig.analyze_auxiliary(bam_file)
                 timer.make_checkpoint('Auxiliary analyzed')
 
-                codons_in_genes_to_profile_SCVs = set([])
                 for split in contig.splits:
                     if split.num_variability_entries == 0:
                         continue
 
                     d = split.column_profiles
 
-                    # Add these data ad-hoc, since they are so simple
+                    # Add these redundant data ad-hoc
                     d['split_name'] = [split.name] * split.num_variability_entries
                     d['sample_id'] = [self.sample_id] * split.num_variability_entries
                     d['pos_in_contig'] = d['pos'] + split.start
-
-                    #for column_profile in list(split.column_profiles.values()):
-                    #    pos_in_contig = column_profile['pos_in_contig']
-                    #    column_profile['in_partial_gene_call'], \
-                    #    column_profile['in_complete_gene_call'], \
-                    #    column_profile['base_pos_in_codon'] = self.get_nt_position_info(contig.name, pos_in_contig)
-
-                    #    column_profile['sample_id'] = self.sample_id
-                    #    column_profile['corresponding_gene_call'] = -1 # this means there is no gene call that corresponds to this
-                    #                                                   # nt position, which will be updated in the following lines.
-                    #                                                   # yeah, we use '-1', because genecaller ids start from 0 :/
-                    #    column_profile['codon_order_in_gene'] = -1
-
-                    #    # if this particular position (`pos_in_contig`) falls within a COMPLETE gene call,
-                    #    # we would like to find out which unique gene caller id(s) match to this position.
-                    #    if column_profile['in_complete_gene_call']:
-                    #        corresponding_gene_caller_ids = self.get_corresponding_gene_caller_ids_for_base_position(contig.name, pos_in_contig)
-
-                    #        # if there are more than one corresponding gene call, this usually indicates an assembly error
-                    #        # just to be on the safe side, we will not report a corresopnding unique gene callers id for this
-                    #        # position
-                    #        if len(corresponding_gene_caller_ids) == 1:
-                    #            # if we are here, it means this nucleotide position is in a complete gene call. we will do two things here.
-                    #            # first, we will store the gene_callers_id that corresponds to this nt position, and then we will store the
-                    #            # order of the corresponding codon in the gene for this nt position.
-                    #            gene_callers_id = corresponding_gene_caller_ids[0]
-                    #            column_profile['corresponding_gene_call'] = gene_callers_id
-                    #            column_profile['codon_order_in_gene'] = self.get_corresponding_codon_order_in_gene(gene_callers_id, contig.name, pos_in_contig)
-
-                    #            # save this information for later use
-                    #            codons_in_genes_to_profile_SCVs.add((gene_callers_id, column_profile['codon_order_in_gene']),)
 
                 timer.make_checkpoint('Auxiliary loose ends finished')
 
@@ -660,8 +628,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     gene_call = self.genes_in_contigs_dict[gene_callers_id]
                     contig_name = gene_call['contig']
                     contig.codon_frequencies_dict[gene_callers_id] = codon_frequencies.process_gene_call(bam_file, gene_call, self.contig_sequences[contig_name]['sequence'], codons_to_profile)
-
-                timer.make_checkpoint('SCVs calculated')
 
             output_queue.put(contig)
 
