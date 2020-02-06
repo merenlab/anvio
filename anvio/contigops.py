@@ -121,7 +121,6 @@ class Contig:
         for split in self.splits:
             split.auxiliary = Auxiliary(split,
                                         bam,
-                                        parent_outlier_positions=self.coverage.outlier_positions,
                                         min_coverage=self.min_coverage_for_variability,
                                         report_variability_full=self.report_variability_full)
 
@@ -158,10 +157,9 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, bam, parent_outlier_positions, min_coverage=10, report_variability_full=False):
+    def __init__(self, split, bam, min_coverage=10, report_variability_full=False):
         self.split = split
         self.variation_density = 0.0
-        self.parent_outlier_positions = parent_outlier_positions
         self.min_coverage = min_coverage
         self.report_variability_full = report_variability_full
 
