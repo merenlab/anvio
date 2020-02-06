@@ -149,23 +149,9 @@ class Read:
         """Mimic the get_blocks function from AlignedSegment.
 
         Calculates directly from self.reference_positions
-
-        Modified from:
-        https://stackoverflow.com/questions/7352684/how-to-find-the-groups-of-consecutive-elements-from-an-array-in-numpy/7353335#7353335
-
-        Examples
-        ========
-        def consecutive(data, stepsize=1):
-            return [(x[0], x[-1]+1) for x in numpy.split(data, numpy.where(numpy.diff(data) != stepsize)[0]+1)]
-
-        a = numpy.array([0, 47, 48, 49, 50, 97, 98, 99])
-        consecutive(a)
-
-        >>> [(0, 1), (47, 51), (97, 100)]
         """
 
-        split = numpy.split(self.reference_positions, numpy.where(numpy.diff(self.reference_positions) != 1)[0] + 1)
-        return [(x[0], x[-1] + 1) for x in split]
+        return anvio.utils.get_blocks(self.reference_positions)
 
 
     def get_reference_positions(self):
@@ -537,7 +523,7 @@ class Coverage:
         Notes
         =====
         - Should typically not be called explicitly. Use run instead
-        - This strategy was also considered, but is much slower because it uses fancy-indexing
+        - The following strategy was also considered, but is much slower because it uses fancy-indexing
           https://jakevdp.github.io/PythonDataScienceHandbook/02.07-fancy-indexing.html:
 
           for read in bam.fetch(contig_name, start, end):
