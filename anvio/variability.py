@@ -133,7 +133,6 @@ class ProcessAlleleCounts:
 
         # Filter if any competing items are None
         indices_to_keep = self.get_positions_with_competing_items(self.d['competing_items'])
-        print(len(indices_to_keep))
         self.filter_or_dont(indices_to_keep)
 
         # each allele gets its own key in self.d
@@ -246,7 +245,7 @@ class ProcessAlleleCounts:
 
     def get_positions_with_competing_items(self, competing_items):
 
-        return np.where(competing_items == None)[0]
+        return np.where(competing_items != None)[0]
 
 
 
