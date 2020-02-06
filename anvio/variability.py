@@ -131,6 +131,11 @@ class ProcessAlleleCounts:
 
         self.d['competing_items'] = self.get_competing_items(self.d['reference_coverage'], self.d['coverage'])
 
+        # Filter if any competing items are None
+        indices_to_keep = self.get_positions_with_competing_items(self.d['competing_items'])
+        print(len(indices_to_keep))
+        self.filter_or_dont(indices_to_keep)
+
         # each allele gets its own key in self.d
         for index, item in self.array_index_to_allele.items():
             self.d[item] = self.d['allele_counts'][index, :]
@@ -237,6 +242,12 @@ class ProcessAlleleCounts:
         threshold = self.test_class.get_min_acceptable_departure_from_consensus(coverage)
 
         return np.where(departure_from_reference >= threshold)[0]
+
+
+    def get_positions_with_competing_items(self, competing_items):
+
+        return np.where(competing_items == None)[0]
+
 
 
 class ProcessNucleotideCounts(ProcessAlleleCounts):
