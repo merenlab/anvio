@@ -1561,7 +1561,7 @@ def is_amino_acid_functionally_conserved(amino_acid_residue_1, amino_acid_residu
     group = constants.amino_acid_property_group[amino_acid_residue_1]
     conserved_group = constants.conserved_amino_acid_groups[group]
 
-    if conserved_group and amino_acid_residue_2 in conserved_group:
+    if amino_acid_residue_2 in conserved_group:
         return True
 
     if group == 'Polar and Nonpolar':

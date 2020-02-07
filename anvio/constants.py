@@ -239,12 +239,12 @@ conserved_amino_acid_groups = {
     'None': []
 }
 
-conserved_amino_acid_groups['N'] = conserved_amino_acid_groups['Neutral Amines'].append('B')
-conserved_amino_acid_groups['D'] = conserved_amino_acid_groups['Acids'].append('B')
-conserved_amino_acid_groups['Q'] = conserved_amino_acid_groups['Neutral Amines'].append('Z')
-conserved_amino_acid_groups['E'] = conserved_amino_acid_groups['Acids'].append('Z')
-conserved_amino_acid_groups['L'] = conserved_amino_acid_groups['Nonpolar'].append('J')
-conserved_amino_acid_groups['I'] = conserved_amino_acid_groups['Nonpolar'].append('J')
+conserved_amino_acid_groups['N'] = conserved_amino_acid_groups['Neutral Amines'] + ['B']
+conserved_amino_acid_groups['D'] = conserved_amino_acid_groups['Acids'] + ['B']
+conserved_amino_acid_groups['Q'] = conserved_amino_acid_groups['Neutral Amines'] + ['Z']
+conserved_amino_acid_groups['E'] = conserved_amino_acid_groups['Acids'] + ['Z']
+conserved_amino_acid_groups['LI'] = conserved_amino_acid_groups['Nonpolar'] + ['J']
+
 
 amino_acid_property_group = {}
 for key in ['A','V','M','C']:
@@ -266,8 +266,8 @@ amino_acid_property_group['N'] = 'N'
 amino_acid_property_group['D'] = 'D'
 amino_acid_property_group['Q'] = 'Q'
 amino_acid_property_group['E'] = 'E'
-amino_acid_property_group['L'] = 'L'
-amino_acid_property_group['I'] = 'I'
+amino_acid_property_group['L'] = 'LI'
+amino_acid_property_group['I'] = 'LI'
 
 codons = sorted(list(set(codon_to_AA.keys())))
 coding_codons = [x for x in codons if codon_to_AA[x] != "STP"]
