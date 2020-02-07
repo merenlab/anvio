@@ -166,6 +166,7 @@ class Read:
         """
 
         self.r = read
+        self.cigarops = Cigar()
 
         # redefine all properties of interest explicitly from pysam.AlignedSegment object as
         # attributes of this class. The reason for this is that some of the AlignedSegment
@@ -204,26 +205,23 @@ class Read:
 
         Notes
         =====
-        - This method exists because self.r.query_alignment_sequence is the read sequence with
-          soft clipping removed, but it is otherwise 'unaligned' to the reference. For example,
-          self.read.query_alignment_sequence does not even necessarily have the same length as
-          self.read.get_reference_positions() due to indels. To get the aligned sequence, we have to
-          parse the cigar string to build `aligned_sequence`, which gives us the base
-          contributed by this read at each of its aligned positions.
+        - This method exists because self.r.query_alignment_sequence doesn't return the read's
+          nucleotides at the positions it aligns, it only returns the read after removing
+          softclipping. It is otherwise unaligned.  To get the aligned sequence, we have to parse
+          the cigar string to build `aligned_sequence`, which gives us the base contributed by this
+          read at each of its aligned positions.
+        - Takes anywhere from 150-450us
         """
-        cigarops = Cigar()
-        cigar_tuples = self.cigartuples
 
-        sequence = self.query_sequence
         aligned_sequence = ''
 
         read_pos = 0
-        for operation, length in cigar_tuples:
-            consumes_read, consumes_ref = cigarops.consumes[operation]
+        for operation, length in self.cigartuples:
+            consumes_read, consumes_ref = self.cigarops.consumes[operation]
 
             if consumes_read:
                 if consumes_ref:
-                    aligned_sequence += sequence[read_pos:(read_pos + length)]
+                    aligned_sequence += self.query_sequence[read_pos:(read_pos + length)]
 
                 read_pos += length
 
@@ -256,7 +254,6 @@ class Read:
         - Takes roughly 250us
         """
 
-        cigarops = Cigar()
         cigar_tuples = self.cigartuples
 
         if side == 'right':
@@ -271,7 +268,7 @@ class Read:
         terminate, terminate_next = (False, False)
         for i, cigar_tuple in enumerate(cigar_tuples):
             operation, length = cigar_tuple
-            consumes_read, consumes_ref = cigarops.consumes[operation]
+            consumes_read, consumes_ref = self.cigarops.consumes[operation]
 
             if consumes_ref:
                 if terminate_next:
