@@ -523,6 +523,16 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         return taxonomy_dict_entry
 
 
+    def get_blank_hit_template_dict(self):
+        hit = {}
+
+        for level in self.levels_of_taxonomy[::-1]:
+            hit[level] = None
+
+        return hit
+
+
+
     def get_consensus_taxonomy(self, scg_taxonomy_dict):
         """Takes in a scg_taxonomy_dict, returns a final taxonomic string that summarize all"""
 
@@ -554,11 +564,9 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         else:
             # if there are competing hashes, we need to be more careful to decide
             # which taxonomic level should we use to cut things off.
-            consensus_hit = {}
+            consensus_hit = self.get_blank_hit_template_dict()
             for level in self.levels_of_taxonomy[::-1]:
-                if len(df[level].unique()) > 1:
-                    consensus_hit[level] = None
-                else:
+                if len(df[level].unique()) == 1:
                     consensus_hit[level] = df[level].unique()[0]
 
             return consensus_hit
