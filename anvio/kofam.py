@@ -159,6 +159,7 @@ class KofamSetup(KofamContext):
 
         filesnpaths.gen_output_directory(self.kofam_data_dir, delete_if_exists=args.reset)
         filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
+        filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
 
         # ftp path for HMM profiles and KO list
             # for ko list, add /ko_list.gz to end of url
@@ -172,11 +173,19 @@ class KofamSetup(KofamContext):
 
 
     def is_database_exists(self):
-        """This function determines whether the user has already downloaded the Kofam HMM profiles."""
+        """This function determines whether the user has already downloaded the Kofam HMM profiles and KEGG modules."""
         if os.path.exists(self.kofam_hmm_file_path):
             raise ConfigError("It seems you already have KOfam HMM profiles installed in '%s', please use --reset flag if you want to re-download it." % self.kofam_data_dir)
 
-    def download(self):
+        if os.path.exists(self.kegg_module_file):
+            raise ConfigError("Interestingly, though KOfam HMM profiles are not installed on your system, KEGG module information seems to have been \
+            already downloaded in %s. Please use the --reset flag to re-download everything from scratch." % self.kofam_data_dir)
+
+        if os.path.exists(self.module_data_dir):
+            raise ConfigError("It seems the KEGG module directory %s already exists on your system. This is even more strange because Kofam HMM \
+            profiles have not been downloaded. We suggest you to use the --reset flag to download everything from scratch." % self.module_data_dir)
+
+    def download_profiles(self):
         """This function downloads the Kofam profiles."""
         self.run.info("Database URL", self.database_url)
 
@@ -300,7 +309,7 @@ class KofamSetup(KofamContext):
 
     def setup_profiles(self):
         """This is a driver function which executes the Kofam setup process by downloading, decompressing, and hmmpressing the profiles."""
-        self.download()
+        self.download_profiles()
         self.decompress_files()
         self.setup_ko_dict()
         self.run_hmmpress()
