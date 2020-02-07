@@ -541,7 +541,10 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
 
         pd.set_option('mode.chained_assignment', None)
 
-        scg_hits = list(scg_taxonomy_dict.values())
+        scg_hits = list([v for v in scg_taxonomy_dict.values() if v['t_domain']])
+
+        if not len(scg_hits):
+            return self.get_blank_hit_template_dict()
 
         df = pd.DataFrame.from_records(scg_hits)
 
@@ -658,9 +661,13 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         total_scgs = len(scg_taxonomy_dict)
         supporting_scgs = 0
 
-        consensus_hash = HASH(consensus_taxonomy)
+        consensus_taxonomy_levels_occupied = [level for level in self.levels_of_taxonomy if consensus_taxonomy[level]]
+        consensus_taxonomy_str = ' / '.join([consensus_taxonomy[level] for level in consensus_taxonomy_levels_occupied])
+
         for scg_taxonomy_hit in scg_taxonomy_dict.values():
-            if consensus_hash == scg_taxonomy_hit['tax_hash']:
+            scg_taxonomy_hit_str = ' / '.join([str(scg_taxonomy_hit[level]) for level in consensus_taxonomy_levels_occupied])
+
+            if scg_taxonomy_hit_str == consensus_taxonomy_str:
                 scg_taxonomy_hit['supporting_consensus'] = True
                 supporting_scgs += 1
             else:
@@ -706,7 +713,6 @@ class SCGTaxonomyEstimator(SCGTaxonomyContext):
         splits_in_contigs_database = self.split_name_to_gene_caller_ids_dict.keys()
         contigs_db_taxonomy_dict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(split_names=splits_in_contigs_database,
                                                                                                   bin_name=self.contigs_db_project_name)
-
         return contigs_db_taxonomy_dict
 
 
