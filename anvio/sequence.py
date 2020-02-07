@@ -112,6 +112,50 @@ class Codon:
         return dist
 
 
+class Cigar:
+    def __init__(self, cigar_tuple=None):
+        """Gives some useful information about cigar string and their operations
+
+        Here are the possible bam operations.
+
+            M       BAM_CMATCH      0
+            I       BAM_CINS        1
+            D       BAM_CDEL        2
+            N       BAM_CREF_SKIP   3
+            S       BAM_CSOFT_CLIP  4
+            H       BAM_CHARD_CLIP  5
+            P       BAM_CPAD        6
+            =       BAM_CEQUAL      7
+            X       BAM_CDIFF       8
+
+        Parameters
+        ==========
+        cigar_tuple : tuple, None
+            A tuple of this format:
+            https://pysam.readthedocs.io/en/latest/api.html#pysam.AlignedSegment.cigartuples
+
+        Notes
+        =====
+        - A description of what possible cigar operations are possible, see
+          https://imgur.com/a/fiQZXNg, which comes from here:
+          https://samtools.github.io/hts-specs/SAMv1.pdf
+        """
+        self.cigar_tuple = cigar_tuple
+
+        # key = cigar operation, val[0]/val[1] is whether operation consumes the read/reference
+        self.consumes = {
+            0: (True, True),
+            1: (True, False),
+            2: (False, True),
+            3: (False, True),
+            4: (True, False),
+            5: (False, False),
+            6: (False, False),
+            7: (True, True),
+            8: (True, True),
+        }
+
+
 class Read:
     def __init__(self, read):
         """Class for manipulating reads
