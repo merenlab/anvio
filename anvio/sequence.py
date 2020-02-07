@@ -204,43 +204,28 @@ class Read:
 
         Notes
         =====
-        FIXME below is out of date
-        - This method exists because self.read.query_alignment_sequence is the read sequence with
+        - This method exists because self.r.query_alignment_sequence is the read sequence with
           soft clipping removed, but it is otherwise 'unaligned' to the reference. For example,
           self.read.query_alignment_sequence does not even necessarily have the same length as
           self.read.get_reference_positions() due to indels. To get the aligned sequence, we have to
           parse the cigar string to build `aligned_sequence`, which gives us the base
           contributed by this read at each of its aligned positions.
         """
-        sequence = self.query_sequence
+        cigarops = Cigar()
         cigar_tuples = self.cigartuples
+
+        sequence = self.query_sequence
         aligned_sequence = ''
 
         read_pos = 0
         for operation, length in cigar_tuples:
-            if operation == 0:
-                # there is a mapping segment
-                aligned_sequence += sequence[read_pos:(read_pos + length)]
+            consumes_read, consumes_ref = cigarops.consumes[operation]
+
+            if consumes_read:
+                if consumes_ref:
+                    aligned_sequence += sequence[read_pos:(read_pos + length)]
+
                 read_pos += length
-            elif operation == 1:
-                # there is an insertion in the read
-                read_pos += length
-            elif operation == 2 or operation == 3:
-                # there is a deletion/gap in the read
-                pass
-            elif operation == 4 or operation == 5:
-                # hard or soft clipping. While represented in the cigar string, pysam's
-                # query_alignment_sequence already trims off this part of the sequence, so all we
-                # need to do is nod our heads and move on
-                pass
-            elif operation == 6:
-                # This is a padded situation. So to speak, it can be thought of as a gap in both the
-                # reference AND the read. This means there is nothing to do in this situation.
-                pass
-            else:
-                # FIXME these conditions have not yet been observed and may fuck up everything.
-                # During developement this raises ConfigError.
-                raise ConfigError("The shittiest thing in the world happened and you have do something about it, Evan.")
 
         return aligned_sequence
 
