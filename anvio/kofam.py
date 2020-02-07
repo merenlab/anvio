@@ -193,9 +193,98 @@ class KofamSetup(KofamContext):
             utils.download_file(self.database_url + '/' + file_name,
                 os.path.join(self.kofam_data_dir, file_name), progress=self.progress, run=self.run)
 
-        # download the kegg orthology file
+    def process_module_file(self):
+        """This function reads the kegg module file into a dictionary. It should be called during setup to get the KEGG module numbers
+        so that KEGG modules can be downloaded.
+
+        The structure of this file is like this:
+
+        +D	Module
+        #<h2><a href="/kegg/kegg2.html"><img src="/Fig/bget/kegg3.gif" align="middle" border=0></a>&nbsp; KEGG Modules</h2>
+        !
+        A<b>Pathway modules</b>
+        B
+        B  <b>Carbohydrate metabolism</b>
+        C    Central carbohydrate metabolism
+        D      M00001  Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate [PATH:map00010 map01200 map01100]
+        D      M00002  Glycolysis, core module involving three-carbon compounds [PATH:map00010 map01200 map01230 map01100]
+        D      M00003  Gluconeogenesis, oxaloacetate => fructose-6P [PATH:map00010 map00020 map01100]
+
+        In other words, a bunch of initial lines to be ignored, and thereafter the line's information can be determined by the one-letter code at the start.
+        A = Pathway modules (metabolic pathways) or signature modules (gene sets that indicate a phenotypic trait, ie toxins).
+        B = Category of module (a type of metabolism for pathway modules. For signature modules, either Gene Set or Module Set)
+        C = Sub-category of module
+        D = Module
+
+        """
+        filesnpaths.is_file_exists(self.kegg_module_file)
+        filesnpaths.is_file_plain_text(self.kegg_module_file)
+
+        f = open(self.kegg_module_file, 'rU')
+
+        current_module_type = None
+        current_category = None
+        current_subcategory = None
+
+        for line in f.readlines():
+            line.strip('\n')
+            first_char = line[0]
+
+            # garbage lines
+            if first_char in ["+", "#", "!"]:
+                continue
+            else:
+                # module type
+                if first_char == "A":
+                    fields = re.split('<[^>]*>', line) # we split by the html tag here
+                    current_module_type = fields[1]
+                # Category
+                elif first_char == "B":
+                    fields = re.split('<[^>]*>', line) # we split by the html tag here
+                    if len(fields) == 1: # sometimes this level has lines with only a B
+                        continue
+                    current_category = fields[1]
+                # Sub-category
+                elif first_char == "C":
+                    fields = re.split('\s{2,}', line) # don't want to split the subcategory name, so we have to split at least 2 spaces
+                    current_subcategory = fields[1]
+                # module
+                elif first_char == "D":
+                    fields = re.split('\s{2,}', line)
+                    mnum = fields[1]
+                    module_name = fields[2]
+                    self.module_dict[mnum] = {"name" : module_name}
+                # unknown code
+                else:
+                    raise ConfigError("While parsing the KEGG file %s, we found an unknown line code %s. This has \
+                    made the file unparseable. Sad. :(" % (self.kegg_module_file, first_char))
+
+    def download_modules(self):
+        """This function downloads the KEGG modules. To do so, it also processes the KEGG module file into a dictionary via the
+        process_module_file() function. To verify that each file has been downloaded properly, we check that the last line is '///'.
+        """
+        self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
+
+        # download the kegg module file, which lists all modules
         utils.download_file(self.kegg_module_download_path, self.kegg_module_file, progress=self.progress, run=self.run)
 
+        # get module dict
+        self.process_module_file()
+        self.run.info("Number of KEGG Modules", len(self.module_dict.keys()))
+
+        # download all modules
+        for mnum in self.module_dict.keys():
+            file_path = os.path.join(self.module_data_dir, mnum)
+            utils.download_file(self.kegg_rest_api_get + '/' + mnum,
+                file_path, progress=self.progress, run=self.run)
+            # verify entire file has been downloaded
+            f = open(file_path, 'rU')
+            f.seek(0, os.SEEK_END)
+            f.seek(f.tell() - 4, os.SEEK_SET)
+            last_line = f.readline().strip('\n')
+            if not last_line == '///':
+                raise ConfigError("The KEGG module file %s was not downloaded properly. We were expecting the last line in the file \
+                to be '///', but instead it was %s." % (file_path, last_line))
 
     def decompress_files(self):
         """This function decompresses the Kofam profiles."""
