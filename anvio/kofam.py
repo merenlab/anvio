@@ -165,6 +165,7 @@ class KofamSetup(KofamContext):
 
         # Kegg module text file
         self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
+        self.kegg_module_file = os.path.join(self.kofam_data_dir, "ko00002.keg")
 
 
     def is_database_exists(self):
@@ -181,7 +182,7 @@ class KofamSetup(KofamContext):
                 os.path.join(self.kofam_data_dir, file_name), progress=self.progress, run=self.run)
 
         # download the kegg orthology file
-        utils.download_file(self.kegg_module_download_path, os.path.join(self.kofam_data_dir, "ko00002.keg"), progress=self.progress, run=self.run)
+        utils.download_file(self.kegg_module_download_path, self.kegg_module_file, progress=self.progress, run=self.run)
 
 
     def decompress_files(self):
