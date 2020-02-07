@@ -176,7 +176,7 @@ class Read:
         # attributes have no __set__ methods, so are read only. Since this class is designed to
         # modify some of these attributes, and since we want to maintain consistency across
         # attributes, all attributes of interest are redefined here
-        self.query_alignment_sequence = self.r.query_alignment_sequence
+        self.query_sequence = self.r.query_sequence
         self.cigartuples = self.r.cigartuples
         self.reference_positions = self.r.get_reference_positions()
         self.reference_start = self.r.reference_start
@@ -215,7 +215,7 @@ class Read:
           parse the cigar string to build `aligned_sequence`, which gives us the base
           contributed by this read at each of its aligned positions.
         """
-        sequence = self.query_alignment_sequence
+        sequence = self.query_sequence
         cigar_tuples = self.cigartuples
         aligned_sequence = ''
 
@@ -247,6 +247,8 @@ class Read:
             query_alignment_sequence
             cigartuples
             reference_positions
+            reference_start
+            reference_end
 
         Do not expect more than this!
 
@@ -257,21 +259,25 @@ class Read:
 
         side : str, 'left'
             Either 'left' or 'right' side.
+
+        Notes
+        =====
+        - Takes roughly 200us
         """
         cigar_tuples = self.cigartuples
-        read_sequence = self.query_alignment_sequence
+        read_sequence = self.query_sequence
         reference_positions = self.reference_positions
-
-        tuple_indices_to_remove = []
-        trimmed_tuple = None
-        count = trim_by
-        m, n = 0, 0
 
         if side == 'right':
             # flip the read
             read_sequence = read_sequence[::-1]
             cigar_tuples = cigar_tuples[::-1]
             reference_positions = reference_positions[::-1]
+
+        tuple_indices_to_remove = []
+        trimmed_tuple = None
+        count = trim_by
+        m, n = 0, 0
 
         for i, cigar_tuple in enumerate(cigar_tuples):
             operation, length = cigar_tuple
@@ -316,7 +322,7 @@ class Read:
 
         # overwrite the attributes of self
         self.cigartuples = cigar_tuples
-        self.query_alignment_sequence = read_sequence
+        self.query_sequence = read_sequence
         self.reference_positions = reference_positions
         self.reference_start = reference_positions[0]
         self.reference_end = reference_positions[-1]
@@ -331,7 +337,7 @@ class ReadTestClass:
                 return reference_positions
 
         read = Read()
-        read.query_alignment_sequence = 'AACCTTGG'
+        read.query_sequence = 'AACCTTGG'
         read.cigartuples = cigartuples
         read.reference_start = 0 # unused
         read.reference_end = 0 # unused
