@@ -1462,6 +1462,9 @@ def get_blocks(array):
     >>> [(0, 1), (47, 51), (97, 100)]
     """
 
+    if not len(array):
+        return []
+
     split = np.split(array, np.where(np.diff(array) != 1)[0] + 1)
     return [(x[0], x[-1] + 1) for x in split]
 
