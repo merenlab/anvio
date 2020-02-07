@@ -252,7 +252,6 @@ class KofamSetup(KofamContext):
                 elif first_char == "D":
                     fields = re.split('\s{2,}', line)
                     mnum = fields[1]
-                    module_name = fields[2]
                     self.module_dict[mnum] = {"name" : module_name}
                 # unknown code
                 else:
