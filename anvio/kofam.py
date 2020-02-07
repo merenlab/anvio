@@ -163,8 +163,8 @@ class KofamSetup(KofamContext):
         self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
         self.files = ['ko_list.gz', 'profiles.tar.gz']
 
-        # Kegg Orthology text file
-        self.kegg_orthology_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00001.keg&format=htext&filedir="
+        # Kegg module text file
+        self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
 
 
     def is_database_exists(self):
@@ -181,7 +181,7 @@ class KofamSetup(KofamContext):
                 os.path.join(self.kofam_data_dir, file_name), progress=self.progress, run=self.run)
 
         # download the kegg orthology file
-        utils.download_file(self.kegg_orthology_download_path, os.path.join(self.kofam_data_dir, "ko00001.keg"), progress=self.progress, run=self.run)
+        utils.download_file(self.kegg_module_download_path, os.path.join(self.kofam_data_dir, "ko00002.keg"), progress=self.progress, run=self.run)
 
 
     def decompress_files(self):
