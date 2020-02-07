@@ -116,12 +116,14 @@ class Contig:
             split.coverage.process_c(split.coverage.c)
 
 
-    def analyze_auxiliary(self, bam):
+    def analyze_auxiliary(self, bam, skip_SNV_profiling=False, profile_SCVs=False):
         for split in self.splits:
             split.auxiliary = Auxiliary(split,
                                         bam,
                                         min_coverage=self.min_coverage_for_variability,
-                                        report_variability_full=self.report_variability_full)
+                                        report_variability_full=self.report_variability_full,
+                                        profile_SCVs=False,
+                                        skip_SNV_profiling=False)
 
 
 class Split:
@@ -137,9 +139,9 @@ class Split:
         self.abundance = 0.0
         self.auxiliary = None
         self.num_variability_entries = 0
-        self.column_profiles = {}
+        self.SNV_profiles = {}
+        self.SCV_profiles = {}
         self.per_position_info = {} # stores per nt info that is not coverage
-        self.codon_frequencies_dict = {}
 
 
     def get_atomic_data_dict(self):
@@ -157,19 +159,83 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, bam, min_coverage=10, report_variability_full=False):
+    def __init__(self, split, bam, min_coverage=10, report_variability_full=False, profile_SCVs=False, skip_SNV_profiling=False):
         self.split = split
         self.variation_density = 0.0
         self.min_coverage = min_coverage
+        self.skip_SNV_profiling = skip_SNV_profiling
+        self.profile_SCVs = profile_SCVs
         self.report_variability_full = report_variability_full
 
-        self.column_profiles = {}
+        self.SNV_profiles = {}
+        self.SCV_profiles = {}
+
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
 
-        self.run(bam)
+        self.run_SNVs(bam)
+        #self.run_SCVs(bam)
 
 
-    def run(self, bam):
+    def run_SCVs(self, bam):
+        """Profile SCVs
+
+        Parameters
+        ==========
+        bam : bamops.BAMFileObject
+        """
+        if 'base_pos_in_codon' not in self.split.per_position_info:
+            raise ConfigError("This split does not contain the info required for SCV profiling")
+
+        base_positions_array = self.split.per_position_info['base_pos_in_codon']
+        gene_caller_ids_array = self.split.per_position_info['corresponding_gene_call']
+
+        for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
+            aligned_positions = np.array([pos - self.split.start for pos in read.reference_positions])
+            aligned_sequence = read.get_aligned_sequence()
+            aligned_base_positions = base_positions_array[aligned_positions]
+
+            if np.all(aligned_base_positions == 0):
+                # This read does not fall on a gene
+                continue
+
+            non_gene_positions = np.where(aligned_base_positions == 0)[0]
+            non_gene_blocks = utils.get_blocks(non_gene_positions)
+            print(non_gene_blocks)
+            #split = np.split(base_positions_array, np.where(base_positions_array == 0)[0])
+            #print(split)
+
+            #print(base_positions_array[aligned_positions])
+            aligned_sequence = read.get_aligned_sequence()
+            aligned_sequence_as_index = [self.nt_to_array_index[nt] for nt in aligned_sequence]
+
+
+        additional_per_position_data = self.split.per_position_info
+        additional_per_position_data.update({
+            'cov_outlier_in_split': self.split.coverage.is_outlier.astype(int),
+            'cov_outlier_in_contig': self.split.coverage.is_outlier_in_parent.astype(int),
+        })
+
+        test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
+
+        nt_profile = ProcessNucleotideCounts(
+            allele_counts_array,
+            self.nt_to_array_index,
+            self.split.sequence,
+            min_coverage=self.min_coverage,
+            test_class=test_class,
+            additonal_per_position_data = additional_per_position_data,
+        )
+
+        nt_profile.process()
+        self.split.SNV_profiles = nt_profile.d
+
+        self.split.num_variability_entries = len(nt_profile.d['coverage'])
+        self.variation_density = self.split.num_variability_entries * 1000.0 / self.split.length
+
+
+
+
+    def run_SNVs(self, bam):
         """Run auxiliary
 
         Parameters
@@ -209,7 +275,7 @@ class Auxiliary:
         )
 
         nt_profile.process()
-        self.split.column_profiles = nt_profile.d
+        self.split.SNV_profiles = nt_profile.d
 
         self.split.num_variability_entries = len(nt_profile.d['coverage'])
         self.variation_density = self.split.num_variability_entries * 1000.0 / self.split.length
