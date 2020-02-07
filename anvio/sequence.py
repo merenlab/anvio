@@ -366,7 +366,7 @@ class ReadTestClass:
         CASE #1
         =======
         A A C C T T G G
-        A C T G - C T G A C T G = reference
+        A C T G T C T G A C T G = reference
         [(0,8)]
 
         CASE #2
