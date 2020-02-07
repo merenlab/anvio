@@ -113,7 +113,7 @@ class Codon:
 
 
 class Read:
-    def __init__(self, read, _run_test_class=False):
+    def __init__(self, read):
         """Class for manipulating reads
 
         Some of these class methods parse and manipulate cigar strings. You can read up on cigar
@@ -123,13 +123,7 @@ class Read:
         Parameters
         ==========
         read : pysam.AlignedSegment
-
-        _run_test_class : bool, False
-            For developers. During instantiation of class instance ReadTestClass will be run
         """
-        if _run_test_class:
-            test = ReadTestClass()
-            test.test_trim()
 
         self.r = read
 
@@ -143,6 +137,11 @@ class Read:
         self.reference_positions = self.r.get_reference_positions()
         self.reference_start = self.r.reference_start
         self.reference_end = self.r.reference_end
+
+
+    def run_test_class(self):
+        test = ReadTestClass()
+        test.test_trim()
 
 
     def get_blocks(self):
