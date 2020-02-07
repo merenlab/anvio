@@ -160,10 +160,6 @@ class Read:
     def __init__(self, read):
         """Class for manipulating reads
 
-        Some of these class methods parse and manipulate cigar strings. You can read up on cigar
-        operations here:
-        https://pysam.readthedocs.io/en/latest/api.html#pysam.AlignedSegment.cigartuples
-
         Parameters
         ==========
         read : pysam.AlignedSegment
@@ -208,6 +204,7 @@ class Read:
 
         Notes
         =====
+        FIXME below is out of date
         - This method exists because self.read.query_alignment_sequence is the read sequence with
           soft clipping removed, but it is otherwise 'unaligned' to the reference. For example,
           self.read.query_alignment_sequence does not even necessarily have the same length as
@@ -228,8 +225,17 @@ class Read:
             elif operation == 1:
                 # there is an insertion in the read
                 read_pos += length
-            elif operation == 2:
-                # there is a gap in the read
+            elif operation == 2 or operation == 3:
+                # there is a deletion/gap in the read
+                pass
+            elif operation == 4 or operation == 5:
+                # hard or soft clipping. While represented in the cigar string, pysam's
+                # query_alignment_sequence already trims off this part of the sequence, so all we
+                # need to do is nod our heads and move on
+                pass
+            elif operation == 6:
+                # This is a padded situation. So to speak, it can be thought of as a gap in both the
+                # reference AND the read. This means there is nothing to do in this situation.
                 pass
             else:
                 # FIXME these conditions have not yet been observed and may fuck up everything.
@@ -262,70 +268,76 @@ class Read:
 
         Notes
         =====
-        - Takes roughly 200us
+        - Takes roughly 250us
         """
+
+        cigarops = Cigar()
         cigar_tuples = self.cigartuples
-        read_sequence = self.query_sequence
-        reference_positions = self.reference_positions
 
         if side == 'right':
-            # flip the read
-            read_sequence = read_sequence[::-1]
+            # flip the cigar tuple
             cigar_tuples = cigar_tuples[::-1]
-            reference_positions = reference_positions[::-1]
 
-        tuple_indices_to_remove = []
-        trimmed_tuple = None
-        count = trim_by
-        m, n = 0, 0
+        trimmed_cigar_tuples = cigar_tuples.copy()
 
+        ref_positions_trimmed = 0
+        read_positions_trimmed = 0
+
+        terminate, terminate_next = (False, False)
         for i, cigar_tuple in enumerate(cigar_tuples):
             operation, length = cigar_tuple
-            tuple_indices_to_remove.append(i)
+            consumes_read, consumes_ref = cigarops.consumes[operation]
 
-            if operation == 0:
-                if length > count:
-                    trimmed_tuple = (operation, length - count)
-                    count = 0
+            if consumes_ref:
+                if terminate_next:
                     break
-                else:
-                    count -= length
 
-            elif operation == 1:
-                m += length
+                remaining = trim_by - ref_positions_trimmed
 
-            elif operation == 2:
-                if length > count:
-                    trimmed_tuple = (operation, length - count)
-                    n += length - count
-                    count = 0
-                    break
-                else:
-                    count -= length
-                    n += length
+                if length > remaining:
+                    # the length of the operation exceeds the required trim amount. So we will
+                    # terminate this iteration. To trim the cigar tuple, we replace it with a
+                    # truncated length
+                    trimmed_cigar_tuples[0] = (operation, length - remaining)
+                    terminate = True
+                    length = remaining
 
-            if count == 0:
+                elif length == remaining:
+                    # This is a rare case: The are no more reference positions that need to be
+                    # trimmed, but it could be the case that the next few cigartuples consume the
+                    # read and not the reference, and these still need to be trimmed. Hence,
+                    # `terminate_next` is set to True so the next time a reference-consuming
+                    # operation occurs, the loop is immediately terminated
+                    terminate_next = True
+
+                ref_positions_trimmed += length
+
+            if consumes_read:
+                read_positions_trimmed += length
+
+            if terminate:
                 break
 
-        cigar_tuples = [cigar_tuple for i, cigar_tuple in enumerate(cigar_tuples) if i not in tuple_indices_to_remove]
-        if trimmed_tuple:
-            cigar_tuples.insert(0, trimmed_tuple)
+            trimmed_cigar_tuples.pop(0)
 
-        read_sequence = read_sequence[trim_by + m - n:]
-        reference_positions = reference_positions[trim_by - n:]
+        # set new cigartuples
+        self.cigartuples = trimmed_cigar_tuples if side == 'left' else trimmed_cigar_tuples[::-1]
 
+        # set new query_sequence
+        self.query_sequence = self.query_sequence[read_positions_trimmed:] if side == 'left' else self.query_sequence[:-read_positions_trimmed]
+
+        # set new reference_positions
         if side == 'right':
-            # flip the read back
-            read_sequence = read_sequence[::-1]
-            cigar_tuples = cigar_tuples[::-1]
-            reference_positions = reference_positions[::-1]
+            num_pos = len(self.reference_positions)
+            ref_end = self.reference_positions[-1]
+            cutoff_index = next(num_pos - i for i, pos in enumerate(self.reference_positions[::-1]) if ref_end - pos >= trim_by)
+            self.reference_positions = self.reference_positions[:cutoff_index]
+        else:
+            cutoff_index = next(i for i, pos in enumerate(self.reference_positions) if pos - self.reference_start >= trim_by)
+            self.reference_positions = self.reference_positions[cutoff_index:]
 
-        # overwrite the attributes of self
-        self.cigartuples = cigar_tuples
-        self.query_sequence = read_sequence
-        self.reference_positions = reference_positions
-        self.reference_start = reference_positions[0]
-        self.reference_end = reference_positions[-1]
+        self.reference_start = self.reference_positions[0]
+        self.reference_end = self.reference_positions[-1]
 
 
 class ReadTestClass:
@@ -354,7 +366,7 @@ class ReadTestClass:
         CASE #1
         =======
         A A C C T T G G
-        A C T G A C T G A C T G = reference
+        A C T G - C T G A C T G = reference
         [(0,8)]
 
         CASE #2
@@ -425,7 +437,7 @@ class ReadTestClass:
                 test_set['input_reference_positions']
             ))
             read.trim(trim_by=3, side='left')
-            assert read.query_alignment_sequence == test_set['output_sequence_left']
+            assert read.query_sequence == test_set['output_sequence_left']
             assert read.cigartuples == test_set['output_tuples_left']
             assert read.reference_positions == test_set['output_reference_positions_left']
 
@@ -434,7 +446,7 @@ class ReadTestClass:
                 test_set['input_reference_positions']
             ))
             read.trim(trim_by=3, side='right')
-            assert read.query_alignment_sequence == test_set['output_sequence_right']
+            assert read.query_sequence == test_set['output_sequence_right']
             assert read.cigartuples == test_set['output_tuples_right']
             assert read.reference_positions == test_set['output_reference_positions_right']
 
