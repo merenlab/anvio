@@ -400,6 +400,7 @@ class KofamSetup(KofamContext):
         """This is a driver function which executes the Kofam setup process by downloading, decompressing, and hmmpressing the profiles."""
         self.download_profiles()
         self.decompress_files()
+        self.download_modules()
         self.setup_ko_dict()
         self.run_hmmpress()
 
