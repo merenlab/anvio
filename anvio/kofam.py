@@ -44,10 +44,13 @@ class KofamContext(object):
         # default directory will be called KEGG and will store the KEGG Module data as well
         self.kofam_data_dir = A('kofam_data_dir') or os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
         self.orphan_data_dir = os.path.join(self.kofam_data_dir, "orphan_data")
+        self.module_data_dir = os.path.join(self.kofam_data_dir, "modules")
 
         # shared variables for all KOfam subclasses
         self.kofam_hmm_file_path = os.path.join(self.kofam_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
         self.ko_list_file_path = os.path.join(self.kofam_data_dir, "ko_list")
+        self.kegg_module_file = os.path.join(self.kofam_data_dir, "ko00002.keg")
+        self.module_dict = {} # this dict will be filled in by other functions
 
     def setup_ko_dict(self):
         """
