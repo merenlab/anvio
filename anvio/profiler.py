@@ -288,12 +288,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling or not self.profile_SCVs:
             return
 
+        # FIXME
+        return
+
         variable_codons_table = TableForCodonFrequencies(self.profile_db_path, progress=null_progress)
 
         for contig in self.contigs:
-            for gene_callers_id in contig.codon_frequencies_dict:
-                for codon_order in contig.codon_frequencies_dict[gene_callers_id]:
-                    e = contig.codon_frequencies_dict[gene_callers_id][codon_order]
+            for gene_callers_id in contig.SCV_profiles:
+                for codon_order in contig.SCV_profiles[gene_callers_id]:
+                    e = contig.SCV_profiles[gene_callers_id][codon_order]
 
                     db_entry = {'sample_id': self.sample_id, 'corresponding_gene_call': gene_callers_id}
                     db_entry['reference'] = e['reference']
@@ -321,9 +324,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                 # FIXME extremely slow; consider casting as dataframe
                 # e.g. database.insert_rows_from_dataframe(anvio.tables.variable_nts_table_name, df)
-                entries = zip(*split.column_profiles.values())
+                entries = zip(*split.SNV_profiles.values())
                 for entry in entries:
-                    entry_dict = dict(zip(split.column_profiles.keys(), entry))
+                    entry_dict = dict(zip(split.SNV_profiles.keys(), entry))
                     variable_nts_table.append(entry_dict)
 
         variable_nts_table.store()
@@ -595,14 +598,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 continue
 
             if not self.skip_SNV_profiling:
-                contig.analyze_auxiliary(bam_file)
+                contig.analyze_auxiliary(bam_file, skip_SNV_profiling=self.skip_SNV_profiling, profile_SCVs=self.profile_SCVs)
                 timer.make_checkpoint('Auxiliary analyzed')
 
                 for split in contig.splits:
                     if split.num_variability_entries == 0:
                         continue
 
-                    d = split.column_profiles
+                    d = split.SNV_profiles
 
                     # Add these redundant data ad-hoc
                     d['split_name'] = [split.name] * split.num_variability_entries
@@ -611,32 +614,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                 timer.make_checkpoint('Auxiliary loose ends finished')
 
-                codon_frequencies = bamops.CodonFrequencies()
-
-                codons_in_genes_to_profile_SCVs_dict = {}
-                for gene_callers_id, codon_order in codons_in_genes_to_profile_SCVs:
-                    if gene_callers_id not in codons_in_genes_to_profile_SCVs_dict:
-                        codons_in_genes_to_profile_SCVs_dict[gene_callers_id] = set([])
-                    codons_in_genes_to_profile_SCVs_dict[gene_callers_id].add(codon_order)
-
-                gene_caller_ids_to_profile = list(codons_in_genes_to_profile_SCVs_dict.keys())
-
-                for i in range(len(gene_caller_ids_to_profile)):
-                    gene_callers_id = gene_caller_ids_to_profile[i]
-                    codons_to_profile = codons_in_genes_to_profile_SCVs_dict[gene_callers_id]
-
-                    gene_call = self.genes_in_contigs_dict[gene_callers_id]
-                    contig_name = gene_call['contig']
-                    if self.profile_SCVs:
-                        contig.codon_frequencies_dict[gene_callers_id] = codon_frequencies.process_gene_call(bam_file, gene_call, self.contig_sequences[contig_name]['sequence'], codons_to_profile)
-
             output_queue.put(contig)
 
             for split in contig.splits:
                 del split.coverage
                 del split.auxiliary
                 del split.per_position_info
-                del split.column_profiles
+                del split.SNV_profiles
                 del split
             del contig.splits[:]
             del contig.coverage
