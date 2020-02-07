@@ -169,7 +169,7 @@ class KofamSetup(KofamContext):
 
         # Kegg module text file
         self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
-        self.kegg_module_file = os.path.join(self.kofam_data_dir, "ko00002.keg")
+        self.kegg_rest_api_get = "http://rest.kegg.jp/get"
 
 
     def is_database_exists(self):
@@ -187,7 +187,7 @@ class KofamSetup(KofamContext):
 
     def download_profiles(self):
         """This function downloads the Kofam profiles."""
-        self.run.info("Database URL", self.database_url)
+        self.run.info("Kofam Profile Database URL", self.database_url)
 
         for file_name in self.files:
             utils.download_file(self.database_url + '/' + file_name,
