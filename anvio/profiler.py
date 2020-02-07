@@ -619,8 +619,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
             for split in contig.splits:
                 del split.coverage
                 del split.auxiliary
-                del split.per_position_info
-                del split.SNV_profiles
                 del split
             del contig.splits[:]
             del contig.coverage
