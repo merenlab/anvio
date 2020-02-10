@@ -89,7 +89,6 @@ class Contig:
 
         self.min_coverage_for_variability = 10
         self.skip_SNV_profiling = False
-        self.report_variability_full = False
 
 
     def get_atomic_data_dict(self):
@@ -114,16 +113,6 @@ class Contig:
             split.coverage.c = self.coverage.c[split.start:split.end]
             split.coverage.is_outlier_in_parent = self.coverage.is_outlier[split.start:split.end]
             split.coverage.process_c(split.coverage.c)
-
-
-    def analyze_auxiliary(self, bam, skip_SNV_profiling=False, profile_SCVs=False):
-        for split in self.splits:
-            split.auxiliary = Auxiliary(split,
-                                        bam,
-                                        min_coverage=self.min_coverage_for_variability,
-                                        report_variability_full=self.report_variability_full,
-                                        profile_SCVs=False,
-                                        skip_SNV_profiling=False)
 
 
 class Split:
@@ -159,21 +148,33 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, bam, min_coverage=10, report_variability_full=False, profile_SCVs=False, skip_SNV_profiling=False):
+    def __init__(self, split, min_coverage=10, report_variability_full=False, profile_SCVs=False, skip_SNV_profiling=False, gene_lengths=None):
         self.split = split
         self.variation_density = 0.0
         self.min_coverage = min_coverage
         self.skip_SNV_profiling = skip_SNV_profiling
         self.profile_SCVs = profile_SCVs
         self.report_variability_full = report_variability_full
+        self.gene_lengths = gene_lengths
 
         self.SNV_profiles = {}
         self.SCV_profiles = {}
 
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
 
-        self.run_SNVs(bam)
-        #self.run_SCVs(bam)
+        if self.profile_SCVs:
+            if self.gene_lengths is None:
+                raise ConfigError("Auxiliary :: You want to profile SCVs. That's great. But in that case "
+                                  "Auxiliary.gene_lengths must not be None")
+
+            if 'base_pos_in_codon' not in self.split.per_position_info:
+                raise ConfigError("Auxiliary :: This split does not contain the info required for SCV profiling")
+
+            self.init_SCV_profiles()
+
+
+    def init_SCV_profiles(self):
+        pass
 
 
     def run_SCVs(self, bam):
@@ -183,8 +184,6 @@ class Auxiliary:
         ==========
         bam : bamops.BAMFileObject
         """
-        if 'base_pos_in_codon' not in self.split.per_position_info:
-            raise ConfigError("This split does not contain the info required for SCV profiling")
 
         base_positions_array = self.split.per_position_info['base_pos_in_codon']
         gene_caller_ids_array = self.split.per_position_info['corresponding_gene_call']
@@ -200,7 +199,6 @@ class Auxiliary:
 
             non_gene_positions = np.where(aligned_base_positions == 0)[0]
             non_gene_blocks = utils.get_blocks(non_gene_positions)
-            print(non_gene_blocks)
             #split = np.split(base_positions_array, np.where(base_positions_array == 0)[0])
             #print(split)
 
@@ -231,8 +229,6 @@ class Auxiliary:
 
         self.split.num_variability_entries = len(nt_profile.d['coverage'])
         self.variation_density = self.split.num_variability_entries * 1000.0 / self.split.length
-
-
 
 
     def run_SNVs(self, bam):
