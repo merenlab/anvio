@@ -156,6 +156,25 @@ class Cigar:
         }
 
 
+    def iterate(self, cigar_tuples):
+        """Iterate through a list of cigar tuples
+
+        Parameters
+        ==========
+        cigar_tuple : list
+            Each element is a (operation, length) tuple. Operations are integers, see class
+            docstring
+
+        Yields
+        ======
+        output : tuple
+            (operation, length, consumes_read, consumes_ref) -> (int, int, bool, bool)
+        """
+
+        for operation, length in cigar_tuple:
+            yield (operation, length, *self.consumes[operation])
+
+
 class Read:
     def __init__(self, read):
         """Class for manipulating reads
