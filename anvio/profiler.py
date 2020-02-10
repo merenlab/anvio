@@ -598,21 +598,26 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 continue
 
             if not self.skip_SNV_profiling:
-                contig.analyze_auxiliary(bam_file, skip_SNV_profiling=self.skip_SNV_profiling, profile_SCVs=self.profile_SCVs)
-                timer.make_checkpoint('Auxiliary analyzed')
-
                 for split in contig.splits:
+                    split.auxiliary = contigops.Auxiliary(split,
+                                                          profile_SCVs=self.profile_SCVs,
+                                                          skip_SNV_profiling=self.skip_SNV_profiling,
+                                                          min_coverage=self.min_coverage_for_variability,
+                                                          report_variability_full=self.report_variability_full,
+                                                          gene_lengths=self.gene_lengths)
+
+                    self.run_SNVs(bam_file)
+                    self.run_SCVs(bam_file)
+
                     if split.num_variability_entries == 0:
                         continue
 
-                    d = split.SNV_profiles
-
                     # Add these redundant data ad-hoc
-                    d['split_name'] = [split.name] * split.num_variability_entries
-                    d['sample_id'] = [self.sample_id] * split.num_variability_entries
-                    d['pos_in_contig'] = d['pos'] + split.start
+                    split.SNV_profiles['split_name'] = [split.name] * split.num_variability_entries
+                    split.SNV_profiles['sample_id'] = [self.sample_id] * split.num_variability_entries
+                    split.SNV_profiles['pos_in_contig'] = split.SNV_profiles['pos'] + split.start
 
-                timer.make_checkpoint('Auxiliary loose ends finished')
+                timer.make_checkpoint('Auxiliary analyzed')
 
             output_queue.put(contig)
 
