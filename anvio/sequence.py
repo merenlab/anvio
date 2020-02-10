@@ -297,6 +297,9 @@ class Read:
         - Takes roughly 250us
         """
 
+        if trim_by == 0:
+            return
+
         cigar_tuples = self.cigartuples
 
         if side == 'right':
