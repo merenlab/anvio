@@ -200,10 +200,42 @@ class Read:
     def get_blocks(self):
         """Mimic the get_blocks function from AlignedSegment.
 
-        Calculates directly from self.reference_positions
+        Notes
+        =====
+        - Takes roughly 200us
         """
 
-        return anvio.utils.get_blocks(self.reference_positions)
+        blocks = []
+        block_start = self.reference_positions[0]
+        block_length = 0
+
+        for _, length, consumes_read, consumes_ref in self.cigarops.iterate(self.cigartuples):
+
+            if consumes_read and consumes_ref:
+                in_block = True
+                block_length += length
+
+            elif consumes_read and not consumes_ref:
+                if block_length:
+                    blocks.append((block_start, block_start + block_length))
+
+                block_start = block_start + block_length
+                block_length = 0
+
+            elif not consumes_read and consumes_ref:
+                if block_length:
+                    blocks.append((block_start, block_start + block_length))
+
+                block_start = block_start + block_length + length
+                block_length = 0
+
+            else:
+                pass
+
+        if block_length:
+            blocks.append((block_start, block_start + block_length))
+
+        return blocks
 
 
     def get_reference_positions(self):
