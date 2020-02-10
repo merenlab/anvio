@@ -44,6 +44,7 @@ pp = terminal.pretty_print
 
 class BAMProfiler(dbops.ContigsSuperclass):
     """Creates an über class for BAM file operations"""
+
     def __init__(self, args, r=terminal.Run(width=35), p=terminal.Progress()):
         self.args = args
         self.progress = p
@@ -547,14 +548,22 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling:
             return
 
-        nt_info = self.get_gene_info_for_each_position(contig.name)
+        info_of_interest = [
+            'corresponding_gene_call',
+            'codon_order_in_gene',
+            'in_partial_gene_call',
+            'in_complete_gene_call',
+            'base_pos_in_codon',
+        ]
+
+        if self.profile_SCVs:
+            info_of_interest.append('forward')
+
+        nt_info = self.get_gene_info_for_each_position(contig.name, info=info_of_interest)
 
         for split in contig.splits:
-            split.per_position_info['in_partial_gene_call'] = nt_info['in_partial_gene_call'][split.start:split.end]
-            split.per_position_info['in_complete_gene_call'] = nt_info['in_complete_gene_call'][split.start:split.end]
-            split.per_position_info['base_pos_in_codon'] = nt_info['base_pos_in_codon'][split.start:split.end]
-            split.per_position_info['corresponding_gene_call'] = nt_info['corresponding_gene_call'][split.start:split.end]
-            split.per_position_info['codon_order_in_gene'] = nt_info['codon_order_in_gene'][split.start:split.end]
+            for info in info_of_interest:
+                split.per_position_info[info] = nt_info[info][split.start:split.end]
 
 
     @staticmethod
@@ -606,8 +615,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                           report_variability_full=self.report_variability_full,
                                                           gene_lengths=self.gene_lengths)
 
-                    self.run_SNVs(bam_file)
-                    self.run_SCVs(bam_file)
+                    split.auxiliary.run_SNVs(bam_file)
+                    if self.profile_SCVs: split.auxiliary.run_SCVs(bam_file)
 
                     if split.num_variability_entries == 0:
                         continue
