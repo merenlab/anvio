@@ -93,7 +93,7 @@ class Codon:
 
             for end_codon in codons:
 
-                # s = number transitions 
+                # s = number transitions
                 # v = number transversions
                 s = 0; v = 0
                 for nt_pos in range(3):
@@ -164,7 +164,7 @@ class Cigar:
             (operation, length, consumes_read, consumes_ref) -> (int, int, bool, bool)
         """
 
-        for operation, length in cigar_tuple:
+        for operation, length in cigar_tuples:
             yield (operation, length, *self.consumes[operation])
 
 
@@ -228,8 +228,7 @@ class Read:
         aligned_sequence = ''
 
         read_pos = 0
-        for operation, length in self.cigartuples:
-            consumes_read, consumes_ref = self.cigarops.consumes[operation]
+        for _, length, consumes_read, consumes_ref in self.cigarops.iterate(self.cigartuples):
 
             if consumes_read:
                 if consumes_ref:
@@ -278,9 +277,7 @@ class Read:
         read_positions_trimmed = 0
 
         terminate, terminate_next = (False, False)
-        for cigar_tuple in cigar_tuples:
-            operation, length = cigar_tuple
-            consumes_read, consumes_ref = self.cigarops.consumes[operation]
+        for operation, length, consumes_read, consumes_ref in self.cigarops.iterate(self.cigartuples):
 
             if consumes_ref:
                 if terminate_next:
