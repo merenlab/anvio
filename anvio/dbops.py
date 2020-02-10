@@ -789,6 +789,9 @@ class ContigsSuperclass(object):
         - If you are interested in just a few nt positions, use instead the "per-nucleotide"
           functions `get_nt_position_info`, `get_corresponding_gene_caller_ids_for_base_position`,
           and `get_corresponding_codon_order_in_gene`
+        - This function gives per-nucleotide info about things that are potentially not
+          per-nucleotide, e.g. "corresponding_gene_call". That means the output of this function is
+          inherently redundant, and sometimes that's okay.
         """
 
         available_info = [
