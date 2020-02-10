@@ -266,7 +266,7 @@ class Read:
         read_positions_trimmed = 0
 
         terminate, terminate_next = (False, False)
-        for i, cigar_tuple in enumerate(cigar_tuples):
+        for cigar_tuple in cigar_tuples:
             operation, length = cigar_tuple
             consumes_read, consumes_ref = self.cigarops.consumes[operation]
 
