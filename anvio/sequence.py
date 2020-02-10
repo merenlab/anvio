@@ -113,7 +113,7 @@ class Codon:
 
 
 class Cigar:
-    def __init__(self, cigar_tuple=None):
+    def __init__(self):
         """Gives some useful information about cigar string and their operations
 
         Here are the possible bam operations.
@@ -128,19 +128,12 @@ class Cigar:
             =       BAM_CEQUAL      7
             X       BAM_CDIFF       8
 
-        Parameters
-        ==========
-        cigar_tuple : tuple, None
-            A tuple of this format:
-            https://pysam.readthedocs.io/en/latest/api.html#pysam.AlignedSegment.cigartuples
-
         Notes
         =====
         - A description of what possible cigar operations are possible, see
           https://imgur.com/a/fiQZXNg, which comes from here:
           https://samtools.github.io/hts-specs/SAMv1.pdf
         """
-        self.cigar_tuple = cigar_tuple
 
         # key = cigar operation, val[0]/val[1] is whether operation consumes the read/reference
         self.consumes = {
@@ -161,7 +154,7 @@ class Cigar:
 
         Parameters
         ==========
-        cigar_tuple : list
+        cigar_tuples : list
             Each element is a (operation, length) tuple. Operations are integers, see class
             docstring
 
