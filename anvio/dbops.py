@@ -879,7 +879,6 @@ class ContigsSuperclass(object):
             for i, c in enumerate(['in_partial_gene_call', 'in_complete_gene_call', 'base_pos_in_codon']):
                 if c in column_names:
                     output[c] = data[:, i]
-            output['info'] = self.nt_positions_info[contig_name]
 
         return output
 
