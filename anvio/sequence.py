@@ -342,8 +342,8 @@ class Read:
             A sliced view of the read
         """
 
-        for block in self.get_blocks():
-            yield self[block[0]:block[1]]
+        for start, stop in self.get_blocks():
+            yield self[start:stop]
 
 
     def trim(self, trim_by, side='left'):
@@ -374,6 +374,10 @@ class Read:
 
         if trim_by <= 0:
             return
+
+        elif trim_by > self.reference_end - self.reference_start:
+            raise ConfigError("Read.trim :: Requesting to trim an amount %d that exceeds the alignment"
+                              " range of %d" % (trim_by, self.reference_end - self.reference_start))
 
         cigar_tuples = self.cigartuples
 
