@@ -170,65 +170,61 @@ class Auxiliary:
             if 'base_pos_in_codon' not in self.split.per_position_info:
                 raise ConfigError("Auxiliary :: This split does not contain the info required for SCV profiling")
 
-            self.init_SCV_profiles()
-
-
-    def init_SCV_profiles(self):
-        pass
-
 
     def run_SCVs(self, bam):
-        """Profile SCVs
+        """Profile 
 
         Parameters
         ==========
         bam : bamops.BAMFileObject
         """
 
-        base_positions_array = self.split.per_position_info['base_pos_in_codon']
-        gene_caller_ids_array = self.split.per_position_info['corresponding_gene_call']
+        codon_order_array = self.split.per_position_info['codon_order_in_gene']
+        base_pos_array = self.split.per_position_info['base_pos_in_codon']
+        gene_id_array = self.split.per_position_info['corresponding_gene_call']
+        direction_array = self.split.per_position_info['forward']
 
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
-            aligned_positions = np.array([pos - self.split.start for pos in read.reference_positions])
-            aligned_sequence = read.get_aligned_sequence()
-            aligned_base_positions = base_positions_array[aligned_positions]
+            genes_in_read = np.unique(gene_id_array[(read.reference_start - self.split.start):(read.reference_end - self.split.start)])
 
-            if np.all(aligned_base_positions == 0):
-                # This read does not fall on a gene
-                continue
+            for gene_id in genes_in_read:
+                if gene_id == -1:
+                    continue
 
-            non_gene_positions = np.where(aligned_base_positions == 0)[0]
-            non_gene_blocks = utils.get_blocks(non_gene_positions)
-            #split = np.split(base_positions_array, np.where(base_positions_array == 0)[0])
-            #print(split)
+                positions_where_read_aligns_to_gene = np.where(gene_id_array == gene_id)[0] + self.split.start
+                gene_overlap_start = positions_where_read_aligns_to_gene[0]
+                gene_overlap_end = positions_where_read_aligns_to_gene[-1]
 
-            #print(base_positions_array[aligned_positions])
-            aligned_sequence = read.get_aligned_sequence()
-            aligned_sequence_as_index = [self.nt_to_array_index[nt] for nt in aligned_sequence]
+                # gene_read_overlap is a copied view of read that has been spliced to only include
+                # the portion that overlaps with the gene
+                gene_read_overlap = read[gene_overlap_start:gene_overlap_end + 1]
+
+                for gapless_segment in gene_read_overlap.iterate_through_blocks():
+                    pass
 
 
-        additional_per_position_data = self.split.per_position_info
-        additional_per_position_data.update({
-            'cov_outlier_in_split': self.split.coverage.is_outlier.astype(int),
-            'cov_outlier_in_contig': self.split.coverage.is_outlier_in_parent.astype(int),
-        })
+        #additional_per_position_data = self.split.per_position_info
+        #additional_per_position_data.update({
+        #    'cov_outlier_in_split': self.split.coverage.is_outlier.astype(int),
+        #    'cov_outlier_in_contig': self.split.coverage.is_outlier_in_parent.astype(int),
+        #})
 
-        test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
+        #test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
 
-        nt_profile = ProcessNucleotideCounts(
-            allele_counts_array,
-            self.nt_to_array_index,
-            self.split.sequence,
-            min_coverage=self.min_coverage,
-            test_class=test_class,
-            additonal_per_position_data = additional_per_position_data,
-        )
+        #nt_profile = ProcessNucleotideCounts(
+        #    allele_counts_array,
+        #    self.nt_to_array_index,
+        #    self.split.sequence,
+        #    min_coverage=self.min_coverage,
+        #    test_class=test_class,
+        #    additonal_per_position_data = additional_per_position_data,
+        #)
 
-        nt_profile.process()
-        self.split.SNV_profiles = nt_profile.d
+        #nt_profile.process()
+        #self.split.SNV_profiles = nt_profile.d
 
-        self.split.num_variability_entries = len(nt_profile.d['coverage'])
-        self.variation_density = self.split.num_variability_entries * 1000.0 / self.split.length
+        #self.split.num_variability_entries = len(nt_profile.d['coverage'])
+        #self.variation_density = self.split.num_variability_entries * 1000.0 / self.split.length
 
 
     def run_SNVs(self, bam):
