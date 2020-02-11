@@ -330,22 +330,6 @@ class Read:
         return segment
 
 
-    def iterate_through_blocks(self):
-        """Loops through each aligned block.
-
-        See https://pysam.readthedocs.io/en/latest/api.html#pysam.AlignedSegment.get_blocks
-        for information about what a block is
-
-        Yields
-        ======
-        segment : Read
-            A sliced view of the read
-        """
-
-        for start, stop in self.get_blocks():
-            yield self[start:stop]
-
-
     def trim(self, trim_by, side='left'):
         """Trims self.read by either the left or right
 
