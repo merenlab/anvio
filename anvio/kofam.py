@@ -285,6 +285,10 @@ class KofamSetup(KofamContext):
                 raise ConfigError("The KEGG module file %s was not downloaded properly. We were expecting the last line in the file \
                 to be '///', but instead it was %s." % (file_path, last_line))
 
+    def parse_kegg_modules(self):
+        """This function reads information from each of the KEGG module flat files into the module_dict."""
+        pass
+
     def decompress_files(self):
         """This function decompresses the Kofam profiles."""
         for file_name in self.files:
