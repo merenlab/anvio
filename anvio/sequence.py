@@ -3,6 +3,7 @@
 
 '''Primitive classes for basic DNA sequence properties.'''
 
+import copy
 import numpy
 import collections
 
@@ -271,12 +272,70 @@ class Read:
         return aligned_sequence
 
 
+    def __getitem__(self, key):
+        """Splice the read based on reference positions
+
+        Makes a new copy, current instance remains unmodified.
+
+        Parameters
+        ==========
+        key : slice
+            See Examples
+
+        Returns
+        =======
+        output : Read
+            A new Read object
+
+        Examples
+        ========
+
+        You have a read with self.reference_start = 4500 and self.reference_end = 4600. You want to
+        splice the segment [4550, 4575).
+
+        >>> type(read)
+        <class 'anvio.sequence.Read'>
+        >>> spliced_segment = read[4550:4575]
+        >>> type(spliced_segment)
+        <class 'anvio.sequence.Read'>
+        >>> spliced_segment.reference_start
+        4550
+        >>> spliced_segment.reference_end
+        4574
+
+        Specify only one bound:
+
+        >>> print(read[:4575].reference_start, read[:4575].reference_end)
+        (4500, 4574)
+        >>> print(read[4575:].reference_start, read[4575:].reference_end)
+        (4575, 4600)
+
+        Specify outside read range:
+
+        >>> print(read[4400:4700].reference_start, read[4400:4700].reference_end)
+        (4500, 4600)
+        """
+
+        if not isinstance(key, slice) or key.step is not None:
+            raise ConfigError("Read class only supports basic slicing for indexing, e.g. read[start:stop], read[:stop]")
+
+        segment = copy.copy(self)
+
+        start = key.start if key.start is not None else segment.reference_start
+        end = key.stop if key.stop is not None else segment.reference_end + 1
+
+        segment.trim(start - segment.reference_start, side='left')
+        segment.trim(segment.reference_end - end, side='right')
+
+        return segment
+
+
     def trim(self, trim_by, side='left'):
         """Trims self.read by either the left or right
 
         Modifies the attributes:
 
-            query_alignment_sequence
+            query_sequence
             cigartuples
             reference_positions
             reference_start
@@ -297,7 +356,7 @@ class Read:
         - Takes roughly 250us
         """
 
-        if trim_by == 0:
+        if trim_by <= 0:
             return
 
         cigar_tuples = self.cigartuples
