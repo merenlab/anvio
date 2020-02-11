@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""
-    This file contains KofamSetup and Kofam classes.
-
-"""
+"""This file contains KofamSetup and Kofam classes."""
 
 import os
 import gzip
@@ -36,9 +33,8 @@ pp = terminal.pretty_print
 
 
 class KofamContext(object):
-    """
-    The purpose of this base class is to define shared functions and file paths for all KOfam operations.
-    """
+    """The purpose of this base class is to define shared functions and file paths for all KOfam operations."""
+
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         # default directory will be called KEGG and will store the KEGG Module data as well
@@ -53,8 +49,7 @@ class KofamContext(object):
         self.module_dict = {} # this dict will be filled in by other functions
 
     def setup_ko_dict(self):
-        """
-        The purpose of this function is to process the ko_list file into usable form by Kofam sub-classes.
+        """The purpose of this function is to process the ko_list file into usable form by Kofam sub-classes.
 
         The ko_list file (which is downloaded along with the KOfam HMM profiles) contains important
         information for each KEGG Orthology number (KO, or knum), incuding pre-defined scoring thresholds
@@ -94,8 +89,8 @@ class KofamContext(object):
         [self.ko_dict.pop(ko) for ko in self.ko_no_threshold_list]
 
     def get_ko_skip_list(self):
-        """
-        The purpose of this function is to determine which KO numbers have no associated data or just no score threshold in the ko_list file.
+        """The purpose of this function is to determine which KO numbers have no associated data or just no score threshold in the ko_list file.
+
         That is, their ko_list entries look like this, with hypens in all but the first and last columns:
 
         K14936	-	-	-	-	-	-	-	-	-	-	small nucleolar RNA snR191
@@ -115,6 +110,7 @@ class KofamContext(object):
         skip_list  list of strings, each string is a KO number
         no_threshold_list   list of strings, each string is a KO number
         """
+
         col_names_to_check = ["threshold","score_type","profile_type","F-measure","nseq","nseq_used","alen","mlen","eff_nseq","re/pos"]
         skip_list = []
         no_threshold_list = []
@@ -135,8 +131,7 @@ class KofamContext(object):
         return skip_list, no_threshold_list
 
 class KofamSetup(KofamContext):
-    """ Class for setting up KEGG Kofam HMM profiles. It performs sanity checks and downloads, unpacks, and prepares
-    the profiles for later use by `hmmscan`.
+    """Class for setting up KEGG Kofam HMM profiles. It performs sanity checks and downloads, unpacks, and prepares the profiles for later use by `hmmscan`.
 
     Parameters
     ==========
@@ -174,6 +169,7 @@ class KofamSetup(KofamContext):
 
     def is_database_exists(self):
         """This function determines whether the user has already downloaded the Kofam HMM profiles and KEGG modules."""
+
         if os.path.exists(self.kofam_hmm_file_path):
             raise ConfigError("It seems you already have KOfam HMM profiles installed in '%s', please use --reset flag if you want to re-download it." % self.kofam_data_dir)
 
@@ -187,6 +183,7 @@ class KofamSetup(KofamContext):
 
     def download_profiles(self):
         """This function downloads the Kofam profiles."""
+
         self.run.info("Kofam Profile Database URL", self.database_url)
 
         for file_name in self.files:
@@ -194,8 +191,7 @@ class KofamSetup(KofamContext):
                 os.path.join(self.kofam_data_dir, file_name), progress=self.progress, run=self.run)
 
     def process_module_file(self):
-        """This function reads the kegg module file into a dictionary. It should be called during setup to get the KEGG module numbers
-        so that KEGG modules can be downloaded.
+        """This function reads the kegg module file into a dictionary. It should be called during setup to get the KEGG module numbers so that KEGG modules can be downloaded.
 
         The structure of this file is like this:
 
@@ -217,6 +213,7 @@ class KofamSetup(KofamContext):
         D = Module
 
         """
+
         filesnpaths.is_file_exists(self.kegg_module_file)
         filesnpaths.is_file_plain_text(self.kegg_module_file)
 
@@ -259,9 +256,12 @@ class KofamSetup(KofamContext):
                     made the file unparseable. Sad. :(" % (self.kegg_module_file, first_char))
 
     def download_modules(self):
-        """This function downloads the KEGG modules. To do so, it also processes the KEGG module file into a dictionary via the
+        """This function downloads the KEGG modules.
+
+        To do so, it also processes the KEGG module file into a dictionary via the
         process_module_file() function. To verify that each file has been downloaded properly, we check that the last line is '///'.
         """
+
         self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
 
         # download the kegg module file, which lists all modules
@@ -287,10 +287,12 @@ class KofamSetup(KofamContext):
 
     def parse_kegg_modules(self):
         """This function reads information from each of the KEGG module flat files into the module_dict."""
+
         pass
 
     def decompress_files(self):
         """This function decompresses the Kofam profiles."""
+
         for file_name in self.files:
             full_path = os.path.join(self.kofam_data_dir, file_name)
 
@@ -300,10 +302,12 @@ class KofamSetup(KofamContext):
                 utils.gzip_decompress_file(full_path, keep_original=False)
 
     def confirm_downloaded_files(self):
-        """This function verifies that all Kofam profiles have been properly downloaded. It is intended to be run
-        after the files have been decompressed. The profiles directory should contain hmm files from K00001.hmm to
-        K23763.hmm with some exceptions; all KO numbers from ko_list file (except those in ko_skip_list) should be
-        included."""
+        """This function verifies that all Kofam profiles have been properly downloaded.
+
+        It is intended to be run after the files have been decompressed. The profiles directory should contain hmm files from K00001.hmm to
+        K23763.hmm with some exceptions; all KO numbers from ko_list file (except those in ko_skip_list) should be included.
+        """
+
         ko_nums = self.ko_dict.keys()
         for k in ko_nums:
             if k not in self.ko_skip_list:
@@ -314,13 +318,15 @@ class KofamSetup(KofamContext):
                                     flag." % (hmm_path))
 
     def move_orphan_files(self):
-        """
-        This function moves the following to the orphan files directory:
+        """This function moves the following to the orphan files directory:
+
             - profiles that do not have ko_list entries
             - profiles whose ko_list entries have no scoring threshold (in ko_no_threshold_list)
+
         And, the following profiles should not have been downloaded, but we check if they exist and move any that do:
             - profiles whose ko_list entries have no data at all (in ko_skip_list)
         """
+
         if not os.path.exists(self.orphan_data_dir): # should not happen but we check just in case
             raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist \
             yet, but it needs to in order for the move_orphan_files() function to work." % self.orphan_data_dir)
@@ -368,6 +374,7 @@ class KofamSetup(KofamContext):
 
     def run_hmmpress(self):
         """This function concatenates the Kofam profiles and runs hmmpress on them."""
+
         self.progress.new('Preparing Kofam HMM Profiles')
         log_file_path = os.path.join(self.kofam_data_dir, '00_hmmpress_log.txt')
 
@@ -401,6 +408,7 @@ class KofamSetup(KofamContext):
 
     def setup_profiles(self):
         """This is a driver function which executes the Kofam setup process by downloading, decompressing, and hmmpressing the profiles."""
+
         self.download_profiles()
         self.decompress_files()
         self.download_modules()
@@ -408,14 +416,14 @@ class KofamSetup(KofamContext):
         self.run_hmmpress()
 
 class KofamRunHMMs(KofamContext):
-    """ Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DBs
-    for later metabolism prediction.
+    """ Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DB for later metabolism prediction.
 
     Parameters
     ==========
     args: Namespace object
         All the arguments supplied by user to anvi-run-kegg-kofams
     """
+
     def __init__(self, args, run=run, progress=progress):
         self.args = args
         self.run = run
@@ -456,8 +464,7 @@ class KofamRunHMMs(KofamContext):
         return self.ko_dict[knum]['definition']
 
     def process_kofam_hmms(self):
-        """This is a driver function for running HMMs against the KOfam database and processing the hits into the
-        provided contigs DB"""
+        """This is a driver function for running HMMs against the KOfam database and processing the hits into the provided contigs DB"""
 
         tmp_directory_path = filesnpaths.get_temp_directory_path()
         contigs_db = dbops.ContigsSuperclass(self.args) # initialize contigs db

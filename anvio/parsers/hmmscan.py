@@ -56,8 +56,8 @@ class HMMScan(Parser):
 
 
     def get_search_results(self, ko_list_dict = None):
-        """
-        This function goes through the hits provided by `hmmscan` and generates an annotation dictionary with the relevant information about each hit.
+        """This function goes through the hits provided by `hmmscan` and generates an annotation dictionary with the relevant information about each hit.
+
         If we are parsing Kofam hits, then this function makes sure only hits with a high enough bit score make it into the annotation dictionary.
 
         Parameters
@@ -68,6 +68,7 @@ class HMMScan(Parser):
         =======
         annotations_dict    dictionary of annotations
         """
+        
         annotations_dict = {}
 
         # this is the stuff we are going to try to fill with this:
