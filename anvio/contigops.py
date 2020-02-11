@@ -195,12 +195,76 @@ class Auxiliary:
                 gene_overlap_start = positions_where_read_aligns_to_gene[0]
                 gene_overlap_end = positions_where_read_aligns_to_gene[-1]
 
-                # gene_read_overlap is a copied view of read that has been spliced to only include
+                if self.split.per_position_info['in_partial_gene_call'][gene_overlap_start - self.split.start]:
+                    # We can't handle partial gene calls bc we don't know "base_pos_in_codon"
+                    continue
+
+                # gene_read_overlap is a copied view of read that has been sliced to only include
                 # the portion that overlaps with the gene
                 gene_read_overlap = read[gene_overlap_start:gene_overlap_end + 1]
 
-                for gapless_segment in gene_read_overlap.iterate_through_blocks():
-                    pass
+                for block_start, block_end in gene_read_overlap.get_blocks():
+                    if block_end - block_start < 3:
+                        # This block does not contain a full codon
+                        continue
+
+                    block_start_split = block_start - self.split.start
+                    block_end_split = block_end - self.split.end
+
+                    # gapless_segment represents a purely mapped segment of `gene_read_overlap` that
+                    # contains no insertions or deletions in the read. `block_start` and
+                    # `block_end` represent the start and end of this segment in terms of contig
+                    # positions
+                    gapless_segment = gene_read_overlap[block_start:block_end]
+
+                    # this read must not contribute to codons it does not fully cover. Hence, we
+                    # must determine by how many nts on each side we must trim
+                    base_positions = base_pos_array[block_start_split:block_end_split]
+                    is_forward = direction_array[block_start_split]
+
+                    first_pos = np.where(base_positions == (1 if is_forward else 3))[0][0]
+                    last_pos = np.where(base_positions == (3 if is_forward else 1))[0][-1]
+
+                    trim_by_left = first_pos
+                    trim_by_right = len(gapless_segment.query_sequence) - last_pos - 1
+
+                    if trim_by_left + trim_by_right > len(gapless_segment.query_sequence) - 3:
+                        # the required trimming creates a sequence that is less than a codon long.
+                        # We cannot use this read.
+                        continue
+
+                    if len(gapless_segment.cigartuples) > 1:
+                        if gene_read_overlap.cigartuples == [(0, 83), (1, 1), (0, 6)]:
+
+                            outut = {
+                                'query_sequence': gene_read_overlap.query_sequence,
+                                'reference_positions': gene_read_overlap.reference_positions,
+                                'reference_start': gene_read_overlap.reference_start,
+                                'reference_end': gene_read_overlap.reference_end,
+                                'cigartuples': gene_read_overlap.cigartuples,
+                            }
+
+                            import pickle
+                            pickle.dump(Read(read_object), open( "save.p", "wb" ) )
+
+                        # print(block_end - block_start)
+                        # print(len(gapless_segment.query_sequence))
+                        # print(len(gapless_segment.get_aligned_sequence()))
+                        # print(gapless_segment.cigartuples)
+
+                    # We use gapless_segment.trim instead of slicing with gapless_segmed you even
+                    # getting therekkknt[a:b]
+                    # because slicing makes a copy, whereas gapless_segment.trim modifies in place
+                    gapless_segment.trim(trim_by_left, side='left')
+                    gapless_segment.trim(block_end - block_start - last_pos - 1, side='right')
+
+                    # We update these for posterity
+                    block_start_split += trim_by_left
+                    block_end_split -= trim_by_right
+
+
+                    
+                    sequence = gapless_segment.query_sequence if is_forward else gapless_segment.query_sequence[::-1]
 
 
         #additional_per_position_data = self.split.per_position_info
