@@ -216,7 +216,24 @@ class Auxiliary:
                     # contains no insertions or deletions in the read. `block_start` and
                     # `block_end` represent the start and end of this segment in terms of contig
                     # positions
-                    gapless_segment = gene_read_overlap[block_start:block_end]
+                    #run.info('tuple', gene_read_overlap.cigartuples)
+                    #run.info('start', gene_read_overlap.reference_start)
+                    #run.info('end', gene_read_overlap.reference_end)
+                    #run.info('block', (block_start, block_end))
+                    #print()
+                    try:
+                        gapless_segment = gene_read_overlap[block_start:block_end]
+                    except:
+                        output = {
+                            'gene_overlap_start': gene_overlap_start,
+                            'gene_overlap_end': gene_overlap_end,
+                            'cigartuples': read.cigartuples,
+                            'reference_start': read.reference_start,
+                            'reference_end': read.reference_end,
+                            'reference_positions': read.reference_positions,
+                            'query_sequence': read.query_sequence,
+                        }
+                        print(output)
 
                     block_start_split = block_start - self.split.start
                     block_end_split = block_end - self.split.start
