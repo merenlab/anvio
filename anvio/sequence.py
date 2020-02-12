@@ -290,8 +290,8 @@ class Read:
         Examples
         ========
 
-        You have a read with self.reference_start = 4500 and self.reference_end = 4600. You want to
-        splice the segment [4550, 4575).
+        You have a read with 100 length and self.reference_start = 4500 and self.reference_end =
+        4601. You want to splice the segment [4550, 4575).
 
         >>> type(read)
         <class 'anvio.sequence.Read'>
@@ -301,28 +301,28 @@ class Read:
         >>> spliced_segment.reference_start
         4550
         >>> spliced_segment.reference_end
-        4574
+        4575
 
         Specify only one bound:
 
         >>> print(read[:4575].reference_start, read[:4575].reference_end)
-        (4500, 4574)
+        (4500, 4575)
         >>> print(read[4575:].reference_start, read[4575:].reference_end)
         (4575, 4600)
 
-        Specify outside read range:
+        Specifying outside read range:
 
         >>> print(read[4400:4700].reference_start, read[4400:4700].reference_end)
-        (4500, 4600)
+        (4500, 4601)
         """
 
         if not isinstance(key, slice) or key.step is not None:
-            raise ConfigError("Read class only supports basic slicing for indexing, e.g. read[start:stop], read[:stop]")
+            raise ValueError("Read class only supports basic slicing for indexing, e.g. read[start:stop], read[:stop]")
 
-        segment = copy.copy(self)
+        segment = copy.deepcopy(self)
 
         start = key.start if key.start is not None else segment.reference_start
-        end = key.stop if key.stop is not None else segment.reference_end + 1
+        end = key.stop if key.stop is not None else segment.reference_end
 
         segment.trim(start - segment.reference_start, side='left')
         segment.trim(segment.reference_end - end, side='right')
@@ -356,10 +356,7 @@ class Read:
         - Takes roughly 250us
         """
 
-        if trim_by <= 0:
-            return
-
-        elif trim_by > self.reference_end - self.reference_start:
+        if trim_by > self.reference_end - self.reference_start:
             raise ConfigError("Read.trim :: Requesting to trim an amount %d that exceeds the alignment"
                               " range of %d" % (trim_by, self.reference_end - self.reference_start))
 
@@ -375,6 +372,14 @@ class Read:
         read_positions_trimmed = 0
 
         terminate, terminate_next = (False, False)
+
+        if trim_by <= 0:
+            # The are no reference positions that need to be trimmed, but it could be the case that
+            # the next few cigartuples consume the read and not the reference, and these by
+            # convention are trimmed. Hence, `terminate_next` is set to True so the next time a
+            # reference-consuming is seen, we terminate
+            terminate_next = True
+
         for operation, length, consumes_read, consumes_ref in self.cigarops.iterate(cigar_tuples):
 
             if consumes_ref:
@@ -418,15 +423,15 @@ class Read:
         # set new reference_positions
         if side == 'right':
             num_pos = len(self.reference_positions)
-            ref_end = self.reference_positions[-1]
-            cutoff_index = next(num_pos - i for i, pos in enumerate(self.reference_positions[::-1]) if ref_end - pos >= trim_by)
+            last_pos = self.reference_positions[-1]
+            cutoff_index = next(num_pos - i for i, pos in enumerate(self.reference_positions[::-1]) if last_pos - pos >= trim_by)
             self.reference_positions = self.reference_positions[:cutoff_index]
         else:
             cutoff_index = next(i for i, pos in enumerate(self.reference_positions) if pos - self.reference_start >= trim_by)
             self.reference_positions = self.reference_positions[cutoff_index:]
 
         self.reference_start = self.reference_positions[0]
-        self.reference_end = self.reference_positions[-1]
+        self.reference_end = self.reference_positions[-1] + 1
 
 
 class ReadTestClass:
@@ -440,8 +445,8 @@ class ReadTestClass:
         read = Read()
         read.query_sequence = 'AACCTTGG'
         read.cigartuples = cigartuples
-        read.reference_start = 0 # unused
-        read.reference_end = 0 # unused
+        read.reference_start = sorted(reference_positions)[0]
+        read.reference_end = sorted(reference_positions)[-1] + 1
 
         return read
 
@@ -682,8 +687,8 @@ class Coverage:
         """
 
         for read in iterator(contig_name, start, end):
-            for block in read.get_blocks():
-                c[block[0]:block[1]] += 1
+            for start, end in read.get_blocks():
+                c[start:end] += 1
 
         return c
 
