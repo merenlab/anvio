@@ -375,7 +375,11 @@ class Read:
         ref_positions_trimmed = 0
         read_positions_trimmed = 0
         terminate, terminate_next = (False, False)
+        print(cigar_tuples)
         for operation, length, consumes_read, consumes_ref in self.cigarops.iterate(cigar_tuples):
+            print(ref_positions_trimmed)
+            print(read_positions_trimmed)
+            print(operation, length)
 
             if consumes_ref and consumes_read:
                 if terminate_next:
