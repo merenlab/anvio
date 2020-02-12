@@ -122,17 +122,16 @@ class TestRead(unittest.TestCase):
 
 
     def test_trim(self):
-        target = 0
+        for target in range(len(self.reads)):
+            attrs = self.read_attrs[target]
 
-        read = copy.copy(self.reads[target])
-        attrs = self.read_attrs[target]
+            read = copy.copy(self.reads[target])
+            read.trim(attrs['trim_by'], side='left')
+            self.assertEqual(read.cigartuples, attrs['output_tuples_left'])
 
-        read.trim(attrs['trim_by'], side='left')
-        self.assertEqual(read.cigartuples, attrs['output_tuples_left'])
-
-        read.trim(attrs['trim_by'], side='right')
-        self.assertEqual(read.cigartuples, attrs['output_tuples_right'])
-
+            read = copy.copy(self.reads[target])
+            read.trim(attrs['trim_by'], side='right')
+            self.assertEqual(read.cigartuples, attrs['output_tuples_right'])
 
 
 if __name__ == '__main__':
