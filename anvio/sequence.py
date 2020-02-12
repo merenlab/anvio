@@ -208,7 +208,6 @@ class Read:
         for _, length, consumes_read, consumes_ref in self.cigarops.iterate(self.cigartuples):
 
             if consumes_read and consumes_ref:
-                in_block = True
                 block_length += length
 
             elif consumes_read and not consumes_ref:
@@ -341,7 +340,11 @@ class Read:
         Parameters
         ==========
         trim_by : int
-            The number of REFERENCE bases you would like to trim the read by
+            The number of REFERENCE bases you would like to trim the read by. If the trim leaves
+            operations that are consumed by the reference but not the read, or the read but not the
+            reference, these are trimmed AS WELL. For example, if after trimming by `trim_by`, the
+            final cigar string is [(2,2),(0,4)], this will be further trimmed to [(0,4)], since
+            there is no useful information held in a terminal read gap.
 
         side : str, 'left'
             Either 'left' or 'right' side.
@@ -371,12 +374,10 @@ class Read:
 
         ref_positions_trimmed = 0
         read_positions_trimmed = 0
-
         terminate, terminate_next = (False, False)
-
         for operation, length, consumes_read, consumes_ref in self.cigarops.iterate(cigar_tuples):
 
-            if consumes_ref:
+            if consumes_ref and consumes_read:
                 if terminate_next:
                     break
 
@@ -387,8 +388,9 @@ class Read:
                     # terminate this iteration. To trim the cigar tuple, we replace it with a
                     # truncated length
                     trimmed_cigar_tuples[0] = (operation, length - remaining)
-                    terminate = True
-                    length = remaining
+                    ref_positions_trimmed += remaining
+                    read_positions_trimmed += remaining
+                    break
 
                 elif length == remaining:
                     # This is a rare case: The are no more reference positions that need to be
@@ -399,12 +401,11 @@ class Read:
                     terminate_next = True
 
                 ref_positions_trimmed += length
-
-            if consumes_read:
                 read_positions_trimmed += length
 
-            if terminate:
-                break
+            else:
+                ref_positions_trimmed += length if consumes_ref else 0
+                read_positions_trimmed += length if consumes_read else 0
 
             trimmed_cigar_tuples.pop(0)
 
