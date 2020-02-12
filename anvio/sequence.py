@@ -356,7 +356,13 @@ class Read:
         - Takes roughly 250us
         """
 
-        if trim_by > self.reference_end - self.reference_start:
+        if trim_by == 0:
+            return
+
+        elif trim_by < 0:
+            raise ConfigError("Read.trim :: Requesting to trim an amount %d, which is negative." % trim_by)
+
+        elif trim_by > self.reference_end - self.reference_start:
             raise ConfigError("Read.trim :: Requesting to trim an amount %d that exceeds the alignment"
                               " range of %d" % (trim_by, self.reference_end - self.reference_start))
 
@@ -372,13 +378,6 @@ class Read:
         read_positions_trimmed = 0
 
         terminate, terminate_next = (False, False)
-
-        if trim_by <= 0:
-            # The are no reference positions that need to be trimmed, but it could be the case that
-            # the next few cigartuples consume the read and not the reference, and these by
-            # convention are trimmed. Hence, `terminate_next` is set to True so the next time a
-            # reference-consuming is seen, we terminate
-            terminate_next = True
 
         for operation, length, consumes_read, consumes_ref in self.cigarops.iterate(cigar_tuples):
 
