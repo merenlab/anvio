@@ -193,11 +193,6 @@ class Read:
         self.reference_end = self.r.reference_end
 
 
-    def run_test_class(self):
-        test = ReadTestClass()
-        test.test_trim()
-
-
     def get_blocks(self):
         """Mimic the get_blocks function from AlignedSegment.
 
@@ -431,117 +426,6 @@ class Read:
 
         self.reference_start = self.reference_positions[0]
         self.reference_end = self.reference_positions[-1] + 1
-
-
-class ReadTestClass:
-    """Small test class for Read"""
-
-    def make_read(self, cigartuples, reference_positions):
-        class Read:
-            def get_reference_positions(self):
-                return reference_positions
-
-        read = Read()
-        read.query_sequence = 'AACCTTGG'
-        read.cigartuples = cigartuples
-        read.reference_start = sorted(reference_positions)[0]
-        read.reference_end = sorted(reference_positions)[-1] + 1
-
-        return read
-
-
-    def test_trim(self):
-        """Tests Read.trim for a number of cases
-
-        Asserts that the trimmed cigartuples, reference_positions, and sequences are trimmed correctly
-        for the following cases. Expected answers were created manually based on these diagrams:
-
-        CASE #1
-        =======
-        A A C C T T G G
-        A C T G T C T G A C T G = reference
-        [(0,8)]
-
-        CASE #2
-        =======
-        A A C C T T G G
-        A C - - - - T G A C T G A C T G = reference
-        [(0,2), (1,4), (0,2)]
-
-        CASE #3
-        =======
-        A A C C - - T T G G
-        A - - - C T G A C T G A C T G = reference
-        [(0,1), (1,3), (2,2), (0,4)]
-
-        CASE #4
-        =======
-        A - A - C - C - T T G G
-        A C T G A C T G A C - T G = reference
-        [(0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,2), (1,1), (0,1)]
-        """
-
-        test_sets = [
-            {
-                'input_cigartuples': [(0,8)],
-                'input_reference_positions': [0,1,2,3,4,5,6,7],
-                'output_tuples_left': [(0,5)],
-                'output_sequence_left': 'CTTGG',
-                'output_reference_positions_left': [3,4,5,6,7],
-                'output_tuples_right': [(0,5)],
-                'output_sequence_right': 'AACCT',
-                'output_reference_positions_right': [0,1,2,3,4],
-            },
-            {
-                'input_cigartuples': [(0,2), (1,4), (0,2)],
-                'input_reference_positions': [0,1,2,3],
-                'output_tuples_left': [(0,1)],
-                'output_sequence_left': 'G',
-                'output_reference_positions_left': [3],
-                'output_tuples_right': [(0,1)],
-                'output_sequence_right': 'A',
-                'output_reference_positions_right': [0],
-            },
-            {
-                'input_cigartuples': [(0,1), (1,3), (2,2), (0,4)],
-                'input_reference_positions': [0,3,4,5,6],
-                'output_tuples_left': [(0,4)],
-                'output_sequence_left': 'TTGG',
-                'output_reference_positions_left': [3,4,5,6],
-                'output_tuples_right': [(0,1), (1,3), (2,2), (0,1)],
-                'output_sequence_right': 'AACCT',
-                'output_reference_positions_right': [0,3],
-            },
-            {
-                'input_cigartuples': [(0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,2), (1,1), (0,1)],
-                'input_reference_positions': [0,2,4,6,8,9,10],
-                'output_tuples_left': [(2,1), (0,1), (2,1), (0,1), (2,1), (0,2), (1,1), (0,1)],
-                'output_sequence_left': 'CCTTGG',
-                'output_reference_positions_left': [4,6,8,9,10],
-                'output_tuples_right': [(0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,1), (2,1)],
-                'output_sequence_right': 'AACC',
-                'output_reference_positions_right': [0,2,4,6],
-            },
-        ]
-
-        for test_set in test_sets:
-            read = Read(self.make_read(
-                test_set['input_cigartuples'],
-                test_set['input_reference_positions']
-            ))
-            read.trim(trim_by=3, side='left')
-            assert read.query_sequence == test_set['output_sequence_left']
-            assert read.cigartuples == test_set['output_tuples_left']
-            assert read.reference_positions == test_set['output_reference_positions_left']
-
-            read = Read(self.make_read(
-                test_set['input_cigartuples'],
-                test_set['input_reference_positions']
-            ))
-            read.trim(trim_by=3, side='right')
-            assert read.query_sequence == test_set['output_sequence_right']
-            assert read.cigartuples == test_set['output_tuples_right']
-            assert read.reference_positions == test_set['output_reference_positions_right']
 
 
 class Composition:
