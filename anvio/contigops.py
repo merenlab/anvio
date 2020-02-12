@@ -184,16 +184,31 @@ class Auxiliary:
         gene_id_array = self.split.per_position_info['corresponding_gene_call']
         direction_array = self.split.per_position_info['forward']
 
+        run = anvio.terminal.Run()
+
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
-            genes_in_read = np.unique(gene_id_array[(read.reference_start - self.split.start):(read.reference_end - self.split.start)])
+            gene_id_per_nt_in_read = gene_id_array[(read.reference_start - self.split.start):(read.reference_end - self.split.start)]
+            genes_in_read = np.unique(gene_id_per_nt_in_read)
+
+            run.info_single('==========================')
+            run.info('Read', read)
+            run.info('Read: sequence', read.query_sequence)
+            run.info('Read: cigartuples', read.cigartuples)
+            run.info('Genes in read', genes_in_read)
 
             for gene_id in genes_in_read:
+
+                run.info('Working on gene', gene_id)
+
                 if gene_id == -1:
+                    run.info('Gene id is -1', 'discarded')
                     continue
 
-                positions_where_read_aligns_to_gene = np.where(gene_id_array == gene_id)[0] + self.split.start
+                positions_where_read_aligns_to_gene = np.where(gene_id_per_nt_in_read == gene_id)[0] + read.reference_start
                 gene_overlap_start = positions_where_read_aligns_to_gene[0]
                 gene_overlap_end = positions_where_read_aligns_to_gene[-1] + 1
+                run.info('gene_overlap_start', gene_overlap_start)
+                run.info('gene_overlap_end', gene_overlap_end)
 
                 if self.split.per_position_info['in_partial_gene_call'][gene_overlap_start - self.split.start]:
                     # We can't handle partial gene calls bc we don't know "base_pos_in_codon"
@@ -203,8 +218,14 @@ class Auxiliary:
                 # the portion that overlaps with the gene
                 gene_read_overlap = read[gene_overlap_start:gene_overlap_end]
 
+                run.info('gene_read_overlap: sequence', gene_read_overlap.query_sequence)
+                run.info('gene_read_overlap: cigartuples', gene_read_overlap.cigartuples)
+
+                run.info('gene_read_overlap: blocks', gene_read_overlap.get_blocks())
                 for block_start, block_end in gene_read_overlap.get_blocks():
+                    run.info('Entering block', (block_start, block_end))
                     if block_end - block_start < 3:
+                        run.info('This block is too short', 'continuing')
                         # This block does not contain a full codon
                         continue
 
@@ -214,23 +235,8 @@ class Auxiliary:
                     # positions
                     gapless_segment = gene_read_overlap[block_start:block_end]
 
-                    if len(gapless_segment.cigartuples) != 1:
-                        print(f"read:")
-                        print(read.cigartuples)
-                        print(read.query_sequence)
-                        print(len(read.query_sequence))
-                        print()
-                        print(f"gene_read_overlap:")
-                        print(gene_read_overlap.cigartuples)
-                        print(gene_read_overlap.query_sequence)
-                        print(len(gene_read_overlap.query_sequence))
-                        print()
-                        print(f"gapless_segment:")
-                        print(gapless_segment.cigartuples)
-                        print(gapless_segment.query_sequence)
-                        print(len(gapless_segment.query_sequence))
-                        print()
-                        print("=============================================")
+                    run.info('gapless_segment: sequence', gapless_segment.query_sequence)
+                    run.info('gapless_segment: cigartuples', gapless_segment.cigartuples)
 
                     block_start_split = block_start - self.split.start
                     block_end_split = block_end - self.split.start
@@ -240,13 +246,21 @@ class Auxiliary:
                     base_positions = base_pos_array[block_start_split:block_end_split]
                     is_forward = direction_array[block_start_split]
 
+                    run.info('first 5 base positions', base_positions[:5])
+                    run.info('last 5 base positions', base_positions[-5:])
+                    run.info('is_forward', is_forward)
+
                     first_pos = np.where(base_positions == (1 if is_forward else 3))[0][0]
                     last_pos = np.where(base_positions == (3 if is_forward else 1))[0][-1]
 
                     trim_by_left = first_pos
                     trim_by_right = block_end - block_start - last_pos - 1
 
+                    run.info('trim_by_left', trim_by_left)
+                    run.info('trim_by_right', trim_by_right)
+
                     if trim_by_left + trim_by_right > block_end - block_start - 3:
+                        run.info('Trimming makes less than a codon', 'continuing')
                         # the required trimming creates a sequence that is less than a codon long.
                         # We cannot use this read.
                         continue
@@ -256,11 +270,17 @@ class Auxiliary:
                     gapless_segment.trim(trim_by_left, side='left')
                     gapless_segment.trim(trim_by_right, side='right')
 
+                    run.info('gapless_segment_after_trim: sequence', gapless_segment.query_sequence)
+                    run.info('gapless_segment_after_trim: cigartuples', gapless_segment.cigartuples)
+
                     # We update these for posterity
                     block_start_split += trim_by_left
                     block_end_split -= trim_by_right
 
                     sequence = gapless_segment.query_sequence if is_forward else gapless_segment.query_sequence[::-1]
+
+                    lowest_codon_order = codon_order_array[block_start_split]
+                    run.info('lowest codon order', lowest_codon_order)
 
 
         #additional_per_position_data = self.split.per_position_info
