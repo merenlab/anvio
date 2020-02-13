@@ -142,9 +142,9 @@ class TestCaseStudy1(unittest.TestCase):
 
         print('=========================')
         read2 = copy.copy(read)
-        read2.trim(79, side='right')
+        read2.trim(21, side='left')
 
-        self.assertEqual(read2.cigartuples, [(0,20)])
+        self.assertEqual(read2.cigartuples, [(0, 14), (1, 1), (0, 19), (1, 2), (0, 45)])
 
 
 if __name__ == '__main__':
