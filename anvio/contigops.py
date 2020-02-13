@@ -174,7 +174,7 @@ class Auxiliary:
 
 
     def run_SCVs(self, bam):
-        """Profile 
+        """Profile SCVs
 
         Parameters
         ==========
@@ -241,12 +241,11 @@ class Auxiliary:
                     if gene_id not in self.SCV_profiles:
                         # This is the first time we have seen the gene_id, so we log the its
                         # reference codon sequence and initialize an allele counts array
+                        self.reference_codon_sequences[gene_id] = self.get_codon_sequence_for_gene(gene_call)
+                        print(self.reference_codon_sequences)
                         self.SCV_profiles[gene_id] = self.init_allele_counts_array(gene_call)
 
-                    sequence = (gapless_segment.query_sequence
-                                if gene_call['direction'] == 'f'
-                                else utils.rev_comp(gapless_segment.query_sequence))
-
+                    sequence = gapless_segment.query_sequence if gene_call['direction'] == 'f' else utils.rev_comp(gapless_segment.query_sequence)
                     codon_sequence = [sequence[i:i+3] for i in range(0, len(sequence), 3)]
 
                     lowest_codon_order = self.split.per_position_info['codon_order_in_gene'][block_start_split]
@@ -275,6 +274,12 @@ class Auxiliary:
         #self.variation_density = self.split.num_variability_entries * 1000.0 / self.split.length
 
 
+    def get_codon_sequence_for_gene(self, gene_call):
+        seq_dict = {self.split.parent: {'sequence': self.split.sequence}}
+
+        return utils.get_list_of_codons_for_gene_call(gene_call, seq_dict, subtract_by=self.split.start)
+
+
     def init_allele_counts_array(self, gene_call):
         """Create the array that will house the codon allele counts for a gene"""
         allele_counts_array_shape = (len(constants.codons), (gene_call['stop'] - gene_call['start']) // 3)
@@ -283,7 +288,7 @@ class Auxiliary:
 
 
     def run_SNVs(self, bam):
-        """Run auxiliary
+        """Profile SNVs
 
         Parameters
         ==========
