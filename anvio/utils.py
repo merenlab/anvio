@@ -1576,6 +1576,25 @@ def is_amino_acid_functionally_conserved(amino_acid_residue_1, amino_acid_residu
     return False
 
 
+def get_bin_name_from_item_name(anvio_db_path, item_name, collection_name=None):
+    is_pan_or_profile_db(anvio_db_path, genes_db_is_also_accepted=True)
+    database = db.DB(anvio_db_path, None, ignore_version=True)
+
+    if t.collections_splits_table_name not in database.get_table_names():
+        raise ConfigError("The database %s does not contain a collections table :/")
+
+    if collection_name:
+        where_clause = 'split = "%s" and collection_name = "%s"' % (item_name, collection_name)
+    else:
+        where_clause = 'split = "%s"' % (item_name)
+
+    rows = database.get_some_rows_from_table(t.collections_splits_table_name, where_clause=where_clause)
+
+    database.disconnect()
+
+    return rows
+
+
 def get_contig_name_to_splits_dict(splits_basic_info_dict, contigs_basic_info_dict):
     """
     Returns a dict for contig name to split name conversion.
