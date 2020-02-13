@@ -1,0 +1,81 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""anvi-analyze-synteny ... lets extract some order from this chaos!
+
+
+The goal of this program is to analyze the synteny patters within a group of loci. The main idea is to have a sliding window 
+that will record a set a genes in a matrix (similar to a kmer profile) which we can then analyze as a network to see the 
+presence and absence of groups of genes.
+
+"""
+
+import sys
+import argparse
+
+import anvio
+import anvio.terminal as terminal
+
+from anvio.synteny import NGram
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "A. Murat Eren"
+__email__ = "a.murat.eren@gmail.com"
+__requires__ = ['contigs-db']
+__provides__ = ['locus-fasta']
+__description__ = ("This program lets you analyze a group of similar loci to extract patters of groups of genes")
+
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__description__)
+
+    # Essential input
+    groupA = parser.add_argument_group('Essential INPUT')
+    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {"required": True}))
+    ## Query options for anchor gene
+    #groupB =  parser.add_argument_group('Query options for locating locus', "search according to either hmm or functional annotations")
+    #groupB.add_argument('-s', '--search-term', help='search term.') # there is a 'search-terms' argument in __init__py, come up with new name?
+    #groupB.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
+    #groupB.add_argument(*anvio.A('delimiter'), **anvio.K('delimiter'))
+    ## Output options
+    #groupC = parser.add_argument_group('THE OUTPUT', "Where should the output go. It will be one FASTA file with all matches \
+    #                                   or one FASTA per match (see --separate-fasta)")
+    #groupC.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    #groupC.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'required': True}))
+    ## Additional
+    #groupD = parser.add_argument_group('ADDITIONAL STUFF', "Flags and parameters you can set according to your need")
+    #groupD.add_argument(*anvio.A('flank-mode'), **anvio.K('flank-mode'))
+    #groupD.add_argument(*anvio.A('num-genes'), **anvio.K('num-genes'))
+    ## FIXME --separate-fasta is not an argument accepted by LocusSplitter, yet was put in this file for some
+    ## reason. Maybe you know.
+    ## groupD.add_argument('--separate-fasta', default = False, action='store_true', help='Split each match to a separate FASTA file.')
+    #groupD.add_argument('--use-hmm', default = False, action='store_true', help='Use HMM hits instead of functional annotations. \
+    #                        In other words, --search-term will be queried against HMM source annotations, NOT functional annotations. \
+    #                        If you choose this option, you must also say which HMM source to use.')
+    #groupD.add_argument(*anvio.A('hmm-sources'), **anvio.K('hmm-sources'))
+    #groupD.add_argument(*anvio.A('list-hmm-sources'), **anvio.K('list-hmm-sources'))
+    #groupD.add_argument(*anvio.A('annotation-sources'), **anvio.K('annotation-sources'))
+    #groupD.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
+    #groupD.add_argument(*anvio.A('remove-partial-hits'), **anvio.K('remove-partial-hits'))
+    #groupD.add_argument(*anvio.A('never-reverse-complement'), **anvio.K('never-reverse-complement'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        ngram = NGram(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)
