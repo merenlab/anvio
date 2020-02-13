@@ -2127,8 +2127,6 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         self.progress.new('Filtering %s' % ('SCVs' if selected_engine == 'CDN' else 'SAAVs'), discard_previous_if_exists=True)
         output = {}
 
-        list_of_filter_functions = []
-        F = lambda f, **kwargs: (f, kwargs)
         for group in options['groups']:
             self.progress.update('Group `%s`...' % group)
             samples_in_group = options['groups'][group]
@@ -2144,8 +2142,6 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
                 'data': var.merged.to_json(orient='index'),
                 'entries_after_filtering': var.merged.shape[0]
             }
-
-            list_of_filter_functions = []
 
         self.progress.end()
         return output

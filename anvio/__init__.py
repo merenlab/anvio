@@ -1183,6 +1183,14 @@ D = {
             {'metavar': 'FILE_PATH',
              'help': "Text file for bins (each line should be a unique bin id)."}
                 ),
+    'find-from-split-name': (
+            ['--find-from-split-name'],
+            {'metavar': 'SPLIT_NAME',
+             'help': "If you don't know the bin name you want to work with but if you know the split name it contains "
+                     "you can use this parameter to tell anvi'o the split name, and so it can find the bin for you "
+                     "automatically. This is something extremely difficult for anvi'o to do, but it does it anyway "
+                     "because you."}
+                ),
     'collection-name': (
             ['-C', '--collection-name'],
             {'metavar': 'COLLECTION_NAME',
