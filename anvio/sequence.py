@@ -374,12 +374,8 @@ class Read:
 
         ref_positions_trimmed = 0
         read_positions_trimmed = 0
-        terminate, terminate_next = (False, False)
-        print(cigar_tuples)
+        terminate_next = False
         for operation, length, consumes_read, consumes_ref in self.cigarops.iterate(cigar_tuples):
-            print(ref_positions_trimmed)
-            print(read_positions_trimmed)
-            print(operation, length)
 
             if consumes_ref and consumes_read:
                 if terminate_next:
@@ -396,20 +392,11 @@ class Read:
                     read_positions_trimmed += remaining
                     break
 
-                elif length == remaining:
-                    # This is a rare case: The are no more reference positions that need to be
-                    # trimmed, but it could be the case that the next few cigartuples consume the
-                    # read and not the reference, and these still need to be trimmed. Hence,
-                    # `terminate_next` is set to True so the next time a reference-consuming
-                    # operation occurs, the loop is immediately terminated
-                    terminate_next = True
+            ref_positions_trimmed += length if consumes_ref else 0
+            read_positions_trimmed += length if consumes_read else 0
 
-                ref_positions_trimmed += length
-                read_positions_trimmed += length
-
-            else:
-                ref_positions_trimmed += length if consumes_ref else 0
-                read_positions_trimmed += length if consumes_read else 0
+            if ref_positions_trimmed >= trim_by:
+                terminate_next = True
 
             trimmed_cigar_tuples.pop(0)
 
