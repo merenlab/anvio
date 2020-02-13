@@ -542,7 +542,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         return return_path
 
 
-    def populate_per_position_info_for_contig(self, contig):
+    def populate_gene_info_for_splits(self, contig):
         """Stores info available to the ContigsSuperClass into contigops.Split objects"""
 
         if self.skip_SNV_profiling:
@@ -551,22 +551,23 @@ class BAMProfiler(dbops.ContigsSuperclass):
         info_of_interest = [
             'corresponding_gene_call',
             'codon_order_in_gene',
-            'in_partial_gene_call',
-            'in_complete_gene_call',
             'base_pos_in_codon',
         ]
-
-        if self.profile_SCVs:
-            info_of_interest.extend([
-                'forward',
-                'gene_length',
-            ])
 
         nt_info = self.get_gene_info_for_each_position(contig.name, info=info_of_interest)
 
         for split in contig.splits:
             for info in info_of_interest:
                 split.per_position_info[info] = nt_info[info][split.start:split.end]
+
+        if self.profile_SCVs:
+            # The people want SCVs, and that means Split needs to know about gene calls
+            for split in contig.splits:
+                gene_ids_in_split = set(gc['gene_callers_id']
+                                        for key, gc in self.genes_in_splits.items()
+                                        if key in self.split_name_to_genes_in_splits_entry_ids[split.name])
+
+                split.gene_calls = {gene_id: self.genes_in_contigs_dict[gene_id] for gene_id in gene_ids_in_split}
 
 
     @staticmethod
@@ -595,8 +596,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 contig.splits.append(split)
             timer.make_checkpoint('Split objects initialized')
 
-            self.populate_per_position_info_for_contig(contig)
-            timer.make_checkpoint('Per nt split info added')
+            self.populate_gene_info_for_splits(contig)
+            timer.make_checkpoint('Gene info for split added')
 
             # analyze coverage for each split
             contig.analyze_coverage(bam_file)

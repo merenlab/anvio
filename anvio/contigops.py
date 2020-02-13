@@ -131,6 +131,7 @@ class Split:
         self.SNV_profiles = {}
         self.SCV_profiles = {}
         self.per_position_info = {} # stores per nt info that is not coverage
+        self.gene_calls = None
 
 
     def get_atomic_data_dict(self):
@@ -158,11 +159,16 @@ class Auxiliary:
 
         self.SNV_profiles = {}
         self.SCV_profiles = {}
+        self.reference_codon_sequences = {}
 
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
         self.cdn_to_array_index = {cdn: i for i, cdn in enumerate(constants.codons)}
 
         if self.profile_SCVs:
+            if self.split.gene_calls is None:
+                raise ConfigError("Auxiliary :: You want to profile SCVs. That's great! But in that "
+                                  "case self.split.gene_calls must not be None")
+
             if 'base_pos_in_codon' not in self.split.per_position_info:
                 raise ConfigError("Auxiliary :: This split does not contain the info required for SCV profiling")
 
@@ -175,14 +181,8 @@ class Auxiliary:
         bam : bamops.BAMFileObject
         """
 
-        codon_order_array = self.split.per_position_info['codon_order_in_gene']
-        base_pos_array = self.split.per_position_info['base_pos_in_codon']
-        gene_id_array = self.split.per_position_info['corresponding_gene_call']
-        direction_array = self.split.per_position_info['forward']
-        gene_length_array = self.split.per_position_info['gene_length']
-
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
-            gene_id_per_nt_in_read = gene_id_array[(read.reference_start - self.split.start):(read.reference_end - self.split.start)]
+            gene_id_per_nt_in_read = self.split.per_position_info['corresponding_gene_call'][(read.reference_start - self.split.start):(read.reference_end - self.split.start)]
             genes_in_read = np.unique(gene_id_per_nt_in_read)
 
             for gene_id in genes_in_read:
@@ -190,13 +190,15 @@ class Auxiliary:
                 if gene_id == -1:
                     continue
 
+                gene_call = self.split.gene_calls[gene_id]
+
+                if gene_call['partial']:
+                    # We can't handle partial gene calls bc "base_pos_in_codon" is not defined
+                    continue
+
                 positions_where_read_aligns_to_gene = np.where(gene_id_per_nt_in_read == gene_id)[0] + read.reference_start
                 gene_overlap_start = positions_where_read_aligns_to_gene[0]
                 gene_overlap_end = positions_where_read_aligns_to_gene[-1] + 1
-
-                if self.split.per_position_info['in_partial_gene_call'][gene_overlap_start - self.split.start]:
-                    # We can't handle partial gene calls bc "base_pos_in_codon" is not defined
-                    continue
 
                 # gene_read_overlap is a copied view of read that has been sliced to only include
                 # the portion that overlaps with the gene
@@ -214,11 +216,10 @@ class Auxiliary:
 
                     # this read must not contribute to codons it does not fully cover. Hence, we
                     # must determine by how many nts on each side we must trim
-                    base_positions = base_pos_array[block_start_split:block_end_split]
-                    is_forward = direction_array[block_start_split]
+                    base_positions = self.split.per_position_info['base_pos_in_codon'][block_start_split:block_end_split]
 
-                    first_pos = np.where(base_positions == (1 if is_forward else 3))[0][0]
-                    last_pos = np.where(base_positions == (3 if is_forward else 1))[0][-1]
+                    first_pos = np.where(base_positions == (1 if gene_call['direction'] == 'f' else 3))[0][0]
+                    last_pos = np.where(base_positions == (3 if gene_call['direction'] == 'f' else 1))[0][-1]
 
                     trim_by_left = first_pos
                     trim_by_right = block_end - block_start - last_pos - 1
@@ -233,17 +234,22 @@ class Auxiliary:
                     gapless_segment.trim(trim_by_left, side='left')
                     gapless_segment.trim(trim_by_right, side='right')
 
-                    # We update these for posterity
+                    # Update these for posterity
                     block_start_split += trim_by_left
                     block_end_split -= trim_by_right
 
-                    sequence = gapless_segment.query_sequence if is_forward else gapless_segment.query_sequence[::-1]
-
-                    lowest_codon_order = codon_order_array[block_start_split]
-                    gene_aa_length = gene_length_array[block_start_split] // 3
-
                     if gene_id not in self.SCV_profiles:
-                        self.init_allele_counts_array(gene_id, gene_aa_length)
+                        # This is the first time we have seen the gene_id, so we log the its
+                        # reference codon sequence and initialize an allele counts array
+                        self.SCV_profiles[gene_id] = self.init_allele_counts_array(gene_call)
+
+                    sequence = (gapless_segment.query_sequence
+                                if gene_call['direction'] == 'f'
+                                else utils.rev_comp(gapless_segment.query_sequence))
+
+                    codon_sequence = [sequence[i:i+3] for i in range(0, len(sequence), 3)]
+
+                    lowest_codon_order = self.split.per_position_info['codon_order_in_gene'][block_start_split]
 
         #additional_per_position_data = self.split.per_position_info
         #additional_per_position_data.update({
@@ -269,10 +275,11 @@ class Auxiliary:
         #self.variation_density = self.split.num_variability_entries * 1000.0 / self.split.length
 
 
-    def init_allele_counts_array(self, gene_id, gene_aa_length):
+    def init_allele_counts_array(self, gene_call):
         """Create the array that will house the codon allele counts for a gene"""
-        allele_counts_array_shape = (len(constants.codons), gene_aa_length)
-        self.SCV_profiles[gene_id] = np.zeros(allele_counts_array_shape)
+        allele_counts_array_shape = (len(constants.codons), (gene_call['stop'] - gene_call['start']) // 3)
+
+        return np.zeros(allele_counts_array_shape)
 
 
     def run_SNVs(self, bam):
