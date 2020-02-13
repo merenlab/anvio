@@ -1388,15 +1388,24 @@ def get_consensus_and_departure_data(variable_item_frequencies):
     return (n2n1ratio, consensus, departure_from_consensus)
 
 
-def get_codon_order_to_nt_positions_dict(gene_call):
-    """Returns a dictionary to translate codons in a gene to nucleotide positions"""
+def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
+    """Returns a dictionary to translate codons in a gene to nucleotide positions
+
+    Parameters
+    ==========
+    subtract_by : int, 0
+        Subtract the start and stop of the gene call by this amount. This could be useful if the
+        gene call start/stop are defined in terms of the contig, but you want the start/stop in
+        terms of the split. Then you could supply subtract_by=split_start, where split_start is the
+        start of the split
+    """
 
     if gene_call['partial']:
         raise ConfigError("get_codon_order_to_nt_positions_dict: this simply will not work "
                            "for partial gene calls, and this on *is* a partial one.")
 
-    start = gene_call['start']
-    stop = gene_call['stop']
+    start = gene_call['start'] - subtract_by
+    stop = gene_call['stop'] - subtract_by
 
     codon_order_to_nt_positions = {}
     codon_order = 0
@@ -1603,8 +1612,16 @@ def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):
     return list_of_AAs
 
 
-def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict):
-    codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call)
+def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs):
+    """Get a list of the codons for a gene call
+
+    Parameters
+    ==========
+    contig_sequences_dict : dict
+        An object that looks like that ContigsSuperClass.contig_sequences (initialized with
+        ContigsSuperClass.init_contig_sequences)
+    """
+    codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call, **kwargs)
 
     if gene_call['contig'] not in contig_sequences_dict:
         raise ConfigError("get_list_of_AAs_for_gene_call: The contig sequences dict sent to "
