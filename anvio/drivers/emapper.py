@@ -101,7 +101,8 @@ class EggNOGMapper:
 
         self.available_parsers = {'0.12.6': self.__parser_1,
                                   '1.0.3': self.__parser_2,
-                                  '2.0.0': self.__parser_3}
+                                  '2.0.0': self.__parser_3,
+                                  '2.0.1': self.__parser_3}
 
         self.check_version()
 
@@ -255,8 +256,9 @@ class EggNOGMapper:
 
     def __parser_3(self, defline):
         """parses this:
-        0           1                     2                     3                    4                          5                       6                    7          8        9             10           11             12           13     14       15    16             17                                                     18          19                 20                       21
-        query_name  seed_eggNOG_ortholog  seed_ortholog_evalue  seed_ortholog_score  Predicted_taxonomic_group  Predicted_protein_name  Gene_Ontology_terms  EC_number  KEGG_ko  KEGG_Pathway  KEGG_Module  KEGG_Reaction  KEGG_rclass  BRITE  KEGG_TC  CAZy  BiGG_Reaction  tax_scope:_eggNOG_taxonomic_level_used_for_annotation  eggNOG_OGs  bestOG_deprecated  COG_Functional_Category  eggNOG free text description        
+        0           1                           2                     3                    4                          5                       6                    7          8        9                10           11             12           13     14       15    16             17               18              19              20                      21
+        query_name  seed_eggNOG_ortholog        seed_ortholog_evalue  seed_ortholog_score  best_tax_level             Preferred_name          GOs                  EC         KEGG_ko  KEGG_Pathway     KEGG_Module  KEGG_Reaction  KEGG_rclass  BRITE  KEGG_TC  CAZy  BiGG_Reaction  taxonomic scope  eggNOG OGs      best eggNOG OG  COG Functional cat.     eggNOG free text desc.
+        g51	    562982.HMPREF0432_01129	1.4e-63	              248.8	           Bacillales incertae sedis  rpsK	              GO:00028,GO:00462    X          ko:K048  ko03010,map03010	M00178,M0017 X              X       	 br01610,ko00000,ko00001,ko00002,ko03011				Bacteria	1V3IK@1239,3WESA@539002,4HH2T@91061,COG0100@1,COG0100@2	NA|NA|NA	J	Located on the platform of the 30S subunit, it bridges several disparate RNA helices of the 16S rRNA. Forms part of the Shine-Dalgarno cleft in the 70S ribosome
         """
 
         fields = defline.strip('\n').split('\t')
@@ -267,48 +269,44 @@ class EggNOGMapper:
 
         gene_callers_id = self.check_prefix_and_get_gene_callers_id(fields)
         
-        if fields[21] and fields[21] != 'NA' and not fields[21].startswith('Protein of unknown function'):
-            self.add_entry(gene_callers_id, 'EGGNOG_%s' % self.database.upper(), fields[1], fields[12], fields[2])
-
-        if fields[19]:
-            COG_ids=[og[:-4] for og in fields[19].split(',') if og.endswith('@NOG') and og.startswith('COG')]
-
-            if COG_ids:
-                annotations = '; '.join([self.COGs_data.cogs[COG_id]['annotation'] for COG_id in COG_ids if COG_id in self.COGs_data.cogs])
-                self.add_entry(gene_callers_id, 'COG_FUNCTION', ', '.join(COG_ids), annotations, 0.0)
-
-        if fields[20]:
-            self.add_entry(gene_callers_id, 'COG_CATEGORY', '', fields[20], 0.0)
-
-        if fields[16]:
-            self.add_entry(gene_callers_id, 'BiGG_Reactions', '', ', '.join(fields[16].split(',')), 0.0)
-
-        if fields[6]:
-            self.add_entry(gene_callers_id, 'GO_TERMS', '', ', '.join(fields[6].split(',')), 0.0)
-
-        if fields[9]:
-            self.add_entry(gene_callers_id, 'KEGG_PATHWAYS', '', ', '.join(fields[9].split(',')), 0.0) 
-
-        if fields[5]:
-            self.add_entry(gene_callers_id, 'Preferred_Name', '', ', '.join(fields[5].split(',')), 0.0)
-
-        if fields[8]:
-            self.add_entry(gene_callers_id, 'KEGG_KO', '', ', '.join(fields[8].split(',')), 0.0)
-
-        if fields[10]:
-            self.add_entry(gene_callers_id, 'KEGG_MODULE', '', ', '.join(fields[10].split(',')), 0.0)
-
-        if fields[13]:
-            self.add_entry(gene_callers_id, 'BRITE', '', ', '.join(fields[13].split(',')), 0.0)
-
-        if fields[21]:
-            self.add_entry(gene_callers_id, 'eggNOG_free_text', '', ', '.join(fields[21].split(',')), 0.0)
+        if (fields[21] and fields[21] != 'NA' and not fields[21].startswith('Protein of unknown function')) or fields[5]:
+            if fields[5]:
+                self.add_entry(gene_callers_id, 'EGGNOG_%s' % self.database.upper(), fields[1], "%s :: %s" % (fields[5], fields[21]), fields[2])
+            else:
+                self.add_entry(gene_callers_id, 'EGGNOG_%s' % self.database.upper(), fields[1], fields[21], fields[2])
 
         if fields[4]:
-            self.add_entry(gene_callers_id, 'eggNOG_best_tax', '', ', '.join(fields[4].split(',')), 0.0)
+            self.add_entry(gene_callers_id, 'EGGNOG_BEST_TAX', fields[1], ', '.join(fields[4].split(',')), fields[2])
+
+        if fields[5]:
+            self.add_entry(gene_callers_id, 'EGGNOG_GENE_FUNCTION_NAME', fields[1], ', '.join(fields[5].split(',')), fields[2])
+
+        if fields[6]:
+            self.add_entry(gene_callers_id, 'EGGNOG_GO_TERMS', fields[1], ', '.join(fields[6].split(',')), fields[2])
 
         if fields[7]:
-            self.add_entry(gene_callers_id, 'EC_NUMBER', '', ', '.join(fields[7].split(',')), 0.0)
+            self.add_entry(gene_callers_id, 'EGGNOG_EC_NUMBER', fields[1], ', '.join(fields[7].split(',')), fields[2])
+
+        if fields[8]:
+            self.add_entry(gene_callers_id, 'EGGNOG_KEGG_KO', fields[1], ', '.join(fields[8].split(',')), fields[2])
+
+        if fields[9]:
+            self.add_entry(gene_callers_id, 'EGGNOG_KEGG_PATHWAYS', fields[1], ', '.join(fields[9].split(',')), fields[2]) 
+
+        if fields[10]:
+            self.add_entry(gene_callers_id, 'EGGNOG_KEGG_MODULE', fields[1], ', '.join(fields[10].split(',')), fields[2])
+
+        if fields[13]:
+            self.add_entry(gene_callers_id, 'EGGNOG_BRITE', fields[1], ', '.join(fields[13].split(',')), fields[2])
+
+        if fields[14]:
+            self.add_entry(gene_callers_id, 'EGGNOG_KEGG_TC', fields[1], ', '.join(fields[14].split(',')), fields[2])
+
+        if fields[15]:
+            self.add_entry(gene_callers_id, 'EGGNOG_CAZy', fields[1], ', '.join(fields[15].split(',')), fields[2])
+
+        if fields[16]:
+            self.add_entry(gene_callers_id, 'EGGNOG_BiGG_REACTIONS', fields[1], ', '.join(fields[16].split(',')), fields[2])
 
 
     def store_annotations_in_db(self, drop_previous_annotations=False):
