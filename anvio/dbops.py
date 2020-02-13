@@ -774,7 +774,8 @@ class ContigsSuperclass(object):
             'base_pos_in_codon'       : To what codon position (1, 2, or 3) does the nt belong (0 if
                                         corresponding_gene_call is -1)?
             'forward'                 : 1 if gene direction is forward, 0 if it is reverse
-            'gene_length'             : How long is the gene (in nts)?
+            'gene_start'              : Where in the contig does the gene start?
+            'gene_stop'                : Where in the contig does the gene end?
 
         Parameters
         ==========
@@ -783,7 +784,7 @@ class ContigsSuperclass(object):
         info : list, 'all'
             A list of desired info names. By default, 'all' corresponds to
             ['corresponding_gene_call', 'codon_order_in_gene', 'in_partial_gene_call',
-            'in_complete_gene_call', 'base_pos_in_codon', 'forward', 'gene_length']
+            'in_complete_gene_call', 'base_pos_in_codon', 'forward', 'gene_start', 'gene_stop']
 
         Notes
         =====
@@ -802,7 +803,8 @@ class ContigsSuperclass(object):
             'in_complete_gene_call',
             'base_pos_in_codon',
             'forward',
-            'gene_length',
+            'gene_start',
+            'gene_stop',
         ]
 
         if info == 'all':
@@ -816,8 +818,8 @@ class ContigsSuperclass(object):
         output = {}
         contig_length = len(self.contig_sequences[contig_name]['sequence'])
 
-        if any([c in ['corresponding_gene_call', 'codon_order_in_gene', 'forward', 'gene_length'] for c in column_names]):
-            data_shape = (contig_length, 4)
+        if any([c in ['corresponding_gene_call', 'codon_order_in_gene', 'forward', 'gene_start', 'gene_stop'] for c in column_names]):
+            data_shape = (contig_length, 5)
             data = -numpy.ones(data_shape).astype(int)
 
             # First we populate the splice of `data` corresponding to each gene call and set the
@@ -839,7 +841,8 @@ class ContigsSuperclass(object):
                 data[start:stop, 0] = gene_caller_id
                 data[start:stop, 1] = codon_order_in_gene
                 data[start:stop, 2] = direction == 'f'
-                data[start:stop, 3] = stop - start
+                data[start:stop, 3] = start
+                data[start:stop, 4] = stop
 
             # Next, we compare each gene call to every other gene call. If they overlap, find the
             # overlapping region and set all columns to -1. This conservatively says, "if there are
@@ -858,7 +861,7 @@ class ContigsSuperclass(object):
                         data[max(start1, start2):min(stop1, stop2), :] = -1
 
             # Recast the requested info into `output` and move on
-            for i, c in enumerate(['corresponding_gene_call', 'codon_order_in_gene', 'forward', 'gene_length']):
+            for i, c in enumerate(['corresponding_gene_call', 'codon_order_in_gene', 'forward', 'gene_start', 'gene_stop']):
                 if c in column_names:
                     output[c] = data[:, i]
 
