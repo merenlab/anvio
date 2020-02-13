@@ -557,7 +557,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         ]
 
         if self.profile_SCVs:
-            info_of_interest.append('forward')
+            info_of_interest.extend([
+                'forward',
+                'gene_length',
+            ])
 
         nt_info = self.get_gene_info_for_each_position(contig.name, info=info_of_interest)
 
@@ -612,11 +615,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                           profile_SCVs=self.profile_SCVs,
                                                           skip_SNV_profiling=self.skip_SNV_profiling,
                                                           min_coverage=self.min_coverage_for_variability,
-                                                          report_variability_full=self.report_variability_full,
-                                                          gene_lengths=self.gene_lengths)
+                                                          report_variability_full=self.report_variability_full)
 
                     split.auxiliary.run_SNVs(bam_file)
-                    if self.profile_SCVs: split.auxiliary.run_SCVs(bam_file)
+                    if self.profile_SCVs:
+                        split.auxiliary.run_SCVs(bam_file)
 
                     if split.num_variability_entries == 0:
                         continue
