@@ -26,7 +26,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.sequence import Coverage, Read
 from anvio.errors import ConfigError
-from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts
+from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -242,36 +242,29 @@ class Auxiliary:
                         # This is the first time we have seen the gene_id, so we log the its
                         # reference codon sequence and initialize an allele counts array
                         self.reference_codon_sequences[gene_id] = self.get_codon_sequence_for_gene(gene_call)
-                        print(self.reference_codon_sequences)
                         self.SCV_profiles[gene_id] = self.init_allele_counts_array(gene_call)
 
                     sequence = gapless_segment.query_sequence if gene_call['direction'] == 'f' else utils.rev_comp(gapless_segment.query_sequence)
                     codon_sequence = [sequence[i:i+3] for i in range(0, len(sequence), 3)]
+                    codon_sequence_as_index = [self.cdn_to_array_index[cdn] for cdn in codon_sequence]
 
-                    lowest_codon_order = self.split.per_position_info['codon_order_in_gene'][block_start_split]
+                    start_codon = np.min(self.split.per_position_info['codon_order_in_gene'][block_start_split:block_end_split])
+                    end_codon = start_codon + len(codon_sequence)
 
-        #additional_per_position_data = self.split.per_position_info
-        #additional_per_position_data.update({
-        #    'cov_outlier_in_split': self.split.coverage.is_outlier.astype(int),
-        #    'cov_outlier_in_contig': self.split.coverage.is_outlier_in_parent.astype(int),
-        #})
+                    for seq, pos in zip(codon_sequence_as_index, range(start_codon, end_codon)):
+                        self.SCV_profiles[gene_id][seq, pos] += 1
 
-        #test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
+        for gene_id in self.SCV_profiles:
+            cdn_profile = ProcessCodonCounts(
+                self.SCV_profiles[gene_id],
+                self.cdn_to_array_index,
+                self.reference_codon_sequences[gene_id],
+                min_coverage=0,
+                test_class=variability_test_class_null,
+            )
 
-        #nt_profile = ProcessNucleotideCounts(
-        #    allele_counts_array,
-        #    self.nt_to_array_index,
-        #    self.split.sequence,
-        #    min_coverage=self.min_coverage,
-        #    test_class=test_class,
-        #    additonal_per_position_data = additional_per_position_data,
-        #)
-
-        #nt_profile.process()
-        #self.split.SNV_profiles = nt_profile.d
-
-        #self.split.num_variability_entries = len(nt_profile.d['coverage'])
-        #self.variation_density = self.split.num_variability_entries * 1000.0 / self.split.length
+            cdn_profile.process()
+            print('finished %d' % gene_id)
 
 
     def get_codon_sequence_for_gene(self, gene_call):
