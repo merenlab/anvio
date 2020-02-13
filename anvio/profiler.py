@@ -552,6 +552,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             'corresponding_gene_call',
             'codon_order_in_gene',
             'base_pos_in_codon',
+            'in_partial_gene_call',
+            'in_complete_gene_call',
         ]
 
         nt_info = self.get_gene_info_for_each_position(contig.name, info=info_of_interest)
