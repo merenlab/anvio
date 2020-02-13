@@ -148,25 +148,21 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, min_coverage=10, report_variability_full=False, profile_SCVs=False, skip_SNV_profiling=False, gene_lengths=None):
+    def __init__(self, split, min_coverage=10, report_variability_full=False, profile_SCVs=False, skip_SNV_profiling=False):
         self.split = split
         self.variation_density = 0.0
         self.min_coverage = min_coverage
         self.skip_SNV_profiling = skip_SNV_profiling
         self.profile_SCVs = profile_SCVs
         self.report_variability_full = report_variability_full
-        self.gene_lengths = gene_lengths
 
         self.SNV_profiles = {}
         self.SCV_profiles = {}
 
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
+        self.cdn_to_array_index = {cdn: i for i, cdn in enumerate(constants.codons)}
 
         if self.profile_SCVs:
-            if self.gene_lengths is None:
-                raise ConfigError("Auxiliary :: You want to profile SCVs. That's great. But in that case "
-                                  "Auxiliary.gene_lengths must not be None")
-
             if 'base_pos_in_codon' not in self.split.per_position_info:
                 raise ConfigError("Auxiliary :: This split does not contain the info required for SCV profiling")
 
@@ -183,8 +179,7 @@ class Auxiliary:
         base_pos_array = self.split.per_position_info['base_pos_in_codon']
         gene_id_array = self.split.per_position_info['corresponding_gene_call']
         direction_array = self.split.per_position_info['forward']
-
-        run = anvio.terminal.Run()
+        gene_length_array = self.split.per_position_info['gene_length']
 
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
             gene_id_per_nt_in_read = gene_id_array[(read.reference_start - self.split.start):(read.reference_end - self.split.start)]
@@ -200,7 +195,7 @@ class Auxiliary:
                 gene_overlap_end = positions_where_read_aligns_to_gene[-1] + 1
 
                 if self.split.per_position_info['in_partial_gene_call'][gene_overlap_start - self.split.start]:
-                    # We can't handle partial gene calls bc we don't know "base_pos_in_codon"
+                    # We can't handle partial gene calls bc "base_pos_in_codon" is not defined
                     continue
 
                 # gene_read_overlap is a copied view of read that has been sliced to only include
@@ -212,28 +207,7 @@ class Auxiliary:
                         # This block does not contain a full codon
                         continue
 
-                    # gapless_segment represents a purely mapped segment of `gene_read_overlap` that
-                    # contains no insertions or deletions in the read. `block_start` and
-                    # `block_end` represent the start and end of this segment in terms of contig
-                    # positions
-                    #run.info('tuple', gene_read_overlap.cigartuples)
-                    #run.info('start', gene_read_overlap.reference_start)
-                    #run.info('end', gene_read_overlap.reference_end)
-                    #run.info('block', (block_start, block_end))
-                    #print()
-                    try:
-                        gapless_segment = gene_read_overlap[block_start:block_end]
-                    except:
-                        output = {
-                            'gene_overlap_start': gene_overlap_start,
-                            'gene_overlap_end': gene_overlap_end,
-                            'cigartuples': read.cigartuples,
-                            'reference_start': read.reference_start,
-                            'reference_end': read.reference_end,
-                            'reference_positions': read.reference_positions,
-                            'query_sequence': read.query_sequence,
-                        }
-                        print(output)
+                    gapless_segment = gene_read_overlap[block_start:block_end]
 
                     block_start_split = block_start - self.split.start
                     block_end_split = block_end - self.split.start
@@ -266,7 +240,10 @@ class Auxiliary:
                     sequence = gapless_segment.query_sequence if is_forward else gapless_segment.query_sequence[::-1]
 
                     lowest_codon_order = codon_order_array[block_start_split]
+                    gene_aa_length = gene_length_array[block_start_split] // 3
 
+                    if gene_id not in self.SCV_profiles:
+                        self.init_allele_counts_array(gene_id, gene_aa_length)
 
         #additional_per_position_data = self.split.per_position_info
         #additional_per_position_data.update({
@@ -290,6 +267,12 @@ class Auxiliary:
 
         #self.split.num_variability_entries = len(nt_profile.d['coverage'])
         #self.variation_density = self.split.num_variability_entries * 1000.0 / self.split.length
+
+
+    def init_allele_counts_array(self, gene_id, gene_aa_length):
+        """Create the array that will house the codon allele counts for a gene"""
+        allele_counts_array_shape = (len(constants.codons), gene_aa_length)
+        self.SCV_profiles[gene_id] = np.zeros(allele_counts_array_shape)
 
 
     def run_SNVs(self, bam):
