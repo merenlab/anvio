@@ -251,31 +251,31 @@ class Auxiliary:
 
                     sequence = gapless_segment.query_sequence if gene_call['direction'] == 'f' else utils.rev_comp(gapless_segment.query_sequence)
                     codon_sequence = [sequence[i:i+3] for i in range(0, len(sequence), 3)]
-                    codon_sequence_as_index = [self.cdn_to_array_index[cdn] for cdn in codon_sequence]
+                    codon_sequence_as_index = [self.cdn_to_array_index.get(cdn, np.nan) for cdn in codon_sequence]
 
                     start_codon = np.min(self.split.per_position_info['codon_order_in_gene'][block_start_split:block_end_split])
                     end_codon = start_codon + len(codon_sequence)
 
                     for seq, pos in zip(codon_sequence_as_index, range(start_codon, end_codon)):
-                        gene_allele_counts[gene_id][seq, pos] += 1
+                        try:
+                            gene_allele_counts[gene_id][seq, pos] += 1
+                        except IndexError:
+                            # seq is np.nan, since the corresponding codon had ambiguous characters
+                            pass
 
             read_count += 1
 
-        #if anvio.DEBUG: self.run.info_single('Done SCVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
+        if anvio.DEBUG: self.run.info_single('Done SCVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
 
         for gene_id in gene_allele_counts:
-            try:
-                cdn_profile = ProcessCodonCounts(
-                    gene_allele_counts[gene_id],
-                    self.cdn_to_array_index,
-                    self.reference_codon_sequences[gene_id],
-                    min_coverage=0,
-                    test_class=variability_test_class_null,
-                )
+            cdn_profile = ProcessCodonCounts(
+                gene_allele_counts[gene_id],
+                self.cdn_to_array_index,
+                reference_codon_sequences[gene_id],
+                test_class=variability_test_class_null,
+            )
 
-                cdn_profile.process()
-            except:
-                pass
+            cdn_profile.process()
 
 
     def get_codon_sequence_for_gene(self, gene_call):
