@@ -42,7 +42,7 @@ if __name__ == '__main__':
     # Essential input
     groupA = parser.add_argument_group('Essential INPUT')
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {"required": True}))
-    parser.add_argument(*anvio.A('annotation-sources'), **anvio.K('annotation-sources', {"required": True}))
+    parser.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source', {"required": True}))
 
     ## Query options for anchor gene
     #groupB =  parser.add_argument_group('Query options for locating locus', "search according to either hmm or functional annotations")
