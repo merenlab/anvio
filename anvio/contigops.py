@@ -150,16 +150,16 @@ class Split:
 
 class Auxiliary:
     def __init__(self, split, min_coverage=10, report_variability_full=False, profile_SCVs=False, skip_SNV_profiling=False):
+
+        if anvio.DEBUG:
+            self.run = terminal.Run()
+
         self.split = split
         self.variation_density = 0.0
         self.min_coverage = min_coverage
         self.skip_SNV_profiling = skip_SNV_profiling
         self.profile_SCVs = profile_SCVs
         self.report_variability_full = report_variability_full
-
-        self.SNV_profiles = {}
-        self.SCV_profiles = {}
-        self.reference_codon_sequences = {}
 
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
         self.cdn_to_array_index = {cdn: i for i, cdn in enumerate(constants.codons)}
@@ -181,7 +181,12 @@ class Auxiliary:
         bam : bamops.BAMFileObject
         """
 
+        reference_codon_sequences = {}
+        gene_allele_counts = {}
+
+        read_count = 0
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
+
             gene_id_per_nt_in_read = self.split.per_position_info['corresponding_gene_call'][(read.reference_start - self.split.start):(read.reference_end - self.split.start)]
             genes_in_read = np.unique(gene_id_per_nt_in_read)
 
@@ -238,11 +243,11 @@ class Auxiliary:
                     block_start_split += trim_by_left
                     block_end_split -= trim_by_right
 
-                    if gene_id not in self.SCV_profiles:
+                    if gene_id not in gene_allele_counts:
                         # This is the first time we have seen the gene_id, so we log the its
                         # reference codon sequence and initialize an allele counts array
-                        self.reference_codon_sequences[gene_id] = self.get_codon_sequence_for_gene(gene_call)
-                        self.SCV_profiles[gene_id] = self.init_allele_counts_array(gene_call)
+                        reference_codon_sequences[gene_id] = self.get_codon_sequence_for_gene(gene_call)
+                        gene_allele_counts[gene_id] = self.init_allele_counts_array(gene_call)
 
                     sequence = gapless_segment.query_sequence if gene_call['direction'] == 'f' else utils.rev_comp(gapless_segment.query_sequence)
                     codon_sequence = [sequence[i:i+3] for i in range(0, len(sequence), 3)]
@@ -252,19 +257,25 @@ class Auxiliary:
                     end_codon = start_codon + len(codon_sequence)
 
                     for seq, pos in zip(codon_sequence_as_index, range(start_codon, end_codon)):
-                        self.SCV_profiles[gene_id][seq, pos] += 1
+                        gene_allele_counts[gene_id][seq, pos] += 1
 
-        for gene_id in self.SCV_profiles:
-            cdn_profile = ProcessCodonCounts(
-                self.SCV_profiles[gene_id],
-                self.cdn_to_array_index,
-                self.reference_codon_sequences[gene_id],
-                min_coverage=0,
-                test_class=variability_test_class_null,
-            )
+            read_count += 1
 
-            cdn_profile.process()
-            print('finished %d' % gene_id)
+        #if anvio.DEBUG: self.run.info_single('Done SCVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
+
+        for gene_id in gene_allele_counts:
+            try:
+                cdn_profile = ProcessCodonCounts(
+                    gene_allele_counts[gene_id],
+                    self.cdn_to_array_index,
+                    self.reference_codon_sequences[gene_id],
+                    min_coverage=0,
+                    test_class=variability_test_class_null,
+                )
+
+                cdn_profile.process()
+            except:
+                pass
 
 
     def get_codon_sequence_for_gene(self, gene_call):
@@ -294,6 +305,7 @@ class Auxiliary:
         allele_counts_array_shape = (len(constants.nucleotides), self.split.length)
         allele_counts_array = np.zeros(allele_counts_array_shape)
 
+        read_count = 0
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
             aligned_sequence = read.get_aligned_sequence()
             aligned_sequence_as_index = [self.nt_to_array_index[nt] for nt in aligned_sequence]
@@ -301,6 +313,10 @@ class Auxiliary:
 
             for seq, pos in zip(aligned_sequence_as_index, reference_positions_in_split):
                 allele_counts_array[seq, pos] += 1
+
+            read_count += 1
+
+        #if anvio.DEBUG: self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
 
         additional_per_position_data = self.split.per_position_info
         additional_per_position_data.update({
@@ -316,10 +332,11 @@ class Auxiliary:
             self.split.sequence,
             min_coverage=self.min_coverage,
             test_class=test_class,
-            additonal_per_position_data = additional_per_position_data,
+            additonal_per_position_data=additional_per_position_data,
         )
 
         nt_profile.process()
+
         self.split.SNV_profiles = nt_profile.d
 
         self.split.num_variability_entries = len(nt_profile.d['coverage'])
