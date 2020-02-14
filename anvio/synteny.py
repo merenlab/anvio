@@ -1,65 +1,96 @@
+# -*- coding: utf-8
+# pylint: disable=line-too-long
+"""
+    Classes to work with ngrams.
+"""
+
 import anvio
-import anvio.filesnpaths as filesnpaths
-import anvio.terminal as terminal
+import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
-import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
+import anvio.genomedescriptions as genomedescriptions
+
+from anvio.errors import ConfigError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Matthew Schechter"
+__email__ = "mschechter@uchicago.edu"
+
 
 class NGram(object):
-"""
-To test this code run: 
-    ./run_pangenome_tests.sh
-    cd anvio/anvio/tests/sandbox/test-output/pan_test
-
-    anvi-analyze-synteny -e external-genomes.txt  --annotation-sources COG_CATEGORY
-
-"""
-
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        """
+        To test this code run:
+
+            >>> ./run_pangenome_tests.sh
+            >>> cd anvio/anvio/tests/sandbox/test-output/pan_test
+            >>> anvi-analyze-synteny -e external-genomes.txt  --annotation-sources COG_CATEGORY
+        """
+
         self.args = args
         self.run = run
         self.progress = progress
 
+        self.genes = {}
+
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.external_genomes = A('external_genomes')
-        self.annotation_sources = A('annotation_sources')
+        self.annotation_source = A('annotation_source')
         self.window_size = A('window_size')
-        self.genes = {}
+
+        self.external_genomes = utils.get_TAB_delimited_file_as_dictionary(self.external_genomes)
+
+        self.sanity_check()
+
         self.populate_genes()
 
+
+    def sanity_check(self):
+        #FIXME: do the remaining sanity checks here.
+
+        # checking if the annotation source is common accross all contigs databases
+        g = genomedescriptions.GenomeDescriptions(self.args)
+        g.load_genomes_descriptions(init=False)
+
+        if self.annotation_source not in g.function_annotation_sources:
+            raise ConfigError("The annotation source you requested does not appear to be in the\
+                               contigs database :/")
+
+
     def populate_genes(self):
-        filepaths = utils.get_TAB_delimited_file_as_dictionary(self.external_genomes)
+        for contigs_db_name in self.external_genomes:
+            contigs_db_path = self.external_genomes[contigs_db_name]["contigs_db_path"]
 
-        for locus_name in filepaths:
-            path = filepaths[locus_name]["contigs_db_path"]
-            self.genes[locus_name] = self.get_genes_from_contigs_db_path(path,self.annotation_sources)
-        l = []
-        l_dict = {}
-        for path, d in self.genes.items():
-            for k, e in d.items():
-                if path not in l_dict:
-                    l_dict[path] = (k, e['function'])
-                else:
-                    pass
-                l.append((path, k, e['function']))
-        print(l_dict)
+            genes_and_functions_list = self.get_genes_and_functions_from_contigs_db(contigs_db_path)
 
-    def get_genes_from_contigs_db_path(self, path, annotation_sources):
-        contigs_db = dbops.ContigsDatabase(path)
+            # do something with genes_and_functions_list
+            # 
+
+
+    def get_genes_and_functions_from_contigs_db(self, contigs_db_path):
+        contigs_db = dbops.ContigsDatabase(contigs_db_path)
+
+        genes_in_contigs = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
         annotations_dict = contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name)
-        requested_sources = [s.strip() for s in annotation_sources.split(',')]
-        missing_sources = [s for s in requested_sources if s not in annotation_sources]
-        if len(missing_sources):
-            raise ConfigError("One or more of the annotation sources you requested does not appear to be in the\
-                                contigs database :/ Here is the list: %s." % (', '.join(missing_sources)))
+        annotations_dict = utils.get_filtered_dict(annotations_dict, 'source', set([self.annotation_source]))
 
-        annotations_dict = utils.get_filtered_dict(annotations_dict, 'source', set(requested_sources))
-        return annotations_dict
+        # FIXME: turn genes_and_functions down below into a dictionary where keys are contig names and values are list of gene caller ids and function names.
 
-    k = 3
-    def countSynteny(self, k, genes):
+        genes_and_functions = [(entry['gene_callers_id'], entry['function'], genes_in_contigs[entry['gene_callers_id']]['contig']) for entry in annotations_dict.values()]
+
+        return genes_and_functions
+
+
+    def count_synteny(self, k=3, genes_and_functions_dict=[]):
         kFreq = {}
-        # Make sliding window of k length across all gene
+
         for i in range(0, len(genes) - k + 1):
             # extract window
             window = sorted(genes[i:i + k])
@@ -72,8 +103,8 @@ To test this code run:
                 kFreq[ngram] = 1
 
             return kFreq
-    
+
 
     def driveSynteny(self):
         for key,value in self.genes:
-            self.genes[key] = countSynteny(value)
+            self.genes[key] = self.count_synteny(value)
