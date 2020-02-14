@@ -588,7 +588,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             contig.skip_SNV_profiling = self.skip_SNV_profiling
             contig.report_variability_full = self.report_variability_full
             contig.ignore_orphans = self.ignore_orphans
-            timer.make_checkpoint('Initialization done')
+            timer.make_checkpoint('%s initialization done' % contig_name)
 
             # populate contig with empty split objects
             for split_name in self.contig_name_to_splits[contig_name]:
@@ -634,8 +634,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                 timer.make_checkpoint('Auxiliary analyzed')
 
-            output_queue.put(contig)
+            for split in contig.splits:
+                # output_queue.put(contig) is an expensive operation that does not handle large data
+                # structures well. So we delete everything we can in split that was an intermediate
+                del split.per_position_info
+                del split.gene_calls
 
+            output_queue.put(contig)
+            timer.make_checkpoint('Contig put in output queue')
+
+            # We try to encourage the garbage collector to remove these objects.
             for split in contig.splits:
                 del split.coverage
                 del split.auxiliary
