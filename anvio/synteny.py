@@ -6,6 +6,14 @@ import anvio.dbops as dbops
 import anvio.tables as t
 
 class NGram(object):
+"""
+To test this code run: 
+    ./run_pangenome_tests.sh
+    cd anvio/anvio/tests/sandbox/test-output/pan_test
+
+    anvi-analyze-synteny -e external-genomes.txt  --annotation-sources COG_CATEGORY
+
+"""
 
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
