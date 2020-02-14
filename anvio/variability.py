@@ -50,7 +50,7 @@ class VariablityTestFactory:
 
 
 class ProcessAlleleCounts:
-    def __init__(self, allele_counts, allele_to_array_index, sequence, min_coverage=None, test_class=None, additonal_per_position_data={}):
+    def __init__(self, allele_counts, allele_to_array_index, sequence, min_coverage=1, test_class=None, additonal_per_position_data={}):
         """A class to process raw variability information for a given allele counts array
 
         Creates self.d, a dictionary of equal-length arrays that describes information related to
@@ -67,8 +67,8 @@ class ProcessAlleleCounts:
         sequence : str
             What sequence is this for? It should have length equal to number of columns of
             allele_counts
-        min_coverage : int, None
-            If not None, positions below this coverage value will be filtered out
+        min_coverage : int, 1
+            positions below this coverage value will be filtered out
         test_class : VariablityTestFactory, None
             If not None, positions will be filtered out if they are deemed not worth reporting
         additonal_per_position_data : dict, {}
@@ -111,6 +111,9 @@ class ProcessAlleleCounts:
         # dictionaries to convert to/from array-row-index and allele
         self.allele_to_array_index = allele_to_array_index
         self.array_index_to_allele = {v: k for k, v in self.allele_to_array_index.items()}
+
+        if self.min_coverage < 1:
+            raise ConfigError("ProcessAlleleCounts :: self.min_coverage must be at least 1, currently %d" % self.min_coverage)
 
 
     def process(self):
@@ -179,6 +182,7 @@ class ProcessAlleleCounts:
         if coverage is None:
             coverage = self.get_coverage()
 
+        print(print(coverage))
         return 1 - reference_coverage/coverage
 
 
@@ -223,11 +227,7 @@ class ProcessAlleleCounts:
             coverage = self.get_coverage()
 
         if threshold is None:
-            if self.min_coverage:
-                threshold = self.min_coverage
-            else:
-                # no threshold given, give all positions
-                return np.arange(len(self.d['sequence_as_index']))
+            threshold = self.min_coverage
 
         return np.where(coverage >= threshold)[0]
 
