@@ -131,7 +131,6 @@ class Split:
         self.SNV_profiles = {}
         self.SCV_profiles = {}
         self.per_position_info = {} # stores per nt info that is not coverage
-        self.gene_calls = None
 
 
     def get_atomic_data_dict(self):
@@ -165,12 +164,8 @@ class Auxiliary:
         self.cdn_to_array_index = {cdn: i for i, cdn in enumerate(constants.codons)}
 
         if self.profile_SCVs:
-            if self.split.gene_calls is None:
-                raise ConfigError("Auxiliary :: You want to profile SCVs. That's great! But in that "
-                                  "case self.split.gene_calls must not be None")
-
-            if 'base_pos_in_codon' not in self.split.per_position_info:
-                raise ConfigError("Auxiliary :: This split does not contain the info required for SCV profiling")
+            if not all([necessary in self.split.per_position_info for necessary in ['forward', 'gene_start', 'gene_stop']]):
+                raise ConfigError("Auxiliary :: self.split.per_position_info does not contain the info required for SCV profiling")
 
 
     def run_SCVs(self, bam):
