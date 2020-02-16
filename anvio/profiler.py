@@ -543,7 +543,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def populate_gene_info_for_splits(self, contig):
-        """Stores info available to the ContigsSuperClass into contigops.Split objects"""
+        """Stores info available to the ContigsSuperClass into contigops.Split objects
+
+        Populates Split.per_position_info as a dictionary of arrays, each with length equal to the
+        split.
+        """
 
         if self.skip_SNV_profiling:
             return
@@ -556,20 +560,30 @@ class BAMProfiler(dbops.ContigsSuperclass):
             'in_complete_gene_call',
         ]
 
+        if self.profile_SCVs:
+            # NOTE The people want SCVs, and that means Split needs to know about gene calls. Rather
+            #      than giving each split a dictionary of gene calls, in an ugly but much faster
+            #      fashion, we add these 3 pieces of information which provide sufficient gene call
+            #      information to calculate SCV. Previously, we parsed the genes_in_contigs dict
+            #      which is fine for small databases, but the cost is enormous for very large
+            #      (100,000+ contigs) databases. That code elegantly looked like this:
+            #
+            #      for split in contig.splits:
+            #          gene_ids_in_split = set(gc['gene_callers_id']
+            #                                  for key, gc in self.genes_in_splits.items()
+            #                                  if key in self.split_name_to_genes_in_splits_entry_ids[split.name])
+            #          split.gene_calls = {gene_id: self.genes_in_contigs_dict[gene_id] for gene_id in gene_ids_in_split}
+            info_of_interest.extend([
+                'forward',
+                'gene_start',
+                'gene_stop',
+            ])
+
         nt_info = self.get_gene_info_for_each_position(contig.name, info=info_of_interest)
 
         for split in contig.splits:
             for info in info_of_interest:
                 split.per_position_info[info] = nt_info[info][split.start:split.end]
-
-        if self.profile_SCVs:
-            # The people want SCVs, and that means Split needs to know about gene calls
-            for split in contig.splits:
-                gene_ids_in_split = set(gc['gene_callers_id']
-                                        for key, gc in self.genes_in_splits.items()
-                                        if key in self.split_name_to_genes_in_splits_entry_ids[split.name])
-
-                split.gene_calls = {gene_id: self.genes_in_contigs_dict[gene_id] for gene_id in gene_ids_in_split}
 
 
     @staticmethod
@@ -596,6 +610,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
                 split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
                 contig.splits.append(split)
+
             timer.make_checkpoint('Split objects initialized')
 
             self.populate_gene_info_for_splits(contig)
@@ -638,7 +653,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 # output_queue.put(contig) is an expensive operation that does not handle large data
                 # structures well. So we delete everything we can in split that was an intermediate
                 del split.per_position_info
-                del split.gene_calls
 
             output_queue.put(contig)
             timer.make_checkpoint('Contig put in output queue')

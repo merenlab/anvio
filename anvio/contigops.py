@@ -181,6 +181,7 @@ class Auxiliary:
 
         read_count = 0
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
+            # The read can overlap with multiple genes, so we must find them and loop through each
 
             gene_id_per_nt_in_read = self.split.per_position_info['corresponding_gene_call'][(read.reference_start - self.split.start):(read.reference_end - self.split.start)]
             genes_in_read = np.unique(gene_id_per_nt_in_read)
@@ -190,19 +191,37 @@ class Auxiliary:
                 if gene_id == -1:
                     continue
 
-                gene_call = self.split.gene_calls[gene_id]
+                positions_where_read_aligns_to_gene = np.where(gene_id_per_nt_in_read == gene_id)[0] + read.reference_start
+                read_overlaps_gene_start = positions_where_read_aligns_to_gene[0]
+                read_overlaps_gene_end = positions_where_read_aligns_to_gene[-1] + 1
+
+                # We make an on-the-fly gene_call dict. See the NOTE in
+                # BAMProfiler.populate_gene_info_for_splits if you are confused by why we do not
+                # pass this information to split beforehand. We need to access gene-wide attributes
+                # from per-nt arrays, so any index in the array will suffice, so long as it
+                # corresponds to the gene_id. We arbitrarily pick the index corresponding to the
+                # genes starting position
+                accessor = read_overlaps_gene_start - self.split.start
+                gene_call = {
+                    'contig': self.split.parent,
+                    'start': self.split.per_position_info['gene_start'][accessor],
+                    'stop': self.split.per_position_info['gene_stop'][accessor],
+                    'direction': 'f' if self.split.per_position_info['forward'][accessor] else 'r',
+                    'partial': self.split.per_position_info['in_partial_gene_call'][accessor],
+                    'is_coding': 1 if self.split.per_position_info['base_pos_in_codon'][accessor] else 0,
+                }
 
                 if gene_call['partial']:
-                    # We can't handle partial gene calls bc "base_pos_in_codon" is not defined
+                    # We can't handle partial gene calls bc we do not know the frame
                     continue
 
-                positions_where_read_aligns_to_gene = np.where(gene_id_per_nt_in_read == gene_id)[0] + read.reference_start
-                gene_overlap_start = positions_where_read_aligns_to_gene[0]
-                gene_overlap_end = positions_where_read_aligns_to_gene[-1] + 1
+                if not gene_call['is_coding']:
+                    # We cannot handle non-coding genes because they have no frame
+                    continue
 
                 # gene_read_overlap is a copied view of read that has been sliced to only include
                 # the portion that overlaps with the gene
-                gene_read_overlap = read[gene_overlap_start:gene_overlap_end]
+                gene_read_overlap = read[read_overlaps_gene_start:read_overlaps_gene_end]
 
                 for block_start, block_end in gene_read_overlap.get_blocks():
                     if block_end - block_start < 3:
