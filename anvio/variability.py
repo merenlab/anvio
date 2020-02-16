@@ -104,13 +104,18 @@ class ProcessAlleleCounts:
         self.min_coverage = min_coverage
         self.test_class = test_class
 
-        self.d['pos'] = np.arange(len(sequence))
-        self.d['allele_counts'] = allele_counts
-        self.d['sequence_as_index'] = np.array([allele_to_array_index[item] for item in sequence])
-
         # dictionaries to convert to/from array-row-index and allele
         self.allele_to_array_index = allele_to_array_index
         self.array_index_to_allele = {v: k for k, v in self.allele_to_array_index.items()}
+
+        self.d['pos'] = np.arange(len(sequence))
+        self.d['allele_counts'] = allele_counts
+        self.d['reference'] = np.array(list(sequence))
+
+        # remove positions that have non-allowed characters in the sequence
+        self.filter_or_dont(self.get_boolean_of_allowable_characters_in_reference(), kind='boolean')
+
+        self.d['sequence_as_index'] = np.array([allele_to_array_index[item] for item in self.d['reference']])
 
         if self.min_coverage < 1:
             raise ConfigError("ProcessAlleleCounts :: self.min_coverage must be at least 1, currently %d" % self.min_coverage)
@@ -142,29 +147,46 @@ class ProcessAlleleCounts:
         for index, item in self.array_index_to_allele.items():
             self.d[item] = self.d['allele_counts'][index, :]
 
-        self.d['reference'] = [self.array_index_to_allele[x] for x in self.d['sequence_as_index']]
-
         # Delete intermediate keys
         del self.d['allele_counts']
         del self.d['sequence_as_index']
         del self.d['reference_coverage']
 
 
-    def filter_by_index(self, indices):
+    def filter(self, keys):
+        """Filters self.d. keys can be an array-like of indices or array-like of booleans"""
+
         for key in self.d:
             if self.d[key].ndim == 1:
-                self.d[key] = self.d[key][indices]
+                self.d[key] = self.d[key][keys]
             else:
-                self.d[key] = self.d[key][:, indices]
+                self.d[key] = self.d[key][:, keys]
 
 
-    def filter_or_dont(self, indices):
-        """Filter if indices is a subset of indices in self.d"""
+    def filter_or_dont(self, keys, kind='indices'):
+        """Filter self.d if it is required
 
-        if len(indices) == len(self.d['pos']):
-            return
+        Parameters
+        ==========
+        keys : array-like
+            What should be used to filter? If kind == 'indices', it should be an array of indices to
+            keep, If kind == 'boolean', it should be an array of booleans
 
-        self.filter_by_index(indices)
+        kind : str, 'indices'
+            Either 'indices' or 'boolean'. See keys for what each means
+        """
+
+        if kind == 'indices':
+            if len(keys) == len(self.d['pos']):
+                # Nothing to filter
+                return
+
+        elif kind == 'boolean':
+            if sum(keys) == len(keys):
+                # Nothing to filter
+                return
+
+        self.filter(keys)
 
 
     def get_coverage(self):
@@ -182,7 +204,6 @@ class ProcessAlleleCounts:
         if coverage is None:
             coverage = self.get_coverage()
 
-        print(print(coverage))
         return 1 - reference_coverage/coverage
 
 
@@ -220,6 +241,13 @@ class ProcessAlleleCounts:
         competing_items = np.where(reference_coverage == coverage, None, competing_items)
 
         return competing_items
+
+
+    def get_boolean_of_allowable_characters_in_reference(self, sequence=None):
+        if sequence is None:
+            sequence = self.d['reference']
+
+        return [item in self.allele_to_array_index for item in sequence]
 
 
     def get_indices_above_coverage_threshold(self, coverage=None, threshold=None):
