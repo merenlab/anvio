@@ -772,10 +772,11 @@ class ContigsSuperclass(object):
             'in_partial_gene_call'    : Does this position lie in a gene that is partial (0 or 1)?
             'in_complete_gene_call'   : Does this position lie in a gene that is complete (0 or 1)?
             'base_pos_in_codon'       : To what codon position (1, 2, or 3) does the nt belong (0 if
-                                        corresponding_gene_call is -1)?
+                                        corresponding_gene_call is -1, or gene does not have codons,
+                                        e.g. ribosomal proteins)?
             'forward'                 : 1 if gene direction is forward, 0 if it is reverse
             'gene_start'              : Where in the contig does the gene start?
-            'gene_stop'                : Where in the contig does the gene end?
+            'gene_stop'               : Where in the contig does the gene end?
 
         Parameters
         ==========
@@ -784,7 +785,9 @@ class ContigsSuperclass(object):
         info : list, 'all'
             A list of desired info names. By default, 'all' corresponds to
             ['corresponding_gene_call', 'codon_order_in_gene', 'in_partial_gene_call',
-            'in_complete_gene_call', 'base_pos_in_codon', 'forward', 'gene_start', 'gene_stop']
+            'in_complete_gene_call', 'base_pos_in_codon', 'forward', 'gene_start', 'gene_stop'].
+            Please note that this is just a convenience for the programmer: _all_ keys are
+            calculated, and then only the requested subset is returned.
 
         Notes
         =====
@@ -797,11 +800,11 @@ class ContigsSuperclass(object):
         """
 
         available_info = [
-            'corresponding_gene_call',
-            'codon_order_in_gene',
             'in_partial_gene_call',
             'in_complete_gene_call',
             'base_pos_in_codon',
+            'corresponding_gene_call',
+            'codon_order_in_gene',
             'forward',
             'gene_start',
             'gene_stop',
@@ -817,80 +820,81 @@ class ContigsSuperclass(object):
 
         output = {}
         contig_length = len(self.contig_sequences[contig_name]['sequence'])
+        data_shape = (contig_length, len(available_info))
 
-        if any([c in ['corresponding_gene_call', 'codon_order_in_gene', 'forward', 'gene_start', 'gene_stop'] for c in column_names]):
-            data_shape = (contig_length, 5)
-            data = -numpy.ones(data_shape).astype(int)
+        # Init the array. First 3 columns have defaults of 0, last 5 have defaults of -1
+        data = -numpy.ones(data_shape).astype(int)
+        data[:, :3] = 0
 
-            # First we populate the splice of `data` corresponding to each gene call and set the
-            # "gene_caller_id" and "codon_order_in_gene" columns. This ignores the fact that gene
-            # calls may overlap.
+        # First, we populate the first 3 columns of data, 'in_complete_gene_call',
+        # 'in_complete_gene_call', and 'base_pos_in_codon'. This is done straightforwardly by
+        # accessing self.nt_positions_info
 
-            gene_calls = self.get_gene_start_stops_in_contig(contig_name)
+        if not self.nt_positions_info:
+            raise ConfigError("get_gene_info_for_each_position :: I am asked to return stuff, but "
+                              "self.nt_position_info is None!")
 
-            for gene_caller_id, start, stop in gene_calls:
-                positions = numpy.arange(start, stop)
+        if not contig_name in self.nt_positions_info:
+            raise ConfigError("get_gene_info_for_each_position :: Contig %s was not found in "
+                              "self.nt_positions_info" % contig_name)
 
-                direction = self.genes_in_contigs_dict[gene_caller_id]['direction']
+        if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
+            # In these cases everything gets 0
+            pass
+        else:
+            data[self.nt_positions_info[contig_name] == 8, :3] = numpy.array([1,0,0])
+            data[self.nt_positions_info[contig_name] == 4, :3] = numpy.array([0,1,1])
+            data[self.nt_positions_info[contig_name] == 2, :3] = numpy.array([0,1,2])
+            data[self.nt_positions_info[contig_name] == 1, :3] = numpy.array([0,1,3])
 
-                if direction == 'r':
-                    codon_order_in_gene = (stop - start) / 3 - numpy.floor((positions - start) / 3) - 1
-                else:
-                    codon_order_in_gene = numpy.floor((positions - start) / 3)
+        # Next, we calculte the next 5 columns. As a first pass, we populate the splice of `data`
+        # corresponding to each gene call and set the "gene_caller_id" and "codon_order_in_gene"
+        # columns. This first ignores the fact that gene calls may overlap.
 
-                data[start:stop, 0] = gene_caller_id
-                data[start:stop, 1] = codon_order_in_gene
-                data[start:stop, 2] = direction == 'f'
-                data[start:stop, 3] = start
-                data[start:stop, 4] = stop
+        gene_calls = self.get_gene_start_stops_in_contig(contig_name)
 
-            # Next, we compare each gene call to every other gene call. If they overlap, find the
-            # overlapping region and set all columns to -1. This conservatively says, "if there are
-            # two gene calls corresponding to a nucleotide position, anvi'o will simply say it does
-            # not belong to any gene."
+        for gene_caller_id, start, stop in gene_calls:
+            positions = numpy.arange(start, stop)
 
-            gene_calls_to_compare = gene_calls.copy()
+            direction = self.genes_in_contigs_dict[gene_caller_id]['direction']
 
-            for gene_call_1 in gene_calls:
-                _, start1, stop1 = gene_call_1
-                gene_calls_to_compare.remove(gene_call_1)
-
-                for _, start2, stop2 in gene_calls_to_compare:
-                    if ((start1 < stop2  and stop1 > start2) or (stop1  > start2 and stop2 > start1)):
-                        # There is overlap
-                        data[max(start1, start2):min(stop1, stop2), :] = -1
-
-            # Recast the requested info into `output` and move on
-            for i, c in enumerate(['corresponding_gene_call', 'codon_order_in_gene', 'forward', 'gene_start', 'gene_stop']):
-                if c in column_names:
-                    output[c] = data[:, i]
-
-
-        if any([c in ['in_partial_gene_call', 'in_complete_gene_call', 'base_pos_in_codon'] for c in column_names]):
-            if not self.nt_positions_info:
-                raise ConfigError("get_gene_info_for_each_position :: I am asked to return stuff, but "
-                                  "self.nt_position_info is None!")
-
-            if not contig_name in self.nt_positions_info:
-                raise ConfigError("get_gene_info_for_each_position :: Contig %s was not found in "
-                                  "self.nt_positions_info" % contig_name)
-
-            data_shape = (contig_length, 3)
-            data = numpy.zeros(data_shape).astype(int)
-
-            if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
-                # In these cases everything gets 0
-                pass
+            if direction == 'r':
+                codon_order_in_gene = (stop - start) / 3 - numpy.floor((positions - start) / 3) - 1
             else:
-                data[self.nt_positions_info[contig_name] == 8, :] = numpy.array([1,0,0])
-                data[self.nt_positions_info[contig_name] == 4, :] = numpy.array([0,1,1])
-                data[self.nt_positions_info[contig_name] == 2, :] = numpy.array([0,1,2])
-                data[self.nt_positions_info[contig_name] == 1, :] = numpy.array([0,1,3])
+                codon_order_in_gene = numpy.floor((positions - start) / 3)
 
-            # Recast the requested info into `output` and move on
-            for i, c in enumerate(['in_partial_gene_call', 'in_complete_gene_call', 'base_pos_in_codon']):
-                if c in column_names:
-                    output[c] = data[:, i]
+            data[start:stop, 3] = gene_caller_id
+            data[start:stop, 4] = codon_order_in_gene
+            data[start:stop, 5] = direction == 'f'
+            data[start:stop, 6] = start
+            data[start:stop, 7] = stop
+
+        # Next, we compare each gene call to every other gene call. If they overlap, find the
+        # overlapping region and set all columns to their defaults. This conservatively says, "if
+        # there are two gene calls corresponding to a nucleotide position, anvi'o will simply say it
+        # does not belong to any gene."
+
+        gene_calls_to_compare = gene_calls.copy()
+
+        for gene_call_1 in gene_calls:
+            _, start1, stop1 = gene_call_1
+            gene_calls_to_compare.remove(gene_call_1)
+
+            for _, start2, stop2 in gene_calls_to_compare:
+                if ((start1 < stop2  and stop1 > start2) or (stop1  > start2 and stop2 > start1)):
+                    # There is overlap
+                    overlap_start, overlap_end = max(start1, start2), min(stop1, stop2)
+                    data[overlap_start:overlap_end, :3] = 0
+                    data[overlap_start:overlap_end, 3:] = -1
+
+        # Finally, we look for genes that have base_pos_in_codon == 0. These do not have
+        # codon_order_in_genes, and so we must set them to -1
+        data[data[:, 2] == 0, 4] = -1
+
+        # Recast the requested info into `output` and return
+        for i, c in enumerate(available_info):
+            if c in column_names:
+                output[c] = data[:, i]
 
         return output
 
