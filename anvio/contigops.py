@@ -256,11 +256,11 @@ class Auxiliary:
                     start_codon = np.min(self.split.per_position_info['codon_order_in_gene'][block_start_split:block_end_split])
                     end_codon = start_codon + len(codon_sequence)
 
-                    for seq, pos in zip(codon_sequence_as_index, range(start_codon, end_codon)):
+                    for idx, pos in zip(codon_sequence_as_index, range(start_codon, end_codon)):
                         try:
-                            gene_allele_counts[gene_id][seq, pos] += 1
+                            gene_allele_counts[gene_id][idx, pos] += 1
                         except IndexError:
-                            # seq is np.nan, since the corresponding codon had ambiguous characters
+                            # idx was set to np.nan because the codon in the read had ambiguous characters
                             pass
 
             read_count += 1
@@ -272,10 +272,11 @@ class Auxiliary:
                 gene_allele_counts[gene_id],
                 self.cdn_to_array_index,
                 reference_codon_sequences[gene_id],
-                test_class=variability_test_class_null,
             )
 
             cdn_profile.process()
+
+            self.split.SNV_profiles[gene_id] = cdn_profile.d
 
 
     def get_codon_sequence_for_gene(self, gene_call):
@@ -311,8 +312,8 @@ class Auxiliary:
             aligned_sequence_as_index = [self.nt_to_array_index[nt] for nt in aligned_sequence]
             reference_positions_in_split = [pos - self.split.start for pos in read.reference_positions]
 
-            for seq, pos in zip(aligned_sequence_as_index, reference_positions_in_split):
-                allele_counts_array[seq, pos] += 1
+            for idx, pos in zip(aligned_sequence_as_index, reference_positions_in_split):
+                allele_counts_array[idx, pos] += 1
 
             read_count += 1
 
