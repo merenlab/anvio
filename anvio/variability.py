@@ -121,7 +121,7 @@ class ProcessAlleleCounts:
             raise ConfigError("ProcessAlleleCounts :: self.min_coverage must be at least 1, currently %d" % self.min_coverage)
 
 
-    def process(self):
+    def process(self, skip_competing_items=False):
         """The main function call of this class. Populates self.d"""
 
         self.d['coverage'] = self.get_coverage()
@@ -137,11 +137,12 @@ class ProcessAlleleCounts:
         indices_to_keep = self.get_positions_worth_reporting(self.d['coverage'], self.d['departure_from_reference'])
         self.filter_or_dont(indices_to_keep)
 
-        self.d['competing_items'] = self.get_competing_items(self.d['reference_coverage'], self.d['coverage'])
+        if not skip_competing_items:
+            self.d['competing_items'] = self.get_competing_items(self.d['reference_coverage'], self.d['coverage'])
 
-        # Filter if any competing items are None
-        indices_to_keep = self.get_positions_with_competing_items(self.d['competing_items'])
-        self.filter_or_dont(indices_to_keep)
+            # Filter if any competing items are None
+            indices_to_keep = self.get_positions_with_competing_items(self.d['competing_items'])
+            self.filter_or_dont(indices_to_keep)
 
         # each allele gets its own key in self.d
         for index, item in self.array_index_to_allele.items():
@@ -276,30 +277,36 @@ class ProcessAlleleCounts:
         return np.where(competing_items != None)[0]
 
 
+    def rename_key(self, from_this, to_that):
+        if from_this in self.d:
+            self.d[to_that] = self.d.pop(from_this)
+
 
 class ProcessNucleotideCounts(ProcessAlleleCounts):
     def __init__(self, *args, **kwargs):
         ProcessAlleleCounts.__init__(self, *args, **kwargs)
 
-    def process(self):
-        ProcessAlleleCounts.process(self)
-        self.d['competing_nts'] = self.d.pop('competing_items')
+    def process(self, *args, **kwargs):
+        ProcessAlleleCounts.process(self, *args, **kwargs)
+        self.rename_key('competing_items', 'competing_nts')
 
 
 class ProcessAminoAcidCounts(ProcessAlleleCounts):
     def __init__(self, *args, **kwargs):
         ProcessAlleleCounts.__init__(self, *args, **kwargs)
 
-    def process(self):
-        ProcessAlleleCounts.process(self)
-        self.d['competing_aas'] = self.d.pop('competing_items')
+    def process(self, *args, **kwargs):
+        ProcessAlleleCounts.process(self, *args, **kwargs)
+        self.rename_key('competing_items', 'competing_aas')
 
 
 class ProcessCodonCounts(ProcessAlleleCounts):
     def __init__(self, *args, **kwargs):
         ProcessAlleleCounts.__init__(self, *args, **kwargs)
 
-    def process(self):
-        ProcessAlleleCounts.process(self)
-        self.d['competing_codons'] = self.d.pop('competing_items')
-        self.d['codon_order_in_gene'] = self.d.pop('pos')
+    def process(self, *args, **kwargs):
+        ProcessAlleleCounts.process(self, *args, **kwargs)
+        self.rename_key('competing_items', 'competing_codons')
+        self.rename_key('pos', 'codon_order_in_gene')
+
+
