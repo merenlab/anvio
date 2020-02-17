@@ -289,25 +289,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling or not self.profile_SCVs:
             return
 
-        # FIXME
-        return
-
         variable_codons_table = TableForCodonFrequencies(self.profile_db_path, progress=null_progress)
 
         for contig in self.contigs:
-            for gene_callers_id in contig.SCV_profiles:
-                for codon_order in contig.SCV_profiles[gene_callers_id]:
-                    e = contig.SCV_profiles[gene_callers_id][codon_order]
+            for split in contig.splits:
+                for gene_callers_id in split.SCV_profiles:
 
-                    db_entry = {'sample_id': self.sample_id, 'corresponding_gene_call': gene_callers_id}
-                    db_entry['reference'] = e['reference']
-                    db_entry['coverage'] = e['coverage']
-                    db_entry['departure_from_reference'] = e['departure_from_reference']
-                    db_entry['codon_order_in_gene'] = codon_order
-                    for codon in list(constants.codon_to_AA.keys()):
-                        db_entry[codon] = e['frequencies'][codon]
+                    entries = zip(*split.SCV_profiles[gene_callers_id].values())
 
-                    variable_codons_table.append(db_entry)
+                    for entry in entries:
+                        entry_dict = dict(zip(split.SCV_profiles[gene_callers_id].keys(), entry))
+                        variable_codons_table.append(entry_dict)
 
         variable_codons_table.store()
 
