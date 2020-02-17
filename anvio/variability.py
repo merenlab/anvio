@@ -112,17 +112,17 @@ class ProcessAlleleCounts:
         self.d['allele_counts'] = allele_counts
         self.d['reference'] = np.array(list(sequence))
 
-        # remove positions that have non-allowed characters in the sequence
-        self.filter_or_dont(self.get_boolean_of_allowable_characters_in_reference(), kind='boolean')
-
-        self.d['sequence_as_index'] = np.array([allele_to_array_index[item] for item in self.d['reference']])
-
         if self.min_coverage < 1:
             raise ConfigError("ProcessAlleleCounts :: self.min_coverage must be at least 1, currently %d" % self.min_coverage)
 
 
     def process(self, skip_competing_items=False):
         """The main function call of this class. Populates self.d"""
+
+        # remove positions that have non-allowed characters in the sequence
+        self.filter_or_dont(self.get_boolean_of_allowable_characters_in_reference(), kind='boolean')
+
+        self.d['sequence_as_index'] = np.array([self.allele_to_array_index[item] for item in self.d['reference']])
 
         self.d['coverage'] = self.get_coverage()
 
