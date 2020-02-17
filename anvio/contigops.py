@@ -178,6 +178,7 @@ class Auxiliary:
 
         reference_codon_sequences = {}
         gene_allele_counts = {}
+        gene_calls = {}
 
         read_count = 0
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
@@ -195,40 +196,41 @@ class Auxiliary:
                 read_overlaps_gene_start = positions_where_read_aligns_to_gene[0]
                 read_overlaps_gene_end = positions_where_read_aligns_to_gene[-1] + 1
 
-                # We make an on-the-fly gene_call dict. See the NOTE in
-                # BAMProfiler.populate_gene_info_for_splits if you are confused by why we do not
-                # pass this information to split beforehand. We need to access gene-wide attributes
-                # from per-nt arrays, so any index in the array will suffice, so long as it
-                # corresponds to the gene_id. We arbitrarily pick the index corresponding to the
-                # genes starting position
-                accessor = read_overlaps_gene_start - self.split.start
-                gene_call = {
-                    'contig': self.split.parent,
-                    'start': self.split.per_position_info['gene_start'][accessor],
-                    'stop': self.split.per_position_info['gene_stop'][accessor],
-                    'direction': 'f' if self.split.per_position_info['forward'][accessor] else 'r',
-                    'partial': self.split.per_position_info['in_partial_gene_call'][accessor],
-                    'is_coding': 1 if self.split.per_position_info['base_pos_in_codon'][accessor] else 0,
-                }
+                if gene_id not in gene_calls:
+                    # We make an on-the-fly gene call dict. See the NOTE in
+                    # BAMProfiler.populate_gene_info_for_splits if you are confused by why we do not
+                    # pass this information to split beforehand.
+                    #
+                    # We need to access gene-wide attributes from per-nt arrays, so any index in the
+                    # array will suffice, so long as it corresponds to the gene_id. We arbitrarily
+                    # pick the index corresponding to the genes starting position
+                    accessor = read_overlaps_gene_start - self.split.start
+                    gene_calls[gene_id] = {
+                        'contig': self.split.parent,
+                        'start': self.split.per_position_info['gene_start'][accessor],
+                        'stop': self.split.per_position_info['gene_stop'][accessor],
+                        'direction': 'f' if self.split.per_position_info['forward'][accessor] else 'r',
+                        'partial': self.split.per_position_info['in_partial_gene_call'][accessor],
+                        'is_coding': 1 if self.split.per_position_info['base_pos_in_codon'][accessor] else 0,
+                    }
 
-                if gene_call['partial']:
+                gene_call = gene_calls[gene_id]
+
+                if gene_call['partial'] or not gene_call['is_coding']:
                     # We can't handle partial gene calls bc we do not know the frame
-                    continue
-
-                if not gene_call['is_coding']:
                     # We cannot handle non-coding genes because they have no frame
                     continue
 
-                # gene_read_overlap is a copied view of read that has been sliced to only include
+                # segment_that_overlaps_gene is a copied view of read that has been sliced to only include
                 # the portion that overlaps with the gene
-                gene_read_overlap = read[read_overlaps_gene_start:read_overlaps_gene_end]
+                segment_that_overlaps_gene = read[read_overlaps_gene_start:read_overlaps_gene_end]
 
-                for block_start, block_end in gene_read_overlap.get_blocks():
+                for block_start, block_end in segment_that_overlaps_gene.get_blocks():
                     if block_end - block_start < 3:
                         # This block does not contain a full codon
                         continue
 
-                    gapless_segment = gene_read_overlap[block_start:block_end]
+                    gapless_segment = segment_that_overlaps_gene[block_start:block_end]
 
                     block_start_split = block_start - self.split.start
                     block_end_split = block_end - self.split.start
@@ -258,7 +260,8 @@ class Auxiliary:
                     block_end_split -= trim_by_right
 
                     if gene_id not in gene_allele_counts:
-                        # This is the first time we have seen the gene_id, so we log the its
+                        # This is the first time we have seen the gene_id, and for the first time we
+                        # we are now positive this read will contribute to it, so we log the its
                         # reference codon sequence and initialize an allele counts array
                         reference_codon_sequences[gene_id] = self.get_codon_sequence_for_gene(gene_call)
                         gene_allele_counts[gene_id] = self.init_allele_counts_array(gene_call)
