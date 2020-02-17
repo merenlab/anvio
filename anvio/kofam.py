@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""This file contains KofamSetup and Kofam classes."""
+"""This file contains KofamSetup, Kofam, and ModulesDatabase classes."""
 
 import os
 import gzip
@@ -530,3 +530,17 @@ class KofamRunHMMs(KofamContext):
                              like to keep it for testing purposes)', nl_before=1, nl_after=1)
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
+
+class ModulesDatabase():
+    """To create or access a Modules DB.
+
+    This DB should be created in the Kegg Data folder during Kofam setup, and will be populated with information from the
+    Kegg Module files.
+    """
+
+    def __init__(self, db_path, run=run, progress=progress):
+        self.db = None
+        self.db_path = db_path
+
+        self.run = run
+        self.progress = progress
