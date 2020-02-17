@@ -10,6 +10,7 @@ import glob
 import re
 
 import anvio
+import anvio.db as db
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -409,7 +410,7 @@ class KofamSetup(KofamContext):
     def setup_modules_db(self):
         """This function creates the Modules DB from the Kegg Module files. """
 
-        mod_db = ModulesDatabase(self.kofam_data_dir, run=run, progress=progress)
+        mod_db = ModulesDatabase(os.path.join(self.kofam_data_dir, "MODULES.db"), run=run, progress=progress)
 
 
     def setup_profiles(self):
