@@ -291,15 +291,24 @@ class Auxiliary:
         if anvio.DEBUG: self.run.info_single('Done SCVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
 
         for gene_id in gene_allele_counts:
+
             cdn_profile = ProcessCodonCounts(
                 gene_allele_counts[gene_id],
                 self.cdn_to_array_index,
                 reference_codon_sequences[gene_id],
             )
 
+            # by design, we include SCVs only if they contain a SNV
+            cdn_profile.filter(self.get_codon_orders_that_contain_SNVs(gene_id))
             cdn_profile.process()
 
             self.split.SCV_profiles[gene_id] = cdn_profile.d
+
+
+    def get_codon_orders_that_contain_SNVs(self, gene_id):
+        indices_that_match_gene = self.split.SNV_profiles['corresponding_gene_call'] == gene_id
+
+        return np.unique(self.split.SNV_profiles['codon_order_in_gene'][indices_that_match_gene])
 
 
     def process(self, bam):
