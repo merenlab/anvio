@@ -316,7 +316,7 @@ class Auxiliary:
 
             # Filter out codon positions that did not contain a SNV
             cdn_profile.filter(codon_orders_that_contain_SNVs)
-            cdn_profile.process()
+            cdn_profile.process(skip_competing_items=True)
 
             self.split.SCV_profiles[gene_id] = cdn_profile.d
 
