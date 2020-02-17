@@ -320,11 +320,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         for contig in self.contigs:
             for split in contig.splits:
-                if split.num_variability_entries == 0:
+                if split.num_SNV_entries == 0:
                     continue
 
-                # FIXME extremely slow; consider casting as dataframe
-                # e.g. database.insert_rows_from_dataframe(anvio.tables.variable_nts_table_name, df)
+                # FIXME This is pretty slow; casting as dataframe is faster, but neglects the
+                # class methods of TableForVariability. For example, this is like 3 times faster
+                # >>> database.insert_rows_from_dataframe(anvio.tables.variable_nts_table_name, df)
                 entries = zip(*split.SNV_profiles.values())
                 for entry in entries:
                     entry_dict = dict(zip(split.SNV_profiles.keys(), entry))
@@ -637,13 +638,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                     split.auxiliary.process(bam_file)
 
-                    if split.num_variability_entries == 0:
+                    if split.num_SNV_entries == 0:
                         continue
 
                     # Add these redundant data ad-hoc
-                    split.SNV_profiles['split_name'] = [split.name] * split.num_variability_entries
-                    split.SNV_profiles['sample_id'] = [self.sample_id] * split.num_variability_entries
+                    split.SNV_profiles['split_name'] = [split.name] * split.num_SNV_entries
+                    split.SNV_profiles['sample_id'] = [self.sample_id] * split.num_SNV_entries
                     split.SNV_profiles['pos_in_contig'] = split.SNV_profiles['pos'] + split.start
+
+                    for gene_id in split.SCV_profiles:
+                        split.SCV_profiles[gene_id]['sample_id'] = [self.sample_id] * split.num_SCV_entries[gene_id]
+                        split.SCV_profiles[gene_id]['corresponding_gene_call'] = [gene_id] * split.num_SCV_entries[gene_id]
 
                 timer.make_checkpoint('Auxiliary analyzed')
 

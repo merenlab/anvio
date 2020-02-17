@@ -127,7 +127,8 @@ class Split:
         self.explicit_length = 0
         self.abundance = 0.0
         self.auxiliary = None
-        self.num_variability_entries = 0
+        self.num_SNV_entries = 0
+        self.num_SCV_entries = {}
         self.SNV_profiles = {}
         self.SCV_profiles = {}
         self.per_position_info = {} # stores per nt info that is not coverage
@@ -319,6 +320,8 @@ class Auxiliary:
 
             self.split.SCV_profiles[gene_id] = cdn_profile.d
 
+            self.split.num_SCV_entries[gene_id] = len(cdn_profile.d['coverage'])
+
 
     def get_codon_orders_that_contain_SNVs(self, gene_id):
         matches_gene_boolean = self.split.SNV_profiles['corresponding_gene_call'] == gene_id
@@ -394,8 +397,8 @@ class Auxiliary:
 
         self.split.SNV_profiles = nt_profile.d
 
-        self.split.num_variability_entries = len(nt_profile.d['coverage'])
-        self.variation_density = self.split.num_variability_entries * 1000.0 / self.split.length
+        self.split.num_SNV_entries = len(nt_profile.d['coverage'])
+        self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length
 
 
 class GenbankToAnvioWrapper:
