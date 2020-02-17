@@ -61,16 +61,21 @@ class ProcessAlleleCounts:
         allele_counts : array-like
             An allele counts array. Each column is a position in the sequence, and each row is an
             allele (e.g. A, C, T, G, N if alleles are nucleotides).
+
         allele_to_array_index : dict
             Which allele belongs at which row index? If A is row 0, C is row 1, etc, the dictionary
             should be {'A': 0, 'C': 1, ...}.
+
         sequence : str
             What sequence is this for? It should have length equal to number of columns of
             allele_counts
+
         min_coverage : int, 1
             positions below this coverage value will be filtered out
+
         test_class : VariablityTestFactory, None
             If not None, positions will be filtered out if they are deemed not worth reporting
+
         additional_per_position_data : dict, {}
             This class creates self.d, a dictionary of equal length arrays that describes
             information related to variability. If the user has _other_ data for each position in
