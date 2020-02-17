@@ -406,6 +406,12 @@ class KofamSetup(KofamContext):
 
         self.progress.end()
 
+    def setup_modules_db(self):
+        """This function creates the Modules DB from the Kegg Module files. """
+
+        mod_db = ModulesDatabase(self.kofam_data_dir, run=run, progress=progress)
+
+
     def setup_profiles(self):
         """This is a driver function which executes the Kofam setup process by downloading, decompressing, and hmmpressing the profiles."""
 
@@ -414,6 +420,7 @@ class KofamSetup(KofamContext):
         self.download_modules()
         self.setup_ko_dict()
         self.run_hmmpress()
+        self.setup_modules_db()
 
 class KofamRunHMMs(KofamContext):
     """ Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DB for later metabolism prediction.
