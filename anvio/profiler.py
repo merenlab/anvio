@@ -559,7 +559,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             #      fashion, we add these 3 pieces of information which provide sufficient gene call
             #      information to calculate SCV. Previously, we parsed the genes_in_contigs dict
             #      which is fine for small databases, but the cost is enormous for very large
-            #      (100,000+ contigs) databases. That code elegantly looked like this:
+            #      (100,000+ contigs) databases. To give perspective, it was about 1s per contig,
+            #      which is 30 hours for 100,000 contigs. That code elegantly looked like this:
             #
             #      for split in contig.splits:
             #          gene_ids_in_split = set(gc['gene_callers_id']
