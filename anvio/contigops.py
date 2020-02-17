@@ -187,6 +187,8 @@ class Auxiliary:
         gene_allele_counts = {}
         gene_calls = {}
 
+        genes_with_SNVs = set(self.split.SNV_profiles['corresponding_gene_call'])
+
         read_count = 0
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
             # The read can overlap with multiple genes, so we must find them and loop through each
@@ -195,11 +197,16 @@ class Auxiliary:
                 (read.reference_start - self.split.start):(read.reference_end - self.split.start)
             ]
 
-            genes_in_read = np.unique(gene_id_per_nt_in_read)
+            genes_in_read = set(gene_id_per_nt_in_read)
 
             for gene_id in genes_in_read:
 
                 if gene_id == -1:
+                    continue
+
+                if gene_id not in genes_with_SNVs:
+                    # By design, we include SCVs only if they contain a SNV. In this case, there were no
+                    # SNVs in the gene so there is nothing to do.
                     continue
 
                 positions_where_read_aligns_to_gene = np.where(gene_id_per_nt_in_read == gene_id)[0] + read.reference_start
@@ -296,15 +303,9 @@ class Auxiliary:
 
         for gene_id in gene_allele_counts:
             allele_counts = gene_allele_counts[gene_id]
-            codon_orders_that_contain_SNVs = self.get_codon_orders_that_contain_SNVs(gene_id)
 
             if not np.sum(allele_counts):
                 # There were no viable reads that landed on the gene
-                continue
-
-            elif not len(codon_orders_that_contain_SNVs):
-                # By design, we include SCVs only if they contain a SNV. In this case, there were no
-                # SNVs in the gene so there is nothing to do.
                 continue
 
             cdn_profile = ProcessCodonCounts(
@@ -314,8 +315,8 @@ class Auxiliary:
                 min_coverage=1,
             )
 
-            # Filter out codon positions that did not contain a SNV
-            cdn_profile.filter(codon_orders_that_contain_SNVs)
+            # By design, we include SCVs only if they contain a SNV--filter out those that do not
+            cdn_profile.filter(self.get_codon_orders_that_contain_SNVs(gene_id))
             cdn_profile.process(skip_competing_items=True)
 
             self.split.SCV_profiles[gene_id] = cdn_profile.d
