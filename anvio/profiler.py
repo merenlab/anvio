@@ -635,9 +635,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                           min_coverage=self.min_coverage_for_variability,
                                                           report_variability_full=self.report_variability_full)
 
-                    split.auxiliary.run_SNVs(bam_file)
-                    if self.profile_SCVs:
-                        split.auxiliary.run_SCVs(bam_file)
+                    split.auxiliary.process(bam_file)
 
                     if split.num_variability_entries == 0:
                         continue
