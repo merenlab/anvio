@@ -2166,7 +2166,8 @@ def set_version():
            t.genes_db_version, \
            t.auxiliary_data_version, \
            t.genomes_storage_vesion, \
-           t.structure_db_version
+           t.structure_db_version, \
+           t.modules_db_version
 
 
 def get_version_tuples():
@@ -2177,7 +2178,8 @@ def get_version_tuples():
             ("Auxiliary data storage version", __auxiliary_data_version__),
             ("Pan DB version", __pan__version__),
             ("Genome data storage version", __genomes_storage_version__),
-            ("Structure DB version", __structure__version__)]
+            ("Structure DB version", __structure__version__),
+            ("Modules DB version", __modules__version__)]
 
 
 def print_version():
@@ -2188,6 +2190,7 @@ def print_version():
     run.info("Genome data storage version", __genomes_storage_version__)
     run.info("Auxiliary data storage version", __auxiliary_data_version__)
     run.info("Structure DB version", __structure__version__)
+    run.info("Modules DB version", __modules__version__)
 
 
 __version__, \
@@ -2198,7 +2201,8 @@ __profile__version__, \
 __genes__version__, \
 __auxiliary_data_version__, \
 __genomes_storage_version__ , \
-__structure__version__ = set_version()
+__structure__version__, \
+__modules__version__ = set_version()
 
 
 if '-v' in sys.argv or '--version' in sys.argv:
