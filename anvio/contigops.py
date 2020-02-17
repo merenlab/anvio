@@ -285,17 +285,18 @@ class Auxiliary:
 
                     sequence = gapless_segment.query_sequence if gene_call['direction'] == 'f' else utils.rev_comp(gapless_segment.query_sequence)
                     codon_sequence = [sequence[i:i+3] for i in range(0, len(sequence), 3)]
-                    codon_sequence_as_index = [self.cdn_to_array_index.get(cdn, np.nan) for cdn in codon_sequence]
 
                     start_codon = np.min(self.split.per_position_info['codon_order_in_gene'][block_start_split:block_end_split])
                     end_codon = start_codon + len(codon_sequence)
 
-                    for idx, pos in zip(codon_sequence_as_index, range(start_codon, end_codon)):
+                    for codon, pos in zip(codon_sequence, range(start_codon, end_codon)):
                         try:
-                            gene_allele_counts[gene_id][idx, pos] += 1
-                        except IndexError:
-                            # idx was set to np.nan because the codon in the read had ambiguous characters
-                            pass
+                            gene_allele_counts[gene_id][self.cdn_to_array_index[codon], pos] += 1
+                        except KeyError:
+                            # codon is an ambiguous character, so it doesn't exist in
+                            # self.cdn_to_array_index. The rarity of this warrants a catch clause
+                            # rather than an if statement
+                            continue
 
             read_count += 1
 
