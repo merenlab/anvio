@@ -552,3 +552,34 @@ class ModulesDatabase():
 
         self.run = run
         self.progress = progress
+
+        ## here we should call init function if the db exists
+
+    def touch():
+        """Creates an empty Modules database on disk, and sets `self.db` to access to it.
+
+        At some point self.db.disconnect() must be called to complete the creation of the new db.
+        """
+
+        # sanity check to avoid overriding previous Modules DB
+        # this will probably never happen as long as this function is called through the setup script, but we check just in case
+        if os.path.exists(self.db_path):
+            raise ConfigError("A modules database at %s already exists. Please use the --reset flag when you restart the setup \
+            if you really want to get rid of this one and make a new one." % (self.db_path))
+
+
+        self.db = db.DB(self.db_path, anvio.__modules__version__, new_database=True)
+
+        # I wonder if these should be moved to the tables __init__.py at some point?
+        module_table_name = "kegg_modules"
+        module_table_structure = ['module', 'data_name', 'data_value', 'data_definition']
+        module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ]
+
+        self.db.create_table(module_table_name, module_table_structure, module_table_types)
+
+        return self.db
+
+    def create():
+        """Creates the Modules DB"""
+
+        self.touch()
