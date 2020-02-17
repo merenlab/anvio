@@ -3453,7 +3453,7 @@ class ContigsDatabase:
             filesnpaths.is_file_exists(external_gene_calls)
 
         if external_gene_calls and skip_gene_calling:
-            raise ConfigError("You provided a file for external gene calls, and used requested gene calling to be\
+            raise ConfigError("You provided a file for external gene calls, but also requested gene calling to be\
                                 skipped. Please make up your mind.")
 
         if (external_gene_calls or skip_gene_calling) and prodigal_translation_table:
@@ -3717,7 +3717,7 @@ class ContigsDatabase:
     def compress_nt_position_info(self, contig_length, genes_in_contig, genes_in_contigs_dict):
         """This function compresses information regarding each nucleotide position in a given contig
            into a small int. Every nucleotide position is represented by four bits depending on whether
-           they occur in a complete opoen reading frame, and which base they correspond to in a codon.
+           they occur in a complete open reading frame, and which base they correspond to in a codon.
 
                 0000
                 ||||
