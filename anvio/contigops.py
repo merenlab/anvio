@@ -190,7 +190,10 @@ class Auxiliary:
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
             # The read can overlap with multiple genes, so we must find them and loop through each
 
-            gene_id_per_nt_in_read = self.split.per_position_info['corresponding_gene_call'][(read.reference_start - self.split.start):(read.reference_end - self.split.start)]
+            gene_id_per_nt_in_read = self.split.per_position_info['corresponding_gene_call'][
+                (read.reference_start - self.split.start):(read.reference_end - self.split.start)
+            ]
+
             genes_in_read = np.unique(gene_id_per_nt_in_read)
 
             for gene_id in genes_in_read:
@@ -267,7 +270,7 @@ class Auxiliary:
 
                     if gene_id not in gene_allele_counts:
                         # This is the first time we have seen the gene_id, and for the first time we
-                        # we are now positive this read will contribute to it, so we log the its
+                        # we are now positive this read will contribute to it, so we log its
                         # reference codon sequence and initialize an allele counts array
                         reference_codon_sequences[gene_id] = self.get_codon_sequence_for_gene(gene_call)
                         gene_allele_counts[gene_id] = self.init_allele_counts_array(gene_call)
@@ -291,24 +294,36 @@ class Auxiliary:
         if anvio.DEBUG: self.run.info_single('Done SCVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
 
         for gene_id in gene_allele_counts:
+            allele_counts = gene_allele_counts[gene_id]
+            codon_orders_that_contain_SNVs = self.get_codon_orders_that_contain_SNVs(gene_id)
+
+            if not np.sum(allele_counts):
+                # There were no viable reads that landed on the gene
+                continue
+
+            elif not len(codon_orders_that_contain_SNVs):
+                # By design, we include SCVs only if they contain a SNV. In this case, there were no
+                # SNVs in the gene so there is nothing to do.
+                continue
 
             cdn_profile = ProcessCodonCounts(
-                gene_allele_counts[gene_id],
-                self.cdn_to_array_index,
-                reference_codon_sequences[gene_id],
+                allele_counts=allele_counts,
+                allele_to_array_index=self.cdn_to_array_index,
+                sequence=reference_codon_sequences[gene_id],
+                min_coverage=1,
             )
 
-            # by design, we include SCVs only if they contain a SNV
-            cdn_profile.filter(self.get_codon_orders_that_contain_SNVs(gene_id))
+            # Filter out codon positions that did not contain a SNV
+            cdn_profile.filter(codon_orders_that_contain_SNVs)
             cdn_profile.process()
 
             self.split.SCV_profiles[gene_id] = cdn_profile.d
 
 
     def get_codon_orders_that_contain_SNVs(self, gene_id):
-        indices_that_match_gene = self.split.SNV_profiles['corresponding_gene_call'] == gene_id
+        matches_gene_boolean = self.split.SNV_profiles['corresponding_gene_call'] == gene_id
 
-        return np.unique(self.split.SNV_profiles['codon_order_in_gene'][indices_that_match_gene])
+        return np.unique(self.split.SNV_profiles['codon_order_in_gene'][matches_gene_boolean])
 
 
     def process(self, bam):
@@ -367,12 +382,12 @@ class Auxiliary:
         test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
 
         nt_profile = ProcessNucleotideCounts(
-            allele_counts_array,
-            self.nt_to_array_index,
-            self.split.sequence,
+            allele_counts=allele_counts_array,
+            allele_to_array_index=self.nt_to_array_index,
+            sequence=self.split.sequence,
             min_coverage=self.min_coverage,
             test_class=test_class,
-            additonal_per_position_data=additional_per_position_data,
+            additional_per_position_data=additional_per_position_data,
         )
 
         nt_profile.process()
