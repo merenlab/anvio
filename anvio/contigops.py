@@ -174,6 +174,12 @@ class Auxiliary:
         Parameters
         ==========
         bam : bamops.BAMFileObject
+
+        Notes
+        =====
+        - Loop through reads and then finding the genes it overlaps with has proven to be the
+          fastest way to do this. Looping through genes with fetch(self.split.parent, gene_start,
+          gene_stop) is approximately twice as slow
         """
 
         reference_codon_sequences = {}
@@ -293,7 +299,14 @@ class Auxiliary:
 
             cdn_profile.process()
 
-            self.split.SNV_profiles[gene_id] = cdn_profile.d
+            self.split.SCV_profiles[gene_id] = cdn_profile.d
+
+
+    def process(self, bam):
+        self.run_SNVs(bam)
+
+        if self.profile_SCVs:
+            self.run_SCVs(bam)
 
 
     def get_codon_sequence_for_gene(self, gene_call):
