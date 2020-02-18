@@ -189,6 +189,7 @@ class Read:
         self.query_sequence = self.r.query_sequence
         self.cigartuples = self.r.cigartuples
         self.reference_positions = self.r.get_reference_positions()
+        self.reference_sequence = self.r.get_reference_sequence()
         self.reference_start = self.r.reference_start
         self.reference_end = self.r.reference_end
 
@@ -237,6 +238,12 @@ class Read:
         """Mimic the get_reference_positions function from AlignedSegment."""
 
         return self.reference_positions
+
+
+    def get_reference_sequence(self):
+        """Mimic the get_reference_sequence function from AlignedSegment."""
+
+        return self.reference_sequence
 
 
     def get_aligned_sequence(self):
@@ -332,6 +339,7 @@ class Read:
             query_sequence
             cigartuples
             reference_positions
+            reference_sequence
             reference_start
             reference_end
 
@@ -406,7 +414,10 @@ class Read:
         # set new query_sequence
         self.query_sequence = self.query_sequence[read_positions_trimmed:] if side == 'left' else self.query_sequence[:-read_positions_trimmed]
 
-        # set new reference_positions
+        # set new reference_sequence
+        self.reference_sequence = self.reference_sequence[ref_positions_trimmed:] if side == 'left' else self.reference_sequence[:-ref_positions_trimmed]
+
+        # set new reference_positions and reference_sequence
         if side == 'right':
             num_pos = len(self.reference_positions)
             last_pos = self.reference_positions[-1]
