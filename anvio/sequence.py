@@ -463,7 +463,7 @@ class Coverage:
         }
 
 
-    def run(self, bam, contig_or_split, start=None, end=None, method='accurate', max_coverage=None, **kwargs):
+    def run(self, bam, contig_or_split, start=None, end=None, method='accurate', max_coverage=None, skip_coverage_stats=False, **kwargs):
         """Loop through the bam pileup and calculate coverage over a defined region of a contig or split
 
         Parameters
@@ -489,6 +489,9 @@ class Coverage:
             How do you want to calculate? Options: ('accurate', 'approximate'). 'accurate' accounts
             for gaps in the alignment, 'approximate' does not. For others, see associated methods
             and pass special parameters they take through **kwargs
+
+        skip_coverage_stats : bool, False
+            Should the call to process_c be skipped?
         """
 
         # if there are defined start and ends we have to trim reads so their ranges fit inside self.c
@@ -530,7 +533,9 @@ class Coverage:
                 contig_or_split.explicit_length = len(self.c)
             except AttributeError:
                 pass
-            self.process_c(self.c)
+
+            if not skip_coverage_stats:
+                self.process_c(self.c)
 
 
     def _approximate_routine(self, c, bam, contig_name, start, end, iterator):
