@@ -87,8 +87,7 @@ class NGram(object):
                         contig_function_list.append([i[0],i[1]])
                 contigs_dict[item] = contig_function_list
 
-            test = self.count_synteny(contigs_dict) 
-            print(test)
+            print(self.count_synteny(contigs_dict))
 
 
             counter = counter + 1
@@ -123,26 +122,40 @@ class NGram(object):
 
 
     def count_synteny(self, contigs_dict):
+        """
+        Need to make an example where there is more than one contig in a contigsDB
+        """
         for key in sorted(contigs_dict.keys()):
             gci_function = contigs_dict[key]
             genes = [(entry[1]) for entry in gci_function]
 
-        kFreq = {}
-        k = 3
-        print(len(genes))   
-
-        for i in range(0, len(genes) - k + 1):
-            print(i)
-            # extract window
-            window = sorted(genes[i:i + k])
-            ngram = "_".join(map(str, list(window)))
-            # if ngram is not in dictionary add it
-            # if it is add + 1
-            if ngram in kFreq:
-                kFreq[ngram] +=  1
-            else:
-                kFreq[ngram] = 1
+            kFreq = {}
+            k = 3
+            for i in range(0, len(genes) - k + 1):
+                window = sorted(genes[i:i + k])
+                ngram = "_".join(map(str, list(window)))
+                # print(ngram)
+                # if ngram is not in dictionary add it
+                # if it is add + 1
+                if ngram in kFreq:
+                    kFreq[ngram] +=  1
+                else:
+                    kFreq[ngram] = 1
             return kFreq
+
+
+        # for i in range(0, len(genes) - k + 1):
+        #     print(i)
+        #     # extract window
+        #     window = sorted(genes[i:i + k])
+        #     ngram = "_".join(map(str, list(window)))
+        #     # if ngram is not in dictionary add it
+        #     # if it is add + 1
+        #     if ngram in kFreq:
+        #         kFreq[ngram] +=  1
+        #     else:
+        #         kFreq[ngram] = 1
+        #     return kFreq
 
 
     def driveSynteny(self):
