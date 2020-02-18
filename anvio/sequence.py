@@ -518,9 +518,10 @@ class Coverage:
         # a coverage array the size of the defined range is allocated in memory
         c = numpy.zeros(end - start).astype(int)
 
-        routine = self.routine_dict.get(method)
-        if not routine:
-            raise ConfigError("Coverage :: %s is not a valid method.")
+        try:
+            routine = self.routine_dict[method]
+        except KeyError:
+            raise ConfigError("Coverage :: %s is not a valid method." % method)
 
         self.c = routine(c, bam, contig_name, start, end, iterator, **kwargs)
 
