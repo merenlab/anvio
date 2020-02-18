@@ -128,7 +128,7 @@ class ComputeCoverage(object):
         self.progress.update('%s (%d/%d)' % (contig_name, self.progress.progress_current_item, self.progress.progress_total_items))
 
         cov = seq.Coverage()
-        cov.run(self.bam, contig_name)
+        cov.run(self.bam, contig_name, skip_coverage_stats=True)
 
         return cov.c
 
