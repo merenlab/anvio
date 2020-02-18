@@ -319,12 +319,14 @@ rule anvi_run_hmms:
     params:
         installed_hmm_profile = M.get_rule_param("anvi_run_hmms", "--installed-hmm-profile"),
         hmm_profile_dir = M.get_rule_param("anvi_run_hmms", "--hmm-profile-dir"),
+	skip_scanning_trnas = M.get_rule_param("anvi_run_hmms", "--skip-scanning-trnas"),
     threads: M.T('anvi_run_hmms')
     resources: nodes = M.T('anvi_run_hmms'),
     shell: w.r("anvi-run-hmms -c {input} \
                               -T {threads} \
                               {params.hmm_profile_dir} \
-                              {params.installed_hmm_profile} >> {log} 2>&1")
+                              {params.installed_hmm_profile} \
+			      {params.skip_scanning_trnas} >> {log} 2>&1")
 
 
 rule anvi_run_pfams:
