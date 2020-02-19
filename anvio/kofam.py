@@ -411,6 +411,7 @@ class KofamSetup(KofamContext):
         """This function creates the Modules DB from the Kegg Module files. """
 
         mod_db = ModulesDatabase(os.path.join(self.kofam_data_dir, "MODULES.db"), run=run, progress=progress)
+        mod_db.create()
 
 
     def setup_profiles(self):
@@ -555,7 +556,7 @@ class ModulesDatabase():
 
         ## here we should call init function if the db exists
 
-    def touch():
+    def touch(self):
         """Creates an empty Modules database on disk, and sets `self.db` to access to it.
 
         At some point self.db.disconnect() must be called to complete the creation of the new db.
@@ -579,7 +580,11 @@ class ModulesDatabase():
 
         return self.db
 
-    def create():
+    def create(self):
         """Creates the Modules DB"""
 
         self.touch()
+
+        self.db.set_meta_value('db_type', 'modules')
+
+        self.db.disconnect()
