@@ -410,7 +410,7 @@ class KeggSetup(KeggContext):
     def setup_modules_db(self):
         """This function creates the Modules DB from the Kegg Module files. """
 
-        mod_db = ModulesDatabase(os.path.join(self.kofam_data_dir, "MODULES.db"), run=run, progress=progress)
+        mod_db = KeggModulesDatabase(os.path.join(self.kofam_data_dir, "MODULES.db"), run=run, progress=progress)
         mod_db.create()
 
 
@@ -539,7 +539,7 @@ class KeggRunHMMs(KeggContext):
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
 
-class ModulesDatabase():
+class KeggModulesDatabase():
     """To create or access a Modules DB.
 
     This DB should be created in the Kegg Data folder during Kofam setup, and will be populated with information from the
@@ -568,7 +568,7 @@ class ModulesDatabase():
             if you really want to get rid of this one and make a new one." % (self.db_path))
 
 
-        self.db = db.DB(self.db_path, anvio.__modules__version__, new_database=True)
+        self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=True)
 
         # I wonder if these should be moved to the tables __init__.py at some point?
         module_table_name = "kegg_modules"
@@ -588,8 +588,8 @@ class ModulesDatabase():
 
         self.db.disconnect()
 
-class ModulesTable:
-    """This class defines operations for creating the Modules table in Modules.db"""
+class KeggModulesTable:
+    """This class defines operations for creating the KEGG Modules table in Modules.db"""
 
     def __init__(self, split_length):
         self.db_entries = []
