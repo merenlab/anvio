@@ -4,9 +4,6 @@
    from contigs and splits. Also includes classes to deal with external
    contig data such as GenbankToAnvio."""
 
-test = 0
-
-
 import os
 import re
 import io
@@ -16,6 +13,7 @@ import string
 import argparse
 
 from Bio import SeqIO
+from numba import njit
 
 import anvio
 import anvio.tables as t
@@ -416,12 +414,11 @@ class Auxiliary:
             aligned_sequence_as_index = self.fast_nt_to_array_lookup[np.array([aligned_sequence]).view(np.int32)]
             reference_positions_in_split = read.reference_positions - self.split.start
 
-            for idx, pos in zip(aligned_sequence_as_index, reference_positions_in_split):
-                allele_counts_array[idx, pos] += 1
+            allele_counts_array = add_to_array_positions(aligned_sequence_as_index, reference_positions_in_split, allele_counts_array)
 
             read_count += 1
 
-        #if anvio.DEBUG: self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
+        if anvio.DEBUG: self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
 
         additional_per_position_data = self.split.per_position_info
         additional_per_position_data.update({
@@ -742,3 +739,49 @@ class GenbankToAnvio:
         return {'external_gene_calls': self.output_gene_calls_path,
                 'gene_functional_annotation': self.output_functions_path,
                 'path': self.output_fasta_path}
+
+
+@njit
+def add_to_array_positions(x, y, a, count=1):
+    """just-in-time compiled function
+
+    Parameters
+    ==========
+    x : array
+        array of row indices
+    y : array
+        array of corresponding y indices
+    count : int, 1
+        How much to add to each coordinate
+
+    Examples
+    ========
+
+    Make a 5x20000 array (a) and define 95 coordinate positions to update (i and p)
+
+    >>> a = np.zeros((5, 20000))
+    >>> i = np.random.choice(range(5), size=95, replace=True)
+    >>> p = np.random.choice(range(100), size=95, replace=False) + 1000
+
+    For comparison, define the slow method
+
+    >>> def add_to_array_positions_slow(x, y, a, count=1):
+    >>>     for idx, pos in zip(x, y):
+    >>>         a[idx, pos] += count
+    >>>     return a
+
+    Compare the speeds
+
+    >>> %timeit add_to_array_positions_slow(i, p, a)
+    74.5 µs ± 4.42 µs per loop (mean ± std. dev. of 7 runs, 10000 loops each)
+    >>> %timeit add_to_array_positions(i, p, a)
+    798 ns ± 12.7 ns per loop (mean ± std. dev. of 7 runs, 1000000 loops each)
+    """
+    for idx, pos in zip(x, y):
+        a[idx, pos] += count
+
+    return a
+
+
+
+
