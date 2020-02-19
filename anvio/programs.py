@@ -59,6 +59,7 @@ ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'hmm-profile': {'name': 'HMM PROFILE', 'type': 'CONCEPT', 'internal': True},
                'cogs-data': {'name': 'COGs DATA', 'type': 'DATA', 'internal': True},
                'pfams-data': {'name': 'PFAMs DATA', 'type': 'DATA', 'internal': True},
+               'trna-genes': {'name': 'TRNA GENES', 'type': 'CONCEPT', 'internal': True},
                'misc-data-items-txt': {'name': 'ITEMS DATA', 'type': 'TXT', 'internal': False},
                'misc-data-items': {'name': 'ITEMS DATA', 'type': 'CONCEPT', 'internal': False},
                'misc-data-layers-txt': {'name': 'LAYERS DATA', 'type': 'TXT', 'internal': False},
@@ -250,7 +251,6 @@ class AnvioPrograms:
 
 
     def create_program_classes(self, okay_if_no_meta=False, quiet=False):
-        programs_dict = {}
         num_all_programs = len(self.all_program_filepaths)
 
         meta_count = 0
