@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""This file contains KofamSetup, Kofam, and ModulesDatabase classes."""
+"""This file contains Kegg related classes."""
 
 import os
 import gzip
@@ -33,7 +33,7 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-class KofamContext(object):
+class KeggContext(object):
     """The purpose of this base class is to define shared functions and file paths for all KOfam operations."""
 
     def __init__(self, args):
@@ -131,7 +131,7 @@ class KofamContext(object):
                 no_threshold_list.append(k)
         return skip_list, no_threshold_list
 
-class KofamSetup(KofamContext):
+class KeggSetup(KeggContext):
     """Class for setting up KEGG Kofam HMM profiles. It performs sanity checks and downloads, unpacks, and prepares the profiles for later use by `hmmscan`.
 
     Parameters
@@ -146,7 +146,7 @@ class KofamSetup(KofamContext):
         self.progress = progress
 
         # init the base class
-        KofamContext.__init__(self, self.args)
+        KeggContext.__init__(self, self.args)
 
         filesnpaths.is_program_exists('hmmpress')
 
@@ -424,10 +424,9 @@ class KofamSetup(KofamContext):
         self.run_hmmpress()
         self.setup_modules_db()
 
-class KofamRunHMMs(KofamContext):
+class KeggRunHMMs(KeggContext):
     """ Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DB for later metabolism prediction.
 
-    Parameters
     ==========
     args: Namespace object
         All the arguments supplied by user to anvi-run-kegg-kofams
@@ -442,7 +441,7 @@ class KofamRunHMMs(KofamContext):
         self.ko_dict = None # should be set up by setup_ko_dict()
 
         # init the base class
-        KofamContext.__init__(self, self.args)
+        KeggContext.__init__(self, self.args)
 
         filesnpaths.is_program_exists('hmmscan')
 
@@ -588,3 +587,31 @@ class ModulesDatabase():
         self.db.set_meta_value('db_type', 'modules')
 
         self.db.disconnect()
+
+class ModulesTable:
+    """This class defines operations for creating the Modules table in Modules.db"""
+
+    def __init__(self, split_length):
+        self.db_entries = []
+        self.total_modules = 0
+
+    """ UPDATE ME TO WORK FOR MODULES
+    def append(self, seq_id, sequence, gene_start_stops=None):
+        sequence_length = len(sequence)
+        gc_content = utils.get_GC_content_for_sequence(sequence)
+
+        # how many splits will there be?
+        split_start_stops = utils.get_split_start_stops(sequence_length, self.split_length, gene_start_stops)
+
+        self.total_nts += sequence_length
+        self.total_contigs += 1
+        db_entry = tuple([seq_id, sequence_length, gc_content, len(split_start_stops)])
+        self.db_entries.append(db_entry)
+
+        return (sequence_length, split_start_stops, gc_content)
+
+
+    def store(self, db):
+        if len(self.db_entries):
+            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.contigs_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
+    """
