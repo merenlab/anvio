@@ -188,7 +188,7 @@ class Read:
         # attributes, all attributes of interest are redefined here
         self.query_sequence = self.r.query_sequence
         self.cigartuples = self.r.cigartuples
-        self.reference_positions = self.r.get_reference_positions()
+        self.reference_positions = numpy.array(self.r.get_reference_positions())
         self.reference_sequence = self.r.get_reference_sequence()
         self.reference_start = self.r.reference_start
         self.reference_end = self.r.reference_end
@@ -401,18 +401,37 @@ class Read:
             raise ConfigError("Read.trim :: Requesting to trim an amount %d that exceeds the alignment"
                               " range of %d" % (trim_by, self.reference_end - self.reference_start))
 
-        cigar_tuples = self.cigartuples
+        if len(self.cigartuples) == 1:
+            # There contains only a pure mapping segment, i.e. no indels. This clause accounts for
+            # the majority of reads and exists to speed up the code.
+            cigartuple = self.cigartuples[0]
+            self.cigartuples = [(cigartuple[0], cigartuple[1] - trim_by)]
 
-        if side == 'right':
-            # flip the cigar tuple
-            cigar_tuples = cigar_tuples[::-1]
+            if side == 'left':
+                self.query_sequence = self.query_sequence[trim_by:]
+                self.reference_sequence = self.reference_sequence[trim_by:]
+                self.reference_positions = self.reference_positions[trim_by:]
+                self.reference_start += trim_by
 
-        trimmed_cigar_tuples = cigar_tuples.copy()
+            else:
+                self.query_sequence = self.query_sequence[:-trim_by]
+                self.reference_sequence = self.reference_sequence[:-trim_by]
+                self.reference_positions = self.reference_positions[:-trim_by]
+                self.reference_end -= trim_by
+
+            return
+
+        # We are here because the read was not a simple mapping. There are indels and so we need to
+        # parse cigartuples. Buckle up.
+
+        cigartuples = self.cigartuples[::-1] if side == 'right' else self.cigartuples
+        trimmed_cigartuples = cigartuples.copy()
 
         ref_positions_trimmed = 0
         read_positions_trimmed = 0
         terminate_next = False
-        for operation, length, consumes_read, consumes_ref in self.cigarops.iterate(cigar_tuples):
+
+        for operation, length, consumes_read, consumes_ref in self.cigarops.iterate(cigartuples):
 
             if consumes_ref and consumes_read:
                 if terminate_next:
@@ -424,40 +443,37 @@ class Read:
                     # the length of the operation exceeds the required trim amount. So we will
                     # terminate this iteration. To trim the cigar tuple, we replace it with a
                     # truncated length
-                    trimmed_cigar_tuples[0] = (operation, length - remaining)
+                    trimmed_cigartuples[0] = (operation, length - remaining)
                     ref_positions_trimmed += remaining
                     read_positions_trimmed += remaining
                     break
 
-            ref_positions_trimmed += length if consumes_ref else 0
-            read_positions_trimmed += length if consumes_read else 0
+                ref_positions_trimmed += length
+                read_positions_trimmed += length
+
+            elif consumes_ref:
+                ref_positions_trimmed += length
+
+            elif consumes_read:
+                read_positions_trimmed += length
 
             if ref_positions_trimmed >= trim_by:
                 terminate_next = True
 
-            trimmed_cigar_tuples.pop(0)
+            trimmed_cigartuples.pop(0)
 
-        # set new cigartuples
-        self.cigartuples = trimmed_cigar_tuples if side == 'left' else trimmed_cigar_tuples[::-1]
-
-        # set new query_sequence
-        self.query_sequence = self.query_sequence[read_positions_trimmed:] if side == 'left' else self.query_sequence[:-read_positions_trimmed]
-
-        # set new reference_sequence
-        self.reference_sequence = self.reference_sequence[ref_positions_trimmed:] if side == 'left' else self.reference_sequence[:-ref_positions_trimmed]
-
-        # set new reference_positions and reference_sequence
         if side == 'right':
-            num_pos = len(self.reference_positions)
-            last_pos = self.reference_positions[-1]
-            cutoff_index = next(num_pos - i for i, pos in enumerate(self.reference_positions[::-1]) if last_pos - pos >= trim_by)
-            self.reference_positions = self.reference_positions[:cutoff_index]
+            self.cigartuples = trimmed_cigartuples[::-1]
+            self.query_sequence = self.query_sequence[:-read_positions_trimmed]
+            self.reference_sequence = self.reference_sequence[:-ref_positions_trimmed]
+            self.reference_positions = self.reference_positions[self.reference_positions < self.reference_end - ref_positions_trimmed]
+            self.reference_end -= ref_positions_trimmed
         else:
-            cutoff_index = next(i for i, pos in enumerate(self.reference_positions) if pos - self.reference_start >= trim_by)
-            self.reference_positions = self.reference_positions[cutoff_index:]
-
-        self.reference_start = self.reference_positions[0]
-        self.reference_end = self.reference_positions[-1] + 1
+            self.cigartuples = trimmed_cigartuples
+            self.query_sequence = self.query_sequence[read_positions_trimmed:]
+            self.reference_sequence = self.reference_sequence[ref_positions_trimmed:]
+            self.reference_positions = self.reference_positions[self.reference_positions >= self.reference_start + ref_positions_trimmed]
+            self.reference_start += ref_positions_trimmed
 
 
 class Composition:
