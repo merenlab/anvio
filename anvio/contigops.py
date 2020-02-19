@@ -369,7 +369,7 @@ class Auxiliary:
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
             aligned_sequence = read.get_aligned_sequence()
             aligned_sequence_as_index = [self.nt_to_array_index[nt] for nt in aligned_sequence]
-            reference_positions_in_split = [pos - self.split.start for pos in read.reference_positions]
+            reference_positions_in_split = read.reference_positions - self.split.start
 
             for idx, pos in zip(aligned_sequence_as_index, reference_positions_in_split):
                 allele_counts_array[idx, pos] += 1
