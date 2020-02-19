@@ -161,12 +161,57 @@ class Auxiliary:
         self.profile_SCVs = profile_SCVs
         self.report_variability_full = report_variability_full
 
+        # used during read looping
+        self.fast_nt_to_array_lookup = self.get_fast_nt_to_array_index_lookup()
+
+        # used during array processing
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
         self.cdn_to_array_index = {cdn: i for i, cdn in enumerate(constants.codons)}
 
         if self.profile_SCVs:
             if not all([necessary in self.split.per_position_info for necessary in ['forward', 'gene_start', 'gene_stop']]):
                 raise ConfigError("Auxiliary :: self.split.per_position_info does not contain the info required for SCV profiling")
+
+
+    def get_fast_nt_to_array_index_lookup(self):
+        """Get a lookup array for converting nt sequences to index arrays.
+
+        In action, this approach is twice as fast as a list comprehension for 100 sequence reads.
+
+        Examples
+        ========
+
+        Create a random sequence
+
+        >>> import anvio.constants as constants
+        >>> seq = ''.join(list(np.random.choice(constants.nucleotides, size=100)))
+        >>> seq
+        'CGCATCCNAGNGNGCTNCGCTTCNANTGAACNCAGTACNGGNTCGTGNGGNTAANNGCGNGNNNNNCGNNTTCTNTACNACGTTGATAGATGNCTNNCGN'
+
+        >>> %timeit quick = self.fast_nt_to_array_lookup[np.array([seq]).view(np.int32)]
+        2.81 µs ± 65.4 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+        >>> quick
+        array([1, 2, 1, 0, 3, 1, 1, 4, 0, 2, 4, 2, 4, 2, 1, 3, 4, 1, 2, 1, 3, 3,
+               1, 4, 0, 4, 3, 2, 0, 0, 1, 4, 1, 0, 2, 3, 0, 1, 4, 2, 2, 4, 3, 1,
+               2, 3, 2, 4, 2, 2, 4, 3, 0, 0, 4, 4, 2, 1, 2, 4, 2, 4, 4, 4, 4, 4,
+               1, 2, 4, 4, 3, 3, 1, 3, 4, 3, 0, 1, 4, 0, 1, 2, 3, 3, 2, 0, 3, 0,
+               2, 0, 3, 2, 4, 1, 3, 4, 4, 1, 2, 4])
+
+        >>> %timeit slow = [nt_to_array_index[s] for s in seq]
+        5.25 µs ± 156 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+        >>> slow
+        [1, 2, 1, 0, 3, 1, 1, 4, 0, 2, 4, 2, 4, 2, 1, 3, 4, 1, 2, 1, 3, 3,
+         1, 4, 0, 4, 3, 2, 0, 0, 1, 4, 1, 0, 2, 3, 0, 1, 4, 2, 2, 4, 3, 1,
+         2, 3, 2, 4, 2, 2, 4, 3, 0, 0, 4, 4, 2, 1, 2, 4, 2, 4, 4, 4, 4, 4,
+         1, 2, 4, 4, 3, 3, 1, 3, 4, 3, 0, 1, 4, 0, 1, 2, 3, 3, 2, 0, 3, 0,
+         2, 0, 3, 2, 4, 1, 3, 4, 4, 1, 2, 4]
+        """
+
+        nts_as_numbers = np.array(constants.nucleotides).view(np.int32)
+        fast_nt_to_array_index_lookup = np.zeros((nts_as_numbers.max()+1), dtype='int')
+        fast_nt_to_array_index_lookup[nts_as_numbers] = range(len(constants.nucleotides))
+
+        return fast_nt_to_array_index_lookup
 
 
     def run_SCVs(self, bam):
@@ -368,7 +413,7 @@ class Auxiliary:
         read_count = 0
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
             aligned_sequence = read.get_aligned_sequence()
-            aligned_sequence_as_index = [self.nt_to_array_index[nt] for nt in aligned_sequence]
+            aligned_sequence_as_index = self.fast_nt_to_array_lookup[np.array([aligned_sequence]).view(np.int32)]
             reference_positions_in_split = read.reference_positions - self.split.start
 
             for idx, pos in zip(aligned_sequence_as_index, reference_positions_in_split):
