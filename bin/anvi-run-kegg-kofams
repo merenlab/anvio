@@ -5,7 +5,7 @@ import sys
 
 import anvio
 import anvio.terminal as terminal
-import anvio.kofam as kofam
+import anvio.kegg as kegg
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
@@ -22,7 +22,7 @@ __description__ = "Run KOfam HMMs on an anvi'o contigs database."
 
 @time_program
 def main(args):
-    p = kofam.KofamRunHMMs(args)
+    p = kegg.KeggRunHMMs(args)
     p.process_kofam_hmms()
 
 if __name__ == '__main__':
