@@ -70,6 +70,24 @@ distance_metric_default = 'euclidean'
 linkage_method_default = 'ward'
 
 # Whether a cigarstring operation consumes the read, reference, or both
+#
+#Here are the possible bam operations.
+#
+#    M       BAM_CMATCH      0
+#    I       BAM_CINS        1
+#    D       BAM_CDEL        2
+#    N       BAM_CREF_SKIP   3
+#    S       BAM_CSOFT_CLIP  4
+#    H       BAM_CHARD_CLIP  5
+#    P       BAM_CPAD        6
+#    =       BAM_CEQUAL      7
+#    X       BAM_CDIFF       8
+#
+#Notes
+#=====
+#- A description of what possible cigar operations are possible, see
+#  https://imgur.com/a/fiQZXNg, which comes from here:
+#  https://samtools.github.io/hts-specs/SAMv1.pdf
 cigar_consumption = {
     0: (True, True),
     1: (True, False),
