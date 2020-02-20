@@ -1969,6 +1969,14 @@ D = {
                       class based on the number of threads. If you have *any* hesitation about whether you know what you are doing,\
                       you should not change this value."}
                 ),
+    'window-size': (
+            ['--window-size'],
+            {'default': 500,
+             'metavar': 'WINDOW_SIZE',
+             'type': int,
+             'required': False,
+             'help': "The size of the window of ngram to analyze for synteny patterns."}
+                ),
     'write-buffer-size': (
             ['--write-buffer-size'],
             {'default': 500,
