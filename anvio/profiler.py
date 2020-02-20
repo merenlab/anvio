@@ -584,94 +584,87 @@ class BAMProfiler(dbops.ContigsSuperclass):
         bam_file = bamops.BAMFileObject(self.input_file_path)
 
         while True:
-            import pprofile
-            prof = pprofile.Profile()
-            with prof():
-                timer = terminal.Timer(initial_checkpoint_key='Start')
+            timer = terminal.Timer(initial_checkpoint_key='Start')
 
-                index = available_index_queue.get(True)
-                contig_name = self.contig_names[index]
-                contig = contigops.Contig(contig_name)
-                contig.length = self.contig_lengths[index]
-                contig.split_length = self.a_meta['split_length']
-                contig.min_coverage_for_variability = self.min_coverage_for_variability
-                contig.skip_SNV_profiling = self.skip_SNV_profiling
-                contig.report_variability_full = self.report_variability_full
-                contig.ignore_orphans = self.ignore_orphans
-                timer.make_checkpoint('%s initialization done' % contig_name)
+            index = available_index_queue.get(True)
+            contig_name = self.contig_names[index]
+            contig = contigops.Contig(contig_name)
+            contig.length = self.contig_lengths[index]
+            contig.split_length = self.a_meta['split_length']
+            contig.min_coverage_for_variability = self.min_coverage_for_variability
+            contig.skip_SNV_profiling = self.skip_SNV_profiling
+            contig.report_variability_full = self.report_variability_full
+            contig.ignore_orphans = self.ignore_orphans
+            timer.make_checkpoint('%s initialization done' % contig_name)
 
-                # populate contig with empty split objects
-                for split_name in self.contig_name_to_splits[contig_name]:
-                    s = self.splits_basic_info[split_name]
-                    split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
-                    split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
-                    contig.splits.append(split)
+            # populate contig with empty split objects
+            for split_name in self.contig_name_to_splits[contig_name]:
+                s = self.splits_basic_info[split_name]
+                split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
+                split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
+                contig.splits.append(split)
 
-                timer.make_checkpoint('Split objects initialized')
+            timer.make_checkpoint('Split objects initialized')
 
-                self.populate_gene_info_for_splits(contig)
-                timer.make_checkpoint('Gene info for split added')
+            self.populate_gene_info_for_splits(contig)
+            timer.make_checkpoint('Gene info for split added')
 
-                # analyze coverage for each split
-                contig.analyze_coverage(bam_file)
-                timer.make_checkpoint('Coverage done')
+            # analyze coverage for each split
+            contig.analyze_coverage(bam_file)
+            timer.make_checkpoint('Coverage done')
 
-                # test the mean coverage of the contig.
-                if contig.coverage.mean < self.min_mean_coverage:
-                    output_queue.put(None)
-                    if anvio.DEBUG:
-                        timer.gen_report()
-                    continue
-
-                if not self.skip_SNV_profiling:
-                    for split in contig.splits:
-                        split.auxiliary = contigops.Auxiliary(split,
-                                                              profile_SCVs=self.profile_SCVs,
-                                                              skip_SNV_profiling=self.skip_SNV_profiling,
-                                                              min_coverage=self.min_coverage_for_variability,
-                                                              report_variability_full=self.report_variability_full)
-
-                        split.auxiliary.process(bam_file)
-
-                        if split.num_SNV_entries == 0:
-                            continue
-
-                        # Add these redundant data ad-hoc
-                        split.SNV_profiles['split_name'] = [split.name] * split.num_SNV_entries
-                        split.SNV_profiles['sample_id'] = [self.sample_id] * split.num_SNV_entries
-                        split.SNV_profiles['pos_in_contig'] = split.SNV_profiles['pos'] + split.start
-
-                        for gene_id in split.SCV_profiles:
-                            split.SCV_profiles[gene_id]['sample_id'] = [self.sample_id] * split.num_SCV_entries[gene_id]
-                            split.SCV_profiles[gene_id]['corresponding_gene_call'] = [gene_id] * split.num_SCV_entries[gene_id]
-
-                    timer.make_checkpoint('Auxiliary analyzed')
-
-                for split in contig.splits:
-                    # output_queue.put(contig) is an expensive operation that does not handle large data
-                    # structures well. So we delete everything we can in split that was an intermediate
-                    del split.per_position_info
-
-                output_queue.put(contig)
-                timer.make_checkpoint('Contig put in output queue')
-
-                # We try to encourage the garbage collector to remove these objects.
-                for split in contig.splits:
-                    del split.coverage
-                    del split.auxiliary
-                    del split
-                del contig.splits[:]
-                del contig.coverage
-                del contig
-
-                timer.make_checkpoint('Cache emptied')
-
+            # test the mean coverage of the contig.
+            if contig.coverage.mean < self.min_mean_coverage:
+                output_queue.put(None)
                 if anvio.DEBUG:
                     timer.gen_report()
+                continue
 
-            f =  open('callgrind.out', 'w')
-            prof.callgrind(f)
-            f.close()
+            if not self.skip_SNV_profiling:
+                for split in contig.splits:
+                    split.auxiliary = contigops.Auxiliary(split,
+                                                          profile_SCVs=self.profile_SCVs,
+                                                          skip_SNV_profiling=self.skip_SNV_profiling,
+                                                          min_coverage=self.min_coverage_for_variability,
+                                                          report_variability_full=self.report_variability_full)
+
+                    split.auxiliary.process(bam_file)
+
+                    if split.num_SNV_entries == 0:
+                        continue
+
+                    # Add these redundant data ad-hoc
+                    split.SNV_profiles['split_name'] = [split.name] * split.num_SNV_entries
+                    split.SNV_profiles['sample_id'] = [self.sample_id] * split.num_SNV_entries
+                    split.SNV_profiles['pos_in_contig'] = split.SNV_profiles['pos'] + split.start
+
+                    for gene_id in split.SCV_profiles:
+                        split.SCV_profiles[gene_id]['sample_id'] = [self.sample_id] * split.num_SCV_entries[gene_id]
+                        split.SCV_profiles[gene_id]['corresponding_gene_call'] = [gene_id] * split.num_SCV_entries[gene_id]
+
+                timer.make_checkpoint('Auxiliary analyzed')
+
+            for split in contig.splits:
+                # output_queue.put(contig) is an expensive operation that does not handle large data
+                # structures well. So we delete everything we can in split that was an intermediate
+                del split.per_position_info
+
+            output_queue.put(contig)
+            timer.make_checkpoint('Contig put in output queue')
+
+            # We try to encourage the garbage collector to remove these objects.
+            for split in contig.splits:
+                del split.coverage
+                del split.auxiliary
+                del split
+            del contig.splits[:]
+            del contig.coverage
+            del contig
+
+            timer.make_checkpoint('Cache emptied')
+
+            if anvio.DEBUG:
+                timer.gen_report()
 
         # we are closing this object here for clarity, although w
         # are not really closing it since the code never reaches here
