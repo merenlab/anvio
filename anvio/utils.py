@@ -1495,30 +1495,40 @@ def convert_sequence_indexing(index, source="M0", destination="M1"):
     return index
 
 
+@njit
 def get_blocks(array):
-    """Returns blocks of consecutive numbers
-
-    Modified from:
-    https://stackoverflow.com/questions/7352684/how-to-find-the-groups-of-consecutive-elements-from-an-array-in-numpy/7353335#7353335
+    """Iterator function that returns blocks of consecutive numbers
 
     Parameters
     ==========
     array : array-like
+        a pre-sorted array
 
     Examples
     ========
 
-    a = np.array([0, 47, 48, 49, 50, 97, 98, 99])
-    get_blocks(a)
-
-    >>> [(0, 1), (47, 51), (97, 100)]
+    >>> a = np.array([0, 47, 48, 49, 50, 97, 98, 99])
+    >>> for i in get_blocks(a): print(i)
+    (0, 1)
+    (47, 51)
+    (97, 100)
     """
 
-    if not len(array):
-        return []
+    block_start = array[0]
+    last = block_start - 1
 
-    split = np.split(array, np.where(np.diff(array) != 1)[0] + 1)
-    return [(x[0], x[-1] + 1) for x in split]
+    for i in range(len(array)):
+        current = array[i]
+
+        if current > last + 1:
+            yield block_start, last + 1
+
+            block_start = current
+
+        last = current
+
+    else:
+        yield block_start, last + 1
 
 
 def convert_SSM_to_single_accession(matrix_data):
