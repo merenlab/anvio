@@ -253,7 +253,12 @@ class ProcessAlleleCounts:
         if sequence is None:
             sequence = self.d['reference']
 
-        return [item in self.allele_to_array_index for item in sequence]
+        items_in_sequence = set(sequence)
+        for item in items_in_sequence:
+            if item not in self.allele_to_array_index:
+                return [item in self.allele_to_array_index for item in sequence]
+
+        return [True] * len(sequence)
 
 
     def get_indices_above_coverage_threshold(self, coverage=None, threshold=None):
