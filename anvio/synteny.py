@@ -71,18 +71,13 @@ class NGram(object):
                                contigs database :/\
                                Please confirm you are only providing one annotation source :)")
 
-        # Confirm only one annotation source
-        # if len(self.annotation_source) > 1:
-        #     raise ConfigError("You can only provide one annotation source  for this\
-        #                         anvi-analyze-synteny.")
-
         if not self.args.output_file:
             raise ConfigError("You should provide an output file name.")
 
 
     def populate_genes(self):
         genes_and_functions_list = []
-        counter = 0
+        ngram_counts = []
         # Iterate through contigsDBs
         for contigs_db_name in self.external_genomes:
             # Extract file path
@@ -104,11 +99,18 @@ class NGram(object):
                 contigs_dict[item] = contig_function_list
 
             # Run synteny algorithm and count occurrences of ngrams
-            print(self.count_synteny(contigs_dict))
+            ngram_counts.append(self.count_synteny(contigs_dict))
 
-            counter = counter + 1
-            if counter == 2:
-                break
+        # Merge list of dicts into final dict of ngram counts
+        final_dict = {}
+        for dictio in ngram_counts:
+            for key, value in dictio.items():
+                if key in final_dict.keys():
+                    final_dict[key] = value + 1
+                else:
+                    final_dict[key] = value
+
+        print(final_dict)
 
     def get_genes_and_functions_from_contigs_db(self, contigs_db_path):
         # get contigsDB
@@ -129,21 +131,15 @@ class NGram(object):
             list_of_gene_attributes = []
             if gci in gene_to_function_dict:
                 accession = gene_to_function_dict[gci]
-                accession =accession.split(", ")
-                accession = sorted(accession)
-                accession = "-".join(map(str, list(accession)))
+                accession = accession.replace(" ","")
                 contig_name = genes_in_contigs[gci]['contig']
-                list_of_gene_attributes.append(gci)
-                list_of_gene_attributes.append(accession)
-                list_of_gene_attributes.append(contig_name)
+                list_of_gene_attributes.extend((gci, accession, contig_name))
                 genes_and_functions_list.append(list_of_gene_attributes)
             else: # adding in "unknown annotation" if there is none
                 gci = counter
-                accession = "unknown-function-" + str(counter)
+                accession = "unknown-function-" + "{:06d}".format(1) + str(counter) # add leading 0 
                 contig_name = genes_in_contigs[gci]['contig']
-                list_of_gene_attributes.append(gci)
-                list_of_gene_attributes.append(accession)
-                list_of_gene_attributes.append(contig_name)
+                list_of_gene_attributes.extend((gci,accession,contig_name))
                 genes_and_functions_list.append(list_of_gene_attributes)
             counter = counter + 1
 
@@ -152,7 +148,6 @@ class NGram(object):
 
     def count_synteny(self, contigs_dict):
         """
-        Need to make an example where there is more than one contig in a contigsDB
         """
         k = self.window_size
         for key in sorted(contigs_dict.keys()):
@@ -163,7 +158,7 @@ class NGram(object):
             # k = 3
             for i in range(0, len(genes) - k + 1):
                 window = sorted(genes[i:i + k])
-                ngram = "_".join(map(str, list(window)))
+                ngram = "::".join(map(str, list(window)))
                 # print(ngram)
                 # if ngram is not in dictionary add it
                 # if it is add + 1
@@ -172,17 +167,3 @@ class NGram(object):
                 else:
                     kFreq[ngram] = 1
             return kFreq
-
-
-        # for i in range(0, len(genes) - k + 1):
-        #     print(i)
-        #     # extract window
-        #     window = sorted(genes[i:i + k])
-        #     ngram = "_".join(map(str, list(window)))
-        #     # if ngram is not in dictionary add it
-        #     # if it is add + 1
-        #     if ngram in kFreq:
-        #         kFreq[ngram] +=  1
-        #     else:
-        #         kFreq[ngram] = 1
-        #     return kFreq
