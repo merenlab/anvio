@@ -22,8 +22,9 @@ import urllib.request, urllib.error, urllib.parse
 import numpy as np
 import pandas as pd
 
-from email.mime.text import MIMEText
+from numba import njit
 from collections import Counter
+from email.mime.text import MIMEText
 
 import anvio
 import anvio.db as db
@@ -602,6 +603,48 @@ def convert_binary_blob_to_numpy_array(blob, dtype, decompress=True):
         return np.frombuffer(gzip.decompress(blob), dtype=dtype)
     else:
         return np.frombuffer(blob, dtype=dtype)
+
+
+@njit
+def add_to_2D_numeric_array(x, y, a, count=1):
+    """just-in-time compiled function
+
+    Parameters
+    ==========
+    x : array
+        array of row indices
+    y : array
+        array of corresponding y indices
+    count : int, 1
+        How much to add to each coordinate
+
+    Examples
+    ========
+
+    Make a 5x20000 array (a) and define 95 coordinate positions to update (i and p)
+
+    >>> a = np.zeros((5, 20000))
+    >>> i = np.random.choice(range(5), size=95, replace=True)
+    >>> p = np.random.choice(range(100), size=95, replace=False) + 1000
+
+    For comparison, define the slow method
+
+    >>> def add_to_2D_numeric_array_slow(x, y, a, count=1):
+    >>>     for idx, pos in zip(x, y):
+    >>>         a[idx, pos] += count
+    >>>     return a
+
+    Compare the speeds
+
+    >>> %timeit add_to_2D_numeric_array_slow(i, p, a)
+    74.5 µs ± 4.42 µs per loop (mean ± std. dev. of 7 runs, 10000 loops each)
+    >>> %timeit _add_to_2D_numeric_array(i, p, a)
+    798 ns ± 12.7 ns per loop (mean ± std. dev. of 7 runs, 1000000 loops each)
+    """
+    for idx, pos in zip(x, y):
+        a[idx, pos] += count
+
+    return a
 
 
 def is_all_columns_present_in_TAB_delim_file(columns, file_path):
