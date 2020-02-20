@@ -2,6 +2,9 @@
 # pylint: disable=line-too-long
 """
     Classes to work with ngrams.
+
+    These are classes to deconstruct loci into ngrams. They will be used
+    to analyze conserved genes and synteny structures across loci.
 """
 
 import anvio
@@ -31,7 +34,10 @@ class NGram(object):
 
             >>> ./run_pangenome_tests.sh
             >>> cd anvio/anvio/tests/sandbox/test-output/pan_test
-            >>> anvi-analyze-synteny -e external-genomes.txt  --annotation-source COG_CATEGORY
+            >>> anvi-analyze-synteny -e external-genomes.txt  \
+                                     --annotation-source COG_FUNCTION \
+                                     --window-size 3 \
+                                     -o test
         """
 
         self.args = args
@@ -62,24 +68,34 @@ class NGram(object):
 
         if self.annotation_source not in g.function_annotation_sources:
             raise ConfigError("The annotation source you requested does not appear to be in the\
-                               contigs database :/")
+                               contigs database :/\
+                               Please confirm you are only providing one annotation source :)")
+
+        # Confirm only one annotation source
+        # if len(self.annotation_source) > 1:
+        #     raise ConfigError("You can only provide one annotation source  for this\
+        #                         anvi-analyze-synteny.")
+
+        if not self.args.output_file:
+            raise ConfigError("You should provide an output file name.")
 
 
     def populate_genes(self):
         genes_and_functions_list = []
         counter = 0
+        # Iterate through contigsDBs
         for contigs_db_name in self.external_genomes:
+            # Extract file path
             contigs_db_path = self.external_genomes[contigs_db_name]["contigs_db_path"]
 
-            # contigs_list = [] 
-            contigs_dict = {}
-
-
+            # Get list of genes and functions    
             genes_and_functions_list = self.get_genes_and_functions_from_contigs_db(contigs_db_path)
-            # print(type(genes_and_functions_list))
-            # contigs_list.append([entry[2] for entry in genes_and_functions_list])  
+
             # Get unique list of the contigs from this contigsDB (there could be more than one)
             contigs_list = set(([entry[2] for entry in genes_and_functions_list]))
+            
+            # iterate through list of contigs and make dictionary 'contig_name': list_of_functions
+            contigs_dict = {}
             for item in contigs_list:
                 contig_function_list = []
                 for i in genes_and_functions_list:
@@ -87,50 +103,64 @@ class NGram(object):
                         contig_function_list.append([i[0],i[1]])
                 contigs_dict[item] = contig_function_list
 
+            # Run synteny algorithm and count occurrences of ngrams
             print(self.count_synteny(contigs_dict))
 
-
             counter = counter + 1
-            if counter == 1:
+            if counter == 2:
                 break
-            # for item in genes_and_functions_list:
-                # contig_name = genes_and_functions_list[item][2]
-                # function_and_genecallerid = (genes_and_functions_list[item][0],genes_and_functions_list[item][1])
-
-                # if contig_name 
-                # print (contig_name)
-
-        # print(genes_and_functions_list)
-
-            # do something with genes_and_functions_list
-            # counts = self.count_synteny(genes_and_functions_list)
 
     def get_genes_and_functions_from_contigs_db(self, contigs_db_path):
+        # get contigsDB
         contigs_db = dbops.ContigsDatabase(contigs_db_path)
-
+        # extract contigs names 
         genes_in_contigs = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
+        # extract annotations and filter for the sources designated by user
         annotations_dict = contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name)
         annotations_dict = utils.get_filtered_dict(annotations_dict, 'source', set([self.annotation_source]))
 
-        # FIXME: turn genes_and_functions down below into a dictionary where keys are contig names and values are list of gene caller ids and function names.
+        # Make dict with gene-caller-id:accession
+        gene_to_function_dict = {entry['gene_callers_id']: entry['accession'] for entry in annotations_dict.values()}
 
-        genes_and_functions = [(entry['gene_callers_id'], 
-                                entry['function'], 
-                                genes_in_contigs[entry['gene_callers_id']]['contig']) for entry in annotations_dict.values()]
+        # Make list of lists containing gene attributes. If there is not annotation add one in!
+        genes_and_functions_list = [] # List of lists [gene-caller-id, accessions, contig-name]
+        counter = 0
+        for gci in genes_in_contigs:
+            list_of_gene_attributes = []
+            if gci in gene_to_function_dict:
+                accession = gene_to_function_dict[gci]
+                accession =accession.split(", ")
+                accession = sorted(accession)
+                accession = "-".join(map(str, list(accession)))
+                contig_name = genes_in_contigs[gci]['contig']
+                list_of_gene_attributes.append(gci)
+                list_of_gene_attributes.append(accession)
+                list_of_gene_attributes.append(contig_name)
+                genes_and_functions_list.append(list_of_gene_attributes)
+            else: # adding in "unknown annotation" if there is none
+                gci = counter
+                accession = "unknown-function-" + str(counter)
+                contig_name = genes_in_contigs[gci]['contig']
+                list_of_gene_attributes.append(gci)
+                list_of_gene_attributes.append(accession)
+                list_of_gene_attributes.append(contig_name)
+                genes_and_functions_list.append(list_of_gene_attributes)
+            counter = counter + 1
 
-        return genes_and_functions
+        return genes_and_functions_list
 
 
     def count_synteny(self, contigs_dict):
         """
         Need to make an example where there is more than one contig in a contigsDB
         """
+        k = self.window_size
         for key in sorted(contigs_dict.keys()):
             gci_function = contigs_dict[key]
-            genes = [(entry[1]) for entry in gci_function]
+            genes = [entry[1] for entry in gci_function]
 
             kFreq = {}
-            k = 3
+            # k = 3
             for i in range(0, len(genes) - k + 1):
                 window = sorted(genes[i:i + k])
                 ngram = "_".join(map(str, list(window)))
@@ -156,8 +186,3 @@ class NGram(object):
         #     else:
         #         kFreq[ngram] = 1
         #     return kFreq
-
-
-    def driveSynteny(self):
-        for key,value in self.genes:
-            self.genes[key] = self.count_synteny(value)
