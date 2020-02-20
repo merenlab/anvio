@@ -113,52 +113,6 @@ class Codon:
         return dist
 
 
-class Cigar:
-    def __init__(self):
-        """Gives some useful information about cigar string and their operations
-
-        Here are the possible bam operations.
-
-            M       BAM_CMATCH      0
-            I       BAM_CINS        1
-            D       BAM_CDEL        2
-            N       BAM_CREF_SKIP   3
-            S       BAM_CSOFT_CLIP  4
-            H       BAM_CHARD_CLIP  5
-            P       BAM_CPAD        6
-            =       BAM_CEQUAL      7
-            X       BAM_CDIFF       8
-
-        Notes
-        =====
-        - A description of what possible cigar operations are possible, see
-          https://imgur.com/a/fiQZXNg, which comes from here:
-          https://samtools.github.io/hts-specs/SAMv1.pdf
-        """
-
-        # key = cigar operation, val[0]/val[1] is whether operation consumes the read/reference
-        self.consumes = constants.cigar_consumption
-
-
-    def iterate(self, cigar_tuples):
-        """Iterate through a list of cigar tuples
-
-        Parameters
-        ==========
-        cigar_tuples : list
-            Each element is a (operation, length) tuple. Operations are integers, see class
-            docstring
-
-        Yields
-        ======
-        output : tuple
-            (operation, length, consumes_read, consumes_ref) -> (int, int, bool, bool)
-        """
-
-        for operation, length in cigar_tuples:
-            yield (operation, length, *self.consumes[operation])
-
-
 class Read:
     def __init__(self, read):
         """Class for manipulating reads
@@ -169,7 +123,6 @@ class Read:
         """
 
         self.r = read
-        self.cigarops = Cigar()
 
         # redefine all properties of interest explicitly from pysam.AlignedSegment object as
         # attributes of this class. The reason for this is that some of the AlignedSegment
@@ -242,12 +195,25 @@ class Read:
         return segment
 
 
+    def iterate_cigartuples(self):
+        """Iterate through cigartuples
+
+        Yields
+        ======
+        output : tuple
+            (operation, length, consumes_read, consumes_ref) -> (int, int, bool, bool)
+        """
+
+        for operation, length in self.cigartuples:
+            yield (operation, length, *constants.cigar_consumption[operation])
+
+
     def __repr__(self):
         """Fancy output for viewing a read's alignment in relation to the reference"""
         ref, read = '', ''
         pos_ref, pos_read = 0, 0
 
-        for _, length, consumes_read, consumes_ref in self.cigarops.iterate(self.cigartuples):
+        for _, length, consumes_read, consumes_ref in self.iterate_cigartuples():
             if consumes_read:
                 read += self.query_sequence[pos_read:(pos_read + length)]
                 pos_read += length
@@ -283,8 +249,7 @@ class Read:
         block_start = self.reference_positions[0]
         block_length = 0
 
-        for _, length, consumes_read, consumes_ref in self.cigarops.iterate(self.cigartuples):
-
+        for _, length, consumes_read, consumes_ref in self.iterate_cigartuples():
             if consumes_read and consumes_ref:
                 block_length += length
 
@@ -336,18 +301,18 @@ class Read:
         - Takes anywhere from 150-450us
         """
 
-        aligned_sequence = ''
+        aligned_sequence = []
 
         read_pos = 0
-        for _, length, consumes_read, consumes_ref in self.cigarops.iterate(self.cigartuples):
+        for _, length, consumes_read, consumes_ref in self.iterate_cigartuples():
 
             if consumes_read:
                 if consumes_ref:
-                    aligned_sequence += self.query_sequence[read_pos:(read_pos + length)]
+                    aligned_sequence.append(self.query_sequence[read_pos:(read_pos + length)])
 
                 read_pos += length
 
-        return aligned_sequence
+        return ''.join(aligned_sequence)
 
 
     def trim(self, trim_by, side='left'):
@@ -421,7 +386,7 @@ class Read:
         read_positions_trimmed = 0
         terminate_next = False
 
-        for operation, length, consumes_read, consumes_ref in self.cigarops.iterate(cigartuples):
+        for operation, length, consumes_read, consumes_ref in self.iterate_cigartuples():
 
             if consumes_ref and consumes_read:
                 if terminate_next:
