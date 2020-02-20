@@ -50,7 +50,7 @@ class VariablityTestFactory:
 
 
 class ProcessAlleleCounts:
-    def __init__(self, allele_counts, allele_to_array_index, sequence, min_coverage=1, test_class=None, additional_per_position_data={}):
+    def __init__(self, allele_counts, allele_to_array_index, sequence, sequence_as_index=None, min_coverage=1, test_class=None, additional_per_position_data={}):
         """A class to process raw variability information for a given allele counts array
 
         Creates self.d, a dictionary of equal-length arrays that describes information related to
@@ -69,6 +69,12 @@ class ProcessAlleleCounts:
         sequence : str
             What sequence is this for? It should have length equal to number of columns of
             allele_counts
+
+        sequence_as_index : None
+            allele_to_array_index provides the means to convert sequence into its index-form.
+            However, this requires an expensive list comprehension. If you have already calculated
+            the sequence as an index, be sure you provide it here. If you don't provide anything, it
+            will be calculated at high cost
 
         min_coverage : int, 1
             positions below this coverage value will be filtered out
@@ -121,6 +127,12 @@ class ProcessAlleleCounts:
         self.d['allele_counts'] = allele_counts
         self.d['reference'] = np.array(list(sequence))
 
+        if sequence_as_index is not None:
+            self.sequence_as_index_provided = True
+            self.d['sequence_as_index'] = sequence_as_index
+        else:
+            self.sequence_as_index_provided = False
+
         if self.min_coverage < 1:
             raise ConfigError("ProcessAlleleCounts :: self.min_coverage must be at least 1, currently %d" % self.min_coverage)
 
@@ -131,7 +143,8 @@ class ProcessAlleleCounts:
         # remove positions that have non-allowed characters in the sequence
         self.filter_or_dont(self.get_boolean_of_allowable_characters_in_reference(), kind='boolean')
 
-        self.d['sequence_as_index'] = np.array([self.allele_to_array_index[item] for item in self.d['reference']])
+        if not self.sequence_as_index_provided:
+            self.d['sequence_as_index'] = np.array([self.allele_to_array_index[item] for item in self.d['reference']])
 
         self.d['coverage'] = self.get_coverage()
 

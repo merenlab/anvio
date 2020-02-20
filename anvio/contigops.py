@@ -427,10 +427,13 @@ class Auxiliary:
 
         test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
 
+        split_as_index = self.fast_nt_to_array_lookup[np.array([self.split.sequence]).view(np.int32)]
+
         nt_profile = ProcessNucleotideCounts(
             allele_counts=allele_counts_array,
             allele_to_array_index=self.nt_to_array_index,
             sequence=self.split.sequence,
+            sequence_as_index=split_as_index,
             min_coverage=self.min_coverage,
             test_class=test_class,
             additional_per_position_data=additional_per_position_data,
