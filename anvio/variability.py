@@ -106,6 +106,10 @@ class ProcessAlleleCounts:
             raise ConfigError("ProcessAlleleCounts :: allele_counts has %d positions, but sequence has %d." \
                               % (len(sequence), allele_counts.shape[1]))
 
+        if len(allele_to_array_index) != allele_counts.shape[0]:
+            raise ConfigError("ProcessAlleleCounts :: allele_counts has %d rows, but the allele_to_array_index dictionary has %d." \
+                              % (allele_counts.shape[0], len(allele_to_array_index)))
+
         self.min_coverage = min_coverage
         self.test_class = test_class
 
