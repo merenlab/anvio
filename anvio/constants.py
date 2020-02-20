@@ -69,6 +69,19 @@ max_depth_for_coverage = 60000
 distance_metric_default = 'euclidean'
 linkage_method_default = 'ward'
 
+# Whether a cigarstring operation consumes the read, reference, or both
+cigar_consumption = {
+    0: (True, True),
+    1: (True, False),
+    2: (False, True),
+    3: (False, True),
+    4: (True, False),
+    5: (False, False),
+    6: (False, False),
+    7: (True, True),
+    8: (True, True),
+}
+
 # this is to have a common language across multiple modules when genomes (whether they are MAGs,
 # SAGs, or isolate genomes):
 essential_genome_info = ['gc_content', 'num_contigs', 'num_splits', 'total_length', 'num_genes', 'percent_completion', 'percent_redundancy',

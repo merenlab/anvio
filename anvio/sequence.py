@@ -137,17 +137,7 @@ class Cigar:
         """
 
         # key = cigar operation, val[0]/val[1] is whether operation consumes the read/reference
-        self.consumes = {
-            0: (True, True),
-            1: (True, False),
-            2: (False, True),
-            3: (False, True),
-            4: (True, False),
-            5: (False, False),
-            6: (False, False),
-            7: (True, True),
-            8: (True, True),
-        }
+        self.consumes = constants.cigar_consumption
 
 
     def iterate(self, cigar_tuples):
