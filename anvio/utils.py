@@ -1501,8 +1501,8 @@ def get_blocks(array):
 
     Parameters
     ==========
-    array : array-like
-        a pre-sorted array
+    array : array
+        a pre-sorted numpy array. If a list is passed, this function is very slow
 
     Examples
     ========
