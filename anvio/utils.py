@@ -72,7 +72,7 @@ run.verbose = False
 def get_total_memory_usage():
     if not PSUTIL_OK:
         return None
-    
+
     current_process = psutil.Process(os.getpid())
     mem = current_process.memory_info().rss
     for child in current_process.children(recursive=True):

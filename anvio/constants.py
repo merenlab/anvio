@@ -90,28 +90,16 @@ linkage_method_default = 'ward'
 #- A description of what possible cigar operations are possible, see
 #  https://imgur.com/a/fiQZXNg, which comes from here:
 #  https://samtools.github.io/hts-specs/SAMv1.pdf
-cigar_consumption = {
-    0: (True, True),
-    1: (True, False),
-    2: (False, True),
-    3: (False, True),
-    4: (True, False),
-    5: (False, False),
-    6: (False, False),
-    7: (True, True),
-    8: (True, True),
-}
-
-cigar_consumption_as_array = numpy.array([
-    (True, True),
-    (True, False),
-    (False, True),
-    (False, True),
-    (True, False),
-    (False, False),
-    (False, False),
-    (True, True),
-    (True, True),
+cigar_consumption = numpy.array([
+    (1, 1),
+    (1, 0),
+    (0, 1),
+    (0, 1),
+    (1, 0),
+    (0, 0),
+    (0, 0),
+    (1, 1),
+    (1, 1),
 ])
 
 # this is to have a common language across multiple modules when genomes (whether they are MAGs,
