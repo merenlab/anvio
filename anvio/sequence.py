@@ -211,15 +211,17 @@ class Read:
 
     def __repr__(self):
         """Fancy output for viewing a read's alignment in relation to the reference"""
-        ref, read = '', ''
+        ref, read = '', []
         pos_ref, pos_read = 0, 0
+
+        d = {0: 'A', 1: 'C', 2: 'G', 3: 'T', 4: 'N'}
 
         for _, length, consumes_read, consumes_ref in self.iterate_cigartuples(self.cigartuples):
             if consumes_read:
-                read += self.query_sequence[pos_read:(pos_read + length)]
+                read.extend([d[x] for x in self.query_sequence[pos_read:(pos_read + length)]])
                 pos_read += length
             else:
-                read += '-' * length
+                read.append('-' * length)
 
             if consumes_ref:
                 ref += self.reference_sequence[pos_ref:(pos_ref + length)]
@@ -231,7 +233,7 @@ class Read:
             '<%s.%s object at %s>' % (self.__class__.__module__, self.__class__.__name__, hex(id(self))),
             ' ├── start, end : [%s, %s)' % (self.reference_start, self.reference_end),
             ' ├── cigartuple : %s' % (self.cigartuples),
-            ' ├── read       : %s' % (read),
+            ' ├── read       : %s' % (''.join(read)),
             ' └── reference  : %s' % (ref),
         ]
 
