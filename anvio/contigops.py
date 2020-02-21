@@ -374,10 +374,16 @@ class Auxiliary:
 
 
     def process(self, bam):
+        #import pprofile
+        #prof = pprofile.Profile()
+        #with prof():
         self.run_SNVs(bam)
 
         if self.profile_SCVs:
             self.run_SCVs(bam)
+        #f =  open('new_spicy_callgrind.out', 'w')
+        #prof.callgrind(f)
+        #f.close()
 
 
     def get_codon_sequence_for_gene(self, gene_call):
@@ -409,9 +415,9 @@ class Auxiliary:
 
         read_count = 0
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
-            aligned_sequence = read.get_aligned_sequence()
+            aligned_sequence, reference_positions = read.get_aligned_sequence_and_reference_positions()
             aligned_sequence_as_index = self.fast_nt_to_array_lookup[np.array([aligned_sequence]).view(np.int32)]
-            reference_positions_in_split = read.reference_positions - self.split.start
+            reference_positions_in_split = reference_positions - self.split.start
 
             allele_counts_array = utils.add_to_2D_numeric_array(aligned_sequence_as_index, reference_positions_in_split, allele_counts_array)
 
