@@ -586,9 +586,9 @@ class Coverage:
         self.median = numpy.median(c)
         self.mean = numpy.mean(c)
         self.std = numpy.std(c)
-        self.detection = 1 - (float(collections.Counter(c)[0]) / len(c))
+        self.detection = numpy.sum(c > 0) / len(c)
 
-        self.is_outlier = get_list_of_outliers(c) # this is an array not a list
+        self.is_outlier = get_list_of_outliers(c, median=self.median) # this is an array not a list
 
         if c.size < 4:
             self.mean_Q2Q3 = self.mean
@@ -604,7 +604,7 @@ def get_indices_for_outlier_values(c):
     return set([p for p in range(0, c.size) if is_outlier[p]])
 
 
-def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False):
+def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, median=None):
     """
     Returns a boolean array with True if values are outliers and False
     otherwise.
@@ -618,6 +618,7 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False):
         threshold : The modified z-score to use as a thresholdold. Observations with
                     a modified z-score (based on the median absolute deviation) greater
                     than this value will be classified as outliers.
+        median    : Pass median value of values if you already calculated it
 
     Returns:
     --------
@@ -638,7 +639,7 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False):
     if len(values.shape) == 1:
         values = values[:, None]
 
-    median = numpy.median(values, axis=0)
+    if not median: median = numpy.median(values, axis=0)
 
     diff = numpy.sum((values - median) ** 2, axis=-1)
     diff = numpy.sqrt(diff)
