@@ -162,9 +162,17 @@ class SequencesForHMMHits:
     def list_available_hmm_sources(self, dont_quit=False):
         self.check_init()
 
-        for source in self.hmm_hits_info:
-            t = self.hmm_hits_info[source]
-            run.info_single('%s [type: %s] [num genes: %d]' % (source, t['search_type'], len(t['genes'].split(','))))
+        self.run.warning(None, header="AVAILABLE HMM SOURCES", lc="green")
+
+        hmm_sources_found = list(self.hmm_hits_info.keys())
+
+        if not len(hmm_sources_found):
+            self.run.info_single("This contigs db does not have HMMs :/")
+        else:
+            for source in self.hmm_hits_info:
+                h = self.hmm_hits_info[source]
+                self.run.info_single("'%s' (type: %s; num genes: %d)" % (source, h['search_type'], len(h['genes'].split(','))),
+                                     nl_after = 1 if source == hmm_sources_found[-1] else 0)
 
         if dont_quit:
             return
