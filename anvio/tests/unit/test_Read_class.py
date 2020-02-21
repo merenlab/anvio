@@ -65,7 +65,7 @@ class TestRead(unittest.TestCase):
                 'reference_sequence' : 'ACTGACTG',
                 'reference_positions': [0,1,2,3,4,5,6,7],
                 'reference_start': 0,
-                'reference_end': 7,
+                'reference_end': 8,
                 'cigartuples': [(0,8)],
                 'trim_by': 3,
                 'output_tuples_left': [(0,5)],
@@ -80,7 +80,7 @@ class TestRead(unittest.TestCase):
                 'reference_sequence' : 'ACTGACTG',
                 'reference_positions': [0,1,2,3],
                 'reference_start': 0,
-                'reference_end': 3,
+                'reference_end': 4,
                 'cigartuples': [(0,2), (1,4), (0,2)],
                 'trim_by': 3,
                 'output_tuples_left': [(0,1)],
@@ -95,7 +95,7 @@ class TestRead(unittest.TestCase):
                 'reference_sequence' : 'ACTGACTG',
                 'reference_positions': [0,3,4,5,6],
                 'reference_start': 0,
-                'reference_end': 6,
+                'reference_end': 7,
                 'cigartuples': [(0,1), (1,3), (2,2), (0,4)],
                 'trim_by': 3,
                 'output_tuples_left': [(0,4)],
@@ -110,7 +110,7 @@ class TestRead(unittest.TestCase):
                 'reference_sequence' : 'ACTGACTG',
                 'reference_positions': [0,2,4,6,8,9,10],
                 'reference_start': 0,
-                'reference_end': 10,
+                'reference_end': 11,
                 'cigartuples': [(0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,2), (1,1), (0,1)],
                 'trim_by': 3,
                 'output_tuples_left': [(0,1), (2,1), (0,1), (2,1), (0,2), (1,1), (0,1)],
@@ -131,12 +131,15 @@ class TestRead(unittest.TestCase):
     def test_trim(self):
         print('=========================')
         for target in range(len(self.reads)):
+            print("Working on target %d" % target)
             attrs = self.read_attrs[target]
 
+            print("Trimming left")
             read = copy.copy(self.reads[target])
             read.trim(attrs['trim_by'], side='left')
             self.assertEqual(read.cigartuples, attrs['output_tuples_left'])
 
+            print("Trimming right")
             read = copy.copy(self.reads[target])
             read.trim(attrs['trim_by'], side='right')
             self.assertEqual(read.cigartuples, attrs['output_tuples_right'])
