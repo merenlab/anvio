@@ -36,6 +36,7 @@ display_structure1() {
 }
 display_structure2() {
     anvi-display-structure -V test-output/variability_AA.txt \
+                           -c test-output/one_contig_five_genes.db \
                            -s test-output/STRUCTURE.db
 }
 

@@ -42,8 +42,8 @@ class Table(object):
     """Superclass for rudimentary needs and operations for contigs db tables"""
     def __init__(self, db_path, version, run=run, progress=progress, quiet=False, simple=False):
         if not db_path:
-            raise ConfigError("Table superclass is being initiated without a db path, and it is very\
-                                very concerning :( Anvi'o needs an adult.")
+            raise ConfigError("Table superclass is being initiated without a db path, and it is very "
+                               "very concerning :( Anvi'o needs an adult.")
 
         if not os.path.exists(db_path):
             raise ConfigError("Database ('%s') does not exist. You must create one first." % db_path)
@@ -133,13 +133,13 @@ class Table(object):
         database = db.DB(self.db_path, self.version)
 
         if table not in database.get_table_names():
-            raise ConfigError('Trying to export sequences into a FASTA file, but the table\
-                                "%s" does not seem to be in this database :/' % (table))
+            raise ConfigError('Trying to export sequences into a FASTA file, but the table '
+                               '"%s" does not seem to be in this database :/' % (table))
 
         if 'sequence' not in database.get_table_structure(table):
-            raise ConfigError("You requested to store sequences in table '%s' into a FASTA\
-                                file, however this table does not seem to be a table that\
-                                stores sequence information :(" % table)
+            raise ConfigError("You requested to store sequences in table '%s' into a FASTA "
+                               "file, however this table does not seem to be a table that "
+                               "stores sequence information :(" % table)
 
         sequences_table = database.get_table_as_dict(table)
         database.disconnect()
@@ -181,15 +181,15 @@ class Table(object):
         self.progress.end()
 
         if len(blank_seq_ids_not_reported):
-            self.run.warning("%d entries in the sequences table had blank sequences :/ This is related to the issue\
-                             at https://github.com/merenlab/anvio/issues/565. If this is like mid-2020 and you still\
-                             are getting this warning, please find an anvi'o developer and make them feel embarrassed.\
-                             If it is earlier than that, then take this as a simple warning to remember that some gene\
-                             calls in your downstream analyses may have no amino acid sequences, and that's actuall OK.\
-                             This is a very minor issue due to on-the-fly addition of Ribosomal RNA gene calls to the\
-                             contigs database, and will unlikely affect anything major. This warning will go away when\
-                             anvi'o can seamlessly work with multiple gene callers (which we are looking forward to\
-                             implement in the future)." % len(blank_seq_ids_not_reported))
+            self.run.warning("%d entries in the sequences table had blank sequences :/ This is related to the issue "
+                            "at https://github.com/merenlab/anvio/issues/565. If this is like mid-2020 and you still "
+                            "are getting this warning, please find an anvi'o developer and make them feel embarrassed. "
+                            "If it is earlier than that, then take this as a simple warning to remember that some gene "
+                            "calls in your downstream analyses may have no amino acid sequences, and that's actuall OK. "
+                            "This is a very minor issue due to on-the-fly addition of Ribosomal RNA gene calls to the "
+                            "contigs database, and will unlikely affect anything major. This warning will go away when "
+                            "anvi'o can seamlessly work with multiple gene callers (which we are looking forward to "
+                            "implement in the future)." % len(blank_seq_ids_not_reported))
 
         self.run.info('Sequences', '%d sequences reported.' % (len(sequences_table) - len(blank_seq_ids_not_reported)))
         self.run.info('FASTA', output_file_path)

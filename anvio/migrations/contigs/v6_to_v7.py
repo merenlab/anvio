@@ -56,8 +56,8 @@ def migrate(db_path):
 
     # bye
     progress.end()
-    run.info_single("The contigs database is now %s! It no longer has any HMM hits :/ Don't \
-                     forget to run `anvi-run-hmms` on it!" % (next_version), nl_after=1, nl_before=1, mc='green')
+    run.info_single("The contigs database is now %s! It no longer has any HMM hits :/ Don't "
+                    "forget to run `anvi-run-hmms` on it!" % (next_version), nl_after=1, nl_before=1, mc='green')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade contigs database from version %s to version %s' % (current_version, next_version))

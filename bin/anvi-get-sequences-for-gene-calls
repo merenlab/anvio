@@ -66,12 +66,12 @@ def main(args):
     output_file_path = A('output_file')
 
     if not contigs_db_path and not genomes_storage_db_path:
-        raise ConfigError("You must give this program either a contigs or a genomes storage database so it can like\
-                           export sequences for your genes? :/")
+        raise ConfigError("You must give this program either a contigs or a genomes storage database so it can like "
+                          "export sequences for your genes? :/")
 
     if contigs_db_path and genomes_storage_db_path:
-        raise ConfigError("You can either ask for sequences in a contigs database, or a genomes storage. But not both\
-                           (obviously).")
+        raise ConfigError("You can either ask for sequences in a contigs database, or a genomes storage. But not both "
+                          "(obviously).")
 
     if contigs_db_path:
         export_from_contigs(args)

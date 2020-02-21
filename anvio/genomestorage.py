@@ -66,9 +66,9 @@ class GenomeStorage(object):
 
     def check_storage_path_for_create_new(self):
         if not self.storage_path.endswith('GENOMES.db'):
-            raise ConfigError("The genomes storage file must end with '-GENOMES.db'. Anvi'o developers do know how ridiculous\
-                                this requirement sounds like, but if you have seen the things they did, you would totally\
-                                understand why this is necessary.")
+            raise ConfigError("The genomes storage file must end with '-GENOMES.db'. Anvi'o developers do know how ridiculous "
+                               "this requirement sounds like, but if you have seen the things they did, you would totally "
+                               "understand why this is necessary.")
 
         filesnpaths.is_output_file_writable(self.storage_path)
 
@@ -84,7 +84,7 @@ class GenomeStorage(object):
 
         if self.storage_path.endswith('.h5'):
             raise ConfigError("We recenlty switched from HD5 files (.h5) to Sqlite (.db) files for the genome storage, \
-                              you can upgrade your genome storage by running 'anvi-migrate-db %s'." % self.storage_path)
+                              you can upgrade your genome storage by running 'anvi-migrate %s'." % self.storage_path)
 
         filesnpaths.is_file_exists(self.storage_path)
 
@@ -105,10 +105,10 @@ class GenomeStorage(object):
 
             # make sure the user knows what they're doing
             if genome_names_to_focus_missing_from_db:
-                raise ConfigError("%d of %d genome names you wanted to focus are missing from the genomes sotrage.\
-                                 Although this may not be a show-stopper, anvi'o likes to be explicit, so here we\
-                                 are. Not going anywhere until you fix this. For instance this is one of the missing\
-                                 genome names: '%s', and this is one random genome name from the database: '%s'" % \
+                raise ConfigError("%d of %d genome names you wanted to focus are missing from the genomes sotrage. "
+                                "Although this may not be a show-stopper, anvi'o likes to be explicit, so here we "
+                                "are. Not going anywhere until you fix this. For instance this is one of the missing "
+                                "genome names: '%s', and this is one random genome name from the database: '%s'" % \
                                          (len(genome_names_to_focus_missing_from_db), len(self.genome_names_to_focus),\
                                          genome_names_to_focus_missing_from_db[0], ', '.join(self.genome_names_in_db)))
 
@@ -347,8 +347,8 @@ class GenomeStorage(object):
             raise ConfigError("Functions are not available in this genome storage ('%s'). " % self.storage_path)
 
         if self.skip_init_functions:
-            raise ConfigError("Initialization of functions were skipped when the GenomeStorage\
-                              class was called for '%s'. " % self.storage_path)
+            raise ConfigError("Initialization of functions were skipped when the GenomeStorage "
+                             "class was called for '%s'. " % self.storage_path)
 
         self.is_known_genome(genome_name)
         self.is_known_gene_call(genome_name, gene_callers_id)

@@ -81,6 +81,19 @@ Node.prototype.GetChildren = function() {
     return children;
 }
 
+Node.prototype.GetAncestors = function() {
+    let q = this;
+    let ancestors = [];
+
+    while (q)
+    {
+        ancestors.push(q);
+        q = q.ancestor;
+    }
+
+    return ancestors;
+}
+
 
 Node.prototype.IterateChildren = function*() {
     var n = new NodeIterator(this);

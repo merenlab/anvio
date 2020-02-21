@@ -6,7 +6,7 @@ C() {
     echo -e "\033[1;30m\033[47m$1\033[0m"
 }
 
-INFO() { 
+INFO() {
     echo
     echo
     C ":: $1 ..."
@@ -32,4 +32,9 @@ SETUP_WITH_OUTPUT_DIR() {
 
     INFO "Anvo'o version"
     anvi-profile --version
+}
+
+SHOW_FILE() {
+    echo
+    column -t $1
 }

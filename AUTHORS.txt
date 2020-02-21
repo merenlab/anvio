@@ -3,18 +3,18 @@ Developers and contributors at the University of Chicago
 ===============================================================================
 A. Murat Eren (a.murat.eren at gmail dot com)
 Özcan Esen (ozcanesen at gmail dot com)
-Alon Shaiber (alon.shaiber at gmail dot com)
 Evan Kiefl (kiefl.evan at gmail dot com)
 Mahmoud Yousef (mahmoudyousef at uchicago dot edu)
 Matthew Schechter (mschechter at uchicago dot edu)
 Andrea Watson (andreawatson at uchicago dot edu)
+Iva Veseli (iveseli at uchicago.edu)
 Emily Fogarty (efogarty at uchicago dot edu)
 Florian Trigodet (trigodet dot florian at gmail dot com)
 
 ===============================================================================
 Developers and contributors at large
 ===============================================================================
-Tobias Paczian             Argonne National Laboratory        United States
+Alon Shaiber               Weill Cornell Medicine             United States
 Quentin Clayssen           University of Nantes               France
 Ryan Moore                 University of Delaware             United States
 Mike Lee                   NASA Ames Research Center          United States
@@ -36,7 +36,13 @@ M. Fauzi Haroon            Harvard University                 United States
 Elmar Pruesse              University of Colorado Denver      United States
 C. Titus Brown             University of California Davis     United States
 Bryan Merill               Stanford University                United States
+Lucas Paoli                ETH Zurich                         Switzerland
 Ines Martinez              University of Alberta              Canada
+
+===============================================================================
+Developers and contributors no longer on GitHub
+===============================================================================
+Tobias Paczian             Argonne National Laboratory        United States
 
 --
 
@@ -45,10 +51,11 @@ to mention names who contributed to its codebase. The file divides individuals i
 two main groups: (1) those who are currently employed at the University of Chicago
 and work on anvi'o as a part of their job description (hence they are ready to
 respond to technical questions or work on feature requests), and (2) those who
-contribute (or have contributed) to the platform from elsewhere and help its progress
-on a voluntary basis. The order of names in this file follows the logic implemented
-at GitHub's contributors page at the following URL, which ranks individuals based on
-the number of commits they've made to the anvi'o master repository:
+contribute (or have contributed) to the platform and help (or have helped) its
+progress from elsewhere. The order of names in this file follows the logic
+implemented at GitHub's contributors page at the following URL, which ranks
+individuals based on the number of commits they've made to the anvi'o master
+repository:
 
     https://github.com/merenlab/anvio/graphs/contributors
 

@@ -19,7 +19,6 @@ var sample_groups_backup = {};
 var current_state_name;
 
 
-
 $(document).ready(function() {
     toastr.options = {
         "closeButton": true,
@@ -64,7 +63,7 @@ $(document).ready(function() {
     }, false );
 
     $('#gene_callers_id_list').on('change', function(ev) {
-        $.when({}).then(load_protein).then(() => {
+        $.when({}).then(load_protein).then(load_gene_function_info).then(load_model_info).then(() => {
             create_ui();
             load_sample_group_widget($('#sample_groups_list').val());
         });
@@ -72,6 +71,7 @@ $(document).ready(function() {
 
     $('#sample_groups_list').on('change', function(ev) {
         backupGroupsWidget();
+        $('.overlay').show();
         load_sample_group_widget($('#sample_groups_list').val());
     });
 
@@ -88,7 +88,7 @@ $(document).ready(function() {
                 $('#gene_callers_id_list').append(`<option id=${gene_callers_id}>${gene_callers_id}</option>`);
             });
 
-            $.when({}).then(load_protein).then(() => {
+            $.when({}).then(load_protein).then(load_gene_function_info).then(load_model_info).then(() => {
                 let default_engine = available_engines[0];
                 available_engines.forEach(function(engine) {
                     $('#engine_list').append(`<input type="radio" name="engine" onclick="$.when({}).then(create_ui).then(() => { fetch_and_draw_variability(); });" value="${engine}" id="engine_${engine}" ${engine == default_engine ? 'checked="checked"' : ''}><label for="engine_${engine}">${engine}</label>`);
@@ -131,7 +131,6 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
             <tr>
                 <td>
                     <input class="form-check-input"
-                        onclick="create_ngl_views();"
                         checkbox-for="group"
                         id="${category}_${group}"
                         type="checkbox" 
@@ -153,7 +152,6 @@ function load_sample_group_widget(category, trigger_create_ngl_views=true) {
                 <div class="table-group-checkbox" style="display: inline-block; float: left;">
                     <input class="form-check-input" 
                             id="${category}_${group}_${sample}"
-                            onclick="fetch_and_draw_variability();"
                             type="checkbox" 
                             data-category="${category}"
                             data-group="${group}"
@@ -245,27 +243,22 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
         if( component.type !== "structure" ) return;
 
         if ($('#show_surface').is(':checked')) {
-            if ($('#surface_type').val() == 'plain') {
-                component.addRepresentation("surface", {
-                    surfaceType: "av",
-                    color: $('#color_plain').attr('color'),
-                    smooth: 3,
-                    probeRadius: 1.4,
-                    scaleFactor: 3.0,
-                    opacity: parseFloat($('#surface_opacity').val()),
-                    lowResolution: false,
-                });
-            } else {
-                component.addRepresentation("surface", {
-                    surfaceType: "av",
-                    colorScheme: $('#surface_type').val(),
-                    smooth: 3,
-                    probeRadius: 1.4,
-                    scaleFactor: 3.0,
-                    opacity: parseFloat($('#surface_opacity').val()),
-                    lowResolution: false,
-                });
+            surface_rep_params = {
+                surfaceType: "av",
+                smooth: 3,
+                opaqueBack: false,
+                side: 'double',
+                probeRadius: parseFloat($('#surface_probe_radius').val()),
+                scaleFactor: 3.0,
+                opacity: parseFloat($('#surface_opacity').val()),
+                lowResolution: false,
             }
+            if ($('#surface_type').val() == 'plain') {
+                surface_rep_params['color'] = $('#color_plain').attr('color')
+            } else {
+                surface_rep_params['colorScheme'] = $('#surface_type').val()
+            }
+            component.addRepresentation("surface", surface_rep_params);
         }
 
         // FIXME does not work as expected. When loading structure residue info create
@@ -280,17 +273,38 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
         }
 
         if ($('#show_backbone').is(':checked')) {
-            component.addRepresentation($('#backbone_type').val(), {
-                color: $('#backbone_color').attr('color'),
-                aspectRatio: 3.0,
-                scale: 1.5
-            });
+            backbone_type = $('#backbone_type').val()
+
+            if (backbone_type == 'rocket+loop') {
+                // custom
+                component.addRepresentation('rocket', {
+                    color: $('#backbone_color').attr('color'),
+                    scale: 1.8,
+                });
+                component.addRepresentation('tube', {
+                    color: $('#backbone_color').attr('color'),
+                    sele: 'not helix',
+                    scale: 2.0,
+                    aspectRatio: 1.0,
+                });
+            } else if (backbone_type == 'custom') {
+                // custom
+                null
+            } else {
+                component.addRepresentation(backbone_type, {
+                    color: $('#backbone_color').attr('color'),
+                    scale: 1.5,
+                    aspectRatio: 3.0,
+                });
+            }
         }
 
-        if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() == 'always'){
-            component.addRepresentation("ball+stick", {
-                sele: "sidechainAttached"
-            });
+        if ($('#show_ballstick').is(':checked')) {
+            if ($('#show_ballstick_when').val() == 'always') {
+                component.addRepresentation("ball+stick", {
+                    sele: "sidechainAttached"
+                });
+            }
         }
 
         if (cached_orientation_matrices.hasOwnProperty($('#gene_callers_id_list').val())) {
@@ -308,7 +322,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
             let tooltip = document.getElementById('ngl-tooltip');
 
             if (pickingProxy && pickingProxy.atom) {
-                if (pickingProxy.atom.resno != previous_hovered_residue && $('#show_ballstick_when').val() != 'always') {
+                if (pickingProxy.atom.resno != previous_hovered_residue && !(['always', 'variant residue'].includes($('#show_ballstick_when').val()))) {
                     // remove ball+stick if hovered residue changed or 
                     if (pickingProxy.atom.resno != previous_hovered_residue) {
                         stage.compList[0].reprList.slice(0).forEach((rep) => {
@@ -322,7 +336,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 let residue = pickingProxy.atom.resno;
                 let mp = pickingProxy.mouse.position;
 
-                if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() != 'always') {
+                if ($('#show_ballstick').is(':checked') && !(['always', 'variant residue'].includes($('#show_ballstick_when').val()))) {
                     if ($('#show_ballstick_when').val() == 'hovered residue') {
                         var selection = "(" + residue + ")" + " and sidechainAttached";
                     }
@@ -381,17 +395,17 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                     var tooltip_HTML_variant_freqs_title = `<h5>Variant frequencies</h5>`
                     if ($('[name=engine]:checked').val() == 'AA') {
                         var tooltip_HTML_variant_freqs_body = `
-                            <tr><td>${variability[group][residue]['0_item']}</td><td>${variability[group][residue]['0_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['1_item']}</td><td>${variability[group][residue]['1_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['2_item']}</td><td>${variability[group][residue]['2_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['3_item']}</td><td>${variability[group][residue]['3_freq'].toFixed(2)}</td></tr>
+                            <tr><td>${variability[group][residue]['0_item']}</td><td>${variability[group][residue]['0_freq'].toFixed(3)}</td></tr>
+                            <tr><td>${variability[group][residue]['1_item']}</td><td>${variability[group][residue]['1_freq'].toFixed(3)}</td></tr>
+                            <tr><td>${variability[group][residue]['2_item']}</td><td>${variability[group][residue]['2_freq'].toFixed(3)}</td></tr>
+                            <tr><td>${variability[group][residue]['3_item']}</td><td>${variability[group][residue]['3_freq'].toFixed(3)}</td></tr>
                             `
                     } else {
                         var tooltip_HTML_variant_freqs_body = `
-                            <tr><td>${variability[group][residue]['0_item_AA']} (${variability[group][residue]['0_item']})</td><td>${variability[group][residue]['0_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['1_item_AA']} (${variability[group][residue]['1_item']})</td><td>${variability[group][residue]['1_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['2_item_AA']} (${variability[group][residue]['2_item']})</td><td>${variability[group][residue]['2_freq'].toFixed(2)}</td></tr>
-                            <tr><td>${variability[group][residue]['3_item_AA']} (${variability[group][residue]['3_item']})</td><td>${variability[group][residue]['3_freq'].toFixed(2)}</td></tr>
+                            <tr><td>${variability[group][residue]['0_item_AA']} (${variability[group][residue]['0_item']})</td><td>${variability[group][residue]['0_freq'].toFixed(3)}</td></tr>
+                            <tr><td>${variability[group][residue]['1_item_AA']} (${variability[group][residue]['1_item']})</td><td>${variability[group][residue]['1_freq'].toFixed(3)}</td></tr>
+                            <tr><td>${variability[group][residue]['2_item_AA']} (${variability[group][residue]['2_item']})</td><td>${variability[group][residue]['2_freq'].toFixed(3)}</td></tr>
+                            <tr><td>${variability[group][residue]['3_item_AA']} (${variability[group][residue]['3_item']})</td><td>${variability[group][residue]['3_freq'].toFixed(3)}</td></tr>
                             `
                     }
                 }
@@ -433,7 +447,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 previous_hovered_residue = residue;
             } else {
                 tooltip.style.display = "none";
-                if ($('#show_ballstick').is(':checked') && $('#show_ballstick_when').val() != 'always'){
+                if ($('#show_ballstick').is(':checked') && !(['always', 'variant residue'].includes($('#show_ballstick_when').val()))){
                     stage.compList[0].reprList.slice(0).forEach((rep) => {
                         if (rep.name == 'ball+stick') {
                             rep.dispose();
@@ -460,7 +474,7 @@ function load_protein() {
     let gene_callers_id = $('#gene_callers_id_list').val();
     var defer = $.Deferred();
     $('.overlay').show();
-    
+
     $.ajax({
         type: 'GET',
         cache: false,
@@ -476,6 +490,105 @@ function load_protein() {
 
     return defer.promise();
 }
+
+function load_gene_function_info() {
+    let gene_callers_id = $('#gene_callers_id_list').val();
+    var defer = $.Deferred();
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/get_gene_function_info/' + gene_callers_id,
+        success: function(gene_data) {
+            var geneFunctionHtml = get_gene_functions_table_html_for_structure(gene_data);
+            $("#gene_function_info").html(geneFunctionHtml);
+            defer.resolve();
+        }
+    });
+
+    return defer.promise();
+}
+
+function load_model_info() {
+    let gene_callers_id = $('#gene_callers_id_list').val();
+    var defer = $.Deferred();
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/get_model_info/' + gene_callers_id,
+        success: function(model_data) {
+            model_data = model_data;
+            var geneModelHtml = get_model_info_table_html(model_data);
+            $("#model_info").html(geneModelHtml);
+            defer.resolve();
+        }
+    });
+
+    return defer.promise();
+}
+
+function get_model_info_table_html(model_data) {
+    var templates = JSON.parse(model_data['templates']);
+    var models = JSON.parse(model_data['models'])[0];
+
+    var geneModelHtml = '';
+
+    /* TEMPLATES */
+    geneModelHtml += '<div class="widget">'
+    geneModelHtml += '<span class="settings-header"><h4>Templates Used</h4></span>'
+    geneModelHtml += '<table class="table table-condensed" id="model_info_table"><tbody>';
+
+    var header = '<tr>';
+    for (const col_name of Object.keys(templates[0])) {
+        header += '<td><label class="col-md-4 settings-label">' + col_name + '</label></td>';
+    }
+    header += '</tr>';
+    geneModelHtml += header;
+
+    for (var i = 0; i < Object.keys(templates).length; i++) {
+        var row = templates[i];
+        var tr = '<tr>';
+
+        for (const [col_name, value] of Object.entries(row)) {
+            if (col_name == 'PDB') {
+                formatted_value = '<a href="https://www.rcsb.org/structure/' + value + '" target=_"blank">' + value.toUpperCase() + '</a>'
+            } else if (col_name == '%Identity') {
+                formatted_value = Number(value).toFixed(2);
+            } else {
+                formatted_value = value
+            }
+            tr += '<td>' + formatted_value + '</td>'
+        }
+
+        tr += '</tr>'
+        geneModelHtml += tr;
+    }
+
+    geneModelHtml += "</tbody></table></div>";
+
+    /* MODELS */
+    geneModelHtml += '<div class="widget">'
+    geneModelHtml += '<span class="settings-header"><h4>Model Scores</h4></span>'
+    geneModelHtml += '<table class="table table-condensed" id="model_info_table"><tbody>';
+
+    var header = '<tr>';
+    var row = '<tr>';
+    for (const [col_name, value] of Object.entries(models)) {
+        header += '<td><label class="col-md-4 settings-label">' + col_name + '</label></td>';
+        row += '<td>' + Number(value).toFixed(2) + '</td>';
+    }
+    header += '</tr>';
+    row += '</tr>';
+
+    geneModelHtml += header;
+    geneModelHtml += row;
+
+    geneModelHtml += "</tbody></table></div>";
+    return geneModelHtml;
+}
+
+
 
 function serialize_checked_groups() {
     let output = {};
@@ -554,7 +667,7 @@ function fetch_and_draw_variability() {
             console.log(request, status, error);
             $('.overlay').hide();
         }
-    }); 
+    });
 }
 
 function draw_variability() {
@@ -581,6 +694,9 @@ function draw_variability() {
 
         component.reprList.slice(0).forEach((rep) => {
             if (rep.name == 'spacefill') {
+                rep.dispose();
+            }
+            if (rep.name == 'ball+stick' && $('#show_ballstick_when').val() == 'variant residue') {
                 rep.dispose();
             }
         });
@@ -669,6 +785,15 @@ function draw_variability() {
 
                 let representation = component.addRepresentation("spacefill", spacefill_options);
                 representation['variability'] = data[index];
+
+                if ($('#show_ballstick').is(':checked')) {
+                    if ($('#show_ballstick_when').val() == 'variant residue') {
+                        var selection = data[index]['codon_number'] + " and sidechainAttached";
+                        component.addRepresentation("ball+stick", {
+                            sele: selection
+                        });
+                    }
+                }
             }
         }
     }
@@ -732,7 +857,7 @@ function create_ui() {
 
     backupFilters();
 
-   $.ajax({
+    $.ajax({
         type: 'POST',
         cache: false,
         url: '/data/get_column_info',
@@ -789,7 +914,7 @@ function create_ui() {
                                     >
                         </div>
                     `);
-                    $(`#${item['name']}`).slider({}).on('slideStop', () => { fetch_and_draw_variability(); });
+                    $(`#${item['name']}`).slider({});
                 }
                 if (item['as_filter'] == 'checkbox') {
                     let checked_choices = item['choices'];
@@ -802,11 +927,11 @@ function create_ui() {
                         <div class="widget" data-column="${item['name']}" data-controller="${item['as_filter']}">
                             <span class="settings-header"><h5>${item['title']}</h5></span><br />
                             ${item['choices'].map((choice) => { return `
-                                <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" onclick="fetch_and_draw_variability();" ${ checked_choices.indexOf(choice) > -1 ? 'checked="checked"' : ''}>
+                                <input class="form-check-input" type="checkbox" id="${item['name']}_${choice}" value="${choice}" ${ checked_choices.indexOf(choice) > -1 ? 'checked="checked"' : ''}>
                                 <label class="form-check-label" for="${item['name']}_${choice}">${choice}</label>`; }).join('')}
                             <br />
-                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', true); fetch_and_draw_variability();">Check All</button>
-                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', false); fetch_and_draw_variability();">Uncheck All</button>
+                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', true);">Check All</button>
+                            <button class="btn btn-xs" onclick="$(this).closest('.widget').find('input:checkbox').prop('checked', false);">Uncheck All</button>
                         </div>
                     `);
 
@@ -1018,19 +1143,222 @@ async function make_image(group, sample) {
     return blob;
 }
 
+function get_gene_functions_table_html_for_structure(gene){
+    if (gene.functions == null) {
+        functions_table_html = '<div class="alert alert-info" role="alert" style="margin: 10px;" id="no_function_annotations_warning">Functional annotations: This gene doesn\'t have any.</div>';
+        return functions_table_html
+    }
+
+    functions_table_html  = '<table class="table table-striped">';
+    functions_table_html += '<thead><th>Source</th>';
+    functions_table_html += '<th>Accession</th>';
+    functions_table_html += '<th>Annotation</th></thead>';
+    functions_table_html += '<tbody>';
+
+    for (function_source in gene.functions){
+        functions_table_html += '<tr>';
+
+        functions_table_html += '<td><b>' + function_source + '</b></td>';
+        if (gene.functions[function_source]) {
+            functions_table_html += '<td>' + decorateAccession(function_source, gene.functions[function_source][0]) + '</td>';
+            functions_table_html += '<td><em>' + decorateAnnotation(function_source, gene.functions[function_source][1]) + '</em></td>';
+        } else {
+            functions_table_html += '<td>&nbsp;</td>';
+            functions_table_html += '<td>&nbsp;</td>';
+        }
+
+        functions_table_html += '</tr>';
+    }
+
+    functions_table_html += '</tbody></table>';
+
+    return functions_table_html;
+}
+
+function store_variability() {
+    $('.overlay').show();
+    let gene_callers_id = $('#gene_callers_id_list').val();
+    let engine = $('[name=engine]:checked').val();
+    let output_path = $('#var_output_path').val();
+
+    // serialize options programatically
+    let options = {
+        'gene_callers_id': gene_callers_id,
+        'engine': engine,
+        'groups': serialize_checked_groups(),
+        'filter_params': serialize_filtering_widgets(),
+        'path': output_path,
+    };
+
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        data: {'options': JSON.stringify(options)},
+        url: '/data/store_variability',
+        success: function(msg) {
+            $('.overlay').hide();
+            if (typeof(msg['success']) != 'undefined') {
+                $('#store_var_failure').hide();
+                $('#store_var_success').html(msg['success']).show().fadeOut(3000);
+            } else {
+                $('#store_var_failure').html(msg['failure']).show();
+            }
+        },
+        error: function(request, status, error) {
+            console.log(request, status, error);
+            $('.overlay').hide();
+        }
+    }); 
+}
+
+function store_structure_as_pdb(path_id, success_id, failure_id) {
+    $('.overlay').show();
+    let gene_callers_id = $('#gene_callers_id_list').val();
+    let output_path = $(path_id).val();
+
+    // serialize options programatically
+    let options = {
+        'gene_callers_id': gene_callers_id,
+        'path': output_path,
+    };
+
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        data: {'options': JSON.stringify(options)},
+        url: '/data/store_structure_as_pdb',
+        success: function(msg) {
+            $('.overlay').hide();
+            if (typeof(msg['success']) != 'undefined') {
+                $(failure_id).hide();
+                $(success_id).html(msg['success']).show().fadeOut(3000);
+            } else {
+                $(failure_id).html(msg['failure']).show();
+            }
+        },
+        error: function(request, status, error) {
+            console.log(request, status, error);
+            $('.overlay').hide();
+        }
+    });
+}
+
+function showPymolWindow() {
+    gen_pymol_script_html(gen_pymol_script());
+    $('#pymol_export_page').modal('show');
+}
+
+function gen_pymol_script_html(script) {
+    var pymol_script_html = `
+    <div class="modal-body">
+        <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>${script}</textarea>
+    </div>
+    `
+
+    $("#pymol_script_area").html(pymol_script_html);
+}
+
+function gen_pymol_script() {
+    // from https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
+    function componentToHex(c) {
+        var hex = c.toString(16);
+        if (hex.length < 6) {
+            hex = "0".repeat(6 - hex.length) + hex
+        }
+        return hex;
+    }
+
+    // from https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
+    // NOTE: RGB values are normalized to 1 for PyMOL convention
+    function hexToRgb(hex) {
+        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16) / 256,
+            g: parseInt(result[2], 16) / 256,
+            b: parseInt(result[3], 16) / 256
+        } : null;
+    }
+
+    var bb_color = hexToRgb($('#backbone_color').attr('color'));
+
+    // s is the full PyMOL script string
+    var s = `cmd.set_color('bb_color', [${bb_color.r},${bb_color.g},${bb_color.b}])\n` +
+            `color bb_color, all\n` +
+            `bg_color white\n` +
+            `struct_obj = cmd.get_object_list(selection='(all)')[0]\n`;
+
+    // Add a surface
+    if ($('#show_surface').is(':checked')) {
+        // disregards colorScheme and picks 'plain' surface color
+        var surface_color = hexToRgb($('#color_plain').attr('color'));
+        var surface_transparency = 1 - parseFloat($('#surface_opacity').val());
+        var surface_probe_radius = parseFloat($('#surface_probe_radius').val());
+        s += `cmd.show('surface', struct_obj)\n` +
+             `cmd.set_color('surf_color', [${surface_color.r},${surface_color.g},${surface_color.b}])\n` +
+             `cmd.set('surface_color', 'surf_color', struct_obj)\n` +
+             `set transparency, ${surface_transparency}\n` +
+             `set solvent_radius, ${surface_probe_radius}\n`;
+    }
+
+    // list of the PyMOL objects--one for each group
+    var group_object_list = [];
+
+    for (let group in variability) {
+        let compList = stages[group].compList;
+        let component = compList[0];
+
+        var res_attrs = '';
+        var res_list = [];
+        var group_object = `group_${group}_obj`
+        var group_selection = `group_${group}_sele`
+        group_object_list.push(group_object)
+
+        component.reprList.slice(0).forEach((rep) => {
+            if (rep.name == 'spacefill') {
+                var res = rep.variability.codon_number;
+                var color = hexToRgb(componentToHex(rep.repr.colorValue));
+                var scale = rep.repr.scale;
+
+                res_attrs += `${res}:{'color':[${color.r},${color.g},${color.b}],'scale':${scale}},`;
+                res_list.push(res);
+            }
+        });
+
+        var res_sele = res_list.join('+');
+        s += `res_attrs = {${res_attrs}}\n` +
+             `select ${group_selection}, name CA and resi ${res_sele}\n` +
+             `create ${group_object}, ${group_selection}\n` +
+             `for res in res_attrs: cmd.set_color('${group_object}' + str(res), res_attrs[res]['color'])\n` +
+             `alter ${group_object}, color = cmd.get_color_index('${group_object}' + resi)\n` +
+             `alter ${group_object}, s.sphere_scale = res_attrs[int(resi)]['scale']\n` +
+             `hide everything, ${group_object}\n` +
+             `show spheres, ${group_object}\n` +
+             `cmd.disable('${group_object}')\n`;
+    }
+    s += `cmd.hide('everything', struct_obj)\n` +
+         `cmd.show('cartoon', struct_obj)\n` +
+         `cmd.show('surface', struct_obj)\n` +
+         `cmd.enable('${group_object_list[0]}')\n` +
+         `orient\n` +
+         `rebuild`;
+
+    return s
+}
 
 async function generate_summary() {
+    $('.overlay').show();
+
     let serialized_groups = serialize_checked_groups();
     var zip = new JSZip();
 
     for (let group in stages) {
-        zip.file(`images/${group}/merged.png`, await make_image(group));
+        zip.file($('#zip_name').val() + `/${group}/merged.png`, await make_image(group));
 
         if (!$('#merged_view_only').is(':checked')) {
             // generate per sample.
             for (let i=0; i < serialized_groups[group].length; i++) {
                 let sample_id = serialized_groups[group][i];
-                zip.file(`images/${group}/${sample_id}.png`, await make_image(group, sample_id));
+                zip.file($('#zip_name').val() + `/${group}/${sample_id}.png`, await make_image(group, sample_id));
             }
         }
     }
@@ -1047,12 +1375,14 @@ async function generate_summary() {
     zip.generateAsync(zip_options).then(function(content) {
         saveAs(content, $('#zip_name').val() + '.zip');
     });
+
+    $('.overlay').hide();
 }
 
 function serializeAuxiliaryInputs() {
     let backup = {};
 
-    ['tab_perspectives', 'tab_summary'].forEach((tab) => {
+    ['tab_views', 'tab_output'].forEach((tab) => {
         backup[tab] = {};
 
         $(`#${tab} :input`).each((index, elem) => {
@@ -1253,7 +1583,7 @@ function loadState()
             if($(`#sample_groups_list option[id='${state['category']}']`).length > 0) {
                 $('#sample_groups_list').val(state['category']);
             }
-            
+
             if($(`[name=engine][value='${state['engine']}']`).length > 0) {
                 $(`[name=engine][value='${state['engine']}']`).prop('checked', true);
             }
@@ -1296,3 +1626,4 @@ function loadState()
         }
     });
 }
+

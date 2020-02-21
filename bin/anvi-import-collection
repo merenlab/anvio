@@ -53,8 +53,8 @@ def main(args):
         try:
             bins_info_dict = utils.get_TAB_delimited_file_as_dictionary(args.bins_info, no_header = True, column_names = ['bin_name', 'source', 'html_color'])
         except Exception as e:
-            raise ConfigError("Someone was not happy with the TAB-delimited bins info file you provided. Here\
-                               is the complaint: %s" % e)
+            raise ConfigError("Someone was not happy with the TAB-delimited bins info file you provided. Here "
+                              "is the complaint: %s" % e)
 
     # convert contig names into split names if necessary so we can do everything else using the information in
     # pan or profile database item names (this is only relevant for a workflow that includes a contigs db)
@@ -62,8 +62,8 @@ def main(args):
         input_names_missing_from_contigs_db = [n for n in input_data_file_content if n not in contigs_basic_info]
 
         if len(input_names_missing_from_contigs_db):
-            raise ConfigError("OK. %d of %d contig names in your input file have nothing to do with the contig names found in\
-                               the contigs database. Here is an example: %s." % (len(input_names_missing_from_contigs_db),
+            raise ConfigError("OK. %d of %d contig names in your input file have nothing to do with the contig names found in "
+                              "the contigs database. Here is an example: %s." % (len(input_names_missing_from_contigs_db),
                                                                                  len(input_data_file_content),
                                                                                  input_names_missing_from_contigs_db[0]))
 
@@ -90,10 +90,10 @@ def main(args):
         if utils.is_blank_profile(args.pan_or_profile_db):
             db_names = input_names
 
-            run.warning("Since you are working with a blank proifle, anvi'o is not going to check whether the names item\
-                         names in your collections file matches to the item names in other databases of yours. It is all\
-                         fine for now, but this requires you to be even extra careful with your downstream analyses in\
-                         case stuff hits the fan later.")
+            run.warning("Since you are working with a blank proifle, anvi'o is not going to check whether the names item "
+                        "names in your collections file matches to the item names in other databases of yours. It is all "
+                        "fine for now, but this requires you to be even extra careful with your downstream analyses in "
+                        "case stuff hits the fan later.")
         else:
             db_names = utils.get_all_item_names_from_the_database(args.pan_or_profile_db)
         run.info('Items in %s database' % utils.get_db_type(args.pan_or_profile_db), len(db_names), mc='green')
@@ -102,18 +102,18 @@ def main(args):
         run.info('Items in contigs database', len(db_names), mc='green')
     else:
         db_names = input_names
-        run.warning("Quite an improper setup (no pan, profile, or contigs databases). We are using %d\
-                     input names found in the collection file as item names. Because you are the\
-                     boss that's why." % len(db_names))
+        run.warning("Quite an improper setup (no pan, profile, or contigs databases). We are using %d "
+                    "input names found in the collection file as item names. Because you are the "
+                    "boss that's why." % len(db_names))
 
     item_names_shared = set.intersection(db_names, input_names)
     if not len(item_names_shared):
-        raise ConfigError("There is no overlap between the item names found in your input file and item names found in the\
-                           and this is not cool. For instance one of the names from your file looks like this:\
-                           '%(from_file)s', and this is one is an example name from the database: '%(from_db)s'.\
-                           Maybe you need to use the flag `--contigs-mode`. Or maybe the content of the input file\
-                           has nothing to do with the database you are trying to import it into. Anvi'o doesn't know\
-                           but it can't continue unless you figure this out :/" % {'from_file': input_names.pop(), \
+        raise ConfigError("There is no overlap between the item names found in your input file and item names found in the "
+                          "and this is not cool. For instance one of the names from your file looks like this: "
+                          "'%(from_file)s', and this is one is an example name from the database: '%(from_db)s'. "
+                          "Maybe you need to use the flag `--contigs-mode`. Or maybe the content of the input file "
+                          "has nothing to do with the database you are trying to import it into. Anvi'o doesn't know "
+                          "but it can't continue unless you figure this out :/" % {'from_file': input_names.pop(), \
                                                                                    'from_db': db_names.pop()})
     else:
         run.info("Item names shared between input and db", len(item_names_shared))
@@ -125,17 +125,17 @@ def main(args):
             input_data_file_content.pop(item_name)
 
         input_names = set(input_data_file_content.keys())
-        run.warning('%d item(s) that appeared only in the input file will be ignored (such as this one: %s).\
-                     Just so you know.' % (len(item_names_unique_to_input_file), item_names_unique_to_input_file.pop()))
+        run.warning('%d item(s) that appeared only in the input file will be ignored (such as this one: %s). '
+                    'Just so you know.' % (len(item_names_unique_to_input_file), item_names_unique_to_input_file.pop()))
 
     # items in db but missing from the input file:
     item_names_unique_to_db = db_names - input_names
     if len(item_names_unique_to_db):
-        run.warning("%d item(s) that were in the database, but were not in the input file, will not be described by\
-                     any bin in the collection %s. That is totally fine, but anvi'o hopes that you are aware of that.\
-                     This means you have more things in your database than the number of things your input file\
-                     describes. Here is an example of something that is in your database but not in any bin in your\
-                     input file: %s." % (len(item_names_unique_to_db), args.collection_name, item_names_unique_to_db.pop()))
+        run.warning("%d item(s) that were in the database, but were not in the input file, will not be described by "
+                    "any bin in the collection %s. That is totally fine, but anvi'o hopes that you are aware of that. "
+                    "This means you have more things in your database than the number of things your input file "
+                    "describes. Here is an example of something that is in your database but not in any bin in your "
+                    "input file: %s." % (len(item_names_unique_to_db), args.collection_name, item_names_unique_to_db.pop()))
 
     data = {}
 
@@ -160,19 +160,20 @@ def sanity_check(args):
     if not args.pan_or_profile_db:
         raise ConfigError("You must provide an anvi'o pan or profile database for this to work :(")
 
-    if args.pan_or_profile_db:
-        utils.is_pan_or_profile_db(args.pan_or_profile_db)
+    utils.is_pan_or_profile_db(args.pan_or_profile_db)
+
+    filesnpaths.is_output_file_writable(args.pan_or_profile_db)
 
     if args.contigs_db:
         utils.is_contigs_db(args.contigs_db)
 
     if args.pan_or_profile_db and utils.get_db_type(args.pan_or_profile_db) == 'pan' and args.contigs_db:
-        raise ConfigError("There is no need to provide a contigs database when you are working with an anvi'o pan\
-                            database")
+        raise ConfigError("There is no need to provide a contigs database when you are working with an anvi'o pan "
+                           "database")
 
     if not args.contigs_db and args.contigs_mode:
-        raise ConfigError("There is no reason for you to use the `--contigs-mode` flag when you have\
-                            not declared an anvi'o contigs database")
+        raise ConfigError("There is no reason for you to use the `--contigs-mode` flag when you have "
+                           "not declared an anvi'o contigs database")
 
     # if there is a profile database, check whether there is a contigs database associated with the profile
     if args.pan_or_profile_db and utils.get_db_type(args.pan_or_profile_db) == 'profile':
@@ -187,15 +188,15 @@ def sanity_check(args):
         raise ConfigError("You must give a name for this collection.")
 
     if not args.contigs_db:
-        run.warning("You did not provide a contigs database. Fine. So be it. But know this: anvi'o has no way to check\
-                     the consistency of names you provide in the input file. So if you made a mistake while generating\
-                     this collection, it probably will cause issues later on.")
+        run.warning("You did not provide a contigs database. Fine. So be it. But know this: anvi'o has no way to check "
+                    "the consistency of names you provide in the input file. So if you made a mistake while generating "
+                    "this collection, it probably will cause issues later on.")
 
     if not args.pan_or_profile_db:
-        run.warning("Since you haven't provided an anvi'o profile database, this program will add your collection into\
-                     the contigs database you provided. If you use the same collection name later in one of your profile\
-                     databases that will be generated from this contigs database, things may go South, and anvi'o would\
-                     not even care.")
+        run.warning("Since you haven't provided an anvi'o profile database, this program will add your collection into "
+                    "the contigs database you provided. If you use the same collection name later in one of your profile "
+                    "databases that will be generated from this contigs database, things may go South, and anvi'o would "
+                    "not even care.")
 
     utils.check_collection_name(args.collection_name)
 
@@ -205,9 +206,9 @@ def sanity_check(args):
 
     num_occurences_of_entries = Counter([l.split('\t')[0] for l in open(args.data).readlines()])
     if max(num_occurences_of_entries.values()) != 1:
-        raise ConfigError("Some %(item)s names occur more than once in the input file. A %(item)s cannot belong in two\
-                            bins, and neither there should be the same bin assignment for a given %(item)s. Long story\
-                            short, each name should appear only once in your input file, and it is not the case :/" \
+        raise ConfigError("Some %(item)s names occur more than once in the input file. A %(item)s cannot belong in two "
+                           "bins, and neither there should be the same bin assignment for a given %(item)s. Long story "
+                           "short, each name should appear only once in your input file, and it is not the case :/" \
                                                                         % {'item': 'contig' if args.contigs_mode else 'split'})
 
 

@@ -17,7 +17,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Quentin Clayssen"
 __email__ = "quentin.clayssen@gmail.com"
-__requires__ = ['contigs-db']
+__requires__ = ['contigs-db', 'scgs-taxonomy-db']
 __provides__ = ['scgs-taxonomy']
 __resources__ = [("Usage examples and warnings", "http://merenlab.org/scg-taxonomy")]
 __description__ = ("The purpose of this program is to affiliate single-copy core genes in an anvi'o contigs database with "
@@ -42,6 +42,15 @@ if __name__ == '__main__':
 
     groupA = parser.add_argument_group("ADVANCED STUFF")
     groupA.add_argument(*anvio.A('scgs-taxonomy-data-dir'), **anvio.K('scgs-taxonomy-data-dir'))
+    groupA.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', {'help': "The defualt value for this is \
+                        %(default).1f%%, and in an ideal world you sholdn't really change it. Lowering this value will probably give \
+                        you too many hits from neighboring genomes, which may ruin your consensus taxonomy (imagine, at 90%% identity \
+                        you may match to a single species, but at 70%% identity you may match to every species in a genus and your \
+                        consensus assignment may be influenced by that). But once in a while you will have a genome that doesn't have any\
+                        close match in GTDB, and you will be curious to find out what it could be. So, when you are getting no SCG hits\
+                        whatsoever, only then you may want to play with this value. In those cases you can run anvi-estimate-scg-taxonomy\
+                        with a `--debug` flag to see what is really going on. We strongly advice you to do this only with single genomes,\
+                        and never with metagenomes.", 'default': 90}))
 
     groupH = parser.add_argument_group("PERFORMANCE")
     groupH.add_argument(*anvio.A('num-parallel-processes'), **anvio.K('num-parallel-processes'))

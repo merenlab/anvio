@@ -121,7 +121,6 @@ body {
     margin: 4px;
 }
 
-
 .settings-header {
     font-variant: small-caps;
     font-size: 1.2em;
@@ -129,6 +128,11 @@ body {
     display: block;
     margin-bottom: 5px;
     margin-top: 12px;
+}
+
+#model_info_table {
+    text-align: center;
+    vertical-align: middle;
 }
 
 .ngl-tooltip {

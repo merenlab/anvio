@@ -9,6 +9,7 @@ import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
+import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -43,8 +44,8 @@ class DatabaseInfo:
 
         if self.self_key or self.self_value:
             if (not self.self_key) or (not self.self_value):
-                raise ConfigError("You must use `--self-key` and `--self-value` together. You can't\
-                                   just use one of them.")
+                raise ConfigError("You must use `--self-key` and `--self-value` together. You can't "
+                                  "just use one of them.")
 
             self.set_key_value()
             self.get_db_self()
@@ -70,13 +71,25 @@ class DatabaseInfo:
                 else:
                     run.info(key, self.db_self[key]["value"])
 
-            run.info_single("Please remember that it is never a good idea to change these values. But in\
-                             some cases it may be absolutely necessary to update something here, and a\
-                             programmer may ask you to run this program and do it. But even then, you\
-                             should be very skeptical. For instance, if the programmer asks you to change\
-                             the values for 'num_contigs', or 'kmer_size', it would mean that they likely\
-                             hate you and want you to fail. So please be extremely careful changing any\
-                             of these values.", mc='red', nl_before=1)
+            run.info_single("Please remember that it is never a good idea to change these values. But in "
+                            "some cases it may be absolutely necessary to update something here, and a "
+                            "programmer may ask you to run this program and do it. But even then, you "
+                            "should be very skeptical. For instance, if the programmer asks you to change "
+                            "the values for 'num_contigs', or 'kmer_size', it would mean that they likely "
+                            "hate you and want you to fail. So please be extremely careful changing any "
+                            "of these values.", mc='red', nl_before=1)
+
+        # It wouldn't hurt to print out some DB specific information?
+        if self.db_type == 'contigs':
+            # try-excepting here since this program is supposed to be able to run even on
+            # broken databases. so if the following code cause issues because the DB is broken
+            # this program shouldn't crash.
+            try:
+                dbops.ContigsDatabase(self.db_path).list_gene_caller_sources()
+                hmmops.SequencesForHMMHits(self.db_path).list_available_hmm_sources()
+            except:
+                pass
+
 
     def get_db_self(self):
         try:
@@ -88,40 +101,41 @@ class DatabaseInfo:
 
             database.disconnect()
         except:
-            raise ConfigError("Are you sure '%s' is a database file? Because, you know, probably\
-                               it is not at all :(" % self.db_path)
+            raise ConfigError("Are you sure '%s' is a database file? Because, you know, probably "
+                              "it is not at all :(" % self.db_path)
 
 
     def set_key_value(self):
+        filesnpaths.is_output_file_writable(self.db_path)
         try:
             database = db.DB(self.db_path, None, ignore_version=True)
             db_type = database.get_meta_value("db_type")
             db_self = database.get_table_as_dict("self")
             database.disconnect()
         except:
-            raise ConfigError("Are you sure '%s' is a database file? Because, you know, probably\
-                               it is not at all :(" % self.db_path)
+            raise ConfigError("Are you sure '%s' is a database file? Because, you know, probably "
+                              "it is not at all :(" % self.db_path)
 
 
         if self.self_key in ["version", "db_type", "description", "samples"]:
-            raise ConfigError("Well. This is awkward. The key '%s' is one of the 'no touch keys', so\
-                               you can't change them with this program. That said, you are an adult and\
-                               anvi'o can't tell you what to do. If you want to be a rebel, feel free to\
-                               use the sqlite from the command line to create your own Frankenstein." % self.self_key)
+            raise ConfigError("Well. This is awkward. The key '%s' is one of the 'no touch keys', so "
+                              "you can't change them with this program. That said, you are an adult and "
+                              "anvi'o can't tell you what to do. If you want to be a rebel, feel free to "
+                              "use the sqlite from the command line to create your own Frankenstein." % self.self_key)
 
         # make sure we did everything we can to avoid user error
         self.self_key = self.self_key.replace(' ', '_').strip()
 
         if self.self_key in db_self and self.self_key == 'sample_id':
             if db_self['db_type']['value'] != 'profile' or int(db_self['blank']['value']) or int(db_self['merged']['value']):
-                raise ConfigError("You can change the self-key `sample_id` only in single and non-blank anvi'o\
-                                   profile databases :/")
+                raise ConfigError("You can change the self-key `sample_id` only in single and non-blank anvi'o "
+                                  "profile databases :/")
 
             if not filesnpaths.is_file_exists(dbops.get_auxiliary_data_path_for_profile_db(self.db_path), dont_raise=True):
-                raise ConfigError("You must have the auxiliary database in its proper location if you wish to\
-                                   change the key `sample_id` in a single profile database. If you are tired of\
-                                   anvi'o telling you what you can or cannot do, feel free to tell it to go fly a kite,\
-                                   and open an sqlite terminal to change anything the way you want.")
+                raise ConfigError("You must have the auxiliary database in its proper location if you wish to "
+                                  "change the key `sample_id` in a single profile database. If you are tired of "
+                                  "anvi'o telling you what you can or cannot do, feel free to tell it to go fly a kite, "
+                                  "and open an sqlite terminal to change anything the way you want.")
 
             utils.check_sample_id(self.self_value)
 
@@ -135,13 +149,13 @@ class DatabaseInfo:
                               which currently has a value of '%s', will be replaced with '%s'." % \
                                     (self.self_key, db_type, db_self[self.self_key]['value'], self.self_value))
         else:
-            self.run.warning("You are about to set a new key, '%s', in the self table of your %s\
-                              database which will hold the value '%s'." % \
+            self.run.warning("You are about to set a new key, '%s', in the self table of your %s "
+                             "database which will hold the value '%s'." % \
                                     (self.self_key, db_type, self.self_value))
 
         if not self.just_do_it:
-            self.run.info_single('If you like what you see up there, please use the `--just-do-it`\
-                                  flag to make it happen.')
+            self.run.info_single('If you like what you see up there, please use the `--just-do-it` '
+                                 'flag to make it happen.')
             sys.exit(0)
 
         database = db.DB(self.db_path, None, ignore_version=True)
