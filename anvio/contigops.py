@@ -178,9 +178,6 @@ class Auxiliary:
         self.profile_SCVs = profile_SCVs
         self.report_variability_full = report_variability_full
 
-        # used during read looping
-        self.fast_nt_to_array_lookup = self.get_fast_nt_to_array_index_lookup()
-
         # used during array processing
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
         self.cdn_to_array_index = {cdn: i for i, cdn in enumerate(constants.codons)}
@@ -188,47 +185,6 @@ class Auxiliary:
         if self.profile_SCVs:
             if not all([necessary in self.split.per_position_info for necessary in ['forward', 'gene_start', 'gene_stop']]):
                 raise ConfigError("Auxiliary :: self.split.per_position_info does not contain the info required for SCV profiling")
-
-
-    def get_fast_nt_to_array_index_lookup(self):
-        """Get a lookup array for converting nt sequences to index arrays.
-
-        In action, this approach is twice as fast as a list comprehension for 100 sequence reads.
-
-        Examples
-        ========
-
-        Create a random sequence
-
-        >>> import anvio.constants as constants
-        >>> seq = ''.join(list(np.random.choice(constants.nucleotides, size=100)))
-        >>> seq
-        'CGCATCCNAGNGNGCTNCGCTTCNANTGAACNCAGTACNGGNTCGTGNGGNTAANNGCGNGNNNNNCGNNTTCTNTACNACGTTGATAGATGNCTNNCGN'
-
-        >>> %timeit quick = self.fast_nt_to_array_lookup[np.array([seq]).view(np.int32)]
-        2.81 µs ± 65.4 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
-        >>> quick
-        array([1, 2, 1, 0, 3, 1, 1, 4, 0, 2, 4, 2, 4, 2, 1, 3, 4, 1, 2, 1, 3, 3,
-               1, 4, 0, 4, 3, 2, 0, 0, 1, 4, 1, 0, 2, 3, 0, 1, 4, 2, 2, 4, 3, 1,
-               2, 3, 2, 4, 2, 2, 4, 3, 0, 0, 4, 4, 2, 1, 2, 4, 2, 4, 4, 4, 4, 4,
-               1, 2, 4, 4, 3, 3, 1, 3, 4, 3, 0, 1, 4, 0, 1, 2, 3, 3, 2, 0, 3, 0,
-               2, 0, 3, 2, 4, 1, 3, 4, 4, 1, 2, 4])
-
-        >>> %timeit slow = [nt_to_array_index[s] for s in seq]
-        5.25 µs ± 156 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
-        >>> slow
-        [1, 2, 1, 0, 3, 1, 1, 4, 0, 2, 4, 2, 4, 2, 1, 3, 4, 1, 2, 1, 3, 3,
-         1, 4, 0, 4, 3, 2, 0, 0, 1, 4, 1, 0, 2, 3, 0, 1, 4, 2, 2, 4, 3, 1,
-         2, 3, 2, 4, 2, 2, 4, 3, 0, 0, 4, 4, 2, 1, 2, 4, 2, 4, 4, 4, 4, 4,
-         1, 2, 4, 4, 3, 3, 1, 3, 4, 3, 0, 1, 4, 0, 1, 2, 3, 3, 2, 0, 3, 0,
-         2, 0, 3, 2, 4, 1, 3, 4, 4, 1, 2, 4]
-        """
-
-        nts_as_numbers = np.array(constants.nucleotides).view(np.int32)
-        fast_nt_to_array_index_lookup = np.zeros((nts_as_numbers.max()+1), dtype='int')
-        fast_nt_to_array_index_lookup[nts_as_numbers] = range(len(constants.nucleotides))
-
-        return fast_nt_to_array_index_lookup
 
 
     def run_SCVs(self, bam):
@@ -394,16 +350,16 @@ class Auxiliary:
 
 
     def process(self, bam):
-        #import pprofile
-        #prof = pprofile.Profile()
-        #with prof():
-        self.run_SNVs(bam)
+        import pprofile
+        prof = pprofile.Profile()
+        with prof():
+            self.run_SNVs(bam)
 
-        if self.profile_SCVs:
-            self.run_SCVs(bam)
-        #f =  open('new_spicy_callgrind.out', 'w')
-        #prof.callgrind(f)
-        #f.close()
+            if self.profile_SCVs:
+                self.run_SCVs(bam)
+        f =  open('new_callgrind.out', 'w')
+        prof.callgrind(f)
+        f.close()
 
 
     def get_codon_sequence_for_gene(self, gene_call):
@@ -435,8 +391,7 @@ class Auxiliary:
 
         read_count = 0
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
-            aligned_sequence, reference_positions = read.get_aligned_sequence_and_reference_positions()
-            aligned_sequence_as_index = self.fast_nt_to_array_lookup[np.array([aligned_sequence]).view(np.int32)]
+            aligned_sequence_as_index, reference_positions = read.get_aligned_sequence_and_reference_positions()
             reference_positions_in_split = reference_positions - self.split.start
 
             allele_counts_array = utils.add_to_2D_numeric_array(aligned_sequence_as_index, reference_positions_in_split, allele_counts_array)
@@ -453,7 +408,7 @@ class Auxiliary:
 
         test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
 
-        split_as_index = self.fast_nt_to_array_lookup[np.array([self.split.sequence]).view(np.int32)]
+        split_as_index = constants.fast_nt_to_num_lookup[np.frombuffer(self.split.sequence.encode('ascii'), np.uint8)]
 
         nt_profile = ProcessNucleotideCounts(
             allele_counts=allele_counts_array,

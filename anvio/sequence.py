@@ -4,7 +4,7 @@
 '''Primitive classes for basic DNA sequence properties.'''
 
 import copy
-import numpy
+import numpy as np
 import collections
 
 from itertools import permutations
@@ -128,7 +128,7 @@ class Read:
         # modify some of these attributes, and since we want to maintain consistency across
         # attributes, all attributes of interest are redefined here
         self.cigartuples = read.cigartuples
-        self.query_sequence = read.query_sequence
+        self.query_sequence = constants.fast_nt_to_num_lookup[np.frombuffer(read.query_sequence.encode('ascii'), np.uint8)]
         self.reference_sequence = read.get_reference_sequence()
         self.reference_start = read.reference_start
         self.reference_end = read.reference_end
@@ -303,7 +303,7 @@ class Read:
         for _, length, consumes_read, consumes_ref in self.iterate_cigartuples(self.cigartuples):
 
             if consumes_read and consumes_ref:
-                aligned_sequence.append(self.query_sequence[read_consumed:(read_consumed + length)])
+                aligned_sequence.extend(self.query_sequence[read_consumed:(read_consumed + length)])
                 reference_positions.extend(range(ref_consumed + self.reference_start, ref_consumed + self.reference_start + length))
 
                 read_consumed += length
@@ -315,9 +315,10 @@ class Read:
             elif consumes_read:
                 read_consumed += length
 
-        reference_positions = numpy.array(reference_positions)
+        reference_positions = np.array(reference_positions)
+        aligned_sequence = np.array(aligned_sequence)
 
-        return ''.join(aligned_sequence), reference_positions
+        return aligned_sequence, reference_positions
 
 
     def trim(self, trim_by, side='left'):
@@ -455,7 +456,7 @@ class Composition:
 
 class Coverage:
     def __init__(self):
-        self.c = None # becomes a numpy array of coverage values
+        self.c = None # becomes a np array of coverage values
         self.min = 0
         self.max = 0
         self.std = 0.0
@@ -520,7 +521,7 @@ class Coverage:
             raise ConfigError("Coverage.run :: You can't pass an object of type %s as contig_or_split" % type(contig_or_split))
 
         # a coverage array the size of the defined range is allocated in memory
-        c = numpy.zeros(end - start).astype(int)
+        c = np.zeros(end - start).astype(int)
 
         try:
             routine = self.routine_dict[method]
@@ -530,7 +531,7 @@ class Coverage:
         self.c = routine(c, bam, contig_name, start, end, iterator, **kwargs)
 
         if max_coverage is not None:
-            if numpy.max(self.c) > max_coverage:
+            if np.max(self.c) > max_coverage:
                 self.c[self.c > max_coverage] = max_coverage
 
         if len(self.c):
@@ -563,12 +564,12 @@ class Coverage:
 
 
     def process_c(self, c):
-        self.min = numpy.amin(c)
-        self.max = numpy.amax(c)
-        self.median = numpy.median(c)
-        self.mean = numpy.mean(c)
-        self.std = numpy.std(c)
-        self.detection = numpy.sum(c > 0) / len(c)
+        self.min = np.amin(c)
+        self.max = np.amax(c)
+        self.median = np.median(c)
+        self.mean = np.mean(c)
+        self.std = np.std(c)
+        self.detection = np.sum(c > 0) / len(c)
 
         self.is_outlier = get_list_of_outliers(c, median=self.median) # this is an array not a list
 
@@ -578,7 +579,7 @@ class Coverage:
             sorted_c = sorted(c)
             Q = int(c.size * 0.25)
             Q2Q3 = sorted_c[Q:-Q]
-            self.mean_Q2Q3 = numpy.mean(Q2Q3)
+            self.mean_Q2Q3 = np.mean(Q2Q3)
 
 
 def get_indices_for_outlier_values(c):
@@ -621,20 +622,20 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
     if len(values.shape) == 1:
         values = values[:, None]
 
-    if not median: median = numpy.median(values, axis=0)
+    if not median: median = np.median(values, axis=0)
 
-    diff = numpy.sum((values - median) ** 2, axis=-1)
-    diff = numpy.sqrt(diff)
-    median_absolute_deviation = numpy.median(diff)
+    diff = np.sum((values - median) ** 2, axis=-1)
+    diff = np.sqrt(diff)
+    median_absolute_deviation = np.median(diff)
 
     if not median_absolute_deviation:
        if values[0] == 0:
             # A vector of all zeros is considered "all outliers"
-            return numpy.array([True] * values.size)
+            return np.array([True] * values.size)
        else:
             # A vector of uniform non-zero values is "all non-outliers"
             # This could be important for silly cases (like in megahit) in which there is a maximum value for coverage
-            return numpy.array([False] * values.size)
+            return np.array([False] * values.size)
 
     modified_z_score = 0.6745 * diff / median_absolute_deviation
     non_outliers = modified_z_score > threshold
