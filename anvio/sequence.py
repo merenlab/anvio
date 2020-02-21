@@ -8,6 +8,7 @@ import numpy as np
 import collections
 
 from numba import njit
+from colored import fore, style
 from itertools import permutations
 
 import anvio
@@ -130,7 +131,7 @@ class Read:
         # attributes, all attributes of interest are redefined here
         self.cigartuples = np.array(read.cigartuples)
         self.query_sequence = constants.fast_nt_to_num_lookup[np.frombuffer(read.query_sequence.encode('ascii'), np.uint8)]
-        self.reference_sequence = read.get_reference_sequence()
+        self.reference_sequence = constants.fast_nt_to_num_lookup[np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)]
         self.reference_start = read.reference_start
         self.reference_end = read.reference_end
 
@@ -195,7 +196,7 @@ class Read:
 
     def __repr__(self):
         """Fancy output for viewing a read's alignment in relation to the reference"""
-        ref, read = '', []
+        ref, read = [], []
         pos_ref, pos_read = 0, 0
 
         d = {0: 'A', 1: 'C', 2: 'G', 3: 'T', 4: 'N'}
@@ -208,17 +209,25 @@ class Read:
                 read.append('-' * length)
 
             if consumes_ref:
-                ref += self.reference_sequence[pos_ref:(pos_ref + length)]
+                ref.extend([d[x] for x in self.reference_sequence[pos_ref:(pos_ref + length)]])
                 pos_ref += length
             else:
-                ref += '-' * length
+                ref.append('-' * length)
+
+        count = 0
+        for ref_nt, read_nt in zip(ref, read):
+            if ref_nt == read_nt:
+                ref[count] = fore.DARK_OLIVE_GREEN_3A + ref[count] + style.RESET
+                read[count] = fore.DARK_OLIVE_GREEN_3A + read[count] + style.RESET
+
+            count += 1
 
         lines = [
             '<%s.%s object at %s>' % (self.__class__.__module__, self.__class__.__name__, hex(id(self))),
             ' ├── start, end : [%s, %s)' % (self.reference_start, self.reference_end),
             ' ├── cigartuple : %s' % [tuple(row) for row in self.cigartuples],
             ' ├── read       : %s' % ''.join(read),
-            ' └── reference  : %s' % ref,
+            ' └── reference  : %s' % ''.join(ref),
         ]
 
         return '\n'.join(lines)
