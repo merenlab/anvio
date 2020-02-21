@@ -14,6 +14,7 @@ import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.genomedescriptions as genomedescriptions
+import pandas as pd
 
 from anvio.errors import ConfigError
 
@@ -38,6 +39,16 @@ class NGram(object):
                                      --annotation-source COG_FUNCTION \
                                      --window-size 3 \
                                      -o test
+
+                anvi-analyze-synteny -e external-genomes-cps.txt  \
+                                     --annotation-source COG_FUNCTION \
+                                     --window-size 2\
+                                     -o test
+        Explore annotations:
+        for i in `ls Bfragilis_00*_test`; do head -n4 $i ; done
+
+
+                                     
         """
 
         self.args = args
@@ -78,6 +89,7 @@ class NGram(object):
     def populate_genes(self):
         genes_and_functions_list = []
         ngram_counts = []
+        counter = 0
         # Iterate through contigsDBs
         for contigs_db_name in self.external_genomes:
             # Extract file path
@@ -91,15 +103,21 @@ class NGram(object):
             
             # iterate through list of contigs and make dictionary 'contig_name': list_of_functions
             contigs_dict = {}
-            for item in contigs_list:
+            for contig_name in contigs_list:
                 contig_function_list = []
                 for i in genes_and_functions_list:
-                    if item == i[2]:
+                    if contig_name == i[2]:
                         contig_function_list.append([i[0],i[1]])
-                contigs_dict[item] = contig_function_list
+                contigs_dict[contig_name] = contig_function_list
 
             # Run synteny algorithm and count occurrences of ngrams
-            ngram_counts.append(self.count_synteny(contigs_dict))
+            # ngram_counts.append(self.count_synteny_1(contigs_dict))
+                ngram_counts.append(self.count_synteny(contigs_dict))
+            
+            counter = counter + 1
+            if counter == 8:
+                break
+        print(ngram_counts)
 
         # Merge list of dicts into final dict of ngram counts
         final_dict = {}
@@ -110,7 +128,8 @@ class NGram(object):
                 else:
                     final_dict[key] = value
 
-        print(final_dict)
+        df = pd.DataFrame(list(final_dict.items()), columns=['ngram', 'Count']) 
+        print(df)
 
     def get_genes_and_functions_from_contigs_db(self, contigs_db_path):
         # get contigsDB
@@ -136,10 +155,9 @@ class NGram(object):
                 list_of_gene_attributes.extend((gci, accession, contig_name))
                 genes_and_functions_list.append(list_of_gene_attributes)
             else: # adding in "unknown annotation" if there is none
-                gci = counter
                 accession = "unknown-function-" + "{:06d}".format(1) + str(counter) # add leading 0 
-                contig_name = genes_in_contigs[gci]['contig']
-                list_of_gene_attributes.extend((gci,accession,contig_name))
+                contig_name = genes_in_contigs[counter]['contig']
+                list_of_gene_attributes.extend((counter,accession,contig_name))
                 genes_and_functions_list.append(list_of_gene_attributes)
             counter = counter + 1
 
@@ -148,18 +166,18 @@ class NGram(object):
 
     def count_synteny(self, contigs_dict):
         """
+        Need to return counts for 1 contig at a time and 
+        give back a dictionary with contig {name: {ngram:count}}
         """
         k = self.window_size
-        for key in sorted(contigs_dict.keys()):
-            gci_function = contigs_dict[key]
-            genes = [entry[1] for entry in gci_function]
+        for contig_name in sorted(contigs_dict.keys()):
+            contig_gci_function_list = contigs_dict[contig_name]
+            function_list = [entry[1] for entry in contig_gci_function_list]
 
             kFreq = {}
-            # k = 3
-            for i in range(0, len(genes) - k + 1):
-                window = sorted(genes[i:i + k])
+            for i in range(0, len(function_list) - k + 1):
+                window = sorted(function_list[i:i + k])
                 ngram = "::".join(map(str, list(window)))
-                # print(ngram)
                 # if ngram is not in dictionary add it
                 # if it is add + 1
                 if ngram in kFreq:
@@ -167,3 +185,29 @@ class NGram(object):
                 else:
                     kFreq[ngram] = 1
             return kFreq
+
+    def count_synteny_1(self, contigs_dict):
+        """
+        """
+
+        for contig_name in sorted(contigs_dict.keys()):
+            contig_gci_function_list = contigs_dict[contig_name]
+            function_list = [entry[1] for entry in contig_gci_function_list]
+            # print(function_list)
+            k = "2,3"
+            k = k.split(sep = ",")
+            list_of_dicts = []
+            for k in range(int(k[0]),int(k[1])+1):
+
+                kFreq = {}
+                for i in range(0, len(function_list) - k + 1):
+                    window = sorted(function_list[i:i + k])
+                    ngram = "::".join(map(str, list(window)))
+                    # if ngram is not in dictionary add it
+                    # if it is add + 1
+                    if ngram in kFreq:
+                        kFreq[ngram] +=  1
+                    else:
+                        kFreq[ngram] = 1
+                    list_of_dicts.extend((contig_name,k,kFreq))
+                return list_of_dicts
