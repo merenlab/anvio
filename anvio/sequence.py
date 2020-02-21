@@ -131,7 +131,6 @@ class Read:
         # attributes, all attributes of interest are redefined here
         self.query_sequence = self.r.query_sequence
         self.cigartuples = self.r.cigartuples
-        self.reference_positions = numpy.array(self.r.get_reference_positions())
         self.reference_sequence = self.r.get_reference_sequence()
         self.reference_start = self.r.reference_start
         self.reference_end = self.r.reference_end
@@ -250,7 +249,7 @@ class Read:
         """
 
         blocks = []
-        block_start = self.reference_positions[0]
+        block_start = self.reference_start
         block_length = 0
 
         for _, length, consumes_read, consumes_ref in self.iterate_cigartuples(self.cigartuples):
@@ -278,12 +277,6 @@ class Read:
             blocks.append((block_start, block_start + block_length))
 
         return blocks
-
-
-    def get_reference_positions(self):
-        """Mimic the get_reference_positions function from AlignedSegment."""
-
-        return self.reference_positions
 
 
     def get_reference_sequence(self):
@@ -326,12 +319,6 @@ class Read:
 
         reference_positions = numpy.array(reference_positions)
 
-        if not numpy.array_equal(reference_positions, self.reference_positions):
-            print(self)
-            print(len(reference_positions), len(self.reference_positions))
-            print(self.query_sequence)
-            import sys; sys.exit()
-
         return ''.join(aligned_sequence), reference_positions
 
 
@@ -342,7 +329,6 @@ class Read:
 
             query_sequence
             cigartuples
-            reference_positions
             reference_sequence
             reference_start
             reference_end
@@ -381,13 +367,11 @@ class Read:
             if side == 'left':
                 self.query_sequence = self.query_sequence[trim_by:]
                 self.reference_sequence = self.reference_sequence[trim_by:]
-                self.reference_positions = self.reference_positions[trim_by:]
                 self.reference_start += trim_by
 
             else:
                 self.query_sequence = self.query_sequence[:-trim_by]
                 self.reference_sequence = self.reference_sequence[:-trim_by]
-                self.reference_positions = self.reference_positions[:-trim_by]
                 self.reference_end -= trim_by
 
             return
@@ -437,13 +421,11 @@ class Read:
             self.cigartuples = trimmed_cigartuples[::-1]
             self.query_sequence = self.query_sequence[:-read_positions_trimmed]
             self.reference_sequence = self.reference_sequence[:-ref_positions_trimmed]
-            self.reference_positions = self.reference_positions[self.reference_positions < self.reference_end - ref_positions_trimmed]
             self.reference_end -= ref_positions_trimmed
         else:
             self.cigartuples = trimmed_cigartuples
             self.query_sequence = self.query_sequence[read_positions_trimmed:]
             self.reference_sequence = self.reference_sequence[ref_positions_trimmed:]
-            self.reference_positions = self.reference_positions[self.reference_positions >= self.reference_start + ref_positions_trimmed]
             self.reference_start += ref_positions_trimmed
 
 
@@ -586,12 +568,9 @@ class Coverage:
         Notes
         =====
         - Should typically not be called explicitly. Use run instead
-        - The following strategy was also considered, but is much slower because it uses fancy-indexing
+        - fancy indexing of reference_positions was also considered, but is much slower because it
+          uses fancy-indexing
           https://jakevdp.github.io/PythonDataScienceHandbook/02.07-fancy-indexing.html:
-
-          for read in bam.fetch(contig_name, start, end):
-              r = read.get_reference_positions()
-              c[r] += 1
         """
 
         for read in iterator(contig_name, start, end):
