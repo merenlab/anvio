@@ -259,14 +259,11 @@ class BAMFileObject(pysam.AlignmentFile):
         for read in self.fetch(contig_name, start, end, *args, **kwargs):
             read = sequence.Read(read)
 
-            overhang_left = start - read.reference_start
-            overhang_right = read.reference_end - end
+            if start - read.reference_start > 0:
+                read.trim(trim_by=(start - read.reference_start), side='left')
 
-            if overhang_left > 0:
-                read.trim(trim_by=overhang_left, side='left')
-
-            if overhang_right > 0:
-                read.trim(trim_by=overhang_right, side='right')
+            if read.reference_end - end > 0:
+                read.trim(trim_by=(read.reference_end - end), side='right')
 
             yield read
 
