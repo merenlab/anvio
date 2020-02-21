@@ -592,9 +592,15 @@ class KeggModulesDatabase(KeggContext):
 class KeggModulesTable:
     """This class defines operations for creating the KEGG Modules table in Modules.db"""
 
-    def __init__(self, split_length):
+    def __init__(self, mod_table_name = None):
+		""""""
         self.db_entries = []
         self.total_modules = 0
+
+		if mod_table_name:
+			self.module_table_name = mod_table_name
+		else:
+			raise ConfigError("Beep Beep. Warning. KeggModulesTable was initialized without knowing its own name.")
 
     """ UPDATE ME TO WORK FOR MODULES
     def append(self, seq_id, sequence, gene_start_stops=None):
