@@ -9,6 +9,7 @@ import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
+import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -85,6 +86,7 @@ class DatabaseInfo:
             # this program shouldn't crash.
             try:
                 dbops.ContigsDatabase(self.db_path).list_gene_caller_sources()
+                hmmops.SequencesForHMMHits(self.db_path).list_available_hmm_sources()
             except:
                 pass
 
