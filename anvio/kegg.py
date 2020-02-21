@@ -539,7 +539,7 @@ class KeggRunHMMs(KeggContext):
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
 
-class KeggModulesDatabase():
+class KeggModulesDatabase(KeggContext):
     """To create or access a Modules DB.
 
     This DB should be created in the Kegg Data folder during Kofam setup, and will be populated with information from the
