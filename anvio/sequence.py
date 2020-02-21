@@ -122,18 +122,16 @@ class Read:
         read : pysam.AlignedSegment
         """
 
-        self.r = read
-
         # redefine all properties of interest explicitly from pysam.AlignedSegment object as
         # attributes of this class. The reason for this is that some of the AlignedSegment
         # attributes have no __set__ methods, so are read only. Since this class is designed to
         # modify some of these attributes, and since we want to maintain consistency across
         # attributes, all attributes of interest are redefined here
-        self.query_sequence = self.r.query_sequence
-        self.cigartuples = self.r.cigartuples
-        self.reference_sequence = self.r.get_reference_sequence()
-        self.reference_start = self.r.reference_start
-        self.reference_end = self.r.reference_end
+        self.cigartuples = read.cigartuples
+        self.query_sequence = read.query_sequence
+        self.reference_sequence = read.get_reference_sequence()
+        self.reference_start = read.reference_start
+        self.reference_end = read.reference_end
 
 
     def __getitem__(self, key):
