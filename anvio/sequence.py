@@ -195,8 +195,12 @@ class Read:
         return segment
 
 
-    def iterate_cigartuples(self):
+    def iterate_cigartuples(self, cigartuples):
         """Iterate through cigartuples
+
+        Parameters
+        ==========
+        cigartuples : list of two-ples
 
         Yields
         ======
@@ -204,7 +208,7 @@ class Read:
             (operation, length, consumes_read, consumes_ref) -> (int, int, bool, bool)
         """
 
-        for operation, length in self.cigartuples:
+        for operation, length in cigartuples:
             yield (operation, length, *constants.cigar_consumption[operation])
 
 
@@ -213,7 +217,7 @@ class Read:
         ref, read = '', ''
         pos_ref, pos_read = 0, 0
 
-        for _, length, consumes_read, consumes_ref in self.iterate_cigartuples():
+        for _, length, consumes_read, consumes_ref in self.iterate_cigartuples(self.cigartuples):
             if consumes_read:
                 read += self.query_sequence[pos_read:(pos_read + length)]
                 pos_read += length
@@ -249,7 +253,7 @@ class Read:
         block_start = self.reference_positions[0]
         block_length = 0
 
-        for _, length, consumes_read, consumes_ref in self.iterate_cigartuples():
+        for _, length, consumes_read, consumes_ref in self.iterate_cigartuples(self.cigartuples):
             if consumes_read and consumes_ref:
                 block_length += length
 
@@ -288,8 +292,8 @@ class Read:
         return self.reference_sequence
 
 
-    def get_aligned_sequence(self):
-        """Get the aligned sequence at each position in self.reference_positions
+    def get_aligned_sequence_and_reference_positions(self):
+        """Get the aligned sequence at each mapped position, and the positions themselves
 
         Notes
         =====
@@ -302,17 +306,33 @@ class Read:
         """
 
         aligned_sequence = []
+        reference_positions = []
 
-        read_pos = 0
-        for _, length, consumes_read, consumes_ref in self.iterate_cigartuples():
+        ref_consumed, read_consumed = 0, 0
+        for _, length, consumes_read, consumes_ref in self.iterate_cigartuples(self.cigartuples):
 
-            if consumes_read:
-                if consumes_ref:
-                    aligned_sequence.append(self.query_sequence[read_pos:(read_pos + length)])
+            if consumes_read and consumes_ref:
+                aligned_sequence.append(self.query_sequence[read_consumed:(read_consumed + length)])
+                reference_positions.extend(range(ref_consumed + self.reference_start, ref_consumed + self.reference_start + length))
 
-                read_pos += length
+                read_consumed += length
+                ref_consumed += length
 
-        return ''.join(aligned_sequence)
+            elif consumes_ref:
+                ref_consumed += length
+
+            elif consumes_read:
+                read_consumed += length
+
+        reference_positions = numpy.array(reference_positions)
+
+        if not numpy.array_equal(reference_positions, self.reference_positions):
+            print(self)
+            print(len(reference_positions), len(self.reference_positions))
+            print(self.query_sequence)
+            import sys; sys.exit()
+
+        return ''.join(aligned_sequence), reference_positions
 
 
     def trim(self, trim_by, side='left'):
@@ -340,10 +360,6 @@ class Read:
 
         side : str, 'left'
             Either 'left' or 'right' side.
-
-        Notes
-        =====
-        - Takes roughly 250us
         """
 
         if trim_by == 0:
@@ -386,7 +402,7 @@ class Read:
         read_positions_trimmed = 0
         terminate_next = False
 
-        for operation, length, consumes_read, consumes_ref in self.iterate_cigartuples():
+        for operation, length, consumes_read, consumes_ref in self.iterate_cigartuples(cigartuples):
 
             if consumes_ref and consumes_read:
                 if terminate_next:
