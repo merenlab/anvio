@@ -595,30 +595,29 @@ class KeggModulesTable:
     def __init__(self, mod_table_name = None):
 		""""""
         self.db_entries = []
-        self.total_modules = 0
+		self.total_entries = 0
 
 		if mod_table_name:
 			self.module_table_name = mod_table_name
 		else:
 			raise ConfigError("Beep Beep. Warning. KeggModulesTable was initialized without knowing its own name.")
 
-    """ UPDATE ME TO WORK FOR MODULES
-    def append(self, seq_id, sequence, gene_start_stops=None):
-        sequence_length = len(sequence)
-        gc_content = utils.get_GC_content_for_sequence(sequence)
 
-        # how many splits will there be?
-        split_start_stops = utils.get_split_start_stops(sequence_length, self.split_length, gene_start_stops)
+    def append_and_store(self, module_num, data_name, data_value, data_definition=None, line_num=None):
+        """This function handles collects db entries (as tuples) into a list, and once we have 10,000 of them it stores that set into the Modules table.
 
-        self.total_nts += sequence_length
-        self.total_contigs += 1
-        db_entry = tuple([seq_id, sequence_length, gc_content, len(split_start_stops)])
+		The db_entries list is cleared after each store so that future stores don't add duplicate entries to the table.
+		"""
+
+        db_entry = tuple([module_num, data_name, data_value, data_definition, line_num])
         self.db_entries.append(db_entry)
+		self.total_entries += 1
 
-        return (sequence_length, split_start_stops, gc_content)
+        if len(self.db_entries) > 10000:
+			self.store()
+			self.db_entries = []
 
 
-    def store(self, db):
+    def store(self):
         if len(self.db_entries):
-            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.contigs_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
-    """
+            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.module_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
