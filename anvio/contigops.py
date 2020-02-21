@@ -105,6 +105,26 @@ class Contig:
     def analyze_coverage(self, bam):
         self.coverage.run(bam, self, method='accurate', max_coverage=anvio.auxiliarydataops.COVERAGE_MAX_VALUE)
 
+        if len(self.splits) == 1:
+            # Coverage.process_c is an expensive operation, taking up ~90% of the time of
+            # analyze_coverage. Hence, this clause exists to catch the somewhat common occurence
+            # when a contig only has one split. In this case, the contig _is_ the split, and so all
+            # of the split.coverage attributes can simply be referenced directly from
+            # contig.coverage
+            split = self.splits[0]
+            split.coverage = Coverage()
+            split.coverage.c = self.coverage.c
+            split.coverage.min = self.coverage.min
+            split.coverage.max = self.coverage.max
+            split.coverage.median = self.coverage.median
+            split.coverage.mean = self.coverage.mean
+            split.coverage.std = self.coverage.std
+            split.coverage.detection = self.coverage.detection
+            split.coverage.is_outlier = self.coverage.is_outlier
+            split.coverage.is_outlier_in_parent = self.coverage.is_outlier
+            split.coverage.mean_Q2Q3 = self.coverage.mean_Q2Q3
+            return
+
         for split in self.splits:
             split.coverage = Coverage()
             split.coverage.c = self.coverage.c[split.start:split.end]
