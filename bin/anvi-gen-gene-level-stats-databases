@@ -51,14 +51,14 @@ def main(args):
             # well then.
             pass
         else:
-            raise ConfigError("It seems gene databases for some of the bins were already generated. As anvi'o will\
-                               go through these bin names, it will makes sure those that already exist are clean\
-                               and can be kept because the parameters that were used to generate them are identical\
-                               to parameters set now. If they don't anvi'o will remove them and create new ones. But\
-                               since you may have stored important information into these databases (such as states or\
-                               collections), anvi'o wants you to give the chance to reconsider. If you don't care about\
-                               them, use the `--just-do-it` flag, and anvi'o will go ahead and destroy anything that\
-                               comes between you and your analyses.")
+            raise ConfigError("It seems gene databases for some of the bins were already generated. As anvi'o will "
+                              "go through these bin names, it will makes sure those that already exist are clean "
+                              "and can be kept because the parameters that were used to generate them are identical "
+                              "to parameters set now. If they don't anvi'o will remove them and create new ones. But "
+                              "since you may have stored important information into these databases (such as states or "
+                              "collections), anvi'o wants you to give the chance to reconsider. If you don't care about "
+                              "them, use the `--just-do-it` flag, and anvi'o will go ahead and destroy anything that "
+                              "comes between you and your analyses.")
 
 
     run.info('Collection', args.collection_name)
@@ -90,9 +90,9 @@ def main(args):
                 TableForGeneLevelCoverages(genes_db_path, parameters, mode=parameters['mode'], run=terminal.Run(verbose=False)).check_params()
                 TableForGeneLevelCoverages(genes_db_path, parameters, mode=parameters['mode'], split_names=splits_dict[bin_name], run=terminal.Run(verbose=False)).check_split_names()
             except ConfigError as e:
-                run.info_single("A genes database found, but the parameters or split names associated with that\
-                                 database do not match to what we want now :( Anvi'o will regenerate it. This was\
-                                 the actual error, by the way: '%s'." % e.clear_text(), nl_after=1)
+                run.info_single("A genes database found, but the parameters or split names associated with that "
+                                "database do not match to what we want now :( Anvi'o will regenerate it. This was "
+                                "the actual error, by the way: '%s'." % e.clear_text(), nl_after=1)
 
                 os.remove(genes_db_path)
                 genes_db_is_clean = False

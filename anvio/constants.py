@@ -95,7 +95,8 @@ allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
 digits = string.digits
 complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHDB')
 
-nucleotides = sorted(list('ATCG')) + ['N']
+unambiguous_nucleotides = set(list('ATCG'))
+nucleotides = sorted(list(unambiguous_nucleotides)) + ['N']
 
 AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
                                  'Arg': {"C":6,  "H":14, "N":4, "O":2, "S":0},
@@ -238,17 +239,20 @@ conserved_amino_acid_groups = {
     'None': []
 }
 
+conserved_amino_acid_groups['N'] = conserved_amino_acid_groups['Neutral Amines'] + ['B']
+conserved_amino_acid_groups['D'] = conserved_amino_acid_groups['Acids'] + ['B']
+conserved_amino_acid_groups['Q'] = conserved_amino_acid_groups['Neutral Amines'] + ['Z']
+conserved_amino_acid_groups['E'] = conserved_amino_acid_groups['Acids'] + ['Z']
+conserved_amino_acid_groups['LI'] = conserved_amino_acid_groups['Nonpolar'] + ['J']
+
+
 amino_acid_property_group = {}
-for key in ['A','I','L','V','M','C']:
+for key in ['A','V','M','C']:
     amino_acid_property_group[key] = 'Nonpolar'
 for key in ['F','W']:
     amino_acid_property_group[key] = 'Aromatic'
 for key in ['K','R']:
     amino_acid_property_group[key] = 'Bases'
-for key in ['Q', 'N']:
-    amino_acid_property_group[key] = 'Neutral Amines'
-for key in ['D','E']:
-    amino_acid_property_group[key] = 'Acids'
 for key in ['H','Y']:
     amino_acid_property_group[key] = 'Polar and Nonpolar'
 for key in ['S','T']:
@@ -258,6 +262,12 @@ for key in ['G','P','X']:
 amino_acid_property_group['B'] = 'B'
 amino_acid_property_group['Z'] = 'Z'
 amino_acid_property_group['J'] = 'J'
+amino_acid_property_group['N'] = 'N'
+amino_acid_property_group['D'] = 'D'
+amino_acid_property_group['Q'] = 'Q'
+amino_acid_property_group['E'] = 'E'
+amino_acid_property_group['L'] = 'LI'
+amino_acid_property_group['I'] = 'LI'
 
 codons = sorted(list(set(codon_to_AA.keys())))
 coding_codons = [x for x in codons if codon_to_AA[x] != "STP"]

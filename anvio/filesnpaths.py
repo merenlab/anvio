@@ -53,8 +53,8 @@ def is_proper_newick(newick_data, dont_raise=False):
         if dont_raise:
             return False
         else:
-            raise FilesNPathsError("Your tree doesn't seem to be properly formatted. Here is what ETE had\
-                                    to say about this: '%s'. Pity :/" % e)
+            raise FilesNPathsError("Your tree doesn't seem to be properly formatted. Here is what ETE had "
+                                   "to say about this: '%s'. Pity :/" % e)
 
     return True
 
@@ -74,10 +74,12 @@ def is_output_file_writable(file_path, ok_if_exists=True):
     if not file_path:
         raise FilesNPathsError("No output file is declared...")
     if os.path.isdir(file_path):
-        raise FilesNPathsError("The path you have provided for your output file ('%s') already is used .. by\
-                                a directory :/" % (os.path.abspath(file_path)))
+        raise FilesNPathsError("The path you have provided for your output file ('%s') already is used .. by "
+                               "a directory :/" % (os.path.abspath(file_path)))
     if not os.access(os.path.dirname(os.path.abspath(file_path)), os.W_OK):
         raise FilesNPathsError("You do not have permission to generate the output file '%s'" % file_path)
+    if os.path.exists(file_path) and not os.access(file_path, os.W_OK):
+        raise FilesNPathsError("You do not have permission to update the contents of the file '%s' :/" % file_path)
     if os.path.exists(file_path) and not ok_if_exists:
         raise FilesNPathsError("The file, '%s', already exists. anvio does not like overwriting stuff." % file_path)
     return True
@@ -121,8 +123,8 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
         raise FilesNPathsError("The probability that `%s` is a tab-delimited file is zero." % file_path)
 
     if len(line.split(separator)) == 1 and expected_number_of_fields != 1:
-        raise FilesNPathsError("File '%s' does not seem to have TAB characters.\
-                            Did you export this file on MAC using EXCEL? :(" % file_path)
+        raise FilesNPathsError("File '%s' does not seem to have TAB characters. "
+                           "Did you export this file on MAC using EXCEL? :(" % file_path)
 
     f.seek(0)
     num_fields_set = set([len(line.split(separator)) for line in f.readlines()])
@@ -132,8 +134,8 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
     if expected_number_of_fields:
         num_fields_in_file = list(num_fields_set)[0]
         if num_fields_in_file != expected_number_of_fields:
-            raise FilesNPathsError("The expected number of columns for '%s' is %d. Yet, it has %d\
-                                     of them :/" % (file_path, expected_number_of_fields, num_fields_in_file))
+            raise FilesNPathsError("The expected number of columns for '%s' is %d. Yet, it has %d "
+                                    "of them :/" % (file_path, expected_number_of_fields, num_fields_in_file))
 
     f.close()
     return True
@@ -145,8 +147,8 @@ def is_file_json_formatted(file_path):
     try:
         json.load(open(file_path, 'rU'))
     except ValueError as e:
-        raise FilesNPathsError("File '%s' does not seem to be a properly formatted JSON\
-                            file ('%s', cries the library)." % (file_path, e))
+        raise FilesNPathsError("File '%s' does not seem to be a properly formatted JSON "
+                           "file ('%s', cries the library)." % (file_path, e))
 
     return True
 
@@ -157,8 +159,8 @@ def is_file_fasta_formatted(file_path):
     try:
         f = u.SequenceSource(file_path)
     except u.FastaLibError as e:
-        raise FilesNPathsError("Someone is not happy with your FASTA file '%s' (this is\
-                            what the lib says: '%s'." % (file_path, e))
+        raise FilesNPathsError("Someone is not happy with your FASTA file '%s' (this is "
+                           "what the lib says: '%s'." % (file_path, e))
 
     f.close()
 
@@ -174,8 +176,8 @@ def is_file_plain_text(file_path, dont_raise=False):
         if dont_raise:
             return False
         else:
-            raise FilesNPathsError("Someone want's to make sure %s is a plain text file, however, it is actually a\
-                                    directory :(" % file_path)
+            raise FilesNPathsError("Someone want's to make sure %s is a plain text file, however, it is actually a "
+                                   "directory :(" % file_path)
     except UnicodeDecodeError:
         if dont_raise:
             return False
@@ -208,10 +210,14 @@ def get_temp_directory_path():
     return tempfile.mkdtemp()
 
 
-def get_temp_file_path(prefix=None):
+def get_temp_file_path(prefix=None, just_the_path=True):
     f = tempfile.NamedTemporaryFile(delete=False, prefix=prefix)
     temp_file_name = f.name
     f.close()
+
+    if just_the_path:
+        os.remove(temp_file_name)
+
     return temp_file_name
 
 
@@ -236,14 +242,14 @@ def check_output_directory(output_directory, ok_if_exists=False):
 
 def gen_output_directory(output_directory, progress=Progress(verbose=False), run=Run(), delete_if_exists=False, dont_warn=False):
     if not output_directory:
-        raise FilesNPathsError("Someone called `gen_output_directory` function without an output\
-                                directory name :( An embarrassing moment for everyone involved.")
+        raise FilesNPathsError("Someone called `gen_output_directory` function without an output "
+                               "directory name :( An embarrassing moment for everyone involved.")
 
     if os.path.exists(output_directory) and delete_if_exists and not is_dir_empty(output_directory):
         try:
             if not dont_warn:
-                run.warning('The existing directory "%s" is about to be removed... (You have \
-                             20 seconds to press CTRL + C). [filesnpaths::gen_output_directory]' % output_directory,
+                run.warning('The existing directory "%s" is about to be removed... (You have '
+                            '20 seconds to press CTRL + C). [filesnpaths::gen_output_directory]' % output_directory,
                              header = '!!! READ THIS NOW !!!')
                 time.sleep(20)
             shutil.rmtree(output_directory)

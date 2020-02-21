@@ -40,9 +40,9 @@ def main(args):
         sys.exit()
 
     if not collection_name:
-        raise ConfigError("So you are asking anvi'o to delete a collection from the profile database\
-                            without actually providing a collection name. Very cute. You are free to\
-                            go ahead and try again.")
+        raise ConfigError("So you are asking anvi'o to delete a collection from the profile database "
+                           "without actually providing a collection name. Very cute. You are free to "
+                           "go ahead and try again.")
 
     if collection_name not in collections.collections_dict:
         raise ConfigError("The collection name '%s' is not in this database :/" % collection_name)

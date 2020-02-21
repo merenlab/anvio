@@ -52,7 +52,7 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                                         '--align-with': 'famsa',
                                                                         '--concatenate-genes': True,
                                                                         '--get-aa-sequences': True,
-                                                                        '--hmm-sources': 'Campbell_et_al'},
+                                                                        '--hmm-sources': 'Bacteria_71'},
                                     'trimal': {'-gt': 0.5},
                                     'iqtree': {'threads': 8, '-m': 'WAG', '-bb': 1000}})
 
@@ -66,7 +66,7 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
     def init(self):
-        ''' backhand stuff (mostly sanity checks) specific for the phylogenomics workflow'''
+        ''' backend stuff (mostly sanity checks) specific for the phylogenomics workflow'''
         super().init()
 
         self.internal_genomes_file = self.get_param_value_from_config('internal_genomes')
@@ -79,17 +79,25 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             self.phylogenomics_sequence_file = os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins.fa")
 
 
+    def get_phylogenomics_target_files(self):
+        return self.get_phylogenetic_tree_output_file_name()
+
+
     def sanity_checks(self):
         if not self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--gene-names'):
-            run.warning('You did not provide a list of genes to use for phylogenomics. This is ok and things might work \
-                        but we wanted to make sure this is intended. If you change your mind, you can provide a list of genes \
-                        by using the "--gene-names" parameter of rule anvi_get_sequences_for_hmm_hits.')
+            run.warning('You did not provide a list of genes to use for phylogenomics. This is ok and things might work '
+                       'but we wanted to make sure this is intended. If you change your mind, you can provide a list of genes '
+                       'by using the "--gene-names" parameter of rule anvi_get_sequences_for_hmm_hits.')
 
         if not self.get_rule_param('anvi_get_sequences_for_hmm_hits', '--return-best-hit'):
-            run.warning('You changed the value for --return-best-hit for the rule anvi_get_sequences_for_hmm_hits \
-                         to something other than the default value, which is "true", while we allow you to do it \
-                         this is likely to break things, we trust that you know what you are doing, but advise you \
-                         to proceed with caution.')
+            run.warning('You changed the value for --return-best-hit for the rule anvi_get_sequences_for_hmm_hits '
+                        'to something other than the default value, which is "true", while we allow you to do it '
+                        'this is likely to break things, we trust that you know what you are doing, but advise you '
+                        'to proceed with caution.')
 
         if not self.project_name:
             raise ConfigError("You must provide a project_name in your config file.")
+
+
+    def get_phylogenetic_tree_output_file_name(self):
+        return os.path.join(self.dirs_dict["PHYLO_DIR"], self.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")

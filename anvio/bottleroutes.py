@@ -167,6 +167,10 @@ class BottleApplication(Bottle):
         self.route('/data/get_column_info',                    callback=self.get_column_info, method='POST')
         self.route('/data/get_structure/<gene_callers_id:int>',callback=self.get_structure)
         self.route('/data/get_variability',                    callback=self.get_variability, method='POST')
+        self.route('/data/store_variability',                  callback=self.store_variability, method='POST')
+        self.route('/data/store_structure_as_pdb',             callback=self.store_structure_as_pdb, method='POST')
+        self.route('/data/get_gene_function_info/<gene_callers_id:int>',             callback=self.get_gene_function_info)
+        self.route('/data/get_model_info/<gene_callers_id:int>',             callback=self.get_model_info)
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
@@ -890,8 +894,8 @@ class BottleApplication(Bottle):
                 run.info_single('Lousy attempt from the user to store their collection under "%s" :/' % source)
                 return json.dumps("Well, '%s' is a read-only collection, so you need to come up with a different name... Sorry!" % source)
 
-        run.info_single('A request to store %d bins that describe %d splits under the collection id "%s"\
-                         has been made.' % (len(data), num_splits, source), cut_after=None)
+        run.info_single('A request to store %d bins that describe %d splits under the collection id "%s" '
+                        'has been made.' % (len(data), num_splits, source), cut_after=None)
 
         bins_info_dict = {}
         for bin_name in data:
@@ -1286,6 +1290,24 @@ class BottleApplication(Bottle):
     def get_variability(self):
         options = json.loads(request.forms.get('options'))
         return self.interactive.get_variability(options)
+
+
+    def store_variability(self):
+        options = json.loads(request.forms.get('options'))
+        return self.interactive.store_variability(options)
+
+        
+    def store_structure_as_pdb(self):
+        options = json.loads(request.forms.get('options'))
+        return self.interactive.store_structure_as_pdb(options)
+
+
+    def get_gene_function_info(self, gene_callers_id):
+        return json.dumps(self.interactive.get_gene_function_info(gene_callers_id))
+
+
+    def get_model_info(self, gene_callers_id):
+        return json.dumps(self.interactive.get_model_info(gene_callers_id))
 
 
     def filter_gene_clusters(self):

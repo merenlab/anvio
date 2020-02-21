@@ -68,14 +68,14 @@ class GenomeDescriptions(object):
                list(self.external_genomes_dict.keys() if self.external_genomes_dict else [])
 
         if not i and not n:
-            raise ConfigError("You actually managed to get all the way down here in the code without actually providing any internal\
-                               or external genome files! You got 5 anvi'o points for being awesome. But this is not gonna work since\
-                               you really need to provide at least one of those files so anvi'o takes away 4 of those points :/ The\
-                               anvi'o giveth, and the anvi'o taketh away. Enjoy your point.")
+            raise ConfigError("You actually managed to get all the way down here in the code without actually providing any internal "
+                              "or external genome files! You got 5 anvi'o points for being awesome. But this is not gonna work since "
+                              "you really need to provide at least one of those files so anvi'o takes away 4 of those points :/ The "
+                              "anvi'o giveth, and the anvi'o taketh away. Enjoy your point.")
 
         if len(i) + len(n) != len(set(i + n)):
-            raise ConfigError("Each entry both in internal and external genome descriptions should have a unique 'name'. This does not\
-                                seem to be the case with your input :/")
+            raise ConfigError("Each entry both in internal and external genome descriptions should have a unique 'name'. This does not "
+                               "seem to be the case with your input :/")
 
 
     def read_genome_paths_from_input_files(self):
@@ -171,8 +171,8 @@ class GenomeDescriptions(object):
                     path = self.genomes[genome_name][db_path_var]
 
                     if not path:
-                        raise ConfigError("Bad news: anvi'o was loading genome desriptions, and it run into an empty path for\
-                                           the genome %s. How did this happen? HOW? :(" % genome_name)
+                        raise ConfigError("Bad news: anvi'o was loading genome desriptions, and it run into an empty path for "
+                                          "the genome %s. How did this happen? HOW? :(" % genome_name)
 
                     if not path.startswith('/'):
                         self.genomes[genome_name][db_path_var] = os.path.abspath(os.path.join(os.path.dirname(input_file), path))
@@ -261,21 +261,21 @@ class GenomeDescriptions(object):
 
         if genomes_with_no_functional_annotation:
             if len(genomes_with_no_functional_annotation) == len(self.genomes):
-                self.run.warning("None of your genomes seem to have any functional annotation. No biggie. Things will continue to work. But\
-                                  then your genomes have no functional annotation. SAD.")
+                self.run.warning("None of your genomes seem to have any functional annotation. No biggie. Things will continue to work. But "
+                                 "then your genomes have no functional annotation. SAD.")
             else:
-                self.run.warning("Some of your genomes (%d of the %d, to be precise) seem to have no functional annotation. Since this workflow\
-                                  can only use matching functional annotations across all genomes involved, having even one genome without\
-                                  any functions means that there will be no matching function across all. Things will continue to work, but\
-                                  you will have no functions at the end for your gene clusters." % \
+                self.run.warning("Some of your genomes (%d of the %d, to be precise) seem to have no functional annotation. Since this workflow "
+                                 "can only use matching functional annotations across all genomes involved, having even one genome without "
+                                 "any functions means that there will be no matching function across all. Things will continue to work, but "
+                                 "you will have no functions at the end for your gene clusters." % \
                                                 (len(genomes_with_no_functional_annotation), len(self.genomes)))
 
             # make sure it is clear.
             function_annotation_sources_per_genome = {}
             all_function_annotation_sources_observed = set([])
         elif not len(all_function_annotation_sources_observed):
-            self.run.warning("None of your genomes seem to have any functional annotation. No biggie. Things will continue to work. But\
-                              then your genomes have no functional annotation. It is sad.")
+            self.run.warning("None of your genomes seem to have any functional annotation. No biggie. Things will continue to work. But "
+                             "then your genomes have no functional annotation. It is sad.")
         else:
             # this guy down below fills in the self.function_annotation_sources with function annotation sources
             # that are common to all genomes.
@@ -292,9 +292,9 @@ class GenomeDescriptions(object):
 
             if not len(self.function_annotation_sources):
                 # none of the functions are common
-                self.run.warning("Although some of your genomes had some functional annotations, none of them were common to all genomes :/\
-                                  Anvi'o will continue working with them, but you will have no functions available to you downstream. Just\
-                                  so you know, these are the annotation sources observed at least once in at least one of your genomes: '%s'" % \
+                self.run.warning("Although some of your genomes had some functional annotations, none of them were common to all genomes :/ "
+                                 "Anvi'o will continue working with them, but you will have no functions available to you downstream. Just "
+                                 "so you know, these are the annotation sources observed at least once in at least one of your genomes: '%s'" % \
                                                                     (', '.join(all_function_annotation_sources_observed)))
                 self.functions_are_available = False
             else:
@@ -304,16 +304,16 @@ class GenomeDescriptions(object):
                 # because we're nice:
                 if len(function_annotation_sources_some_genomes_miss):
                     # some functions were missing from some genomes
-                    self.run.warning("Anvi'o has good news and bad news for you (very balanced, as usual). The good news is that there are some\
-                                      function annotation sources that are common to all of your genomes, and they will be used whenever\
-                                      it will be appropriate. Here they are: '%s'. The bad news is you had more functiona annotation sources,\
-                                      but they were not common to all genomes. Here they are so you can say your goodbyes to them (because\
-                                      they will not be used): '%s'" % \
+                    self.run.warning("Anvi'o has good news and bad news for you (very balanced, as usual). The good news is that there are some "
+                                     "function annotation sources that are common to all of your genomes, and they will be used whenever "
+                                     "it will be appropriate. Here they are: '%s'. The bad news is you had more functiona annotation sources, "
+                                     "but they were not common to all genomes. Here they are so you can say your goodbyes to them (because "
+                                     "they will not be used): '%s'" % \
                                             (', '.join(self.function_annotation_sources), ', '.join(function_annotation_sources_some_genomes_miss)))
                 else:
                     # every function ever observed is common to all genomes.
-                    self.run.warning("Good news! Anvi'o found all these functions that are common to all of your genomes and will use them for\
-                                      downstream analyses and is very proud of you: '%s'." % (', '.join(self.function_annotation_sources)), lc='green')
+                    self.run.warning("Good news! Anvi'o found all these functions that are common to all of your genomes and will use them for "
+                                     "downstream analyses and is very proud of you: '%s'." % (', '.join(self.function_annotation_sources)), lc='green')
 
 
     def get_genome_hash_for_external_genome(self, entry):
@@ -336,11 +336,12 @@ class GenomeDescriptions(object):
 
 
     def init_external_genomes(self):
-        self.progress.new('Initializing external genomes')
+        self.progress.new('Initializing external genomes', progress_total_items=len(self.external_genome_names))
         for genome_name in self.external_genome_names:
             c = self.genomes[genome_name]
             c['external_genome'] = True
 
+            self.progress.increment() 
             self.progress.update('working on %s' % (genome_name))
 
             contigs_db_summary = summarizer.ContigSummarizer(c['contigs_db_path']).get_contigs_db_info_dict(gene_caller_to_use=self.gene_caller)
@@ -429,36 +430,36 @@ class GenomeDescriptions(object):
 
         # if two contigs db has the same hash, we are kinda f'd:
         if len(set([self.genomes[genome_name]['genome_hash'] for genome_name in self.external_genome_names])) != len(self.external_genome_names):
-            raise ConfigError('Not all hash values are unique across all contig databases you provided. Something\
-                                very fishy is going on :/')
+            raise ConfigError('Not all hash values are unique across all contig databases you provided. Something '
+                               'very fishy is going on :/')
 
 
         if len(set([self.genomes[genome_name]['genome_hash'] for genome_name in self.internal_genome_names])) != len(self.internal_genome_names):
-            raise ConfigError("Not all hash values are unique across internal genomes. This is almost impossible to happen unless something very\
-                               wrong with your workflow :/ It is most likely you managed to list the same information for different genome names.\
-                               Please double check whether you internal genomes file looks perfectly fine. If it does, then perhaps let the\
-                               developers know about the problem.")
+            raise ConfigError("Not all hash values are unique across internal genomes. This is almost impossible to happen unless something very "
+                              "wrong with your workflow :/ It is most likely you managed to list the same information for different genome names. "
+                              "Please double check whether you internal genomes file looks perfectly fine. If it does, then perhaps let the "
+                              "developers know about the problem.")
 
         if not self.full_init:
             # if this is not full init, stop the sanity check here.
-            self.run.warning("You (or the programmer) requested genome descriptions for your internal and/or external\
-                              genomes to be loaded without a 'full init'. There is nothing for you to be concerned.\
-                              This is just a friendly reminder to make sure if something goes terribly wrong (like your\
-                              computer sets itself on fire), this may be the reason.")
+            self.run.warning("You (or the programmer) requested genome descriptions for your internal and/or external "
+                             "genomes to be loaded without a 'full init'. There is nothing for you to be concerned. "
+                             "This is just a friendly reminder to make sure if something goes terribly wrong (like your "
+                             "computer sets itself on fire), this may be the reason.")
             return
 
         # make sure HMMs for SCGs were run for every contigs db:
         genomes_missing_hmms_for_scgs =  [g for g in self.genomes if not self.genomes[g]['hmms_for_scgs_were_run']]
         if len(genomes_missing_hmms_for_scgs):
             if len(genomes_missing_hmms_for_scgs) == len(self.genomes):
-                self.run.warning("The contigs databases you are using for this analysis are missing HMMs for single-copy core genes.\
-                                  Maybe you haven't run `anvi-run-hmms` on your contigs database, or they didn't contain any hits.\
-                                  It is perfectly legal to have anvi'o contigs databases without HMMs or SCGs for things to work,\
-                                  but we wanted to give you heads up so you can have your 'aha' moment if you see funny things in\
-                                  the interface.")
+                self.run.warning("The contigs databases you are using for this analysis are missing HMMs for single-copy core genes. "
+                                 "Maybe you haven't run `anvi-run-hmms` on your contigs database, or they didn't contain any hits. "
+                                 "It is perfectly legal to have anvi'o contigs databases without HMMs or SCGs for things to work, "
+                                 "but we wanted to give you heads up so you can have your 'aha' moment if you see funny things in "
+                                 "the interface.")
             else:
-                raise ConfigError("Some of the genomes you have for this analysis are missing HMM hits for SCGs (%d of %d of them, to be precise). You\
-                                    can run `anvi-run-hmms` on them to recover from this. Here is the list: %s" % \
+                raise ConfigError("Some of the genomes you have for this analysis are missing HMM hits for SCGs (%d of %d of them, to be precise). You "
+                                   "can run `anvi-run-hmms` on them to recover from this. Here is the list: %s" % \
                                                     (len(genomes_missing_hmms_for_scgs), len(self.genomes), ','.join(genomes_missing_hmms_for_scgs)))
 
         # make sure genome names are not funny (since they are going to end up being db variables soon)
@@ -478,18 +479,26 @@ class GenomeDescriptions(object):
                                                          tpl in self.genomes[genome_name]['gene_calls_from_other_gene_callers'].items()])))
 
             gene_caller = list(self.genomes.values())[0]['gene_caller']
-            self.run.warning("Some of your genomes had gene calls identified by gene callers other than\
-                              the gene caller anvi'o used, which was set to '%s' either by default, or because you asked for it.\
-                              The following genomes contained genes that were not processed (this may be exactly what you expect\
-                              to happen, but if was not, you may need to use the `--gene-caller` flag to make sure anvi'o is using\
-                              the gene caller it should be using): %s." % \
-                                            (gene_caller, ', '.join(info)), header="PLEASE READ CAREFULLY", lc='green')
+            if anvio.DEBUG:
+                self.run.warning("Some of your genomes had gene calls identified by gene callers other than "
+                                 "the gene caller anvi'o used, which was set to '%s' either by default, or because you asked for it. "
+                                 "The following genomes contained genes that were not processed (this may be exactly what you expect "
+                                 "to happen, but if was not, you may need to use the `--gene-caller` flag to make sure anvi'o is using "
+                                 "the gene caller it should be using): %s." % \
+                                                (gene_caller, ', '.join(info)), header="PLEASE READ CAREFULLY", lc='green')
+            else:
+                self.run.warning("Some of your genomes had gene calls identified by gene callers other than "
+                                 "the anvi'o default, '%s', and will not be processed. Use the `--debug` flag "
+                                 "if this sounds important and you would like to see more of this message." % \
+                                                (gene_caller), header="JUST FYI", lc='green')
 
         # check whether every genome has at least one gene call.
         genomes_with_no_gene_calls = [g for g in self.genomes if not self.genomes[g]['num_genes']]
         if len(genomes_with_no_gene_calls):
-            raise ConfigError("Well, %d of your %d genomes had 0 gene calls. We can't think of any reason to include genomes that\
-                               contain no gene calls into a genomes, hence, we are going to stop here and ask you to remove these\
-                               genomes from your analysis first: %s. If you think this is a dumb thing to do, and they should be\
-                               in the genomes storage for reasons you know and we don't, please get in touch with us, and we will\
-                               be happy to reconsider." % (len(genomes_with_no_gene_calls), len(self.genomes), ', '.join(genomes_with_no_gene_calls)))
+            raise ConfigError("Well, %d of your %d genomes had 0 gene calls. We can't think of any reason to include genomes that "
+                              "contain no gene calls into a genomes, hence, we are going to stop here and ask you to remove these "
+                              "genomes from your analysis first: %s. If you think this is a dumb thing to do, and they should be "
+                              "in the genomes storage for reasons you know and we don't, please get in touch with us, and we will "
+                              "be happy to reconsider. If you think this is happening because you didn't set the right gene caller "
+                              "you can always take a look at the gene caller sources in a given contigs database by running the "
+                              "program `anvi-db-info`" % (len(genomes_with_no_gene_calls), len(self.genomes), ', '.join(genomes_with_no_gene_calls)))

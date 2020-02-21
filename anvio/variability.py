@@ -126,7 +126,7 @@ class ColumnProfile:
 
         competing_nts = get_competing_items(reference, nts_sorted)
         if not competing_nts:
-            # ther eis no action here, we can return without further processing.
+            # there is no action here, we can return without further processing.
             return
 
         self.profile['competing_nts'] = ''.join(competing_nts)

@@ -48,17 +48,17 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             if filesnpaths.is_file_exists(gene_db_path, dont_raise=True):
                 self.db_path = gene_db_path
             else:
-                raise GenesDBError("The misc data module can't find a genes databse :( It is inherited with an args \
-                                    object that wanted to initiate anvi'o operations for 'gene mode', which is a special \
-                                    mode of operation where gene-level coverage statistics per collection is \
-                                    read from a special database. In this mode anvi'o also tries to initialize\
-                                    additional data tables from the genes database, instesad of the profile\
-                                    database with which it is associated. However, in the current run, it seems the\
-                                    genes database has not yet been initiated for the collection '%s' and bin '%s'.\
-                                    Probably this will be handled by a higher power, and the genes database will\
-                                    be generated automatically, but this very part of the code has no idea how to\
-                                    deal with this awkward situation, hence throwing this exception and waves its hand\
-                                    to you from a wild wild corner of the anvi'o codebase." % (A('collection_name'), A('bin_id')))
+                raise GenesDBError("The misc data module can't find a genes databse :( It is inherited with an args "
+                                   "object that wanted to initiate anvi'o operations for 'gene mode', which is a special "
+                                   "mode of operation where gene-level coverage statistics per collection is "
+                                   "read from a special database. In this mode anvi'o also tries to initialize "
+                                   "additional data tables from the genes database, instesad of the profile "
+                                   "database with which it is associated. However, in the current run, it seems the "
+                                   "genes database has not yet been initiated for the collection '%s' and bin '%s'. "
+                                   "Probably this will be handled by a higher power, and the genes database will "
+                                   "be generated automatically, but this very part of the code has no idea how to "
+                                   "deal with this awkward situation, hence throwing this exception and waves its hand "
+                                   "to you from a wild wild corner of the anvi'o codebase." % (A('collection_name'), A('bin_id')))
                 self.db_path = None
 
         self.just_do_it = A('just_do_it')
@@ -66,13 +66,13 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         self.target_data_group = self.target_data_group_set_by_user or 'default'
 
         if not self.db_path:
-            raise ConfigError("The AdditionalAndOrderDataBaseClass is inherited with an args object that did not\
-                               contain any database path :/ Even though any of the following would\
-                               have worked: `pan_or_profile_db`, `profile_db`, `pan_db` :(")
+            raise ConfigError("The AdditionalAndOrderDataBaseClass is inherited with an args object that did not "
+                              "contain any database path :/ Even though any of the following would "
+                              "have worked: `pan_or_profile_db`, `profile_db`, `pan_db` :(")
 
         if not self.table_name:
-            raise ConfigError("The AdditionalAndOrderDataBaseClass does not know anything about the table it should\
-                               be working with.")
+            raise ConfigError("The AdditionalAndOrderDataBaseClass does not know anything about the table it should "
+                              "be working with.")
 
         utils.is_pan_or_profile_db(self.db_path, genes_db_is_also_accepted=True)
         self.db_type = utils.get_db_type(self.db_path)
@@ -104,9 +104,17 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         data_keys = utils.get_columns_of_TAB_delim_file(additional_data_file_path)
         data_dict = utils.get_TAB_delimited_file_as_dictionary(additional_data_file_path)
 
+        bad_keys = [k for k in data_keys if k.strip() != k]
+        if len(bad_keys):
+            raise ConfigError("Some of the keys in your input file contain white characters at the beginning "
+                              "or at the end. This is your lucky day, because anvi'o caught it, and you will "
+                              "fix it before continuing, and those weird data keys will not cause any headaches "
+                              "in the future. Thank you and you are welcome. Here are the offending keys: %s." % \
+                                        (', '.join(['"%s"' % k for k in bad_keys])))
+
         if not len(data_keys):
-            raise ConfigError("There is something wrong with the additional data file for %s at %s.\
-                               It does not seem to have any additional keys for data :/" \
+            raise ConfigError("There is something wrong with the additional data file for %s at %s. "
+                              "It does not seem to have any additional keys for data :/" \
                                             % (self.target_table, additional_data_file_path))
 
         if self.target_table == 'layer_orders':
@@ -119,23 +127,23 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         '''Give this guy a list of keys or groups for additional data, and watch their demise.'''
 
         if not isinstance(data_keys_list, list) or not isinstance(data_groups_list, list):
-            raise ConfigError("The remove function in AdditionalDataBaseClass wants you to watch\
-                               yourself before you wreck yourself. In other words, can you please\
-                               make sure the keys or groups you send is of type `list` thankyouverymuch?")
+            raise ConfigError("The remove function in AdditionalDataBaseClass wants you to watch "
+                              "yourself before you wreck yourself. In other words, can you please "
+                              "make sure the keys or groups you send is of type `list` thankyouverymuch?")
 
         if data_keys_list and data_groups_list:
-            raise ConfigError("You seem to be interested in removing both data keys and data groups from\
-                               misc data tables. Using both of these parameters is quite risky, so anvi'o\
-                               would like you to use only one of them at a time. Apologeies.")
+            raise ConfigError("You seem to be interested in removing both data keys and data groups from "
+                              "misc data tables. Using both of these parameters is quite risky, so anvi'o "
+                              "would like you to use only one of them at a time. Apologeies.")
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         # not all additional data table types have data_group concept
         if data_groups_list:
             if 'data_group' not in database.get_table_structure(self.table_name):
-                raise ConfigError("You seem to be interested in removing some data groups from your profile database\
-                                   but the additional data table for %s does not have data groups :/ Perhaps you are\
-                                   looking for the parameter `--keys-to-remove`?" % self.target_table)
+                raise ConfigError("You seem to be interested in removing some data groups from your profile database "
+                                  "but the additional data table for %s does not have data groups :/ Perhaps you are "
+                                  "looking for the parameter `--keys-to-remove`?" % self.target_table)
             else:
                 additional_data_groups = sorted(database.get_single_column_from_table(self.table_name, 'data_group', unique=True))
 
@@ -151,10 +159,10 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             missing_keys = [k for k in data_keys_list if k not in additional_data_keys]
             if len(missing_keys) and not self.just_do_it:
                 database.disconnect()
-                raise ConfigError("The following keys you wanted to remove from the %s additional data table are\
-                                   not really in the table: '%s'. Anvi'o is confused but can totally ignore the missing\
-                                   keys and just remove whatever is matching to your list if you were to use the flag\
-                                   `--just-do-it`." % (self.target_table, ', '.join(missing_keys)))
+                raise ConfigError("The following keys you wanted to remove from the %s additional data table are "
+                                  "not really in the table: '%s'. Anvi'o is confused but can totally ignore the missing "
+                                  "keys and just remove whatever is matching to your list if you were to use the flag "
+                                  "`--just-do-it`." % (self.target_table, ', '.join(missing_keys)))
 
             for key in data_keys_list:
                 if key not in additional_data_keys:
@@ -166,17 +174,17 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                 else:
                     database._exec('''DELETE from %s WHERE data_key="%s"''' % (self.table_name, key))
 
-            self.run.warning("Data from the table '%s' for the following data keys in data group '%s' \
-                              removed from the database: '%s'. #SAD." % (self.target_table, self.target_data_group, ', '.join(data_keys_list)))
+            self.run.warning("Data from the table '%s' for the following data keys in data group '%s' "
+                             "removed from the database: '%s'. #SAD." % (self.target_table, self.target_data_group, ', '.join(data_keys_list)))
         elif data_groups_list:
             # see if there are any missing groups
             missing_groups = [k for k in data_groups_list if k not in additional_data_groups]
             if len(missing_groups) and not self.just_do_it:
                 database.disconnect()
-                raise ConfigError("The following groups you wanted to remove from the %s additional data table are\
-                                   not really in the table: '%s'. Anvi'o is confused but can totally ignore the missing\
-                                   keys and just remove whatever is matching to your list if you were to use the flag\
-                                   `--just-do-it`." % (self.target_table, ', '.join(missing_groups)))
+                raise ConfigError("The following groups you wanted to remove from the %s additional data table are "
+                                  "not really in the table: '%s'. Anvi'o is confused but can totally ignore the missing "
+                                  "keys and just remove whatever is matching to your list if you were to use the flag "
+                                  "`--just-do-it`." % (self.target_table, ', '.join(missing_groups)))
 
             for group in data_groups_list:
                 if group not in additional_data_groups:
@@ -185,14 +193,14 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                 else:
                     database._exec('''DELETE from %s WHERE data_group="%s"''' % (self.table_name, group))
 
-            self.run.warning("Data from the table '%s' for the following data groups \
-                              are now removed from the database: '%s'. #SAD." % (self.target_table, ', '.join(data_groups_list)))
+            self.run.warning("Data from the table '%s' for the following data groups "
+                             "are now removed from the database: '%s'. #SAD." % (self.target_table, ', '.join(data_groups_list)))
         else:
             if not self.just_do_it:
-                raise ConfigError("You did not provide a list of data keys to remove, which means you are about to delete everything in the\
-                                   %s additional data table. Just to be on the safe side, anvi'o is looking for a confirmation. If you\
-                                   try again with the --just-do-it flag, anvi'o will put on its business socks, and burn this table\
-                                   and everything in it to the ground." % self.target_table)
+                raise ConfigError("You did not provide a list of data keys to remove, which means you are about to delete everything in the "
+                                  "%s additional data table. Just to be on the safe side, anvi'o is looking for a confirmation. If you "
+                                  "try again with the --just-do-it flag, anvi'o will put on its business socks, and burn this table "
+                                  "and everything in it to the ground." % self.target_table)
 
             database._exec('''DELETE from %s''' % (self.table_name))
 
@@ -208,10 +216,10 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             keys, data = AdditionalDataBaseClass.get(self)
             if keys:
                 if len(self.available_group_names) - 1:
-                    self.run.warning("You are exporting data from the additional data table '%s' for the\
-                                      data group '%s'. Great. Just remember that there are %d more data\
-                                      groups in your database, and you are not exporting anything from them\
-                                      at this point (they know you're the boss, so they're not upset)." \
+                    self.run.warning("You are exporting data from the additional data table '%s' for the "
+                                     "data group '%s'. Great. Just remember that there are %d more data "
+                                     "groups in your database, and you are not exporting anything from them "
+                                     "at this point (they know you're the boss, so they're not upset)." \
                                         % (self.target_table, self.target_data_group, len(self.available_group_names) - 1),
                                       header="FRIENDLY REMINDER", lc='yellow')
 
@@ -326,8 +334,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                                   sorted(list(data_dict.values())[0].keys()) == sorted(['basic', 'newick'])
 
         if looks_like_layer_orders and data_dict_type != 'layer_orders':
-            raise ConfigError("The data you sent here seems to describe an order, but you want anvi'o to treat it\
-                               as additional data for %s. Not cool." % self.target_table)
+            raise ConfigError("The data you sent here seems to describe an order, but you want anvi'o to treat it "
+                              "as additional data for %s. Not cool." % self.target_table)
 
         if not looks_like_layer_orders and data_dict_type == 'layer_orders':
             raise ConfigError("The data that claims to be a layer order data do not seem to be one.")
@@ -336,8 +344,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             for item_or_layer_name in data_dict:
                 for key in data_keys_list:
                     if key not in data_dict[item_or_layer_name]:
-                        raise ConfigError("Your data dictionary fails the sanity check since at least one item in it (i.e., %s) is\
-                                           missing any data for the key '%s'." % (item_or_layer_name, key))
+                        raise ConfigError("Your data dictionary fails the sanity check since at least one item in it (i.e., %s) is "
+                                          "missing any data for the key '%s'." % (item_or_layer_name, key))
 
 
 class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
@@ -387,8 +395,8 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             elif data_type == 'basic':
                 d[order_name] = {'newick': None, 'basic': data_value}
             else:
-                raise ConfigError("Something is wrong :( Anvi'o just found an entry in %s table with an unrecognized\
-                                   type of '%s'." % (self.target_table, data_type))
+                raise ConfigError("Something is wrong :( Anvi'o just found an entry in %s table with an unrecognized "
+                                  "type of '%s'." % (self.target_table, data_type))
 
         if additional_data_keys and additional_data_dict:
             return self.update_orders_dict_using_additional_data_dict(d, additional_data_keys, additional_data_dict)
@@ -469,10 +477,10 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         self.data_dict_sanity_check(data_dict)
 
         if self.target_table not in ['layer_orders']:
-            raise ConfigError("You are using an OrderDataBaseClass instance to add %s data into your %s database. This is\
-                               illegal and if you are here, it means someone made a mistake somewhere. If you are a user,\
-                               check your flags to make sure you are targeting the right data table. If you are a programmer,\
-                               you are fired." % (self.target_table, self.db_type))
+            raise ConfigError("You are using an OrderDataBaseClass instance to add %s data into your %s database. This is "
+                              "illegal and if you are here, it means someone made a mistake somewhere. If you are a user, "
+                              "check your flags to make sure you are targeting the right data table. If you are a programmer, "
+                              "you are fired." % (self.target_table, self.db_type))
 
         self.run.warning(None, 'New %s data...' % self.target_table, lc="yellow")
         data_keys_list = list(data_dict.keys())
@@ -488,23 +496,23 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         keys_already_in_db = [c for c in data_keys_list if c in self.additional_data_keys]
         if len(keys_already_in_db):
             if self.just_do_it:
-                self.run.warning('The following keys in your data dict will replace the ones that are already\
-                                  in your %s database: %s.' % (self.db_type, ', '.join(keys_already_in_db)))
+                self.run.warning('The following keys in your data dict will replace the ones that are already '
+                                 'in your %s database: %s.' % (self.db_type, ', '.join(keys_already_in_db)))
 
                 self.remove(keys_already_in_db)
             else:
                 run.info('Data keys already in the db', ', '.join(keys_already_in_db), nl_before=2, mc='red')
 
-                raise ConfigError("Some of the keys in your new order data appear to be in the database already. If you\
-                                   want to replace those in the database with the ones in your new data use the\
-                                   `--just-do-it` flag.")
+                raise ConfigError("Some of the keys in your new order data appear to be in the database already. If you "
+                                  "want to replace those in the database with the ones in your new data use the "
+                                  "`--just-do-it` flag.")
 
         if skip_check_names:
-            self.run.warning("You (or the programmer) asked anvi'o to NOT check the consistency of the names of your %s\
-                              between your additional data and the %s database you are attempting to update. So be it.\
-                              Anvi'o will not check anything, but if things don't look the way you expected them to look,\
-                              you will not blame anvi'o for your poorly prepared data, but choose between yourself or\
-                              Obama." % (self.target_table, self.db_type))
+            self.run.warning("You (or the programmer) asked anvi'o to NOT check the consistency of the names of your %s "
+                             "between your additional data and the %s database you are attempting to update. So be it. "
+                             "Anvi'o will not check anything, but if things don't look the way you expected them to look, "
+                             "you will not blame anvi'o for your poorly prepared data, but choose between yourself or "
+                             "Obama." % (self.target_table, self.db_type))
         else:
             TableForLayerOrders.check_names(self, data_dict)
 
@@ -531,8 +539,8 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                 else:
                     layer_names[data_key] = [s.strip() for s in data_dict[data_key]['data_value'].split(',')]
             except:
-                raise ConfigError("Parsing the %s data for %s failed :/ We don't know why, because we are lazy. Please\
-                                   take a loook at your input data and figure out :(" \
+                raise ConfigError("Parsing the %s data for %s failed :/ We don't know why, because we are lazy. Please "
+                                  "take a loook at your input data and figure out :(" \
                                                                     % (data_dict[data_key]['data_type'], data_key))
 
         return layer_names
@@ -562,21 +570,21 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
            it is better to check that explicitly."""
 
         if self.target_data_group not in self.available_group_names:
-            raise ConfigError("You (or the programmer) requested to initiate the additional data table for '%s' with\
-                               the data group '%s', which is not really in that table :/ If it helps at all,\
-                               the target table happened to have these ones instead: %s. What to do now? If you are\
-                               here becasue the last command you run was something like 'show me all the data in misc'\
-                               data tables, then you may try to be more specific by explicitly defining your target\
-                               data table. If you think you have already been as sepecific as you could be, then anvi'o\
-                               is as frustrated as you are right now :(" %\
+            raise ConfigError("You (or the programmer) requested to initiate the additional data table for '%s' with "
+                              "the data group '%s', which is not really in that table :/ If it helps at all, "
+                              "the target table happened to have these ones instead: %s. What to do now? If you are "
+                              "here becasue the last command you run was something like 'show me all the data in misc' "
+                              "data tables, then you may try to be more specific by explicitly defining your target "
+                              "data table. If you think you have already been as sepecific as you could be, then anvi'o "
+                              "is as frustrated as you are right now :(" %\
                                     (self.target_table, self.target_data_group, ', '.join(['"%s"' % d for d in self.available_group_names])))
 
     def get_available_data_keys(self):
         """Will only return the additional data keys so the client can do some controls."""
 
         if not self.target_data_group:
-            raise ConfigError("The target data group is not set. Which should never be the case at this stage. You shall\
-                               not break anvi'o and go back to where you came from, devil :(")
+            raise ConfigError("The target data group is not set. Which should never be the case at this stage. You shall "
+                              "not break anvi'o and go back to where you came from, devil :(")
 
         self.progress.new('Recovering additional keys and data for %s' % self.target_table)
         self.progress.update('...')
@@ -595,13 +603,13 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         """Will return the additional data keys as well as the data dict."""
 
         if not self.target_data_group:
-            raise ConfigError("It seems the target data group is not set, which makes zero sense and should never happen\
-                               unless you are doing some hacker stuff. Are you doing hacker stuff? Awesome! Tell us about\
-                               it!")
+            raise ConfigError("It seems the target data group is not set, which makes zero sense and should never happen "
+                              "unless you are doing some hacker stuff. Are you doing hacker stuff? Awesome! Tell us about "
+                              "it!")
 
         if not isinstance(additional_data_keys_requested, list):
-            raise ConfigError("The `get` function in AdditionalDataBaseClass is upset with you. You could change that\
-                               by making sure you request additional data keys with a variable of type `list`.")
+            raise ConfigError("The `get` function in AdditionalDataBaseClass is upset with you. You could change that "
+                              "by making sure you request additional data keys with a variable of type `list`.")
 
         additional_data_keys_in_db = self.get_available_data_keys()
 
@@ -616,17 +624,17 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                                                         error_if_no_data=False)
         else:
             if not len(additional_data_keys_in_db):
-                raise ConfigError("The %s database at %s does not contain any additional data for its %s to return. Usually this\
-                                   would not have resulted in an exception, and anvi'o would simply returned an empty data\
-                                   dictionary. But since you are requested to get a specific list of keys ('%s'), we are raising\
-                                   an exception and break the flow just to make sure you are aware of the fact that we don't\
-                                   see the stuff you're requesting :(" \
+                raise ConfigError("The %s database at %s does not contain any additional data for its %s to return. Usually this "
+                                  "would not have resulted in an exception, and anvi'o would simply returned an empty data "
+                                  "dictionary. But since you are requested to get a specific list of keys ('%s'), we are raising "
+                                  "an exception and break the flow just to make sure you are aware of the fact that we don't "
+                                  "see the stuff you're requesting :(" \
                                         % (self.db_type, self.db_path, self.target_table, ' ,'.join(additional_data_keys_requested)))
 
             if set(additional_data_keys_requested) - set(additional_data_keys_in_db):
-                raise ConfigError("The keys you requested does not seem to appear in the additional data table of this %s db\
-                                   at '%s' :/ Here is the list of keys you requested: '%s'. And here is the list of keys that anvi'o\
-                                   knows about: '%s'." % (self.db_type, self.db_path,
+                raise ConfigError("The keys you requested does not seem to appear in the additional data table of this %s db "
+                                  "at '%s' :/ Here is the list of keys you requested: '%s'. And here is the list of keys that anvi'o "
+                                  "knows about: '%s'." % (self.db_type, self.db_path,
                                                           ', '.join(additional_data_keys_requested),
                                                           ', '.join(additional_data_keys_in_db)))
 
@@ -696,10 +704,10 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         """
 
         if self.target_table not in ['items', 'layers']:
-            raise ConfigError("You are using an AdditionalDataBaseClass instance to add %s data into your %s database. But\
-                               you know what? You can't do that :/ Someone made a mistake somewhere. If you are a user,\
-                               check your flags to make sure you are targeting the right data table. If you are a programmer,\
-                               you are fired." % (self.target_table, self.db_type))
+            raise ConfigError("You are using an AdditionalDataBaseClass instance to add %s data into your %s database. But "
+                              "you know what? You can't do that :/ Someone made a mistake somewhere. If you are a user, "
+                              "check your flags to make sure you are targeting the right data table. If you are a programmer, "
+                              "you are fired." % (self.target_table, self.db_type))
 
         self.data_dict_sanity_check(data_dict, data_keys_list=data_keys_list)
 
@@ -725,8 +733,8 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         keys_already_in_db = [c for c in data_keys_list if c in all_keys_for_group]
         if len(keys_already_in_db):
             if self.just_do_it:
-                self.run.warning('The following keys in your data dict will replace the ones that are already\
-                                  in your %s database %s table and %s data group: %s.' \
+                self.run.warning('The following keys in your data dict will replace the ones that are already '
+                                 'in your %s database %s table and %s data group: %s.' \
                                                 % (self.db_type, self.target_table,
                                                    self.target_data_group, ', '.join(keys_already_in_db)))
 
@@ -737,26 +745,26 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                 self.run.info('Data table', self.target_table)
                 self.run.info('Data keys already in db', ', '.join(keys_already_in_db), mc='red')
 
-                raise ConfigError("Some of the data keys in your new data are already in the database. If you\
-                                   want to replace them with the ones in your new data input use the `--just-do-it` flag,\
-                                   and watch anvi'o make an exception just for you and complain about nothin' for this\
-                                   once.")
+                raise ConfigError("Some of the data keys in your new data are already in the database. If you "
+                                  "want to replace them with the ones in your new data input use the `--just-do-it` flag, "
+                                  "and watch anvi'o make an exception just for you and complain about nothin' for this "
+                                  "once.")
 
         if skip_check_names:
-            self.run.warning("You (or the programmer) asked anvi'o to NOT check the consistency of the names of your %s\
-                              between your additional data and the %s database you are attempting to update. So be it.\
-                              Anvi'o will not check anything, but if things don't look the way you expected them to look,\
-                              you will not blame anvi'o for your poorly prepared data, but choose between yourself or\
-                              Obama." % (self.target_table, self.db_type))
+            self.run.warning("You (or the programmer) asked anvi'o to NOT check the consistency of the names of your %s "
+                             "between your additional data and the %s database you are attempting to update. So be it. "
+                             "Anvi'o will not check anything, but if things don't look the way you expected them to look, "
+                             "you will not blame anvi'o for your poorly prepared data, but choose between yourself or "
+                             "Obama." % (self.target_table, self.db_type))
         else:
             if self.target_table == 'layers':
                 TableForLayerAdditionalData.check_names(self, data_dict)
             elif self.target_table == 'items':
                 TableForItemAdditionalData.check_names(self, data_dict)
             else:
-                raise ConfigError("Congratulations, you managed to hit an uncharted are in anvi'o. It is cerrtainly very\
-                                   curious how you got here unless you are trying to implement a new functionality. Are\
-                                   you? What *IS* it? IS IT FUN?")
+                raise ConfigError("Congratulations, you managed to hit an uncharted are in anvi'o. It is cerrtainly very "
+                                  "curious how you got here unless you are trying to implement a new functionality. Are "
+                                  "you? What *IS* it? IS IT FUN?")
 
         db_entries = []
         self.set_next_available_id(self.table_name)
@@ -824,20 +832,20 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
 
         items_in_data_but_not_in_db = items_in_data.difference(items_in_db)
         if len(items_in_data_but_not_in_db):
-            raise ConfigError("Well. %d of %d item names in your additional data are only in your data (which\
-                               that they are not in the %s database you are working with (which means bad news)).\
-                               Since there is no reason to add additional data for items that do not exist in your\
-                               database, anvi'o will stop you right there. Please fix your data and come again. In\
-                               case you want to see a random item that is only in your data, here is one: %s. Stuff\
-                               in your db looks like this: %s." \
+            raise ConfigError("Well. %d of %d item names in your additional data are only in your data (which "
+                              "that they are not in the %s database you are working with (which means bad news)). "
+                              "Since there is no reason to add additional data for items that do not exist in your "
+                              "database, anvi'o will stop you right there. Please fix your data and come again. In "
+                              "case you want to see a random item that is only in your data, here is one: %s. Stuff "
+                              "in your db looks like this: %s." \
                                     % (len(items_in_data_but_not_in_db), len(items_in_data), self.db_type, \
                                        items_in_data_but_not_in_db.pop(), 
                                        items_in_db.pop() if items_in_db else "No entries found in databse"))
 
         items_in_db_but_not_in_data = items_in_db.difference(items_in_data)
         if len(items_in_db_but_not_in_data):
-            self.run.warning("Your input contains additional data for only %d of %d total number of items in your %s\
-                              database. Just wanted to make sure you know what's up, but we cool." \
+            self.run.warning("Your input contains additional data for only %d of %d total number of items in your %s "
+                             "database. Just wanted to make sure you know what's up, but we cool." \
                                 % (len(items_in_db) - len(items_in_db_but_not_in_data), len(items_in_db), self.db_type))
 
 
@@ -872,28 +880,28 @@ class TableForLayerAdditionalData(AdditionalDataBaseClass):
 
         layers_in_data_but_not_in_db = layers_in_data.difference(layers_in_db)
         if len(layers_in_data_but_not_in_db) and not self.just_do_it:
-            raise ConfigError("Grande problemo. %d of %d layers in your additional data are *only* in your data (which\
-                               means they are not in the %s database you are working with). Since there is no reason to\
-                               add additional data for layers that do not exist in your database, anvi'o refuses to\
-                               continue, and hopes that you will try again. In case you want to see a random layer name\
-                               that is only in your data, here is one: %s. In comparison, here is a random layer name\
-                               from your database: %s. If you don't want to deal with this, you could use the flag\
-                               `--just-do-it`, and anvi'o would do something." \
+            raise ConfigError("Grande problemo. %d of %d layers in your additional data are *only* in your data (which "
+                              "means they are not in the %s database you are working with). Since there is no reason to "
+                              "add additional data for layers that do not exist in your database, anvi'o refuses to "
+                              "continue, and hopes that you will try again. In case you want to see a random layer name "
+                              "that is only in your data, here is one: %s. In comparison, here is a random layer name "
+                              "from your database: %s. If you don't want to deal with this, you could use the flag "
+                              "`--just-do-it`, and anvi'o would do something." \
                                     % (len(layers_in_data_but_not_in_db), len(layers_in_data), self.db_type, \
                                        layers_in_data_but_not_in_db.pop(), layers_in_db.pop()))
         elif len(layers_in_data_but_not_in_db) and self.just_do_it:
-            self.run.warning("Listen up! %d of %d layers in your additional data were *only* in your data (which\
-                              means they are not in the %s database you are working with). But since you asked anvi'o to\
-                              keep its mouth shut, it removed the ones that were not in your database from your input\
-                              data, hoping that the rest of your probably very dubious operation will go just fine :/" \
+            self.run.warning("Listen up! %d of %d layers in your additional data were *only* in your data (which "
+                             "means they are not in the %s database you are working with). But since you asked anvi'o to "
+                             "keep its mouth shut, it removed the ones that were not in your database from your input "
+                             "data, hoping that the rest of your probably very dubious operation will go just fine :/" \
                                    % (len(layers_in_data_but_not_in_db), len(layers_in_data), self.db_type))
             for layer_name in layers_in_data_but_not_in_db:
                 data_dict.pop(layer_name)
 
         layers_in_db_but_not_in_data = layers_in_db.difference(layers_in_data)
         if len(layers_in_db_but_not_in_data):
-            self.run.warning("Your input contains additional data for only %d of %d total number of layers in your %s\
-                              database. Just wanted to make sure you know what's up, but we cool." \
+            self.run.warning("Your input contains additional data for only %d of %d total number of layers in your %s "
+                             "database. Just wanted to make sure you know what's up, but we cool." \
                                 % (len(layers_in_db) - len(layers_in_db_but_not_in_data), len(layers_in_db), self.db_type))
 
 
@@ -926,14 +934,14 @@ class TableForLayerOrders(OrderDataBaseClass):
             layers_in_data_for_key = set(layers_in_data[data_key])
 
             if len(layers_in_data_for_key.difference(layers_in_db)) > 0:
-                raise ConfigError("The incoming layer orders data for %s include layer names that do not match the ones in the database :/\
-                                   Here they are: '%s'" % (data_key, ', '.join(list(layers_in_data_for_key.difference(layers_in_db)))))
+                raise ConfigError("The incoming layer orders data for %s include layer names that do not match the ones in the database :/ "
+                                  "Here they are: '%s'" % (data_key, ', '.join(list(layers_in_data_for_key.difference(layers_in_db)))))
 
             if len(layers_in_data_for_key) != len(layers_in_db):
-                self.run.warning("The incoming layer orders data for %s of type %s include layer names your %s database does not know\
-                                  about :/ Anvi'o will let you get away with a warning, but if things go south later on, you know who\
-                                  to blame. For your records, here are the layer names for %s: '%s'. And in contrast, here are the\
-                                  layer names your db recognizes: '%s'. :/" % (data_key,
+                self.run.warning("The incoming layer orders data for %s of type %s include layer names your %s database does not know "
+                                 "about :/ Anvi'o will let you get away with a warning, but if things go south later on, you know who "
+                                 "to blame. For your records, here are the layer names for %s: '%s'. And in contrast, here are the "
+                                 "layer names your db recognizes: '%s'. :/" % (data_key,
                                                                                data_dict[data_key]['data_type'],
                                                                                self.db_type,
                                                                                data_key,
@@ -955,8 +963,8 @@ class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalDa
         target_data_table = A('target_data_table')
 
         if not target_data_table:
-            raise ConfigError("When creating an instance from the MiscDataTableFactory class, the `args` object\
-                               must contain the `target_data_table` variable.")
+            raise ConfigError("When creating an instance from the MiscDataTableFactory class, the `args` object "
+                              "must contain the `target_data_table` variable.")
 
         if target_data_table == 'items':
             TableForItemAdditionalData.__init__(self, args, r=self.run, p=self.progress)
@@ -965,8 +973,8 @@ class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalDa
         elif target_data_table == 'layer_orders':
             TableForLayerOrders.__init__(self, args, r=self.run, p=self.progress)
         else:
-            raise ConfigError("MiscDataTableFactory does not know about target data tables for '%s' :(\
-                               You can go to the online documentation, or you can try either 'items', 'layers',\
-                               or 'layer_orders'" % target_data_table)
+            raise ConfigError("MiscDataTableFactory does not know about target data tables for '%s' :( "
+                              "You can go to the online documentation, or you can try either 'items', 'layers', "
+                              "or 'layer_orders'" % target_data_table)
 
 

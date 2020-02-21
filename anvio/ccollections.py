@@ -80,11 +80,11 @@ class Collections:
 
     def sanity_check(self, collection_name):
         if collection_name not in self.collections_dict:
-            raise ConfigError('There is no "%s" I know of. Probably something is spelled wrong somewhere? In case you are\
-                               a programmer and accessing to the collections from your program, here is a reminder for you:\
-                               are you sure `populate_collections_dict` was called for whatever database you are trying to\
-                               get collections from? If you are a user, you can always try to use the `--list-collections`\
-                               flag and hope for the best.' % collection_name)
+            raise ConfigError('There is no "%s" I know of. Probably something is spelled wrong somewhere? In case you are '
+                              'a programmer and accessing to the collections from your program, here is a reminder for you: '
+                              'are you sure `populate_collections_dict` was called for whatever database you are trying to '
+                              'get collections from? If you are a user, you can always try to use the `--list-collections` '
+                              'flag and hope for the best.' % collection_name)
 
 
     def get_trimmed_dicts(self, collection_name, split_names = set([])):
@@ -124,13 +124,13 @@ class Collections:
         self.progress.end()
 
         if len(bins_with_zero_splits_in_profile_db):
-            self.run.warning('Some of the bins in this collection (precisely %d of %d total) did not contain any\
-                              that appeared in the profile database. There are multiple reasons for why this can\
-                              happen. But one of the common scenario could be this: You imported an external\
-                              collection, and some of the bins you have in that collection contain a small number\
-                              of contigs that were too short to make it into the merged profile. Well, if you would\
-                              like to figure out what might be the scenario for your experiment, here is the list of\
-                              bin names that did not go through: %s.' \
+            self.run.warning('Some of the bins in this collection (precisely %d of %d total) did not contain any '
+                             'that appeared in the profile database. There are multiple reasons for why this can '
+                             'happen. But one of the common scenario could be this: You imported an external '
+                             'collection, and some of the bins you have in that collection contain a small number '
+                             'of contigs that were too short to make it into the merged profile. Well, if you would '
+                             'like to figure out what might be the scenario for your experiment, here is the list of '
+                             'bin names that did not go through: %s.' \
                                 % (len(bins_with_zero_splits_in_profile_db), len(collection_dict), ", ".join(bins_with_zero_splits_in_profile_db)))
 
         return (collection_dict, bins_info_dict, split_names_in_db_but_missing_in_collection)
@@ -185,8 +185,8 @@ class Collections:
         bins_info_dict = self.get_bins_info_dict(collection_name)
 
         if bin_name not in bins_info_dict:
-            raise ConfigError("The bin '%s' does not seem to be a member of the collection '%s'. If you want to see all bins in\
-                               this collection you can try to add `--list-bins` to your arguments." % (bin_name, collection_name))
+            raise ConfigError("The bin '%s' does not seem to be a member of the collection '%s'. If you want to see all bins in "
+                              "this collection you can try to add `--list-bins` to your arguments." % (bin_name, collection_name))
 
         return True
 
@@ -216,8 +216,8 @@ class Collections:
         self.sanity_check(collection_name)
 
         if not self.db_path:
-            raise ConfigError("Something is off. The class does not know which database it is supposed to\
-                               be working with.")
+            raise ConfigError("Something is off. The class does not know which database it is supposed to "
+                              "be working with.")
 
         if not isinstance(bin_names_list, list):
             raise ConfigError("The `bin_names_list` must be of thpe `set` :/")
@@ -227,8 +227,8 @@ class Collections:
 
         invalid_bin_names = [b for b in bin_names_list if not b in collection_dict]
         if invalid_bin_names:
-            raise ConfigError("Some of the bin names you want to merge is not in the collection %s :/ Here\
-                               is a list of them: %s" % (collection_name, ', '.join(invalid_bin_names)))
+            raise ConfigError("Some of the bin names you want to merge is not in the collection %s :/ Here "
+                              "is a list of them: %s" % (collection_name, ', '.join(invalid_bin_names)))
 
         items_in_new_bin = []
         for bin_name in bin_names_list:
@@ -295,8 +295,8 @@ class Collections:
             for item_name in unbinned_items:
                 items_file.write('%s\tUNBINNED_ITEMS_BIN\n' % (item_name))
 
-            self.run.warning("As per your request, %d items that were not in any of the bins in the collection '%s' are stored\
-                              in the output file under the bin name 'UNBINNED_ITEMS_BIN'." % (len(unbinned_items), collection_name))
+            self.run.warning("As per your request, %d items that were not in any of the bins in the collection '%s' are stored "
+                             "in the output file under the bin name 'UNBINNED_ITEMS_BIN'." % (len(unbinned_items), collection_name))
 
         items_file.close()
 
@@ -317,12 +317,12 @@ class GetSplitNamesInBins:
         self.debug = anvio.DEBUG
 
         if not self.profile_db_path:
-            raise ConfigError("You didn't provide a profile database path. When you clearly should have :/\
-                                This is GetSplitNamesInBins speaking. Has her eyes on you.")
+            raise ConfigError("You didn't provide a profile database path. When you clearly should have :/ "
+                               "This is GetSplitNamesInBins speaking. Has her eyes on you.")
 
         if self.bin_ids_file_path and self.bin_id:
-            raise ConfigError('Either use a file to list all the bin ids (-B), or declare a single bin (-b)\
-                                you would like to focus. Not both :/')
+            raise ConfigError('Either use a file to list all the bin ids (-B), or declare a single bin (-b) '
+                               'you would like to focus. Not both :/')
 
         if not self.collection_name:
             raise ConfigError('This will not work without a collection ID for your bins :/')
@@ -337,8 +337,8 @@ class GetSplitNamesInBins:
         self.collections.populate_collections_dict(self.profile_db_path)
 
         if self.collection_name not in self.collections.collections_dict:
-            raise ConfigError('The collection id "%s" does not seem to be in the profile database. These are the\
-                                collections that are available through this profile database: "%s".'\
+            raise ConfigError('The collection id "%s" does not seem to be in the profile database. These are the '
+                               'collections that are available through this profile database: "%s".'\
                                                     % (self.collection_name, ', '.join(self.collections.collections_dict)))
 
         self.collection_dict = self.collections.get_collection_dict(self.collection_name)
@@ -351,9 +351,9 @@ class GetSplitNamesInBins:
             bins_that_do_not_exist_in_collection = [b for b in self.bins if b not in bins_in_collection]
             if len(bins_that_do_not_exist_in_collection):
                 some_bins_that_exist_in_collection = bins_in_collection if len(bins_in_collection) < 30 else bins_in_collection[:30]
-                raise ConfigError('Some of the bins you requested do not appear to have been described in the collection\
-                                    "%s". Here is a list of bins that are missing: "%s". Here is a list of some bins in\
-                                    your collection: "%s"' % (self.collection_name,
+                raise ConfigError('Some of the bins you requested do not appear to have been described in the collection '
+                                   '"%s". Here is a list of bins that are missing: "%s". Here is a list of some bins in '
+                                   'your collection: "%s"' % (self.collection_name,
                                                               ', '.join(bins_that_do_not_exist_in_collection),
                                                               ', '.join(some_bins_that_exist_in_collection)))
 

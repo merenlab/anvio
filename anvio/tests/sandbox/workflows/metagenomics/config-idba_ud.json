@@ -3,8 +3,10 @@
     "idba_ud": {
         "--min_contig": 1000,
         "threads": 11,
+        "use_scaffolds": true,
         "run": true
     },
+    "workflow_name": "metagenomics",
     "kraken_txt": "kraken.txt",
     "output_dirs": {
         "FASTA_DIR": "02_FASTA_idba_ud",
@@ -14,5 +16,83 @@
         "PROFILE_DIR": "05_ANVIO_PROFILE_idba_ud",
         "MERGE_DIR": "06_MERGED_idba_ud",
         "LOGS_DIR": "00_LOGS_idba_ud"
+    },
+    "config_version": "1",
+    "anvi_gen_contigs_database": {
+        "--project-name": "{group}"
+    },
+    "centrifuge": {
+        "threads": 2
+    },
+    "anvi_run_hmms": {
+        "run": true,
+        "threads": 5
+    },
+    "anvi_run_ncbi_cogs": {
+        "run": true,
+        "threads": 5
+    },
+    "anvi_run_scg_taxonomy": {
+        "run": true,
+        "threads": 6
+    },
+    "anvi_script_reformat_fasta": {
+        "run": true,
+        "--prefix": "{group}",
+        "--simplify-names": true
+    },
+    "emapper": {
+        "--database": "bact",
+        "--usemem": true,
+        "--override": true
+    },
+    "anvi_script_run_eggnog_mapper": {
+        "--use-version": "0.12.6"
+    },
+    "metaspades": {
+        "additional_params": "--only-assembler",
+        "threads": 7
+    },
+    "megahit": {
+        "--min-contig-len": 1000,
+        "--memory": 0.4,
+        "threads": 7
+    },
+    "iu_filter_quality_minoche": {
+        "run": true,
+        "--ignore-deflines": true
+    },
+    "gzip_fastqs": {
+        "run": true
+    },
+    "bowtie": {
+        "additional_params": "--no-unal",
+        "threads": 3
+    },
+    "samtools_view": {
+        "additional_params": "-F 4"
+    },
+    "anvi_profile": {
+        "threads": 3,
+        "--sample-name": "{sample}",
+        "--overwrite-output-destinations": true
+    },
+    "anvi_merge": {
+        "--sample-name": "{group}",
+        "--overwrite-output-destinations": true
+    },
+    "import_percent_of_reads_mapped": {
+        "run": true
+    },
+    "krakenuniq": {
+        "threads": 3,
+        "--gzip-compressed": true,
+        "additional_params": ""
+    },
+    "remove_short_reads_based_on_references": {
+        "delimiter-for-iu-remove-ids-from-fastq": " "
+    },
+    "anvi_cluster_contigs": {
+        "--collection-name": "{driver}"
     }
 }

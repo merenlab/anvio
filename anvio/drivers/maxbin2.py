@@ -89,8 +89,8 @@ class MaxBin2:
 
         output_file_paths = glob.glob(J(output_file_prefix + '*.fasta'))
         if not len(output_file_paths):
-            raise ConfigError("Some critical output files are missing. Please take a look at the\
-                               log file: %s" % (log_path))
+            raise ConfigError("Some critical output files are missing. Please take a look at the "
+                              "log file: %s" % (log_path))
 
         clusters = {}
         bin_count = 0

@@ -130,8 +130,8 @@ class MetaBAT2:
 
         output_file_paths = glob.glob(J(bin_prefix + '*'))
         if not len(output_file_paths):
-            raise ConfigError("Some critical output files are missing. Please take a look at the\
-                               log file: %s" % (log_path))
+            raise ConfigError("Some critical output files are missing. Please take a look at the "
+                              "log file: %s" % (log_path))
 
         clusters = {}
         bin_count = 0

@@ -38,11 +38,11 @@ def migrate(db_path):
     contigs_db.disconnect()
 
     progress.end()
-    run.info_single("The contigs database is now %s. Unfortunately this update removed ALL SINGLE-COPY CORE GENE\
-                     HMMs FROM YOUR CONTIGS DATABASE :( We are very sorry about this, but we only did it to be\
-                     able to offer you nicer things. It is best if you re-run `anvi-run-hmms` program from scratch.\
-                     Doing that will not remove any 'non-default' HMM profiles you may have added in this contigs\
-                     database, so you have nothing to worry about." % (next_version), nl_after=1, nl_before=1, mc='green')
+    run.info_single("The contigs database is now %s. Unfortunately this update removed ALL SINGLE-COPY CORE GENE "
+                    "HMMs FROM YOUR CONTIGS DATABASE :( We are very sorry about this, but we only did it to be "
+                    "able to offer you nicer things. It is best if you re-run `anvi-run-hmms` program from scratch. "
+                    "Doing that will not remove any 'non-default' HMM profiles you may have added in this contigs "
+                    "database, so you have nothing to worry about." % (next_version), nl_after=1, nl_before=1, mc='green')
 
 
 if __name__ == '__main__':

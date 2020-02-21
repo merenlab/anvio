@@ -42,19 +42,19 @@ def main(args):
         sys.exit()
 
     if not args.output_file:
-        raise ConfigError("You should provide an output file name (and in fact a state name, too, in case\
-                            you haven't. You can see all available state names using '--list-states' flag).")
+        raise ConfigError("You should provide an output file name (and in fact a state name, too, in case "
+                           "you haven't. You can see all available state names using '--list-states' flag).")
 
     filesnpaths.is_output_file_writable(args.output_file)
 
     if not args.state:
-        raise ConfigError("Sorry! you need to provide state name. Yes. You don't know what states ara available?\
-                            did you try '--list-states' flag? You can press `1` for yes, `2` for no, and `3` for\
-                            maybe.")
+        raise ConfigError("Sorry! you need to provide state name. Yes. You don't know what states ara available? "
+                           "did you try '--list-states' flag? You can press `1` for yes, `2` for no, and `3` for "
+                           "maybe.")
 
     if not args.state in states:
-        raise ConfigError("The state name '%s' does not seem to appear in this database. But we have %s instead:\
-                            %s." % ((args.state, 'this one' if len(states) == 1 else 'these ones', ', '.join(list(states.keys())))))
+        raise ConfigError("The state name '%s' does not seem to appear in this database. But we have %s instead: "
+                           "%s." % ((args.state, 'this one' if len(states) == 1 else 'these ones', ', '.join(list(states.keys())))))
 
     open(args.output_file, 'w').write(states[args.state]['content'])
     run.info('Output', args.output_file)
