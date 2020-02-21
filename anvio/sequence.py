@@ -7,6 +7,7 @@ import copy
 import numpy as np
 import collections
 
+from numba import njit
 from itertools import permutations
 
 import anvio
@@ -127,7 +128,7 @@ class Read:
         # attributes have no __set__ methods, so are read only. Since this class is designed to
         # modify some of these attributes, and since we want to maintain consistency across
         # attributes, all attributes of interest are redefined here
-        self.cigartuples = read.cigartuples
+        self.cigartuples = np.array(read.cigartuples)
         self.query_sequence = constants.fast_nt_to_num_lookup[np.frombuffer(read.query_sequence.encode('ascii'), np.uint8)]
         self.reference_sequence = read.get_reference_sequence()
         self.reference_start = read.reference_start
@@ -192,23 +193,6 @@ class Read:
         return segment
 
 
-    def iterate_cigartuples(self, cigartuples):
-        """Iterate through cigartuples
-
-        Parameters
-        ==========
-        cigartuples : list of two-ples
-
-        Yields
-        ======
-        output : tuple
-            (operation, length, consumes_read, consumes_ref) -> (int, int, bool, bool)
-        """
-
-        for operation, length in cigartuples:
-            yield (operation, length, *constants.cigar_consumption[operation])
-
-
     def __repr__(self):
         """Fancy output for viewing a read's alignment in relation to the reference"""
         ref, read = '', []
@@ -216,7 +200,7 @@ class Read:
 
         d = {0: 'A', 1: 'C', 2: 'G', 3: 'T', 4: 'N'}
 
-        for _, length, consumes_read, consumes_ref in self.iterate_cigartuples(self.cigartuples):
+        for _, length, consumes_read, consumes_ref in iterate_cigartuples(self.cigartuples, constants.cigar_consumption):
             if consumes_read:
                 read.extend([d[x] for x in self.query_sequence[pos_read:(pos_read + length)]])
                 pos_read += length
@@ -232,9 +216,9 @@ class Read:
         lines = [
             '<%s.%s object at %s>' % (self.__class__.__module__, self.__class__.__name__, hex(id(self))),
             ' ├── start, end : [%s, %s)' % (self.reference_start, self.reference_end),
-            ' ├── cigartuple : %s' % (self.cigartuples),
-            ' ├── read       : %s' % (''.join(read)),
-            ' └── reference  : %s' % (ref),
+            ' ├── cigartuple : %s' % [tuple(row) for row in self.cigartuples],
+            ' ├── read       : %s' % ''.join(read),
+            ' └── reference  : %s' % ref,
         ]
 
         return '\n'.join(lines)
@@ -252,7 +236,7 @@ class Read:
         block_start = self.reference_start
         block_length = 0
 
-        for _, length, consumes_read, consumes_ref in self.iterate_cigartuples(self.cigartuples):
+        for _, length, consumes_read, consumes_ref in iterate_cigartuples(self.cigartuples, constants.cigar_consumption):
             if consumes_read and consumes_ref:
                 block_length += length
 
@@ -290,37 +274,16 @@ class Read:
 
         Notes
         =====
-        - This method exists because self.r.query_alignment_sequence doesn't return the read's
-          nucleotides at the positions it aligns, it only returns the read after removing
-          softclipping. It is otherwise unaligned.  To get the aligned sequence, we have to parse
-          the cigar string to build `aligned_sequence`, which gives us the base contributed by this
-          read at each of its aligned positions.
-        - Takes anywhere from 150-450us
+        - Delegates to the just-in-time compiled function
+          _get_aligned_sequence_and_reference_positions
         """
 
-        aligned_sequence = []
-        reference_positions = []
-
-        ref_consumed, read_consumed = 0, 0
-        for _, length, consumes_read, consumes_ref in self.iterate_cigartuples(self.cigartuples):
-
-            if consumes_read and consumes_ref:
-                aligned_sequence.extend(self.query_sequence[read_consumed:(read_consumed + length)])
-                reference_positions.extend(range(ref_consumed + self.reference_start, ref_consumed + self.reference_start + length))
-
-                read_consumed += length
-                ref_consumed += length
-
-            elif consumes_ref:
-                ref_consumed += length
-
-            elif consumes_read:
-                read_consumed += length
-
-        reference_positions = np.array(reference_positions)
-        aligned_sequence = np.array(aligned_sequence)
-
-        return aligned_sequence, reference_positions
+        return _get_aligned_sequence_and_reference_positions(
+            self.cigartuples,
+            self.query_sequence,
+            self.reference_start,
+            constants.cigar_consumption,
+        )
 
 
     def trim(self, trim_by, side='left'):
@@ -359,11 +322,10 @@ class Read:
             raise ConfigError("Read.trim :: Requesting to trim an amount %d that exceeds the alignment"
                               " range of %d" % (trim_by, self.reference_end - self.reference_start))
 
-        if len(self.cigartuples) == 1:
+        if self.cigartuples.shape[0] == 1:
             # There contains only a pure mapping segment, i.e. no indels. This clause accounts for
             # the majority of reads and exists to speed up the code.
-            cigartuple = self.cigartuples[0]
-            self.cigartuples = [(cigartuple[0], cigartuple[1] - trim_by)]
+            self.cigartuples[0, 1] -= trim_by
 
             if side == 'left':
                 self.query_sequence = self.query_sequence[trim_by:]
@@ -380,14 +342,14 @@ class Read:
         # We are here because the read was not a simple mapping. There are indels and so we need to
         # parse cigartuples. Buckle up.
 
-        cigartuples = self.cigartuples[::-1] if side == 'right' else self.cigartuples
-        trimmed_cigartuples = cigartuples.copy()
+        cigartuples = self.cigartuples[::-1, :] if side == 'right' else self.cigartuples
 
         ref_positions_trimmed = 0
         read_positions_trimmed = 0
         terminate_next = False
 
-        for operation, length, consumes_read, consumes_ref in self.iterate_cigartuples(cigartuples):
+        count = 0
+        for operation, length, consumes_read, consumes_ref in iterate_cigartuples(cigartuples, constants.cigar_consumption):
 
             if consumes_ref and consumes_read:
                 if terminate_next:
@@ -399,7 +361,7 @@ class Read:
                     # the length of the operation exceeds the required trim amount. So we will
                     # terminate this iteration. To trim the cigar tuple, we replace it with a
                     # truncated length
-                    trimmed_cigartuples[0] = (operation, length - remaining)
+                    cigartuples[count, 1] = length - remaining
                     ref_positions_trimmed += remaining
                     read_positions_trimmed += remaining
                     break
@@ -416,15 +378,17 @@ class Read:
             if ref_positions_trimmed >= trim_by:
                 terminate_next = True
 
-            trimmed_cigartuples.pop(0)
+            count += 1
+
+        cigartuples = cigartuples[count:, :]
 
         if side == 'right':
-            self.cigartuples = trimmed_cigartuples[::-1]
+            self.cigartuples = cigartuples[::-1]
             self.query_sequence = self.query_sequence[:-read_positions_trimmed]
             self.reference_sequence = self.reference_sequence[:-ref_positions_trimmed]
             self.reference_end -= ref_positions_trimmed
         else:
-            self.cigartuples = trimmed_cigartuples
+            self.cigartuples = cigartuples
             self.query_sequence = self.query_sequence[read_positions_trimmed:]
             self.reference_sequence = self.reference_sequence[ref_positions_trimmed:]
             self.reference_start += ref_positions_trimmed
@@ -649,3 +613,64 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
         for i in zero_positions:
             non_outliers[i] = True
         return non_outliers
+
+
+@njit
+def _get_aligned_sequence_and_reference_positions(cigartuples, query_sequence, reference_start, cigar_consumption):
+
+    # get size of arrays to init
+    size = 0
+    for i in range(cigartuples.shape[0]):
+        if cigar_consumption[cigartuples[i, 0], 0] and cigar_consumption[cigartuples[i, 0], 1]:
+            size += cigartuples[i, 1]
+
+    # init the arrays
+    aligned_sequence = np.zeros(size, dtype=np.int64)
+    reference_positions = np.zeros(size, dtype=np.int64)
+
+    ref_consumed, read_consumed = 0, 0
+    num_mapped = 0
+    for operation, length, consumes_read, consumes_ref in iterate_cigartuples(cigartuples, cigar_consumption):
+
+        if consumes_read and consumes_ref:
+            aligned_sequence[num_mapped:num_mapped+length] = query_sequence[read_consumed:(read_consumed + length)]
+            reference_positions[num_mapped:num_mapped+length] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
+
+            num_mapped += length
+            read_consumed += length
+            ref_consumed += length
+
+        elif consumes_ref:
+            ref_consumed += length
+
+        elif consumes_read:
+            read_consumed += length
+
+    return aligned_sequence, reference_positions
+
+
+@njit
+def iterate_cigartuples(cigartuples, cigar_consumption):
+    """Iterate through cigartuples
+
+    Parameters
+    ==========
+    cigartuples : Nx2 array
+
+    Yields
+    ======
+    output : tuple
+        (operation, length, consumes_read, consumes_ref) -> (int, int, bool, bool)
+    """
+
+    for i in range(cigartuples.shape[0]):
+        operation, length = cigartuples[i, :]
+
+        yield np.array([
+            operation,
+            length,
+            cigar_consumption[operation, 0],
+            cigar_consumption[operation, 1]
+        ])
+
+
