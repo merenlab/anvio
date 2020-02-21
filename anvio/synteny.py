@@ -7,6 +7,10 @@
     to analyze conserved genes and synteny structures across loci.
 """
 
+import pandas as pd
+
+from collections import Counter
+
 import anvio
 import anvio.tables as t
 import anvio.utils as utils
@@ -14,7 +18,6 @@ import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.genomedescriptions as genomedescriptions
-import pandas as pd
 
 from anvio.errors import ConfigError
 
@@ -40,7 +43,7 @@ class NGram(object):
                                      --window-size 3 \
                                      -o test
 
-                anvi-analyze-synteny -e external-genomes-cps.txt  \
+            >>> anvi-analyze-synteny -e external-genomes-cps.txt  \
                                      --annotation-source COG_FUNCTION \
                                      --window-size 2\
                                      -o test
@@ -48,7 +51,6 @@ class NGram(object):
         for i in `ls Bfragilis_00*_test`; do head -n4 $i ; done
 
 
-                                     
         """
 
         self.args = args
@@ -78,9 +80,9 @@ class NGram(object):
         g.load_genomes_descriptions(init=False)
 
         if self.annotation_source not in g.function_annotation_sources:
-            raise ConfigError("The annotation source you requested does not appear to be in the\
-                               contigs database :/\
-                               Please confirm you are only providing one annotation source :)")
+            raise ConfigError("The annotation source you requested does not appear to be in the "
+                              "contigs database :/ "
+                              "Please confirm you are only providing one annotation source :)")
 
         if not self.args.output_file:
             raise ConfigError("You should provide an output file name.")
@@ -95,12 +97,12 @@ class NGram(object):
             # Extract file path
             contigs_db_path = self.external_genomes[contigs_db_name]["contigs_db_path"]
 
-            # Get list of genes and functions    
+            # Get list of genes and functions
             genes_and_functions_list = self.get_genes_and_functions_from_contigs_db(contigs_db_path)
 
             # Get unique list of the contigs from this contigsDB (there could be more than one)
             contigs_list = set(([entry[2] for entry in genes_and_functions_list]))
-            
+
             # iterate through list of contigs and make dictionary 'contig_name': list_of_functions
             contigs_dict = {}
             for contig_name in contigs_list:
@@ -113,28 +115,27 @@ class NGram(object):
             # Run synteny algorithm and count occurrences of ngrams
             # ngram_counts.append(self.count_synteny_1(contigs_dict))
                 ngram_counts.append(self.count_synteny(contigs_dict))
-            
+
             counter = counter + 1
             if counter == 8:
                 break
+
         print(ngram_counts)
 
         # Merge list of dicts into final dict of ngram counts
-        final_dict = {}
+        final_dict = Counter()
         for dictio in ngram_counts:
             for key, value in dictio.items():
-                if key in final_dict.keys():
-                    final_dict[key] = value + 1
-                else:
-                    final_dict[key] = value
+                final_dict[key] += value
 
-        df = pd.DataFrame(list(final_dict.items()), columns=['ngram', 'Count']) 
+        df = pd.DataFrame(list(final_dict.items()), columns=['ngram', 'Count'])
+
         print(df)
 
     def get_genes_and_functions_from_contigs_db(self, contigs_db_path):
         # get contigsDB
         contigs_db = dbops.ContigsDatabase(contigs_db_path)
-        # extract contigs names 
+        # extract contigs names
         genes_in_contigs = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
         # extract annotations and filter for the sources designated by user
         annotations_dict = contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name)
@@ -155,7 +156,7 @@ class NGram(object):
                 list_of_gene_attributes.extend((gci, accession, contig_name))
                 genes_and_functions_list.append(list_of_gene_attributes)
             else: # adding in "unknown annotation" if there is none
-                accession = "unknown-function-" + "{:06d}".format(1) + str(counter) # add leading 0 
+                accession = "unknown-function-" + "{:06d}".format(1) + str(counter) # add leading 0
                 contig_name = genes_in_contigs[counter]['contig']
                 list_of_gene_attributes.extend((counter,accession,contig_name))
                 genes_and_functions_list.append(list_of_gene_attributes)
@@ -166,7 +167,7 @@ class NGram(object):
 
     def count_synteny(self, contigs_dict):
         """
-        Need to return counts for 1 contig at a time and 
+        Need to return counts for 1 contig at a time and
         give back a dictionary with contig {name: {ngram:count}}
         """
         k = self.window_size
@@ -185,6 +186,7 @@ class NGram(object):
                 else:
                     kFreq[ngram] = 1
             return kFreq
+
 
     def count_synteny_1(self, contigs_dict):
         """
