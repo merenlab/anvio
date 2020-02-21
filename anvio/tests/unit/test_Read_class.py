@@ -3,6 +3,7 @@
 """Unit tests for the Read class."""
 
 import copy
+import numpy as np
 import unittest
 
 import anvio
@@ -63,32 +64,32 @@ class TestRead(unittest.TestCase):
             {
                 'query_sequence' : 'AACCTTGG',
                 'reference_sequence' : 'ACTGACTG',
-                'reference_positions': [0,1,2,3,4,5,6,7],
+                'reference_positions': np.array([0,1,2,3,4,5,6,7]),
                 'reference_start': 0,
                 'reference_end': 8,
-                'cigartuples': [(0,8)],
+                'cigartuples': np.array([(0,8)]),
                 'trim_by': 3,
-                'output_tuples_left': [(0,5)],
+                'output_tuples_left': np.array([(0,5)]),
                 'output_sequence_left': 'CTTGG',
-                'output_reference_positions_left': [3,4,5,6,7],
-                'output_tuples_right': [(0,5)],
+                'output_reference_positions_left': np.array([3,4,5,6,7]),
+                'output_tuples_right': np.array([(0,5)]),
                 'output_sequence_right': 'AACCT',
-                'output_reference_positions_right': [0,1,2,3,4],
+                'output_reference_positions_right': np.array([0,1,2,3,4]),
             },
             {
                 'query_sequence' : 'AACCTTGG',
                 'reference_sequence' : 'ACTGACTG',
-                'reference_positions': [0,1,2,3],
+                'reference_positions': np.array([0,1,2,3]),
                 'reference_start': 0,
                 'reference_end': 4,
-                'cigartuples': [(0,2), (1,4), (0,2)],
+                'cigartuples': np.array([(0,2), (1,4), (0,2)]),
                 'trim_by': 3,
-                'output_tuples_left': [(0,1)],
+                'output_tuples_left': np.array([(0,1)]),
                 'output_sequence_left': 'G',
-                'output_reference_positions_left': [3],
-                'output_tuples_right': [(0,1)],
+                'output_reference_positions_left': np.array([3]),
+                'output_tuples_right': np.array([(0,1)]),
                 'output_sequence_right': 'A',
-                'output_reference_positions_right': [0],
+                'output_reference_positions_right': np.array([0]),
             },
             {
                 'query_sequence' : 'AACCTTGG',
@@ -96,29 +97,29 @@ class TestRead(unittest.TestCase):
                 'reference_positions': [0,3,4,5,6],
                 'reference_start': 0,
                 'reference_end': 7,
-                'cigartuples': [(0,1), (1,3), (2,2), (0,4)],
+                'cigartuples': np.array([(0,1), (1,3), (2,2), (0,4)]),
                 'trim_by': 3,
-                'output_tuples_left': [(0,4)],
+                'output_tuples_left': np.array([(0,4)]),
                 'output_sequence_left': 'TTGG',
-                'output_reference_positions_left': [3,4,5,6],
-                'output_tuples_right': [(0,1), (1,3), (2,2), (0,1)],
+                'output_reference_positions_left': np.array([3,4,5,6]),
+                'output_tuples_right': np.array([(0,1), (1,3), (2,2), (0,1)]),
                 'output_sequence_right': 'AACCT',
-                'output_reference_positions_right': [0,3],
+                'output_reference_positions_right': np.array([0,3]),
             },
             {
                 'query_sequence' : 'AACCTTGG',
                 'reference_sequence' : 'ACTGACTG',
-                'reference_positions': [0,2,4,6,8,9,10],
+                'reference_positions': np.array([0,2,4,6,8,9,10]),
                 'reference_start': 0,
                 'reference_end': 11,
-                'cigartuples': [(0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,2), (1,1), (0,1)],
+                'cigartuples': np.array([(0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,2), (1,1), (0,1)]),
                 'trim_by': 3,
-                'output_tuples_left': [(0,1), (2,1), (0,1), (2,1), (0,2), (1,1), (0,1)],
+                'output_tuples_left': np.array([(0,1), (2,1), (0,1), (2,1), (0,2), (1,1), (0,1)]),
                 'output_sequence_left': 'CCTTGG',
-                'output_reference_positions_left': [4,6,8,9,10],
-                'output_tuples_right': [(0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,1)],
+                'output_reference_positions_left': np.array([4,6,8,9,10]),
+                'output_tuples_right': np.array([(0,1), (2,1), (0,1), (2,1), (0,1), (2,1), (0,1)]),
                 'output_sequence_right': 'AACC',
-                'output_reference_positions_right': [0,2,4,6],
+                'output_reference_positions_right': np.array([0,2,4,6]),
             },
         ]
 
@@ -135,14 +136,14 @@ class TestRead(unittest.TestCase):
             attrs = self.read_attrs[target]
 
             print("Trimming left")
-            read = copy.copy(self.reads[target])
+            read = copy.deepcopy(self.reads[target])
             read.trim(attrs['trim_by'], side='left')
-            self.assertEqual(read.cigartuples, attrs['output_tuples_left'])
+            self.assertEqual(read.cigartuples.tolist(), attrs['output_tuples_left'].tolist())
 
             print("Trimming right")
-            read = copy.copy(self.reads[target])
+            read = copy.deepcopy(self.reads[target])
             read.trim(attrs['trim_by'], side='right')
-            self.assertEqual(read.cigartuples, attrs['output_tuples_right'])
+            self.assertEqual(read.cigartuples.tolist(), attrs['output_tuples_right'].tolist())
 
 
 class TestCaseStudy1(unittest.TestCase):
@@ -154,7 +155,7 @@ class TestCaseStudy1(unittest.TestCase):
         read2 = copy.copy(read)
         read2.trim(21, side='left')
 
-        self.assertEqual(read2.cigartuples, [(0, 14), (1, 1), (0, 19), (1, 2), (0, 45)])
+        self.assertEqual(read2.cigartuples.tolist(), np.array([(0, 14), (1, 1), (0, 19), (1, 2), (0, 45)]).tolist())
 
 
 if __name__ == '__main__':

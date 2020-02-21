@@ -183,7 +183,7 @@ class Read:
         if not isinstance(key, slice) or key.step is not None:
             raise ValueError("Read class only supports basic slicing for indexing, e.g. read[start:stop], read[:stop]")
 
-        segment = copy.copy(self)
+        segment = copy.deepcopy(self)
 
         start = key.start if key.start is not None else segment.reference_start
         end = key.stop if key.stop is not None else segment.reference_end
@@ -349,58 +349,20 @@ class Read:
             return
 
         # We are here because the read was not a simple mapping. There are indels and so we need to
-        # parse cigartuples. Buckle up.
+        # parse cigartuples. We delegate to a just-in-time compiled function for a 4X speed gain
 
-        cigartuples = self.cigartuples[::-1, :] if side == 'right' else self.cigartuples
-
-        ref_positions_trimmed = 0
-        read_positions_trimmed = 0
-        terminate_next = False
-
-        count = 0
-        for operation, length, consumes_read, consumes_ref in iterate_cigartuples(cigartuples, constants.cigar_consumption):
-
-            if consumes_ref and consumes_read:
-                if terminate_next:
-                    break
-
-                remaining = trim_by - ref_positions_trimmed
-
-                if length > remaining:
-                    # the length of the operation exceeds the required trim amount. So we will
-                    # terminate this iteration. To trim the cigar tuple, we replace it with a
-                    # truncated length
-                    cigartuples[count, 1] = length - remaining
-                    ref_positions_trimmed += remaining
-                    read_positions_trimmed += remaining
-                    break
-
-                ref_positions_trimmed += length
-                read_positions_trimmed += length
-
-            elif consumes_ref:
-                ref_positions_trimmed += length
-
-            elif consumes_read:
-                read_positions_trimmed += length
-
-            if ref_positions_trimmed >= trim_by:
-                terminate_next = True
-
-            count += 1
-
-        cigartuples = cigartuples[count:, :]
-
-        if side == 'right':
-            self.cigartuples = cigartuples[::-1]
-            self.query_sequence = self.query_sequence[:-read_positions_trimmed]
-            self.reference_sequence = self.reference_sequence[:-ref_positions_trimmed]
-            self.reference_end -= ref_positions_trimmed
-        else:
-            self.cigartuples = cigartuples
-            self.query_sequence = self.query_sequence[read_positions_trimmed:]
-            self.reference_sequence = self.reference_sequence[ref_positions_trimmed:]
-            self.reference_start += ref_positions_trimmed
+        (self.cigartuples,
+         self.query_sequence,
+         self.reference_sequence,
+         self.reference_start,
+         self.reference_end) = _trim(self.cigartuples,
+                                     constants.cigar_consumption,
+                                     self.query_sequence,
+                                     self.reference_sequence,
+                                     self.reference_start,
+                                     self.reference_end,
+                                     trim_by,
+                                     0 if side == 'left' else 1)
 
 
 class Composition:
@@ -681,5 +643,62 @@ def iterate_cigartuples(cigartuples, cigar_consumption):
             cigar_consumption[operation, 0],
             cigar_consumption[operation, 1]
         ])
+
+
+@njit
+def _trim(cigartuples, cigar_consumption, query_sequence, reference_sequence, reference_start, reference_end, trim_by, side):
+
+    cigartuples = cigartuples[::-1, :] if side == 1 else cigartuples
+
+    ref_positions_trimmed = 0
+    read_positions_trimmed = 0
+    terminate_next = False
+
+    count = 0
+    for operation, length, consumes_read, consumes_ref in iterate_cigartuples(cigartuples, cigar_consumption):
+
+        if consumes_ref and consumes_read:
+            if terminate_next:
+                break
+
+            remaining = trim_by - ref_positions_trimmed
+
+            if length > remaining:
+                # the length of the operation exceeds the required trim amount. So we will
+                # terminate this iteration. To trim the cigar tuple, we replace it with a
+                # truncated length
+                cigartuples[count, 1] = length - remaining
+                ref_positions_trimmed += remaining
+                read_positions_trimmed += remaining
+                break
+
+            ref_positions_trimmed += length
+            read_positions_trimmed += length
+
+        elif consumes_ref:
+            ref_positions_trimmed += length
+
+        elif consumes_read:
+            read_positions_trimmed += length
+
+        if ref_positions_trimmed >= trim_by:
+            terminate_next = True
+
+        count += 1
+
+    cigartuples = cigartuples[count:, :]
+
+    if side == 1:
+        cigartuples = cigartuples[::-1]
+        query_sequence = query_sequence[:-read_positions_trimmed]
+        reference_sequence = reference_sequence[:-ref_positions_trimmed]
+        reference_end -= ref_positions_trimmed
+    else:
+        cigartuples = cigartuples
+        query_sequence = query_sequence[read_positions_trimmed:]
+        reference_sequence = reference_sequence[ref_positions_trimmed:]
+        reference_start += ref_positions_trimmed
+
+    return cigartuples, query_sequence, reference_sequence, reference_start, reference_end
 
 
