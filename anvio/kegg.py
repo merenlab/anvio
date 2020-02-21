@@ -553,6 +553,12 @@ class KeggModulesDatabase():
         self.run = run
         self.progress = progress
 
+		# modules table info
+		# I wonder if these should be moved to the tables __init__.py at some point?
+        self.module_table_name = "kegg_modules"
+        self.module_table_structure = ['module', 'data_name', 'data_value', 'data_definition']
+        self.module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ]
+
         ## here we should call init function if the db exists
 
     def touch(self):
@@ -570,12 +576,7 @@ class KeggModulesDatabase():
 
         self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=True)
 
-        # I wonder if these should be moved to the tables __init__.py at some point?
-        module_table_name = "kegg_modules"
-        module_table_structure = ['module', 'data_name', 'data_value', 'data_definition']
-        module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ]
-
-        self.db.create_table(module_table_name, module_table_structure, module_table_types)
+        self.db.create_table(self.module_table_name, self.module_table_structure, self.module_table_types)
 
         return self.db
 
