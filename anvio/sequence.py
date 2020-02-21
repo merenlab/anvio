@@ -467,7 +467,6 @@ class Coverage:
         self.mean_Q2Q3 = 0.0
 
         self.routine_dict = {
-            'approximate': self._approximate_routine,
             'accurate': self._accurate_routine,
         }
 
@@ -495,9 +494,7 @@ class Coverage:
             `contig_or_split` is a Split object.
 
         method : string
-            How do you want to calculate? Options: ('accurate', 'approximate'). 'accurate' accounts
-            for gaps in the alignment, 'approximate' does not. For others, see associated methods
-            and pass special parameters they take through **kwargs
+            How do you want to calculate? Options: see self.routine_dict
 
         skip_coverage_stats : bool, False
             Should the call to process_c be skipped?
@@ -548,25 +545,12 @@ class Coverage:
                 self.process_c(self.c)
 
 
-    def _approximate_routine(self, c, bam, contig_name, start, end, iterator):
-        """Routine that does not account for gaps in alignment
-
-        Notes
-        =====
-        - Should typically not be called explicitly. Use run instead
-        """
-
-        for read in iterator(contig_name, start, end):
-            c[read.reference_start:read.reference_end] += 1
-
-        return c
-
-
     def _accurate_routine(self, c, bam, contig_name, start, end, iterator):
         """Routine that accounts for gaps in the alignment
 
         Notes
         =====
+        - There used to be an '_approximate_routine', but its only negligibly faster
         - Should typically not be called explicitly. Use run instead
         - fancy indexing of reference_positions was also considered, but is much slower because it
           uses fancy-indexing
