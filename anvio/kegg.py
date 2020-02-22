@@ -585,6 +585,48 @@ class KeggModulesDatabase(KeggContext):
 
         self.touch()
 
+		self.progress.new("Loading KEGG modules into Modules DB...")
+
+		# sanity check that we setup the modules previously.
+		# It shouldn't be a problem since this function should only be called during the setup process after modules download, but just in case.
+		if not os.exists(module_data_dir) or len(self.module_dict.keys()) == 0:
+			raise ConfigError("Appparently, the Kegg Modules were not correctly setup and now all sorts of things are broken. The \
+			 Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone except maybe developers, so \
+			 if you do not fall into that category you are likely in deep doo-doo. Maybe re-running setup with --reset will work? (if not, you \
+			 probably should email/Slack/telepathically cry out for help to the developers.)")
+
+
+		num_modules_parsed = 0
+		for mnum in self.module_dict.keys():
+            mod_file_path = os.path.join(self.module_data_dir, mnum)
+			f = open(mod_file_path, 'rU')
+
+			prev_data_name_field = None
+			for line in f.readlines():
+	            line.strip('\n')
+
+				# check for last line ///. We don't want to send the last line to the parsing function because it will break.
+				if not line == '///':
+					# parse the line into a tuple
+
+					# here is the tricky bit about parsing these files. Not all lines start with the data_name field; those that don't start with a space.
+					# if this is the case, we need to tell the parsing function what the previous data_name field has been.
+					if line[0] == ' ':
+						pass
+					else:
+						pass
+
+					# extract that tuple info
+					# update prev_data_name_field
+					# call append_and_store which will collect db entries and store every 10000 at a time
+
+
+			num_modules_parsed += 1
+
+		# give some run info
+		# record number of modules in db
+
+
         self.db.set_meta_value('db_type', 'modules')
 
         self.db.disconnect()
