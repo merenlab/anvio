@@ -597,6 +597,7 @@ class KeggModulesDatabase(KeggContext):
 
 
 		num_modules_parsed = 0
+		line_number = 0
 		for mnum in self.module_dict.keys():
             mod_file_path = os.path.join(self.module_data_dir, mnum)
 			f = open(mod_file_path, 'rU')
@@ -604,6 +605,7 @@ class KeggModulesDatabase(KeggContext):
 			prev_data_name_field = None
 			for line in f.readlines():
 	            line.strip('\n')
+				line_number += 1
 
 				# check for last line ///. We don't want to send the last line to the parsing function because it will break.
 				if not line == '///':
