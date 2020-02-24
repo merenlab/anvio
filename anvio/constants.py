@@ -313,44 +313,33 @@ def get_pretty_name(key):
     else:
         return key
 
-def get_fast_nt_to_array_index_lookup():
-    """Get a lookup array for converting nt sequences to index arrays.
 
-    In action, this approach is twice as fast as a list comprehension for 100 sequence reads.
-
-    Examples
-    ========
-
-    Create a random sequence
-
-    >>> import anvio.constants as constants
-    >>> seq = ''.join(list(np.random.choice(constants.nucleotides, size=100)))
-    >>> seq
-    'CGCATCCNAGNGNGCTNCGCTTCNANTGAACNCAGTACNGGNTCGTGNGGNTAANNGCGNGNNNNNCGNNTTCTNTACNACGTTGATAGATGNCTNNCGN'
-
-    >>> %timeit quick = fast_nt_to_num_lookup[np.array([seq]).view(np.int32)]
-    2.81 µs ± 65.4 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
-    >>> quick
-    array([1, 2, 1, 0, 3, 1, 1, 4, 0, 2, 4, 2, 4, 2, 1, 3, 4, 1, 2, 1, 3, 3,
-           1, 4, 0, 4, 3, 2, 0, 0, 1, 4, 1, 0, 2, 3, 0, 1, 4, 2, 2, 4, 3, 1,
-           2, 3, 2, 4, 2, 2, 4, 3, 0, 0, 4, 4, 2, 1, 2, 4, 2, 4, 4, 4, 4, 4,
-           1, 2, 4, 4, 3, 3, 1, 3, 4, 3, 0, 1, 4, 0, 1, 2, 3, 3, 2, 0, 3, 0,
-           2, 0, 3, 2, 4, 1, 3, 4, 4, 1, 2, 4])
-
-    >>> %timeit slow = [nt_to_array_index[s] for s in seq]
-    5.25 µs ± 156 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
-    >>> slow
-    [1, 2, 1, 0, 3, 1, 1, 4, 0, 2, 4, 2, 4, 2, 1, 3, 4, 1, 2, 1, 3, 3,
-     1, 4, 0, 4, 3, 2, 0, 0, 1, 4, 1, 0, 2, 3, 0, 1, 4, 2, 2, 4, 3, 1,
-     2, 3, 2, 4, 2, 2, 4, 3, 0, 0, 4, 4, 2, 1, 2, 4, 2, 4, 4, 4, 4, 4,
-     1, 2, 4, 4, 3, 3, 1, 3, 4, 3, 0, 1, 4, 0, 1, 2, 3, 3, 2, 0, 3, 0,
-     2, 0, 3, 2, 4, 1, 3, 4, 4, 1, 2, 4]
-    """
-
+def get_nt_to_num_lookup():
+    d = {'A': 0, 'C': 1, 'G': 2, 'T': 3, 'N': 4}
     nts_as_numbers = numpy.array(nucleotides).view(numpy.int32)
-    fast_nt_to_array_index_lookup = numpy.zeros((nts_as_numbers.max()+1), dtype='int')
-    fast_nt_to_array_index_lookup[nts_as_numbers] = range(len(nucleotides))
+    lookup = 5 * numpy.ones(nts_as_numbers.max() + 1, dtype='int')
 
-    return fast_nt_to_array_index_lookup
+    for num, nt in zip(nts_as_numbers, nucleotides):
+        lookup[num] = d[nt]
 
-fast_nt_to_num_lookup = get_fast_nt_to_array_index_lookup()
+    return lookup
+
+
+def get_nt_to_RC_num_lookup():
+    d = {'A': 3, 'C': 2, 'G': 1, 'T': 0, 'N': 4}
+    nts_as_numbers = numpy.array(nucleotides).view(numpy.int32)
+    lookup = 5 * numpy.ones(nts_as_numbers.max() + 1, dtype='int')
+
+    for num, nt in zip(nts_as_numbers, nucleotides):
+        lookup[num] = d[nt]
+
+    return lookup
+
+
+def get_codon_to_num_lookup():
+    return numpy.arange(4 ** 3, dtype='int').reshape((4,4,4))
+
+
+nt_to_num_lookup = get_nt_to_num_lookup()
+nt_to_RC_num_lookup = get_nt_to_RC_num_lookup()
+codon_to_num_lookup = get_codon_to_num_lookup()
