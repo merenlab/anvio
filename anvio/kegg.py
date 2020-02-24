@@ -646,10 +646,13 @@ class KeggModulesDatabase(KeggContext):
 			 if you do not fall into that category you are likely in deep doo-doo. Maybe re-running setup with --reset will work? (if not, you \
 			 probably should email/Slack/telepathically cry out for help to the developers.)")
 
+		# init the Modules table
+		mod_table = KeggModulesTable(self.module_table_name)
 
 		num_modules_parsed = 0
 		line_number = 0
 		for mnum in self.module_dict.keys():
+			self.progress.update("Parsing KEGG Module %s" % mnum)
             mod_file_path = os.path.join(self.module_data_dir, mnum)
 			f = open(mod_file_path, 'rU')
 
@@ -661,17 +664,23 @@ class KeggModulesDatabase(KeggContext):
 				# check for last line ///. We don't want to send the last line to the parsing function because it will break.
 				if not line == '///':
 					# parse the line into a tuple
-
+					entries_tuple_list = None
 					# here is the tricky bit about parsing these files. Not all lines start with the data_name field; those that don't start with a space.
 					# if this is the case, we need to tell the parsing function what the previous data_name field has been.
 					if line[0] == ' ':
-						pass
+						entries_tuple_list = self.parse_kegg_modules_line(line, line_number, prev_data_name_field)
 					else:
-						pass
+						entries_tuple_list = self.parse_kegg_modules_line(line, line_number)
 
-					# extract that tuple info
-					# update prev_data_name_field
-					# call append_and_store which will collect db entries and store every 10000 at a time
+					# update prev_data_name_field; use the first (and perhaps only) entry by default
+					prev_data_name_field = entries_tuple_list[0][0]
+
+					# unpack that tuple info
+					for entry_info in entries_tuple_list:
+						name, val, def, line = entry_info
+						# call append_and_store which will collect db entries and store every 10000 at a time
+						mod_table.append_and_store(mnum, name, val, def, line)
+
 
 
 			num_modules_parsed += 1
