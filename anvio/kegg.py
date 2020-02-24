@@ -623,7 +623,7 @@ class KeggModulesDatabase(KeggContext):
 		data_types_to_split = ["ORTHOLOGY","REACTION"] # lines that fall under these categories need to have data_vals split on comma
 		if current_data_name in data_types_to_split:
 			for val in data_vals.split(','):
-				line_entries.append((current_data_name, val, data_def, line_num)
+				line_entries.append((current_data_name, val, data_def, line_num))
 		else: # just send what we found without splitting the line
 			line_entries.append((current_data_name, data_vals, data_def, line_num)
 
