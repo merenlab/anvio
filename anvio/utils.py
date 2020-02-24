@@ -37,8 +37,8 @@ from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequence import Composition
 
-with SuppressAllOutput():
-    from ete3 import Tree
+#with SuppressAllOutput():
+#    from ete3 import Tree
 
 # psutil is causing lots of problems for lots of people :/
 with SuppressAllOutput():
@@ -1355,40 +1355,6 @@ def get_consensus_and_departure_data(variable_item_frequencies):
     return (n2n1ratio, consensus, departure_from_consensus)
 
 
-def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
-    """Returns a dictionary to translate codons in a gene to nucleotide positions
-
-    Parameters
-    ==========
-    subtract_by : int, 0
-        Subtract the start and stop of the gene call by this amount. This could be useful if the
-        gene call start/stop are defined in terms of the contig, but you want the start/stop in
-        terms of the split. Then you could supply subtract_by=split_start, where split_start is the
-        start of the split
-    """
-
-    if gene_call['partial']:
-        raise ConfigError("get_codon_order_to_nt_positions_dict: this simply will not work "
-                           "for partial gene calls, and this on *is* a partial one.")
-
-    start = gene_call['start'] - subtract_by
-    stop = gene_call['stop'] - subtract_by
-
-    codon_order_to_nt_positions = {}
-    codon_order = 0
-
-    if gene_call['direction'] == 'r':
-        for nt_pos in range(stop - 1, start - 1, -3):
-            codon_order_to_nt_positions[codon_order] = [nt_pos - 2, nt_pos - 1, nt_pos]
-            codon_order += 1
-    else:
-        for nt_pos in range(start, stop, 3):
-            codon_order_to_nt_positions[codon_order] = [nt_pos, nt_pos + 1, nt_pos + 2]
-            codon_order += 1
-
-    return codon_order_to_nt_positions
-
-
 def convert_sequence_indexing(index, source="M0", destination="M1"):
     """
     Anvi'o zero-indexes sequences. For example, the methionine that every
@@ -1471,32 +1437,6 @@ def convert_SSM_to_single_accession(matrix_data):
                 continue
             new_data[''.join([row, column])] = matrix_data[row][column]
     return new_data
-
-
-def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=False):
-    sequence = sequence.upper()
-
-    if len(sequence) % 3.0 != 0:
-        raise ConfigError("The sequence corresponds to the gene callers id '%s' does not seem to "
-                           "have proper number of nucleotides to be translated :/ Here it is: %s" % (gene_callers_id, sequence))
-
-    translated_sequence = ''
-
-    for i in range(0, len(sequence), 3):
-        single_letter_code = constants.AA_to_single_letter_code[constants.codon_to_AA[sequence[i:i + 3]]]
-
-        if not single_letter_code:
-            single_letter_code = 'X'
-
-        translated_sequence += single_letter_code
-
-    if translated_sequence.endswith('*'):
-        if return_with_stops:
-            pass
-        else:
-            translated_sequence = translated_sequence[:-1]
-
-    return translated_sequence
 
 
 def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
@@ -1628,6 +1568,171 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
             list_of_codons.append(None)
 
     return list_of_codons
+
+
+def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=False):
+    sequence = sequence.upper()
+
+    if len(sequence) % 3.0 != 0:
+        raise ConfigError("The sequence corresponds to the gene callers id '%s' does not seem to "
+                           "have proper number of nucleotides to be translated :/ Here it is: %s" % (gene_callers_id, sequence))
+
+    translated_sequence = ''
+
+    for i in range(0, len(sequence), 3):
+        single_letter_code = constants.AA_to_single_letter_code[constants.codon_to_AA[sequence[i:i + 3]]]
+
+        if not single_letter_code:
+            single_letter_code = 'X'
+
+        translated_sequence += single_letter_code
+
+    if translated_sequence.endswith('*'):
+        if return_with_stops:
+            pass
+        else:
+            translated_sequence = translated_sequence[:-1]
+
+    return translated_sequence
+
+
+def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
+    """Returns a dictionary to translate codons in a gene to nucleotide positions
+
+    Parameters
+    ==========
+    subtract_by : int, 0
+        Subtract the start and stop of the gene call by this amount. This could be useful if the
+        gene call start/stop are defined in terms of the contig, but you want the start/stop in
+        terms of the split. Then you could supply subtract_by=split_start, where split_start is the
+        start of the split
+    """
+
+    if gene_call['partial']:
+        raise ConfigError("get_codon_order_to_nt_positions_dict: this simply will not work "
+                           "for partial gene calls, and this on *is* a partial one.")
+
+    start = gene_call['start'] - subtract_by
+    stop = gene_call['stop'] - subtract_by
+
+    codon_order_to_nt_positions = {}
+    codon_order = 0
+
+    if gene_call['direction'] == 'r':
+        for nt_pos in range(stop - 1, start - 1, -3):
+            codon_order_to_nt_positions[codon_order] = [nt_pos - 2, nt_pos - 1, nt_pos]
+            codon_order += 1
+    else:
+        for nt_pos in range(start, stop, 3):
+            codon_order_to_nt_positions[codon_order] = [nt_pos, nt_pos + 1, nt_pos + 2]
+            codon_order += 1
+
+    return codon_order_to_nt_positions
+
+
+def nt_seq_to_nt_num_array(seq):
+    """Convert a string of sequence into an array of numbers
+
+    Performance compared to {list comprehension with dictionary lookup} depends on sequence length.
+    See Examples
+
+    Parameters
+    ==========
+    seq : str
+        string with A, C, T, G, N as its characters, e.g. 'AATGCN'
+
+    Returns
+    =======
+    output : numpy array
+        E.g. if seq = 'AATGCN', output = array([0, 0, 2, 3, 1, 4])
+
+    Examples
+    ========
+
+    Init an environment
+
+    >>> import anvio.constants as constants
+    >>> import anvio.utils as utils
+    >>> seq_short = ''.join(list(np.random.choice(constants.nucleotides, size=100)))
+    >>> seq_long = ''.join(list(np.random.choice(constants.nucleotides, size=100_000_000)))
+    >>> nt_to_num =  {'A': 0, 'C': 1, 'T': 2, 'G': 3, 'N': 4}
+
+    Time short sequence:
+
+    >>> %timeit utils.nt_seq_to_nt_num_array(seq_short)
+    2.36 µs ± 20.9 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+    >>> %timeit [nt_to_num[s] for s in seq_short]
+    5.83 µs ± 20.7 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+
+    Time long sequence:
+
+    >>> %timeit utils.nt_seq_to_nt_num_array(seq_long)
+    653 ms ± 1.02 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+    >>> %timeit [nt_to_num[s] for s in seq_long]
+    5.27 s ± 13.4 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+    """
+
+    return constants.nt_to_num_lookup[np.frombuffer(seq.encode('ascii'), np.uint8)]
+
+
+def nt_seq_to_RC_nt_num_array(seq):
+    """Convert a string of sequence into an array of numbers, reverse-complemented
+
+    Performance compared to {list comprehension with dictionary lookup} depends on sequence length.
+    See Examples
+
+    Parameters
+    ==========
+    seq : str
+        string with A, C, T, G, N as its characters, e.g. 'AATGCN'
+
+    Returns
+    =======
+    output : numpy array
+        E.g. if seq = 'AATGCN', output = array([4, 2, 0, 1, 3, 3])
+
+    Examples
+    ========
+    See `nt_seq_to_nt_num_array` docstring for examples
+    """
+
+    return constants.nt_to_RC_num_lookup[np.frombuffer(seq.encode('ascii'), np.uint8)][::-1]
+
+
+def nt_seq_to_codon_num_array(seq):
+    """Convert a sequence into an array of numbers corresponding to codons
+
+    Parameters
+    ==========
+    seq : str
+        string with A, C, T, G as its characters, e.g. 'AATGCT'. seq must be divisible by 3
+
+    Notes
+    =====
+    - Delegates to just-in-time compiled function
+    """
+
+    return _nt_seq_to_codon_num_array(
+        np.frombuffer(seq.encode('ascii'), np.uint8),
+        constants.nt_to_num_lookup,
+        constants.codon_to_num_lookup
+    )
+
+
+@njit
+def _nt_seq_to_codon_num_array(seq_as_ascii_ints, lookup_nt, lookup_codon):
+    """Should be called through its parent function `nt_seq_to_codon_num_array`"""
+
+    as_nt_nums = lookup_nt[seq_as_ascii_ints]
+    num_nts = len(as_nt_nums)
+    as_nt_nums = as_nt_nums.reshape((num_nts//3, 3))
+
+    output = np.zeros(num_nts//3, dtype=np.uint8)
+    for i in range(as_nt_nums.shape[0]):
+        j, k, l = as_nt_nums[i, :]
+        output[i] = lookup_codon[j, k, l]
+
+    return output
 
 
 def is_amino_acid_functionally_conserved(amino_acid_residue_1, amino_acid_residue_2):
