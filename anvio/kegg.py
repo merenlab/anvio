@@ -286,10 +286,6 @@ class KeggSetup(KeggContext):
                 raise ConfigError("The KEGG module file %s was not downloaded properly. We were expecting the last line in the file \
                 to be '///', but instead it was %s." % (file_path, last_line))
 
-    def parse_kegg_modules(self):
-        """This function reads information from each of the KEGG module flat files into the module_dict."""
-
-        pass
 
     def decompress_files(self):
         """This function decompresses the Kofam profiles."""
@@ -579,6 +575,61 @@ class KeggModulesDatabase(KeggContext):
         self.db.create_table(self.module_table_name, self.module_table_structure, self.module_table_types)
 
         return self.db
+
+	def parse_kegg_modules_line(self, line, line_num = None, current_data_name=None):
+        """This function parses information from one line of a KEGG module file.
+
+		These files have fields separated by 2 or more spaces. Fields can include data name (not always), data value (always), and data definition (not always).
+		Lines for pathway module files can have between 2 and 4 fields, but in fact the only situation where there should be 4 lines is the ENTRY data,
+		which for some inexplicable reason has multiple spaces between "Pathway" and "Module" in the data definition field. We can safely ignore this last "Module", I think.
+
+		Some lines will have multiple entities in the data_value field (ie, multiple KOs or reaction numbers) and will be split into multiple db entries.
+
+		PARAMETERS
+		==========
+		line 				str, the line to parse
+		line_num 			int, which line number we are working on. We need this to keep track of which entities come from the same line of the file.
+		current_data_name	str, which data name we are working on. If this is None, we need to parse this info from the first field in the line.
+
+		RETURNS
+		=======
+		line_entries		a list of tuples, each containing information for one db entry, namely data name, data value, data definition, and line number.
+							Not all parts of the db entry will be included (module num, for instance), so this information must be parsed and combined with
+							the missing information before being added to the database.
+		"""
+
+        fields = re.split('\s{2,}', line)
+		data_vals = None
+		data_def = None
+		line_entries = []
+
+		# data name unknown, parse from first field
+		if not current_data_name:
+			# sanity check: if line starts with space then there is no data name field and we should have passed a current_data_name
+			if line[0] == ' ':
+				raise ConfigError("Oh, please. Some silly developer (you know who you are) has tried to call parse_kegg_modules_line() on \
+				a line without a data name field, and forgot to give it the current data name. Shame on you, go fix this. (For reference here \
+				is the line: %s)" % (line))
+
+			current_data_name = fields[0]
+			data_vals = fields[1]
+			if len(fields) > 2: # not all lines have a definition field
+				data_def = fields[2]
+		else:  # data name known
+			data_vals = fields[0]
+			data_def = fields[1]
+
+		# some types of information may need to be split into multiple db entries
+		data_types_to_split = ["ORTHOLOGY","REACTION"] # lines that fall under these categories need to have data_vals split on comma
+		if current_data_name in data_types_to_split:
+			for val in data_vals.split(','):
+				line_entries.append((current_data_name, val, data_def, line_num)
+		else: # just send what we found without splitting the line
+			line_entries.append((current_data_name, data_vals, data_def, line_num)
+
+		# still need to figure out what to do about REFERENCE info type (includes AUTHORS, TITLE, JOURNAL) - do we want this?
+		return line_entries
+
 
     def create(self):
         """Creates the Modules DB"""
