@@ -391,7 +391,8 @@ class Auxiliary:
 
         read_count = 0
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
-            aligned_sequence_as_index, reference_positions = read.get_aligned_sequence_and_reference_positions()
+            aligned_sequence_as_ord, reference_positions = read.get_aligned_sequence_and_reference_positions()
+            aligned_sequence_as_index = utils.nt_seq_to_nt_num_array(aligned_sequence_as_ord, seq_is_in_ord_representation=True)
             reference_positions_in_split = reference_positions - self.split.start
 
             allele_counts_array = utils.add_to_2D_numeric_array(aligned_sequence_as_index, reference_positions_in_split, allele_counts_array)
@@ -408,7 +409,7 @@ class Auxiliary:
 
         test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
 
-        split_as_index = constants.fast_nt_to_num_lookup[np.frombuffer(self.split.sequence.encode('ascii'), np.uint8)]
+        split_as_index = utils.nt_seq_to_nt_num_array(self.split.sequence)
 
         nt_profile = ProcessNucleotideCounts(
             allele_counts=allele_counts_array,
