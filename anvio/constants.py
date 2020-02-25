@@ -314,32 +314,39 @@ def get_pretty_name(key):
         return key
 
 
-def get_nt_to_num_lookup():
-    d = {'A': 0, 'C': 1, 'G': 2, 'T': 3, 'N': 4}
-    nts_as_numbers = numpy.array(nucleotides).view(numpy.int32)
-    lookup = 5 * numpy.ones(nts_as_numbers.max() + 1, dtype='int')
+def get_nt_to_num_lookup(d):
+    D = {order: ord(nt) for nt, order in d.items()}
+    lookup = 5 * numpy.ones(max(D.values()) + 1, dtype=numpy.uint8)
 
-    for num, nt in zip(nts_as_numbers, nucleotides):
-        lookup[num] = d[nt]
-
-    return lookup
-
-
-def get_nt_to_RC_num_lookup():
-    d = {'A': 3, 'C': 2, 'G': 1, 'T': 0, 'N': 4}
-    nts_as_numbers = numpy.array(nucleotides).view(numpy.int32)
-    lookup = 5 * numpy.ones(nts_as_numbers.max() + 1, dtype='int')
-
-    for num, nt in zip(nts_as_numbers, nucleotides):
-        lookup[num] = d[nt]
+    for order, num in D.items():
+        lookup[num] = order
 
     return lookup
 
 
-def get_codon_to_num_lookup():
-    return numpy.arange(4 ** 3, dtype='int').reshape((4,4,4))
+def get_codon_to_num_lookup(reverse_complement=False):
+    nts = sorted(list(unambiguous_nucleotides))
+    as_ints = [ord(nt) for nt in nts]
+
+    size = max(as_ints) + 1
+    lookup = 64 * numpy.ones((size, size, size), dtype=numpy.uint8)
+
+    num_to_codon = dict(enumerate(codons))
+    if reverse_complement:
+        num_to_codon = {k: codon_to_codon_RC[codon] for k, codon in num_to_codon.items()}
+
+    D = {tuple([ord(nt) for nt in codon]): k for k, codon in num_to_codon.items()}
+
+    for a in as_ints:
+        for b in as_ints:
+            for c in as_ints:
+                lookup[a, b, c] = D[(a, b, c)]
+
+    return lookup
 
 
-nt_to_num_lookup = get_nt_to_num_lookup()
-nt_to_RC_num_lookup = get_nt_to_RC_num_lookup()
-codon_to_num_lookup = get_codon_to_num_lookup()
+# See utils.nt_seq_to_codon_num_array etc. for utilization of these lookup arrays
+nt_to_num_lookup = get_nt_to_num_lookup({'A': 0, 'C': 1, 'G': 2, 'T': 3, 'N': 4})
+nt_to_RC_num_lookup = get_nt_to_num_lookup({'A': 3, 'C': 2, 'G': 1, 'T': 0, 'N': 4})
+codon_to_num_lookup = get_codon_to_num_lookup(reverse_complement=False)
+codon_to_RC_num_lookup = get_codon_to_num_lookup(reverse_complement=True)
