@@ -258,14 +258,14 @@ class Auxiliary:
 
                 # segment_that_overlaps_gene is a copied view of read that has been sliced to only include
                 # the portion that overlaps with the gene
-                segment_that_overlaps_gene = read[read_overlaps_gene_start:read_overlaps_gene_end]
+                segment_that_overlaps_gene = read.slice(read_overlaps_gene_start, read_overlaps_gene_end)
 
                 for block_start, block_end in segment_that_overlaps_gene.get_blocks():
                     if block_end - block_start < 3:
                         # This block does not contain a full codon
                         continue
 
-                    gapless_segment = segment_that_overlaps_gene[block_start:block_end]
+                    gapless_segment = segment_that_overlaps_gene.slice(block_start, block_end)
 
                     block_start_split = block_start - self.split.start
                     block_end_split = block_end - self.split.start
