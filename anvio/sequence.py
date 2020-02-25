@@ -130,8 +130,8 @@ class Read:
         # modify some of these attributes, and since we want to maintain consistency across
         # attributes, all attributes of interest are redefined here
         self.cigartuples = np.array(read.cigartuples)
-        self.query_sequence = constants.fast_nt_to_num_lookup[np.frombuffer(read.query_sequence.encode('ascii'), np.uint8)]
-        self.reference_sequence = constants.fast_nt_to_num_lookup[np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)]
+        self.query_sequence = np.frombuffer(read.query_sequence.encode('ascii'), np.uint8)
+        self.reference_sequence = np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)
         self.reference_start = read.reference_start
         self.reference_end = read.reference_end
 
@@ -596,7 +596,7 @@ def _get_aligned_sequence_and_reference_positions(cigartuples, query_sequence, r
             size += cigartuples[i, 1]
 
     # init the arrays
-    aligned_sequence = np.zeros(size, dtype=np.int64)
+    aligned_sequence = np.zeros(size, dtype=np.uint8)
     reference_positions = np.zeros(size, dtype=np.int64)
 
     ref_consumed, read_consumed = 0, 0
