@@ -137,6 +137,21 @@ class Read:
 
         # See self.vectorize
         self.v = None
+        self.v_keys = {
+            'reference_positions': 0,
+            'reference_sequence': 1,
+            'query_sequence': 2,
+            'type': 3
+        }
+
+
+    def ensure_vectorized(func):
+        def closure(self, *args, **kwargs):
+            if self.v is None:
+                raise ConfigError("%s cannot be called until the read has been vectorized. Vectorize the read "
+                                  "with self.vectorize()" % func)
+            return func(self, *args, **kwargs)
+        return closure
 
 
     def vectorize(self):
@@ -149,6 +164,17 @@ class Read:
             self.reference_start,
             constants.cigar_consumption
         )
+
+
+    @ensure_vectorized
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            key = (slice(None, None, None), self.v_keys[key])
+
+        elif len(key) == 2 and isinstance(key[1], str):
+            key = (key[0], self.v_keys[key[1]])
+
+        return self.v.__getitem__(key)
 
 
     def slice(self, start=None, end=None):
@@ -263,23 +289,6 @@ class Read:
         """Mimic the get_reference_sequence function from AlignedSegment."""
 
         return self.reference_sequence
-
-
-    def get_aligned_sequence_and_reference_positions(self):
-        """Get the aligned sequence at each mapped position, and the positions themselves
-
-        Notes
-        =====
-        - Delegates to the just-in-time compiled function
-          _get_aligned_sequence_and_reference_positions
-        """
-
-        return _get_aligned_sequence_and_reference_positions(
-            self.cigartuples,
-            self.query_sequence,
-            self.reference_start,
-            constants.cigar_consumption,
-        )
 
 
     def trim(self, trim_by, side='left'):
@@ -571,40 +580,6 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
         for i in zero_positions:
             non_outliers[i] = True
         return non_outliers
-
-
-@njit
-def _get_aligned_sequence_and_reference_positions(cigartuples, query_sequence, reference_start, cigar_consumption):
-
-    # get size of arrays to init
-    size = 0
-    for i in range(cigartuples.shape[0]):
-        if cigar_consumption[cigartuples[i, 0], 0] and cigar_consumption[cigartuples[i, 0], 1]:
-            size += cigartuples[i, 1]
-
-    # init the arrays
-    aligned_sequence = np.zeros(size, dtype=np.uint8)
-    reference_positions = np.zeros(size, dtype=np.int64)
-
-    ref_consumed, read_consumed = 0, 0
-    num_mapped = 0
-    for operation, length, consumes_read, consumes_ref in iterate_cigartuples(cigartuples, cigar_consumption):
-
-        if consumes_read and consumes_ref:
-            aligned_sequence[num_mapped:num_mapped+length] = query_sequence[read_consumed:(read_consumed + length)]
-            reference_positions[num_mapped:num_mapped+length] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
-
-            num_mapped += length
-            read_consumed += length
-            ref_consumed += length
-
-        elif consumes_ref:
-            ref_consumed += length
-
-        elif consumes_read:
-            read_consumed += length
-
-    return aligned_sequence, reference_positions
 
 
 @njit
