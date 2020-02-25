@@ -1630,7 +1630,7 @@ def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
     return codon_order_to_nt_positions
 
 
-def nt_seq_to_nt_num_array(seq):
+def nt_seq_to_nt_num_array(seq, seq_is_in_ord_representation=False):
     """Convert a string of sequence into an array of numbers
 
     Performance compared to {list comprehension with dictionary lookup} depends on sequence length.
@@ -1640,6 +1640,11 @@ def nt_seq_to_nt_num_array(seq):
     ==========
     seq : str
         string with A, C, T, G, N as its characters, e.g. 'AATGCN'
+
+    seq_is_in_ord_representation : bool, False
+        set True if seq is already a numpy array, where each element is the ord of the sequence. E.g.
+        if `seq` is passed as array([65, 65, 67]), then it is already the ordinal representation of
+        'AAC'
 
     Returns
     =======
@@ -1672,10 +1677,10 @@ def nt_seq_to_nt_num_array(seq):
     5.27 s ± 13.4 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
     """
 
-    return constants.nt_to_num_lookup[np.frombuffer(seq.encode('ascii'), np.uint8)]
+    return constants.nt_to_num_lookup[seq if seq_is_in_ord_representation else np.frombuffer(seq.encode('ascii'), np.uint8)]
 
 
-def nt_seq_to_RC_nt_num_array(seq):
+def nt_seq_to_RC_nt_num_array(seq, seq_is_in_ord_representation=False):
     """Convert a string of sequence into an array of numbers, reverse-complemented
 
     Performance compared to {list comprehension with dictionary lookup} depends on sequence length.
@@ -1685,6 +1690,11 @@ def nt_seq_to_RC_nt_num_array(seq):
     ==========
     seq : str
         string with A, C, T, G, N as its characters, e.g. 'AATGCN'
+
+    seq_is_in_ord_representation : bool, False
+        set True if seq is already a numpy array, where each element is the ord of the sequence. E.g.
+        if `seq` is passed as array([65, 65, 67]), then it is already the ordinal representation of
+        'AAC'
 
     Returns
     =======
@@ -1696,10 +1706,10 @@ def nt_seq_to_RC_nt_num_array(seq):
     See `nt_seq_to_nt_num_array` docstring for examples
     """
 
-    return constants.nt_to_RC_num_lookup[np.frombuffer(seq.encode('ascii'), np.uint8)][::-1]
+    return constants.nt_to_RC_num_lookup[seq if seq_is_in_ord_representation else np.frombuffer(seq.encode('ascii'), np.uint8)][::-1]
 
 
-def nt_seq_to_codon_num_array(seq):
+def nt_seq_to_codon_num_array(seq, seq_is_in_ord_representation=False):
     """Convert a sequence into an array of numbers corresponding to codons
 
     Parameters
@@ -1707,18 +1717,23 @@ def nt_seq_to_codon_num_array(seq):
     seq : str
         string with A, C, T, G as its characters, e.g. 'AATGCT'. seq must be divisible by 3
 
+    seq_is_in_ord_representation : bool, False
+        set True if seq is already a numpy array, where each element is the ord of the sequence. E.g.
+        if `seq` is passed as array([65, 65, 67]), then it is already the ordinal representation of
+        'AAC'
+
     Notes
     =====
     - Delegates to just-in-time compiled function
     """
 
     return _nt_seq_to_codon_num_array(
-        np.frombuffer(seq.encode('ascii'), np.uint8),
+        seq if seq_is_in_ord_representation else np.frombuffer(seq.encode('ascii'), np.uint8),
         constants.codon_to_num_lookup,
     )
 
 
-def nt_seq_to_RC_codon_num_array(seq):
+def nt_seq_to_RC_codon_num_array(seq, seq_is_in_ord_representation=False):
     """Convert a sequence into an array of numbers corresponding to codons, reverse-complemented
 
     Parameters
@@ -1726,20 +1741,25 @@ def nt_seq_to_RC_codon_num_array(seq):
     seq : str
         string with A, C, T, G as its characters, e.g. 'AATGCT'. seq must be divisible by 3
 
+    seq_is_in_ord_representation : bool, False
+        set True if seq is already a numpy array, where each element is the ord of the sequence. E.g.
+        if `seq` is passed as array([65, 65, 67]), then it is already the ordinal representation of
+        'AAC'
+
     Notes
     =====
     - Delegates to just-in-time compiled function
     """
 
     return _nt_seq_to_codon_num_array(
-        np.frombuffer(seq.encode('ascii'), np.uint8),
+        seq if seq_is_in_ord_representation else np.frombuffer(seq.encode('ascii'), np.uint8),
         constants.codon_to_RC_num_lookup,
     )[::-1]
 
 
 @njit
 def _nt_seq_to_codon_num_array(seq_as_ascii_ints, lookup_codon):
-    """Should be called through its parent function `nt_seq_to_codon_num_array`"""
+    """Should be called through its parent functions `nt_seq_to_codon_num_array` and `nt_seq_to_RC_codon_num_array`"""
 
     output = np.zeros(len(seq_as_ascii_ints)//3, dtype=np.uint8)
 
