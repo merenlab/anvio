@@ -301,19 +301,22 @@ class Auxiliary:
                         reference_codon_sequences[gene_id] = self.get_codon_sequence_for_gene(gene_call)
                         gene_allele_counts[gene_id] = self.init_allele_counts_array(gene_call)
 
-                    sequence = gapless_segment.query_sequence if gene_call['direction'] == 'f' else utils.rev_comp(gapless_segment.query_sequence)
-                    codon_sequence = [sequence[i:i+3] for i in range(0, len(sequence), 3)]
+                    codon_sequence_as_index = (
+                        utils.nt_seq_to_codon_num_array(gapless_segment.query_sequence, seq_is_in_ord_representation=True)
+                        if gene_call['direction'] == 'f'
+                        else utils.nt_seq_to_RC_codon_num_array(gapless_segment.query_sequence, seq_is_in_ord_representation=True)
+                    )
 
                     start_codon = np.min(self.split.per_position_info['codon_order_in_gene'][block_start_split:block_end_split])
-                    end_codon = start_codon + len(codon_sequence)
+                    end_codon = start_codon + len(codon_sequence_as_index)
 
-                    for codon, pos in zip(codon_sequence, range(start_codon, end_codon)):
+                    for idx, pos in zip(codon_sequence_as_index, range(start_codon, end_codon)):
                         try:
-                            gene_allele_counts[gene_id][self.cdn_to_array_index[codon], pos] += 1
-                        except KeyError:
-                            # codon is an ambiguous character, so it doesn't exist in
-                            # self.cdn_to_array_index. The rarity of this warrants a catch clause
-                            # rather than an if statement
+                            gene_allele_counts[gene_id][idx, pos] += 1
+                        except IndexError:
+                            # codon is an ambiguous character, so it was given an out-of-range
+                            # index. The rarity of this warrants a catch clause rather than an if
+                            # statement
                             continue
 
             read_count += 1
