@@ -151,57 +151,30 @@ class Read:
         )
 
 
-    def __getitem__(self, key):
-        """Splice the read based on reference positions
+    def slice(self, start=None, end=None):
+        """Slice the read based on reference positions
 
-        Makes a new copy, current instance remains unmodified.
+        Makes a new deep copy--current instance remains unmodified.  This a very slow operation due
+        to the copying.
 
         Parameters
         ==========
-        key : slice
-            See Examples
+        start : int, None
+            If None, start = reference_start
+
+        end : int, None
+            If None, start = reference_end
 
         Returns
         =======
         output : Read
             A new Read object
-
-        Examples
-        ========
-
-        You have a read with 100 length and self.reference_start = 4500 and self.reference_end =
-        4600. You want to splice the segment [4550, 4575).
-
-        >>> type(read)
-        <class 'anvio.sequence.Read'>
-        >>> spliced_segment = read[4550:4575]
-        >>> type(spliced_segment)
-        <class 'anvio.sequence.Read'>
-        >>> spliced_segment.reference_start
-        4550
-        >>> spliced_segment.reference_end
-        4575
-
-        Specify only one bound:
-
-        >>> print(read[:4575].reference_start, read[:4575].reference_end)
-        (4500, 4575)
-        >>> print(read[4575:].reference_start, read[4575:].reference_end)
-        (4575, 4600)
-
-        Specifying outside read range:
-
-        >>> print(read[4400:4700].reference_start, read[4400:4700].reference_end)
-        (4500, 4600)
         """
-
-        if not isinstance(key, slice) or key.step is not None:
-            raise ValueError("Read class only supports basic slicing for indexing, e.g. read[start:stop], read[:stop]")
 
         segment = copy.deepcopy(self)
 
-        start = key.start if key.start is not None else segment.reference_start
-        end = key.stop if key.stop is not None else segment.reference_end
+        start = start if start is not None else segment.reference_start
+        end = end if end is not None else segment.reference_end
 
         segment.trim(start - segment.reference_start, side='left')
         segment.trim(segment.reference_end - end, side='right')
@@ -211,6 +184,7 @@ class Read:
 
     def __repr__(self):
         """Fancy output for viewing a read's alignment in relation to the reference"""
+
         ref, read = [], []
         pos_ref, pos_read = 0, 0
 
