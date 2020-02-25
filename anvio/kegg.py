@@ -542,9 +542,10 @@ class KeggModulesDatabase(KeggContext):
     Kegg Module files.
     """
 
-    def __init__(self, db_path, run=run, progress=progress):
+    def __init__(self, db_path, run=run, progress=progress, quiet=False):
         self.db = None
         self.db_path = db_path
+		self.quiet = quiet
 
         self.run = run
         self.progress = progress
@@ -686,10 +687,14 @@ class KeggModulesDatabase(KeggContext):
 			num_modules_parsed += 1
 
 		# give some run info
-		# record number of modules in db
+		self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+		self.run.info('Number of KEGG modules', num_modules_parsed, quiet=self.quiet)
+        self.run.info('Number of entries', mod_table.get_total_entries(), quiet=self.quiet)
 
-
+		# record some useful metadata
         self.db.set_meta_value('db_type', 'modules')
+		self.db.set_meta_value('num_modules', num_modules_parsed)
+		self.db.set_meta_value('total_entries', mod_table.get_total_entries())
 
         self.db.disconnect()
 
@@ -725,3 +730,6 @@ class KeggModulesTable:
     def store(self):
         if len(self.db_entries):
             db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.module_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
+
+	def get_total_entries(self):
+		return self.total_entries
