@@ -138,15 +138,6 @@ class Read:
         self.v = None
 
 
-    def ensure_vectorized(func):
-        def closure(self, *args, **kwargs):
-            if self.v is None:
-                raise ConfigError("%s cannot be called until the read has been vectorized. Vectorize the read "
-                                  "with self.vectorize()" % func)
-            return func(self, *args, **kwargs)
-        return closure
-
-
     def vectorize(self):
         """Set the self.v attribute to provide array-like access to the read"""
 
@@ -158,7 +149,6 @@ class Read:
         )
 
 
-    @ensure_vectorized
     def iterate_blocks_by_mapping_type(self, mapping_type):
         """Iterate through slices of self.v that contain blocks of a given mapping type
 
@@ -179,7 +169,6 @@ class Read:
             yield self.v[start:stop, :]
 
 
-    @ensure_vectorized
     def __getitem__(self, key):
         """Used to access the vectorized form of the read, self.v"""
 
