@@ -101,7 +101,7 @@ class BottleApplication(Bottle):
         # if there is a contigs database, and scg taxonomy was run on it get an instance
         # of the SCG Taxonomy class early on:
         if A('contigs_db') and dbops.ContigsDatabase(A('contigs_db')).meta['scg_taxonomy_was_run']:
-            self.scg_taxonomy = scgtaxonomyops.SCGTaxonomyEstimator(argparse.Namespace(contigs_db=self.interactive.contigs_db_path))
+            self.scg_taxonomy = scgtaxonomyops.SCGTaxonomyEstimatorSingle(argparse.Namespace(contigs_db=self.interactive.contigs_db_path))
         else:
             self.scg_taxonomy = None
 
