@@ -199,20 +199,18 @@ class Read:
         ref, read = [], []
         pos_ref, pos_read = 0, 0
 
-        d = {0: 'A', 1: 'C', 2: 'G', 3: 'T', 4: 'N'}
-
         for _, length, consumes_read, consumes_ref in iterate_cigartuples(self.cigartuples, constants.cigar_consumption):
             if consumes_read:
-                read.extend([d[x] for x in self.query_sequence[pos_read:(pos_read + length)]])
+                read.extend([chr(x) for x in self.query_sequence[pos_read:(pos_read + length)]])
                 pos_read += length
             else:
-                read.append('-' * length)
+                read.extend(['-'] * length)
 
             if consumes_ref:
-                ref.extend([d[x] for x in self.reference_sequence[pos_ref:(pos_ref + length)]])
+                ref.extend([chr(x) for x in self.reference_sequence[pos_ref:(pos_ref + length)]])
                 pos_ref += length
             else:
-                ref.append('-' * length)
+                ref.extend(['-'] * length)
 
         count = 0
         for ref_nt, read_nt in zip(ref, read):
