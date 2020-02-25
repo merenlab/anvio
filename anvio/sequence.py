@@ -135,6 +135,21 @@ class Read:
         self.reference_start = read.reference_start
         self.reference_end = read.reference_end
 
+        # See self.vectorize
+        self.v = None
+
+
+    def vectorize(self):
+        """Set the self.v attribute to provide array-like access to the read"""
+
+        self.v = _vectorize_read(
+            self.cigartuples,
+            self.query_sequence,
+            self.reference_sequence,
+            self.reference_start,
+            constants.cigar_consumption
+        )
+
 
     def __getitem__(self, key):
         """Splice the read based on reference positions
@@ -641,6 +656,42 @@ def iterate_cigartuples(cigartuples, cigar_consumption):
             cigar_consumption[operation, 0],
             cigar_consumption[operation, 1]
         ])
+
+
+@njit
+def _vectorize_read(cigartuples, query_sequence, reference_sequence, reference_start, cigar_consumption):
+    # init the array
+    shape = np.sum(cigartuples[:, 1]), 4
+    v = -1 * np.ones(shape, dtype=np.int32)
+
+    count, ref_consumed, read_consumed = 0, 0, 0
+    for operation, length, consumes_read, consumes_ref in iterate_cigartuples(cigartuples, cigar_consumption):
+
+        if consumes_read and consumes_ref:
+            v[count:(count + length), 0] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
+            v[count:(count + length), 1] = reference_sequence[ref_consumed:(ref_consumed + length)]
+            v[count:(count + length), 2] = query_sequence[read_consumed:(read_consumed + length)]
+            v[count:(count + length), 3] = 0
+
+            read_consumed += length
+            ref_consumed += length
+
+        elif consumes_read:
+            v[count:(count + length), 2] = query_sequence[read_consumed:(read_consumed + length)]
+            v[count:(count + length), 3] = 1
+
+            read_consumed += length
+
+        elif consumes_ref:
+            v[count:(count + length), 0] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
+            v[count:(count + length), 1] = reference_sequence[ref_consumed:(ref_consumed + length)]
+            v[count:(count + length), 3] = 2
+
+            ref_consumed += length
+
+        count += length
+
+    return v
 
 
 @njit
