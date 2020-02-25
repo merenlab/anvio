@@ -168,6 +168,18 @@ class Read:
 
     @ensure_vectorized
     def __getitem__(self, key):
+        """Used to access the vectorized form of the read, self.v
+
+        Works exactly like normal array slicig operations, except that columns can be accessed via
+        the key sof self.v_keys
+
+        Examples
+        ========
+        self[0, 4] <==> self.v[0, 4]
+        self['reference_positions'] <==> self.v[:, 0]
+        self[:5, 'query_sequence'] <==> self.v[:5, 2]
+        """
+
         if isinstance(key, str):
             key = (slice(None, None, None), self.v_keys[key])
 
