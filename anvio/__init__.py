@@ -547,6 +547,15 @@ D = {
                      "core gene to estimate the taxonomic composition within a contigs database. If you have a "
                      "different preference you can use this parameter to communicate that."}
                 ),
+    'report-scg-frequencies': (
+            ['--report-scg-frequencies'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FILE_PATH',
+             'help': "Report SCG frequencies in a TAB-delimited file and quit. This is a great way to decide which "
+                     "SCG name to use in metagenome mode (we often wish to use the most frequent SCG to increase the "
+                     "detection of taxa)."}
+                ),
     'simplify-taxonomy-information': (
             ['--simplify-taxonomy-information'],
             {'default': False,
