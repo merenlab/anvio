@@ -209,6 +209,10 @@ class Auxiliary:
 
         read_count = 0
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
+            # This loop will be making extensive use of the vectorized form of Read, so it is well
+            # worth the time to vectorize it right off the bat
+            read.vectorize()
+
             # The read can overlap with multiple genes, so we must find them and loop through each
 
             gene_id_per_nt_in_read = self.split.per_position_info['corresponding_gene_call'][
@@ -260,12 +264,12 @@ class Auxiliary:
                 # the portion that overlaps with the gene
                 segment_that_overlaps_gene = read.slice(read_overlaps_gene_start, read_overlaps_gene_end)
 
-                for block_start, block_end in segment_that_overlaps_gene.get_blocks():
+                for gapless_segment in segment_that_overlaps_gene.iterate_blocks_by_mapping_type(mapping_type=0):
+                    block_start, block_end = gapless_segment[0, 0], gapless_segment[0, -1]
+
                     if block_end - block_start < 3:
                         # This block does not contain a full codon
                         continue
-
-                    gapless_segment = segment_that_overlaps_gene.slice(block_start, block_end)
 
                     block_start_split = block_start - self.split.start
                     block_end_split = block_end - self.split.start
@@ -287,8 +291,7 @@ class Auxiliary:
 
                     # We use gapless_segment.trim instead of slicing with gapless_segment[a:b]
                     # because slicing makes a copy, whereas gapless_segment.trim modifies in place
-                    gapless_segment.trim(trim_by_left, side='left')
-                    gapless_segment.trim(trim_by_right, side='right')
+                    gapless_segment = gapless_segment[trim_by_left:-trim_by_right]
 
                     # Update these for posterity
                     block_start_split += trim_by_left
@@ -302,9 +305,9 @@ class Auxiliary:
                         gene_allele_counts[gene_id] = self.init_allele_counts_array(gene_call)
 
                     codon_sequence_as_index = (
-                        utils.nt_seq_to_codon_num_array(gapless_segment.query_sequence, seq_is_in_ord_representation=True)
+                        utils.nt_seq_to_codon_num_array(gapless_segment[:, 2], seq_is_in_ord_representation=True)
                         if gene_call['direction'] == 'f'
-                        else utils.nt_seq_to_RC_codon_num_array(gapless_segment.query_sequence, seq_is_in_ord_representation=True)
+                        else utils.nt_seq_to_RC_codon_num_array(gapless_segment[:, 2], seq_is_in_ord_representation=True)
                     )
 
                     start_codon = np.min(self.split.per_position_info['codon_order_in_gene'][block_start_split:block_end_split])

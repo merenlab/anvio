@@ -189,6 +189,58 @@ class Read:
         return self.v.__getitem__(key)
 
 
+    def __repr__(self):
+        """Fancy output for viewing a read's alignment in relation to the reference"""
+
+        ref, read, pos_ref, pos_read = [], [], 0, 0
+        for _, length, consumes_read, consumes_ref in iterate_cigartuples(self.cigartuples, constants.cigar_consumption):
+            if consumes_read:
+                read.extend([chr(x) for x in self.query_sequence[pos_read:(pos_read + length)]])
+                pos_read += length
+            else:
+                read.extend(['-'] * length)
+
+            if consumes_ref:
+                ref.extend([chr(x) for x in self.reference_sequence[pos_ref:(pos_ref + length)]])
+                pos_ref += length
+            else:
+                ref.extend(['-'] * length)
+
+        count = 0
+        for ref_nt, read_nt in zip(ref, read):
+            if ref_nt == read_nt:
+                ref[count] = fore.DARK_OLIVE_GREEN_3A + ref[count] + style.RESET
+                read[count] = fore.DARK_OLIVE_GREEN_3A + read[count] + style.RESET
+            count += 1
+
+        lines = [
+            '<%s.%s object at %s>' % (self.__class__.__module__, self.__class__.__name__, hex(id(self))),
+            ' ├── start, end : [%s, %s)' % (self.reference_start, self.reference_end),
+            ' ├── cigartuple : %s' % [tuple(row) for row in self.cigartuples],
+            ' ├── read       : %s' % ''.join(read),
+            ' └── reference  : %s' % ''.join(ref),
+        ]
+
+        return '\n'.join(lines)
+
+
+    def get_aligned_sequence_and_reference_positions(self):
+        """Get the aligned sequence at each mapped position, and the positions themselves
+
+        Notes
+        =====
+        - Delegates to the just-in-time compiled function
+          _get_aligned_sequence_and_reference_positions
+        """
+
+        return _get_aligned_sequence_and_reference_positions(
+            self.cigartuples,
+            self.query_sequence,
+            self.reference_start,
+            constants.cigar_consumption,
+        )
+
+
     def slice(self, start=None, end=None):
         """Slice the read based on reference positions
 
@@ -220,42 +272,25 @@ class Read:
         return segment
 
 
-    def __repr__(self):
-        """Fancy output for viewing a read's alignment in relation to the reference"""
+    @ensure_vectorized
+    def iterate_blocks_by_mapping_type(self, mapping_type):
+        """Iterate through slices of self.v that contain blocks of a given mapping type
 
-        ref, read = [], []
-        pos_ref, pos_read = 0, 0
+        Parameters
+        ==========
+        mapping_type : int
+            Any of 0, 1, 2, or -1. 0 = mapping segment, 1 = read insertion segment, 2 = read
+            deletion segment, -1 = gap in read and reference
 
-        for _, length, consumes_read, consumes_ref in iterate_cigartuples(self.cigartuples, constants.cigar_consumption):
-            if consumes_read:
-                read.extend([chr(x) for x in self.query_sequence[pos_read:(pos_read + length)]])
-                pos_read += length
-            else:
-                read.extend(['-'] * length)
+        Yields
+        ======
+        output : numpy arrays
+            Each numpy array corresponds to a section of self.v that contained consecutive
+            mapping_types.
+        """
 
-            if consumes_ref:
-                ref.extend([chr(x) for x in self.reference_sequence[pos_ref:(pos_ref + length)]])
-                pos_ref += length
-            else:
-                ref.extend(['-'] * length)
-
-        count = 0
-        for ref_nt, read_nt in zip(ref, read):
-            if ref_nt == read_nt:
-                ref[count] = fore.DARK_OLIVE_GREEN_3A + ref[count] + style.RESET
-                read[count] = fore.DARK_OLIVE_GREEN_3A + read[count] + style.RESET
-
-            count += 1
-
-        lines = [
-            '<%s.%s object at %s>' % (self.__class__.__module__, self.__class__.__name__, hex(id(self))),
-            ' ├── start, end : [%s, %s)' % (self.reference_start, self.reference_end),
-            ' ├── cigartuple : %s' % [tuple(row) for row in self.cigartuples],
-            ' ├── read       : %s' % ''.join(read),
-            ' └── reference  : %s' % ''.join(ref),
-        ]
-
-        return '\n'.join(lines)
+        for start, stop in _get_blocks_by_mapping_type(self['type'], mapping_type):
+            yield self.v[start:stop, :]
 
 
     def get_blocks(self):
@@ -328,7 +363,6 @@ class Read:
         side : str, 'left'
             Either 'left' or 'right' side.
         """
-
         if trim_by == 0:
             return
 
@@ -622,10 +656,14 @@ def iterate_cigartuples(cigartuples, cigar_consumption):
 @njit
 def _vectorize_read(cigartuples, query_sequence, reference_sequence, reference_start, cigar_consumption):
     # init the array
-    shape = np.sum(cigartuples[:, 1]), 4
-    v = -1 * np.ones(shape, dtype=np.int32)
+    size = 0
+    for i in range(cigartuples.shape[0]):
+        size += cigartuples[i, 1]
+    v = np.full((size, 4), -1, dtype=np.int32)
 
-    count, ref_consumed, read_consumed = 0, 0, 0
+    count = 0
+    ref_consumed = 0
+    read_consumed = 0
     for operation, length, consumes_read, consumes_ref in iterate_cigartuples(cigartuples, cigar_consumption):
 
         if consumes_read and consumes_ref:
@@ -653,6 +691,40 @@ def _vectorize_read(cigartuples, query_sequence, reference_sequence, reference_s
         count += length
 
     return v
+
+
+@njit
+def _get_aligned_sequence_and_reference_positions(cigartuples, query_sequence, reference_start, cigar_consumption):
+
+    # get size of arrays to init
+    size = 0
+    for i in range(cigartuples.shape[0]):
+        if cigar_consumption[cigartuples[i, 0], 0] and cigar_consumption[cigartuples[i, 0], 1]:
+            size += cigartuples[i, 1]
+
+    # init the arrays
+    aligned_sequence = np.zeros(size, dtype=np.int64)
+    reference_positions = np.zeros(size, dtype=np.int64)
+
+    ref_consumed, read_consumed = 0, 0
+    num_mapped = 0
+    for operation, length, consumes_read, consumes_ref in iterate_cigartuples(cigartuples, cigar_consumption):
+
+        if consumes_read and consumes_ref:
+            aligned_sequence[num_mapped:num_mapped+length] = query_sequence[read_consumed:(read_consumed + length)]
+            reference_positions[num_mapped:num_mapped+length] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
+
+            num_mapped += length
+            read_consumed += length
+            ref_consumed += length
+
+        elif consumes_ref:
+            ref_consumed += length
+
+        elif consumes_read:
+            read_consumed += length
+
+    return aligned_sequence, reference_positions
 
 
 @njit
@@ -711,4 +783,20 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_sequence, re
 
     return cigartuples, query_sequence, reference_sequence, reference_start, reference_end
 
+
+@njit
+def _get_blocks_by_mapping_type(array, mapping_type):
+    matching = False
+    for i in range(len(array)):
+        if array[i] == mapping_type:
+            if not matching:
+                start = i
+                matching = True
+        else:
+            if matching:
+                matching = False
+                yield start, i
+
+    if matching:
+        yield start, i + 1
 
