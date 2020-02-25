@@ -1714,23 +1714,37 @@ def nt_seq_to_codon_num_array(seq):
 
     return _nt_seq_to_codon_num_array(
         np.frombuffer(seq.encode('ascii'), np.uint8),
-        constants.nt_to_num_lookup,
-        constants.codon_to_num_lookup
+        constants.codon_to_num_lookup,
     )
 
 
+def nt_seq_to_RC_codon_num_array(seq):
+    """Convert a sequence into an array of numbers corresponding to codons, reverse-complemented
+
+    Parameters
+    ==========
+    seq : str
+        string with A, C, T, G as its characters, e.g. 'AATGCT'. seq must be divisible by 3
+
+    Notes
+    =====
+    - Delegates to just-in-time compiled function
+    """
+
+    return _nt_seq_to_codon_num_array(
+        np.frombuffer(seq.encode('ascii'), np.uint8),
+        constants.codon_to_RC_num_lookup,
+    )[::-1]
+
+
 @njit
-def _nt_seq_to_codon_num_array(seq_as_ascii_ints, lookup_nt, lookup_codon):
+def _nt_seq_to_codon_num_array(seq_as_ascii_ints, lookup_codon):
     """Should be called through its parent function `nt_seq_to_codon_num_array`"""
 
-    as_nt_nums = lookup_nt[seq_as_ascii_ints]
-    num_nts = len(as_nt_nums)
-    as_nt_nums = as_nt_nums.reshape((num_nts//3, 3))
+    output = np.zeros(len(seq_as_ascii_ints)//3, dtype=np.uint8)
 
-    output = np.zeros(num_nts//3, dtype=np.uint8)
-    for i in range(as_nt_nums.shape[0]):
-        j, k, l = as_nt_nums[i, :]
-        output[i] = lookup_codon[j, k, l]
+    for i in range(0, seq_as_ascii_ints.shape[0], 3):
+        output[i//3] = lookup_codon[seq_as_ascii_ints[i], seq_as_ascii_ints[i+1], seq_as_ascii_ints[i+2]]
 
     return output
 
