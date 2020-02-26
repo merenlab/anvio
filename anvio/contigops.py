@@ -187,6 +187,25 @@ class Auxiliary:
                 raise ConfigError("Auxiliary :: self.split.per_position_info does not contain the info required for SCV profiling")
 
 
+    def process(self, bam):
+
+        #import pprofile
+        #prof = pprofile.Profile()
+        #with prof():
+        #    self.run_SNVs(bam)
+
+        #    if self.profile_SCVs:
+        #        self.run_SCVs(bam)
+        #f =  open('new_spicy_callgrind.out', 'w')
+        #prof.callgrind(f)
+        #f.close()
+
+        self.run_SNVs(bam)
+
+        if self.profile_SCVs:
+            self.run_SCVs(bam)
+
+
     def run_SCVs(self, bam):
         """Profile SCVs
 
@@ -313,13 +332,13 @@ class Auxiliary:
                         else utils.nt_seq_to_RC_codon_num_array(gapless_segment[:, 1], seq_is_in_ord_representation=True)
                     )
 
-                    start, stop = self.split.per_position_info['codon_order_in_gene'][[block_start_split, block_end_split-1]]
+                    start, stop = self.split.per_position_info['codon_order_in_gene'][[block_start_split, block_end_split]]
                     if gene_call['direction'] == 'r': start, stop = stop, start
-                    codon_orders = np.arange(start, stop + 1)
+                    codon_orders = np.arange(start, stop)
 
                     # Codons with ambiguous characters have index values of 64. Remove them here
-                    codon_orders = codon_orders[codon_sequence_as_index != 64]
-                    codon_sequence_as_index = codon_sequence_as_index[codon_sequence_as_index != 64]
+                    codon_orders = codon_orders[codon_sequence_as_index > 63]
+                    codon_sequence_as_index = codon_sequence_as_index[codon_sequence_as_index > 63]
 
                     gene_allele_counts[gene_id] = utils.add_to_2D_numeric_array(
                         codon_sequence_as_index,
@@ -358,25 +377,6 @@ class Auxiliary:
         matches_gene_boolean = self.split.SNV_profiles['corresponding_gene_call'] == gene_id
 
         return np.unique(self.split.SNV_profiles['codon_order_in_gene'][matches_gene_boolean])
-
-
-    def process(self, bam):
-
-        #import pprofile
-        #prof = pprofile.Profile()
-        #with prof():
-        #    self.run_SNVs(bam)
-
-        #    if self.profile_SCVs:
-        #        self.run_SCVs(bam)
-        #f =  open('new_spicy_callgrind.out', 'w')
-        #prof.callgrind(f)
-        #f.close()
-
-        self.run_SNVs(bam)
-
-        if self.profile_SCVs:
-            self.run_SCVs(bam)
 
 
     def get_codon_sequence_for_gene(self, gene_call):
