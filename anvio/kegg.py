@@ -413,7 +413,7 @@ class KeggSetup(KeggContext):
     def setup_modules_db(self):
         """This function creates the Modules DB from the Kegg Module files. """
 
-        mod_db = KeggModulesDatabase(os.path.join(self.kofam_data_dir, "MODULES.db"), run=run, progress=progress)
+        mod_db = KeggModulesDatabase(os.path.join(self.kofam_data_dir, "MODULES.db"), args=self.args, run=run, progress=progress)
         mod_db.create()
 
 
@@ -549,13 +549,16 @@ class KeggModulesDatabase(KeggContext):
     Kegg Module files.
     """
 
-    def __init__(self, db_path, run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, args, run=run, progress=progress, quiet=False):
         self.db = None
         self.db_path = db_path
         self.quiet = quiet
 
         self.run = run
         self.progress = progress
+
+        # init the base class for access to shared paths and such
+        KeggContext.__init__(self, args)
 
         # modules table info
         # I wonder if these should be moved to the tables __init__.py at some point?
