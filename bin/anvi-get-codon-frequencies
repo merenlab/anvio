@@ -27,17 +27,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['contigs-db', 'bam-file',]
+__requires__ = ['contigs-db']
 __provides__ = ['codon-frequencies-txt', 'aa-frequencies-txt',]
-__description__ = ("Get amino acid or codon frequencies of genes in a contigs database, or get the same information "
-                   "considering the make up of the environmnet captured in a BAM file through the mapped reads. "
-                   "What is the difference? The first one will give you AA or CDN frequencies given a set of genes. In "
-                   "contrast, the latter will also take a BAM file, and will give you AA or CDN frequencies of the "
-                   "environment. If you want to know the frequencies of residues of a \"gene\" you do not need a BAM "
-                   "file. If you want the frequencies you observe in actual read recruitment results, then you need "
-                   "provide a BAM file. The latter will give you frequencies of CDN or AA \"linkmers\" an anvio trick "
-                   "that, for each codon position, enables you to work with only the short reads that fully cover the "
-                   "codon.")
+__description__ = ("Get amino acid or codon frequencies of genes in a contigs database.")
 
 
 class ReportCodonFrequencies:
@@ -200,12 +192,7 @@ if __name__ == '__main__':
     groupA = parser.add_argument_group('INPUT DATABASE', 'The contigs database. Clearly those genes must be read from somewhere.')
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
 
-    groupB = parser.add_argument_group('BAM FILE?', "Optional BAM file to recover CDN/AA frequencies among the mapped reads. It is OK to not\
-                                                  provide one. Read the help menu of the program for more information.")
-    groupB.add_argument('-b', '--bam-file', metavar = 'INPUT_BAM', default = None, help = 'Sorted and indexed BAM file to analyze.')
-
-
-    groupC = parser.add_argument_group('COMMON OPTIONALS', "Important things to read never end. Stupid science.")
+    groupC = parser.add_argument_group('OPTIONALS', "Important things to read never end. Stupid science.")
     groupC.add_argument(*anvio.A('gene-caller-id'), **anvio.K('gene-caller-id', {'help': "OK. You can declare a single gene caller ID if you wish, in\
                                                                 which case anvi'o would only return results for a single gene call. If you don't declare\
                                                                 anything, well, you must be prepared to brace yourself if you are working with a very\
@@ -215,14 +202,13 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
 
 
-    groupD = parser.add_argument_group('NON-BAM OPTIONALS', "Optional flags that will only be taken into consideration if you are not working with BAM file.")
-    groupD.add_argument('--percent-normalize', default=False, action="store_true", help = "Instead of actual counts, report percent-normalized\
+    groupC.add_argument('--percent-normalize', default=False, action="store_true", help = "Instead of actual counts, report percent-normalized\
                                                                 frequencies per gene (because you are too lazy to do things the proper way in R).")
-    groupD.add_argument('--merens-codon-normalization', default=False, action="store_true", help = "This is a flag to percent normalize codon frequenies within those\
+    groupC.add_argument('--merens-codon-normalization', default=False, action="store_true", help = "This is a flag to percent normalize codon frequenies within those\
                                                                 that encode for the same amino acid. It is different from the flag --percent-normalize, since it\
                                                                 does not percent normalize frequencies of codons within a gene based on all codon frequencies. Clearly\
                                                                 this flag is not applicable if you wish to work with boring amino acids. WHO WORKS WITH AMINO ACIDS\
-                                                                ANYWAY.")
+                                                                ANYWAYS.")
 
     args = anvio.get_args(parser)
 
