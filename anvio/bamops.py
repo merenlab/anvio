@@ -1,15 +1,16 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
-"""LinkMer reporting classes.
 
-   The default client is `anvi-report-linkmers`"""
-
+"""Classes for anything BAM-related"""
 
 
 import os
 import sys
 import pysam
+import numpy as np
 import hashlib
+
+from numba import jit
 from collections import Counter
 
 import anvio
@@ -17,7 +18,6 @@ import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
-import anvio.sequence as sequence
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
@@ -38,6 +38,258 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
+
+
+class BAMFileObject(pysam.AlignmentFile):
+    def __init__(self, input_bam_path):
+        """A class that is essentially pysam.AlignmentFile, with some added bonuses
+
+        This class inherits pysam.AlignmentFile and adds a little flair. Init such an object the
+        way you would an AlignmentFile, i.e. bam = bamops.BAMFileObject(path_to_bam)
+        """
+        self.input_bam_path = input_bam_path
+        filesnpaths.is_file_exists(input_bam_path)
+
+        try:
+            pysam.AlignmentFile.__init__(self)
+        except ValueError as e:
+            raise ConfigError('Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (self.input_bam_path, e))
+
+        try:
+            self.mapped
+        except ValueError:
+            raise ConfigError("It seems the BAM file is not indexed. See 'anvi-init-bam' script.")
+
+
+    def fetch_and_trim(self, contig_name, start, end, *args, **kwargs):
+        """Returns an read iterator that trims overhanging reads
+
+        Like pysam.AlignmeFile.fetch(), except trims reads that overhang the start and end of the
+        defined region so that they fit inside the start and stop.
+        """
+        for read in self.fetch(contig_name, start, end, *args, **kwargs):
+            read = Read(read)
+
+            if start - read.reference_start > 0:
+                read.trim(trim_by=(start - read.reference_start), side='left')
+
+            if read.reference_end - end > 0:
+                read.trim(trim_by=(read.reference_end - end), side='right')
+
+            yield read
+
+
+class Read:
+    def __init__(self, read):
+        """Class for manipulating reads
+
+        Parameters
+        ==========
+        read : pysam.AlignedSegment
+        """
+
+        # redefine all properties of interest explicitly from pysam.AlignedSegment object as
+        # attributes of this class. The reason for this is that some of the AlignedSegment
+        # attributes have no __set__ methods, so are read only. Since this class is designed to
+        # modify some of these attributes, and since we want to maintain consistency across
+        # attributes, all attributes of interest are redefined here
+        self.cigartuples = np.array(read.cigartuples)
+        self.query_sequence = np.frombuffer(read.query_sequence.encode('ascii'), np.uint8)
+        self.reference_start = read.reference_start
+        self.reference_end = read.reference_end
+
+        # See self.vectorize
+        self.v = None
+
+
+    def vectorize(self):
+        """Set the self.v attribute to provide array-like access to the read"""
+
+        self.v = _vectorize_read(
+            self.cigartuples,
+            self.query_sequence,
+            self.reference_start,
+            constants.cigar_consumption
+        )
+
+
+    def iterate_blocks_by_mapping_type(self, mapping_type, array=None):
+        """Iterate through slices of array that contain blocks of a given mapping type
+
+        Parameters
+        ==========
+        mapping_type : int
+            Any of 0, 1, 2, or -1. 0 = mapping segment, 1 = read insertion segment, 2 = read
+            deletion segment, -1 = gap in read and reference
+
+        array : numpy array, None
+            If None, self.v will be used
+
+        Yields
+        ======
+        output : numpy arrays
+            Each numpy array corresponds to a section of self.v that contained consecutive
+            mapping_types.
+        """
+        if array is None:
+            array = self.v
+
+        for start, stop in _get_blocks_by_mapping_type(array[:, 2], mapping_type):
+            yield array[start:stop, :]
+
+
+    def __getitem__(self, key):
+        """Used to access the vectorized form of the read, self.v"""
+
+        return self.v.__getitem__(key)
+
+
+    def get_aligned_sequence_and_reference_positions(self):
+        """Get the aligned sequence at each mapped position, and the positions themselves
+
+        Notes
+        =====
+        - Delegates to the just-in-time compiled function
+          _get_aligned_sequence_and_reference_positions
+        """
+
+        return _get_aligned_sequence_and_reference_positions(
+            self.cigartuples,
+            self.query_sequence,
+            self.reference_start,
+            constants.cigar_consumption,
+        )
+
+
+    def get_blocks(self):
+        """Mimic the get_blocks function from AlignedSegment.
+
+        Notes
+        =====
+        - Takes roughly 200us
+        """
+
+        blocks = []
+        block_start = self.reference_start
+        block_length = 0
+
+        for _, length, consumes_read, consumes_ref in iterate_cigartuples(self.cigartuples, constants.cigar_consumption):
+            if consumes_read and consumes_ref:
+                block_length += length
+
+            elif consumes_read and not consumes_ref:
+                if block_length:
+                    blocks.append((block_start, block_start + block_length))
+
+                block_start = block_start + block_length
+                block_length = 0
+
+            elif not consumes_read and consumes_ref:
+                if block_length:
+                    blocks.append((block_start, block_start + block_length))
+
+                block_start = block_start + block_length + length
+                block_length = 0
+
+            else:
+                pass
+
+        if block_length:
+            blocks.append((block_start, block_start + block_length))
+
+        return blocks
+
+
+    def __repr__(self):
+        """Fancy output for viewing a read's alignment in relation to the reference"""
+
+        ref, read, pos_ref, pos_read = [], [], 0, 0
+        for _, length, consumes_read, consumes_ref in iterate_cigartuples(self.cigartuples, constants.cigar_consumption):
+            if consumes_read:
+                read.extend([chr(x) for x in self.query_sequence[pos_read:(pos_read + length)]])
+                pos_read += length
+            else:
+                read.extend(['-'] * length)
+
+            if consumes_ref:
+                ref.extend(['X'] * length)
+                pos_ref += length
+            else:
+                ref.extend(['-'] * length)
+
+        lines = [
+            '<%s.%s object at %s>' % (self.__class__.__module__, self.__class__.__name__, hex(id(self))),
+            ' ├── start, end : [%s, %s)' % (self.reference_start, self.reference_end),
+            ' ├── cigartuple : %s' % [tuple(row) for row in self.cigartuples],
+            ' ├── read       : %s' % ''.join(read),
+            ' └── reference  : %s' % ''.join(ref),
+        ]
+
+        return '\n'.join(lines)
+
+
+    def trim(self, trim_by, side='left'):
+        """Trims self.read by either the left or right
+
+        Modifies the attributes:
+
+            query_sequence
+            cigartuples
+            reference_start
+            reference_end
+
+        Do not expect more than this!
+
+        Parameters
+        ==========
+        trim_by : int
+            The number of REFERENCE bases you would like to trim the read by. If the trim leaves
+            operations that are consumed by the reference but not the read, or the read but not the
+            reference, these are trimmed AS WELL. For example, if after trimming by `trim_by`, the
+            final cigar string is [(2,2),(0,4)], this will be further trimmed to [(0,4)], since
+            there is no useful information held in a terminal read gap.
+
+        side : str, 'left'
+            Either 'left' or 'right' side.
+        """
+        if trim_by == 0:
+            return
+
+        elif trim_by < 0:
+            raise ConfigError("Read.trim :: Requesting to trim an amount %d, which is negative." % trim_by)
+
+        elif trim_by > self.reference_end - self.reference_start:
+            raise ConfigError("Read.trim :: Requesting to trim an amount %d that exceeds the alignment"
+                              " range of %d" % (trim_by, self.reference_end - self.reference_start))
+
+        if self.cigartuples.shape[0] == 1:
+            # There contains only a pure mapping segment, i.e. no indels. This clause accounts for
+            # the majority of reads and exists to speed up the code.
+            self.cigartuples[0, 1] -= trim_by
+
+            if side == 'left':
+                self.query_sequence = self.query_sequence[trim_by:]
+                self.reference_start += trim_by
+
+            else:
+                self.query_sequence = self.query_sequence[:-trim_by]
+                self.reference_end -= trim_by
+
+            return
+
+        # We are here because the read was not a simple mapping. There are indels and so we need to
+        # parse cigartuples. We delegate to a just-in-time compiled function for a 4X speed gain
+
+        (self.cigartuples,
+         self.query_sequence,
+         self.reference_start,
+         self.reference_end) = _trim(self.cigartuples,
+                                     constants.cigar_consumption,
+                                     self.query_sequence,
+                                     self.reference_start,
+                                     self.reference_end,
+                                     trim_by,
+                                     0 if side == 'left' else 1)
 
 
 class LinkMerDatum:
@@ -120,45 +372,6 @@ class LinkMersData:
             self.data.append((contig_name, positions, [d for d in data if d.read_unique_id in read_unique_ids_to_keep]))
         else:
             self.data.append((contig_name, positions, data))
-
-
-class BAMFileObject(pysam.AlignmentFile):
-    def __init__(self, input_bam_path):
-        """A class that is essentially pysam.AlignmentFile, with some added bonuses
-
-        This class inherits pysam.AlignmentFile and adds a little flair. Init such an object the
-        way you would an AlignmentFile, i.e. bam = bamops.BAMFileObject(path_to_bam)
-        """
-        self.input_bam_path = input_bam_path
-        filesnpaths.is_file_exists(input_bam_path)
-
-        try:
-            pysam.AlignmentFile.__init__(self)
-        except ValueError as e:
-            raise ConfigError('Are you sure "%s" is a BAM file? Because samtools is not happy with it: """%s"""' % (self.input_bam_path, e))
-
-        try:
-            self.mapped
-        except ValueError:
-            raise ConfigError("It seems the BAM file is not indexed. See 'anvi-init-bam' script.")
-
-
-    def fetch_and_trim(self, contig_name, start, end, *args, **kwargs):
-        """Returns an read iterator that trims overhanging reads
-
-        Like pysam.AlignmeFile.fetch(), except trims reads that overhang the start and end of the
-        defined region so that they fit inside the start and stop
-        """
-        for read in self.fetch(contig_name, start, end, *args, **kwargs):
-            read = sequence.Read(read)
-
-            if start - read.reference_start > 0:
-                read.trim(trim_by=(start - read.reference_start), side='left')
-
-            if read.reference_end - end > 0:
-                read.trim(trim_by=(read.reference_end - end), side='right')
-
-            yield read
 
 
 class LinkMers:
@@ -569,4 +782,174 @@ class ReadsMappingToARange:
         self.run.info('output_file', output_file_path)
 
 
+# The below functions are helpers of the Read class which exist outside the class because they are
+# just-in-time compiled (very very fast) with numba, which has poor support for in-class methods
+
+@jit(nopython=True)
+def iterate_cigartuples(cigartuples, cigar_consumption):
+    """Iterate through cigartuples
+
+    Parameters
+    ==========
+    cigartuples : Nx2 array
+
+    Yields
+    ======
+    output : tuple
+        (operation, length, consumes_read, consumes_ref) -> (int, int, bool, bool)
+    """
+
+    for i in range(cigartuples.shape[0]):
+        operation, length = cigartuples[i, :]
+
+        yield np.array([
+            operation,
+            length,
+            cigar_consumption[operation, 0],
+            cigar_consumption[operation, 1]
+        ])
+
+
+@jit(nopython=True)
+def _vectorize_read(cigartuples, query_sequence, reference_start, cigar_consumption):
+    # init the array
+    size = 0
+    for i in range(cigartuples.shape[0]):
+        size += cigartuples[i, 1]
+    v = np.full((size, 3), -1, dtype=np.int32)
+
+    count = 0
+    ref_consumed = 0
+    read_consumed = 0
+    for operation, length, consumes_read, consumes_ref in iterate_cigartuples(cigartuples, cigar_consumption):
+
+        if consumes_read and consumes_ref:
+            v[count:(count + length), 0] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
+            v[count:(count + length), 1] = query_sequence[read_consumed:(read_consumed + length)]
+            v[count:(count + length), 2] = 0
+
+            read_consumed += length
+            ref_consumed += length
+
+        elif consumes_read:
+            v[count:(count + length), 1] = query_sequence[read_consumed:(read_consumed + length)]
+            v[count:(count + length), 2] = 1
+
+            read_consumed += length
+
+        elif consumes_ref:
+            v[count:(count + length), 0] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
+            v[count:(count + length), 2] = 2
+
+            ref_consumed += length
+
+        count += length
+
+    return v
+
+
+@jit(nopython=True)
+def _get_aligned_sequence_and_reference_positions(cigartuples, query_sequence, reference_start, cigar_consumption):
+
+    # get size of arrays to init
+    size = 0
+    for i in range(cigartuples.shape[0]):
+        if cigar_consumption[cigartuples[i, 0], 0] and cigar_consumption[cigartuples[i, 0], 1]:
+            size += cigartuples[i, 1]
+
+    # init the arrays
+    aligned_sequence = np.zeros(size, dtype=np.int64)
+    reference_positions = np.zeros(size, dtype=np.int64)
+
+    ref_consumed, read_consumed = 0, 0
+    num_mapped = 0
+    for operation, length, consumes_read, consumes_ref in iterate_cigartuples(cigartuples, cigar_consumption):
+
+        if consumes_read and consumes_ref:
+            aligned_sequence[num_mapped:num_mapped+length] = query_sequence[read_consumed:(read_consumed + length)]
+            reference_positions[num_mapped:num_mapped+length] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
+
+            num_mapped += length
+            read_consumed += length
+            ref_consumed += length
+
+        elif consumes_ref:
+            ref_consumed += length
+
+        elif consumes_read:
+            read_consumed += length
+
+    return aligned_sequence, reference_positions
+
+
+@jit(nopython=True)
+def _trim(cigartuples, cigar_consumption, query_sequence, reference_start, reference_end, trim_by, side):
+
+    cigartuples = cigartuples[::-1, :] if side == 1 else cigartuples
+
+    ref_positions_trimmed = 0
+    read_positions_trimmed = 0
+    terminate_next = False
+
+    count = 0
+    for operation, length, consumes_read, consumes_ref in iterate_cigartuples(cigartuples, cigar_consumption):
+
+        if consumes_ref and consumes_read:
+            if terminate_next:
+                break
+
+            remaining = trim_by - ref_positions_trimmed
+
+            if length > remaining:
+                # the length of the operation exceeds the required trim amount. So we will
+                # terminate this iteration. To trim the cigar tuple, we replace it with a
+                # truncated length
+                cigartuples[count, 1] = length - remaining
+                ref_positions_trimmed += remaining
+                read_positions_trimmed += remaining
+                break
+
+            ref_positions_trimmed += length
+            read_positions_trimmed += length
+
+        elif consumes_ref:
+            ref_positions_trimmed += length
+
+        elif consumes_read:
+            read_positions_trimmed += length
+
+        if ref_positions_trimmed >= trim_by:
+            terminate_next = True
+
+        count += 1
+
+    cigartuples = cigartuples[count:, :]
+
+    if side == 1:
+        cigartuples = cigartuples[::-1]
+        query_sequence = query_sequence[:-read_positions_trimmed]
+        reference_end -= ref_positions_trimmed
+    else:
+        cigartuples = cigartuples
+        query_sequence = query_sequence[read_positions_trimmed:]
+        reference_start += ref_positions_trimmed
+
+    return cigartuples, query_sequence, reference_start, reference_end
+
+
+@jit(nopython=True)
+def _get_blocks_by_mapping_type(array, mapping_type):
+    matching = False
+    for i in range(len(array)):
+        if array[i] == mapping_type:
+            if not matching:
+                start = i
+                matching = True
+        else:
+            if matching:
+                matching = False
+                yield start, i
+
+    if matching:
+        yield start, i + 1
 
