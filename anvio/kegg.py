@@ -58,8 +58,8 @@ class KeggContext(object):
 
         It looks something like this:
 
-        knum	threshold	score_type	profile_type	F-measure	nseq	nseq_used	alen	mlen	eff_nseq	re/pos	definition
-        K00001	329.57	domain	trim	0.231663	1473	1069	1798	371	17.12	0.590	alcohol dehydrogenase [EC:1.1.1.1]
+        knum    threshold    score_type    profile_type    F-measure    nseq    nseq_used    alen    mlen    eff_nseq    re/pos    definition
+        K00001    329.57    domain    trim    0.231663    1473    1069    1798    371    17.12    0.590    alcohol dehydrogenase [EC:1.1.1.1]
 
         Since this information is useful for both the setup process (we need to know all the knums) and HMM process,
         all Kofam subclasses need to have access to this dictionary.
@@ -94,12 +94,12 @@ class KeggContext(object):
 
         That is, their ko_list entries look like this, with hypens in all but the first and last columns:
 
-        K14936	-	-	-	-	-	-	-	-	-	-	small nucleolar RNA snR191
-        K15035	-	-	-	-	-	-	-	-	-	-	transfer-messenger RNA
-        K15841	-	-	-	-	-	-	-	-	-	-	small regulatory RNA GlmY
-        K15851	-	-	-	-	-	-	-	-	-	-	quorum regulatory RNA Qrr
-        K16736	-	-	-	-	-	-	-	-	-	-	bantam
-        K16863	-	-	-	-	-	-	-	-	-	-	microRNA 21
+        K14936    -    -    -    -    -    -    -    -    -    -    small nucleolar RNA snR191
+        K15035    -    -    -    -    -    -    -    -    -    -    transfer-messenger RNA
+        K15841    -    -    -    -    -    -    -    -    -    -    small regulatory RNA GlmY
+        K15851    -    -    -    -    -    -    -    -    -    -    quorum regulatory RNA Qrr
+        K16736    -    -    -    -    -    -    -    -    -    -    bantam
+        K16863    -    -    -    -    -    -    -    -    -    -    microRNA 21
 
         These are RNAs.
 
@@ -196,7 +196,7 @@ class KeggSetup(KeggContext):
 
         The structure of this file is like this:
 
-        +D	Module
+        +D    Module
         #<h2><a href="/kegg/kegg2.html"><img src="/Fig/bget/kegg3.gif" align="middle" border=0></a>&nbsp; KEGG Modules</h2>
         !
         A<b>Pathway modules</b>
@@ -545,13 +545,13 @@ class KeggModulesDatabase(KeggContext):
     def __init__(self, db_path, run=run, progress=progress, quiet=False):
         self.db = None
         self.db_path = db_path
-		self.quiet = quiet
+        self.quiet = quiet
 
         self.run = run
         self.progress = progress
 
-		# modules table info
-		# I wonder if these should be moved to the tables __init__.py at some point?
+        # modules table info
+        # I wonder if these should be moved to the tables __init__.py at some point?
         self.module_table_name = "kegg_modules"
         self.module_table_structure = ['module', 'data_name', 'data_value', 'data_definition']
         self.module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ]
@@ -577,59 +577,59 @@ class KeggModulesDatabase(KeggContext):
 
         return self.db
 
-	def parse_kegg_modules_line(self, line, line_num = None, current_data_name=None):
+    def parse_kegg_modules_line(self, line, line_num = None, current_data_name=None):
         """This function parses information from one line of a KEGG module file.
 
-		These files have fields separated by 2 or more spaces. Fields can include data name (not always), data value (always), and data definition (not always).
-		Lines for pathway module files can have between 2 and 4 fields, but in fact the only situation where there should be 4 lines is the ENTRY data,
-		which for some inexplicable reason has multiple spaces between "Pathway" and "Module" in the data definition field. We can safely ignore this last "Module", I think.
+        These files have fields separated by 2 or more spaces. Fields can include data name (not always), data value (always), and data definition (not always).
+        Lines for pathway module files can have between 2 and 4 fields, but in fact the only situation where there should be 4 lines is the ENTRY data,
+        which for some inexplicable reason has multiple spaces between "Pathway" and "Module" in the data definition field. We can safely ignore this last "Module", I think.
 
-		Some lines will have multiple entities in the data_value field (ie, multiple KOs or reaction numbers) and will be split into multiple db entries.
+        Some lines will have multiple entities in the data_value field (ie, multiple KOs or reaction numbers) and will be split into multiple db entries.
 
-		PARAMETERS
-		==========
-		line 				str, the line to parse
-		line_num 			int, which line number we are working on. We need this to keep track of which entities come from the same line of the file.
-		current_data_name	str, which data name we are working on. If this is None, we need to parse this info from the first field in the line.
+        PARAMETERS
+        ==========
+        line                 str, the line to parse
+        line_num             int, which line number we are working on. We need this to keep track of which entities come from the same line of the file.
+        current_data_name    str, which data name we are working on. If this is None, we need to parse this info from the first field in the line.
 
-		RETURNS
-		=======
-		line_entries		a list of tuples, each containing information for one db entry, namely data name, data value, data definition, and line number.
-							Not all parts of the db entry will be included (module num, for instance), so this information must be parsed and combined with
-							the missing information before being added to the database.
-		"""
+        RETURNS
+        =======
+        line_entries        a list of tuples, each containing information for one db entry, namely data name, data value, data definition, and line number.
+                            Not all parts of the db entry will be included (module num, for instance), so this information must be parsed and combined with
+                            the missing information before being added to the database.
+        """
 
         fields = re.split('\s{2,}', line)
-		data_vals = None
-		data_def = None
-		line_entries = []
+        data_vals = None
+        data_def = None
+        line_entries = []
 
-		# data name unknown, parse from first field
-		if not current_data_name:
-			# sanity check: if line starts with space then there is no data name field and we should have passed a current_data_name
-			if line[0] == ' ':
-				raise ConfigError("Oh, please. Some silly developer (you know who you are) has tried to call parse_kegg_modules_line() on \
-				a line without a data name field, and forgot to give it the current data name. Shame on you, go fix this. (For reference here \
-				is the line: %s)" % (line))
+        # data name unknown, parse from first field
+        if not current_data_name:
+            # sanity check: if line starts with space then there is no data name field and we should have passed a current_data_name
+            if line[0] == ' ':
+                raise ConfigError("Oh, please. Some silly developer (you know who you are) has tried to call parse_kegg_modules_line() on \
+                a line without a data name field, and forgot to give it the current data name. Shame on you, go fix this. (For reference here \
+                is the line: %s)" % (line))
 
-			current_data_name = fields[0]
-			data_vals = fields[1]
-			if len(fields) > 2: # not all lines have a definition field
-				data_def = fields[2]
-		else:  # data name known
-			data_vals = fields[0]
-			data_def = fields[1]
+            current_data_name = fields[0]
+            data_vals = fields[1]
+            if len(fields) > 2: # not all lines have a definition field
+                data_def = fields[2]
+        else:  # data name known
+            data_vals = fields[0]
+            data_def = fields[1]
 
-		# some types of information may need to be split into multiple db entries
-		data_types_to_split = ["ORTHOLOGY","REACTION"] # lines that fall under these categories need to have data_vals split on comma
-		if current_data_name in data_types_to_split:
-			for val in data_vals.split(','):
-				line_entries.append((current_data_name, val, data_def, line_num))
-		else: # just send what we found without splitting the line
-			line_entries.append((current_data_name, data_vals, data_def, line_num)
+        # some types of information may need to be split into multiple db entries
+        data_types_to_split = ["ORTHOLOGY","REACTION"] # lines that fall under these categories need to have data_vals split on comma
+        if current_data_name in data_types_to_split:
+            for val in data_vals.split(','):
+                line_entries.append((current_data_name, val, data_def, line_num))
+        else: # just send what we found without splitting the line
+            line_entries.append((current_data_name, data_vals, data_def, line_num))
 
-		# still need to figure out what to do about REFERENCE info type (includes AUTHORS, TITLE, JOURNAL) - do we want this?
-		return line_entries
+        # still need to figure out what to do about REFERENCE info type (includes AUTHORS, TITLE, JOURNAL) - do we want this?
+        return line_entries
 
 
     def create(self):
@@ -637,64 +637,63 @@ class KeggModulesDatabase(KeggContext):
 
         self.touch()
 
-		self.progress.new("Loading KEGG modules into Modules DB...")
+        self.progress.new("Loading KEGG modules into Modules DB...")
 
-		# sanity check that we setup the modules previously.
-		# It shouldn't be a problem since this function should only be called during the setup process after modules download, but just in case.
-		if not os.exists(module_data_dir) or len(self.module_dict.keys()) == 0:
-			raise ConfigError("Appparently, the Kegg Modules were not correctly setup and now all sorts of things are broken. The \
-			 Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone except maybe developers, so \
-			 if you do not fall into that category you are likely in deep doo-doo. Maybe re-running setup with --reset will work? (if not, you \
-			 probably should email/Slack/telepathically cry out for help to the developers.)")
+        # sanity check that we setup the modules previously.
+        # It shouldn't be a problem since this function should only be called during the setup process after modules download, but just in case.
+        if not os.exists(module_data_dir) or len(self.module_dict.keys()) == 0:
+            raise ConfigError("Appparently, the Kegg Modules were not correctly setup and now all sorts of things are broken. The \
+             Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone except maybe developers, so \
+             if you do not fall into that category you are likely in deep doo-doo. Maybe re-running setup with --reset will work? (if not, you \
+             probably should email/Slack/telepathically cry out for help to the developers.)")
 
-		# init the Modules table
-		mod_table = KeggModulesTable(self.module_table_name)
+        # init the Modules table
+        mod_table = KeggModulesTable(self.module_table_name)
 
-		num_modules_parsed = 0
-		line_number = 0
-		for mnum in self.module_dict.keys():
-			self.progress.update("Parsing KEGG Module %s" % mnum)
+        num_modules_parsed = 0
+        line_number = 0
+        for mnum in self.module_dict.keys():
+            self.progress.update("Parsing KEGG Module %s" % mnum)
             mod_file_path = os.path.join(self.module_data_dir, mnum)
-			f = open(mod_file_path, 'rU')
+            f = open(mod_file_path, 'rU')
 
-			prev_data_name_field = None
-			for line in f.readlines():
-	            line.strip('\n')
-				line_number += 1
+            prev_data_name_field = None
+            for line in f.readlines():
+                line.strip('\n')
+                line_number += 1
 
-				# check for last line ///. We don't want to send the last line to the parsing function because it will break.
-				if not line == '///':
-					# parse the line into a tuple
-					entries_tuple_list = None
-					# here is the tricky bit about parsing these files. Not all lines start with the data_name field; those that don't start with a space.
-					# if this is the case, we need to tell the parsing function what the previous data_name field has been.
-					if line[0] == ' ':
-						entries_tuple_list = self.parse_kegg_modules_line(line, line_number, prev_data_name_field)
-					else:
-						entries_tuple_list = self.parse_kegg_modules_line(line, line_number)
+                # check for last line ///. We don't want to send the last line to the parsing function because it will break.
+                if not line == '///':
+                    # parse the line into a tuple
+                    entries_tuple_list = None
+                    # here is the tricky bit about parsing these files. Not all lines start with the data_name field; those that don't start with a space.
+                    # if this is the case, we need to tell the parsing function what the previous data_name field has been.
+                    if line[0] == ' ':
+                        entries_tuple_list = self.parse_kegg_modules_line(line, line_number, prev_data_name_field)
+                    else:
+                        entries_tuple_list = self.parse_kegg_modules_line(line, line_number)
 
-					# update prev_data_name_field; use the first (and perhaps only) entry by default
-					prev_data_name_field = entries_tuple_list[0][0]
+                    # update prev_data_name_field; use the first (and perhaps only) entry by default
+                    prev_data_name_field = entries_tuple_list[0][0]
 
-					# unpack that tuple info
-					for entry_info in entries_tuple_list:
-						name, val, def, line = entry_info
-						# call append_and_store which will collect db entries and store every 10000 at a time
-						mod_table.append_and_store(mnum, name, val, def, line)
-
+                    # unpack that tuple info
+                    for name, val, definition, line in entries_tuple_list:
+                        # call append_and_store which will collect db entries and store every 10000 at a time
+                        mod_table.append_and_store(mnum, name, val, definition, line)
 
 
-			num_modules_parsed += 1
 
-		# give some run info
-		self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
-		self.run.info('Number of KEGG modules', num_modules_parsed, quiet=self.quiet)
+            num_modules_parsed += 1
+
+        # give some run info
+        self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+        self.run.info('Number of KEGG modules', num_modules_parsed, quiet=self.quiet)
         self.run.info('Number of entries', mod_table.get_total_entries(), quiet=self.quiet)
 
-		# record some useful metadata
+        # record some useful metadata
         self.db.set_meta_value('db_type', 'modules')
-		self.db.set_meta_value('num_modules', num_modules_parsed)
-		self.db.set_meta_value('total_entries', mod_table.get_total_entries())
+        self.db.set_meta_value('num_modules', num_modules_parsed)
+        self.db.set_meta_value('total_entries', mod_table.get_total_entries())
 
         self.db.disconnect()
 
@@ -702,34 +701,34 @@ class KeggModulesTable:
     """This class defines operations for creating the KEGG Modules table in Modules.db"""
 
     def __init__(self, mod_table_name = None):
-		""""""
+        """"""
         self.db_entries = []
-		self.total_entries = 0
+        self.total_entries = 0
 
-		if mod_table_name:
-			self.module_table_name = mod_table_name
-		else:
-			raise ConfigError("Beep Beep. Warning. KeggModulesTable was initialized without knowing its own name.")
+        if mod_table_name:
+            self.module_table_name = mod_table_name
+        else:
+            raise ConfigError("Beep Beep. Warning. KeggModulesTable was initialized without knowing its own name.")
 
 
     def append_and_store(self, module_num, data_name, data_value, data_definition=None, line_num=None):
         """This function handles collects db entries (as tuples) into a list, and once we have 10,000 of them it stores that set into the Modules table.
 
-		The db_entries list is cleared after each store so that future stores don't add duplicate entries to the table.
-		"""
+        The db_entries list is cleared after each store so that future stores don't add duplicate entries to the table.
+        """
 
         db_entry = tuple([module_num, data_name, data_value, data_definition, line_num])
         self.db_entries.append(db_entry)
-		self.total_entries += 1
+        self.total_entries += 1
 
         if len(self.db_entries) > 10000:
-			self.store()
-			self.db_entries = []
+            self.store()
+            self.db_entries = []
 
 
     def store(self):
         if len(self.db_entries):
             db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.module_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
 
-	def get_total_entries(self):
-		return self.total_entries
+    def get_total_entries(self):
+        return self.total_entries
