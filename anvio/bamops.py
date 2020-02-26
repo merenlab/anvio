@@ -396,10 +396,29 @@ class Coverage:
           uses fancy-indexing
           https://jakevdp.github.io/PythonDataScienceHandbook/02.07-fancy-indexing.html:
         """
+        c2 = np.copy(c)
+        c3 = np.copy(c)
 
         for read in iterator(contig_name, start, end):
+
+            if len(read.cigartuples) == 1:
+                c2[read.reference_start:(read.reference_start + read.cigartuples[0][1])] += 1
+            else:
+                for start, end in read.get_blocks():
+                    c2[start:end] += 1
+
             for start, end in read.get_blocks():
                 c[start:end] += 1
+
+        print(np.array_equal(c, c2))
+        print(np.array_equal(c, c2))
+        print(np.array_equal(c, c2))
+        print(np.array_equal(c, c2))
+        print(np.array_equal(c, c2))
+        print(np.array_equal(c, c2))
+        print(np.array_equal(c, c2))
+        print(np.array_equal(c, c2))
+        print(np.array_equal(c, c2))
 
         return c
 
