@@ -21,7 +21,7 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.sequence import Coverage, Read
+from anvio.sequence import Coverage
 from anvio.errors import ConfigError
 from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts
 
