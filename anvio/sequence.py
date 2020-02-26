@@ -172,7 +172,7 @@ class Coverage:
 
         start : int
             The index start of where coverage is calculated. Relative to the contig, even when
-            `contig_or_split` is a Split object. 
+            `contig_or_split` is a Split object.
 
         end : int
             The index end of where coverage is calculated. Relative to the contig, even when
@@ -183,6 +183,9 @@ class Coverage:
 
         skip_coverage_stats : bool, False
             Should the call to process_c be skipped?
+
+        **kwargs : **kwargs
+            kwargs are passed to the method chosen
         """
 
         # if there are defined start and ends we have to trim reads so their ranges fit inside self.c
