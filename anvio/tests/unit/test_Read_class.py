@@ -1,6 +1,10 @@
 #! /usr/bin/env python
 # -*- coding: utf-8
-"""Unit tests for the Read class."""
+"""Unit tests for the Read class.
+
+FIXME This class should deal with all the features of the Read class, such as vectorize,
+get_aligned_sequence_and_positions, iterate_cigartuples, etc.
+"""
 
 import copy
 import numpy as np
@@ -26,7 +30,7 @@ class FakePySamAlignedSegment:
             setattr(self, key, v)
 
 
-class TestRead(unittest.TestCase):
+class TestTrim(unittest.TestCase):
     """
     CASE #1
     =======
