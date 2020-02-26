@@ -213,7 +213,9 @@ class Auxiliary:
             # worth the time to vectorize it right off the bat
             read.vectorize()
 
-            # The read can overlap with multiple genes, so we must find them and loop through each
+            # Although rare, the read can overlap multiple genes. To generalize, we loop through the
+            # genes the read overlaps with. If the read overlaps just one, shortcuts are taken
+            # _within_ the loop.
 
             gene_id_per_nt_in_read = self.split.per_position_info['corresponding_gene_call'][
                 (read.reference_start - self.split.start):(read.reference_end - self.split.start)
