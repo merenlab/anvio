@@ -149,8 +149,8 @@ class Read:
         )
 
 
-    def iterate_blocks_by_mapping_type(self, mapping_type):
-        """Iterate through slices of self.v that contain blocks of a given mapping type
+    def iterate_blocks_by_mapping_type(self, mapping_type, array=None):
+        """Iterate through slices of array that contain blocks of a given mapping type
 
         Parameters
         ==========
@@ -158,15 +158,20 @@ class Read:
             Any of 0, 1, 2, or -1. 0 = mapping segment, 1 = read insertion segment, 2 = read
             deletion segment, -1 = gap in read and reference
 
+        array : numpy array, None
+            If None, self.v will be used
+
         Yields
         ======
         output : numpy arrays
             Each numpy array corresponds to a section of self.v that contained consecutive
             mapping_types.
         """
+        if array is None:
+            array = self.v
 
-        for start, stop in _get_blocks_by_mapping_type(self['type'], mapping_type):
-            yield self.v[start:stop, :]
+        for start, stop in _get_blocks_by_mapping_type(array[:, 2], mapping_type):
+            yield array[start:stop, :]
 
 
     def __getitem__(self, key):
@@ -190,34 +195,6 @@ class Read:
             self.reference_start,
             constants.cigar_consumption,
         )
-
-
-    def __repr__(self):
-        """Fancy output for viewing a read's alignment in relation to the reference"""
-
-        ref, read, pos_ref, pos_read = [], [], 0, 0
-        for _, length, consumes_read, consumes_ref in iterate_cigartuples(self.cigartuples, constants.cigar_consumption):
-            if consumes_read:
-                read.extend([chr(x) for x in self.query_sequence[pos_read:(pos_read + length)]])
-                pos_read += length
-            else:
-                read.extend(['-'] * length)
-
-            if consumes_ref:
-                ref.extend(['X'] * length)
-                pos_ref += length
-            else:
-                ref.extend(['-'] * length)
-
-        lines = [
-            '<%s.%s object at %s>' % (self.__class__.__module__, self.__class__.__name__, hex(id(self))),
-            ' ├── start, end : [%s, %s)' % (self.reference_start, self.reference_end),
-            ' ├── cigartuple : %s' % [tuple(row) for row in self.cigartuples],
-            ' ├── read       : %s' % ''.join(read),
-            ' └── reference  : %s' % ''.join(ref),
-        ]
-
-        return '\n'.join(lines)
 
 
     def get_blocks(self):
@@ -257,6 +234,34 @@ class Read:
             blocks.append((block_start, block_start + block_length))
 
         return blocks
+
+
+    def __repr__(self):
+        """Fancy output for viewing a read's alignment in relation to the reference"""
+
+        ref, read, pos_ref, pos_read = [], [], 0, 0
+        for _, length, consumes_read, consumes_ref in iterate_cigartuples(self.cigartuples, constants.cigar_consumption):
+            if consumes_read:
+                read.extend([chr(x) for x in self.query_sequence[pos_read:(pos_read + length)]])
+                pos_read += length
+            else:
+                read.extend(['-'] * length)
+
+            if consumes_ref:
+                ref.extend(['X'] * length)
+                pos_ref += length
+            else:
+                ref.extend(['-'] * length)
+
+        lines = [
+            '<%s.%s object at %s>' % (self.__class__.__module__, self.__class__.__name__, hex(id(self))),
+            ' ├── start, end : [%s, %s)' % (self.reference_start, self.reference_end),
+            ' ├── cigartuple : %s' % [tuple(row) for row in self.cigartuples],
+            ' ├── read       : %s' % ''.join(read),
+            ' └── reference  : %s' % ''.join(ref),
+        ]
+
+        return '\n'.join(lines)
 
 
     def trim(self, trim_by, side='left'):
