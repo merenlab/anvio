@@ -303,7 +303,7 @@ class KeggSetup(KeggContext):
             self.progress.end()
 
 
-    def confirm_downloaded_files(self):
+    def confirm_downloaded_profiles(self):
         """This function verifies that all Kofam profiles have been properly downloaded.
 
         It is intended to be run after the files have been decompressed. The profiles directory should contain hmm files from K00001.hmm to
@@ -381,7 +381,7 @@ class KeggSetup(KeggContext):
         log_file_path = os.path.join(self.kofam_data_dir, '00_hmmpress_log.txt')
 
         self.progress.update('Verifying that the Kofam directory at %s contains all HMM profiles' % self.kofam_data_dir)
-        self.confirm_downloaded_files()
+        self.confirm_downloaded_profiles()
 
         self.progress.update('Handling orphan files')
         self.move_orphan_files()
