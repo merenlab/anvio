@@ -36,7 +36,6 @@ import anvio.homogeneityindex as homogeneityindex
 
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
-from anvio.sequence import get_list_of_outliers
 
 from anvio.tables.tableops import Table
 from anvio.tables.states import TablesForStates
@@ -2353,35 +2352,34 @@ class PanSuperclass(object):
 class ProfileSuperclass(object):
     """Fancy super class to deal with profile db stuff.
 
-       if you want to make use of this class directly (i.e., not as a superclass), get an instance
-       like this:
+    if you want to make use of this class directly (i.e., not as a superclass), get an instance
+    like this:
 
-            >>> import anvio.dbops as d
-            >>> import argparse
-            >>> args = argparse.Namespace(profile_db="/path/to/profile.db")
-            >>> p = ProfileSuperclass(args)
+         >>> import anvio.dbops as d
+         >>> import argparse
+         >>> args = argparse.Namespace(profile_db="/path/to/profile.db")
+         >>> p = ProfileSuperclass(args)
 
-       Alternatively, you can include a contigs database path (contigs_db) in args so you have access
-       to some functions that would require that.
+    Alternatively, you can include a contigs database path (contigs_db) in args so you have access
+    to some functions that would require that.
 
-       Alternatively, you can define a set of split names of interest to gain performance when it is
-       needed. There are two ways to do that, which are mutually exclusive (so you have to grow up and
-       pick one). One way is to explicitly mention which splits are of interest (for control freaks):
+    Alternatively, you can define a set of split names of interest to gain performance when it is
+    needed. There are two ways to do that, which are mutually exclusive (so you have to grow up and
+    pick one). One way is to explicitly mention which splits are of interest (for control freaks):
 
-            >>> args.split_names_of_interest = set([split_names])
-            >>> p = ProfileSuperclass(args)
+         >>> args.split_names_of_interest = set([split_names])
+         >>> p = ProfileSuperclass(args)
 
-        The second way to initialize ProfileSuper with a subset of splits a profile database contains
-        is to use the collections framework (the elegant way of doing this). For which, you need to
-        set collection name:
+    The second way to initialize ProfileSuper with a subset of splits a profile database contains
+    is to use the collections framework (the elegant way of doing this). For which, you need to
+    set collection name:
 
-            >>> args.collection_name = 'collection_name'
-            >>> args.bin_ids = 'bin_1,bin_2,bin_3' # if no bin_ids is provided, all bins will be used
-            >>> p = ProfileSuperClass(args)
+        >>> args.collection_name = 'collection_name'
+        >>> args.bin_ids = 'bin_1,bin_2,bin_3' # if no bin_ids is provided, all bins will be used
+        >>> p = ProfileSuperClass(args)
 
-
-        The best practice is to set anvi'o programs to put together `args` objects with these variables.
-       """
+    The best practice is to set anvi'o programs to put together `args` objects with these variables.
+    """
 
     def __init__(self, args, r=run, p=progress):
         self.args = args
@@ -2793,8 +2791,8 @@ class ProfileSuperclass(object):
     def get_gene_level_coverage_stats_entry_for_default(self, gene_callers_id, split_coverage, sample_name, gene_start, gene_stop, gene_length, outliers_threshold=1.5):
         """Returns coverage stats for a single gene in default mode.
 
-           The alternative to this mode is the INSEQ/Tn-SEQ mode that is handled in `get_gene_level_coverage_stats_entry_for_inseq`,
-           where coverage statistics are computed differently.
+        The alternative to this mode is the INSEQ/Tn-SEQ mode that is handled in `get_gene_level_coverage_stats_entry_for_inseq`,
+        where coverage statistics are computed differently.
         """
         # and recover the gene coverage array per position for a given sample:
         gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
@@ -2803,7 +2801,7 @@ class ProfileSuperclass(object):
         detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
 
          # findout outlier positions, and get non-outliers
-        outliers_bool = get_list_of_outliers(gene_coverage_values_per_nt, outliers_threshold)
+        outliers_bool = utils.get_list_of_outliers(gene_coverage_values_per_nt, outliers_threshold)
         non_outlier_positions = numpy.invert(outliers_bool)
         non_outliers = gene_coverage_values_per_nt[non_outlier_positions]
 
@@ -2832,7 +2830,7 @@ class ProfileSuperclass(object):
            where coverage statistics are computed in most conventional ways.
         """
 
-        # Lets ignore those pesty warnings...
+        # Lets ignore those pesky warnings...
         numpy.seterr(divide='ignore', over='ignore')
 
         if not len(self.num_mapped_reads_per_sample):
