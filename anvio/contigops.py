@@ -313,8 +313,9 @@ class Auxiliary:
                         else utils.nt_seq_to_RC_codon_num_array(gapless_segment[:, 1], seq_is_in_ord_representation=True)
                     )
 
-                    start_codon = np.min(self.split.per_position_info['codon_order_in_gene'][block_start_split:block_end_split])
-                    codon_orders = np.arange(len(codon_sequence_as_index)) + start_codon
+                    start, stop = self.split.per_position_info['codon_order_in_gene'][[block_start_split, block_end_split-1]]
+                    if gene_call['direction'] == 'r': start, stop = stop, start
+                    codon_orders = np.arange(start, stop + 1)
 
                     # Codons with ambiguous characters have index values of 64. Remove them here
                     codon_orders = codon_orders[codon_sequence_as_index != 64]
@@ -361,21 +362,22 @@ class Auxiliary:
 
     def process(self, bam):
 
-        import pprofile
-        prof = pprofile.Profile()
-        with prof():
-            self.run_SNVs(bam)
+        #import pprofile
+        #prof = pprofile.Profile()
+        #with prof():
+        #    self.run_SNVs(bam)
 
-            if self.profile_SCVs:
-                self.run_SCVs(bam)
-        f =  open('new_spicy_callgrind.out', 'w')
-        prof.callgrind(f)
-        f.close()
+        #    if self.profile_SCVs:
+        #        self.run_SCVs(bam)
+        #f =  open('new_spicy_callgrind.out', 'w')
+        #prof.callgrind(f)
+        #f.close()
 
-        #self.run_SNVs(bam)
+        self.run_SNVs(bam)
 
-        #if self.profile_SCVs:
-        #    self.run_SCVs(bam)
+        if self.profile_SCVs:
+            self.run_SCVs(bam)
+
 
     def get_codon_sequence_for_gene(self, gene_call):
         seq_dict = {self.split.parent: {'sequence': self.split.sequence}}
