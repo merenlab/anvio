@@ -21,7 +21,6 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.sequence import Coverage
 from anvio.errors import ConfigError
 from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts
 
@@ -82,7 +81,7 @@ class Contig:
         self.splits = []
         self.length = 0
         self.abundance = 0.0
-        self.coverage = Coverage()
+        self.coverage = anvio.bamops.Coverage()
 
         self.min_coverage_for_variability = 10
         self.skip_SNV_profiling = False
@@ -112,7 +111,7 @@ class Contig:
             # of the split.coverage attributes can simply be referenced directly from
             # contig.coverage
             split = self.splits[0]
-            split.coverage = Coverage()
+            split.coverage = anvio.bamops.Coverage()
             split.coverage.c = self.coverage.c
             split.coverage.min = self.coverage.min
             split.coverage.max = self.coverage.max
@@ -126,7 +125,7 @@ class Contig:
             return
 
         for split in self.splits:
-            split.coverage = Coverage()
+            split.coverage = anvio.bamops.Coverage()
             split.coverage.c = self.coverage.c[split.start:split.end]
             split.coverage.is_outlier_in_parent = self.coverage.is_outlier[split.start:split.end]
             split.coverage.process_c(split.coverage.c)
