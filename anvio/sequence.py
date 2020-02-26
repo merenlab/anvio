@@ -3,17 +3,11 @@
 
 """Primitive classes for basic DNA sequence properties."""
 
-import copy
-import numpy as np
-import collections
-
-from colored import fore, style
 from itertools import permutations
 
 import anvio
 import anvio.constants as constants
 
-from anvio.errors import ConfigError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
