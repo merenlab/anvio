@@ -256,7 +256,6 @@ class KeggSetup(KeggContext):
                 else:
                     raise ConfigError("While parsing the KEGG file %s, we found an unknown line code %s. This has \
                     made the file unparseable. Sad. :(" % (self.kegg_module_file, first_char))
-            self.progress.update("Done 🍁")
             self.progress.end()
 
     def download_modules(self):
@@ -294,7 +293,7 @@ class KeggSetup(KeggContext):
         """This function decompresses the Kofam profiles."""
 
         for file_name in self.files:
-            self.progress.new('Decompressing file %s' %s file_name)
+            self.progress.new('Decompressing file %s' % file_name)
             full_path = os.path.join(self.kofam_data_dir, file_name)
 
             if full_path.endswith("tar.gz"): # extract tar file instead of doing gzip
@@ -383,7 +382,7 @@ class KeggSetup(KeggContext):
         self.progress.new('Preparing Kofam HMM Profiles')
         log_file_path = os.path.join(self.kofam_data_dir, '00_hmmpress_log.txt')
 
-        self.progress.update('Verifying that the Kofam directory at %s contains all HMM profiles' % self.kofam_data_dir)
+        self.progress.update('Verifying the Kofam directory %s contains all HMM profiles' % self.kofam_data_dir)
         self.confirm_downloaded_profiles()
 
         self.progress.update('Handling orphan files')
@@ -649,7 +648,7 @@ class KeggModulesDatabase(KeggContext):
 
         # sanity check that we setup the modules previously.
         # It shouldn't be a problem since this function should only be called during the setup process after modules download, but just in case.
-        if not os.exists(module_data_dir) or len(self.module_dict.keys()) == 0:
+        if not os.path.exists(self.module_data_dir) or len(self.module_dict.keys()) == 0:
             raise ConfigError("Appparently, the Kegg Modules were not correctly setup and now all sorts of things are broken. The \
              Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone except maybe developers, so \
              if you do not fall into that category you are likely in deep doo-doo. Maybe re-running setup with --reset will work? (if not, you \
