@@ -219,6 +219,7 @@ class KeggSetup(KeggContext):
         filesnpaths.is_file_plain_text(self.kegg_module_file)
 
         f = open(self.kegg_module_file, 'rU')
+        self.progress.new("Parsing KEGG Module file")
 
         current_module_type = None
         current_category = None
@@ -255,6 +256,8 @@ class KeggSetup(KeggContext):
                 else:
                     raise ConfigError("While parsing the KEGG file %s, we found an unknown line code %s. This has \
                     made the file unparseable. Sad. :(" % (self.kegg_module_file, first_char))
+            self.progress.update("Done 🍁")
+            self.progress.end()
 
     def download_modules(self):
         """This function downloads the KEGG modules.
