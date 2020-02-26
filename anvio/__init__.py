@@ -366,12 +366,6 @@ D = {
                      "computational complexity, this feature comes 'off' by default. Using this flag you can rise against the "
                      "authority, as you always should, and make anvi'o profile codons."}
                 ),
-    'ignore-orphans': (
-            ['--ignore-orphans'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "Ignore orphan reads (paired reads that are not in a proper pair). The default is to include orphans."}
-                ),
     'drop-previous-annotations': (
             ['--drop-previous-annotations'],
             {'default': False,
