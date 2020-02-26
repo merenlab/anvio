@@ -314,16 +314,17 @@ class Auxiliary:
                     )
 
                     start_codon = np.min(self.split.per_position_info['codon_order_in_gene'][block_start_split:block_end_split])
-                    end_codon = start_codon + len(codon_sequence_as_index)
+                    codon_orders = np.arange(len(codon_sequence_as_index)) + start_codon
 
-                    for idx, pos in zip(codon_sequence_as_index, range(start_codon, end_codon)):
-                        try:
-                            gene_allele_counts[gene_id][idx, pos] += 1
-                        except IndexError:
-                            # codon is an ambiguous character, so it was given an out-of-range
-                            # index. The rarity of this warrants a catch clause rather than an if
-                            # statement
-                            continue
+                    # Codons with ambiguous characters have index values of 64. Remove them here
+                    codon_orders = codon_orders[codon_sequence_as_index != 64]
+                    codon_sequence_as_index = codon_sequence_as_index[codon_sequence_as_index != 64]
+
+                    gene_allele_counts[gene_id] = utils.add_to_2D_numeric_array(
+                        codon_sequence_as_index,
+                        codon_orders,
+                        gene_allele_counts[gene_id]
+                    )
 
             read_count += 1
 
@@ -359,6 +360,7 @@ class Auxiliary:
 
 
     def process(self, bam):
+
         import pprofile
         prof = pprofile.Profile()
         with prof():
@@ -366,10 +368,14 @@ class Auxiliary:
 
             if self.profile_SCVs:
                 self.run_SCVs(bam)
-        f =  open('new_callgrind.out', 'w')
+        f =  open('new_spicy_callgrind.out', 'w')
         prof.callgrind(f)
         f.close()
 
+        #self.run_SNVs(bam)
+
+        #if self.profile_SCVs:
+        #    self.run_SCVs(bam)
 
     def get_codon_sequence_for_gene(self, gene_call):
         seq_dict = {self.split.parent: {'sequence': self.split.sequence}}
