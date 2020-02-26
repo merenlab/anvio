@@ -39,7 +39,6 @@ class ReportCodonFrequencies:
         self.progress = progress
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.congits_db_path = A('contigs_db')
         self.bam_file_path = A('bam_file')
         self.gene_caller_id = A('gene_caller_id')
         self.return_AA_frequencies_instead = A('return_AA_frequencies_instead')
