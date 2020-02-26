@@ -251,7 +251,7 @@ class KeggSetup(KeggContext):
                 elif first_char == "D":
                     fields = re.split('\s{2,}', line)
                     mnum = fields[1]
-                    self.module_dict[mnum] = {"name" : fields[2]}
+                    self.module_dict[mnum] = {"name" : fields[2], "type" : current_module_type, "category" : current_category, "subcategory" : current_subcategory}
                 # unknown code
                 else:
                     raise ConfigError("While parsing the KEGG file %s, we found an unknown line code %s. This has \
