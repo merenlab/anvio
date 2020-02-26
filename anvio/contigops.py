@@ -232,12 +232,16 @@ class Auxiliary:
                     continue
 
                 if len(genes_in_read) == 1:
-                    read_overlaps_gene_start = read.reference_start
-                    read_overlaps_gene_end = read.reference_end
+                    # The read maps entirely in 1 gene
+                    gene_overlap_start = read.reference_start
+                    segment_that_overlaps_gene = read.v
                 else:
+                    # Okay, we need to do some work to get the segment that overlaps
                     positions_where_read_aligns_to_gene = np.where(gene_id_per_nt_in_read == gene_id)[0] + read.reference_start
-                    read_overlaps_gene_start = positions_where_read_aligns_to_gene[0]
-                    read_overlaps_gene_end = positions_where_read_aligns_to_gene[-1] + 1
+                    gene_overlap_start, gene_overlap_stop = positions_where_read_aligns_to_gene[[0,-1]]
+                    start_index = np.where(read[:, 0] == gene_overlap_start)[0][0]
+                    stop_index = np.where(read[:, 0] == gene_overlap_stop)[0][0]
+                    segment_that_overlaps_gene = read[start_index:stop_index]
 
                 if gene_id not in gene_calls:
                     # We make an on-the-fly gene call dict. See the NOTE in
@@ -247,7 +251,7 @@ class Auxiliary:
                     # We need to access gene-wide attributes from per-nt arrays, so any index in the
                     # array will suffice, so long as it corresponds to the gene_id. We arbitrarily
                     # pick the index corresponding to the genes starting position
-                    accessor = read_overlaps_gene_start - self.split.start
+                    accessor = gene_overlap_start - self.split.start
                     gene_calls[gene_id] = {
                         'contig': self.split.parent,
                         'start': self.split.per_position_info['gene_start'][accessor],
@@ -264,12 +268,8 @@ class Auxiliary:
                     # We cannot handle non-coding genes because they have no frame
                     continue
 
-                # segment_that_overlaps_gene is a copied view of read that has been sliced to only include
-                # the portion that overlaps with the gene
-                segment_that_overlaps_gene = read.slice(read_overlaps_gene_start, read_overlaps_gene_end)
-
-                for gapless_segment in segment_that_overlaps_gene.iterate_blocks_by_mapping_type(mapping_type=0):
-                    block_start, block_end = gapless_segment[0, 0], gapless_segment[0, -1]
+                for gapless_segment in read.iterate_blocks_by_mapping_type(mapping_type=0, array=segment_that_overlaps_gene):
+                    block_start, block_end = gapless_segment[0, 0], gapless_segment[-1, 0]
 
                     if block_end - block_start < 3:
                         # This block does not contain a full codon
@@ -285,21 +285,18 @@ class Auxiliary:
                     first_pos = np.where(base_positions == (1 if gene_call['direction'] == 'f' else 3))[0][0]
                     last_pos = np.where(base_positions == (3 if gene_call['direction'] == 'f' else 1))[0][-1]
 
-                    trim_by_left = first_pos
-                    trim_by_right = block_end - block_start - last_pos - 1
-
-                    if trim_by_left + trim_by_right > block_end - block_start - 3:
+                    if last_pos - first_pos < 3:
                         # the required trimming creates a sequence that is less than a codon long.
                         # We cannot use this read.
                         continue
 
                     # We use gapless_segment.trim instead of slicing with gapless_segment[a:b]
                     # because slicing makes a copy, whereas gapless_segment.trim modifies in place
-                    gapless_segment = gapless_segment[trim_by_left:-trim_by_right]
+                    gapless_segment = gapless_segment[first_pos:(last_pos+1), :]
 
                     # Update these for posterity
-                    block_start_split += trim_by_left
-                    block_end_split -= trim_by_right
+                    block_start_split += first_pos
+                    block_end_split -= block_end - block_start - last_pos - 1
 
                     if gene_id not in gene_allele_counts:
                         # This is the first time we have seen the gene_id, and for the first time we
