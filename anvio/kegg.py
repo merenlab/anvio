@@ -291,7 +291,7 @@ class KeggSetup(KeggContext):
         """This function decompresses the Kofam profiles."""
 
         for file_name in self.files:
-            self.progress.new('Decompressing file', file_name)
+            self.progress.new('Decompressing file %s' %s file_name)
             full_path = os.path.join(self.kofam_data_dir, file_name)
 
             if full_path.endswith("tar.gz"): # extract tar file instead of doing gzip
