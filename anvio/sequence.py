@@ -274,32 +274,36 @@ def get_indices_for_outlier_values(c):
 
 
 def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, median=None):
-    """
-    Returns a boolean array with True if values are outliers and False
-    otherwise.
+    """Return boolean array of whether values are outliers (True means yes)
 
     Modified from Joe Kington's (https://stackoverflow.com/users/325565/joe-kington)
     implementation computing absolute deviation around the median.
 
-    Parameters:
-    -----------
-        values    : An numobservations by numdimensions array of observations
-        threshold : The modified z-score to use as a thresholdold. Observations with
-                    a modified z-score (based on the median absolute deviation) greater
-                    than this value will be classified as outliers.
-        median    : Pass median value of values if you already calculated it
+    Parameters
+    ==========
+    values : array-like
+        An numobservations by numdimensions array of observations
 
-    Returns:
-    --------
-        mask : A numobservations-length boolean array.
+    threshold : number, None
+        The modified z-score to use as a thresholdold. Observations with
+        a modified z-score (based on the median absolute deviation) greater
+        than this value will be classified as outliers.
 
-    References:
-    ----------
-        Boris Iglewicz and David Hoaglin (1993), "Volume 16: How to Detect and
-        Handle Outliers", The ASQC Basic References in Quality Control:
-        Statistical Techniques, Edward F. Mykytka, Ph.D., Editor.
+    median : array-like, None
+        Pass median value of values if you already calculated it to save time
 
-        http://www.sciencedirect.com/science/article/pii/S0022103113000668
+    Returns
+    =======
+    mask : numpy array (dtype=bool)
+        A numobservations-length boolean array.
+
+    References
+    ==========
+    Boris Iglewicz and David Hoaglin (1993), "Volume 16: How to Detect and
+    Handle Outliers", The ASQC Basic References in Quality Control:
+    Statistical Techniques, Edward F. Mykytka, Ph.D., Editor.
+
+    http://www.sciencedirect.com/science/article/pii/S0022103113000668
     """
 
     if threshold is None:
