@@ -412,7 +412,7 @@ class Coverage:
         self.std = np.std(c)
         self.detection = np.sum(c > 0) / len(c)
 
-        self.is_outlier = anvio.sequence.get_list_of_outliers(c, median=self.median) # this is an array not a list
+        self.is_outlier = utils.get_list_of_outliers(c, median=self.median) # this is an array not a list
 
         if c.size < 4:
             self.mean_Q2Q3 = self.mean
