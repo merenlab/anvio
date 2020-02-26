@@ -231,9 +231,13 @@ class Auxiliary:
                     # SNVs in the gene so there is nothing to do.
                     continue
 
-                positions_where_read_aligns_to_gene = np.where(gene_id_per_nt_in_read == gene_id)[0] + read.reference_start
-                read_overlaps_gene_start = positions_where_read_aligns_to_gene[0]
-                read_overlaps_gene_end = positions_where_read_aligns_to_gene[-1] + 1
+                if len(genes_in_read) == 1:
+                    read_overlaps_gene_start = read.reference_start
+                    read_overlaps_gene_end = read.reference_end
+                else:
+                    positions_where_read_aligns_to_gene = np.where(gene_id_per_nt_in_read == gene_id)[0] + read.reference_start
+                    read_overlaps_gene_start = positions_where_read_aligns_to_gene[0]
+                    read_overlaps_gene_end = positions_where_read_aligns_to_gene[-1] + 1
 
                 if gene_id not in gene_calls:
                     # We make an on-the-fly gene call dict. See the NOTE in
