@@ -17,6 +17,11 @@ __email__ = "iveseli@uchicago.edu"
 __provides__ = ["kofam-data"]
 __description__ = "Download and setup KEGG KOfam HMM profiles."
 
+@time_program
+def main(args):
+    setup = kegg.KeggSetup(args)
+    setup.setup_profiles()
+
 if __name__ == '__main__':
     import argparse
 
@@ -33,8 +38,7 @@ if __name__ == '__main__':
     args = anvio.get_args(parser)
 
     try:
-        setup = kegg.KeggSetup(args)
-        setup.setup_profiles()
+        main(args)
 
     except ConfigError as e:
         print(e)
