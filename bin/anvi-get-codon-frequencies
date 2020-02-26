@@ -48,9 +48,6 @@ class ReportCodonFrequencies:
 
         filesnpaths.is_output_file_writable(self.output_file_path)
 
-        if self.bam_file_path:
-            filesnpaths.is_file_exists(self.bam_file_path)
-
         if self.merens_codon_normalization and self.percent_normalize:
             raise ConfigError("You can't use both `--merens-codon-normalization` and `--percent-normalize`. Please "
                               "read the help menu and pick one (you will get bonus points if you pick meren's "
@@ -65,7 +62,7 @@ class ReportCodonFrequencies:
         self.gene_caller_ids = set([])
         if self.gene_caller_id:
             if self.gene_caller_id not in self.c.genes_in_contigs_dict:
-                raise ConfigError("Your contigs database named '%s' does not know anythinga bout the gene caller id "
+                raise ConfigError("Your contigs database named '%s' does not know anything about the gene caller id "
                                   "'%s' :/" % (self.c.a_meta['project_name'], str(self.gene_caller_id)))
             else:
                 self.gene_caller_ids = [self.gene_caller_id]
@@ -79,13 +76,10 @@ class ReportCodonFrequencies:
             for amino_acid in constants.AA_to_codons:
                 self.items.extend(constants.AA_to_codons[amino_acid])
 
-        if self.bam_file_path:
-            self.from_BAM_file()
-        else:
-            self.from_contigs_db()
+        self.process()
 
 
-    def from_contigs_db(self):
+    def process(self):
         if self.gene_caller_id:
             self.c.init_contig_sequences(gene_caller_ids_of_interest=self.gene_caller_ids)
         else:
@@ -129,58 +123,6 @@ class ReportCodonFrequencies:
 
         utils.store_dict_as_TAB_delimited_file(residue_frequencies, self.output_file_path, headers=['gene_callers_id'] + self.items)
         self.run.info('Output file', self.output_file_path)
-
-
-    def from_BAM_file(self):
-        if len(self.gene_caller_ids) > 1:
-            raise ConfigError("If you are working with a BAM file, you must unfortunately declare a single gene caller "
-                              "ID since this anvi'o class is not yet smart to be able to deal with multiple gene calls when "
-                              "working with BAM files. Please send us an e-mail if you need this feature, and we will "
-                              "implement it for you!")
-
-        gene_callers_id = self.gene_caller_ids[0]
-        bam_file_object = bamops.BAMFileObject(self.bam_file_path)
-        self.c.init_contig_sequences(gene_caller_ids_of_interest=set([gene_callers_id]))
-
-        gene_call = self.c.genes_in_contigs_dict[gene_callers_id]
-
-        if gene_call['partial']:
-            raise ConfigError('This seems to be a partial gene call. Sorry :/ Partial gene calls are tricky to work with '
-                              'since not every gene caller is able to report appropriate frame within to reliably report '
-                              'codons.')
-
-        self.run.info('Working with', 'Amino acids' if self.return_AA_frequencies_instead else 'Codons')
-
-        contig_sequence = self.c.contig_sequences[gene_call['contig']]['sequence']
-
-        codon_frequencies = bamops.CodonFrequencies()
-
-        d = {}
-
-        self.progress.new('Busy code is busy')
-        self.progress.update('Generating %s frequencies dict ...' % 'amino acid' if self.return_AA_frequencies_instead else 'codon')
-        frequencies_dict = codon_frequencies.process_gene_call(bam_file_object,
-                                                               gene_call,
-                                                               contig_sequence,
-                                                               None,
-                                                               self.return_AA_frequencies_instead)
-
-        self.progress.update('Working on the output ...')
-        for codon_order in frequencies_dict:
-            entry = frequencies_dict[codon_order]
-            d[codon_order] = {'reference': entry['reference'], 'coverage': entry['coverage'],
-                              'contig_name': gene_call['contig'], 'start': gene_call['start'],
-                              'stop': gene_call['stop'], 'direction': gene_call['direction']}
-
-            for item in self.items:
-                d[codon_order][item] = entry['frequencies'][item]
-
-        header = ['codon_order_in_gene', 'contig_name', 'start', 'stop', 'direction', 'reference', 'coverage'] + self.items
-        self.progress.update('Storing output ...')
-        utils.store_dict_as_TAB_delimited_file(d, self.output_file_path, header)
-
-        self.progress.end()
-        self.run.info('Output', args.output_file)
 
 
 if __name__ == '__main__':
