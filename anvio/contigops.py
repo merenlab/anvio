@@ -102,14 +102,15 @@ class Contig:
 
 
     def analyze_coverage(self, bam):
+
         self.coverage.run(bam, self, method='accurate', max_coverage=anvio.auxiliarydataops.COVERAGE_MAX_VALUE)
 
         if len(self.splits) == 1:
-            # Coverage.process_c is an expensive operation, taking up ~90% of the time of
-            # analyze_coverage. Hence, this clause exists to catch the somewhat common occurence
-            # when a contig only has one split. In this case, the contig _is_ the split, and so all
-            # of the split.coverage attributes can simply be referenced directly from
-            # contig.coverage
+            # Coverage.process_c is a potentially expensive operation (taking up ~90% of the time of
+            # analyze_coverage when coverage is low (but when coverage is >500X, the time taken is
+            # ~1%)). Regardless, this clause exists to catch the somewhat common occurence when a
+            # contig only has one split. In this case, the contig _is_ the split, and so all of the
+            # split.coverage attributes can simply be referenced directly from contig.coverage
             split = self.splits[0]
             split.coverage = anvio.bamops.Coverage()
             split.coverage.c = self.coverage.c
@@ -187,18 +188,6 @@ class Auxiliary:
 
 
     def process(self, bam):
-
-        #import pprofile
-        #prof = pprofile.Profile()
-        #with prof():
-        #    self.run_SNVs(bam)
-
-        #    if self.profile_SCVs:
-        #        self.run_SCVs(bam)
-        #f =  open('new_spicy_callgrind.out', 'w')
-        #prof.callgrind(f)
-        #f.close()
-
         self.run_SNVs(bam)
 
         if self.profile_SCVs:
