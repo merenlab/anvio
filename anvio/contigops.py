@@ -373,12 +373,16 @@ class Auxiliary:
 
 
     def get_codon_orders_that_contain_SNVs(self, gene_id):
+        """Helper for run_SCVs"""
+
         matches_gene_boolean = self.split.SNV_profiles['corresponding_gene_call'] == gene_id
 
         return np.unique(self.split.SNV_profiles['codon_order_in_gene'][matches_gene_boolean])
 
 
     def get_codon_sequence_for_gene(self, gene_call):
+        """Helper for run_SCVs"""
+
         seq_dict = {self.split.parent: {'sequence': self.split.sequence}}
 
         return utils.get_list_of_codons_for_gene_call(gene_call, seq_dict, subtract_by=self.split.start)
@@ -386,6 +390,7 @@ class Auxiliary:
 
     def init_allele_counts_array(self, gene_call):
         """Create the array that will house the codon allele counts for a gene"""
+
         allele_counts_array_shape = (len(constants.codons), (gene_call['stop'] - gene_call['start']) // 3)
 
         return np.zeros(allele_counts_array_shape)
