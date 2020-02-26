@@ -305,9 +305,9 @@ class Auxiliary:
                         gene_allele_counts[gene_id] = self.init_allele_counts_array(gene_call)
 
                     codon_sequence_as_index = (
-                        utils.nt_seq_to_codon_num_array(gapless_segment[:, 2], seq_is_in_ord_representation=True)
+                        utils.nt_seq_to_codon_num_array(gapless_segment[:, 1], seq_is_in_ord_representation=True)
                         if gene_call['direction'] == 'f'
-                        else utils.nt_seq_to_RC_codon_num_array(gapless_segment[:, 2], seq_is_in_ord_representation=True)
+                        else utils.nt_seq_to_RC_codon_num_array(gapless_segment[:, 1], seq_is_in_ord_representation=True)
                     )
 
                     start_codon = np.min(self.split.per_position_info['codon_order_in_gene'][block_start_split:block_end_split])
