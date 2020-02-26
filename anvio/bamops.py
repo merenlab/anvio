@@ -292,6 +292,137 @@ class Read:
                                      0 if side == 'left' else 1)
 
 
+class Coverage:
+    def __init__(self):
+        self.c = None # becomes a numpy array of coverage values
+        self.min = 0
+        self.max = 0
+        self.std = 0.0
+        self.mean = 0.0
+        self.median = 0.0
+        self.detection = 0.0
+        self.mean_Q2Q3 = 0.0
+
+        self.routine_dict = {
+            'accurate': self._accurate_routine,
+        }
+
+
+    def run(self, bam, contig_or_split, start=None, end=None, method='accurate', max_coverage=None, skip_coverage_stats=False, **kwargs):
+        """Loop through the bam pileup and calculate coverage over a defined region of a contig or split
+
+        Parameters
+        ==========
+        bam : bamops.BAMFileObject
+            Init such an object the way you would a pysam.AlignmentFile, i.e. bam =
+            bamops.BAMFileObject(path_to_bam)
+
+        contig_or_split : anvio.contigops.Split or anvio.contigops.Contig or str
+            If Split object is passed, and `start` or `end` are None, they are automatically set to
+            contig_or_split.start and contig_or_split.end. If str object is passed, it is assumed to
+            be a contig name
+
+        start : int
+            The index start of where coverage is calculated. Relative to the contig, even when
+            `contig_or_split` is a Split object.
+
+        end : int
+            The index end of where coverage is calculated. Relative to the contig, even when
+            `contig_or_split` is a Split object.
+
+        method : string
+            How do you want to calculate? Options: see self.routine_dict
+
+        skip_coverage_stats : bool, False
+            Should the call to process_c be skipped?
+
+        **kwargs : **kwargs
+            kwargs are passed to the method chosen
+        """
+
+        # if there are defined start and ends we have to trim reads so their ranges fit inside self.c
+        iterator = bam.fetch if (start is None and end is None) else bam.fetch_and_trim
+
+        if isinstance(contig_or_split, anvio.contigops.Split):
+            contig_name = contig_or_split.parent
+            start = contig_or_split.start if not start else start
+            end = contig_or_split.end if not end else end
+
+        elif isinstance(contig_or_split, anvio.contigops.Contig):
+            contig_name = contig_or_split.name
+            start = 0 if not start else start
+            end = contig_or_split.length if not end else end
+
+        elif isinstance(contig_or_split, str):
+            contig_name = contig_or_split
+            start = 0 if not start else start
+            end = bam.get_reference_length(contig_name) if not end else end
+
+        else:
+            raise ConfigError("Coverage.run :: You can't pass an object of type %s as contig_or_split" % type(contig_or_split))
+
+        # a coverage array the size of the defined range is allocated in memory
+        c = np.zeros(end - start).astype(int)
+
+        try:
+            routine = self.routine_dict[method]
+        except KeyError:
+            raise ConfigError("Coverage :: %s is not a valid method." % method)
+
+        self.c = routine(c, bam, contig_name, start, end, iterator, **kwargs)
+
+        if max_coverage is not None:
+            if np.max(self.c) > max_coverage:
+                self.c[self.c > max_coverage] = max_coverage
+
+        if len(self.c):
+            try:
+                contig_or_split.explicit_length = len(self.c)
+            except AttributeError:
+                pass
+
+            if not skip_coverage_stats:
+                self.process_c(self.c)
+
+
+    def _accurate_routine(self, c, bam, contig_name, start, end, iterator):
+        """Routine that accounts for gaps in the alignment
+
+        Notes
+        =====
+        - There used to be an '_approximate_routine', but its only negligibly faster
+        - Should typically not be called explicitly. Use run instead
+        - fancy indexing of reference_positions was also considered, but is much slower because it
+          uses fancy-indexing
+          https://jakevdp.github.io/PythonDataScienceHandbook/02.07-fancy-indexing.html:
+        """
+
+        for read in iterator(contig_name, start, end):
+            for start, end in read.get_blocks():
+                c[start:end] += 1
+
+        return c
+
+
+    def process_c(self, c):
+        self.min = np.amin(c)
+        self.max = np.amax(c)
+        self.median = np.median(c)
+        self.mean = np.mean(c)
+        self.std = np.std(c)
+        self.detection = np.sum(c > 0) / len(c)
+
+        self.is_outlier = anvio.sequence.get_list_of_outliers(c, median=self.median) # this is an array not a list
+
+        if c.size < 4:
+            self.mean_Q2Q3 = self.mean
+        else:
+            sorted_c = sorted(c)
+            Q = int(c.size * 0.25)
+            Q2Q3 = sorted_c[Q:-Q]
+            self.mean_Q2Q3 = np.mean(Q2Q3)
+
+
 class LinkMerDatum:
     def __init__(self, sample_id, read_id, is_read1):
         self.read_id = read_id
