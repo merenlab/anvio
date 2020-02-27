@@ -2019,13 +2019,14 @@ D = {
                      "class based on the number of threads. If you have *any* hesitation about whether you know what you are doing, "
                      "you should not change this value."}
                 ),
-    'window-size': (
-            ['--window-size'],
+    'window-range': (
+            ['--window-range'],
             {'default': 500,
-             'metavar': 'WINDOW_SIZE',
-             'type': int,
+             'metavar': 'WINDOW_RANGE',
+             'type': str,
              'required': False,
-             'help': "The size of the window of ngram to analyze for synteny patterns."}
+             'help': "The range of window sizes of ngrams to analyze for synteny patterns."
+                     "Please format the window-range as x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)"}
                 ),
     'write-buffer-size': (
             ['--write-buffer-size'],
