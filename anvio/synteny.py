@@ -85,12 +85,14 @@ class NGram(object):
 
         # Must contain ":"
         if ":" not in self.window_range:
-            raise ConfigError("Format of window_range must be x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
+            raise ConfigError("anvi'o would love to slice and dice your loci, but... the "
+                              "Format of window_range must be x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
 
         # Must contain 2 integers for window
-        self.window_range = self.window_range.split(":")
-        if len(self.window_range) > 2 or not isinstance(self.window_range[0:1], int):
-            raise ConfigError("window_range must only contain 2 integers and be formated as x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
+        self.window_range = [int(n) for n in self.window_range.split(":")]
+        if len(self.window_range) > 2 or not isinstance(self.window_range[0], int) or not isinstance(self.window_range[1], int):
+            raise ConfigError("anvi'o would love to slice and dice your loci, but... the "
+                              "window_range must only contain 2 integers and be formated as x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
 
     def populate_genes(self):
         genes_and_functions_list = []
@@ -127,15 +129,15 @@ class NGram(object):
                     df['N'] = n
                     ngram_count_df_list.append(df)
 
-                counter = counter + 1
-                if counter == 2:
-                    break
+                # counter = counter + 1
+                # if counter == 2:
+                #     break
        
         ngram_count_df_final = pd.concat(ngram_count_df_list)
         ngram_count_df_final.to_csv(self.output_file, sep = '\t',index=False)
 
 
-        print(ngram_count_df_final)
+        # print(ngram_count_df_final)
 
 
 
