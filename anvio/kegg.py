@@ -227,7 +227,7 @@ class KeggSetup(KeggContext):
         current_subcategory = None
 
         for line in f.readlines():
-            line.strip('\n')
+            line = line.strip('\n')
             first_char = line[0]
 
             # garbage lines
@@ -671,7 +671,7 @@ class KeggModulesDatabase(KeggContext):
 
             prev_data_name_field = None
             for line in f.readlines():
-                line.strip('\n')
+                line = line.strip('\n')
                 line_number += 1
 
                 # check for last line ///. We don't want to send the last line to the parsing function because it will break.
