@@ -586,6 +586,63 @@ class KeggModulesDatabase(KeggContext):
 
         self.db.create_table(self.module_table_name, self.module_table_structure, self.module_table_types)
 
+    def data_vals_sanity_check(self, data_vals, current_data_name):
+        """This function checks if the data values were correctly parsed from a line in a KEGG module file.
+
+        This is a sadly necessary step because some KEGG module file lines are problematic and don't follow the right format (ie, 2+ spaces
+        between different fields). So here we check if the values that we parsed look like they are the right format, without any extra bits.
+        Each data name (ORTHOLOGY, DEFINITION, etc) has a different format to check for.
+
+        Note that we don't check the following data name types: NAME, REFERENCE
+
+        PARAMETERS
+        ==========
+        data_vals           str, the data values field (split from the kegg module line)
+        current_data_name   str, which data name we are working on. It should never be None because we should have already figured this out by parsing the line.
+
+        RETURNS
+        =======
+        is_ok               bool, whether the values look correctly formatted or not
+        """
+
+        is_ok = True
+        extra_info_to_print = None
+
+        if not current_data_name:
+            raise ConfigError("data_vals_sanity_check() cannot be performed when the current data name is None. Something was not right when parsing the KEGG \
+            module line.")
+        elif current_data_name == "ENTRY":
+            # example format: M00175
+            if data_vals[0] != 'M' or len(data_vals) != 6:
+                is_ok = False
+        elif current_data_name == "DEFINITION":
+            # example format: (K01647,K05942) (K01681,K01682) (K00031,K00030) (K00164+K00658+K00382,K00174+K00175-K00177-K00176)
+            knums = [x for x in re.split('(|)|,| |+|-',data_vals) if x]
+            for k in knums:
+                if k[0] != 'K' or len(k) != 6:
+                    is_ok = False
+                    extra_info_to_print = knums
+        elif current_data_name == "ORTHOLOGY":
+            # example format: K00234,K00235,K00236,K00237
+            knums = [x for x in re.split(',|+|-',data_vals) if x]
+            for k in knums:
+                if k[0] != 'K' or len(k) != 6:
+                    is_ok = False
+                    extra_info_to_print = knums
+
+
+        if not is_ok:
+            if extra_info_to_print:
+                self.run.warning("Found an issue with a KEGG Module line. Data values incorrectly parsed. Current data name is %s, here is the \
+                incorrectly-formatted data value field: %s \
+                and here is somem extra info that may be helpful: %s" % (current_data_name, data_vals, extra_info_to_print))
+            else:
+                self.run.warning("Found an issue with a KEGG Module line. Data values incorrectly parsed. Current data name is %s, here is the \
+                incorrectly-formatted data value field: %s" % (current_data_name, data_vals))
+
+
+        return is_ok
+
 
     def parse_kegg_modules_line(self, line, line_num = None, current_data_name=None):
         """This function parses information from one line of a KEGG module file.
@@ -623,11 +680,13 @@ class KeggModulesDatabase(KeggContext):
                 is the line: %s)" % (line))
 
             current_data_name = fields[0]
-            data_vals = fields[1]
-            if len(fields) > 2: # not all lines have a definition field
-                data_def = fields[2]
-        else:  # data name known, first field still exists but is actually the empty string ''
-            data_vals = fields[1]
+        # note that if data name is known, first field still exists but is actually the empty string ''
+        # so no matter which situation, data value is field 1 and data definition (if any) is field 2
+        data_vals = fields[1]
+        # need to sanity check data value field because SOME modules don't follow the 2-space separation formatting
+        vals_are_okay = self.data_vals_sanity_check(data_vals, current_data_name)
+
+        if vals_are_okay and len(fields) > 2: # not all lines have a definition field
             data_def = fields[2]
 
         # some types of information may need to be split into multiple db entries
