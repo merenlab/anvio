@@ -1,16 +1,15 @@
+
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 """
-    Classes to work with ngrams.
+    Classes to work with ngrams of contig functions.
 
     These are classes to deconstruct loci into ngrams. They will be used
     to analyze conserved genes and synteny structures across loci.
 """
 
 import pandas as pd
-
 from collections import Counter
-
 import anvio
 import anvio.tables as t
 import anvio.utils as utils
@@ -18,7 +17,6 @@ import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.genomedescriptions as genomedescriptions
-
 from anvio.errors import ConfigError
 
 
@@ -32,24 +30,10 @@ __email__ = "mschechter@uchicago.edu"
 
 
 class NGram(object):
-    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress(), skip_sanity_check=False):
         """
-        To test this code run:
-
-            >>> ./run_pangenome_tests.sh
-            >>> cd anvio/anvio/tests/sandbox/test-output/pan_test
-            >>> anvi-analyze-synteny -e external-genomes.txt  \
-                                     --annotation-source COG_FUNCTION \
-                                     --window-size 3 \
-                                     -o test
-
-            >>> anvi-analyze-synteny -e external-genomes-cps.txt  \
-                                     --annotation-source COG_FUNCTION \
-                                     --window-size 2\
-                                     -o test
-        Explore annotations:
-        for i in `ls Bfragilis_00*_test`; do head -n4 $i ; done
-
+        __init__ will parse arguments, run sanity_check, and run the driver method
+        of this class, populate_genes.
 
         """
 
@@ -60,22 +44,31 @@ class NGram(object):
         self.genes = {}
         self.contigs_list = {}
 
+        # Parse arguments
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.external_genomes = A('external_genomes')
         self.annotation_source = A('annotation_source')
-        self.window_size = A('window_size')
-
+        self.window_range = A('window_range')
+        self.is_in_unkowns_mode = A('analyze_unknown_functions')
         self.external_genomes = utils.get_TAB_delimited_file_as_dictionary(self.external_genomes)
+        self.output_file = A('output_file')
 
-        self.sanity_check()
+        # Run main methods
+        if not skip_sanity_check:
+            self.sanity_check()
 
-        self.populate_genes()
+        # unless we are in debug mode, let's keep things quiet.
+        if anvio.DEBUG:
+            self.run_object = terminal.Run()
+        else:
+            self.run_object = terminal.Run(verbose=False)
 
 
     def sanity_check(self):
-        #FIXME: do the remaining sanity checks here.
 
         # checking if the annotation source is common accross all contigs databases
+        #----------------------------
+
         g = genomedescriptions.GenomeDescriptions(self.args)
         g.load_genomes_descriptions(init=False)
 
@@ -87,10 +80,23 @@ class NGram(object):
         if not self.args.output_file:
             raise ConfigError("You should provide an output file name.")
 
+        # checking window-range input
+        #----------------------------
+
+        # Must contain ":"
+        if ":" not in self.window_range:
+            raise ConfigError("Format of window_range must be x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
+
+        # Must contain 2 integers for window
+        self.window_range = self.window_range.split(":")
+        if len(self.window_range) > 2 or not isinstance(self.window_range[0:1], int):
+            raise ConfigError("window_range must only contain 2 integers and be formated as x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
 
     def populate_genes(self):
         genes_and_functions_list = []
-        ngram_counts = []
+        ngram_count_df_list = []
+        ngram_count_df = pd.DataFrame(columns=['ngram', 'count', 'contigDB', 'contig_name', 'N'])
+        final_list = []
         counter = 0
         # Iterate through contigsDBs
         for contigs_db_name in self.external_genomes:
@@ -112,25 +118,26 @@ class NGram(object):
                         contig_function_list.append([i[0],i[1]])
                 contigs_dict[contig_name] = contig_function_list
 
-            # Run synteny algorithm and count occurrences of ngrams
-            # ngram_counts.append(self.count_synteny_1(contigs_dict))
-                ngram_counts.append(self.count_synteny(contigs_dict))
+            # Iterate over range of window sizes and run synteny algorithm to count occurrences of ngrams
+                for n in self.window_range:
+                    ngram_count_df_list_dict = self.count_synteny(contigs_dict, n)
+                    df = pd.DataFrame(list(ngram_count_df_list_dict.items()), columns= ['ngram','count'])
+                    df['contigDB'] = contigs_db_name
+                    df['contig_name'] = contig_name
+                    df['N'] = n
+                    ngram_count_df_list.append(df)
 
-            counter = counter + 1
-            if counter == 8:
-                break
+                counter = counter + 1
+                if counter == 2:
+                    break
+       
+        ngram_count_df_final = pd.concat(ngram_count_df_list)
+        ngram_count_df_final.to_csv(self.output_file, sep = '\t',index=False)
 
-        print(ngram_counts)
 
-        # Merge list of dicts into final dict of ngram counts
-        final_dict = Counter()
-        for dictio in ngram_counts:
-            for key, value in dictio.items():
-                final_dict[key] += value
+        print(ngram_count_df_final)
 
-        df = pd.DataFrame(list(final_dict.items()), columns=['ngram', 'Count'])
 
-        print(df)
 
     def get_genes_and_functions_from_contigs_db(self, contigs_db_path):
         # get contigsDB
@@ -156,7 +163,8 @@ class NGram(object):
                 list_of_gene_attributes.extend((gci, accession, contig_name))
                 genes_and_functions_list.append(list_of_gene_attributes)
             else: # adding in "unknown annotation" if there is none
-                accession = "unknown-function-" + "{:06d}".format(1) + str(counter) # add leading 0
+                # accession = "unknown-function-" + "{:06d}".format(1) + str(counter) # add leading 0
+                accession = "unknown-function"
                 contig_name = genes_in_contigs[counter]['contig']
                 list_of_gene_attributes.extend((counter,accession,contig_name))
                 genes_and_functions_list.append(list_of_gene_attributes)
@@ -165,51 +173,30 @@ class NGram(object):
         return genes_and_functions_list
 
 
-    def count_synteny(self, contigs_dict):
+    def count_synteny(self, contigs_dict, n):
         """
         Need to return counts for 1 contig at a time and
         give back a dictionary with contig {name: {ngram:count}}
         """
-        k = self.window_size
+        # if self.is_in_unkowns_mode:
+        #     print("as;ldkjfas;lkdfas;dlkfa;slkdfl;ksd")
+        # n = int(n)
         for contig_name in sorted(contigs_dict.keys()):
             contig_gci_function_list = contigs_dict[contig_name]
             function_list = [entry[1] for entry in contig_gci_function_list]
 
             kFreq = {}
-            for i in range(0, len(function_list) - k + 1):
-                window = sorted(function_list[i:i + k])
+            for i in range(0, len(function_list) - n + 1):
+                window = sorted(function_list[i:i + n])
                 ngram = "::".join(map(str, list(window)))
-                # if ngram is not in dictionary add it
-                # if it is add + 1
-                if ngram in kFreq:
-                    kFreq[ngram] +=  1
+                if not self.is_in_unkowns_mode and "unknown-function" in ngram: # conditional to record unk functions
+                    continue
                 else:
-                    kFreq[ngram] = 1
-            return kFreq
-
-
-    def count_synteny_1(self, contigs_dict):
-        """
-        """
-
-        for contig_name in sorted(contigs_dict.keys()):
-            contig_gci_function_list = contigs_dict[contig_name]
-            function_list = [entry[1] for entry in contig_gci_function_list]
-            # print(function_list)
-            k = "2,3"
-            k = k.split(sep = ",")
-            list_of_dicts = []
-            for k in range(int(k[0]),int(k[1])+1):
-
-                kFreq = {}
-                for i in range(0, len(function_list) - k + 1):
-                    window = sorted(function_list[i:i + k])
-                    ngram = "::".join(map(str, list(window)))
                     # if ngram is not in dictionary add it
                     # if it is add + 1
                     if ngram in kFreq:
                         kFreq[ngram] +=  1
                     else:
                         kFreq[ngram] = 1
-                    list_of_dicts.extend((contig_name,k,kFreq))
-                return list_of_dicts
+            return kFreq
+
