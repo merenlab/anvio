@@ -256,7 +256,7 @@ class KeggSetup(KeggContext):
                 else:
                     raise ConfigError("While parsing the KEGG file %s, we found an unknown line code %s. This has \
                     made the file unparseable. Sad. :(" % (self.kegg_module_file, first_char))
-            self.progress.end()
+        self.progress.end()
 
     def download_modules(self):
         """This function downloads the KEGG modules.
@@ -655,7 +655,7 @@ class KeggModulesDatabase(KeggContext):
             raise ConfigError("Appparently, the Kegg Modules were not correctly setup and now all sorts of things are broken. The \
              Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone except maybe developers, so \
              if you do not fall into that category you are likely in deep doo-doo. Maybe re-running setup with --reset will work? (if not, you \
-             probably should email/Slack/telepathically cry out for help to the developers). By the way, if this helps make things any clearer, \
+             probably should email/Slack/telepathically cry out for help to the developers). Anyway, if this helps make things any clearer, \
              the number of modules in the module dictionary is currently %s" % len(self.module_dict.keys()))
 
         # init the Modules table
