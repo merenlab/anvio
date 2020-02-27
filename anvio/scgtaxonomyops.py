@@ -336,11 +336,15 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs):
                         (len(genomes_without_scg_taxonomy), len(g.genomes), ', '.join(genomes_without_scg_taxonomy)))
 
         self.genomes = copy.deepcopy(g.genomes)
+        self.external_genome_names = copy.deepcopy(g.external_genome_names)
+        self.internal_genome_names = copy.deepcopy(g.internal_genome_names)
 
 
     def estimate(self):
         if not self.genomes:
             self.init_genomes()
+            self.run.info("Num external (meta)genomes", len(self.external_genome_names))
+            self.run.info("Num internal (meta)genomes", len(self.internal_genome_names))
 
         if self.report_scg_frequencies_path:
             self.report_scg_frequencies_as_TAB_delimited_file()
@@ -360,6 +364,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs):
             self.run.info("SCG [chosen by the user]", self.scg_name_for_metagenome_mode)
 
         scg_taxonomy_super_dict = self.get_taxonomy_super_dict()
+
         print(scg_taxonomy_super_dict)
 
 
@@ -379,7 +384,30 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs):
         return scgs_ordered_based_on_frequency[0]
 
 
-    def get_taxonomy_super_dict(self):
+    def get_taxonomy_super_dict_for_internal_genomes(self):
+        scg_taxonomy_super_dict = {}
+
+        non_single_profiles = [contigs_db_name for contigs_db_name in self.genomes if utils.is_profile_db_merged(self.genomes[contigs_db_name]['profile_db_path'])
+                                                                                      and not utils.is_blank_profile(self.genomes[contigs_db_name]['profile_db_path'])]
+        if len(non_single_profiles):
+            raise ConfigError("All profile databases in your internal genomes file must be single "
+                              "profiles for this to work.")
+
+        for contigs_db_name in self.genomes:
+            args = SCGTaxonomyEstimatorArgs(self.args)
+            args.contigs_db = self.genomes[contigs_db_name]['contigs_db_path']
+            args.profile_db = self.genomes[contigs_db_name]['profile_db_path']
+            args.metagenome_mode = True
+
+            args.internal_genomes = None
+            args.external_genomes = None
+
+            scg_taxonomy_super_dict[contigs_db_name] = SCGTaxonomyEstimatorSingle(args, run=run_quiet).get_scg_taxonomy_super_dict()
+
+        return scg_taxonomy_super_dict
+
+
+    def get_taxonomy_super_dict_for_external_genomes(self):
         scg_taxonomy_super_dict = {}
 
         for contigs_db_name in self.genomes:
@@ -392,6 +420,16 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs):
             scg_taxonomy_super_dict[contigs_db_name] = SCGTaxonomyEstimatorSingle(args, run=run_quiet).get_scg_taxonomy_super_dict()
 
         return scg_taxonomy_super_dict
+
+
+    def get_taxonomy_super_dict(self):
+        if self.external_genome_names and not self.internal_genome_names:
+            return self.get_taxonomy_super_dict_for_external_genomes()
+        elif self.internal_genome_names and not self.external_genome_names:
+            return self.get_taxonomy_super_dict_for_internal_genomes()
+        else:
+            self.run.warning("You have mixed stuff. Falling back to external gneomes only, so your profile databases will not be taken into consideration.")
+            return self.get_taxonomy_super_dict_for_external_genomes()
 
 
     def get_scg_frequencies(self):
