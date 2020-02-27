@@ -104,9 +104,9 @@ class SCGTaxonomyContext(object):
     """The purpose of this base class is ot define file paths and constants for all single-copy
        core gene taxonomy operations.
     """
-    def __init__(self, args, skip_sanity_check=False):
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.skip_sanity_check = A('skip_sanity_check') or skip_sanity_check
+    def __init__(self, scgs_taxonomy_data_dir=None, scgs_taxonomy_remote_database_url=None, run=terminal.Run(), progress=terminal.Progress()):
+        self.run = run
+        self.progress = progress
 
         # hard-coded GTDB variables. poor design, but I don't think we are going do need an
         # alternative to GTDB.
@@ -123,11 +123,11 @@ class SCGTaxonomyContext(object):
 
         # these are all the user accessible paths. defaults will serve well for all applications,
         # but these can be used for debugging.
-        self.SCGs_taxonomy_data_dir = (os.path.abspath(A("scgs_taxonomy_data_dir")) if A("scgs_taxonomy_data_dir") else None) or (os.path.join(self.default_scgs_taxonomy_data_dir, self.target_database))
+        self.SCGs_taxonomy_data_dir = (os.path.abspath(scgs_taxonomy_data_dir) if scgs_taxonomy_data_dir else None) or (os.path.join(self.default_scgs_taxonomy_data_dir, self.target_database))
         self.msa_individual_genes_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'MSA_OF_INDIVIDUAL_SCGs')
         self.accession_to_taxonomy_file_path = os.path.join(self.SCGs_taxonomy_data_dir, 'ACCESSION_TO_TAXONOMY.txt')
         self.search_databases_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'SCG_SEARCH_DATABASES')
-        self.target_database_URL = A("scgs_taxonomy_remote_database_url") or self.target_database_URL
+        self.target_database_URL = scgs_taxonomy_remote_database_url or self.target_database_URL
 
         # some dictionaries for convenience. we set them up here, but the proper place to sanity check
         # them may be somewhere else. for instance, when this class is inheritded by SetupLocalSCGTaxonomyData
@@ -181,6 +181,14 @@ class SCGTaxonomyContext(object):
 
             self.progress.end()
 
+
+# here we create an instance for the module. the idea is to overwrite it if
+# it is necessary to overwrite some of the defaults
+ctx = SCGTaxonomyContext()
+
+
+class SanityCheck(object):
+    def __init__(self):
         if not self.skip_sanity_check:
             self.sanity_check()
         else:
@@ -188,13 +196,13 @@ class SCGTaxonomyContext(object):
 
 
     def sanity_check(self):
-        if sorted(list(locally_known_HMMs_to_remote_FASTAs.keys())) != sorted(self.default_scgs_for_taxonomy):
+        if sorted(list(locally_known_HMMs_to_remote_FASTAs.keys())) != sorted(self.ctx.default_scgs_for_taxonomy):
             raise ConfigError("Oh no. The SCGs designated to be used for all SCG taxonomy tasks in the constants.py "
                               "are not the same names described in locally known HMMs to remote FASTA files "
                               "conversion table definedd in SetupLocalSCGTaxonomyData module. If this makes zero "
                               "sense to you please ask a developer.")
 
-        if not self.SCGs_taxonomy_data_dir:
+        if not self.ctx.SCGs_taxonomy_data_dir:
             raise ConfigError("`SetupLocalSCGTaxonomyData` class is upset because it was inherited without "
                               "a directory for SCG taxonomy data to be stored :( This variable can't be None.")
 
@@ -205,25 +213,25 @@ class SCGTaxonomyContext(object):
                                   "You can, but then this happens :/")
 
         if self.__class__.__name__ in ['PopulateContigsDatabaseWithSCGTaxonomy', 'SCGTaxonomyEstimatorSingle', 'SCGTaxonomyEstimatorMulti']:
-            if not os.path.exists(self.SCGs_taxonomy_data_dir):
+            if not os.path.exists(self.ctx.SCGs_taxonomy_data_dir):
                 raise ConfigError("Anvi'o could not find the data directory for the single-copy core genes taxonomy "
                                   "setup. You may need to run `anvi-setup-scg-databases`, or provide a directory path "
                                   "where SCG databases are set up. This is the current path anvi'o is considering (which "
-                                  "can be changed via the `--scgs-taxonomy-data-dir` parameter): '%s'" % (self.SCGs_taxonomy_data_dir))
+                                  "can be changed via the `--scgs-taxonomy-data-dir` parameter): '%s'" % (self.ctx.SCGs_taxonomy_data_dir))
 
-            if not os.path.exists(self.accession_to_taxonomy_file_path):
+            if not os.path.exists(self.ctx.accession_to_taxonomy_file_path):
                 raise ConfigError("While your SCG taxonomy data dir seems to be in place, it is missing at least one critical "
                                   "file (in this case, the file to resolve accession IDs to taxon names). You may need to run "
                                   "the program `anvi-setup-scg-databases` with the `--reset` flag to set things right again.")
 
             if self.__class__.__name__ in ['PopulateContigsDatabaseWithSCGTaxonomy']:
-                missing_SCG_databases = [SCG for SCG in self.SCGs if not os.path.exists(self.SCGs[SCG]['db'])]
+                missing_SCG_databases = [SCG for SCG in self.ctx.SCGs if not os.path.exists(self.ctx.SCGs[SCG]['db'])]
                 if len(missing_SCG_databases):
                     raise ConfigError("OK. It is very likley that if you run `anvi-setup-scg-databases` first you will be golden. "
                                       "Because even though anvi'o found the directory for taxonomy headquarters, "
                                       "your setup seems to be missing %d of %d databases required for everything to work "
                                       "with the current genes configuration of this class (sources say this is a record, FYI)." % \
-                                                (len(missing_SCG_databases), len(self.SCGs)))
+                                                (len(missing_SCG_databases), len(self.ctx.SCGs)))
 
             if self.__class__.__name__ in ['SCGTaxonomyEstimatorSingle']:
                 if self.external_genomes or self.internal_genomes:
@@ -257,11 +265,11 @@ class SCGTaxonomyContext(object):
                     raise ConfigError("If you are not running in `--metagenome-mode`, there is no use to define a SCG name for "
                                       "this mode :/")
 
-                if self.scg_name_for_metagenome_mode and self.scg_name_for_metagenome_mode not in self.SCGs:
+                if self.scg_name_for_metagenome_mode and self.scg_name_for_metagenome_mode not in self.ctx.SCGs:
                     raise ConfigError("We understand that you wish to work with '%s' to study the taxonomic make up of your contigs "
                                       "database in metagenome mode. But then this gene is not one of those anvi'o recognizes as "
                                       "suitable SCGs to do that. Here is a list for you to choose from: '%s'." \
-                                                            % (self.scg_name_for_metagenome_mode, ', '.join(self.SCGs.keys())))
+                                                            % (self.scg_name_for_metagenome_mode, ', '.join(self.ctx.SCGs.keys())))
 
                 if self.compute_scg_coverages and not self.profile_db_path:
                     raise ConfigError("The flag `--compute-scg-coverages` is only good if there is a non-blank profile database around "
@@ -289,32 +297,6 @@ class SCGTaxonomyContext(object):
                     filesnpaths.is_output_file_writable(self.output_file_path)
 
 
-    def update_dict_with_taxonomy(self, d, mode=None):
-        """Takes a dictionary that includes a key `accession` and populates the dictionary with taxonomy"""
-
-        if not mode:
-            if not 'accession' in d:
-                raise ConfigError("`add_taxonomy_to_dict` is speaking: the dictionary sent here does not have a member "
-                                  "with key `accession`.")
-
-            if d['accession'] in self.accession_to_taxonomy_dict:
-                d.update(self.accession_to_taxonomy_dict[d['accession']])
-            else:
-                d.update(self.accession_to_taxonomy_dict['unknown_accession'])
-
-        elif mode == 'list_of_dicts':
-            if len([entry for entry in d if 'accession' not in entry]):
-                raise ConfigError("`add_taxonomy_to_dict` is speaking: you have a bad formatted data here :/")
-
-            for entry in d:
-                print(self.taxonomy_dict[entry['accession']])
-
-        else:
-            raise ConfigError("An unknown mode (%s) is set to `add_taxonomy_to_dict` :/" % (mode))
-
-        return d
-
-
 class SCGTaxonomyEstimatorArgs(object):
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -329,14 +311,14 @@ class SCGTaxonomyEstimatorArgs(object):
         self.external_genomes = A('external_genomes')
 
 
-class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
+class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress(), skip_init=False):
         self.args = args
         self.run = run
         self.progress = progress
 
         SCGTaxonomyEstimatorArgs.__init__(self, self.args)
-        SCGTaxonomyContext.__init__(self, self.args)
+        self.ctx = ctx
 
         self.genomes = None
 
@@ -424,10 +406,10 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
             args.external_genomes = None
 
             e = SCGTaxonomyEstimatorSingle(args, run=run_quiet)
-            for scg_name in self.default_scgs_for_taxonomy:
+            for scg_name in self.ctx.default_scgs_for_taxonomy:
                 scg_frequencies[contigs_db_name][scg_name] = e.frequency_of_scgs_with_taxonomy[scg_name]
 
-        scg_frequencies_across_contigs_dbs = [(scg_name, sum([scg_frequencies[genome_name][scg_name] for genome_name in scg_frequencies])) for scg_name in self.default_scgs_for_taxonomy]
+        scg_frequencies_across_contigs_dbs = [(scg_name, sum([scg_frequencies[genome_name][scg_name] for genome_name in scg_frequencies])) for scg_name in self.ctx.default_scgs_for_taxonomy]
         scgs_ordered_based_on_frequency = [frequency_tuple[0] for frequency_tuple in sorted(scg_frequencies_across_contigs_dbs, key = lambda x: x[1], reverse=True)]
 
         num_scgs_for_each_contigs_db = [(genome_name, sum(scg_frequencies[genome_name].values())) for genome_name in scg_frequencies]
@@ -436,7 +418,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
         return scgs_ordered_based_on_frequency, contigs_dbs_ordered_based_on_num_scgs, scg_frequencies
 
 
-class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
+class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress(), skip_init=False):
         self.args = args
         self.run = run
@@ -451,7 +433,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
 
         SCGTaxonomyEstimatorArgs.__init__(self, self.args)
 
-        SCGTaxonomyContext.__init__(self, self.args)
+        self.ctx = ctx
 
         self.run.info('Contigs DB', self.contigs_db_path)
         self.run.info('Profile DB', self.profile_db_path)
@@ -492,7 +474,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
         self.progress.new('Initializing')
         self.progress.update('SCG taxonomy dictionary')
 
-        for scg_name in self.SCGs:
+        for scg_name in self.ctx.SCGs:
             self.scg_name_to_gene_caller_id_dict[scg_name] = set([])
 
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
@@ -629,7 +611,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
 
         taxonomic_levels_to_nullify = []
 
-        for taxonomic_level in self.levels_of_taxonomy[::-1]:
+        for taxonomic_level in self.ctx.levels_of_taxonomy[::-1]:
             if not taxonomy_dict_entry[taxonomic_level]:
                 continue
 
@@ -646,8 +628,8 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
 
         # this is the best way to make sure we are not going to nullify order, but leave behind a family name.
         if taxonomic_levels_to_nullify:
-            level_below_which_to_nullify = min([self.levels_of_taxonomy.index(l) for l in taxonomic_levels_to_nullify])
-            for taxonomic_level in self.levels_of_taxonomy[level_below_which_to_nullify:]:
+            level_below_which_to_nullify = min([self.ctx.levels_of_taxonomy.index(l) for l in taxonomic_levels_to_nullify])
+            for taxonomic_level in self.ctx.levels_of_taxonomy[level_below_which_to_nullify:]:
                 taxonomy_dict_entry[taxonomic_level] = None
 
         return taxonomy_dict_entry
@@ -656,7 +638,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
     def get_blank_hit_template_dict(self):
         hit = {}
 
-        for level in self.levels_of_taxonomy[::-1]:
+        for level in self.ctx.levels_of_taxonomy[::-1]:
             hit[level] = None
 
         return hit
@@ -666,7 +648,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
         """Takes in a scg_taxonomy_dict, returns a final taxonomic string that summarize all"""
 
         if not len(scg_taxonomy_dict):
-            return dict([(l, None) for l in self.levels_of_taxonomy])
+            return dict([(l, None) for l in self.ctx.levels_of_taxonomy])
 
         pd.set_option('mode.chained_assignment', None)
 
@@ -697,7 +679,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
             # if there are competing hashes, we need to be more careful to decide
             # which taxonomic level should we use to cut things off.
             consensus_hit = self.get_blank_hit_template_dict()
-            for level in self.levels_of_taxonomy[::-1]:
+            for level in self.ctx.levels_of_taxonomy[::-1]:
                 if len(df[level].unique()) == 1:
                     consensus_hit[level] = df[level].unique()[0]
 
@@ -713,7 +695,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
             table = []
 
             for hit in hits:
-                taxon_text = ' / '.join([hit[l] if hit[l] else '' for l in self.levels_of_taxonomy])
+                taxon_text = ' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy])
 
                 # if the hit we are working on sent here as 'consensus', we will color it up a bit so it shows up
                 # more clearly in the debug output.
@@ -790,7 +772,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
         total_scgs = len(scg_taxonomy_dict)
         supporting_scgs = 0
 
-        consensus_taxonomy_levels_occupied = [level for level in self.levels_of_taxonomy if consensus_taxonomy[level]]
+        consensus_taxonomy_levels_occupied = [level for level in self.ctx.levels_of_taxonomy if consensus_taxonomy[level]]
         consensus_taxonomy_str = ' / '.join([consensus_taxonomy[level] for level in consensus_taxonomy_levels_occupied])
 
         for scg_taxonomy_hit in scg_taxonomy_dict.values():
@@ -972,10 +954,10 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
             # set the taxonomy text depending on how much room we have. if there are sample coverages, keep it simple,
             # otherwise show the entire taxonomy text.
             if self.compute_scg_coverages:
-                taxon_text_l = ['(%s) %s' % (l.split('_')[1][0], bin_data[l]) for l in self.levels_of_taxonomy[::-1] if bin_data[l]]
+                taxon_text_l = ['(%s) %s' % (l.split('_')[1][0], bin_data[l]) for l in self.ctx.levels_of_taxonomy[::-1] if bin_data[l]]
                 taxon_text = taxon_text_l[0] if taxon_text_l else '(NA) NA'
             else:
-                taxon_text = ' / '.join([bin_data[l] if bin_data[l] else '' for l in self.levels_of_taxonomy])
+                taxon_text = ' / '.join([bin_data[l] if bin_data[l] else '' for l in self.ctx.levels_of_taxonomy])
 
             # setting up the table columns here.
             if self.metagenome_mode:
@@ -1008,7 +990,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
         else:
             headers = ['bin_name', 'total_scgs', 'supporting_scgs']
 
-        headers += self.levels_of_taxonomy
+        headers += self.ctx.levels_of_taxonomy
 
         if self.compute_scg_coverages:
             headers += sorted(self.sample_names_in_profile_db)
@@ -1071,7 +1053,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
         scg_name = list(scgs_dict.values())[0]['gene_name']
 
         # the might for loop to go through all taxonomic levels one by one
-        for level in constants.levels_of_taxonomy[::-1]:
+        for level in constants.ctx.levels_of_taxonomy[::-1]:
             # setting the data group early on:
             data_group = '%s_%s' % (scg_name, level[2:])
             self.progress.update('Working on %s-level data' % level)
@@ -1084,17 +1066,17 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
                     # the most highly resolved level of taxonomy that is not null for this
                     # particular scg taxonomy
                     i = 0
-                    for i in range(constants.levels_of_taxonomy.index(level), 0, -1):
-                        if scgs_dict[gene_callers_id][constants.levels_of_taxonomy[i]]:
+                    for i in range(constants.ctx.levels_of_taxonomy.index(level), 0, -1):
+                        if scgs_dict[gene_callers_id][constants.ctx.levels_of_taxonomy[i]]:
                             break
 
                     # just some abbreviations
-                    l = constants.levels_of_taxonomy[i][2:]
-                    m = scgs_dict[gene_callers_id][constants.levels_of_taxonomy[i]]
+                    l = constants.ctx.levels_of_taxonomy[i][2:]
+                    m = scgs_dict[gene_callers_id][constants.ctx.levels_of_taxonomy[i]]
 
                     # if the best level we found in the previous step is matching to the level
                     # set by the main for loop, we're good to go with that name:
-                    if level == constants.levels_of_taxonomy[i]:
+                    if level == constants.ctx.levels_of_taxonomy[i]:
                         taxon_name = m
                     # otherwise we will try to replace that None name with something that is more
                     # sensible:
@@ -1215,7 +1197,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
         return scg_coverages_across_samples_dict
 
 
-class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
+class SetupLocalSCGTaxonomyData:
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
@@ -1227,7 +1209,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
         self.redo_databases = A("redo_databases") # just redo the databaes
         self.num_threads = A('num_threads')
 
-        SCGTaxonomyContext.__init__(self, self.args)
+        self.ctx = ctx
 
 
     def setup(self):
@@ -1251,13 +1233,13 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
 
         # let's try to figure out what do we want to do here. download files or just create/re-create
         # databases.
-        a_scg_fasta, a_scg_database = list(self.SCGs.values())[0]['fasta'] + '.gz', list(self.SCGs.values())[0]['db']
+        a_scg_fasta, a_scg_database = list(self.ctx.SCGs.values())[0]['fasta'] + '.gz', list(self.ctx.SCGs.values())[0]['db']
 
         if os.path.exists(a_scg_fasta) and os.path.exists(a_scg_database) and self.redo_databases:
             self.run.warning("Anvi'o is removing all the previous databases so it can regenerate them from their "
                              "ashes.")
 
-            db_paths = [v['db'] for v in self.SCGs.values()]
+            db_paths = [v['db'] for v in self.ctx.SCGs.values()]
             for db_path in db_paths:
                 os.remove(db_path) if os.path.exists(db_path) else None
 
@@ -1267,19 +1249,19 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
                               "the flag `--reset`.")
 
         elif self.reset:
-            self.run.info("Local directory to setup", self.SCGs_taxonomy_data_dir)
+            self.run.info("Local directory to setup", self.ctx.SCGs_taxonomy_data_dir)
             self.run.info("Reset the directory first", self.reset, mc="red")
-            self.run.info("Remote database", self.target_database, nl_before=1, mc="green")
-            self.run.info("Remote URL to download files", self.target_database_URL)
-            self.run.info("Remote files of interest", ', '.join(self.target_database_files))
+            self.run.info("Remote database", self.ctx.target_database, nl_before=1, mc="green")
+            self.run.info("Remote URL to download files", self.ctx.target_database_URL)
+            self.run.info("Remote files of interest", ', '.join(self.ctx.target_database_files))
 
-            self.progress.new("%s setup" % self.target_database)
+            self.progress.new("%s setup" % self.ctx.target_database)
             self.progress.update("Reading the VERSION file...")
-            content = utils.get_remote_file_content(self.target_database_URL + 'VERSION')
+            content = utils.get_remote_file_content(self.ctx.target_database_URL + 'VERSION')
             version, release_date  = content.strip().split('\n')[0].strip(), content.strip().split('\n')[2].strip()
             self.progress.end()
 
-            self.run.info("%s release found" % self.target_database, "%s (%s)" % (version, release_date), mc="green")
+            self.run.info("%s release found" % self.ctx.target_database, "%s (%s)" % (version, release_date), mc="green")
 
             self.download_and_format_files()
 
@@ -1294,38 +1276,38 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
 
 
     def check_initial_directory_structure(self):
-        if os.path.exists(self.SCGs_taxonomy_data_dir):
+        if os.path.exists(self.ctx.SCGs_taxonomy_data_dir):
             if self.reset:
-                shutil.rmtree(self.SCGs_taxonomy_data_dir)
+                shutil.rmtree(self.ctx.SCGs_taxonomy_data_dir)
                 self.run.warning('The existing directory for SCG taxonomy data dir has been removed. Just so you know.')
-                filesnpaths.gen_output_directory(self.SCGs_taxonomy_data_dir)
+                filesnpaths.gen_output_directory(self.ctx.SCGs_taxonomy_data_dir)
         else:
-            filesnpaths.gen_output_directory(self.SCGs_taxonomy_data_dir)
+            filesnpaths.gen_output_directory(self.ctx.SCGs_taxonomy_data_dir)
 
 
     def download_and_format_files(self):
         # let's be 100% sure.
-        os.remove(self.accession_to_taxonomy_file_path) if os.path.exists(self.accession_to_taxonomy_file_path) else None
+        os.remove(self.ctx.accession_to_taxonomy_file_path) if os.path.exists(self.ctx.accession_to_taxonomy_file_path) else None
 
-        for remote_file_name in self.target_database_files:
-            remote_file_url = '/'.join([self.target_database_URL, remote_file_name])
-            local_file_path = os.path.join(self.SCGs_taxonomy_data_dir, remote_file_name)
+        for remote_file_name in self.ctx.target_database_files:
+            remote_file_url = '/'.join([self.ctx.target_database_URL, remote_file_name])
+            local_file_path = os.path.join(self.ctx.SCGs_taxonomy_data_dir, remote_file_name)
 
             utils.download_file(remote_file_url, local_file_path, progress=self.progress, run=self.run)
 
             if local_file_path.endswith('individual_genes.tar.gz'):
                 self.progress.new("Downloaded file patrol")
                 self.progress.update("Unpacking file '%s'..." % os.path.basename(local_file_path))
-                shutil.unpack_archive(local_file_path, extract_dir=self.msa_individual_genes_dir_path)
+                shutil.unpack_archive(local_file_path, extract_dir=self.ctx.msa_individual_genes_dir_path)
                 os.remove(local_file_path)
                 self.progress.end()
 
             if local_file_path.endswith('_taxonomy.tsv'):
-                with open(self.accession_to_taxonomy_file_path, 'a') as f:
+                with open(self.ctx.accession_to_taxonomy_file_path, 'a') as f:
                     f.write(open(local_file_path).read())
                     os.remove(local_file_path)
 
-        fasta_file_paths = glob.glob(self.msa_individual_genes_dir_path + '/*.faa')
+        fasta_file_paths = glob.glob(self.ctx.msa_individual_genes_dir_path + '/*.faa')
 
         if not fasta_file_paths:
             raise ConfigError("Something weird happened while anvi'o was trying to take care of the files "
@@ -1346,8 +1328,8 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
 
         # Start formatting things.
         self.progress.update("Checking output directory to store files ...")
-        filesnpaths.is_output_dir_writable(os.path.dirname(self.search_databases_dir_path))
-        filesnpaths.gen_output_directory(self.search_databases_dir_path, delete_if_exists=True, dont_warn=True)
+        filesnpaths.is_output_dir_writable(os.path.dirname(self.ctx.search_databases_dir_path))
+        filesnpaths.gen_output_directory(self.ctx.search_databases_dir_path, delete_if_exists=True, dont_warn=True)
 
         # We will be working with the files downloaded in whatever directory before. The first thing is to check
         # whether whether FASTA files in the directory are suitable for the conversion
@@ -1355,7 +1337,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
         msa_individual_gene_names_required = []
         [msa_individual_gene_names_required.extend(n) for n in locally_known_HMMs_to_remote_FASTAs.values()]
 
-        fasta_file_paths = glob.glob(self.msa_individual_genes_dir_path + '/*.faa')
+        fasta_file_paths = glob.glob(self.ctx.msa_individual_genes_dir_path + '/*.faa')
         msa_individual_gene_names_downloaded = [os.path.basename(f) for f in fasta_file_paths]
 
         missing_msa_gene_names = [n for n in msa_individual_gene_names_required if n not in msa_individual_gene_names_downloaded]
@@ -1368,7 +1350,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
                               "appropriate documentation. If you are a user, you can't do much at this point but "
                               "contacting the developers :( Anvi'o will keep the directory that contains all the "
                               "downloaded files to update the conversion dictionary. Here is the full path to the "
-                              "output: %s" % (len(missing_msa_gene_names), ', '.join(missing_msa_gene_names), self.msa_individual_genes_dir_path))
+                              "output: %s" % (len(missing_msa_gene_names), ', '.join(missing_msa_gene_names), self.ctx.msa_individual_genes_dir_path))
         else:
             self.progress.reset()
             self.run.info_single("Good news! The conversion dict and the FASTA files it requires seem to be in place. "
@@ -1380,8 +1362,8 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
         for SCG in locally_known_HMMs_to_remote_FASTAs:
             self.progress.update("Working on %s ..." % (SCG))
 
-            files_to_concatenate = [os.path.join(self.msa_individual_genes_dir_path, f) for f in locally_known_HMMs_to_remote_FASTAs[SCG]]
-            FASTA_file_for_SCG = os.path.join(self.search_databases_dir_path, SCG)
+            files_to_concatenate = [os.path.join(self.ctx.msa_individual_genes_dir_path, f) for f in locally_known_HMMs_to_remote_FASTAs[SCG]]
+            FASTA_file_for_SCG = os.path.join(self.ctx.search_databases_dir_path, SCG)
 
             # concatenate from the dictionary into the new destination
             utils.concatenate_files(FASTA_file_for_SCG, files_to_concatenate)
@@ -1397,7 +1379,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
 
         self.progress.new("Creating search databases")
         self.progress.update("Removing any database that still exists in the output directory...")
-        [os.remove(database_path) for database_path in [s['db'] for s in self.SCGs.values()] if os.path.exists(database_path)]
+        [os.remove(database_path) for database_path in [s['db'] for s in self.ctx.SCGs.values()] if os.path.exists(database_path)]
 
         # compresssing and decompressing FASTA files changes their hash and make them look like
         # modified in git. to avoid that, we will do the database generation in a temporary directory.
@@ -1407,9 +1389,9 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
         # the following line basically returns a dictionary that shows the new path
         # of the FASTA file under temp_dir for a given SCG .. apologies for the
         # incomprehensible list comprehension
-        new_paths = dict([(os.path.basename(fasta_path), shutil.copy((fasta_path + '.gz'), os.path.join(temp_dir, os.path.basename(fasta_path) + '.gz'))) for fasta_path in [s['fasta'] for s in self.SCGs.values()]])
+        new_paths = dict([(os.path.basename(fasta_path), shutil.copy((fasta_path + '.gz'), os.path.join(temp_dir, os.path.basename(fasta_path) + '.gz'))) for fasta_path in [s['fasta'] for s in self.ctx.SCGs.values()]])
 
-        missing_FASTA_files = [SCG for SCG in self.SCGs if not os.path.exists(new_paths[SCG])]
+        missing_FASTA_files = [SCG for SCG in self.ctx.SCGs if not os.path.exists(new_paths[SCG])]
         if len(missing_FASTA_files):
             raise ConfigError("Weird news :( Anvi'o is missing some FASTA files that were supposed to be somewhere. Since this "
                               "can't be your fault, it is not easy to advice what could be the solution to this. But you can "
@@ -1419,16 +1401,16 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
         new_paths = dict([(SCG, utils.gzip_decompress_file(new_paths[SCG], keep_original=False)) for SCG in new_paths])
 
         # Merge FASTA files that should be merged. This is defined in the conversion dictionary.
-        for SCG in self.SCGs:
+        for SCG in self.ctx.SCGs:
             self.progress.update("Working on %s in %d threads" % (SCG, self.num_threads))
 
             FASTA_file_path_for_SCG = new_paths[SCG]
 
             # create a diamond search database for `FASTA_file_path_for_SCG`
             diamond = Diamond(query_fasta=FASTA_file_path_for_SCG, run=run_quiet, progress=progress_quiet, num_threads=self.num_threads)
-            diamond.makedb(output_file_path=self.SCGs[SCG]['db'])
+            diamond.makedb(output_file_path=self.ctx.SCGs[SCG]['db'])
 
-            if not os.path.exists(self.SCGs[SCG]['db']):
+            if not os.path.exists(self.ctx.SCGs[SCG]['db']):
                 raise ConfigError("Something went wrong and DIAMOND did not create the database file it was supposed to "
                                   "for %s :(" % SCG)
 
@@ -1444,16 +1426,16 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyContext):
 
 
     def clean_up(self):
-        for file_path in [os.path.join(self.SCGs_taxonomy_data_dir, 'diamond-log-file.txt')]:
+        for file_path in [os.path.join(self.ctx.SCGs_taxonomy_data_dir, 'diamond-log-file.txt')]:
             if os.path.exists(file_path):
                 os.remove(file_path)
 
-        for dir_path in [self.msa_individual_genes_dir_path]:
+        for dir_path in [self.ctx.msa_individual_genes_dir_path]:
             if os.path.exists(dir_path):
                 shutil.rmtree(dir_path)
 
 
-class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
+class PopulateContigsDatabaseWithSCGTaxonomy:
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
@@ -1465,7 +1447,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         self.num_parallel_processes = int(A('num_parallel_processes')) if A('num_parallel_processes') else 1
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
 
-        SCGTaxonomyContext.__init__(self, self.args)
+        self.ctx = ctx
 
         self.max_target_seqs = 20
         self.evalue = float(A('e_value')) if A('e_value') else 1e-05
@@ -1482,9 +1464,9 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         contigs_db = ContigsSuperclass(self.args, r=run_quiet, p=progress_quiet)
         splits_dict = {contigs_db.a_meta['project_name']: list(contigs_db.splits_basic_info.keys())}
 
-        s = hmmops.SequencesForHMMHits(self.args.contigs_db, sources=self.hmm_source_for_scg_taxonomy, run=run_quiet, progress=progress_quiet)
+        s = hmmops.SequencesForHMMHits(self.args.contigs_db, sources=self.ctx.hmm_source_for_scg_taxonomy, run=run_quiet, progress=progress_quiet)
         hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=True)
-        hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(self.default_scgs_for_taxonomy))
+        hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(self.ctx.default_scgs_for_taxonomy))
 
         if not len(hmm_sequences_dict):
             return None
@@ -1531,8 +1513,8 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
 
         log_file_path = filesnpaths.get_temp_file_path()
 
-        self.run.info('Taxonomy', self.accession_to_taxonomy_file_path)
-        self.run.info('Database reference', self.search_databases_dir_path)
+        self.run.info('Taxonomy', self.ctx.accession_to_taxonomy_file_path)
+        self.run.info('Database reference', self.ctx.search_databases_dir_path)
         self.run.info('Number of SCGs', len(scg_sequences_dict))
 
         self.run.warning('', header='Parameters for DIAMOND blastp', lc='green')
@@ -1640,11 +1622,37 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
             self.run.info_single("For '%s'" % scg_name, nl_before=1, nl_after=1)
 
             for hit in hits:
-                table.append([str(hit['percent_identity']), str(hit['bitscore']), hit['accession'], ' / '.join([hit[l] if hit[l] else '' for l in self.levels_of_taxonomy])])
+                table.append([str(hit['percent_identity']), str(hit['bitscore']), hit['accession'], ' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy])])
 
             print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
         else:
             self.run.info_single("No hits :/")
+
+
+    def update_dict_with_taxonomy(self, d, mode=None):
+        """Takes a dictionary that includes a key `accession` and populates the dictionary with taxonomy"""
+
+        if not mode:
+            if not 'accession' in d:
+                raise ConfigError("`add_taxonomy_to_dict` is speaking: the dictionary sent here does not have a member "
+                                  "with key `accession`.")
+
+            if d['accession'] in self.ctx.accession_to_taxonomy_dict:
+                d.update(self.ctx.accession_to_taxonomy_dict[d['accession']])
+            else:
+                d.update(self.ctx.accession_to_taxonomy_dict['unknown_accession'])
+
+        elif mode == 'list_of_dicts':
+            if len([entry for entry in d if 'accession' not in entry]):
+                raise ConfigError("`add_taxonomy_to_dict` is speaking: you have a bad formatted data here :/")
+
+            for entry in d:
+                print(self.taxonomy_dict[entry['accession']])
+
+        else:
+            raise ConfigError("An unknown mode (%s) is set to `add_taxonomy_to_dict` :/" % (mode))
+
+        return d
 
 
     def blast_search_scgs_worker(self, input_queue, output_queue, error_queue, log_file_path):
@@ -1654,7 +1662,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
 
         while True:
             scg_name, fasta_formatted_scg_sequence = input_queue.get(True)
-            target_database_path = self.SCGs[scg_name]['db']
+            target_database_path = self.ctx.SCGs[scg_name]['db']
 
             diamond = Diamond(target_database_path, run=run_quiet, progress=progress_quiet)
             diamond.max_target_seqs = self.max_target_seqs
@@ -1735,7 +1743,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
             df_max_identity = df_max_identity[df_max_identity.t_species.notnull()]
 
         # find the taxonomic level where the number of unique taxon names is one
-        for taxonomic_level in self.levels_of_taxonomy[::-1]:
+        for taxonomic_level in self.ctx.levels_of_taxonomy[::-1]:
             if len(df_max_identity[taxonomic_level].unique()) == 1:
                 break
 
@@ -1743,7 +1751,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyContext):
         # beyond `taxonomic_level`, which, after the loop above shows the proper level of
         # assignment for this set
         final_hit = df_max_identity.head(1)
-        for taxonomic_level_to_nullify in self.levels_of_taxonomy[self.levels_of_taxonomy.index(taxonomic_level) + 1:]:
+        for taxonomic_level_to_nullify in self.ctx.levels_of_taxonomy[self.ctx.levels_of_taxonomy.index(taxonomic_level) + 1:]:
             final_hit.at[0, taxonomic_level_to_nullify] = None
 
         # FIXME: final hit is still not what we can trust. next, we should find out whether the percent identity
