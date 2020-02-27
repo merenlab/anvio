@@ -407,9 +407,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SCGTaxonomyContext):
             args.external_genomes = None
             args.metagenome_mode = True
 
-            e = SCGTaxonomyEstimatorSingle(args, run=run_quiet)
-
-            scg_taxonomy_super_dict[contigs_db_name] = e.get_scg_taxonomy_super_dict()
+            scg_taxonomy_super_dict[contigs_db_name] = SCGTaxonomyEstimatorSingle(args, run=run_quiet).get_scg_taxonomy_super_dict()
 
         return scg_taxonomy_super_dict
 
