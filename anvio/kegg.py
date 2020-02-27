@@ -47,7 +47,7 @@ class KeggContext(object):
         self.kofam_hmm_file_path = os.path.join(self.kofam_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
         self.ko_list_file_path = os.path.join(self.kofam_data_dir, "ko_list")
         self.kegg_module_file = os.path.join(self.kofam_data_dir, "ko00002.keg")
-        self.module_dict = {} # this dict will be filled in by other functions
+
 
     def setup_ko_dict(self):
         """The purpose of this function is to process the ko_list file into usable form by Kofam sub-classes.
@@ -214,6 +214,7 @@ class KeggSetup(KeggContext):
         D = Module
 
         """
+        self.module_dict = {}
 
         filesnpaths.is_file_exists(self.kegg_module_file)
         filesnpaths.is_file_plain_text(self.kegg_module_file)
@@ -413,7 +414,7 @@ class KeggSetup(KeggContext):
     def setup_modules_db(self):
         """This function creates the Modules DB from the Kegg Module files. """
 
-        mod_db = KeggModulesDatabase(os.path.join(self.kofam_data_dir, "MODULES.db"), args=self.args, run=run, progress=progress)
+        mod_db = KeggModulesDatabase(os.path.join(self.kofam_data_dir, "MODULES.db"), module_dictionary=self.module_dict, args=self.args, run=run, progress=progress)
         mod_db.create()
 
 
@@ -549,13 +550,13 @@ class KeggModulesDatabase(KeggContext):
     Kegg Module files.
     """
 
-    def __init__(self, db_path, args, run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, module_dictionary, args, run=run, progress=progress, quiet=False):
         self.db = None
         self.db_path = db_path
-        self.quiet = quiet
-
+        self.module_dict = module_dictionary
         self.run = run
         self.progress = progress
+        self.quiet = quiet
 
         # init the base class for access to shared paths and such
         KeggContext.__init__(self, args)
