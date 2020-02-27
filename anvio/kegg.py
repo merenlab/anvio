@@ -586,7 +586,6 @@ class KeggModulesDatabase(KeggContext):
 
         self.db.create_table(self.module_table_name, self.module_table_structure, self.module_table_types)
 
-        return self.db
 
     def parse_kegg_modules_line(self, line, line_num = None, current_data_name=None):
         """This function parses information from one line of a KEGG module file.
@@ -691,7 +690,7 @@ class KeggModulesDatabase(KeggContext):
                     # unpack that tuple info
                     for name, val, definition, line in entries_tuple_list:
                         # call append_and_store which will collect db entries and store every 10000 at a time
-                        mod_table.append_and_store(mnum, name, val, definition, line)
+                        mod_table.append_and_store(self.db, mnum, name, val, definition, line)
 
 
 
@@ -723,7 +722,7 @@ class KeggModulesTable:
             raise ConfigError("Beep Beep. Warning. KeggModulesTable was initialized without knowing its own name.")
 
 
-    def append_and_store(self, module_num, data_name, data_value, data_definition=None, line_num=None):
+    def append_and_store(self, db, module_num, data_name, data_value, data_definition=None, line_num=None):
         """This function handles collects db entries (as tuples) into a list, and once we have 10,000 of them it stores that set into the Modules table.
 
         The db_entries list is cleared after each store so that future stores don't add duplicate entries to the table.
@@ -734,11 +733,11 @@ class KeggModulesTable:
         self.total_entries += 1
 
         if len(self.db_entries) > 10000:
-            self.store()
+            self.store(db)
             self.db_entries = []
 
 
-    def store(self):
+    def store(self, db):
         if len(self.db_entries):
             db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.module_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
 
