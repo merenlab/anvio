@@ -626,9 +626,9 @@ class KeggModulesDatabase(KeggContext):
             data_vals = fields[1]
             if len(fields) > 2: # not all lines have a definition field
                 data_def = fields[2]
-        else:  # data name known
-            data_vals = fields[0]
-            data_def = fields[1]
+        else:  # data name known, first field still exists but is actually the empty string ''
+            data_vals = fields[1]
+            data_def = fields[2]
 
         # some types of information may need to be split into multiple db entries
         data_types_to_split = ["ORTHOLOGY","REACTION"] # lines that fall under these categories need to have data_vals split on comma
