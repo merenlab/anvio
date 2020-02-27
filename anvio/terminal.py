@@ -15,6 +15,7 @@ import textwrap
 from colored import fore, back, style
 from collections import OrderedDict
 
+import anvio
 import anvio.constants as constants
 import anvio.dictio as dictio
 
@@ -78,6 +79,9 @@ class Progress:
         self.t = Timer(self.progress_total_items)
 
         self.LEN = lambda s: len(s.encode('utf-16-le')) // 2
+
+        if anvio.NO_PROGRESS or anvio.QUIET:
+            self.verbose = False
 
 
     def get_terminal_width(self):
@@ -244,6 +248,9 @@ class Run:
         self.single_line_prefixes = {1: '* ',
                                      2: '    - ',
                                      3: '        > '}
+
+        if anvio.QUIET:
+            self.verbose = False
 
 
     def log(self, line):
