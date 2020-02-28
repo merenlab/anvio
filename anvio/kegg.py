@@ -593,7 +593,7 @@ class KeggModulesDatabase(KeggContext):
         between different fields). So here we check if the values that we parsed look like they are the right format, without any extra bits.
         Each data name (ORTHOLOGY, DEFINITION, etc) has a different format to check for.
 
-        Note that we don't check the following data name types: NAME, REFERENCE
+        Note that we don't check the following data name types: NAME, CLASS, REFERENCE
 
         PARAMETERS
         ==========
@@ -617,25 +617,44 @@ class KeggModulesDatabase(KeggContext):
                 is_ok = False
         elif current_data_name == "DEFINITION":
             # example format: (K01647,K05942) (K01681,K01682) (K00031,K00030) (K00164+K00658+K00382,K00174+K00175-K00177-K00176)
-            knums = [x for x in re.split('(|)|,| |+|-',data_vals) if x]
+            knums = [x for x in re.split('\(|\)|,| |\+|-',data_vals) if x]
             for k in knums:
                 if k[0] != 'K' or len(k) != 6:
                     is_ok = False
                     extra_info_to_print = knums
         elif current_data_name == "ORTHOLOGY":
             # example format: K00234,K00235,K00236,K00237
-            knums = [x for x in re.split(',|+|-',data_vals) if x]
+            knums = [x for x in re.split(',|\+|-', data_vals) if x]
             for k in knums:
                 if k[0] != 'K' or len(k) != 6:
                     is_ok = False
                     extra_info_to_print = knums
+        elif current_data_name == "PATHWAY":
+            # example format: map00020
+            if data_vals[0:3] != "map" or len(data_vals) != 8:
+                is_ok = False
+        elif current_data_name == "REACTION":
+            # example format: R01899+R00268,R00267,R00709
+            rnums = [x for x in re.split(',|\+', data_vals) if x]
+            for r in rnums:
+                if r[0] != 'R' or len(r) != 6:
+                    is_ok = False
+                    extra_info_to_print = rnums
+        elif current_data_name == "COMPOUND":
+            # example format: C00024
+            if data_vals[0] != 'C' or len(data_vals) != 6:
+                is_ok = False
+        elif current_data_name == "RMODULE":
+            # example format: RM003
+            if data_vals[0:2] != "RM" or len(data_vals) != 5:
+                is_ok = False
 
 
         if not is_ok:
             if extra_info_to_print:
                 self.run.warning("Found an issue with a KEGG Module line. Data values incorrectly parsed. Current data name is %s, here is the \
                 incorrectly-formatted data value field: %s \
-                and here is somem extra info that may be helpful: %s" % (current_data_name, data_vals, extra_info_to_print))
+                and here is some extra info that may be helpful: %s" % (current_data_name, data_vals, extra_info_to_print))
             else:
                 self.run.warning("Found an issue with a KEGG Module line. Data values incorrectly parsed. Current data name is %s, here is the \
                 incorrectly-formatted data value field: %s" % (current_data_name, data_vals))
