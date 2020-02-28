@@ -644,6 +644,10 @@ class KeggModulesDatabase(KeggContext):
             # example format: map00020
             if data_vals[0:3] != "map" or len(data_vals) != 8:
                 is_ok = False
+                split_data_vals = data_vals.split(" ", maxsplit=1)
+                corrected_vals = split_data_vals[0]
+                corrected_def = split_data_vals[1]
+                is_corrected = True
         elif current_data_name == "REACTION":
             # example format: R01899+R00268,R00267,R00709
             rnums = [x for x in re.split(',|\+', data_vals) if x]
