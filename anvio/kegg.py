@@ -832,7 +832,8 @@ class KeggModulesTable:
         self.db_entries.append(db_entry)
         self.total_entries += 1
 
-        if len(self.db_entries) > 10000:
+        # we can store chunks of 5000 at a time, so we don't want over 10,000 entries.
+        if len(self.db_entries) >= 10000:
             self.store(db)
             self.db_entries = []
 
