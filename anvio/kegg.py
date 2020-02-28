@@ -606,6 +606,9 @@ class KeggModulesDatabase(KeggContext):
         """
 
         is_ok = True
+        is_corrected = False
+        corrected_vals = None
+        corrected_def = None
 
         if not current_data_name:
             raise ConfigError("data_vals_sanity_check() cannot be performed when the current data name is None. Something was not right when parsing the KEGG \
@@ -627,6 +630,16 @@ class KeggModulesDatabase(KeggContext):
             for k in knums:
                 if k[0] != 'K' or len(k) != 6:
                     is_ok = False
+            # try to fix it by splitting on first space
+            if not is_ok:
+                split_data_vals = data_vals.split(" ", maxsplit=1)
+                corrected_vals = split_data_vals[0]
+                corrected_def = split_data_vals[1]
+                # double check that we don't have a knum in the new definition
+                if re.match("K\d{5}",corrected_def):
+                    corrected_vals = "".join([corrected_vals,corrected_def])
+                    corrected_def = None
+                is_corrected = True
         elif current_data_name == "PATHWAY":
             # example format: map00020
             if data_vals[0:3] != "map" or len(data_vals) != 8:
@@ -651,8 +664,10 @@ class KeggModulesDatabase(KeggContext):
             self.run.warning("Found an issue with a KEGG Module line. Data values incorrectly parsed. Current data name is %s, here is the \
             incorrectly-formatted data value field: %s" % (current_data_name, data_vals))
 
+        if is_corrected:
+            print("Line has been corrected. Corrected data values: %s\nCorrected data definition: %s" % (corrected_vals, corrected_def))
 
-        return is_ok
+        return is_ok, corrected_vals, corrected_def
 
 
     def parse_kegg_modules_line(self, line, line_num = None, current_data_name=None):
@@ -695,7 +710,7 @@ class KeggModulesDatabase(KeggContext):
         # so no matter which situation, data value is field 1 and data definition (if any) is field 2
         data_vals = fields[1]
         # need to sanity check data value field because SOME modules don't follow the 2-space separation formatting
-        vals_are_okay = self.data_vals_sanity_check(data_vals, current_data_name)
+        vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check(data_vals, current_data_name)
 
         if vals_are_okay and len(fields) > 2: # not all lines have a definition field
             data_def = fields[2]
