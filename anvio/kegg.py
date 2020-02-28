@@ -669,12 +669,18 @@ class KeggModulesDatabase(KeggContext):
                 is_ok = False
 
 
-        if not is_ok:
-            self.run.warning("Found an issue with a KEGG Module line. Data values incorrectly parsed. Current data name is %s, here is the \
+        if not is_ok and not is_corrected:
+            # in production, this should not end with an error. This raises an error for now just so I can easily find errors that I haven't implemented
+            # correction for yet
+            raise ConfigError("Found an issue with a KEGG Module line. Data values incorrectly parsed. Current data name is %s, here is the \
             incorrectly-formatted data value field: %s" % (current_data_name, data_vals))
 
         if is_corrected:
-            print("Line has been corrected. Corrected data values: %s\nCorrected data definition: %s" % (corrected_vals, corrected_def))
+            self.run.warning("While parsing a KEGG Module line, we found an issue with the formatting. We did our very best to parse the line \
+            correctly, but please check that it looks right to you by examining the following values.")
+            self.run.info("Incorrectly parsed data value field", data_vals)
+            self.run.info("Corrected data values", corrected_vals)
+            self.run.info("Corrected data definition", corrected_def)
 
         return is_ok, corrected_vals, corrected_def
 
