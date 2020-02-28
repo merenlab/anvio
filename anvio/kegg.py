@@ -564,8 +564,8 @@ class KeggModulesDatabase(KeggContext):
         # modules table info
         # I wonder if these should be moved to the tables __init__.py at some point?
         self.module_table_name = "kegg_modules"
-        self.module_table_structure = ['module', 'data_name', 'data_value', 'data_definition']
-        self.module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ]
+        self.module_table_structure = ['module', 'data_name', 'data_value', 'data_definition', 'line']
+        self.module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
 
         ## here we should call init function if the db exists
 
