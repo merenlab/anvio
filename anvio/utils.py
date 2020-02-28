@@ -22,7 +22,7 @@ import urllib.request, urllib.error, urllib.parse
 import numpy as np
 import pandas as pd
 
-from numba import njit
+from numba import jit
 from collections import Counter
 from email.mime.text import MIMEText
 
@@ -529,7 +529,7 @@ def convert_binary_blob_to_numpy_array(blob, dtype, decompress=True):
         return np.frombuffer(blob, dtype=dtype)
 
 
-@njit
+@jit(nopython=True)
 def add_to_2D_numeric_array(x, y, a, count=1):
     """just-in-time compiled function
 
@@ -1456,7 +1456,7 @@ def convert_sequence_indexing(index, source="M0", destination="M1"):
     return index
 
 
-@njit
+@jit(nopython=True)
 def get_blocks(array):
     """Iterator function that returns blocks of consecutive numbers
 
@@ -1828,7 +1828,7 @@ def nt_seq_to_RC_codon_num_array(seq, seq_is_in_ord_representation=False):
     )[::-1]
 
 
-@njit
+@jit(nopython=True)
 def _nt_seq_to_codon_num_array(seq_as_ascii_ints, lookup_codon):
     """Should be called through its parent functions `nt_seq_to_codon_num_array` and `nt_seq_to_RC_codon_num_array`"""
 
