@@ -619,16 +619,18 @@ class KeggModulesDatabase(KeggContext):
                 is_ok = False
         elif current_data_name == "DEFINITION":
             # example format: (K01647,K05942) (K01681,K01682) (K00031,K00030) (K00164+K00658+K00382,K00174+K00175-K00177-K00176)
+            # another example: (M00161,M00163) M00165
             knums = [x for x in re.split('\(|\)|,| |\+|-',data_vals) if x]
             for k in knums:
-                if k[0] != 'K' or len(k) != 6:
+                if k[0] not in ['K','M'] or len(k) != 6:
                     is_ok = False
         elif current_data_name == "ORTHOLOGY":
             # example format: K00234,K00235,K00236,K00237
             # more complex example: (K00163,K00161+K00162)+K00627+K00382-K13997
+            # another example:  (M00161         [ie, from (M00161  Photosystem II)]
             knums = [x for x in re.split('\(|\)|,|\+|-', data_vals) if x]
             for k in knums:
-                if k[0] != 'K' or len(k) != 6:
+                if k[0] not in ['K','M'] or len(k) != 6:
                     is_ok = False
             # try to fix it by splitting on first space
             if not is_ok:
