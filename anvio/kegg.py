@@ -654,6 +654,11 @@ class KeggModulesDatabase(KeggContext):
             for r in rnums:
                 if r[0] != 'R' or len(r) != 6:
                     is_ok = False
+            if not is_ok:
+                split_data_vals = data_vals.split(" ", maxsplit=1)
+                corrected_vals = split_data_vals[0]
+                corrected_def = split_data_vals[1]
+                is_corrected = True
         elif current_data_name == "COMPOUND":
             # example format: C00024
             if data_vals[0] not in ['C','G'] or len(data_vals) != 6:
