@@ -205,7 +205,8 @@ class Auxiliary:
         =====
         - Loop through reads and then finding the genes it overlaps with has proven to be the
           fastest way to do this. Looping through genes with fetch(self.split.parent, gene_start,
-          gene_stop) is approximately twice as slow
+          gene_stop) is approximately twice as slow because trimming is expensive, and I/O
+          operations on the BAM file suffer
         """
 
         reference_codon_sequences = {}
@@ -325,8 +326,8 @@ class Auxiliary:
                     codon_orders = np.arange(start, stop)
 
                     # Codons with ambiguous characters have index values of 64. Remove them here
-                    codon_orders = codon_orders[codon_sequence_as_index > 63]
-                    codon_sequence_as_index = codon_sequence_as_index[codon_sequence_as_index > 63]
+                    codon_orders = codon_orders[codon_sequence_as_index <= 63]
+                    codon_sequence_as_index = codon_sequence_as_index[codon_sequence_as_index <= 63]
 
                     gene_allele_counts[gene_id] = utils.add_to_2D_numeric_array(
                         codon_sequence_as_index,
