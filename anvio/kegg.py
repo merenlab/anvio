@@ -606,7 +606,6 @@ class KeggModulesDatabase(KeggContext):
         """
 
         is_ok = True
-        extra_info_to_print = None
 
         if not current_data_name:
             raise ConfigError("data_vals_sanity_check() cannot be performed when the current data name is None. Something was not right when parsing the KEGG \
@@ -621,14 +620,12 @@ class KeggModulesDatabase(KeggContext):
             for k in knums:
                 if k[0] != 'K' or len(k) != 6:
                     is_ok = False
-                    extra_info_to_print = knums
         elif current_data_name == "ORTHOLOGY":
             # example format: K00234,K00235,K00236,K00237
             knums = [x for x in re.split(',|\+|-', data_vals) if x]
             for k in knums:
                 if k[0] != 'K' or len(k) != 6:
                     is_ok = False
-                    extra_info_to_print = knums
         elif current_data_name == "PATHWAY":
             # example format: map00020
             if data_vals[0:3] != "map" or len(data_vals) != 8:
@@ -639,7 +636,6 @@ class KeggModulesDatabase(KeggContext):
             for r in rnums:
                 if r[0] != 'R' or len(r) != 6:
                     is_ok = False
-                    extra_info_to_print = rnums
         elif current_data_name == "COMPOUND":
             # example format: C00024
             if data_vals[0] not in ['C','G'] or len(data_vals) != 6:
@@ -651,13 +647,8 @@ class KeggModulesDatabase(KeggContext):
 
 
         if not is_ok:
-            if extra_info_to_print:
-                self.run.warning("Found an issue with a KEGG Module line. Data values incorrectly parsed. Current data name is %s, here is the \
-                incorrectly-formatted data value field: %s \
-                and here is some extra info that may be helpful: %s" % (current_data_name, data_vals, extra_info_to_print))
-            else:
-                self.run.warning("Found an issue with a KEGG Module line. Data values incorrectly parsed. Current data name is %s, here is the \
-                incorrectly-formatted data value field: %s" % (current_data_name, data_vals))
+            self.run.warning("Found an issue with a KEGG Module line. Data values incorrectly parsed. Current data name is %s, here is the \
+            incorrectly-formatted data value field: %s" % (current_data_name, data_vals))
 
 
         return is_ok
