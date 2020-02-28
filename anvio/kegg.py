@@ -622,7 +622,8 @@ class KeggModulesDatabase(KeggContext):
                     is_ok = False
         elif current_data_name == "ORTHOLOGY":
             # example format: K00234,K00235,K00236,K00237
-            knums = [x for x in re.split(',|\+|-', data_vals) if x]
+            # more complex example: (K00163,K00161+K00162)+K00627+K00382-K13997
+            knums = [x for x in re.split('\(|\)|,|\+|-', data_vals) if x]
             for k in knums:
                 if k[0] != 'K' or len(k) != 6:
                     is_ok = False
