@@ -123,7 +123,7 @@ class NGram(object):
                 contigs_dict[contig_name] = contig_function_list
 
             # Iterate over range of window sizes and run synteny algorithm to count occurrences of ngrams
-                for n in self.window_range:
+                for n in range(self.window_range[0],self.window_range[1]):
                     ngram_count_df_list_dict = self.count_synteny(contigs_dict, n)
                     df = pd.DataFrame(list(ngram_count_df_list_dict.items()), columns= ['ngram','count'])
                     df['contigDB'] = contigs_db_name
