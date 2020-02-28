@@ -642,7 +642,7 @@ class KeggModulesDatabase(KeggContext):
                     extra_info_to_print = rnums
         elif current_data_name == "COMPOUND":
             # example format: C00024
-            if data_vals[0] != 'C' or len(data_vals) != 6:
+            if data_vals[0] not in ['C','G'] or len(data_vals) != 6:
                 is_ok = False
         elif current_data_name == "RMODULE":
             # example format: RM003
