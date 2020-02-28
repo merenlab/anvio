@@ -29,7 +29,7 @@ To test this code run:
             >>> anvi-analyze-synteny -e external-genomes-cps.txt \
                                      --annotation-source COG_FUNCTION \
                                      --window-range 2:3 \
-                                     -o tsv \
+                                     -o tsv.txt \
                                      --analyze-unknown-functions
 
 """

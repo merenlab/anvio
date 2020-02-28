@@ -94,6 +94,8 @@ class NGram(object):
             raise ConfigError("anvi'o would love to slice and dice your loci, but... the "
                               "window_range must only contain 2 integers and be formated as x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
 
+        # FIXME: add sanity check where config error is raised if the window size is larger than the loci length
+
     def populate_genes(self):
         genes_and_functions_list = []
         ngram_count_df_list = []
