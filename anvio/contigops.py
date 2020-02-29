@@ -261,8 +261,8 @@ class Auxiliary:
                     gene_overlap_start, gene_overlap_stop = next(utils.get_constant_value_blocks(gene_id_per_nt_in_read, gene_id))
                     gene_overlap_start += read.reference_start
                     gene_overlap_stop += read.reference_start - 1
-                    start_index = np.where(read[:, 0] == gene_overlap_start)[0][0]
-                    stop_index = np.where(read[:, 0] == gene_overlap_stop)[0][0]
+                    start_index = next(utils.find_value_index(read[:, 0], gene_overlap_start))
+                    stop_index = next(utils.find_value_index(read[:, 0], gene_overlap_stop))
                     segment_that_overlaps_gene = read[start_index:stop_index+1]
 
                 if gene_id not in gene_calls:
