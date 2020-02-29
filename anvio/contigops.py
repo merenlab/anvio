@@ -242,16 +242,28 @@ class Auxiliary:
                     continue
 
                 if len(genes_in_read) == 1:
-                    # The read maps entirely in 1 gene
+                    # The read maps entirely in 1 gene. Easy peasy.
                     gene_overlap_start = read.reference_start
                     segment_that_overlaps_gene = read.v
                 else:
                     # Okay, we need to do some work to get the segment that overlaps
-                    positions_where_read_aligns_to_gene = np.where(gene_id_per_nt_in_read == gene_id)[0] + read.reference_start
-                    gene_overlap_start, gene_overlap_stop = positions_where_read_aligns_to_gene[[0,-1]]
+
+                    # FIXME There is something extremely rare that can happen that leads to an
+                    # inaccuracy. Here's the situation: A read completely covers a very small gene
+                    # that is _fully_ inside another gene (such a situation can happen when running
+                    # tRNA HMMs). Since the genes overlap, the nt positions in the small gene are
+                    # given a value of -1, so gene_id_per_nt_in_read looks like [42, 42, 42, 42, -1,
+                    # ..., -1, 42, 42]. The portion of the read after the consecutive -1's will be
+                    # trimmed and not included. The solution to this problem is to better manage
+                    # which genes we include for SCV analysis. Resolving issue
+                    # https://github.com/merenlab/anvio/issues/1358 would enable a more elegant
+                    # scenario, where this would not happen.
+                    gene_overlap_start, gene_overlap_stop = next(utils.get_constant_value_blocks(gene_id_per_nt_in_read, gene_id))
+                    gene_overlap_start += read.reference_start
+                    gene_overlap_stop += read.reference_start - 1
                     start_index = np.where(read[:, 0] == gene_overlap_start)[0][0]
                     stop_index = np.where(read[:, 0] == gene_overlap_stop)[0][0]
-                    segment_that_overlaps_gene = read[start_index:stop_index]
+                    segment_that_overlaps_gene = read[start_index:stop_index+1]
 
                 if gene_id not in gene_calls:
                     # We make an on-the-fly gene call dict. See the NOTE in
