@@ -316,9 +316,9 @@ class Auxiliary:
                         gene_allele_counts[gene_id] = self.init_allele_counts_array(gene_call)
 
                     codon_sequence_as_index = (
-                        utils.nt_seq_to_codon_num_array(gapless_segment[:, 1], seq_is_in_ord_representation=True)
+                        utils.nt_seq_to_codon_num_array(gapless_segment[:, 1], is_ord=True)
                         if gene_call['direction'] == 'f'
-                        else utils.nt_seq_to_RC_codon_num_array(gapless_segment[:, 1], seq_is_in_ord_representation=True)
+                        else utils.nt_seq_to_RC_codon_num_array(gapless_segment[:, 1], is_ord=True)
                     )
 
                     start, stop = self.split.per_position_info['codon_order_in_gene'][[block_start_split, block_end_split]]
@@ -403,7 +403,7 @@ class Auxiliary:
         read_count = 0
         for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
             aligned_sequence_as_ord, reference_positions = read.get_aligned_sequence_and_reference_positions()
-            aligned_sequence_as_index = utils.nt_seq_to_nt_num_array(aligned_sequence_as_ord, seq_is_in_ord_representation=True)
+            aligned_sequence_as_index = utils.nt_seq_to_nt_num_array(aligned_sequence_as_ord, is_ord=True)
             reference_positions_in_split = reference_positions - self.split.start
 
             allele_counts_array = utils.add_to_2D_numeric_array(aligned_sequence_as_index, reference_positions_in_split, allele_counts_array)
