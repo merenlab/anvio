@@ -321,9 +321,9 @@ class Auxiliary:
                         else utils.nt_seq_to_RC_codon_num_array(gapless_segment[:, 1], is_ord=True)
                     )
 
-                    start, stop = self.split.per_position_info['codon_order_in_gene'][[block_start_split, block_end_split]]
+                    start, stop = self.split.per_position_info['codon_order_in_gene'][[block_start_split, block_end_split - 1]]
                     if gene_call['direction'] == 'r': start, stop = stop, start
-                    codon_orders = np.arange(start, stop)
+                    codon_orders = np.arange(start, stop + 1)
 
                     # Codons with ambiguous characters have index values of 64. Remove them here
                     codon_orders = codon_orders[codon_sequence_as_index <= 63]
