@@ -304,8 +304,8 @@ class Auxiliary:
                     # must determine by how many nts on each side we must trim
                     base_positions = self.split.per_position_info['base_pos_in_codon'][block_start_split:block_end_split]
 
-                    first_pos = np.where(base_positions == (1 if gene_call['direction'] == 'f' else 3))[0][0]
-                    last_pos = np.where(base_positions == (3 if gene_call['direction'] == 'f' else 1))[0][-1]
+                    first_pos = next(utils.find_value_index(base_positions, (1 if gene_call['direction'] == 'f' else 3)))
+                    last_pos = next(utils.find_value_index(base_positions, (3 if gene_call['direction'] == 'f' else 1), reverse_search=True))
 
                     if last_pos - first_pos < 3:
                         # the required trimming creates a sequence that is less than a codon long.
