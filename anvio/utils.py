@@ -1458,7 +1458,7 @@ def convert_sequence_indexing(index, source="M0", destination="M1"):
 
 @jit(nopython=True)
 def get_blocks(array):
-    """Iterator function that returns blocks of consecutive numbers
+    """Generator that returns blocks of consecutive numbers
 
     Parameters
     ==========
@@ -1490,6 +1490,41 @@ def get_blocks(array):
 
     else:
         yield block_start, last + 1
+
+
+@jit(nopython=True)
+def get_constant_value_blocks(array, value):
+    """Generator that returns blocks of consecutive numbers
+
+    Parameters
+    ==========
+    array : array
+        a numerical numpy array. If a list is passed, this function is very slow
+
+    value : number
+        The number you want to get constant blocks for.
+
+    Examples
+    ========
+
+    >>> a = np.array([47, 47, 47, 49, 50, 47, 47, 99])
+    >>> for i in get_constant_value_blocks(a, 47): print(i)
+    (0, 3)
+    (5, 7)
+    """
+    matching = False
+    for i in range(len(array)):
+        if array[i] == value:
+            if not matching:
+                start = i
+                matching = True
+        else:
+            if matching:
+                matching = False
+                yield start, i
+
+    if matching:
+        yield start, i + 1
 
 
 def convert_SSM_to_single_accession(matrix_data):
