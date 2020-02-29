@@ -134,7 +134,7 @@ class Read:
         if array is None:
             array = self.v
 
-        for start, stop in _get_blocks_by_mapping_type(array[:, 2], mapping_type):
+        for start, stop in utils.get_constant_value_blocks(array[:, 2], mapping_type):
             yield array[start:stop, :]
 
 
@@ -1070,20 +1070,4 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_start, refer
 
     return cigartuples, query_sequence, reference_start, reference_end
 
-
-@jit(nopython=True)
-def _get_blocks_by_mapping_type(array, mapping_type):
-    matching = False
-    for i in range(len(array)):
-        if array[i] == mapping_type:
-            if not matching:
-                start = i
-                matching = True
-        else:
-            if matching:
-                matching = False
-                yield start, i
-
-    if matching:
-        yield start, i + 1
 
