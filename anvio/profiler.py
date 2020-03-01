@@ -778,46 +778,40 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def store_contigs_buffer(self):
-        import pprofile
-        prof = pprofile.Profile()
-        with prof():
-            for contig in self.contigs:
-                self.total_length_of_all_contigs += contig.length
-                self.total_coverage_values_for_all_contigs += contig.coverage.mean * contig.length
+        for contig in self.contigs:
+            self.total_length_of_all_contigs += contig.length
+            self.total_coverage_values_for_all_contigs += contig.coverage.mean * contig.length
 
-                # we will divide every abundance after profiling is done.
-                contig.abundance = contig.coverage.mean
-                for split in contig.splits:
-                    split.abundance = split.coverage.mean
+            # we will divide every abundance after profiling is done.
+            contig.abundance = contig.coverage.mean
+            for split in contig.splits:
+                split.abundance = split.coverage.mean
 
-            self.generate_variabile_nts_table()
-            self.generate_variabile_codons_table()
-            self.store_split_coverages()
+        self.generate_variabile_nts_table()
+        self.generate_variabile_codons_table()
+        self.store_split_coverages()
 
-            # creating views in the database for atomic data we gathered during the profiling. Meren, please note
-            # that the first entry has a view_id, and the second one does not have one. I know you will look at this
-            # and be utterly confused 2 months from now. Please go read the description given in the dbops.py for the
-            # function create_new_view defined in the class TablesForViews.
-            view_data_splits, view_data_contigs = contigops.get_atomic_data_dicts(self.sample_id, self.contigs)
+        # creating views in the database for atomic data we gathered during the profiling. Meren, please note
+        # that the first entry has a view_id, and the second one does not have one. I know you will look at this
+        # and be utterly confused 2 months from now. Please go read the description given in the dbops.py for the
+        # function create_new_view defined in the class TablesForViews.
+        view_data_splits, view_data_contigs = contigops.get_atomic_data_dicts(self.sample_id, self.contigs)
 
-            TablesForViews(self.profile_db_path).create_new_view(
-                                            data_dict=view_data_splits,
-                                            table_name='atomic_data_splits',
-                                            table_structure=t.atomic_data_table_structure,
-                                            table_types=t.atomic_data_table_types,
-                                            view_name='single',
-                                            append_mode=True)
+        TablesForViews(self.profile_db_path).create_new_view(
+                                        data_dict=view_data_splits,
+                                        table_name='atomic_data_splits',
+                                        table_structure=t.atomic_data_table_structure,
+                                        table_types=t.atomic_data_table_types,
+                                        view_name='single',
+                                        append_mode=True)
 
-            TablesForViews(self.profile_db_path).create_new_view(
-                                            data_dict=view_data_contigs,
-                                            table_name='atomic_data_contigs',
-                                            table_structure=t.atomic_data_table_structure,
-                                            table_types=t.atomic_data_table_types,
-                                            view_name=None,
-                                            append_mode=True)
-        f =  open('callgrind.out', 'w')
-        prof.callgrind(f)
-        f.close()
+        TablesForViews(self.profile_db_path).create_new_view(
+                                        data_dict=view_data_contigs,
+                                        table_name='atomic_data_contigs',
+                                        table_structure=t.atomic_data_table_structure,
+                                        table_types=t.atomic_data_table_types,
+                                        view_name=None,
+                                        append_mode=True)
 
     def check_contigs(self, num_contigs=None):
         if not num_contigs:
