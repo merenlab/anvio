@@ -55,6 +55,7 @@ class TableForVariability(Table):
 
     def append_entry(self, entry):
         """FIXME This needs documentation to explain difference between append and append_entry"""
+
         self.db_entries.append(entry)
 
         if len(self.db_entries) > self.max_num_entries_in_storage_buffer:
@@ -63,8 +64,17 @@ class TableForVariability(Table):
             self.store()
 
 
-    def append(self, profile):
-        db_entry = tuple([self.next_id(t.variable_nts_table_name)] + [profile[h] for h in t.variable_nts_table_structure[1:]])
+    def append(self, entry):
+        """Append a single entry based on a dictionary
+
+        Parameters
+        ==========
+        entry : sequence
+            values in order they are in the table, entry_id excluded (it will be appended in the
+            body of this function)
+        """
+
+        db_entry = (self.next_id(t.variable_nts_table_name), *entry)
         self.db_entries.append(db_entry)
         self.num_entries += 1
 

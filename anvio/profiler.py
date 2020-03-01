@@ -10,6 +10,8 @@ import shutil
 import argparse
 import multiprocessing
 
+from collections import OrderedDict
+
 import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
@@ -293,41 +295,41 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling or not self.profile_SCVs:
             return
 
-        variable_codons_table = TableForCodonFrequencies(self.profile_db_path, progress=null_progress)
-
         for contig in self.contigs:
             for split in contig.splits:
                 for gene_callers_id in split.SCV_profiles:
 
+                    # We reorder to the profiles in the order they will appear in the output table
+                    split.SCV_profiles[gene_callers_id] = OrderedDict(
+                        [(col, split.SCV_profiles[gene_callers_id][col]) for col in t.variable_codons_table_structure[1:]]
+                    )
+
                     entries = zip(*split.SCV_profiles[gene_callers_id].values())
-
                     for entry in entries:
-                        entry_dict = dict(zip(split.SCV_profiles[gene_callers_id].keys(), entry))
-                        variable_codons_table.append(entry_dict)
+                        self.variable_codons_table.append(entry)
 
-        variable_codons_table.store()
+        self.variable_codons_table.store()
 
 
     def generate_variabile_nts_table(self):
         if self.skip_SNV_profiling:
             return
 
-        variable_nts_table = TableForVariability(self.profile_db_path, progress=null_progress)
-
         for contig in self.contigs:
             for split in contig.splits:
                 if split.num_SNV_entries == 0:
                     continue
 
-                # FIXME This is pretty slow; casting as dataframe is faster, but neglects the
-                # class methods of TableForVariability. For example, this is like 3 times faster
-                # >>> database.insert_rows_from_dataframe(anvio.tables.variable_nts_table_name, df)
+                # We reorder to the profiles in the order they will appear in the output table
+                split.SNV_profiles = OrderedDict(
+                    [(col, split.SNV_profiles[col]) for col in t.variable_nts_table_structure[1:]]
+                )
+
                 entries = zip(*split.SNV_profiles.values())
                 for entry in entries:
-                    entry_dict = dict(zip(split.SNV_profiles.keys(), entry))
-                    variable_nts_table.append(entry_dict)
+                    self.variable_nts_table.append(entry)
 
-        variable_nts_table.store()
+        self.variable_nts_table.store()
 
 
     def store_split_coverages(self):
