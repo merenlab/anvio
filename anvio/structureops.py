@@ -668,7 +668,6 @@ class Structure(object):
             self.structure_db.entries[t.structure_templates_table_name].append(templates)
         self.structure_db.store(t.structure_templates_table_name, key="entry_id")
 
-
         # entries that are only added if a structure was modelled
         if modeller_out["structure_exists"]:
 

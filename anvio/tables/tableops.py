@@ -39,7 +39,7 @@ progress = terminal.Progress()
 
 
 class Table(object):
-    """Superclass for rudimentary needs and operations for contigs db tables"""
+    """Superclass for rudimentary needs and operations for db tables"""
     def __init__(self, db_path, version, run=run, progress=progress, quiet=False, simple=False):
         if not db_path:
             raise ConfigError("Table superclass is being initiated without a db path, and it is very "
@@ -95,6 +95,8 @@ class Table(object):
         #
         #            db.get_max_value_in_column(table_name, 'entry_id')
         #
+        # NOTE I agree. For large bam files with many contigs, anvi-profile runs around 30 times
+        #      slower because of this garbage. Very disappointing to find this FIXME.
         database = db.DB(self.db_path, self.version)
         table_content = database.get_table_as_dict(table)
         if table_content:
@@ -234,4 +236,5 @@ class Table(object):
         database.disconnect()
 
         self.progress.end()
+
 
