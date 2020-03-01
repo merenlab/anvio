@@ -207,9 +207,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         if self.skip_SNV_profiling:
             self.run.warning('Single-nucleotide variation will not be characterized for this profile.')
+        else:
+            self.variable_nts_table = TableForVariability(self.profile_db_path, progress=null_progress)
 
         if not self.profile_SCVs:
             self.run.warning('Amino acid linkmer frequencies will not be characterized for this profile.')
+        else:
+            self.variable_codons_table = TableForCodonFrequencies(self.profile_db_path, progress=null_progress)
 
 
     def _run(self):
