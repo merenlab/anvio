@@ -8,6 +8,7 @@ import sys
 import time
 import fcntl
 import struct
+import pandas as pd
 import termios
 import datetime
 import textwrap
@@ -109,7 +110,7 @@ class Progress:
 
     def update_pid(self, pid):
         self.pid = '%s %s' % (get_date(), pid)
-        
+
 
     def increment(self, increment_to=None):
         if increment_to:
@@ -226,7 +227,19 @@ class Progress:
         self.write('\r[%s] %s' % (self.pid, msg))
 
 
-    def end(self):
+    def end(self, timing_filepath=None):
+        """End the current progress
+
+        Parameters
+        ==========
+        timing_filepath : str, None
+            Store the timings of this progress to the filepath `timing_filepath`. File will only be
+            made if a progress_total_items parameter was made during self.new()
+        """
+
+        if timing_filepath and self.progress_total_items is not None:
+            self.t.gen_file_report(timing_filepath)
+
         self.pid = None
         if not self.verbose:
             return
@@ -439,6 +452,23 @@ class Timer:
             checkpoint_last = checkpoint_key
 
         run.info('Total elapsed', '=%s' % self.timedelta_to_checkpoint(checkpoint, checkpoint_key=self.initial_checkpoint_key))
+
+
+    def gen_dataframe_report(self):
+        """Returns a dataframe"""
+
+        d = {'key': [], 'time': []}
+        for checkpoint_key, checkpoint in self.checkpoints.items():
+            d['key'].append(checkpoint_key)
+            d['time'].append(checkpoint)
+
+        return pd.DataFrame(d)
+
+
+    def gen_file_report(self, filepath):
+        """Writes to filepath, will overwrite"""
+
+        self.gen_dataframe_report().to_csv(filepath, sep='\t', index=False)
 
 
     def calculate_time_remaining(self, infinite_default = '∞:∞:∞'):

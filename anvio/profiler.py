@@ -756,7 +756,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.store_contigs_buffer()
         self.auxiliary_db.close()
 
-        self.progress.end()
+        self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
         # FIXME: this needs to be checked:
         if discarded_contigs > 0:
@@ -814,6 +814,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                         table_types=t.atomic_data_table_types,
                                         view_name=None,
                                         append_mode=True)
+
 
     def check_contigs(self, num_contigs=None):
         if not num_contigs:
