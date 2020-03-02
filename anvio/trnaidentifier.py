@@ -961,35 +961,34 @@ class Profile:
                                     profile_candidates.append((
                                         unprofiled_read[::-1],
                                         [],
-                                        num_unconserved + feature.num_unconserved,
-                                        num_unpaired + stem.num_unpaired,
+                                        feature.num_unconserved,
+                                        stem.num_unpaired,
                                         summed_input_length - len(unprofiled_read)))
                                     continue
                                 else:
-                                    profile_candidates.append(
-                                        ('', [], num_unconserved, num_unpaired, 0))
+                                    profile_candidates.append(('', [], 0, 0, 0))
                                     continue
                             else:
                                 profile_candidates.append((
                                     unprofiled_read[::-1],
                                     [],
-                                    num_unconserved + feature.num_unconserved,
-                                    num_unpaired + stem.num_unpaired,
+                                    feature.num_unconserved,
+                                    stem.num_unpaired,
                                     summed_input_length - len(unprofiled_read)))
                                 continue
                         else:
-                            profile_candidates.append(('', [], num_unconserved, num_unpaired, 0))
+                            profile_candidates.append(('', [], 0, 0, 0))
                             continue
                     else:
                         profile_candidates.append((
                             unprofiled_read[::-1],
                             [],
-                            num_unconserved + feature.num_unconserved,
-                            num_unpaired,
+                            feature.num_unconserved,
+                            0,
                             summed_input_length - len(unprofiled_read)))
                         continue
                 else:
-                    profile_candidates.append(('', [], num_unconserved, num_unpaired, 0))
+                    profile_candidates.append(('', [], 0, 0, 0))
                     continue
 
             # The procedure for assigning full-length features
@@ -1015,31 +1014,31 @@ class Profile:
                                     profile_candidates.append((
                                         unprofiled_read[: num_processed_bases][::-1],
                                         [arm, stem, feature],
-                                        num_unconserved + feature.num_unconserved,
-                                        num_unpaired + stem.num_unpaired,
+                                        feature.num_unconserved,
+                                        stem.num_unpaired,
                                         0))
                                     continue
                             else:
                                 profile_candidates.append((
                                     unprofiled_read[: num_processed_bases][::-1],
                                     [stem, feature],
-                                    num_unconserved + feature.num_unconserved,
-                                    num_unpaired + stem.num_unpaired,
+                                    feature.num_unconserved,
+                                    stem.num_unpaired,
                                     0))
                                 continue
                         else:
-                            profile_candidates.append(('', [], num_unconserved, num_unpaired, 0))
+                            profile_candidates.append(('', [], 0, 0, 0))
                             continue
                     else:
                         profile_candidates.append((
                             unprofiled_read[: num_processed_bases][::-1],
                             [feature],
-                            num_unconserved + feature.num_unconserved,
-                            num_unpaired,
+                            feature.num_unconserved,
+                            0,
                             0))
                         continue
                 else:
-                    profile_candidates.append(('', [], num_unconserved, num_unpaired, 0))
+                    profile_candidates.append(('', [], 0, 0, 0))
                     continue
 
         # Sort profile candidates by
@@ -1062,8 +1061,8 @@ class Profile:
                     unprofiled_read[len(profile_candidate[0]): ],
                     profile_candidate[0] + profiled_read,
                     profile_candidate[1] + profile_features,
-                    profile_candidate[2], # num unconserved
-                    profile_candidate[3], # num unpaired
+                    profile_candidate[2] + num_unconserved,
+                    profile_candidate[3] + num_unpaired,
                     feature_index + len(profile_candidate[1]),
                     is_mature)
                 if (final_profile_candidate[5]
@@ -1076,8 +1075,8 @@ class Profile:
                 final_profile_candidates.append((
                     profile_candidate[0] + profiled_read,
                     profile_features,
-                    profile_candidate[2],
-                    profile_candidate[3],
+                    profile_candidate[2] + num_unconserved,
+                    profile_candidate[3] + num_unpaired,
                     profile_candidate[4],
                     False))
         final_profile_candidates.sort(key=lambda p: (-len(p[1]), p[3], p[2], p[4]))
