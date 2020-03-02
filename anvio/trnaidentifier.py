@@ -1042,20 +1042,27 @@ class Profile:
         profile_candidates = []
         for p in incremental_profile_candidates:
             if p[1]:
-                if not is_mature:
-                    if feature_class is Profile.mature_trigger:
-                        is_mature = True
-                profile_candidate = Profile.get_profile(
-                    unprofiled_read[len(p[0]): ],
-                    p[0] + profiled_read,
-                    p[1] + profile_features,
-                    p[2] + num_unconserved,
-                    p[3] + num_unpaired,
-                    feature_index + len(p[1]),
-                    is_mature)
-                if (profile_candidate[5]
-                    and profile_candidate[2] == 0
-                    and profile_candidate[3] == 0):
+                if is_mature or Profile.mature_trigger:
+                    profile_candidate = Profile.get_profile(
+                        unprofiled_read[len(p[0]): ],
+                        p[0] + profiled_read,
+                        p[1] + profile_features,
+                        p[2] + num_unconserved,
+                        p[3] + num_unpaired,
+                        feature_index + len(p[1]),
+                        True)
+                else:
+                    profile_candidate = Profile.get_profile(
+                        unprofiled_read[len(p[0]): ],
+                        p[0] + profiled_read,
+                        p[1] + profile_features,
+                        p[2] + num_unconserved,
+                        p[3] + num_unpaired,
+                        feature_index + len(p[1]),
+                        False)
+                if (profile_candidate[5] # is mature
+                    and profile_candidate[2] == 0 # no unconserved
+                    and profile_candidate[3] == 0): # no unpaired
                     return profile_candidate
                 else:
                     profile_candidates.append(profile_candidate)
