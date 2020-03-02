@@ -814,7 +814,7 @@ class Acceptor(_Sequence):
 
 
 class Profile:
-    ordered_features = [
+    ordered_feature_classes = [
         Acceptor,
         Discriminator,
         ThreeprimeAcceptorStemSeq,
@@ -839,26 +839,26 @@ class Profile:
         PositionEight,
         FiveprimeAcceptorStemSeq,
         AcceptorStem,
-        #tRNAHisPositionZero
-        ]
+        tRNAHisPositionZero]
+    mature_trigger = FiveprimeAcceptorStemSeq
     stem_triggers = [
         FiveprimeTStemSeq,
         FiveprimeAnticodonStemSeq,
         FiveprimeDStemSeq,
         FiveprimeAcceptorStemSeq]
     threeprime_stem_seq_indices = {
-        TStem: ordered_features.index(ThreeprimeTStemSeq),
-        AnticodonStem: ordered_features.index(ThreeprimeAnticodonStemSeq),
-        DStem: ordered_features.index(ThreeprimeDStemSeq),
-        AcceptorStem: ordered_features.index(ThreeprimeAcceptorStemSeq)}
+        TStem: ordered_feature_classes.index(ThreeprimeTStemSeq),
+        AnticodonStem: ordered_feature_classes.index(ThreeprimeAnticodonStemSeq),
+        DStem: ordered_feature_classes.index(ThreeprimeDStemSeq),
+        AcceptorStem: ordered_feature_classes.index(ThreeprimeAcceptorStemSeq)}
     arm_triggers = [
         TStem,
         AnticodonStem,
         DStem]
     loop_indices = {
-        TArm: ordered_features.index(TLoop),
-        AnticodonArm: ordered_features.index(AnticodonLoop),
-        DArm: ordered_features.index(DLoop)}
+        TArm: ordered_feature_classes.index(TLoop),
+        AnticodonArm: ordered_feature_classes.index(AnticodonLoop),
+        DArm: ordered_feature_classes.index(DLoop)}
 
     def __init__(self, read):
         self.read = read
@@ -898,12 +898,12 @@ class Profile:
         feature_index,
         is_mature=False):
 
-        if feature_index == len(Profile.ordered_features):
+        if feature_index == len(Profile.ordered_feature_classes):
             return (profiled_read, profile_features, num_unconserved, num_unpaired, 0, is_mature)
         if not unprofiled_read:
             return (profiled_read, profile_features, num_unconserved, num_unpaired, 0, is_mature)
 
-        feature_class = Profile.ordered_features[feature_index]
+        feature_class = Profile.ordered_feature_classes[feature_index]
         if feature_class in Profile.stem_triggers:
             make_stem = True
             stem_class = feature_class.stem_class
@@ -1055,28 +1055,17 @@ class Profile:
         final_profile_candidates = []
         for profile_candidate in profile_candidates:
             if profile_candidate[1]:
-                if ((feature_class is FiveprimeAcceptorStemSeq)
-                    and (len(profile_features) + 2 == len(Profile.ordered_features))):
-                    is_mature = True
-                else:
-                    is_mature = False
-                if feature_class == VLoop:
-                    if len(profile_candidate[0]) == 15:
-                        bob = 2
-                if feature_class == DLoop:
-                    if len(profile_candidate[0]) == 11:
-                        bob = 1
+                if not is_mature:
+                    if feature_class is Profile.mature_trigger:
+                        is_mature = True
                 final_profile_candidate = Profile.get_profile(
                     unprofiled_read[len(profile_candidate[0]): ],
                     profile_candidate[0] + profiled_read,
                     profile_candidate[1] + profile_features,
-                    profile_candidate[2],
-                    profile_candidate[3],
+                    profile_candidate[2], # num unconserved
+                    profile_candidate[3], # num unpaired
                     feature_index + len(profile_candidate[1]),
                     is_mature)
-                if feature_class == VLoop:
-                    if len(profile_candidate[0]) == 23:
-                        bob = 2
                 if (final_profile_candidate[5]
                     and final_profile_candidate[2] == 0
                     and final_profile_candidate[3] == 0):
