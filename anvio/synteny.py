@@ -101,6 +101,9 @@ class NGram(object):
         ngram_count_df_list = []
         ngram_count_df = pd.DataFrame(columns=['ngram', 'count', 'contigDB', 'contig_name', 'N'])
         final_list = []
+        # FIXME: need way to extract total number of loci in contigsDB, this may be more than
+        # the total number of contigsDBs because each contigsDB may contain more than one loci (contig)
+        # add this to the final table output so you can normalize the counts by how many total loci there are
         counter = 0
         # Iterate through contigsDBs
         for contigs_db_name in self.external_genomes:
@@ -191,13 +194,22 @@ class NGram(object):
 
             kFreq = {}
             for i in range(0, len(function_list) - n + 1):
-                window = sorted(function_list[i:i + n])
+                # window = sorted(function_list[i:i + n])
+                # extract window
+                window = function_list[i:i + n]
+                # order the window based arbitrarily on the first gene in the synteny being smallest
+                original_order = window
+                flipped_order = window[::-1]
+                if original_order[0] < flipped_order[0]:
+                    window = original_order
+                else:
+                    window = flipped_order
+                # concatenate the window list together and separate the genes by "::" to form ngram
                 ngram = "::".join(map(str, list(window)))
-                if not self.is_in_unkowns_mode and "unknown-function" in ngram: # conditional to record unk functions
+                if not self.is_in_unkowns_mode and "unknown-function" in ngram: # conditional to record ngrams with unk functions
                     continue
                 else:
-                    # if ngram is not in dictionary add it
-                    # if it is add + 1
+                    # if ngram is not in dictionary add it, if it is add + 1
                     if ngram in kFreq:
                         kFreq[ngram] +=  1
                     else:
