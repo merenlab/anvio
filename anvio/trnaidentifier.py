@@ -918,7 +918,7 @@ class Profile:
         else:
             make_stem = False
             make_arm = False
-        profile_candidates = []
+        incremental_profile_candidates = []
 
         # Each primary sequence feature takes (sub)sequence inputs, which can be of varying length.
         # Consider each possible combination of input lengths for the feature.
@@ -958,7 +958,7 @@ class Profile:
                                 # The arm is valid
                                 # if it does not exceed its allowance of unconserved nucleotides.
                                 if arm.meets_conserved_thresh:
-                                    profile_candidates.append((
+                                    incremental_profile_candidates.append((
                                         unprofiled_read[::-1],
                                         [],
                                         feature.num_unconserved,
@@ -966,7 +966,7 @@ class Profile:
                                         summed_input_length - len(unprofiled_read)))
                                     continue
                             else:
-                                profile_candidates.append((
+                                incremental_profile_candidates.append((
                                     unprofiled_read[::-1],
                                     [],
                                     feature.num_unconserved,
@@ -974,7 +974,7 @@ class Profile:
                                     summed_input_length - len(unprofiled_read)))
                                 continue
                     else:
-                        profile_candidates.append((
+                        incremental_profile_candidates.append((
                             unprofiled_read[::-1],
                             [],
                             feature.num_unconserved,
@@ -1002,7 +1002,7 @@ class Profile:
                             if make_arm:
                                 arm = arm_class(stem, loop)
                                 if arm.meets_conserved_thresh:
-                                    profile_candidates.append((
+                                    incremental_profile_candidates.append((
                                         unprofiled_read[: num_processed_bases][::-1],
                                         [arm, stem, feature],
                                         feature.num_unconserved,
@@ -1010,7 +1010,7 @@ class Profile:
                                         0))
                                     continue
                             else:
-                                profile_candidates.append((
+                                incremental_profile_candidates.append((
                                     unprofiled_read[: num_processed_bases][::-1],
                                     [stem, feature],
                                     feature.num_unconserved,
@@ -1018,7 +1018,7 @@ class Profile:
                                     0))
                                 continue
                     else:
-                        profile_candidates.append((
+                        incremental_profile_candidates.append((
                             unprofiled_read[: num_processed_bases][::-1],
                             [feature],
                             feature.num_unconserved,
@@ -1026,40 +1026,41 @@ class Profile:
                             0))
                         continue
 
-        if not profile_candidates:
+        if not incremental_profile_candidates:
             return (profiled_read, profile_features, num_unconserved, num_unpaired, 0, is_mature)
-        # Sort profile candidates by
+
+        # Sort candidates by
         # 1. number of features identified (descending),
         # 2. number of unpaired bases (ascending),
         # 3. number of unconserved nucleotides (ascending),
         # 4. incompleteness of the last (most 5') feature (ascending).
-        profile_candidates.sort(key=lambda p: (-len(p[1]), p[3], p[2], p[4]))
+        incremental_profile_candidates.sort(key=lambda p: (-len(p[1]), p[3], p[2], p[4]))
         # Continue finding features in reads that have not been fully profiled --
-        # in practice, do not recurse profile candidates
+        # do not recurse profile candidates
         # in which the final feature did not fit completely in the read
         # and is therefore not in the profile list.
-        final_profile_candidates = []
-        for profile_candidate in profile_candidates:
-            if profile_candidate[1]:
+        profile_candidates = []
+        for p in incremental_profile_candidates:
+            if p[1]:
                 if not is_mature:
                     if feature_class is Profile.mature_trigger:
                         is_mature = True
-                final_profile_candidate = Profile.get_profile(
-                    unprofiled_read[len(profile_candidate[0]): ],
-                    profile_candidate[0] + profiled_read,
-                    profile_candidate[1] + profile_features,
-                    profile_candidate[2] + num_unconserved,
-                    profile_candidate[3] + num_unpaired,
-                    feature_index + len(profile_candidate[1]),
+                profile_candidate = Profile.get_profile(
+                    unprofiled_read[len(p[0]): ],
+                    p[0] + profiled_read,
+                    p[1] + profile_features,
+                    p[2] + num_unconserved,
+                    p[3] + num_unpaired,
+                    feature_index + len(p[1]),
                     is_mature)
-                if (final_profile_candidate[5]
-                    and final_profile_candidate[2] == 0
-                    and final_profile_candidate[3] == 0):
-                    return final_profile_candidate
+                if (profile_candidate[5]
+                    and profile_candidate[2] == 0
+                    and profile_candidate[3] == 0):
+                    return profile_candidate
                 else:
-                    final_profile_candidates.append(final_profile_candidate)
-        final_profile_candidates.sort(key=lambda p: (-len(p[1]), p[3], p[2], p[4]))
-        return final_profile_candidates[0]
+                    profile_candidates.append(profile_candidate)
+        profile_candidates.sort(key=lambda p: (-len(p[1]), p[3], p[2], p[4]))
+        return profile_candidates[0]
 
 Profile.set_feature_relations()
 # E. coli tRNA-Ala-GGC-1-1
