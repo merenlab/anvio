@@ -959,7 +959,7 @@ class Profile:
                                 # if it does not exceed its allowance of unconserved nucleotides.
                                 if arm.meets_conserved_thresh:
                                     profile_candidates.append((
-                                        unprofiled_read,
+                                        unprofiled_read[::-1],
                                         [],
                                         num_unconserved + feature.num_unconserved,
                                         num_unpaired + stem.num_unpaired,
@@ -971,7 +971,7 @@ class Profile:
                                     continue
                             else:
                                 profile_candidates.append((
-                                    unprofiled_read,
+                                    unprofiled_read[::-1],
                                     [],
                                     num_unconserved + feature.num_unconserved,
                                     num_unpaired + stem.num_unpaired,
@@ -982,7 +982,7 @@ class Profile:
                             continue
                     else:
                         profile_candidates.append((
-                            unprofiled_read,
+                            unprofiled_read[::-1],
                             [],
                             num_unconserved + feature.num_unconserved,
                             num_unpaired,
