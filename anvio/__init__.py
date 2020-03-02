@@ -2167,6 +2167,7 @@ def set_version():
            t.auxiliary_data_version, \
            t.genomes_storage_vesion, \
            t.structure_db_version, \
+           t.tRNA_db_version, \
            t.trnaseeds_db_version
 
 
@@ -2198,14 +2199,14 @@ def print_version():
 __version__, \
 __codename__, \
 __contigs__version__, \
-__tRNA__version__, \
-__trnaseeds__version__, \
 __pan__version__, \
 __profile__version__, \
 __genes__version__, \
 __auxiliary_data_version__, \
 __genomes_storage_version__ , \
-__structure__version__ = set_version()
+__structure__version__, \
+__tRNA__version__, \
+__trnaseeds__version__ = set_version()
 
 
 if '-v' in sys.argv or '--version' in sys.argv:
