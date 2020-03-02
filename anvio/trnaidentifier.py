@@ -965,9 +965,6 @@ class Profile:
                                         stem.num_unpaired,
                                         summed_input_length - len(unprofiled_read)))
                                     continue
-                                else:
-                                    profile_candidates.append(('', [], 0, 0, 0))
-                                    continue
                             else:
                                 profile_candidates.append((
                                     unprofiled_read[::-1],
@@ -976,9 +973,6 @@ class Profile:
                                     stem.num_unpaired,
                                     summed_input_length - len(unprofiled_read)))
                                 continue
-                        else:
-                            profile_candidates.append(('', [], 0, 0, 0))
-                            continue
                     else:
                         profile_candidates.append((
                             unprofiled_read[::-1],
@@ -987,9 +981,6 @@ class Profile:
                             0,
                             summed_input_length - len(unprofiled_read)))
                         continue
-                else:
-                    profile_candidates.append(('', [], 0, 0, 0))
-                    continue
 
             # The procedure for assigning full-length features
             # is similar to the prior precedure for partial-length features
@@ -1026,9 +1017,6 @@ class Profile:
                                     stem.num_unpaired,
                                     0))
                                 continue
-                        else:
-                            profile_candidates.append(('', [], 0, 0, 0))
-                            continue
                     else:
                         profile_candidates.append((
                             unprofiled_read[: num_processed_bases][::-1],
@@ -1037,10 +1025,9 @@ class Profile:
                             0,
                             0))
                         continue
-                else:
-                    profile_candidates.append(('', [], 0, 0, 0))
-                    continue
 
+        if not profile_candidates:
+            return (profiled_read, profile_features, num_unconserved, num_unpaired, 0, is_mature)
         # Sort profile candidates by
         # 1. number of features identified (descending),
         # 2. number of unpaired bases (ascending),
@@ -1071,14 +1058,6 @@ class Profile:
                     return final_profile_candidate
                 else:
                     final_profile_candidates.append(final_profile_candidate)
-            else:
-                final_profile_candidates.append((
-                    profile_candidate[0] + profiled_read,
-                    profile_features,
-                    profile_candidate[2] + num_unconserved,
-                    profile_candidate[3] + num_unpaired,
-                    profile_candidate[4],
-                    False))
         final_profile_candidates.sort(key=lambda p: (-len(p[1]), p[3], p[2], p[4]))
         return final_profile_candidates[0]
 
