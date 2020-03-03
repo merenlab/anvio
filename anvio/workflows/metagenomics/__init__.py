@@ -68,7 +68,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         rule_acceptable_params_dict = {}
 
-        # defining the accesible params per rule
+        # defining the accesible params per rule. NOTE --threads is a parameter for every rule
+        # and is not explicitly provided in what follows
         rule_acceptable_params_dict['iu_gen_configs'] = ["--r1-prefix", "--r2-prefix"]
         rule_acceptable_params_dict['iu_filter_quality_minoche'] = ['run', '--visualize-quality-curves', '--ignore-deflines', '--limit-num-pairs', '--print-qual-scores', '--store-read-fate']
         rule_acceptable_params_dict['gzip_fastqs'] = ["run"]

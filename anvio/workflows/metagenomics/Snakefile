@@ -766,7 +766,7 @@ rule anvi_init_bam:
         bai = dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.bam.bai"
     threads: M.T('anvi_init_bam')
     resources: nodes = M.T('anvi_init_bam'),
-    shell: "anvi-init-bam {input} -o {output.bam} >> {log} 2>&1"
+    shell: "anvi-init-bam {input} -o {output.bam} -T {threads} >> {log} 2>&1"
 
 
 sample_name = M.get_param_value_from_config(['anvi_profile', '--sample-name'])
