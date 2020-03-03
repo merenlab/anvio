@@ -271,7 +271,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                            view_name='single')
         elif self.input_file_path:
             self.init_profile_from_BAM()
-            self.profile()
+            if self.num_threads > 1:
+                self.profile_multi_thread()
+            else:
+                self.profile_single_thread()
         else:
             raise ConfigError("What are you doing? :( Whatever it is, anvi'o will have none of it.")
 
@@ -683,7 +686,86 @@ class BAMProfiler(dbops.ContigsSuperclass):
         return contig
 
 
-    def profile(self):
+    def profile_single_thread(self):
+        bam_file = bamops.BAMFileObject(self.input_file_path)
+
+        recieved_contigs = 0
+        discarded_contigs = 0
+        memory_usage = None
+
+        self.progress.new('Profiling w/1 thread', progress_total_items=self.num_contigs)
+        # FIXME: memory usage should be generalized.
+        last_memory_update = int(time.time())
+
+        self.progress.update('contigs are being processed ...')
+        for index in range(self.num_contigs):
+            contig_name = self.contig_names[index]
+            contig_length = self.contig_lengths[index]
+
+            contig = self.process_contig(bam_file, contig_name, contig_length)
+
+            if contig:
+                self.contigs.append(contig)
+            else:
+                discarded_contigs += 1
+
+            recieved_contigs += 1
+
+            if (int(time.time()) - last_memory_update) > 5:
+                memory_usage = utils.get_total_memory_usage()
+                last_memory_update = int(time.time())
+
+            self.progress.increment(recieved_contigs)
+            self.progress.update('%d of %d contigs ⚙  / MEM ☠️  %s' % \
+                        (recieved_contigs, self.num_contigs, memory_usage or '??'))
+
+            # here you're about to witness the poor side of Python (or our use of it).
+            # the problem we run into here was the lack of action from the garbage
+            # collector on the processed objects. although we couldn't find any refs to
+            # these objects, garbage collecter kept them in the memory, and `del` statement
+            # on the `split` object did not yield any improvement either. so here we are
+            # accessing to the atomic data structures in our split objects to try to relieve
+            # the memory by encouraging the garbage collector to realize what's up
+            # explicitly.
+            if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
+                self.store_contigs_buffer()
+                for c in self.contigs:
+                    for split in c.splits:
+                        del split.coverage
+                        del split.auxiliary
+                        del split
+                    del c.splits[:]
+                    del c.coverage
+                    del c
+                del self.contigs[:]
+
+        self.store_contigs_buffer()
+        self.auxiliary_db.close()
+
+        self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
+
+        # FIXME: this needs to be checked:
+        if discarded_contigs > 0:
+            self.run.info('contigs_after_C', pp(recieved_contigs - discarded_contigs))
+
+        overall_mean_coverage = 1
+        if self.total_length_of_all_contigs != 0:
+            overall_mean_coverage = self.total_coverage_values_for_all_contigs / self.total_length_of_all_contigs
+
+        # FIXME: We know this is ugly. You can keep your opinion to yourself.
+        if overall_mean_coverage > 0.0:
+            # avoid dividing by zero
+            dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_splits SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
+            dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
+
+        if not self.skip_SNV_profiling:
+            self.layer_additional_data['num_SNVs_reported'] =  TableForVariability(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_keys.append('num_SNVs_reported')
+
+        self.check_contigs(num_contigs=recieved_contigs-discarded_contigs)
+
+
+    def profile_multi_thread(self):
         manager = multiprocessing.Manager()
         available_index_queue = manager.Queue()
         output_queue = manager.Queue(self.queue_size)
@@ -704,7 +786,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         discarded_contigs = 0
         memory_usage = None
 
-        self.progress.new('Profiling w/' + str(self.num_threads) + ' thread%s' % ('s' if self.num_threads > 1 else ''), progress_total_items=self.num_contigs)
+        self.progress.new('Profiling w/%d threads' % self.num_threads, progress_total_items=self.num_contigs)
         self.progress.update('initializing threads ...')
         # FIXME: memory usage should be generalized.
         last_memory_update = int(time.time())
