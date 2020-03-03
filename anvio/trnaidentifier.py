@@ -86,6 +86,24 @@ class _tRNAFeature:
         return (meets_conserved_thresh, num_conserved, num_unconserved, conserved_status)
 
 
+    @staticmethod
+    def set_feature_relations():
+        ThreeprimeAcceptorStemSeq.stem_class = AcceptorStem
+        ThreeprimeTStemSeq.stem_class = TStem
+        TLoop.arm_class = TArm
+        FiveprimeTStemSeq.stem_class = TStem
+        TStem.arm_class = TArm
+        ThreeprimeAnticodonStemSeq.stem_class = AnticodonStem
+        AnticodonLoop.arm_class = AnticodonArm
+        FiveprimeAnticodonStemSeq.stem_class = AnticodonStem
+        AnticodonStem.arm_class = AnticodonArm
+        ThreeprimeDStemSeq.stem_class = DStem
+        DLoop.arm_class = DArm
+        FiveprimeDStemSeq.stem_class = DStem
+        DStem.arm_class = DArm
+        FiveprimeAcceptorStemSeq.stem_class = AcceptorStem
+
+
 class _Nucleotide(_tRNAFeature):
     allowed_input_lengths = ((1, ), )
     summed_input_lengths = tuple(map(sum, allowed_input_lengths))
@@ -390,7 +408,7 @@ class FiveprimeDStemSeq(_Sequence):
 class DLoop(_Loop):
     canonical_positions = ((14, 15), (16, 17), (18, 19), (20, ), (21, ))
     conserved_nucleotides = (
-        {0: ('A', 'G'), 1: ('A', 'G')}, {}, {0: 'G', 1: 'G'}, {}, {0: ('A', 'G')})
+        {0: ('A', 'G'), 1: 'A'}, {}, {0: 'G', 1: 'G'}, {}, {0: ('A', 'G')})
     allowed_input_lengths = tuple(itertools.product((2, ), (1, 2, 3), (2, ), (1, 2, 3), (1, )))
     summed_input_lengths = tuple(map(sum, allowed_input_lengths))
 
@@ -863,6 +881,7 @@ class Profile:
         TArm: ordered_feature_classes.index(TLoop),
         AnticodonArm: ordered_feature_classes.index(AnticodonLoop),
         DArm: ordered_feature_classes.index(DLoop)}
+    anticodon_arm_index = ordered_feature_classes.index(AnticodonArm)
 
     def __init__(self, read):
         self.read = read
@@ -872,24 +891,6 @@ class Profile:
          self.num_unpaired,
          self.num_partial_feature_nucs,
          self.is_mature) = self.get_profile(read, '', [], 0, 0, 0)
-
-
-    @staticmethod
-    def set_feature_relations():
-        ThreeprimeAcceptorStemSeq.stem_class = AcceptorStem
-        ThreeprimeTStemSeq.stem_class = TStem
-        TLoop.arm_class = TArm
-        FiveprimeTStemSeq.stem_class = TStem
-        TStem.arm_class = TArm
-        ThreeprimeAnticodonStemSeq.stem_class = AnticodonStem
-        AnticodonLoop.arm_class = AnticodonArm
-        FiveprimeAnticodonStemSeq.stem_class = AnticodonStem
-        AnticodonStem.arm_class = AnticodonArm
-        ThreeprimeDStemSeq.stem_class = DStem
-        DLoop.arm_class = DArm
-        FiveprimeDStemSeq.stem_class = DStem
-        DStem.arm_class = DArm
-        FiveprimeAcceptorStemSeq.stem_class = AcceptorStem
 
 
     @staticmethod
@@ -919,6 +920,8 @@ class Profile:
                 loop = profile_features[-Profile.loop_indices[arm_class] - 1]
             else:
                 make_arm = False
+        elif feature_class == tRNAHisPositionZero:
+            profile_features[Profile.anticodon_arm_index].anticodon
         else:
             make_stem = False
             make_arm = False
@@ -1081,7 +1084,7 @@ class Profile:
         profile_candidates.sort(key=lambda p: (-len(p[1]), p[3], p[2], p[4]))
         return profile_candidates[0]
 
-Profile.set_feature_relations()
+_tRNAFeature.set_feature_relations()
 # E. coli tRNA-Ala-GGC-1-1
 # forward = 'GGGGCTATAGCTCAGCTGGGAGAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACCA'
 # E. coli tRNA-Gln-CTG-1-1
@@ -1108,7 +1111,7 @@ Profile.set_feature_relations()
 # forward = 'GCCCGGATGAACCATGGCGGTCTGTGGTGCAGACTTCAAATCTGTAGGCGGTTAGCGCCGCAGTGGTTCGACTCCACCTTTCGGGTGCCA'
 # E. coli tRNA-SeC-TCA-1-1
 # forward = 'GGAAGATCGTCGTCTCCGGTGAGGCGGCTGGACTTCAAATCCAGTTGGGGCCGCCAGCGGTCCCGGGCAGGTTCGACTCCTGTGATCTTCCGCCA'
-# A. fulgidis DSM 4304 tRNA-Glu-TTC-1-1: the gene has introns
+# A. fulgidus DSM 4304 tRNA-Glu-TTC-1-1: the gene has introns
 # forward = 'GCUCCGGUGGUGUAGCCCGGCCAAUCAUUCCGGCCUUUCGAGCCGGCGACCCGGGUUCAAAUCCCGGCCGGAGCACCA'.replace('U', 'T')
 
 read = forward[::-1]
