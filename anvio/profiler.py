@@ -2,6 +2,7 @@
 # pylint: disable=line-too-long
 """Provides the necessary class to profile BAM files."""
 
+import gc
 import os
 import sys
 import time
@@ -738,6 +739,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     del c.coverage
                     del c
                 del self.contigs[:]
+                gc.collect()
 
         self.store_contigs_buffer()
         self.auxiliary_db.close()
