@@ -1046,7 +1046,7 @@ class Profile:
         profile_candidates = []
         for p in incremental_profile_candidates:
             if p[1]:
-                if is_mature or Profile.mature_trigger:
+                if is_mature or feature_class == Profile.mature_trigger:
                     profile_candidate = Profile.get_profile(
                         unprofiled_read[len(p[0]): ],
                         p[0] + profiled_read,
@@ -1054,7 +1054,7 @@ class Profile:
                         p[2] + num_unconserved,
                         p[3] + num_unpaired,
                         feature_index + len(p[1]),
-                        True)
+                        is_mature=True)
                 else:
                     profile_candidate = Profile.get_profile(
                         unprofiled_read[len(p[0]): ],
@@ -1063,7 +1063,7 @@ class Profile:
                         p[2] + num_unconserved,
                         p[3] + num_unpaired,
                         feature_index + len(p[1]),
-                        False)
+                        is_mature=False)
                 if (profile_candidate[5] # is mature
                     and profile_candidate[2] == 0 # no unconserved
                     and profile_candidate[3] == 0): # no unpaired
@@ -1099,7 +1099,7 @@ Profile.set_feature_relations()
 # E. coli tRNA-fMet-CAT-1-1
 # forward = 'CGCGGGGTGGAGCAGCCTGGTAGCTCGTCGGGCTCATAACCCGAAGGTCGTCGGTTCAAATCCGGCCCCCGCAACCA'
 # E. coli tRNA-Leu-TAA-1-1
-forward = 'GCCCGGATGGTGGAATCGGTAGACACAAGGGATTTAAAATCCCTCGGCGTTCGCGCTGTGCGGGTTCAAGTCCCGCTCCGGGTACCA'
+# forward = 'GCCCGGATGGTGGAATCGGTAGACACAAGGGATTTAAAATCCCTCGGCGTTCGCGCTGTGCGGGTTCAAGTCCCGCTCCGGGTACCA'
 # E. coli tRNA-His-GTG-1-1: includes the 5' G
 # forward = 'GGTGGCTATAGCTCAGTTGGTAGAGCCCTGGATTGTGATTCCAGTTGTCGTGGGTTCGAATCCCATTAGCCACCCCA'
 # H. sapiens tRNA-SeC-TCA-1-1
