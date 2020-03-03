@@ -292,11 +292,15 @@ class tRNAHisPositionZero(_Nucleotide):
 
     def __init__(
         self,
+        string,
+        required_in_read=False,
+        num_allowed_unconserved=0,
         cautious=False):
 
         super().__init__(
-            'G',
+            string,
             required_in_read=False,
+            num_allowed_unconserved=num_allowed_unconserved,
             cautious=cautious)
 
 
@@ -1066,6 +1070,14 @@ class Profile:
                     return profile_candidate
                 else:
                     profile_candidates.append(profile_candidate)
+            else:
+                profile_candidates.append((
+                    unprofiled_read[len(p[0]): ],
+                    p[0] + profiled_read,
+                    profile_features,
+                    p[2] + num_unconserved,
+                    p[3] + num_unpaired,
+                    False))
         profile_candidates.sort(key=lambda p: (-len(p[1]), p[3], p[2], p[4]))
         return profile_candidates[0]
 
@@ -1087,8 +1099,8 @@ Profile.set_feature_relations()
 # E. coli tRNA-fMet-CAT-1-1
 # forward = 'CGCGGGGTGGAGCAGCCTGGTAGCTCGTCGGGCTCATAACCCGAAGGTCGTCGGTTCAAATCCGGCCCCCGCAACCA'
 # E. coli tRNA-Leu-TAA-1-1
-# forward = 'GCCCGGATGGTGGAATCGGTAGACACAAGGGATTTAAAATCCCTCGGCGTTCGCGCTGTGCGGGTTCAAGTCCCGCTCCGGGTACCA'
-# E. coli tRNA-His-GTG-1-1
+forward = 'GCCCGGATGGTGGAATCGGTAGACACAAGGGATTTAAAATCCCTCGGCGTTCGCGCTGTGCGGGTTCAAGTCCCGCTCCGGGTACCA'
+# E. coli tRNA-His-GTG-1-1: includes the 5' G
 # forward = 'GGTGGCTATAGCTCAGTTGGTAGAGCCCTGGATTGTGATTCCAGTTGTCGTGGGTTCGAATCCCATTAGCCACCCCA'
 # H. sapiens tRNA-SeC-TCA-1-1
 # forward = 'GCCCGGATGATCCTCAGTGGTCTGGGGTGCAGGCTTCAAACCTGTAGCTGTCTAGCGACAGAGTGGTTCAATTCCACCTTTCGGGCGCCA'
@@ -1097,7 +1109,7 @@ Profile.set_feature_relations()
 # E. coli tRNA-SeC-TCA-1-1
 # forward = 'GGAAGATCGTCGTCTCCGGTGAGGCGGCTGGACTTCAAATCCAGTTGGGGCCGCCAGCGGTCCCGGGCAGGTTCGACTCCTGTGATCTTCCGCCA'
 # A. fulgidis DSM 4304 tRNA-Glu-TTC-1-1: the gene has introns
-forward = 'GCUCCGGUGGUGUAGCCCGGCCAAUCAUUCCGGCCUUUCGAGCCGGCGACCCGGGUUCAAAUCCCGGCCGGAGCACCA'.replace('U', 'T')
+# forward = 'GCUCCGGUGGUGUAGCCCGGCCAAUCAUUCCGGCCUUUCGAGCCGGCGACCCGGGUUCAAAUCCCGGCCGGAGCACCA'.replace('U', 'T')
 
 read = forward[::-1]
 profile = Profile(read)
