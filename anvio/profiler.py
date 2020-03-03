@@ -271,7 +271,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                            view_name='single')
         elif self.input_file_path:
             self.init_profile_from_BAM()
-            if self.num_threads > 1:
+            if self.num_threads > 1 or self.args.force_multi:
                 self.profile_multi_thread()
             else:
                 self.profile_single_thread()
