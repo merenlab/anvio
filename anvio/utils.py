@@ -37,8 +37,8 @@ from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequence import Composition
 
-#with SuppressAllOutput():
-#    from ete3 import Tree
+with SuppressAllOutput():
+    from ete3 import Tree
 
 # psutil is causing lots of problems for lots of people :/
 with SuppressAllOutput():
