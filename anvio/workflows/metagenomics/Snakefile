@@ -827,7 +827,7 @@ rule anvi_profile:
         min_coverage_for_variability = M.get_rule_param("anvi_profile", "--min-coverage-for-variability"),
         contigs_of_interest = M.get_rule_param("anvi_profile", "--contigs-of-interest"),
         queue_size = M.get_rule_param("anvi_profile", "--queue-size"),
-        write_buffer_size = M.get_rule_param("anvi_profile", "--write-buffer-size"),
+        write_buffer_size_per_thread = M.get_rule_param("anvi_profile", "--write-buffer-size-per-thread"),
         max_contig_length = M.get_rule_param("anvi_profile", "--max-contig-length"),
         max_coverage_depth = M.get_rule_param("anvi_profile", "--max-coverage-depth"),
     threads: M.T('anvi_profile')
@@ -843,7 +843,7 @@ rule anvi_profile:
                              {params.linkage} {params.min_mean_coverage} \
                              {params.max_coverage_depth} \
                              {params.min_coverage_for_variability} {params.contigs_of_interest} \
-                             {params.queue_size} {params.write_buffer_size} {params.max_contig_length} >> {log} 2>&1
+                             {params.queue_size} {params.write_buffer_size_per_thread} {params.max_contig_length} >> {log} 2>&1
         """
 
 
