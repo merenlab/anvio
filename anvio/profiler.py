@@ -76,7 +76,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.linkage = A('linkage') or constants.linkage_method_default
         self.num_threads = int(A('num_threads') or 1)
         self.queue_size = int(A('queue_size') if A('queue_size') is not None else 0)
-        self.write_buffer_size = int(A('write_buffer_size') if A('write_buffer_size') is not None else 500)
+        self.write_buffer_size_per_thread = int(A('write_buffer_size_per_thread') if A('write_buffer_size_per_thread') is not None else 500)
+        self.write_buffer_size = self.write_buffer_size_per_thread * self.num_threads
         self.total_length_of_all_contigs = 0
         self.total_coverage_values_for_all_contigs = 0
         self.description_file_path = A('description')
@@ -692,6 +693,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def profile_single_thread(self):
+        import tracemalloc
+        tracemalloc.start()
+
         bam_file = bamops.BAMFileObject(self.input_file_path)
 
         recieved_contigs = 0
@@ -744,6 +748,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     del c
                 del self.contigs[:]
                 gc.collect()
+
+            utils.display_top_memory_usage(tracemalloc.take_snapshot(), 'traceback')
 
         self.store_contigs_buffer()
         self.auxiliary_db.close()
