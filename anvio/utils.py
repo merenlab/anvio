@@ -1520,42 +1520,6 @@ def convert_sequence_indexing(index, source="M0", destination="M1"):
 
 
 @jit(nopython=True)
-def get_blocks(array):
-    """Generator that returns blocks of consecutive numbers
-
-    Parameters
-    ==========
-    array : array
-        a pre-sorted numpy array. If a list is passed, this function is very slow
-
-    Examples
-    ========
-
-    >>> a = np.array([0, 47, 48, 49, 50, 97, 98, 99])
-    >>> for i in get_blocks(a): print(i)
-    (0, 1)
-    (47, 51)
-    (97, 100)
-    """
-
-    block_start = array[0]
-    last = block_start - 1
-
-    for i in range(len(array)):
-        current = array[i]
-
-        if current > last + 1:
-            yield block_start, last + 1
-
-            block_start = current
-
-        last = current
-
-    else:
-        yield block_start, last + 1
-
-
-@jit(nopython=True)
 def get_constant_value_blocks(array, value):
     """Generator that returns blocks of consecutive numbers
 
