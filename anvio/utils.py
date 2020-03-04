@@ -1538,6 +1538,8 @@ def get_constant_value_blocks(array, value):
     (0, 3)
     (5, 7)
     """
+    ans = []
+
     matching = False
     for i in range(len(array)):
         if array[i] == value:
@@ -1547,10 +1549,12 @@ def get_constant_value_blocks(array, value):
         else:
             if matching:
                 matching = False
-                yield start, i
+                ans.append((start, i))
 
     if matching:
-        yield start, i + 1
+        ans.append((start, i + 1))
+
+    return ans
 
 
 @jit(nopython=True)
