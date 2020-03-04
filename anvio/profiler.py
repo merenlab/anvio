@@ -296,7 +296,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.quit()
 
 
-    def generate_variabile_codons_table(self):
+    def generate_variable_codons_table(self):
         if self.skip_SNV_profiling or not self.profile_SCVs:
             return
 
@@ -316,7 +316,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.variable_codons_table.store()
 
 
-    def generate_variabile_nts_table(self):
+    def generate_variable_nts_table(self):
         if self.skip_SNV_profiling:
             return
 
@@ -415,7 +415,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             except:
                 pass
 
-            raise ConfigError("Anvi'o applied your min/max lenght criteria for contigs to filter out the bad ones "
+            raise ConfigError("Anvi'o applied your min/max length criteria for contigs to filter out the bad ones "
                               "and has bad news: not a single contig in your contigs database was greater than %s "
                               "and smaller than %s nts :( So this profiling attempt did not really go anywhere. "
                               "Please remove your half-baked output directory if it is still there: '%s'." \
@@ -693,12 +693,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def profile_single_thread(self):
-        import tracemalloc
-        tracemalloc.start()
-
         bam_file = bamops.BAMFileObject(self.input_file_path)
 
-        recieved_contigs = 0
+        received_contigs = 0
         discarded_contigs = 0
         memory_usage = None
 
@@ -718,15 +715,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
             else:
                 discarded_contigs += 1
 
-            recieved_contigs += 1
+            received_contigs += 1
 
             if (int(time.time()) - last_memory_update) > 5:
                 memory_usage = utils.get_total_memory_usage()
                 last_memory_update = int(time.time())
 
-            self.progress.increment(recieved_contigs)
+            self.progress.increment(received_contigs)
             self.progress.update('%d of %d contigs ⚙  / MEM ☠️  %s' % \
-                        (recieved_contigs, self.num_contigs, memory_usage or '??'))
+                        (received_contigs, self.num_contigs, memory_usage or '??'))
 
             # Here you're about to witness the poor side of Python (or our use of it). Although
             # we couldn't find any refs to these objects, garbage collecter kept them in the
@@ -749,8 +746,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 del self.contigs[:]
                 gc.collect()
 
-            utils.display_top_memory_usage(tracemalloc.take_snapshot(), 'traceback')
-
         self.store_contigs_buffer()
         self.auxiliary_db.close()
 
@@ -758,7 +753,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # FIXME: this needs to be checked:
         if discarded_contigs > 0:
-            self.run.info('contigs_after_C', pp(recieved_contigs - discarded_contigs))
+            self.run.info('contigs_after_C', pp(received_contigs - discarded_contigs))
 
         overall_mean_coverage = 1
         if self.total_length_of_all_contigs != 0:
@@ -774,7 +769,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.layer_additional_data['num_SNVs_reported'] = TableForVariability(self.profile_db_path, progress=null_progress).num_entries
             self.layer_additional_keys.append('num_SNVs_reported')
 
-        self.check_contigs(num_contigs=recieved_contigs-discarded_contigs)
+        self.check_contigs(num_contigs=received_contigs-discarded_contigs)
 
 
     def profile_multi_thread(self):
@@ -794,7 +789,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for proc in processes:
             proc.start()
 
-        recieved_contigs = 0
+        received_contigs = 0
         discarded_contigs = 0
         memory_usage = None
 
@@ -804,7 +799,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         last_memory_update = int(time.time())
 
         self.progress.update('contigs are being processed ...')
-        while recieved_contigs < self.num_contigs:
+        while received_contigs < self.num_contigs:
             try:
                 contig = output_queue.get()
 
@@ -815,15 +810,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 else:
                     discarded_contigs += 1
 
-                recieved_contigs += 1
+                received_contigs += 1
 
                 if (int(time.time()) - last_memory_update) > 5:
                     memory_usage = utils.get_total_memory_usage()
                     last_memory_update = int(time.time())
 
-                self.progress.increment(recieved_contigs)
+                self.progress.increment(received_contigs)
                 self.progress.update('%d of %d contigs ⚙  / MEM ☠️  %s' % \
-                            (recieved_contigs, self.num_contigs, memory_usage or '??'))
+                            (received_contigs, self.num_contigs, memory_usage or '??'))
 
                 # Here you're about to witness the poor side of Python (or our use of it). Although
                 # we couldn't find any refs to these objects, garbage collecter kept them in the
@@ -844,7 +839,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     gc.collect()
 
             except KeyboardInterrupt:
-                self.run.info_single("Anvi'o profiler recieved SIGINT, terminating all processes...", nl_before=2)
+                self.run.info_single("Anvi'o profiler received SIGINT, terminating all processes...", nl_before=2)
                 break
 
         for proc in processes:
@@ -857,7 +852,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # FIXME: this needs to be checked:
         if discarded_contigs > 0:
-            self.run.info('contigs_after_C', pp(recieved_contigs - discarded_contigs))
+            self.run.info('contigs_after_C', pp(received_contigs - discarded_contigs))
 
         overall_mean_coverage = 1
         if self.total_length_of_all_contigs != 0:
@@ -873,7 +868,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.layer_additional_data['num_SNVs_reported'] =  TableForVariability(self.profile_db_path, progress=null_progress).num_entries
             self.layer_additional_keys.append('num_SNVs_reported')
 
-        self.check_contigs(num_contigs=recieved_contigs-discarded_contigs)
+        self.check_contigs(num_contigs=received_contigs-discarded_contigs)
 
 
     def store_contigs_buffer(self):
@@ -886,8 +881,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             for split in contig.splits:
                 split.abundance = split.coverage.mean
 
-        self.generate_variabile_nts_table()
-        self.generate_variabile_codons_table()
+        self.generate_variable_nts_table()
+        self.generate_variable_codons_table()
         self.store_split_coverages()
 
         # creating views in the database for atomic data we gathered during the profiling. Meren, please note
