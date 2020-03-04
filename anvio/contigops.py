@@ -258,11 +258,11 @@ class Auxiliary:
                     # which genes we include for SCV analysis. Resolving issue
                     # https://github.com/merenlab/anvio/issues/1358 would enable a more elegant
                     # scenario, where this would not happen.
-                    gene_overlap_start, gene_overlap_stop = next(utils.get_constant_value_blocks(gene_id_per_nt_in_read, gene_id))
+                    gene_overlap_start, gene_overlap_stop = utils.get_constant_value_blocks(gene_id_per_nt_in_read, gene_id)[0]
                     gene_overlap_start += read.reference_start
                     gene_overlap_stop += read.reference_start - 1
-                    start_index = next(utils.find_value_index(read[:, 0], gene_overlap_start))
-                    stop_index = next(utils.find_value_index(read[:, 0], gene_overlap_stop))
+                    start_index = utils.find_value_index(read[:, 0], gene_overlap_start)
+                    stop_index = utils.find_value_index(read[:, 0], gene_overlap_stop)
                     segment_that_overlaps_gene = read[start_index:stop_index+1]
 
                 if gene_id not in gene_calls:
@@ -304,16 +304,14 @@ class Auxiliary:
                     # must determine by how many nts on each side we must trim
                     base_positions = self.split.per_position_info['base_pos_in_codon'][block_start_split:block_end_split]
 
-                    first_pos = next(utils.find_value_index(base_positions, (1 if gene_call['direction'] == 'f' else 3)))
-                    last_pos = next(utils.find_value_index(base_positions, (3 if gene_call['direction'] == 'f' else 1), reverse_search=True))
+                    first_pos = utils.find_value_index(base_positions, (1 if gene_call['direction'] == 'f' else 3))
+                    last_pos = utils.find_value_index(base_positions, (3 if gene_call['direction'] == 'f' else 1), reverse_search=True)
 
                     if last_pos - first_pos < 3:
                         # the required trimming creates a sequence that is less than a codon long.
                         # We cannot use this read.
                         continue
 
-                    # We use gapless_segment.trim instead of slicing with gapless_segment[a:b]
-                    # because slicing makes a copy, whereas gapless_segment.trim modifies in place
                     gapless_segment = gapless_segment[first_pos:(last_pos+1), :]
 
                     # Update these for posterity
