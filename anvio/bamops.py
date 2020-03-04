@@ -919,7 +919,7 @@ class ReadsMappingToARange:
 # The below functions are helpers of the Read class which exist outside the class because they are
 # just-in-time compiled (very very fast) with numba, which has poor support for in-class methods
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True)
 def iterate_cigartuples(cigartuples, cigar_consumption):
     """Iterate through cigartuples
 
@@ -944,7 +944,7 @@ def iterate_cigartuples(cigartuples, cigar_consumption):
         ])
 
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True)
 def _vectorize_read(cigartuples, query_sequence, reference_start, cigar_consumption):
     # init the array
     size = 0
@@ -984,7 +984,7 @@ def _vectorize_read(cigartuples, query_sequence, reference_start, cigar_consumpt
     return v
 
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True)
 def _get_aligned_sequence_and_reference_positions(cigartuples, query_sequence, reference_start, cigar_consumption):
 
     # get size of arrays to init
