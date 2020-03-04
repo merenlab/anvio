@@ -797,6 +797,7 @@ class KeggModulesDatabase(KeggContext):
 
 
             num_modules_parsed += 1
+        self.progress.end()
 
         # give some run info
         self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
