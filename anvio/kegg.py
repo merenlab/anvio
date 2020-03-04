@@ -780,7 +780,8 @@ class KeggModulesDatabase(KeggContext):
                 line_number += 1
 
                 # check for last line ///. We don't want to send the last line to the parsing function because it will break.
-                if not line == '///':
+                # we also check here that the line is not entirely blank (this happens sometimes in KEGG modules, inexplicably)
+                if not line == '///' and re.search(r"\S+", line):
                     # parse the line into a tuple
                     entries_tuple_list = None
                     # here is the tricky bit about parsing these files. Not all lines start with the data_name field; those that don't start with a space.
