@@ -1,11 +1,11 @@
-
+#!/usr/bin/env python
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 """
-    Classes to work with ngrams of contig functions.
+Classes to work with ngrams of contig functions.
 
-    These are classes to deconstruct loci into ngrams. They will be used
-    to analyze conserved genes and synteny structures across loci.
+These are classes to deconstruct loci into ngrams. They will be used
+to analyze conserved genes and synteny structures across loci.
 """
 
 import pandas as pd
@@ -111,10 +111,7 @@ class NGram(object):
         """
         genes_and_functions_list = []
         ngram_attributes_list = []
-        # FIXME: need way to extract total number of loci in contigsDB, this may be more than
-        # the total number of contigsDBs because each contigsDB may contain more than one loci (contig)
-        # add this to the final table output so you can normalize the counts by how many total loci there are
-        # Iterate through contigsDBs
+        self.num_contigs_in_external_genomes = 0
         for contigs_db_name in self.external_genomes:
             # Extract file path
             contigs_db_path = self.external_genomes[contigs_db_name]["contigs_db_path"]
@@ -124,6 +121,9 @@ class NGram(object):
 
             # Get unique list of the contigs from this contigsDB (there could be more than one)
             contigs_list = set(([entry[2] for entry in genes_and_functions_list]))
+
+            # Calculate TOTAL number of contigs within external-genomes files (there may be more than one per contigsDB)
+            self.num_contigs_in_external_genomes = self.num_contigs_in_external_genomes + len(contigs_list)
 
             # iterate through list of contigs and make dictionary 'contig_name': list_of_functions
             contigs_dict = {}
@@ -143,7 +143,7 @@ class NGram(object):
                     ngram_count_df_list_dict = self.count_synteny(contigs_dict, n)
                     # make list of ngram attributes
                     for ngram,count in ngram_count_df_list_dict.items():
-                        inidvidual_ngram_attributes_list = [ngram, count, contigs_db_name, contig_name, n, self.external_genomes_number]
+                        inidvidual_ngram_attributes_list = [ngram, count, contigs_db_name, contig_name, n]
                         ngram_attributes_list.append(inidvidual_ngram_attributes_list)
         return ngram_attributes_list
 
@@ -164,7 +164,7 @@ class NGram(object):
                             'contigDB': ngram_attribute[2], 
                             'contig_name':ngram_attribute[3],
                             'N':ngram_attribute[4],
-                            'number_of_loci':ngram_attribute[5]}, ignore_index=True)
+                            'number_of_loci':self.num_contigs_in_external_genomes}, ignore_index=True)
             ngram_count_df_list.append(df)
 
         ngram_count_df_final = pd.concat(ngram_count_df_list)
