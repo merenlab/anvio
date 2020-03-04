@@ -919,7 +919,7 @@ class ReadsMappingToARange:
 # The below functions are helpers of the Read class which exist outside the class because they are
 # just-in-time compiled (very very fast) with numba, which has poor support for in-class methods
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True)
 def iterate_cigartuples(cigartuples, cigar_consumption):
     """Iterate through cigartuples
 
@@ -944,7 +944,7 @@ def iterate_cigartuples(cigartuples, cigar_consumption):
         ])
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True)
 def _vectorize_read(cigartuples, query_sequence, reference_start, cigar_consumption):
     # init the array
     size = 0
@@ -955,7 +955,9 @@ def _vectorize_read(cigartuples, query_sequence, reference_start, cigar_consumpt
     count = 0
     ref_consumed = 0
     read_consumed = 0
-    for operation, length, consumes_read, consumes_ref in iterate_cigartuples(cigartuples, cigar_consumption):
+    for i in range(cigartuples.shape[0]):
+        operation, length = cigartuples[i, :]
+        consumes_read, consumes_ref = cigar_consumption[operation, :]
 
         if consumes_read and consumes_ref:
             v[count:(count + length), 0] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
@@ -982,7 +984,7 @@ def _vectorize_read(cigartuples, query_sequence, reference_start, cigar_consumpt
     return v
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True)
 def _get_aligned_sequence_and_reference_positions(cigartuples, query_sequence, reference_start, cigar_consumption):
 
     # get size of arrays to init
@@ -997,7 +999,9 @@ def _get_aligned_sequence_and_reference_positions(cigartuples, query_sequence, r
 
     ref_consumed, read_consumed = 0, 0
     num_mapped = 0
-    for operation, length, consumes_read, consumes_ref in iterate_cigartuples(cigartuples, cigar_consumption):
+    for i in range(cigartuples.shape[0]):
+        operation, length = cigartuples[i, :]
+        consumes_read, consumes_ref = cigar_consumption[operation, :]
 
         if consumes_read and consumes_ref:
             aligned_sequence[num_mapped:num_mapped+length] = query_sequence[read_consumed:(read_consumed + length)]
@@ -1016,7 +1020,7 @@ def _get_aligned_sequence_and_reference_positions(cigartuples, query_sequence, r
     return aligned_sequence, reference_positions
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True)
 def _trim(cigartuples, cigar_consumption, query_sequence, reference_start, reference_end, trim_by, side):
 
     cigartuples = cigartuples[::-1, :] if side == 1 else cigartuples
@@ -1026,7 +1030,9 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_start, refer
     terminate_next = False
 
     count = 0
-    for operation, length, consumes_read, consumes_ref in iterate_cigartuples(cigartuples, cigar_consumption):
+    for i in range(cigartuples.shape[0]):
+        operation, length = cigartuples[i, :]
+        consumes_read, consumes_ref = cigar_consumption[operation, :]
 
         if consumes_ref and consumes_read:
             if terminate_next:
