@@ -41,14 +41,14 @@ __status__ = "Development"
 
 
 class BAMFileObject(pysam.AlignmentFile):
-    def __init__(self, input_bam_path):
+    def __init__(self, *args):
         """A class that is essentially pysam.AlignmentFile, with some added bonuses
 
         This class inherits pysam.AlignmentFile and adds a little flair. Init such an object the
         way you would an AlignmentFile, i.e. bam = bamops.BAMFileObject(path_to_bam)
         """
-        self.input_bam_path = input_bam_path
-        filesnpaths.is_file_exists(input_bam_path)
+        self.input_bam_path = args[0]
+        filesnpaths.is_file_exists(self.input_bam_path)
 
         try:
             pysam.AlignmentFile.__init__(self)
