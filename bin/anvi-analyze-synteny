@@ -21,8 +21,9 @@ To test this code run:
 
             >>> anvi-analyze-synteny -e external-genomes-cps.txt \
                                      --annotation-source COG_FUNCTION \
-                                     --window-size 2:3 \
-                                     -o test 
+                                     --window-range 2:3 \
+                                     -o tsv.txt \
+                                     --analyze-unknown-functions
 
         Unknown-function-mode test that records ngrams with unknown functions:
 
@@ -84,7 +85,7 @@ if __name__ == '__main__':
 
     try:
         ngram = NGram(args)
-        ngram.populate_genes()
+        ngram.report_ngrams_to_user()
     except ConfigError as e:
         print(e)
         sys.exit(-1)

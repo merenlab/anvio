@@ -43,14 +43,16 @@ class NGram(object):
 
         self.genes = {}
         self.contigs_list = {}
+        self.ngram_attributes_list = []
 
         # Parse arguments
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.external_genomes = A('external_genomes')
         self.annotation_source = A('annotation_source')
         self.window_range = A('window_range')
-        self.is_in_unkowns_mode = A('analyze_unknown_functions')
+        self.in_in_unknowns_mode = A('analyze_unknown_functions')
         self.external_genomes = utils.get_TAB_delimited_file_as_dictionary(self.external_genomes)
+        self.external_genomes_number = len(self.external_genomes)
         self.output_file = A('output_file')
 
         # Run main methods
@@ -96,11 +98,12 @@ class NGram(object):
 
         # FIXME: add sanity check where config error is raised if the window size is larger than the loci length
 
-    def populate_genes(self):
+
+    def populate_genes_old(self):
         genes_and_functions_list = []
         ngram_count_df_list = []
         ngram_count_df = pd.DataFrame(columns=['ngram', 'count', 'contigDB', 'contig_name', 'N'])
-        final_list = []
+        ngram_count_df_list_test = []
         # FIXME: need way to extract total number of loci in contigsDB, this may be more than
         # the total number of contigsDBs because each contigsDB may contain more than one loci (contig)
         # add this to the final table output so you can normalize the counts by how many total loci there are
@@ -128,22 +131,85 @@ class NGram(object):
             # Iterate over range of window sizes and run synteny algorithm to count occurrences of ngrams
                 for n in range(self.window_range[0],self.window_range[1]):
                     ngram_count_df_list_dict = self.count_synteny(contigs_dict, n)
-                    df = pd.DataFrame(list(ngram_count_df_list_dict.items()), columns= ['ngram','count'])
-                    df['contigDB'] = contigs_db_name
-                    df['contig_name'] = contig_name
-                    df['N'] = n
-                    ngram_count_df_list.append(df)
-
-                # counter = counter + 1
-                # if counter == 2:
-                #     break
+                    # make list from dictionary
+                    ngram_count_df_list = list(ngram_count_df_list_dict.items())
+                    # loop through list and create a DF for each ngram attribute
+                    for ngram_attribute in ngram_count_df_list:
+                        # join ngram tuple into a list with "::" as the separator
+                        ngram = "::".join(map(str, list(ngram_attribute[0])))
+                        df = pd.DataFrame(columns=['ngram', 'count', 'contigDB','contig_name','N'])
+                        df = df.append({'ngram': ngram, 
+                            'count': ngram_attribute[1], 
+                            'contigDB': contigs_db_name, 
+                            'contig_name':contig_name,
+                            'N':n}, ignore_index=True)
+                        ngram_count_df_list_test.append(df)
        
-        ngram_count_df_final = pd.concat(ngram_count_df_list)
+        ngram_count_df_final = pd.concat(ngram_count_df_list_test)
         ngram_count_df_final.to_csv(self.output_file, sep = '\t',index=False)
 
 
-        # print(ngram_count_df_final)
+    def populate_genes(self):
+        genes_and_functions_list = []
+        ngram_count_df_list = []
+        ngram_count_df = pd.DataFrame(columns=['ngram', 'count', 'contigDB', 'contig_name', 'N'])
+        ngram_attributes_list = []
+        # FIXME: need way to extract total number of loci in contigsDB, this may be more than
+        # the total number of contigsDBs because each contigsDB may contain more than one loci (contig)
+        # add this to the final table output so you can normalize the counts by how many total loci there are
+        # Iterate through contigsDBs
+        for contigs_db_name in self.external_genomes:
+            # Extract file path
+            contigs_db_path = self.external_genomes[contigs_db_name]["contigs_db_path"]
 
+            # Get list of genes and functions
+            genes_and_functions_list = self.get_genes_and_functions_from_contigs_db(contigs_db_path)
+
+            # Get unique list of the contigs from this contigsDB (there could be more than one)
+            contigs_list = set(([entry[2] for entry in genes_and_functions_list]))
+
+            # iterate through list of contigs and make dictionary 'contig_name': list_of_functions
+            contigs_dict = {}
+            for contig_name in contigs_list:
+                contig_function_list = []
+                for i in genes_and_functions_list:
+                    if contig_name == i[2]:
+                        contig_function_list.append([i[0],i[1]])
+                contigs_dict[contig_name] = contig_function_list
+
+            # Iterate over range of window sizes and run synteny algorithm to count occurrences of ngrams
+                for n in range(self.window_range[0],self.window_range[1]):
+                    ngram_count_df_list_dict = self.count_synteny(contigs_dict, n)
+                    # make list of ngram attributes
+                    for ngram,count in ngram_count_df_list_dict.items():
+                        inidvidual_ngram_attributes_list = [ngram, count, contigs_db_name, contig_name, n]
+                        ngram_attributes_list.append(inidvidual_ngram_attributes_list)
+        return ngram_attributes_list
+
+
+    def convert_to_df(self):
+        ngram_attributes_list = self.populate_genes()
+
+        ngram_count_df_list = []
+
+        for ngram_attribute in ngram_attributes_list:
+            ngram = "::".join(map(str, list(ngram_attribute[0])))
+            df = pd.DataFrame(columns=['ngram', 'count', 'contigDB','contig_name','N','number_of_loci'])
+            df = df.append({'ngram': ngram, 
+                            'count': ngram_attribute[1], 
+                            'contigDB': ngram_attribute[2], 
+                            'contig_name':ngram_attribute[3],
+                            'N':ngram_attribute[4],
+                            'number_of_loci':self.external_genomes_number}, ignore_index=True)
+            ngram_count_df_list.append(df)
+
+        ngram_count_df_final = pd.concat(ngram_count_df_list)
+
+        return ngram_count_df_final
+
+    def report_ngrams_to_user(self):
+        df = self.convert_to_df()
+        df.to_csv(self.output_file, sep = '\t',index=False)
 
 
     def get_genes_and_functions_from_contigs_db(self, contigs_db_path):
@@ -185,9 +251,6 @@ class NGram(object):
         Need to return counts for 1 contig at a time and
         give back a dictionary with contig {name: {ngram:count}}
         """
-        # if self.is_in_unkowns_mode:
-        #     print("as;ldkjfas;lkdfas;dlkfa;slkdfl;ksd")
-        # n = int(n)
         for contig_name in sorted(contigs_dict.keys()):
             contig_gci_function_list = contigs_dict[contig_name]
             function_list = [entry[1] for entry in contig_gci_function_list]
@@ -204,9 +267,8 @@ class NGram(object):
                     window = original_order
                 else:
                     window = flipped_order
-                # concatenate the window list together and separate the genes by "::" to form ngram
-                ngram = "::".join(map(str, list(window)))
-                if not self.is_in_unkowns_mode and "unknown-function" in ngram: # conditional to record ngrams with unk functions
+                ngram = tuple(window)
+                if not self.in_in_unknowns_mode and "unknown-function" in ngram: # conditional to record ngrams with unk functions
                     continue
                 else:
                     # if ngram is not in dictionary add it, if it is add + 1
