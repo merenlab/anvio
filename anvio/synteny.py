@@ -32,8 +32,7 @@ __email__ = "mschechter@uchicago.edu"
 class NGram(object):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress(), skip_sanity_check=False):
         """
-        __init__ will parse arguments, run sanity_check, and run the driver method
-        of this class, populate_genes.
+        __init__ will parse arguments and run sanity_check
 
         """
 
@@ -46,6 +45,7 @@ class NGram(object):
         self.ngram_attributes_list = []
 
         # Parse arguments
+        #----------------
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.external_genomes = A('external_genomes')
         self.annotation_source = A('annotation_source')
@@ -55,7 +55,8 @@ class NGram(object):
         self.external_genomes_number = len(self.external_genomes)
         self.output_file = A('output_file')
 
-        # Run main methods
+        # Run sanity_check
+        #-----------------
         if not skip_sanity_check:
             self.sanity_check()
 
@@ -91,63 +92,15 @@ class NGram(object):
                               "Format of window_range must be x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
 
         # Must contain 2 integers for window
-        self.window_range = [int(n) for n in self.window_range.split(":")]
+        self.window_range = [int(n) for n in self.window_range.split(":")] # parse self.window_range
+        if self.window_range[0] > self.window_range[1]:
+            raise ConfigError("anvi'o would love to slice and dice your loci, but... the "
+                              "window-range needs to be from small to big")
         if len(self.window_range) > 2 or not isinstance(self.window_range[0], int) or not isinstance(self.window_range[1], int):
             raise ConfigError("anvi'o would love to slice and dice your loci, but... the "
                               "window_range must only contain 2 integers and be formated as x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
 
         # FIXME: add sanity check where config error is raised if the window size is larger than the loci length
-
-
-    def populate_genes_old(self):
-        genes_and_functions_list = []
-        ngram_count_df_list = []
-        ngram_count_df = pd.DataFrame(columns=['ngram', 'count', 'contigDB', 'contig_name', 'N'])
-        ngram_count_df_list_test = []
-        # FIXME: need way to extract total number of loci in contigsDB, this may be more than
-        # the total number of contigsDBs because each contigsDB may contain more than one loci (contig)
-        # add this to the final table output so you can normalize the counts by how many total loci there are
-        counter = 0
-        # Iterate through contigsDBs
-        for contigs_db_name in self.external_genomes:
-            # Extract file path
-            contigs_db_path = self.external_genomes[contigs_db_name]["contigs_db_path"]
-
-            # Get list of genes and functions
-            genes_and_functions_list = self.get_genes_and_functions_from_contigs_db(contigs_db_path)
-
-            # Get unique list of the contigs from this contigsDB (there could be more than one)
-            contigs_list = set(([entry[2] for entry in genes_and_functions_list]))
-
-            # iterate through list of contigs and make dictionary 'contig_name': list_of_functions
-            contigs_dict = {}
-            for contig_name in contigs_list:
-                contig_function_list = []
-                for i in genes_and_functions_list:
-                    if contig_name == i[2]:
-                        contig_function_list.append([i[0],i[1]])
-                contigs_dict[contig_name] = contig_function_list
-
-            # Iterate over range of window sizes and run synteny algorithm to count occurrences of ngrams
-                for n in range(self.window_range[0],self.window_range[1]):
-                    ngram_count_df_list_dict = self.count_synteny(contigs_dict, n)
-                    # make list from dictionary
-                    ngram_count_df_list = list(ngram_count_df_list_dict.items())
-                    # loop through list and create a DF for each ngram attribute
-                    for ngram_attribute in ngram_count_df_list:
-                        # join ngram tuple into a list with "::" as the separator
-                        ngram = "::".join(map(str, list(ngram_attribute[0])))
-                        df = pd.DataFrame(columns=['ngram', 'count', 'contigDB','contig_name','N'])
-                        df = df.append({'ngram': ngram, 
-                            'count': ngram_attribute[1], 
-                            'contigDB': contigs_db_name, 
-                            'contig_name':contig_name,
-                            'N':n}, ignore_index=True)
-                        ngram_count_df_list_test.append(df)
-       
-        ngram_count_df_final = pd.concat(ngram_count_df_list_test)
-        ngram_count_df_final.to_csv(self.output_file, sep = '\t',index=False)
-
 
     def populate_genes(self):
         genes_and_functions_list = []
@@ -175,6 +128,10 @@ class NGram(object):
                 for i in genes_and_functions_list:
                     if contig_name == i[2]:
                         contig_function_list.append([i[0],i[1]])
+                        # sanity check to see that window size is smaller than loci length
+                        if len(contig_function_list) < self.window_range[1]:
+                            raise ConfigError("anvi'o noticed that one of your ngram window sizes is larger than the number of genes in a locus! "
+                              "please change your --window-range so that the largest n size is smaller than the smallest locus :)")
                 contigs_dict[contig_name] = contig_function_list
 
             # Iterate over range of window sizes and run synteny algorithm to count occurrences of ngrams
