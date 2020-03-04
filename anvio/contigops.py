@@ -290,9 +290,8 @@ class Auxiliary:
                     # We cannot handle non-coding genes because they have no frame
                     continue
 
-
                 for gapless_segment in read.iterate_blocks_by_mapping_type(mapping_type=0, array=segment_that_overlaps_gene):
-                    block_start, block_end = gapless_segment[0, 0], gapless_segment[-1, 0]
+                    block_start, block_end = gapless_segment[0, 0], gapless_segment[-1, 0] + 1
 
                     if block_end - block_start < 3:
                         # This block does not contain a full codon
