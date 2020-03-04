@@ -1491,10 +1491,9 @@ def get_consensus_and_departure_data(variable_item_frequencies):
 
 def convert_sequence_indexing(index, source="M0", destination="M1"):
     """
-    Anvi'o zero-indexes sequences. For example, the methionine that every
-    ORF starts with has the index 0 (M0). This is in contrast to the rest of the
-    world, in which the methionine is indexed by 1 (M1). This function converts
-    between the two.
+    Anvi'o zero-indexes sequences. For example, the methionine that every ORF starts with has the
+    index 0 (M0). This is in contrast to the most conventions, in which the methionine is indexed by
+    1 (M1). This function converts between the two.
 
     index : integer, numpy array, pandas series, list
         The sequence index/indices you are converting.
