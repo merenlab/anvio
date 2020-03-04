@@ -1020,7 +1020,7 @@ def _get_aligned_sequence_and_reference_positions(cigartuples, query_sequence, r
     return aligned_sequence, reference_positions
 
 
-@jit(nopython=True, cache=True)
+@jit(nopython=True)
 def _trim(cigartuples, cigar_consumption, query_sequence, reference_start, reference_end, trim_by, side):
 
     cigartuples = cigartuples[::-1, :] if side == 1 else cigartuples
