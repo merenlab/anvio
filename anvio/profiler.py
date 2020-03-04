@@ -602,7 +602,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             output_queue.put(contig)
 
             if contig is not None:
-                # We try to encourage the garbage collector to remove these objects.
+                # We mark these for deletion the next time garbage is collected
                 for split in contig.splits:
                     del split.coverage
                     del split.auxiliary
@@ -676,9 +676,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             timer.make_checkpoint('Auxiliary analyzed')
 
+        # output_queue.put(contig) is an expensive operation that does not handle large data
+        # structures well. So we delete everything we can
+        del contig.coverage.c # only split coverage array is needed
         for split in contig.splits:
-            # output_queue.put(contig) is an expensive operation that does not handle large data
-            # structures well. So we delete everything we can in split that was an intermediate
             del split.per_position_info
 
         if anvio.DEBUG:
@@ -728,11 +729,19 @@ class BAMProfiler(dbops.ContigsSuperclass):
             # accessing to the atomic data structures in our split objects to try to relieve
             # the memory by encouraging the garbage collector to realize what's up
             # explicitly.
+            # Here you're about to witness the poor side of Python (or our use of it). Although
+            # we couldn't find any refs to these objects, garbage collecter kept them in the
+            # memory. So here we are accessing to the atomic data structures in our split
+            # objects to try to relieve the memory by encouraging the garbage collector to
+            # realize what's up. Afterwards, we explicitly call the garbage collector
             if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
                 self.store_contigs_buffer()
                 for c in self.contigs:
                     for split in c.splits:
                         del split.coverage
+                        del split.auxiliary.split.SNV_profiles
+                        del split.auxiliary.split.SCV_profiles
+                        del split.auxiliary.split
                         del split.auxiliary
                         del split
                     del c.splits[:]
@@ -761,7 +770,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
 
         if not self.skip_SNV_profiling:
-            self.layer_additional_data['num_SNVs_reported'] =  TableForVariability(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_data['num_SNVs_reported'] = TableForVariability(self.profile_db_path, progress=null_progress).num_entries
             self.layer_additional_keys.append('num_SNVs_reported')
 
         self.check_contigs(num_contigs=recieved_contigs-discarded_contigs)
@@ -823,6 +832,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 # accessing to the atomic data structures in our split objects to try to relieve
                 # the memory by encouraging the garbage collector to realize what's up
                 # explicitly.
+                # Here you're about to witness the poor side of Python (or our use of it). Although
+                # we couldn't find any refs to these objects, garbage collecter kept them in the
+                # memory. So here we are accessing to the atomic data structures in our split
+                # objects to try to relieve the memory by encouraging the garbage collector to
+                # realize what's up. Afterwards, we explicitly call the garbage collector
                 if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
                     self.store_contigs_buffer()
                     for c in self.contigs:
