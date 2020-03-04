@@ -1559,18 +1559,18 @@ def get_constant_value_blocks(array, value):
 
 @jit(nopython=True)
 def find_value_index(x, val, reverse_search=False):
-    """Generator that returns indices where a value is found
+    """Returns first instance of indices where a value is found
 
-    Created this because unlike np.where, this is a generator that stops after the first instance is
-    found. If you only want the first instance, this algorithm is therefore preferrable for array
-    sizes < 1000 (see examples)
+    Created this because unlike np.where, this stops after the first instance is found. If you only
+    want the first instance, this algorithm is therefore preferrable for array sizes < 1000 (see
+    examples)
 
     Parameters
     ==========
     x : 1D array
 
     val : number
-        Yield indices of x where the value == val.
+        return index of x where the value == val.
 
     reverse_search : bool, False
         Search in reverse order
@@ -1580,9 +1580,9 @@ def find_value_index(x, val, reverse_search=False):
     >>> import numpy as np
     >>> import anvio.utils as utils
     >>> x = np.arange(1000)
-    >>> %timeit next(utils.find_value_index(x, 999, rev=True))
+    >>> %timeit utils.find_value_index(x, 999, rev=True)
     574 ns ± 15.8 ns per loop (mean ± std. dev. of 7 runs, 1000000 loops each)
-    >>> %timeit next(utils.find_value_index(x, 999))
+    >>> %timeit utils.find_value_index(x, 999)
     2.21 µs ± 36.7 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
     >>> %timeit np.where(x == 999)[0][0]
     2.91 µs ± 563 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
@@ -1590,7 +1590,7 @@ def find_value_index(x, val, reverse_search=False):
 
     for i in range(len(x)) if not reverse_search else range(len(x)-1, -1, -1):
         if x[i] == val:
-            yield i
+            return i
 
 
 def convert_SSM_to_single_accession(matrix_data):
