@@ -70,7 +70,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.skip_SNV_profiling = A('skip_SNV_profiling')
         self.profile_SCVs = A('profile_SCVs')
-        self.ignore_orphans = A('ignore_orphans')
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
@@ -552,6 +551,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         Populates Split.per_position_info as a dictionary of arrays, each with length equal to the
         split.
         """
+
         if self.skip_SNV_profiling:
             return
 
@@ -631,7 +631,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         contig.min_coverage_for_variability = self.min_coverage_for_variability
         contig.skip_SNV_profiling = self.skip_SNV_profiling
         contig.report_variability_full = self.report_variability_full
-        contig.ignore_orphans = self.ignore_orphans
         timer.make_checkpoint('%s initialization done' % contig_name)
 
         # populate contig with empty split objects
@@ -693,6 +692,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def profile_single_thread(self):
+        """The main method for anvi-profile when num_threads is 1"""
+
         bam_file = bamops.BAMFileObject(self.input_file_path)
 
         received_contigs = 0
@@ -773,6 +774,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def profile_multi_thread(self):
+        """The main method for anvi-profile when num_threads is >1"""
+
         manager = multiprocessing.Manager()
         available_index_queue = manager.Queue()
         output_queue = manager.Queue(self.queue_size)
