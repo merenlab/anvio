@@ -509,10 +509,20 @@ class LinkMersData:
 
 
 class LinkMers:
-    """This class handles an input BAM file, a list of contigs, and positions within them to
-       report bases in reads that contribute to positions of interest following Chris Quince's
-       suggestion. Each read is reported with a unique ID, therefore linkage informaiton can
-       be followed."""
+    """Get linkmers
+
+    This class handles an input BAM file, a list of contigs, and positions within them to
+    report bases in reads that contribute to positions of interest following Chris Quince's
+    suggestion. Each read is reported with a unique ID, therefore linkage informaiton can
+    be followed.
+
+    FIXME This class might produce dubious results, according to the side-by-side comparions between
+    how SCVs used to be calculated, and IGV view. For details please see
+    https://github.com/merenlab/anvio/pull/1362. Working with reads directly rather than pileups is
+    highly preferable to this framework and should be implemented the same way SCV calculations were
+    changed
+    """
+
     def __init__(self, args=None):
         self.args = args
         self.input_file_paths = []

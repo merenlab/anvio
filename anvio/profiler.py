@@ -84,7 +84,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
-        # whehther the profile database is a blank (without any BAM files or reads):
+        # whether the profile database is a blank (without any BAM files or reads):
         self.blank = A('blank_profile')
 
         if not self.blank and self.contigs_shall_be_clustered and self.skip_hierarchical_clustering:
@@ -132,20 +132,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.clustering_configs = constants.clustering_configs['blank' if self.blank else 'single']
 
-        # following variable will be populated during the profiling, and its content will eventually
-        # be stored in t.variable_nts_table_name
-        self.variable_nts_table_entries = []
-
         # if genes are not called, yet the user is asking for codon frequencies to be profiled, we give
         # a warning and force-turn that flag off.
         if (not self.a_meta['genes_are_called']) and self.profile_SCVs:
             self.run.warning("You asked the codon frequencies to be profiled, but genes were not called "
-                             "for your contigs database. Anvi'o is assigning `False` to the profile-codon-frequncies "
+                             "for your contigs database. Anvi'o is assigning `False` to the --profile-SCVs "
                              "flag, overruling your request like a boss.")
             self.profile_SCVs = False
-
-        # following variable will be populated while the variable positions table is computed
-        self.codons_in_genes_to_profile_SCVs = set([])
 
         # we don't know what we are about
         self.description = None
