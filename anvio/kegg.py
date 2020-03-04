@@ -731,6 +731,9 @@ class KeggModulesDatabase(KeggContext):
 
         if vals_are_okay and len(fields) > 2: # not all lines have a definition field
             data_def = fields[2]
+        elif not vals_are_okay:
+            data_vals = corrected_vals
+            data_def = corrected_def
 
         # some types of information may need to be split into multiple db entries
         data_types_to_split = ["ORTHOLOGY","REACTION"] # lines that fall under these categories need to have data_vals split on comma
