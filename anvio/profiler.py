@@ -388,7 +388,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.progress.new('Init')
         self.progress.update('Reading BAM File')
-        self.bam = pysam.Samfile(self.input_file_path, 'rb')
+        self.bam = bamops.BAMFileObject(self.input_file_path, 'rb')
         self.progress.end()
 
         self.contig_names = self.bam.references
