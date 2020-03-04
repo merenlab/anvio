@@ -605,6 +605,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 # We mark these for deletion the next time garbage is collected
                 for split in contig.splits:
                     del split.coverage
+                    del split.auxiliary.split.SNV_profiles
+                    del split.auxiliary.split.SCV_profiles
+                    del split.auxiliary.split
                     del split.auxiliary
                     del split
                 del contig.splits[:]
@@ -721,14 +724,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.progress.update('%d of %d contigs ⚙  / MEM ☠️  %s' % \
                         (recieved_contigs, self.num_contigs, memory_usage or '??'))
 
-            # here you're about to witness the poor side of Python (or our use of it).
-            # the problem we run into here was the lack of action from the garbage
-            # collector on the processed objects. although we couldn't find any refs to
-            # these objects, garbage collecter kept them in the memory, and `del` statement
-            # on the `split` object did not yield any improvement either. so here we are
-            # accessing to the atomic data structures in our split objects to try to relieve
-            # the memory by encouraging the garbage collector to realize what's up
-            # explicitly.
             # Here you're about to witness the poor side of Python (or our use of it). Although
             # we couldn't find any refs to these objects, garbage collecter kept them in the
             # memory. So here we are accessing to the atomic data structures in our split
@@ -824,14 +819,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 self.progress.update('%d of %d contigs ⚙  / MEM ☠️  %s' % \
                             (recieved_contigs, self.num_contigs, memory_usage or '??'))
 
-                # here you're about to witness the poor side of Python (or our use of it).
-                # the problem we run into here was the lack of action from the garbage
-                # collector on the processed objects. although we couldn't find any refs to
-                # these objects, garbage collecter kept them in the memory, and `del` statement
-                # on the `split` object did not yield any improvement either. so here we are
-                # accessing to the atomic data structures in our split objects to try to relieve
-                # the memory by encouraging the garbage collector to realize what's up
-                # explicitly.
                 # Here you're about to witness the poor side of Python (or our use of it). Although
                 # we couldn't find any refs to these objects, garbage collecter kept them in the
                 # memory. So here we are accessing to the atomic data structures in our split
@@ -848,6 +835,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                         del c.coverage
                         del c
                     del self.contigs[:]
+                    gc.collect()
+
             except KeyboardInterrupt:
                 self.run.info_single("Anvi'o profiler recieved SIGINT, terminating all processes...", nl_before=2)
                 break
