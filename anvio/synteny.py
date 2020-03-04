@@ -40,10 +40,6 @@ class NGram(object):
         self.run = run
         self.progress = progress
 
-        self.genes = {}
-        self.contigs_list = {}
-        self.ngram_attributes_list = []
-
         # Parse arguments
         #----------------
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -68,6 +64,9 @@ class NGram(object):
 
 
     def sanity_check(self):
+        """
+        sanity_check will confirm input for NGram class
+        """
 
         # checking if the annotation source is common accross all contigs databases
         #----------------------------
@@ -95,17 +94,22 @@ class NGram(object):
         self.window_range = [int(n) for n in self.window_range.split(":")] # parse self.window_range
         if self.window_range[0] > self.window_range[1]:
             raise ConfigError("anvi'o would love to slice and dice your loci, but... the "
-                              "window-range needs to be from small to big")
+                              "window-range needs to be from small to")
         if len(self.window_range) > 2 or not isinstance(self.window_range[0], int) or not isinstance(self.window_range[1], int):
             raise ConfigError("anvi'o would love to slice and dice your loci, but... the "
                               "window_range must only contain 2 integers and be formated as x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
 
-        # FIXME: add sanity check where config error is raised if the window size is larger than the loci length
-
     def populate_genes(self):
+        """
+        populate_genes() will iterate through all contigs and use self.count_synteny to count all ngrams in that contig.
+
+        The output of this method will be a list of ngram_attributes_list containing: ngram (ngram string), 
+                                                                                      count (count of ngram in the contig), 
+                                                                                      contigs_db_name (name of contigsDB), 
+                                                                                      contig_name (nameof contig IN contigsDB), 
+                                                                                      n (ngram size)
+        """
         genes_and_functions_list = []
-        ngram_count_df_list = []
-        ngram_count_df = pd.DataFrame(columns=['ngram', 'count', 'contigDB', 'contig_name', 'N'])
         ngram_attributes_list = []
         # FIXME: need way to extract total number of loci in contigsDB, this may be more than
         # the total number of contigsDBs because each contigsDB may contain more than one loci (contig)
@@ -125,13 +129,13 @@ class NGram(object):
             contigs_dict = {}
             for contig_name in contigs_list:
                 contig_function_list = []
-                for i in genes_and_functions_list:
-                    if contig_name == i[2]:
-                        contig_function_list.append([i[0],i[1]])
-                        # sanity check to see that window size is smaller than loci length
-                        if len(contig_function_list) < self.window_range[1]:
-                            raise ConfigError("anvi'o noticed that one of your ngram window sizes is larger than the number of genes in a locus! "
-                              "please change your --window-range so that the largest n size is smaller than the smallest locus :)")
+                for gci_accession_contigname in genes_and_functions_list:
+                    if contig_name == gci_accession_contigname[2]:
+                        contig_function_list.append([gci_accession_contigname[0],gci_accession_contigname[1]])
+                # sanity check to see that window size is smaller than loci length
+                if len(contig_function_list) < self.window_range[1]:
+                    raise ConfigError("anvi'o noticed that one of your ngram window sizes is larger than the number of genes in a locus! "
+                      "please change your --window-range so that the largest n size is smaller than the smallest locus :)")
                 contigs_dict[contig_name] = contig_function_list
 
             # Iterate over range of window sizes and run synteny algorithm to count occurrences of ngrams
@@ -139,12 +143,15 @@ class NGram(object):
                     ngram_count_df_list_dict = self.count_synteny(contigs_dict, n)
                     # make list of ngram attributes
                     for ngram,count in ngram_count_df_list_dict.items():
-                        inidvidual_ngram_attributes_list = [ngram, count, contigs_db_name, contig_name, n]
+                        inidvidual_ngram_attributes_list = [ngram, count, contigs_db_name, contig_name, n, self.external_genomes_number]
                         ngram_attributes_list.append(inidvidual_ngram_attributes_list)
         return ngram_attributes_list
 
 
     def convert_to_df(self):
+        """
+        convert_to_df() will take the list of ngram_attributes_list from opulate_genes() and return a pandas dataframe
+        """
         ngram_attributes_list = self.populate_genes()
 
         ngram_count_df_list = []
@@ -157,7 +164,7 @@ class NGram(object):
                             'contigDB': ngram_attribute[2], 
                             'contig_name':ngram_attribute[3],
                             'N':ngram_attribute[4],
-                            'number_of_loci':self.external_genomes_number}, ignore_index=True)
+                            'number_of_loci':ngram_attribute[5]}, ignore_index=True)
             ngram_count_df_list.append(df)
 
         ngram_count_df_final = pd.concat(ngram_count_df_list)
@@ -165,35 +172,44 @@ class NGram(object):
         return ngram_count_df_final
 
     def report_ngrams_to_user(self):
+        """
+        This method will save the pandas dataframe from convert_to_df for the user :)
+        """
         df = self.convert_to_df()
         df.to_csv(self.output_file, sep = '\t',index=False)
 
 
     def get_genes_and_functions_from_contigs_db(self, contigs_db_path):
+        """
+        This method will extract a list of gene attributes from each contig within a contigsDB.
+
+        The list will contain: gci (gene-caller-id), 
+                               accession (gene function accession, e.g. COG1234), 
+                               contig_name (name of contig)
+        """
         # get contigsDB
         contigs_db = dbops.ContigsDatabase(contigs_db_path)
         # extract contigs names
         genes_in_contigs = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
-        # extract annotations and filter for the sources designated by user
+        # extract annotations and filter for the sources designated by user using self.annotation_source
         annotations_dict = contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name)
         annotations_dict = utils.get_filtered_dict(annotations_dict, 'source', set([self.annotation_source]))
 
         # Make dict with gene-caller-id:accession
-        gene_to_function_dict = {entry['gene_callers_id']: entry['accession'] for entry in annotations_dict.values()}
+        gci_to_accession_dict = {entry['gene_callers_id']: entry['accession'] for entry in annotations_dict.values()}
 
         # Make list of lists containing gene attributes. If there is not annotation add one in!
         genes_and_functions_list = [] # List of lists [gene-caller-id, accessions, contig-name]
         counter = 0
-        for gci in genes_in_contigs:
+        for gci in genes_in_contigs: # gci = gene-caller-id
             list_of_gene_attributes = []
-            if gci in gene_to_function_dict:
-                accession = gene_to_function_dict[gci]
+            if gci in gci_to_accession_dict:
+                accession = gci_to_accession_dict[gci]
                 accession = accession.replace(" ","")
                 contig_name = genes_in_contigs[gci]['contig']
                 list_of_gene_attributes.extend((gci, accession, contig_name))
                 genes_and_functions_list.append(list_of_gene_attributes)
             else: # adding in "unknown annotation" if there is none
-                # accession = "unknown-function-" + "{:06d}".format(1) + str(counter) # add leading 0
                 accession = "unknown-function"
                 contig_name = genes_in_contigs[counter]['contig']
                 list_of_gene_attributes.extend((counter,accession,contig_name))
@@ -205,19 +221,26 @@ class NGram(object):
 
     def count_synteny(self, contigs_dict, n):
         """
+        This method will interate through a dict of contigs {contig_name: genes_and_functions_list} count NGrams 
+        in each contig using a sliding window of size N. The final output will be a dictionary {ngram:count} 
+
+        CURRENTLY: count_synteny will break if there is more than one contig per contigsDB (i.e. NGramFreq_dict will
+        be reset at the loop and only hold counts for the last contig in the contigsDB)
+
+        Future goal:
         Need to return counts for 1 contig at a time and
-        give back a dictionary with contig {name: {ngram:count}}
+        give back a dictionary with contig {contig_name: {ngram:count}}
         """
         for contig_name in sorted(contigs_dict.keys()):
             contig_gci_function_list = contigs_dict[contig_name]
             function_list = [entry[1] for entry in contig_gci_function_list]
 
-            kFreq = {}
+            NGramFreq_dict = {}
             for i in range(0, len(function_list) - n + 1):
                 # window = sorted(function_list[i:i + n])
                 # extract window
                 window = function_list[i:i + n]
-                # order the window based arbitrarily on the first gene in the synteny being smallest
+                # order the window based arbitrarily based on the first gene in the synteny being smallest
                 original_order = window
                 flipped_order = window[::-1]
                 if original_order[0] < flipped_order[0]:
@@ -225,13 +248,13 @@ class NGram(object):
                 else:
                     window = flipped_order
                 ngram = tuple(window)
-                if not self.in_in_unknowns_mode and "unknown-function" in ngram: # conditional to record ngrams with unk functions
+                if not self.in_in_unknowns_mode and "unknown-function" in ngram: # conditional to record NGrams with unk functions
                     continue
                 else:
                     # if ngram is not in dictionary add it, if it is add + 1
-                    if ngram in kFreq:
-                        kFreq[ngram] +=  1
+                    if ngram in NGramFreq_dict:
+                        NGramFreq_dict[ngram] +=  1
                     else:
-                        kFreq[ngram] = 1
-            return kFreq
+                        NGramFreq_dict[ngram] = 1
+            return NGramFreq_dict
 
