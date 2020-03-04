@@ -242,7 +242,7 @@ class Auxiliary:
                     continue
 
                 if len(genes_in_read) == 1:
-                    # The read maps entirely in 1 gene. Easy peasy.
+                    # The read maps entirely to 1 gene. Easy peasy.
                     gene_overlap_start = read.reference_start
                     segment_that_overlaps_gene = read.v
                 else:
@@ -267,8 +267,8 @@ class Auxiliary:
 
                 if gene_id not in gene_calls:
                     # We make an on-the-fly gene call dict. See the NOTE in
-                    # BAMProfiler.populate_gene_info_for_splits if you are confused by why we do not
-                    # pass this information to split beforehand.
+                    # profiler.BAMProfiler.populate_gene_info_for_splits if you are confused by why
+                    # we do not pass this information to split beforehand.
                     #
                     # We need to access gene-wide attributes from per-nt arrays, so any index in the
                     # array will suffice, so long as it corresponds to the gene_id. We arbitrarily
@@ -289,6 +289,7 @@ class Auxiliary:
                     # We can't handle partial gene calls bc we do not know the frame
                     # We cannot handle non-coding genes because they have no frame
                     continue
+
 
                 for gapless_segment in read.iterate_blocks_by_mapping_type(mapping_type=0, array=segment_that_overlaps_gene):
                     block_start, block_end = gapless_segment[0, 0], gapless_segment[-1, 0]
@@ -312,6 +313,7 @@ class Auxiliary:
                         # We cannot use this read.
                         continue
 
+                    # At this point, we are 100% sure this segment of the read will contribute to SCVs
                     gapless_segment = gapless_segment[first_pos:(last_pos+1), :]
 
                     # Update these for posterity
@@ -319,9 +321,8 @@ class Auxiliary:
                     block_end_split -= block_end - block_start - last_pos - 1
 
                     if gene_id not in gene_allele_counts:
-                        # This is the first time we have seen the gene_id, and for the first time we
-                        # we are now positive this read will contribute to it, so we log its
-                        # reference codon sequence and initialize an allele counts array
+                        # This is the first time a read has contributed to this gene_id, so we log
+                        # its reference codon sequence and initialize an allele counts array
                         reference_codon_sequences[gene_id] = self.get_codon_sequence_for_gene(gene_call)
                         gene_allele_counts[gene_id] = self.init_allele_counts_array(gene_call)
 
