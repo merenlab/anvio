@@ -461,7 +461,7 @@ class KeggRunHMMs(KeggContext):
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
         # load existing kegg modules db
-        self.kegg_db = kegg.KeggModulesDatabase(os.path.join(self.kofam_data_dir, "MODULES.db"), args=self.args)
+        self.kegg_modules_db = kegg.KeggModulesDatabase(os.path.join(self.kofam_data_dir, "MODULES.db"), args=self.args)
 
     def get_annotation_from_ko_dict(self, knum, ok_if_missing_from_dict=False):
         if not self.ko_dict:
