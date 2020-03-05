@@ -35,8 +35,6 @@ class _tRNAFeature:
     conserved_nucleotides = ({}, ) # ex. ({74: 'C', 75: 'C', 76: 'A'}, )
     allowed_input_lengths = ((-1, ), ) # ex. ((3, ), )
     summed_input_lengths = (-1, ) # ex. (3, )
-    stem_class = None
-    arm_class = None
 
     def __init__(
         self,
@@ -87,21 +85,33 @@ class _tRNAFeature:
 
 
     @staticmethod
-    def set_feature_relations():
-        ThreeprimeAcceptorStemSeq.stem_class = AcceptorStem
-        ThreeprimeTStemSeq.stem_class = TStem
-        TLoop.arm_class = TArm
-        FiveprimeTStemSeq.stem_class = TStem
-        TStem.arm_class = TArm
-        ThreeprimeAnticodonStemSeq.stem_class = AnticodonStem
-        AnticodonLoop.arm_class = AnticodonArm
-        FiveprimeAnticodonStemSeq.stem_class = AnticodonStem
-        AnticodonStem.arm_class = AnticodonArm
-        ThreeprimeDStemSeq.stem_class = DStem
-        DLoop.arm_class = DArm
-        FiveprimeDStemSeq.stem_class = DStem
-        DStem.arm_class = DArm
-        FiveprimeAcceptorStemSeq.stem_class = AcceptorStem
+    def list_all_tRNA_features():
+        return [
+            tRNAHisPositionZero,
+            AcceptorStem,
+            FiveprimeAcceptorStemSeq,
+            PositionEight,
+            PositionNine,
+            DArm,
+            DStem,
+            FiveprimeDStemSeq,
+            DLoop,
+            ThreeprimeDStemSeq,
+            PositionTwentySix,
+            AnticodonArm,
+            AnticodonStem,
+            FiveprimeAnticodonStemSeq,
+            AnticodonLoop,
+            ThreeprimeAnticodonStemSeq,
+            VLoop,
+            TArm,
+            TStem,
+            FiveprimeTStemSeq,
+            TLoop,
+            ThreeprimeTStemSeq,
+            ThreeprimeAcceptorStemSeq,
+            Discriminator,
+            Acceptor]
 
 
 class _Nucleotide(_tRNAFeature):
@@ -113,9 +123,13 @@ class _Nucleotide(_tRNAFeature):
         string, # must be a string of length 1
         required_in_read=False,
         num_allowed_unconserved=True,
+        start_index=None,
+        stop_index=None,
         cautious=False):
 
         self.string = string
+        self.start_index = start_index
+        self.stop_index = stop_index
 
         super().__init__(
             (string, ),
@@ -135,6 +149,8 @@ class _Sequence(_tRNAFeature):
         substrings, # must be a string, tuple of strings, or tuple of _Nucleotide/_Sequence objects
         required_in_read=False,
         num_allowed_unconserved=-1,
+        start_index=None,
+        stop_index=None,
         cautious=False):
 
         if type(substrings) == str:
@@ -144,6 +160,8 @@ class _Sequence(_tRNAFeature):
         elif all([type(s) == _Nucleotide or type(s) == _Sequence for s in substrings]):
             string_components = tuple(s.string for s in substrings)
         self.string = ''.join(substrings)
+        self.start_index = start_index
+        self.stop_index = stop_index
 
         super().__init__(
             string_components,
@@ -163,12 +181,16 @@ class _Loop(_Sequence):
         substrings, # must be a string, tuple of strings, or tuple of _Nucleotide/_Sequence objects
         required_in_read=False,
         num_allowed_unconserved=-1,
+        start_index=None,
+        stop_index=None,
         cautious=False):
 
         super().__init__(
             substrings,
             required_in_read=required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
+            start_index=start_index,
+            stop_index=stop_index,
             cautious=cautious)
 
 
@@ -200,16 +222,16 @@ class _Stem(_tRNAFeature):
                     "The two _Sequence objects, %s and %s, "
                     "that were used to define your _Stem are not the same length."
                     % (self.fiveprime_seq.string_components, threeprime_seq.string_components))
-        length = sum(map(len, self.fiveprime_seq.string_components))
-        self.length_range = (length, length + 1)
-
-        if cautious:
-            if num_allowed_unpaired > self.length:
+            length = sum(map(len, self.fiveprime_seq.string_components))
+            if num_allowed_unpaired > length:
                 raise Exception(
                     "You tried to leave at most %d base pairs unpaired, "
                     "but there are only %d base pairs in the stem."
-                    % (num_allowed_unpaired, self.length))
+                    % (num_allowed_unpaired, length))
         self.num_allowed_unpaired = num_allowed_unpaired
+
+        self.start_indices = (self.fiveprime_seq.start_index, self.threeprime_seq.start_index)
+        self.stop_indices = (self.fiveprime_seq.stop_index, self.threeprime_seq.stop_index)
 
         super().__init__(
             (*self.fiveprime_seq.string_components,
@@ -281,6 +303,9 @@ class _Arm(_tRNAFeature):
                                     *loop.conserved_nucleotides,
                                     *stem.threeprime_seq.conserved_nucleotides)
 
+        self.start_index = self.stem.start_indices[0]
+        self.stop_index = self.stem.stop_indices[1]
+
         super().__init__(
             (*stem.fiveprime_seq.string_components,
              *loop.string_components,
@@ -313,12 +338,34 @@ class tRNAHisPositionZero(_Nucleotide):
         string,
         required_in_read=False,
         num_allowed_unconserved=0,
+        start_index=None,
+        stop_index=None,
         cautious=False):
 
         super().__init__(
             string,
             required_in_read=False,
             num_allowed_unconserved=num_allowed_unconserved,
+            start_index=start_index,
+            stop_index=stop_index,
+            cautious=cautious)
+
+
+class AcceptorStem(_Stem):
+    # For our purposes, the acceptor stem only includes the base-paired nucleotides in the stem.
+    def __init__(
+        self,
+        fiveprime_seq,
+        threeprime_seq,
+        num_allowed_unpaired=1,
+        required_in_read=False,
+        cautious=False):
+
+        super().__init__(
+            fiveprime_seq,
+            threeprime_seq,
+            num_allowed_unpaired=num_allowed_unpaired,
+            required_in_read=required_in_read,
             cautious=cautious)
 
 
@@ -326,16 +373,21 @@ class FiveprimeAcceptorStemSeq(_Sequence):
     canonical_positions = ((1, 2, 3, 4, 5, 6, 7), )
     allowed_input_lengths = ((7, ), )
     summed_input_lengths = (7, )
+    stem_class = AcceptorStem
 
     def __init__(
         self,
         substrings,
         required_in_read=False,
+        start_index=None,
+        stop_index=None,
         cautious=False):
 
         super().__init__(
             substrings,
             required_in_read=required_in_read,
+            start_index=start_index,
+            stop_index=stop_index,
             cautious=cautious)
 
         if len(self.string) != 7:
@@ -352,12 +404,16 @@ class PositionEight(_Nucleotide):
         string,
         required_in_read=False,
         num_allowed_unconserved=1,
+        start_index=None,
+        stop_index=None,
         cautious=False):
 
         super().__init__(
             string,
             required_in_read=required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
+            start_index=start_index,
+            stop_index=stop_index,
             cautious=cautious)
 
 
@@ -368,10 +424,48 @@ class PositionNine(_Nucleotide):
         self,
         string,
         required_in_read=False,
+        start_index=None,
+        stop_index=None,
         cautious=False):
 
         super().__init__(
             string,
+            required_in_read=required_in_read,
+            start_index=start_index,
+            stop_index=stop_index,
+            cautious=cautious)
+
+
+class DArm(_Arm):
+    def __init__(
+        self,
+        stem,
+        loop,
+        num_allowed_unconserved=2,
+        cautious=False):
+
+        super().__init__(
+            stem,
+            loop,
+            num_allowed_unconserved=num_allowed_unconserved,
+            cautious=cautious)
+
+
+class DStem(_Stem):
+    arm_class = DArm
+
+    def __init__(
+        self,
+        fiveprime_seq,
+        threeprime_seq,
+        num_allowed_unpaired=1,
+        required_in_read=False,
+        cautious=False):
+
+        super().__init__(
+            fiveprime_seq,
+            threeprime_seq,
+            num_allowed_unpaired=num_allowed_unpaired,
             required_in_read=required_in_read,
             cautious=cautious)
 
@@ -380,12 +474,16 @@ class FiveprimeDStemSeq(_Sequence):
     canonical_positions = ((10, 11, 12), (13, ))
     allowed_input_lengths = tuple(itertools.product((3, ), (0, 1)))
     summed_input_lengths = tuple(map(sum, allowed_input_lengths))
+    arm_class = DArm
+    stem_class = DStem
 
     def __init__(
         self,
         positions_10_to_12_string,
         position_13_string='',
         required_in_read=False,
+        start_index=None,
+        stop_index=None,
         cautious=False):
 
         if cautious:
@@ -402,6 +500,8 @@ class FiveprimeDStemSeq(_Sequence):
             (positions_10_to_12_string,
              position_13_string),
             required_in_read=required_in_read,
+            start_index=start_index,
+            stop_index=stop_index,
             cautious=False)
 
 
@@ -411,6 +511,8 @@ class DLoop(_Loop):
         {0: ('A', 'G'), 1: 'A'}, {}, {0: 'G', 1: 'G'}, {}, {0: ('A', 'G')})
     allowed_input_lengths = tuple(itertools.product((2, ), (1, 2, 3), (2, ), (1, 2, 3), (1, )))
     summed_input_lengths = tuple(map(sum, allowed_input_lengths))
+    arm_class = DArm
+    stem_class = DStem
 
     def __init__(
         self,
@@ -421,6 +523,8 @@ class DLoop(_Loop):
         position_21_string,
         required_in_read=False,
         num_allowed_unconserved=2,
+        start_index=None,
+        stop_index=None,
         cautious=False):
 
         if cautious:
@@ -454,6 +558,8 @@ class DLoop(_Loop):
              position_21_string),
             required_in_read=required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
+            start_index=start_index,
+            stop_index=stop_index,
             cautious=cautious)
 
 
@@ -461,12 +567,16 @@ class ThreeprimeDStemSeq(_Sequence):
     canonical_positions = ((22, ), (23, 24, 25))
     allowed_input_lengths = tuple(itertools.product((0, 1), (3, )))
     summed_input_lengths = tuple(map(sum, allowed_input_lengths))
+    arm_class = DArm
+    stem_class = DStem
 
     def __init__(
         self,
         position_22_string,
         positions_23_to_25_string='',
         required_in_read=False,
+        start_index=None,
+        stop_index=None,
         cautious=False):
 
         if cautious:
@@ -481,39 +591,9 @@ class ThreeprimeDStemSeq(_Sequence):
         super().__init__(
             (position_22_string, positions_23_to_25_string),
             required_in_read=required_in_read,
+            start_index=start_index,
+            stop_index=stop_index,
             cautious=False)
-
-
-class DStem(_Stem):
-    def __init__(
-        self,
-        fiveprime_seq,
-        threeprime_seq,
-        num_allowed_unpaired=1,
-        required_in_read=False,
-        cautious=False):
-
-        super().__init__(
-            fiveprime_seq,
-            threeprime_seq,
-            num_allowed_unpaired=num_allowed_unpaired,
-            required_in_read=required_in_read,
-            cautious=cautious)
-
-
-class DArm(_Arm):
-    def __init__(
-        self,
-        stem,
-        loop,
-        num_allowed_unconserved=2,
-        cautious=False):
-
-        super().__init__(
-            stem,
-            loop,
-            num_allowed_unconserved=num_allowed_unconserved,
-            cautious=cautious)
 
 
 class PositionTwentySix(_Nucleotide):
@@ -523,108 +603,15 @@ class PositionTwentySix(_Nucleotide):
         self,
         string,
         required_in_read=False,
+        start_index=None,
+        stop_index=None,
         cautious=False):
 
         super().__init__(
             string,
             required_in_read=required_in_read,
-            cautious=cautious)
-
-
-class FiveprimeAnticodonStemSeq(_Sequence):
-    canonical_positions = ((27, 28, 29, 30, 31), )
-    allowed_input_lengths = ((5, ), )
-    summed_input_lengths = (5, )
-
-    def __init__(
-        self,
-        substrings,
-        required_in_read=False,
-        cautious=False):
-
-        super().__init__(
-            substrings,
-            required_in_read=required_in_read,
-            cautious=cautious)
-
-
-class Anticodon(_Sequence):
-    canonical_positions = ((34, 35, 36))
-    allowed_input_lengths = ((3, ), )
-    summed_input_lengths = (3, )
-
-    def __init__(
-        self,
-        substrings,
-        cautious=False):
-
-        super().__init__(
-            substrings,
-            cautious=cautious)
-
-        try:
-            self.aa_string = CODON_TO_AA_RC[self.string]
-        except KeyError:
-            self.aa_string = 'NA'
-
-
-class AnticodonLoop(_Loop):
-    canonical_positions = ((32, 33, 34, 35, 36, 37, 38), )
-    conserved_nucleotides = ({1: 'T', 5: ('A', 'G')}, )
-    allowed_input_lengths = ((7, ), )
-    summed_input_lengths = (7, )
-
-    def __init__(
-        self,
-        substrings,
-        required_in_read=False,
-        num_allowed_unconserved=1,
-        cautious=False):
-
-        super().__init__(
-            substrings,
-            required_in_read=required_in_read,
-            num_allowed_unconserved=num_allowed_unconserved,
-            cautious=cautious)
-
-        if len(self.string) != 7:
-            raise Exception(
-                "Your `AnticodonLoop` was not the required 7 bases long: %s" % self.string)
-
-        self.anticodon = Anticodon(self.string[2: 5])
-
-
-class ThreeprimeAnticodonStemSeq(_Sequence):
-    canonical_positions = ((39, 40, 41, 42, 43), )
-    allowed_input_lengths = ((5, ), )
-    summed_input_lengths = (5, )
-
-    def __init__(
-        self,
-        substrings,
-        required_in_read=False,
-        cautious=False):
-
-        super().__init__(
-            substrings,
-            required_in_read=required_in_read,
-            cautious=cautious)
-
-
-class AnticodonStem(_Stem):
-    def __init__(
-        self,
-        fiveprime_seq,
-        threeprime_seq,
-        num_allowed_unpaired=1,
-        required_in_read=False,
-        cautious=False):
-
-        super().__init__(
-            fiveprime_seq,
-            threeprime_seq,
-            num_allowed_unpaired=num_allowed_unpaired,
-            required_in_read=required_in_read,
+            start_index=start_index,
+            stop_index=stop_index,
             cautious=cautious)
 
 
@@ -645,91 +632,9 @@ class AnticodonArm(_Arm):
             cautious=cautious)
 
 
-class VLoop(_Loop):
-    canonical_positions = ((44, 45, 46, 47, 48), )
-    allowed_input_lengths = tuple((l, ) for l in range(4, 24))
-    summed_input_lengths = tuple(range(4, 24))
+class AnticodonStem(_Stem):
+    arm_class = AnticodonArm
 
-    def __init__(
-        self,
-        substrings,
-        required_in_read=False,
-        cautious=False):
-
-        super().__init__(
-            substrings,
-            required_in_read=required_in_read,
-            cautious=cautious)
-
-        if 4 <= len(self.string) <= 5:
-            self.type = 'I'
-        elif 12 <= len(self.string) <= 23:
-            self.type = 'II'
-        else:
-            self.type = 'NA'
-
-
-class FiveprimeTStemSeq(_Sequence):
-    canonical_positions = ((49, 50, 51, 52, 53), )
-    conserved_nucleotides = ({4: 'G'}, )
-    allowed_input_lengths = ((5, ), )
-    summed_input_lengths = (5, )
-
-    def __init__(
-        self,
-        substrings,
-        required_in_read=False,
-        num_allowed_unconserved=1,
-        cautious=False):
-
-        super().__init__(
-            substrings,
-            required_in_read=required_in_read,
-            num_allowed_unconserved=num_allowed_unconserved,
-            cautious=cautious)
-
-
-class TLoop(_Loop):
-    canonical_positions = ((54, 55, 56, 57, 58, 59, 60), )
-    conserved_nucleotides = ({0: 'T', 1: 'T', 2: 'C', 3: ('A', 'G'), 4: 'A'}, )
-    allowed_input_lengths = ((7, ), )
-    summed_input_lengths = (7, )
-
-    def __init__(
-        self,
-        substrings,
-        required_in_read=True,
-        num_allowed_unconserved=1,
-        cautious=False):
-
-        super().__init__(
-            substrings,
-            required_in_read=required_in_read,
-            num_allowed_unconserved=num_allowed_unconserved,
-            cautious=cautious)
-
-
-class ThreeprimeTStemSeq(_Sequence):
-    canonical_positions = ((61, 62, 63, 64, 65), )
-    conserved_nucleotides = ({0: 'C'}, )
-    allowed_input_lengths = ((5, ), )
-    summed_input_lengths = (5, )
-
-    def __init__(
-        self,
-        substrings,
-        required_in_read=True,
-        num_allowed_unconserved=1,
-        cautious=False):
-
-        super().__init__(
-            substrings,
-            required_in_read=required_in_read,
-            num_allowed_unconserved=num_allowed_unconserved,
-            cautious=cautious)
-
-
-class TStem(_Stem):
     def __init__(
         self,
         fiveprime_seq,
@@ -744,6 +649,138 @@ class TStem(_Stem):
             num_allowed_unpaired=num_allowed_unpaired,
             required_in_read=required_in_read,
             cautious=cautious)
+
+
+class FiveprimeAnticodonStemSeq(_Sequence):
+    canonical_positions = ((27, 28, 29, 30, 31), )
+    allowed_input_lengths = ((5, ), )
+    summed_input_lengths = (5, )
+    stem_class = AnticodonStem
+    arm_class = AnticodonArm
+
+    def __init__(
+        self,
+        substrings,
+        required_in_read=False,
+        start_index=None,
+        stop_index=None,
+        cautious=False):
+
+        super().__init__(
+            substrings,
+            required_in_read=required_in_read,
+            start_index=start_index,
+            stop_index=stop_index,
+            cautious=cautious)
+
+
+class Anticodon(_Sequence):
+    canonical_positions = ((34, 35, 36))
+    allowed_input_lengths = ((3, ), )
+    summed_input_lengths = (3, )
+    arm_class = AnticodonArm
+    stem_class = AnticodonStem
+
+    def __init__(
+        self,
+        substrings,
+        start_index=None,
+        stop_index=None,
+        cautious=False):
+
+        super().__init__(
+            substrings,
+            start_index=start_index,
+            stop_index=stop_index,
+            cautious=cautious)
+
+        try:
+            self.aa_string = CODON_TO_AA_RC[self.string]
+        except KeyError:
+            self.aa_string = 'NA'
+
+
+class AnticodonLoop(_Loop):
+    canonical_positions = ((32, 33, 34, 35, 36, 37, 38), )
+    conserved_nucleotides = ({1: 'T', 5: ('A', 'G')}, )
+    allowed_input_lengths = ((7, ), )
+    summed_input_lengths = (7, )
+    arm_class = AnticodonArm
+    stem_class = AnticodonStem
+
+    def __init__(
+        self,
+        substrings,
+        required_in_read=False,
+        num_allowed_unconserved=1,
+        start_index=None,
+        stop_index=None,
+        cautious=False):
+
+        super().__init__(
+            substrings,
+            required_in_read=required_in_read,
+            num_allowed_unconserved=num_allowed_unconserved,
+            start_index=start_index,
+            stop_index=stop_index,
+            cautious=cautious)
+
+        if len(self.string) != 7:
+            raise Exception(
+                "Your `AnticodonLoop` was not the required 7 bases long: %s" % self.string)
+
+        self.anticodon = Anticodon(self.string[2: 5])
+
+
+class ThreeprimeAnticodonStemSeq(_Sequence):
+    canonical_positions = ((39, 40, 41, 42, 43), )
+    allowed_input_lengths = ((5, ), )
+    summed_input_lengths = (5, )
+    arm_class = AnticodonArm
+    stem_class = AnticodonStem
+
+    def __init__(
+        self,
+        substrings,
+        required_in_read=False,
+        start_index=None,
+        stop_index=None,
+        cautious=False):
+
+        super().__init__(
+            substrings,
+            required_in_read=required_in_read,
+            start_index=start_index,
+            stop_index=stop_index,
+            cautious=cautious)
+
+
+class VLoop(_Loop):
+    canonical_positions = ((44, 45, 46, 47, 48), )
+    allowed_input_lengths = tuple((l, ) for l in range(4, 24))
+    summed_input_lengths = tuple(range(4, 24))
+
+    def __init__(
+        self,
+        substrings,
+        required_in_read=False,
+        start_index=None,
+        stop_index=None,
+        cautious=False):
+
+        super().__init__(
+            substrings,
+            required_in_read=required_in_read,
+            start_index=start_index,
+            stop_index=stop_index,
+            cautious=cautious)
+
+        if 4 <= len(self.string) <= 5:
+            self.type = 'I'
+        elif 12 <= len(self.string) <= 23:
+            self.type = 'II'
+        else:
+            self.type = 'NA'
 
 
 class TArm(_Arm):
@@ -761,29 +798,9 @@ class TArm(_Arm):
             cautious=cautious)
 
 
-class ThreeprimeAcceptorStemSeq(_Sequence):
-    canonical_positions=((66, 67, 68, 69, 70, 71, 72), )
-    allowed_input_lengths = ((7, ), )
-    summed_input_lengths = (7, )
+class TStem(_Stem):
+    arm_class = TArm
 
-    def __init__(
-        self,
-        substrings,
-        required_in_read=True,
-        cautious=False):
-
-        super().__init__(
-            substrings,
-            required_in_read=required_in_read,
-            cautious=cautious)
-
-        if len(self.string) != 7:
-            raise Exception(
-                "Your `ThreeprimeAcceptorSeq` was not the required 7 bases long: %s" % self.string)
-
-
-class AcceptorStem(_Stem):
-    # For our purposes, the acceptor stem only includes the base-paired nucleotides in the stem.
     def __init__(
         self,
         fiveprime_seq,
@@ -800,6 +817,109 @@ class AcceptorStem(_Stem):
             cautious=cautious)
 
 
+class FiveprimeTStemSeq(_Sequence):
+    canonical_positions = ((49, 50, 51, 52, 53), )
+    conserved_nucleotides = ({4: 'G'}, )
+    allowed_input_lengths = ((5, ), )
+    summed_input_lengths = (5, )
+    arm_class = TArm
+    stem_class = TStem
+
+    def __init__(
+        self,
+        substrings,
+        required_in_read=False,
+        num_allowed_unconserved=1,
+        start_index=None,
+        stop_index=None,
+        cautious=False):
+
+        super().__init__(
+            substrings,
+            required_in_read=required_in_read,
+            num_allowed_unconserved=num_allowed_unconserved,
+            start_index=start_index,
+            stop_index=stop_index,
+            cautious=cautious)
+
+
+class TLoop(_Loop):
+    canonical_positions = ((54, 55, 56, 57, 58, 59, 60), )
+    conserved_nucleotides = ({0: 'T', 1: 'T', 2: 'C', 3: ('A', 'G'), 4: 'A'}, )
+    allowed_input_lengths = ((7, ), )
+    summed_input_lengths = (7, )
+    arm_class = TArm
+
+    def __init__(
+        self,
+        substrings,
+        required_in_read=True,
+        num_allowed_unconserved=1,
+        start_index=None,
+        stop_index=None,
+        cautious=False):
+
+        super().__init__(
+            substrings,
+            required_in_read=required_in_read,
+            num_allowed_unconserved=num_allowed_unconserved,
+            start_index=start_index,
+            stop_index=stop_index,
+            cautious=cautious)
+
+
+class ThreeprimeTStemSeq(_Sequence):
+    canonical_positions = ((61, 62, 63, 64, 65), )
+    conserved_nucleotides = ({0: 'C'}, )
+    allowed_input_lengths = ((5, ), )
+    summed_input_lengths = (5, )
+    arm_class = TArm
+    stem_class = TStem
+
+    def __init__(
+        self,
+        substrings,
+        required_in_read=True,
+        num_allowed_unconserved=1,
+        start_index=None,
+        stop_index=None,
+        cautious=False):
+
+        super().__init__(
+            substrings,
+            required_in_read=required_in_read,
+            num_allowed_unconserved=num_allowed_unconserved,
+            start_index=start_index,
+            stop_index=stop_index,
+            cautious=cautious)
+
+
+class ThreeprimeAcceptorStemSeq(_Sequence):
+    canonical_positions=((66, 67, 68, 69, 70, 71, 72), )
+    allowed_input_lengths = ((7, ), )
+    summed_input_lengths = (7, )
+    stem_class = AcceptorStem
+
+    def __init__(
+        self,
+        substrings,
+        required_in_read=True,
+        start_index=None,
+        stop_index=None,
+        cautious=False):
+
+        super().__init__(
+            substrings,
+            required_in_read=required_in_read,
+            start_index=start_index,
+            stop_index=stop_index,
+            cautious=cautious)
+
+        if len(self.string) != 7:
+            raise Exception(
+                "Your `ThreeprimeAcceptorSeq` was not the required 7 bases long: %s" % self.string)
+
+
 class Discriminator(_Nucleotide):
     canonical_positions = ((73, ), )
 
@@ -807,11 +927,15 @@ class Discriminator(_Nucleotide):
         self,
         string,
         required_in_read=True,
+        start_index=None,
+        stop_index=None,
         cautious=False):
 
         super().__init__(
             string,
             required_in_read=required_in_read,
+            start_index=start_index,
+            stop_index=stop_index,
             cautious=cautious)
 
 
@@ -826,43 +950,21 @@ class Acceptor(_Sequence):
         substrings,
         required_in_read=True,
         num_allowed_unconserved=0,
+        start_index=None,
+        stop_index=None,
         cautious=False):
 
         super().__init__(
             substrings,
             required_in_read=required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
+            start_index=start_index,
+            stop_index=stop_index,
             cautious=cautious)
 
 
 class Profile:
-    ordered_feature_classes = [
-        Acceptor,
-        Discriminator,
-        ThreeprimeAcceptorStemSeq,
-        ThreeprimeTStemSeq,
-        TLoop,
-        FiveprimeTStemSeq,
-        TStem,
-        TArm,
-        VLoop,
-        ThreeprimeAnticodonStemSeq,
-        AnticodonLoop,
-        FiveprimeAnticodonStemSeq,
-        AnticodonStem,
-        AnticodonArm,
-        PositionTwentySix,
-        ThreeprimeDStemSeq,
-        DLoop,
-        FiveprimeDStemSeq,
-        DStem,
-        DArm,
-        PositionNine,
-        PositionEight,
-        FiveprimeAcceptorStemSeq,
-        AcceptorStem,
-        tRNAHisPositionZero]
-    mature_trigger = FiveprimeAcceptorStemSeq
+    ordered_feature_classes = _tRNAFeature.list_all_tRNA_features()[::-1]
     stem_triggers = [
         FiveprimeTStemSeq,
         FiveprimeAnticodonStemSeq,
@@ -873,15 +975,15 @@ class Profile:
         AnticodonStem: ordered_feature_classes.index(ThreeprimeAnticodonStemSeq),
         DStem: ordered_feature_classes.index(ThreeprimeDStemSeq),
         AcceptorStem: ordered_feature_classes.index(ThreeprimeAcceptorStemSeq)}
-    arm_triggers = [
-        TStem,
-        AnticodonStem,
-        DStem]
     loop_indices = {
         TArm: ordered_feature_classes.index(TLoop),
         AnticodonArm: ordered_feature_classes.index(AnticodonLoop),
         DArm: ordered_feature_classes.index(DLoop)}
-    anticodon_arm_index = ordered_feature_classes.index(AnticodonArm)
+    arm_triggers = [
+        TStem,
+        AnticodonStem,
+        DStem]
+    anticodon_loop_index = ordered_feature_classes.index(AnticodonLoop)
 
     def __init__(self, read):
         self.read = read
@@ -893,38 +995,39 @@ class Profile:
          self.is_mature) = self.get_profile(read, '', [], 0, 0, 0)
 
 
-    @staticmethod
     def get_profile(
+        self,
         unprofiled_read,
         profiled_read,
-        profile_features,
+        features,
         num_unconserved,
         num_unpaired,
         feature_index,
         is_mature=False):
 
         if feature_index == len(Profile.ordered_feature_classes):
-            return (profiled_read, profile_features, num_unconserved, num_unpaired, 0, is_mature)
+            return (profiled_read, features, num_unconserved, num_unpaired, 0, is_mature)
         if not unprofiled_read:
-            return (profiled_read, profile_features, num_unconserved, num_unpaired, 0, is_mature)
+            return (profiled_read, features, num_unconserved, num_unpaired, 0, is_mature)
 
         feature_class = Profile.ordered_feature_classes[feature_index]
         if feature_class in Profile.stem_triggers:
             make_stem = True
             stem_class = feature_class.stem_class
-            threeprime_stem_seq = profile_features[
-                -Profile.threeprime_stem_seq_indices[stem_class] - 1]
-            if stem_class in Profile.arm_triggers:
+            threeprime_stem_seq = features[-Profile.threeprime_stem_seq_indices[stem_class] - 1]
+            if stem_class in [TStem, AnticodonStem, DStem]:
                 make_arm = True
                 arm_class = stem_class.arm_class
-                loop = profile_features[-Profile.loop_indices[arm_class] - 1]
+                loop = features[-Profile.loop_indices[arm_class] - 1]
             else:
                 make_arm = False
-        elif feature_class == tRNAHisPositionZero:
-            profile_features[Profile.anticodon_arm_index].anticodon
         else:
             make_stem = False
             make_arm = False
+            if feature_class == tRNAHisPositionZero:
+                if CODON_TO_AA_RC[features[Profile.anticodon_loop_index].anticodon.string] != 'His':
+                    return (profiled_read, features, num_unconserved, num_unpaired, 0, is_mature)
+
         incremental_profile_candidates = []
 
         # Each primary sequence feature takes (sub)sequence inputs, which can be of varying length.
@@ -1001,7 +1104,10 @@ class Profile:
                         unprofiled_read[
                             num_processed_bases: num_processed_bases + input_length][::-1])
                     num_processed_bases += input_length
-                feature = feature_class(*feature_inputs)
+                feature = feature_class(
+                    *feature_inputs,
+                    start_index=len(self.read) - len(profiled_read) - num_processed_bases,
+                    stop_index=len(self.read) - len(profiled_read))
                 if feature.meets_conserved_thresh:
                     if make_stem:
                         stem = stem_class(feature, threeprime_stem_seq)
@@ -1034,7 +1140,7 @@ class Profile:
                         continue
 
         if not incremental_profile_candidates:
-            return (profiled_read, profile_features, num_unconserved, num_unpaired, 0, is_mature)
+            return (profiled_read, features, num_unconserved, num_unpaired, 0, is_mature)
 
         # Sort candidates by
         # 1. number of features identified (descending),
@@ -1049,20 +1155,20 @@ class Profile:
         profile_candidates = []
         for p in incremental_profile_candidates:
             if p[1]:
-                if is_mature or feature_class == Profile.mature_trigger:
-                    profile_candidate = Profile.get_profile(
+                if is_mature or feature_class == FiveprimeAcceptorStemSeq:
+                    profile_candidate = self.get_profile(
                         unprofiled_read[len(p[0]): ],
                         p[0] + profiled_read,
-                        p[1] + profile_features,
+                        p[1] + features,
                         p[2] + num_unconserved,
                         p[3] + num_unpaired,
                         feature_index + len(p[1]),
                         is_mature=True)
                 else:
-                    profile_candidate = Profile.get_profile(
+                    profile_candidate = self.get_profile(
                         unprofiled_read[len(p[0]): ],
                         p[0] + profiled_read,
-                        p[1] + profile_features,
+                        p[1] + features,
                         p[2] + num_unconserved,
                         p[3] + num_unpaired,
                         feature_index + len(p[1]),
@@ -1075,16 +1181,14 @@ class Profile:
                     profile_candidates.append(profile_candidate)
             else:
                 profile_candidates.append((
-                    unprofiled_read[len(p[0]): ],
                     p[0] + profiled_read,
-                    profile_features,
+                    features,
                     p[2] + num_unconserved,
                     p[3] + num_unpaired,
                     False))
         profile_candidates.sort(key=lambda p: (-len(p[1]), p[3], p[2], p[4]))
         return profile_candidates[0]
 
-_tRNAFeature.set_feature_relations()
 # E. coli tRNA-Ala-GGC-1-1
 # forward = 'GGGGCTATAGCTCAGCTGGGAGAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACCA'
 # E. coli tRNA-Gln-CTG-1-1
@@ -1112,7 +1216,7 @@ _tRNAFeature.set_feature_relations()
 # E. coli tRNA-SeC-TCA-1-1
 # forward = 'GGAAGATCGTCGTCTCCGGTGAGGCGGCTGGACTTCAAATCCAGTTGGGGCCGCCAGCGGTCCCGGGCAGGTTCGACTCCTGTGATCTTCCGCCA'
 # A. fulgidus DSM 4304 tRNA-Glu-TTC-1-1: the gene has introns
-# forward = 'GCUCCGGUGGUGUAGCCCGGCCAAUCAUUCCGGCCUUUCGAGCCGGCGACCCGGGUUCAAAUCCCGGCCGGAGCACCA'.replace('U', 'T')
+forward = 'GCUCCGGUGGUGUAGCCCGGCCAAUCAUUCCGGCCUUUCGAGCCGGCGACCCGGGUUCAAAUCCCGGCCGGAGCACCA'.replace('U', 'T')
 
 read = forward[::-1]
 profile = Profile(read)
