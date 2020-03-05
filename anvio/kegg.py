@@ -828,6 +828,42 @@ class KeggModulesDatabase(KeggContext):
 
         self.db.disconnect()
 
+
+    # KEGG Modules Table functions for data access and parsing start below
+    # ====================================================================
+    def get_data_value_entries_for_module_by_data_name(self, module_num, data_name):
+        """This function returns data_value elements from the modules table for the specified module and data_name pair.
+
+        All elements corresponding to the pair (ie, M00001 and ORTHOLOGY) will be returned.
+        The function relies on the db.get_some_rows_from_table_as_dict() functino to first fetch all rows corresponding \
+        to a particular model, and then parses the resulting dictionary to find all the elements with the given data_name field.
+
+        PARAMETERS
+        ==========
+        module_num           str, the module to fetch data for
+        data_name            str, which data_name field we want
+
+        RETURNS
+        =======
+        data_values_to_ret   list of str, the data_values corresponding to the module/data_name pair
+        """
+
+        where_clause_string = "module = '%s'" % (module_num)
+        dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True)
+        # the returned dictionary is keyed by an arbitrary integer, and each value is a dict containing one row from the modules table
+        # ex of one row in this dict: 0: {'module': 'M00001', 'data_name': 'ENTRY', 'data_value': 'M00001', 'data_definition': 'Pathway', 'line': 1}
+        data_values_to_ret = []
+        for key in dict_from_mod_table.keys():
+            if dict_from_mod_table[key]['data_name'] == data_name:
+                data_values_to_ret.append(dict_from_mod_table[key]['data_value'])
+
+        if not data_values_to_ret: # didn't find anything under that data_name
+            self.run.warning("Just so you know, we tried to fetch data from the KEGG Modules database for the data_name field %s and KEGG module %s, \
+            but didn't come up with anything, so an empty list is being returned. This may cause errors down the line, and if so we're very sorry for that.")
+
+        return data_values_to_ret
+
+
 class KeggModulesTable:
     """This class defines operations for creating the KEGG Modules table in Modules.db"""
 
