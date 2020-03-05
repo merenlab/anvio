@@ -36,6 +36,7 @@ if __name__ == '__main__':
                         downloaded files in your KEGG KOfam data directory if there are any. If something is wrong for some reason you\
                         can use this parameter to tell anvi'o to remove everything, and start over.")
     parser.add_argument('--quiet', default=False, action="store_true", help="Use this flag for less verbose output.")
+    parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = anvio.get_args(parser)
 
