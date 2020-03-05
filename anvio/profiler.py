@@ -716,7 +716,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 last_memory_update = int(time.time())
 
             self.progress.increment(received_contigs)
-            self.progress.update('%d of %d contigs ⚙  / MEM ☠️  %s' % \
+            self.progress.update('%d/%d contigs ⚙  | MEMORY 🧠  %s' % \
                         (received_contigs, self.num_contigs, memory_usage or '??'))
 
             # Here you're about to witness the poor side of Python (or our use of it). Although
@@ -725,6 +725,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             # objects to try to relieve the memory by encouraging the garbage collector to
             # realize what's up. Afterwards, we explicitly call the garbage collector
             if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
+                self.progress.update('%d/%d contigs ⚙  | WRITING TO DB ♻️ ...' % \
+                    (received_contigs, self.num_contigs))
                 self.store_contigs_buffer()
                 for c in self.contigs:
                     for split in c.splits:
@@ -813,7 +815,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     last_memory_update = int(time.time())
 
                 self.progress.increment(received_contigs)
-                self.progress.update('%d of %d contigs ⚙  / MEM ☠️  %s' % \
+                self.progress.update('%d/%d contigs ⚙  | MEMORY 🧠  %s' % \
                             (received_contigs, self.num_contigs, memory_usage or '??'))
 
                 # Here you're about to witness the poor side of Python (or our use of it). Although
@@ -822,6 +824,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 # objects to try to relieve the memory by encouraging the garbage collector to
                 # realize what's up. Afterwards, we explicitly call the garbage collector
                 if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
+                    self.progress.update('%d/%d contigs ⚙  | WRITING TO DB ♻️ ...' % \
+                        (received_contigs, self.num_contigs))
                     self.store_contigs_buffer()
                     for c in self.contigs:
                         for split in c.splits:
