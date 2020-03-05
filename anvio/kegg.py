@@ -598,7 +598,7 @@ class KeggModulesDatabase(KeggContext):
 
         self.db.create_table(self.module_table_name, self.module_table_structure, self.module_table_types)
 
-    def data_vals_sanity_check(self, data_vals, current_data_name):
+    def data_vals_sanity_check(self, data_vals, current_data_name, current_module_num):
         """This function checks if the data values were correctly parsed from a line in a KEGG module file.
 
         This is a sadly necessary step because some KEGG module file lines are problematic and don't follow the right format (ie, 2+ spaces
@@ -607,10 +607,13 @@ class KeggModulesDatabase(KeggContext):
 
         Note that we don't check the following data name types: NAME, CLASS, REFERENCE
 
+        WARNING: The error checking and correction is by no means perfect and may well fail when KEGG is next updated. :(
+
         PARAMETERS
         ==========
         data_vals           str, the data values field (split from the kegg module line)
         current_data_name   str, which data name we are working on. It should never be None because we should have already figured this out by parsing the line.
+        current_module_num  str, which module we are working on. We need this to keep track of which modules throw parsing errors.
 
         RETURNS
         =======
@@ -699,7 +702,7 @@ class KeggModulesDatabase(KeggContext):
         return is_ok, corrected_vals, corrected_def
 
 
-    def parse_kegg_modules_line(self, line, line_num = None, current_data_name=None):
+    def parse_kegg_modules_line(self, line, current_module, line_num = None, current_data_name=None, error_dictionary=None):
         """This function parses information from one line of a KEGG module file.
 
         These files have fields separated by 2 or more spaces. Fields can include data name (not always), data value (always), and data definition (not always).
@@ -711,6 +714,7 @@ class KeggModulesDatabase(KeggContext):
         PARAMETERS
         ==========
         line                 str, the line to parse
+        current_module       str, which module we are working on. We need this to keep track of which modules throw parsing errors
         line_num             int, which line number we are working on. We need this to keep track of which entities come from the same line of the file.
         current_data_name    str, which data name we are working on. If this is None, we need to parse this info from the first field in the line.
 
@@ -739,7 +743,7 @@ class KeggModulesDatabase(KeggContext):
         # so no matter which situation, data value is field 1 and data definition (if any) is field 2
         data_vals = fields[1]
         # need to sanity check data value field because SOME modules don't follow the 2-space separation formatting
-        vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check(data_vals, current_data_name)
+        vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check(data_vals, current_data_name, current_module)
 
         if vals_are_okay and len(fields) > 2: # not all lines have a definition field
             data_def = fields[2]
@@ -799,9 +803,9 @@ class KeggModulesDatabase(KeggContext):
                     # here is the tricky bit about parsing these files. Not all lines start with the data_name field; those that don't start with a space.
                     # if this is the case, we need to tell the parsing function what the previous data_name field has been.
                     if line[0] == ' ':
-                        entries_tuple_list = self.parse_kegg_modules_line(line, line_number, prev_data_name_field)
+                        entries_tuple_list = self.parse_kegg_modules_line(line, mnum, line_number, prev_data_name_field)
                     else:
-                        entries_tuple_list = self.parse_kegg_modules_line(line, line_number)
+                        entries_tuple_list = self.parse_kegg_modules_line(line, mnum, line_number)
 
                     # update prev_data_name_field; use the first (and perhaps only) entry by default
                     prev_data_name_field = entries_tuple_list[0][0]
