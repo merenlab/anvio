@@ -39,7 +39,14 @@ progress = terminal.Progress()
 
 
 class Table(object):
-    """Superclass for rudimentary needs and operations for contigs db tables"""
+    """Superclass for rudimentary needs and operations for db tables
+
+    Notes
+    =====
+    - This class needs to be redesigned so it better serves the purpose for both profile db and
+      contigs db calls
+    """
+
     def __init__(self, db_path, version, run=run, progress=progress, quiet=False, simple=False):
         if not db_path:
             raise ConfigError("Table superclass is being initiated without a db path, and it is very "
@@ -87,21 +94,10 @@ class Table(object):
 
 
     def set_next_available_id(self, table):
-        # FIXME: This is one of the least efficient funcitons ever.
-        #        we need to get the max int value found in the first
-        #        column of the table .. there is no need to get the
-        #        entire table as a dict! we even have a function for
-        #        that
-        #
-        #            db.get_max_value_in_column(table_name, 'entry_id')
-        #
+        # FIXME: This could be a lot faster if entry IDs are ordered. Then we just need the last
+        #        entry of the 'entry_id' column.
         database = db.DB(self.db_path, self.version)
-        table_content = database.get_table_as_dict(table)
-        if table_content:
-            self.next_available_id[table] = max(table_content.keys()) + 1
-        else:
-            self.next_available_id[table] = 0
-
+        self.next_available_id[table] = database.get_max_value_in_column(table, 'entry_id', value_if_empty=-1) + 1
         database.disconnect()
 
 
@@ -234,4 +230,5 @@ class Table(object):
         database.disconnect()
 
         self.progress.end()
+
 
