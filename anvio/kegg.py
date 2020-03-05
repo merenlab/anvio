@@ -871,8 +871,8 @@ class KeggModulesDatabase(KeggContext):
         self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
         self.run.info('Number of KEGG modules', num_modules_parsed, quiet=self.quiet)
         self.run.info('Number of entries', mod_table.get_total_entries(), quiet=self.quiet)
-        self.run.info('Number of parsing errors (corrected)', self.num_corrected_errors)
-        self.run.info('Number of parsing errors (uncorrected)', self.num_uncorrected_errors)
+        self.run.info('Number of parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
+        self.run.info('Number of parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
 
         # record some useful metadata
         self.db.set_meta_value('db_type', 'modules')
