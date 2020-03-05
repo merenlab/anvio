@@ -5,9 +5,12 @@
 /dist/
 test-output/
 /*.egg-info/
+anvio/__pycache__/
 anvio/extensions/concoct/vbgmm.c
 anvio/data/misc/COG/
+anvio/data/misc/Pfam/
 anvio/data/misc/MODELLER/db/
+anvio/data/interactive/lib/ngl/
 smtp_config.ini
 .snakemake
 anvio/data/misc/SCG_test
