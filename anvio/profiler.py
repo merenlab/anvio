@@ -742,6 +742,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 del self.contigs[:]
                 gc.collect()
 
+        self.progress.update('%d/%d contigs ⚙  | WRITING TO DB 💾 ...' % (received_contigs, self.num_contigs))
         self.store_contigs_buffer()
         self.auxiliary_db.close()
 
@@ -846,6 +847,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for proc in processes:
             proc.terminate()
 
+        self.progress.update('%d/%d contigs ⚙  | WRITING TO DB 💾 ...' % (received_contigs, self.num_contigs))
         self.store_contigs_buffer()
         self.auxiliary_db.close()
 
