@@ -30,7 +30,7 @@ __status__ = "Development"
 
 
 class _tRNAFeature:
-    # Examples show values set by Acceptor subclass for itself.
+    # Examples show values for Acceptor subclass.
     canonical_positions = ((), ) # ex. ((74, 75, 76), )
     conserved_nucleotides = ({}, ) # ex. ({74: 'C', 75: 'C', 76: 'A'}, )
     allowed_input_lengths = ((-1, ), ) # ex. ((3, ), )
@@ -965,6 +965,7 @@ class Acceptor(_Sequence):
 
 class Profile:
     ordered_feature_classes = _tRNAFeature.list_all_tRNA_features()[::-1]
+    # The following are variables used in `get_profile`.
     stem_triggers = [
         FiveprimeTStemSeq,
         FiveprimeAnticodonStemSeq,
@@ -1041,17 +1042,17 @@ class Profile:
                     continue
 
             # Determine whether there is enough information in the remaining 5' end of the read
-            # to assign it to an (incomplete) feature.
+            # to assign it to an incomplete feature.
             if len(unprofiled_read) < summed_input_length:
                 feature_inputs = []
                 num_processed_bases = 0
                 for input_length in input_lengths[::-1]:
                     reversed_input = ''
-                    for base_index in range(input_length):
-                        if num_processed_bases + base_index >= len(unprofiled_read):
+                    for _ in range(input_length):
+                        if num_processed_bases >= len(unprofiled_read):
                             reversed_input += 'N'
                         else:
-                            reversed_input += unprofiled_read[num_processed_bases + base_index]
+                            reversed_input += unprofiled_read[num_processed_bases]
                         num_processed_bases += 1
                     feature_inputs.insert(0, reversed_input[::-1])
                 feature = feature_class(*feature_inputs)
@@ -1150,11 +1151,11 @@ class Profile:
         incremental_profile_candidates.sort(key=lambda p: (-len(p[1]), p[3], p[2], p[4]))
         # Continue finding features in reads that have not been fully profiled --
         # do not recurse profile candidates
-        # in which the final feature did not fit completely in the read
-        # and is therefore not in the profile list.
+        # in which the final feature did not fit completely in the read.
+        # These "partial" features are not added to `features`.
         profile_candidates = []
         for p in incremental_profile_candidates:
-            if p[1]:
+            if p[1]: # full feature
                 if is_mature or feature_class == FiveprimeAcceptorStemSeq:
                     profile_candidate = self.get_profile(
                         unprofiled_read[len(p[0]): ],
@@ -1179,12 +1180,13 @@ class Profile:
                     return profile_candidate
                 else:
                     profile_candidates.append(profile_candidate)
-            else:
+            else: # partial feature (feature found despite truncated sequence)
                 profile_candidates.append((
                     p[0] + profiled_read,
                     features,
                     p[2] + num_unconserved,
                     p[3] + num_unpaired,
+                    p[4],
                     False))
         profile_candidates.sort(key=lambda p: (-len(p[1]), p[3], p[2], p[4]))
         return profile_candidates[0]
@@ -1215,8 +1217,12 @@ class Profile:
 # forward = 'GCCCGGATGAACCATGGCGGTCTGTGGTGCAGACTTCAAATCTGTAGGCGGTTAGCGCCGCAGTGGTTCGACTCCACCTTTCGGGTGCCA'
 # E. coli tRNA-SeC-TCA-1-1
 # forward = 'GGAAGATCGTCGTCTCCGGTGAGGCGGCTGGACTTCAAATCCAGTTGGGGCCGCCAGCGGTCCCGGGCAGGTTCGACTCCTGTGATCTTCCGCCA'
-# A. fulgidus DSM 4304 tRNA-Glu-TTC-1-1: the gene has introns
-forward = 'GCUCCGGUGGUGUAGCCCGGCCAAUCAUUCCGGCCUUUCGAGCCGGCGACCCGGGUUCAAAUCCCGGCCGGAGCACCA'.replace('U', 'T')
+# A. fulgidus DSM 4304 tRNA-Glu-TTC-1-1: the gene has introns, so the mature tRNA may be weird
+# forward = 'GCUCCGGUGGUGUAGCCCGGCCAAUCAUUCCGGCCUUUCGAGCCGGCGACCCGGGUUCAAAUCCCGGCCGGAGCACCA'.replace('U', 'T')
+
+# Truncated
+# E. coli tRNA-Ala-GGC-1-1: remove 5' nucleotide
+forward = 'GGGCTATAGCTCAGCTGGGAGAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACCA'
 
 read = forward[::-1]
 profile = Profile(read)
@@ -1227,6 +1233,12 @@ print(profile.num_unpaired)
 print(profile.num_partial_feature_nucs)
 print(profile.is_mature)
 print(profile.profiled_tRNA == forward)
+
+
+# input of mmseqs alignment
+# dereplicate sequences
+# sql table
+# 
 
 
 #     # add features to ReadProfile object
