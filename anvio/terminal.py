@@ -7,6 +7,7 @@ import re
 import sys
 import time
 import fcntl
+import numpy as np
 import struct
 import pandas as pd
 import termios
@@ -740,8 +741,84 @@ def time_program(program_method):
 
 
 class TrackMemory(object):
-    def __init__(self):
-        pass
+    """Track the total memory over time
+
+    Parameters
+    ==========
+    at_most_every : int or float, 5
+        Memory is only calculated at most every 5 seconds, despite how many times self.measure is
+        called
+    """
+
+    def __init__(self, at_most_every=5):
+        self.t = None
+        self.at_most_every = at_most_every
+
+
+    def start(self):
+        self.t = Timer(score=self._get_mem())
+        return self.get_last(), self.get_last_diff()
+
+
+    def measure(self):
+        if self.t is None:
+            raise ConfigError("TrackMemory :: You must start the tracker with self.start()")
+
+        if self.t.timedelta_to_checkpoint(self.t.timestamp(), self.t.last_checkpoint_key) < datetime.timedelta(seconds = self.at_most_every):
+            return False
+
+        self.t.make_checkpoint(increment_to=self._get_mem())
+        return True
+
+
+    def gen_report(self):
+        df = self.t.gen_dataframe_report().rename(columns={'score': 'bytes'}).set_index('key', drop=True)
+        df['memory'] = df['bytes'].apply(self._format)
+        return df
+
+
+    def get_last(self):
+        """Get the memory of the last measurement"""
+        return self._format(self.t.scores[self.t.last_checkpoint_key])
+
+
+    def get_last_diff(self):
+        """Get the memory difference between the two latest measurements"""
+        last_key = self.t.last_checkpoint_key
+
+        if last_key == 0:
+            return '+??'
+
+        return self._format_diff(self._diff(last_key, last_key - 1))
+
+
+    def _diff(self, key2, key1):
+        return self.t.scores[key2] - self.t.scores[key1]
+
+
+    def _format(self, mem):
+        if np.isnan(mem):
+            return '??'
+
+        formatted = anvio.utils.human_readable_file_size(abs(mem))
+        return ('-' if mem < 0 else '') + formatted
+
+
+    def _format_diff(self, mem):
+        if np.isnan(mem):
+            return '+??'
+
+        formatted = anvio.utils.human_readable_file_size(abs(mem))
+        return ('-' if mem < 0 else '+') + formatted
+
+
+    def _get_mem(self):
+        mem = anvio.utils.get_total_memory_usage(keep_raw=True)
+
+        if mem is None:
+            return np.nan
+
+        return mem
 
 
 def pretty_print(n):
