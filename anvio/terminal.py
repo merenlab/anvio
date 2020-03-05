@@ -16,8 +16,9 @@ import textwrap
 from colored import fore, back, style
 from collections import OrderedDict
 
-import anvio.constants as constants
+import anvio
 import anvio.dictio as dictio
+import anvio.constants as constants
 
 from anvio.errors import TerminalError
 from anvio.ttycolors import color_text as c
@@ -386,7 +387,7 @@ class Timer:
     complete: True
     ETA: 00 seconds
     """
-    def __init__(self, required_completion_score = None, initial_checkpoint_key = 0):
+    def __init__(self, required_completion_score=None, initial_checkpoint_key=0, score=0):
         self.timer_start = self.timestamp()
         self.initial_checkpoint_key = initial_checkpoint_key
         self.last_checkpoint_key = self.initial_checkpoint_key
@@ -394,11 +395,13 @@ class Timer:
         self.num_checkpoints = 0
 
         self.required_completion_score = required_completion_score
-        self.completion_score = 0
+        self.score = score
         self.complete = False
 
         self.last_eta = None
         self.last_eta_timestamp = self.timer_start
+
+        self.scores = {self.initial_checkpoint_key: self.score}
 
 
     def timestamp(self):
@@ -427,11 +430,13 @@ class Timer:
         self.num_checkpoints += 1
 
         if increment_to:
-            self.completion_score = increment_to
+            self.score = increment_to
         else:
-            self.completion_score += 1
+            self.score += 1
 
-        if self.required_completion_score and self.completion_score >= self.required_completion_score:
+        self.scores[checkpoint_key] = self.score
+
+        if self.required_completion_score and self.score >= self.required_completion_score:
             self.complete = True
 
         return checkpoint
@@ -453,10 +458,11 @@ class Timer:
     def gen_dataframe_report(self):
         """Returns a dataframe"""
 
-        d = {'key': [], 'time': []}
+        d = {'key': [], 'time': [], 'score': []}
         for checkpoint_key, checkpoint in self.checkpoints.items():
             d['key'].append(checkpoint_key)
             d['time'].append(checkpoint)
+            d['score'].append(self.scores[checkpoint_key])
 
         return pd.DataFrame(d)
 
@@ -472,11 +478,11 @@ class Timer:
             return datetime.timedelta(seconds = 0)
         if not self.required_completion_score:
             return None
-        if not self.completion_score:
+        if not self.score:
             return infinite_default
 
         time_elapsed = self.checkpoints[self.last_checkpoint_key] - self.checkpoints[0]
-        fraction_completed = self.completion_score / self.required_completion_score
+        fraction_completed = self.score / self.required_completion_score
         time_remaining_estimate = time_elapsed / fraction_completed - time_elapsed
 
         return time_remaining_estimate
