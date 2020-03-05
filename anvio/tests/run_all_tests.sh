@@ -155,6 +155,10 @@ anvi-export-locus -c $output_dir/CONTIGS.db \
                   -s NusB,rpoz \
                   --overwrite-output-destinations
 
+INFO "Running anvi-analyze-synteny"
+# make a external-genomesfile. echo -e "name\tcontigs_db_path\n... etc"" > external-genomes-file.txt
+# run anvi-analyze-synteny
+
 
 INFO "Export only Pfam annotations"
 anvi-export-functions -c $output_dir/CONTIGS.db \
