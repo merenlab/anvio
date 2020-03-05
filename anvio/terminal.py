@@ -359,36 +359,32 @@ class Run:
 
 
 class Timer:
-    """
-    The premise of the class is to build an ordered dictionary, where each key is a checkpoint
-    name and value is a timestamp.
+    """Manages an ordered dictionary, where each key is a checkpoint name and value is a timestamp.
 
     Examples
     ========
 
-        from anvio.terminal import Timer
-        import time
-        t = Timer(); time.sleep(1)
-        t.make_checkpoint('checkpoint_name'); time.sleep(1)
-        timedelta = t.timedelta_to_checkpoint(timestamp=t.timestamp(), checkpoint_key='checkpoint_name')
-        print(t.format_time(timedelta, fmt = '{days} days, {hours} hours, {seconds} seconds', zero_padding=0))
-        print(t.time_elapsed())
+    >>> from anvio.terminal import Timer
+    >>> import time
+    >>> t = Timer(); time.sleep(1)
+    >>> t.make_checkpoint('checkpoint_name'); time.sleep(1)
+    >>> timedelta = t.timedelta_to_checkpoint(timestamp=t.timestamp(), checkpoint_key='checkpoint_name')
+    >>> print(t.format_time(timedelta, fmt = '{days} days, {hours} hours, {seconds} seconds', zero_padding=0))
+    >>> print(t.time_elapsed())
+    0 days, 0 hours, 1 seconds
+    00:00:02
 
-        >>> 0 days, 0 hours, 1 seconds
-        >>> 00:00:02
-
-        t = Timer(3) # 3 checkpoints expected until completion
-        for _ in range(3):
-            time.sleep(1); t.make_checkpoint()
-            print('complete: %s' % t.complete)
-            print(t.eta(fmt='ETA: {seconds} seconds'))
-
-        >>> complete: False
-        >>> ETA: 02 seconds
-        >>> complete: False
-        >>> ETA: 01 seconds
-        >>> complete: True
-        >>> ETA: 00 seconds
+    >>> t = Timer(3) # 3 checkpoints expected until completion
+    >>> for _ in range(3):
+    >>>     time.sleep(1); t.make_checkpoint()
+    >>>     print('complete: %s' % t.complete)
+    >>>     print(t.eta(fmt='ETA: {seconds} seconds'))
+    complete: False
+    ETA: 02 seconds
+    complete: False
+    ETA: 01 seconds
+    complete: True
+    ETA: 00 seconds
     """
     def __init__(self, required_completion_score = None, initial_checkpoint_key = 0):
         self.timer_start = self.timestamp()
@@ -508,14 +504,16 @@ class Timer:
 
 
     def format_time(self, timedelta, fmt = '{hours}:{minutes}:{seconds}', zero_padding = 2):
-        """
-            Examples of `fmt`. Suppose the timedelta is seconds = 1, minutes = 1, hours = 1.
+        """Formats time
+
+        Examples of `fmt`. Suppose the timedelta is seconds = 1, minutes = 1, hours = 1.
 
             {hours}h {minutes}m {seconds}s  --> 01h 01m 01s
             {seconds} seconds               --> 3661 seconds
             {weeks} weeks {minutes} minutes --> 0 weeks 61 minutes
             {hours}h {seconds}s             --> 1h 61s
         """
+
         unit_hierarchy = ['seconds', 'minutes', 'hours', 'days', 'weeks']
         unit_denominations = {'weeks': 7, 'days': 24, 'hours': 60, 'minutes': 60, 'seconds': 1}
 
@@ -593,9 +591,8 @@ class Timer:
 
 
     def _test_format_time(self):
-        """
-        Run this and visually inspect its working
-        """
+        """Run this and visually inspect its working"""
+
         run = Run()
         for exponent in range(1, 7):
             seconds = 10 ** exponent
@@ -628,56 +625,53 @@ class Timer:
 
 
 class TimeCode(object):
-    """
+    """Time a block of code.
+
     This context manager times blocks of code, and calls run.info afterwards to report
     the time (unless quiet = True). See also time_program()
 
-    PARAMS
-    ======
-        sc: 'green'
-            run info color with no runtime error
-        success_msg: None
-            If None, it is set to 'Code ran succesfully in'
-        fc: 'green'
-            run info color with runtime error
-        failure_msg: None
-            If None, it is set to 'Code failed within'
-        run: Run()
-            Provide a pre-existing Run instance if you want
-        quiet: False,
-            If True, run.info is not called and datetime object is stored
-            as `time` (see examples)
-        suppress_first: 0,
-            Supress output if code finishes within this many seconds.
+    Parameters
+    ==========
+    sc: 'green'
+        run info color with no runtime error
+    success_msg: None
+        If None, it is set to 'Code ran succesfully in'
+    fc: 'green'
+        run info color with runtime error
+    failure_msg: None
+        If None, it is set to 'Code failed within'
+    run: Run()
+        Provide a pre-existing Run instance if you want
+    quiet: False,
+        If True, run.info is not called and datetime object is stored
+        as `time` (see examples)
+    suppress_first: 0,
+        Supress output if code finishes within this many seconds.
 
-    EXAMPLES
+    Examples
     ========
 
-        import time
-        import anvio.terminal as terminal
+    >>> import time
+    >>> import anvio.terminal as terminal
+    >>> # EXAMPLE 1
+    >>> with terminal.TimeCode() as t:
+    >>>     time.sleep(5)
+    ✓ Code finished successfully after 05s
 
-        # EXAMPLE 1
-        with terminal.TimeCode() as t:
-            time.sleep(5)
+    >>> # EXAMPLE 2
+    >>> with terminal.TimeCode() as t:
+    >>>     time.sleep(5)
+    >>>     print(asdf) # undefined variable
+    ✖ Code encountered error after 05s
 
-        >>> ✓ Code finished successfully after 05s
-
-
-        # EXAMPLE 2
-        with terminal.TimeCode() as t:
-            time.sleep(5)
-            print(asdf) # undefined variable
-
-        >>> ✖ Code encountered error after 05s
-
-        # EXAMPLE 3
-        with terminal.TimeCode(quiet=True) as t:
-            time.sleep(5)
-        print(t.time)
-
-        >>> 0:00:05.000477
+    >>> # EXAMPLE 3
+    >>> with terminal.TimeCode(quiet=True) as t:
+    >>>     time.sleep(5)
+    >>> print(t.time)
+    0:00:05.000477
     """
-    def __init__(self, sc='green', success_msg = None, fc='red', failure_msg = None, run = Run(), quiet = False, suppress_first = 0):
+
+    def __init__(self, success_msg=None, sc='green', fc='red', failure_msg=None, run=Run(), quiet=False, suppress_first=0):
         self.run = run
         self.run.single_line_prefixes = {0: '✓ ', 1: '✖ '}
 
@@ -708,23 +702,22 @@ class TimeCode(object):
 
 
 def time_program(program_method):
-    """
-    A decorator used to time anvio programs. See below for example.
+    """A decorator used to time anvio programs.
+
     For a concrete example, see `bin/anvi-profile`.
 
-    EXAMPLE
-    =======
+    Examples
+    ========
 
-    import anvio.terminal as terminal
-
-    @terminal.time_program
-    def main(args):
-        <do stuff>
-
-    if __name__ == '__main__':
-        <do stuff>
-        main(args)
+    >>> import anvio.terminal as terminal
+    >>> @terminal.time_program
+    >>> def main(args):
+    >>>     <do stuff>
+    >>> if __name__ == '__main__':
+    >>>     <do stuff>
+    >>>     main(args)
     """
+
     import inspect
     program_name = os.path.basename(inspect.getfile(program_method))
 
@@ -738,6 +731,11 @@ def time_program(program_method):
         with TimeCode(**TimeCode_params):
             program_method(*args, **kwargs)
     return wrapper
+
+
+class TrackMemory(object):
+    def __init__(self):
+        pass
 
 
 def pretty_print(n):
