@@ -42,7 +42,7 @@ class TableForVariability(Table):
         # the number of entries in `self.db_entries` variable exceeds a certain
         # value, it will be written to the database and the global variable
         # `self.db_entries` will be emptied, saving significant memory space:
-        self.max_num_entries_in_storage_buffer = 5000
+        self.max_num_entries_in_storage_buffer = 50000
 
 
     def get_num_entries(self):
