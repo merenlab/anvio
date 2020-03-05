@@ -864,6 +864,28 @@ class KeggModulesDatabase(KeggContext):
         return data_values_to_ret
 
 
+    def parse_kegg_class_value(self, class_data_val):
+        """This function takes a data_value string for the CLASS field in the modules table and parses it into a dictionary.
+
+        The data_value string of CLASS fields should look something like this: Pathway modules; Amino acid metabolism; Lysine metabolism
+        so they can be parsed into 3 parts: class, category, and subcategory.
+        """
+
+        fields = class_data_val.split("; ")
+        class_dict = {"class" : fields[0], "category" : fields[1], "subcategory" : fields[2] if len(fields) > 2 else None}
+        return class_dict
+
+    def get_kegg_module_class_dict(self, mnum):
+        """This function returns a dictionary of values in the CLASS field for a specific module
+
+        It really exists only for convenience to put together the data fetch and parsing functions.
+        """
+
+        # there should only be one CLASS line per module, so we extract the first list element
+        class_value = self.get_data_value_entries_for_module_by_data_name(mnum, "CLASS")[0]
+        return self.parse_kegg_class_value(class_value)
+
+
 class KeggModulesTable:
     """This class defines operations for creating the KEGG Modules table in Modules.db"""
 
