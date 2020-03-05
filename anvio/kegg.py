@@ -632,6 +632,7 @@ class KeggModulesDatabase(KeggContext):
             # example format: M00175
             if data_vals[0] != 'M' or len(data_vals) != 6:
                 is_ok = False
+                self.parsing_error_dict['bad_kegg_code_format'].append(current_module_num)
         elif current_data_name == "DEFINITION":
             # example format: (K01647,K05942) (K01681,K01682) (K00031,K00030) (K00164+K00658+K00382,K00174+K00175-K00177-K00176)
             # another example: (M00161,M00163) M00165
@@ -639,6 +640,8 @@ class KeggModulesDatabase(KeggContext):
             for k in knums:
                 if k[0] not in ['K','M'] or len(k) != 6:
                     is_ok = False
+            if not is_ok: # this goes here to avoid counting multiple errors for the same line
+                self.parsing_error_dict['bad_kegg_code_format'].append(current_module_num)
         elif current_data_name == "ORTHOLOGY":
             # example format: K00234,K00235,K00236,K00237
             # more complex example: (K00163,K00161+K00162)+K00627+K00382-K13997
@@ -649,6 +652,7 @@ class KeggModulesDatabase(KeggContext):
                     is_ok = False
             # try to fix it by splitting on first space
             if not is_ok:
+                self.parsing_error_dict['bad_line_splitting'].append(current_module_num)
                 split_data_vals = data_vals.split(" ", maxsplit=1)
                 corrected_vals = split_data_vals[0]
                 corrected_def = split_data_vals[1]
@@ -661,6 +665,7 @@ class KeggModulesDatabase(KeggContext):
             # example format: map00020
             if data_vals[0:3] != "map" or len(data_vals) != 8:
                 is_ok = False
+                self.parsing_error_dict['bad_line_splitting'].append(current_module_num)
                 split_data_vals = data_vals.split(" ", maxsplit=1)
                 corrected_vals = split_data_vals[0]
                 corrected_def = split_data_vals[1]
@@ -672,6 +677,7 @@ class KeggModulesDatabase(KeggContext):
                 if r[0] != 'R' or len(r) != 6:
                     is_ok = False
             if not is_ok:
+                self.parsing_error_dict['bad_line_splitting'].append(current_module_num)
                 split_data_vals = data_vals.split(" ", maxsplit=1)
                 corrected_vals = split_data_vals[0]
                 corrected_def = split_data_vals[1]
@@ -680,24 +686,28 @@ class KeggModulesDatabase(KeggContext):
             # example format: C00024
             if data_vals[0] not in ['C','G'] or len(data_vals) != 6:
                 is_ok = False
+                self.parsing_error_dict['bad_kegg_code_format'].append(current_module_num)
         elif current_data_name == "RMODULE":
             # example format: RM003
             if data_vals[0:2] != "RM" or len(data_vals) != 5:
                 is_ok = False
+                self.parsing_error_dict['bad_kegg_code_format'].append(current_module_num)
 
 
         if not is_ok and not is_corrected:
-            # in production, this should not end with an error. This raises an error for now just so I can easily find errors that I haven't implemented
-            # correction for yet
+            self.num_uncorrected_errors += 1
+            # we should allow a --just-do-it option here for people to ignore uncorrected errors
             raise ConfigError("Found an issue with a KEGG Module line. Data values incorrectly parsed. Current data name is %s, here is the \
             incorrectly-formatted data value field: %s" % (current_data_name, data_vals))
 
         if is_corrected:
-            self.run.warning("While parsing a KEGG Module line, we found an issue with the formatting. We did our very best to parse the line \
-            correctly, but please check that it looks right to you by examining the following values.")
-            self.run.info("Incorrectly parsed data value field", data_vals)
-            self.run.info("Corrected data values", corrected_vals)
-            self.run.info("Corrected data definition", corrected_def)
+            self.num_corrected_errors += 1
+            if anvio.DEBUG and not self.quiet:
+                self.run.warning("While parsing a KEGG Module line, we found an issue with the formatting. We did our very best to parse the line \
+                correctly, but please check that it looks right to you by examining the following values.")
+                self.run.info("Incorrectly parsed data value field", data_vals)
+                self.run.info("Corrected data values", corrected_vals)
+                self.run.info("Corrected data definition", corrected_def)
 
         return is_ok, corrected_vals, corrected_def
 
@@ -783,6 +793,11 @@ class KeggModulesDatabase(KeggContext):
         # init the Modules table
         mod_table = KeggModulesTable(self.module_table_name)
 
+        # keep track of errors encountered while parsing
+        self.parsing_error_dict = {"two_definition_fields" : [], "bad_line_splitting" : [], "bad_kegg_code_format" : []}
+        self.num_corrected_errors = 0
+        self.num_uncorrected_errors = 0
+
         num_modules_parsed = 0
         line_number = 0
         for mnum in self.module_dict.keys():
@@ -820,10 +835,34 @@ class KeggModulesDatabase(KeggContext):
             num_modules_parsed += 1
         self.progress.end()
 
+        # warn user about parsing errors
+        if anvio.DEBUG:
+            self.run.warning("Several parsing errors were encountered while building the KEGG Modules DB. \
+            Below you will see which modules threw each type of parsing error. Note that modules which threw multiple \
+            errors will occur in the list as many times as it threw each error.")
+            self.run.info("Two DEFINITION lines (in one module)", self.parsing_error_dict["two_definition_fields"])
+            self.run.info("Bad line splitting (usually due to rogue or missing spaces)", self.parsing_error_dict["bad_line_splitting"])
+            self.run.info("Bad KEGG code format (usually not correctable)", self.parsing_error_dict["bad_kegg_code_format"])
+        else: # less verbose
+            self.run.warning("First things first - don't panic. Several parsing errors were encountered while building the KEGG Modules DB. But that \
+            is probably okay, because if you got to this point it is likely that we already fixed all of them ourselves. So don't worry too much. \
+            Below you will see how many of each type of error was encountered. If you would like to see which modules threw these errors, please \
+            re-run the setup using the --debug flag (you will also probably need the --reset flag). When doing so, you will also see which lines \
+            caused issues; this can be a lot of output, so you can suppress the line-specific output with the --quiet flag if that makes things easier to read. \
+            So, in summary: You can probably ignore this warning. But if you want more info: \
+            run setup again with --reset --debug --quiet to see exactly which modules had issues, or \
+            run --reset --debug to see exactly which lines in which modules had issues. \
+            Now, here is a kiss for you because you have been so patient and good with anvi'o 😚")
+            self.run.info("Two DEFINITION lines (in one module)", len(self.parsing_error_dict["two_definition_fields"]))
+            self.run.info("Bad line splitting (usually due to rogue or missing spaces)", len(self.parsing_error_dict["bad_line_splitting"]))
+            self.run.info("Bad KEGG code format (usually not correctable)", len(self.parsing_error_dict["bad_kegg_code_format"]))
+
         # give some run info
         self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
         self.run.info('Number of KEGG modules', num_modules_parsed, quiet=self.quiet)
         self.run.info('Number of entries', mod_table.get_total_entries(), quiet=self.quiet)
+        self.run.info('Number of parsing errors (corrected)', self.num_corrected_errors)
+        self.run.info('Number of parsing errors (uncorrected)', self.num_uncorrected_errors)
 
         # record some useful metadata
         self.db.set_meta_value('db_type', 'modules')
