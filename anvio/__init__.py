@@ -17,6 +17,8 @@ anvio_codename = 'esther'
 
 DEBUG = '--debug' in sys.argv
 FORCE = '--force' in sys.argv
+QUIET = '--quiet' in sys.argv
+NO_PROGRESS = '--no-progress' in sys.argv
 FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
 
 def P(d, dont_exit=False):
@@ -47,7 +49,7 @@ def get_args(parser):
        to see can still be sorted out.
     """
 
-    allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables']
+    allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables', '--quiet', '--no-progress']
 
     args, unknown = parser.parse_known_args()
 
