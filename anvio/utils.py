@@ -71,7 +71,16 @@ run = Run()
 run.verbose = False
 
 
-def get_total_memory_usage():
+def get_total_memory_usage(keep_raw=False):
+    """Get the total memory, including children
+
+    Parameters
+    ==========
+    keep_raw : bool, False
+        A human readable format is returned, e.g. "1.41 GB". If keep_raw, the raw number is
+        returned, e.g. 1515601920
+    """
+
     if not PSUTIL_OK:
         return None
 
@@ -83,7 +92,7 @@ def get_total_memory_usage():
         except:
             pass
 
-    return human_readable_file_size(mem)
+    return mem if keep_raw else human_readable_file_size(mem)
 
 
 def display_top_memory_usage(snapshot, key_type='lineno', limit=10):
