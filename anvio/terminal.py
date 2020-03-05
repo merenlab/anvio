@@ -82,6 +82,9 @@ class Progress:
 
         self.LEN = lambda s: len(s.encode('utf-16-le')) // 2
 
+        if anvio.NO_PROGRESS or anvio.QUIET:
+            self.verbose = False
+
 
     def get_terminal_width(self):
         # FIXME Program flow here is not clear. When does try fail?
@@ -259,6 +262,9 @@ class Run:
         self.single_line_prefixes = {1: '* ',
                                      2: '    - ',
                                      3: '        > '}
+
+        if anvio.QUIET:
+            self.verbose = False
 
 
     def log(self, line):
