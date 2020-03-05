@@ -725,7 +725,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             # objects to try to relieve the memory by encouraging the garbage collector to
             # realize what's up. Afterwards, we explicitly call the garbage collector
             if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
-                self.progress.update('%d/%d contigs ⚙  | WRITING TO DB ♻️ ...' % \
+                self.progress.update('%d/%d contigs ⚙  | WRITING TO DB 💾 ...' % \
                     (received_contigs, self.num_contigs))
                 self.store_contigs_buffer()
                 for c in self.contigs:
@@ -824,7 +824,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 # objects to try to relieve the memory by encouraging the garbage collector to
                 # realize what's up. Afterwards, we explicitly call the garbage collector
                 if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
-                    self.progress.update('%d/%d contigs ⚙  | WRITING TO DB ♻️ ...' % \
+                    self.progress.update('%d/%d contigs ⚙  | WRITING TO DB 💾 ...' % \
                         (received_contigs, self.num_contigs))
                     self.store_contigs_buffer()
                     for c in self.contigs:
