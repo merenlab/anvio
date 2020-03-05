@@ -80,7 +80,6 @@ def get_total_memory_usage(keep_raw=False):
         A human readable format is returned, e.g. "1.41 GB". If keep_raw, the raw number is
         returned, e.g. 1515601920
     """
-
     if not PSUTIL_OK:
         return None
 
