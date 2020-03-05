@@ -568,6 +568,12 @@ class KeggModulesDatabase(KeggContext):
         self.module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
 
         ## here we should call init function if the db exists
+        if os.path.exists(self.db_path):
+            utils.is_kegg_modules_db(self.db_path)
+            self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=False)
+
+            self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
+            self.run.info('Kegg Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
 
     def touch(self):
         """Creates an empty Modules database on disk, and sets `self.db` to access to it.
