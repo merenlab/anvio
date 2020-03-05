@@ -713,7 +713,7 @@ class KeggModulesDatabase(KeggContext):
         return is_ok, corrected_vals, corrected_def
 
 
-    def parse_kegg_modules_line(self, line, current_module, line_num = None, current_data_name=None, error_dictionary=None):
+    def parse_kegg_modules_line(self, line, current_module, line_num=None, current_data_name=None, error_dictionary=None):
         """This function parses information from one line of a KEGG module file.
 
         These files have fields separated by 2 or more spaces. Fields can include data name (not always), data value (always), and data definition (not always).
