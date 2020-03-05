@@ -7,9 +7,9 @@ What do we say to loci that appear to have no coherent synteny patterns...?
 ... not today ;)
 
 The goal of this program is to analyze the synteny patterns within a group of loci. The main idea is to have a sliding window 
-that will record a set of genes of size N to form an Ngram (similar to a kmer profile). This program will output
+that will record a sequence of genes of size N to form an Ngram (similar to a kmer profile). This program will output
 a .tsv with counts for each ngram per contig provided. The resulting Ngram count table can then be used 
-to n analyze as a network to see the presence and absence of groups of genes by the user.
+to analyze as a network to see the presence and absence of groups of genes by the user.
 
 To test this code run:
 
@@ -78,11 +78,11 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source', {"required": True}))
     groupA.add_argument(*anvio.A('window-range'), **anvio.K('window-range', {"required": True}))
     groupA.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {"required": True}))
+    # Additional input
     groupB = parser.add_argument_group('Additonal INPUT')
     groupB.add_argument('--analyze-unknown-functions',action="store_true",
-                        help="TRUE indicates that you would like anvi-analyze-synteny to take into accounts\
-                        gene calls that do not have an annotation. FALSE indicates that anvi-export locus\
-                        will ignore any ngram with an unknown function in it.")
+                        help="Provide this flag if you want anvi-analyze-synteny to take into account "
+                              "gene calls that do not have an annotation.")
 
     args = anvio.get_args(parser)
 
