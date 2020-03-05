@@ -37,7 +37,7 @@ class TableForCodonFrequencies(Table):
         self.db_entries = []
         self.set_next_available_id(t.variable_codons_table_name)
 
-        self.max_num_entries_in_storage_buffer = 5000
+        self.max_num_entries_in_storage_buffer = 15000
 
 
     def append_entry(self, entry):
