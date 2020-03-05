@@ -414,7 +414,7 @@ class KeggSetup(KeggContext):
     def setup_modules_db(self):
         """This function creates the Modules DB from the Kegg Module files. """
 
-        mod_db = KeggModulesDatabase(os.path.join(self.kofam_data_dir, "MODULES.db"), module_dictionary=self.module_dict, args=self.args, run=run, progress=progress)
+        mod_db = KeggModulesDatabase(os.path.join(self.kofam_data_dir, "MODULES.db"), args=self.args, module_dictionary=self.module_dict, run=run, progress=progress)
         mod_db.create()
 
 
@@ -550,7 +550,7 @@ class KeggModulesDatabase(KeggContext):
     Kegg Module files.
     """
 
-    def __init__(self, db_path, module_dictionary, args, run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, args, module_dictionary=None, run=run, progress=progress, quiet=False):
         self.db = None
         self.db_path = db_path
         self.module_dict = module_dictionary
@@ -574,6 +574,9 @@ class KeggModulesDatabase(KeggContext):
 
             self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
             self.run.info('Kegg Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
+        else:
+            if not self.module_dict:
+                raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a modules dictionary. IT WILL DIE NOW.")
 
     def touch(self):
         """Creates an empty Modules database on disk, and sets `self.db` to access to it.
