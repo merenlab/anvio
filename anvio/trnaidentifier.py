@@ -39,7 +39,6 @@ class _tRNAFeature:
     def __init__(
         self,
         string_components, # ex. ('CCA', )
-        required_in_read=False, # ex. True
         num_allowed_unconserved=-1, # ex. 0
         cautious=False):
 
@@ -53,7 +52,6 @@ class _tRNAFeature:
         self.string_components = string_components
 
         self.num_nucleotides = sum(map(len, string_components))
-        self.required_in_read = required_in_read
 
         # By default, base conservation is not enforced.
         if num_allowed_unconserved == -1:
@@ -121,7 +119,6 @@ class _Nucleotide(_tRNAFeature):
     def __init__(
         self,
         string, # must be a string of length 1
-        required_in_read=False,
         num_allowed_unconserved=True,
         start_index=None,
         stop_index=None,
@@ -133,7 +130,6 @@ class _Nucleotide(_tRNAFeature):
 
         super().__init__(
             (string, ),
-            required_in_read=required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
             cautious=cautious)
 
@@ -147,7 +143,6 @@ class _Sequence(_tRNAFeature):
     def __init__(
         self,
         substrings, # must be a string, tuple of strings, or tuple of _Nucleotide/_Sequence objects
-        required_in_read=False,
         num_allowed_unconserved=-1,
         start_index=None,
         stop_index=None,
@@ -165,7 +160,6 @@ class _Sequence(_tRNAFeature):
 
         super().__init__(
             string_components,
-            required_in_read=required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
             cautious=cautious)
 
@@ -179,7 +173,6 @@ class _Loop(_Sequence):
     def __init__(
         self,
         substrings, # must be a string, tuple of strings, or tuple of _Nucleotide/_Sequence objects
-        required_in_read=False,
         num_allowed_unconserved=-1,
         start_index=None,
         stop_index=None,
@@ -187,7 +180,6 @@ class _Loop(_Sequence):
 
         super().__init__(
             substrings,
-            required_in_read=required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
             start_index=start_index,
             stop_index=stop_index,
@@ -200,7 +192,6 @@ class _Stem(_tRNAFeature):
         fiveprime_seq,
         threeprime_seq,
         num_allowed_unpaired=0,
-        required_in_read=False,
         num_allowed_unconserved=-1,
         cautious=False):
 
@@ -236,7 +227,6 @@ class _Stem(_tRNAFeature):
         super().__init__(
             (*self.fiveprime_seq.string_components,
              *self.threeprime_seq.string_components),
-            required_in_read=required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
             cautious=cautious)
 
@@ -310,7 +300,6 @@ class _Arm(_tRNAFeature):
             (*stem.fiveprime_seq.string_components,
              *loop.string_components,
              *stem.threeprime_seq.string_components),
-            required_in_read=stem.required_in_read and loop.required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
             cautious=cautious)
 
@@ -336,7 +325,6 @@ class tRNAHisPositionZero(_Nucleotide):
     def __init__(
         self,
         string,
-        required_in_read=False,
         num_allowed_unconserved=0,
         start_index=None,
         stop_index=None,
@@ -344,7 +332,6 @@ class tRNAHisPositionZero(_Nucleotide):
 
         super().__init__(
             string,
-            required_in_read=False,
             num_allowed_unconserved=num_allowed_unconserved,
             start_index=start_index,
             stop_index=stop_index,
@@ -358,14 +345,12 @@ class AcceptorStem(_Stem):
         fiveprime_seq,
         threeprime_seq,
         num_allowed_unpaired=1,
-        required_in_read=False,
         cautious=False):
 
         super().__init__(
             fiveprime_seq,
             threeprime_seq,
             num_allowed_unpaired=num_allowed_unpaired,
-            required_in_read=required_in_read,
             cautious=cautious)
 
 
@@ -378,14 +363,12 @@ class FiveprimeAcceptorStemSeq(_Sequence):
     def __init__(
         self,
         substrings,
-        required_in_read=False,
         start_index=None,
         stop_index=None,
         cautious=False):
 
         super().__init__(
             substrings,
-            required_in_read=required_in_read,
             start_index=start_index,
             stop_index=stop_index,
             cautious=cautious)
@@ -402,7 +385,6 @@ class PositionEight(_Nucleotide):
     def __init__(
         self,
         string,
-        required_in_read=False,
         num_allowed_unconserved=1,
         start_index=None,
         stop_index=None,
@@ -410,7 +392,6 @@ class PositionEight(_Nucleotide):
 
         super().__init__(
             string,
-            required_in_read=required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
             start_index=start_index,
             stop_index=stop_index,
@@ -423,14 +404,12 @@ class PositionNine(_Nucleotide):
     def __init__(
         self,
         string,
-        required_in_read=False,
         start_index=None,
         stop_index=None,
         cautious=False):
 
         super().__init__(
             string,
-            required_in_read=required_in_read,
             start_index=start_index,
             stop_index=stop_index,
             cautious=cautious)
@@ -459,14 +438,12 @@ class DStem(_Stem):
         fiveprime_seq,
         threeprime_seq,
         num_allowed_unpaired=1,
-        required_in_read=False,
         cautious=False):
 
         super().__init__(
             fiveprime_seq,
             threeprime_seq,
             num_allowed_unpaired=num_allowed_unpaired,
-            required_in_read=required_in_read,
             cautious=cautious)
 
 
@@ -481,7 +458,6 @@ class FiveprimeDStemSeq(_Sequence):
         self,
         positions_10_to_12_string,
         position_13_string='',
-        required_in_read=False,
         start_index=None,
         stop_index=None,
         cautious=False):
@@ -499,7 +475,6 @@ class FiveprimeDStemSeq(_Sequence):
         super().__init__(
             (positions_10_to_12_string,
              position_13_string),
-            required_in_read=required_in_read,
             start_index=start_index,
             stop_index=stop_index,
             cautious=False)
@@ -521,7 +496,6 @@ class DLoop(_Loop):
         positions_18_to_19_string,
         beta_positions_string,
         position_21_string,
-        required_in_read=False,
         num_allowed_unconserved=2,
         start_index=None,
         stop_index=None,
@@ -556,7 +530,6 @@ class DLoop(_Loop):
              positions_18_to_19_string,
              beta_positions_string,
              position_21_string),
-            required_in_read=required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
             start_index=start_index,
             stop_index=stop_index,
@@ -574,7 +547,6 @@ class ThreeprimeDStemSeq(_Sequence):
         self,
         position_22_string,
         positions_23_to_25_string='',
-        required_in_read=False,
         start_index=None,
         stop_index=None,
         cautious=False):
@@ -590,7 +562,6 @@ class ThreeprimeDStemSeq(_Sequence):
 
         super().__init__(
             (position_22_string, positions_23_to_25_string),
-            required_in_read=required_in_read,
             start_index=start_index,
             stop_index=stop_index,
             cautious=False)
@@ -602,14 +573,12 @@ class PositionTwentySix(_Nucleotide):
     def __init__(
         self,
         string,
-        required_in_read=False,
         start_index=None,
         stop_index=None,
         cautious=False):
 
         super().__init__(
             string,
-            required_in_read=required_in_read,
             start_index=start_index,
             stop_index=stop_index,
             cautious=cautious)
@@ -640,14 +609,12 @@ class AnticodonStem(_Stem):
         fiveprime_seq,
         threeprime_seq,
         num_allowed_unpaired=1,
-        required_in_read=False,
         cautious=False):
 
         super().__init__(
             fiveprime_seq,
             threeprime_seq,
             num_allowed_unpaired=num_allowed_unpaired,
-            required_in_read=required_in_read,
             cautious=cautious)
 
 
@@ -661,14 +628,12 @@ class FiveprimeAnticodonStemSeq(_Sequence):
     def __init__(
         self,
         substrings,
-        required_in_read=False,
         start_index=None,
         stop_index=None,
         cautious=False):
 
         super().__init__(
             substrings,
-            required_in_read=required_in_read,
             start_index=start_index,
             stop_index=stop_index,
             cautious=cautious)
@@ -711,7 +676,6 @@ class AnticodonLoop(_Loop):
     def __init__(
         self,
         substrings,
-        required_in_read=False,
         num_allowed_unconserved=1,
         start_index=None,
         stop_index=None,
@@ -719,7 +683,6 @@ class AnticodonLoop(_Loop):
 
         super().__init__(
             substrings,
-            required_in_read=required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
             start_index=start_index,
             stop_index=stop_index,
@@ -742,14 +705,12 @@ class ThreeprimeAnticodonStemSeq(_Sequence):
     def __init__(
         self,
         substrings,
-        required_in_read=False,
         start_index=None,
         stop_index=None,
         cautious=False):
 
         super().__init__(
             substrings,
-            required_in_read=required_in_read,
             start_index=start_index,
             stop_index=stop_index,
             cautious=cautious)
@@ -763,14 +724,12 @@ class VLoop(_Loop):
     def __init__(
         self,
         substrings,
-        required_in_read=False,
         start_index=None,
         stop_index=None,
         cautious=False):
 
         super().__init__(
             substrings,
-            required_in_read=required_in_read,
             start_index=start_index,
             stop_index=stop_index,
             cautious=cautious)
@@ -806,14 +765,12 @@ class TStem(_Stem):
         fiveprime_seq,
         threeprime_seq,
         num_allowed_unpaired=1,
-        required_in_read=False,
         cautious=False):
 
         super().__init__(
             fiveprime_seq,
             threeprime_seq,
             num_allowed_unpaired=num_allowed_unpaired,
-            required_in_read=required_in_read,
             cautious=cautious)
 
 
@@ -828,7 +785,6 @@ class FiveprimeTStemSeq(_Sequence):
     def __init__(
         self,
         substrings,
-        required_in_read=False,
         num_allowed_unconserved=1,
         start_index=None,
         stop_index=None,
@@ -836,7 +792,6 @@ class FiveprimeTStemSeq(_Sequence):
 
         super().__init__(
             substrings,
-            required_in_read=required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
             start_index=start_index,
             stop_index=stop_index,
@@ -853,7 +808,6 @@ class TLoop(_Loop):
     def __init__(
         self,
         substrings,
-        required_in_read=True,
         num_allowed_unconserved=1,
         start_index=None,
         stop_index=None,
@@ -861,7 +815,6 @@ class TLoop(_Loop):
 
         super().__init__(
             substrings,
-            required_in_read=required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
             start_index=start_index,
             stop_index=stop_index,
@@ -879,7 +832,6 @@ class ThreeprimeTStemSeq(_Sequence):
     def __init__(
         self,
         substrings,
-        required_in_read=True,
         num_allowed_unconserved=1,
         start_index=None,
         stop_index=None,
@@ -887,7 +839,6 @@ class ThreeprimeTStemSeq(_Sequence):
 
         super().__init__(
             substrings,
-            required_in_read=required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
             start_index=start_index,
             stop_index=stop_index,
@@ -903,14 +854,12 @@ class ThreeprimeAcceptorStemSeq(_Sequence):
     def __init__(
         self,
         substrings,
-        required_in_read=True,
         start_index=None,
         stop_index=None,
         cautious=False):
 
         super().__init__(
             substrings,
-            required_in_read=required_in_read,
             start_index=start_index,
             stop_index=stop_index,
             cautious=cautious)
@@ -926,14 +875,12 @@ class Discriminator(_Nucleotide):
     def __init__(
         self,
         string,
-        required_in_read=True,
         start_index=None,
         stop_index=None,
         cautious=False):
 
         super().__init__(
             string,
-            required_in_read=required_in_read,
             start_index=start_index,
             stop_index=stop_index,
             cautious=cautious)
@@ -948,7 +895,6 @@ class Acceptor(_Sequence):
     def __init__(
         self,
         substrings,
-        required_in_read=True,
         num_allowed_unconserved=0,
         start_index=None,
         stop_index=None,
@@ -956,7 +902,6 @@ class Acceptor(_Sequence):
 
         super().__init__(
             substrings,
-            required_in_read=required_in_read,
             num_allowed_unconserved=num_allowed_unconserved,
             start_index=start_index,
             stop_index=stop_index,
@@ -992,7 +937,7 @@ class Profile:
          self.features,
          self.num_unconserved,
          self.num_unpaired,
-         self.num_partial_feature_nucs,
+         self.num_missing_partial_feature_nucs,
          self.is_mature) = self.get_profile(read, '', [], 0, 0, 0)
 
 
@@ -1222,7 +1167,11 @@ class Profile:
 
 # Truncated
 # E. coli tRNA-Ala-GGC-1-1: remove 5' nucleotide
-forward = 'GGGCTATAGCTCAGCTGGGAGAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACCA'
+# forward = 'GGGCTATAGCTCAGCTGGGAGAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACCA'
+# E. coli tRNA-Ala-GGC-1-1: remove 5' acceptor stem strand
+# forward = 'ATAGCTCAGCTGGGAGAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACCA'
+# E. coli tRNA-Ala-GGC-1-1: truncate into 5' T stem strand
+forward = 'CTCAGCTGGGAGAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACCA'
 
 read = forward[::-1]
 profile = Profile(read)
@@ -1230,7 +1179,7 @@ print(profile.profiled_tRNA)
 print(profile.features)
 print(profile.num_unconserved)
 print(profile.num_unpaired)
-print(profile.num_partial_feature_nucs)
+print(profile.num_missing_partial_feature_nucs)
 print(profile.is_mature)
 print(profile.profiled_tRNA == forward)
 
@@ -1238,7 +1187,6 @@ print(profile.profiled_tRNA == forward)
 # input of mmseqs alignment
 # dereplicate sequences
 # sql table
-# 
 
 
 #     # add features to ReadProfile object
