@@ -691,11 +691,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         received_contigs = 0
         discarded_contigs = 0
-        memory_usage = None
 
         self.progress.new('Profiling w/1 thread', progress_total_items=self.num_contigs)
-        # FIXME: memory usage should be generalized.
-        last_memory_update = int(time.time())
+
+        mem_tracker = terminal.TrackMemory(at_most_every=5)
+        mem_usage, mem_diff = mem_tracker.start()
 
         self.progress.update('contigs are being processed ...')
         for index in range(self.num_contigs):
@@ -711,13 +711,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             received_contigs += 1
 
-            if (int(time.time()) - last_memory_update) > 5:
-                memory_usage = utils.get_total_memory_usage()
-                last_memory_update = int(time.time())
+            if mem_tracker.measure():
+                mem_usage = mem_tracker.get_last()
+                mem_diff = mem_tracker.get_last_diff()
 
             self.progress.increment(received_contigs)
-            self.progress.update('%d/%d contigs ⚙  | MEMORY 🧠  %s' % \
-                        (received_contigs, self.num_contigs, memory_usage or '??'))
+            msg = '%d/%d contigs ⚙  | MEMORY 🧠  %s (%s)' % (received_contigs, self.num_contigs, mem_usage, mem_diff)
+            self.progress.update(msg)
 
             # Here you're about to witness the poor side of Python (or our use of it). Although
             # we couldn't find any refs to these objects, garbage collecter kept them in the
@@ -789,12 +789,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         received_contigs = 0
         discarded_contigs = 0
-        memory_usage = None
 
         self.progress.new('Profiling w/%d threads' % self.num_threads, progress_total_items=self.num_contigs)
         self.progress.update('initializing threads ...')
-        # FIXME: memory usage should be generalized.
-        last_memory_update = int(time.time())
+
+        mem_tracker = terminal.TrackMemory(at_most_every=5)
+        mem_usage, mem_diff = mem_tracker.start()
 
         self.progress.update('contigs are being processed ...')
         while received_contigs < self.num_contigs:
@@ -810,13 +810,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                 received_contigs += 1
 
-                if (int(time.time()) - last_memory_update) > 5:
-                    memory_usage = utils.get_total_memory_usage()
-                    last_memory_update = int(time.time())
+                if mem_tracker.measure():
+                    mem_usage = mem_tracker.get_last()
+                    mem_diff = mem_tracker.get_last_diff()
 
                 self.progress.increment(received_contigs)
-                self.progress.update('%d/%d contigs ⚙  | MEMORY 🧠  %s' % \
-                            (received_contigs, self.num_contigs, memory_usage or '??'))
+                msg = '%d/%d contigs ⚙  | MEMORY 🧠  %s (%s)' % (received_contigs, self.num_contigs, mem_usage, mem_diff)
+                self.progress.update(msg)
+
 
                 # Here you're about to witness the poor side of Python (or our use of it). Although
                 # we couldn't find any refs to these objects, garbage collecter kept them in the
