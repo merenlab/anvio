@@ -925,13 +925,11 @@ class KeggModulesDatabase(KeggContext):
         return self.db.get_single_column_from_table(self.module_table_name, 'module', unique=True, where_clause=where_clause_string)
 
     def get_module_classes_for_knum(self, knum):
-        """This function returns the classes for the modules that a given KO belongs to in a dictionary of dictionaries keyed by integer."""
+        """This function returns the classes for the modules that a given KO belongs to in a dictionary of dictionaries keyed by module number."""
         mods = self.get_modules_for_knum(knum)
-        module_counter = 0
         all_mods_classes_dict = {}
         for mnum in mods:
-            all_mods_classes_dict[module_counter] = self.get_kegg_module_class_dict(mnum)
-            module_counter += 1
+            all_mods_classes_dict[mnum] = self.get_kegg_module_class_dict(mnum)
         return all_mods_classes_dict
 
     def get_module_name(self, mnum):
