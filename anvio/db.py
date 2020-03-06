@@ -548,7 +548,11 @@ class DB:
            get_table_as_dict can do a lot, but it first reads all data into the memory to operate on it.
            In some cases the programmer may like to access to only a small fraction of entries in a table
            by using `WHERE column = value` notation, which is not possible with the more generalized
-           function."""
+           function.
+
+           row_num_as_key   bool    added as parameter so this function works for KEGG MODULES.db, which does not have unique IDs in the
+                                    first column. If True, the returned dictionary will be keyed by integers from 0 to (# rows returned - 1)
+        """
 
         results_dict = {}
 
