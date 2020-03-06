@@ -934,6 +934,19 @@ class KeggModulesDatabase(KeggContext):
             module_counter += 1
         return all_mods_classes_dict
 
+    def get_module_name(self, mnum):
+        """This function returns the name of the specified KEGG module."""
+        where_clause_string = "module = '%s'" % (mnum)
+        # there should only be one NAME per module, so we return the first list element
+        return self.get_data_value_entries_for_module_by_data_name(mnum, "NAME")[0]
+
+    def get_module_names_for_knum(self, knum):
+        """This function returns all names of each KEGG module that the given KO belongs to in a list."""
+        mods = self.get_modules_for_knum(knum)
+        module_names_list = []
+        for mnum in mods:
+            module_names_list.append(self.get_module_name(mnum))
+        return module_names_list
 
     def parse_kegg_class_value(self, class_data_val):
         """This function takes a data_value string for the CLASS field in the modules table and parses it into a dictionary.
