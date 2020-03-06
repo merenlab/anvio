@@ -2006,6 +2006,19 @@ D = {
                      "class based on the number of threads. If you have *any* hesitation about whether you know what you are doing, "
                      "you should not change this value."}
                 ),
+    'write-buffer-size': (
+            ['--write-buffer-size'],
+            {'default': 500,
+             'metavar': 'INT',
+             'required': False,
+             'help': "How many items should be kept in memory before they are written do the disk. The default is "
+                     "%(default)d. The larger the buffer size, the less frequent the program will access to the disk, yet the more memory "
+                     "will be consumed since the processed items will be cleared off the memory only after they are written "
+                     "to the disk. The default buffer size will likely work for most cases, but if "
+                     "you feel you need to reduce it, we trust you. Please keep an eye on the memory "
+                     "usage output to make sure the memory use never exceeds the size of the "
+                     "physical memory."}
+                ),
     'write-buffer-size-per-thread': (
             ['--write-buffer-size-per-thread'],
             {'default': 500,
