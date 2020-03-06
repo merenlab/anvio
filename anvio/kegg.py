@@ -38,7 +38,7 @@ class KeggContext(object):
 
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        # default directory will be called KEGG and will store the KEGG Module data as well
+        # default data directory will be called KEGG and will store the KEGG Module data as well
         self.kofam_data_dir = A('kofam_data_dir') or os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
         self.orphan_data_dir = os.path.join(self.kofam_data_dir, "orphan_data")
         self.module_data_dir = os.path.join(self.kofam_data_dir, "modules")
@@ -87,7 +87,6 @@ class KeggContext(object):
             orphan_ko_headers = ["threshold","score_type","profile_type","F-measure","nseq","nseq_used","alen","mlen","eff_nseq","re/pos", "definition"]
             utils.store_dict_as_TAB_delimited_file(orphan_ko_dict, orphan_ko_path, key_header="knum", headers=orphan_ko_headers)
 
-        # here we remove KOs from the dictionary if they are in the skip list or no threshold list
         [self.ko_dict.pop(ko) for ko in self.ko_skip_list]
         [self.ko_dict.pop(ko) for ko in self.ko_no_threshold_list]
 
@@ -165,7 +164,7 @@ class KeggSetup(KeggContext):
         self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
         self.files = ['ko_list.gz', 'profiles.tar.gz']
 
-        # Kegg module text file
+        # Kegg module text files
         self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
         self.kegg_rest_api_get = "http://rest.kegg.jp/get"
 
@@ -299,7 +298,7 @@ class KeggSetup(KeggContext):
             self.progress.new('Decompressing file %s' % file_name)
             full_path = os.path.join(self.kofam_data_dir, file_name)
 
-            if full_path.endswith("tar.gz"): # extract tar file instead of doing gzip
+            if full_path.endswith("tar.gz"):
                 utils.tar_extract_file(full_path, output_file_path = self.kofam_data_dir, keep_original=False)
             else:
                 utils.gzip_decompress_file(full_path, keep_original=False)
@@ -572,7 +571,6 @@ class KeggModulesDatabase(KeggContext):
         self.module_table_structure = ['module', 'data_name', 'data_value', 'data_definition', 'line']
         self.module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
 
-        ## here we should call init function if the db exists
         if os.path.exists(self.db_path):
             utils.is_kegg_modules_db(self.db_path)
             self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=False)
@@ -749,7 +747,7 @@ class KeggModulesDatabase(KeggContext):
         data_def = None
         line_entries = []
 
-        # data name unknown, parse from first field
+        # when data name unknown, parse from first field
         if not current_data_name:
             # sanity check: if line starts with space then there is no data name field and we should have passed a current_data_name
             if line[0] == ' ':
@@ -768,7 +766,7 @@ class KeggModulesDatabase(KeggContext):
                 We hope that doesn't freak you out." % current_module)
                 self.run.info("Extra DEFINITION field", line)
         # note that if data name is known, first field still exists but is actually the empty string ''
-        # so no matter which situation, data value is field 1 and data definition (if any) is field 2
+        # so no matter the situation, data value is field 1 and data definition (if any) is field 2
         data_vals = fields[1]
         # need to sanity check data value field because SOME modules don't follow the 2-space separation formatting
         vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check(data_vals, current_data_name, current_module)
@@ -785,10 +783,9 @@ class KeggModulesDatabase(KeggContext):
             # here we should NOT split on any commas within parentheses
             for val in re.split(',(?!.*\))', data_vals):
                 line_entries.append((current_data_name, val, data_def, line_num))
-        else: # just send what we found without splitting the line
+        else:
             line_entries.append((current_data_name, data_vals, data_def, line_num))
 
-        # still need to figure out what to do about REFERENCE info type (includes AUTHORS, TITLE, JOURNAL) - do we want this?
         return line_entries
 
 
@@ -840,12 +837,10 @@ class KeggModulesDatabase(KeggContext):
                     else:
                         entries_tuple_list = self.parse_kegg_modules_line(line, mnum, line_number)
 
-                    # update prev_data_name_field; use the first (and perhaps only) entry by default
                     prev_data_name_field = entries_tuple_list[0][0]
 
-                    # unpack that tuple info
                     for name, val, definition, line in entries_tuple_list:
-                        # call append_and_store which will collect db entries and store every 10000 at a time
+                        # append_and_store will collect db entries and store every 10000 at a time
                         mod_table.append_and_store(self.db, mnum, name, val, definition, line)
 
 
@@ -918,7 +913,7 @@ class KeggModulesDatabase(KeggContext):
             if dict_from_mod_table[key]['data_name'] == data_name:
                 data_values_to_ret.append(dict_from_mod_table[key]['data_value'])
 
-        if not data_values_to_ret: # didn't find anything under that data_name
+        if not data_values_to_ret:
             self.run.warning("Just so you know, we tried to fetch data from the KEGG Modules database for the data_name field %s and KEGG module %s, \
             but didn't come up with anything, so an empty list is being returned. This may cause errors down the line, and if so we're very sorry for that.")
 
