@@ -702,9 +702,12 @@ class KeggModulesDatabase(KeggContext):
                 self.run.warning("While parsing, anvi'o found an uncorrectable issue with a KEGG Module line in module %s, but since you used the --just-do-it flag, \
                 anvi'o will quietly ignore this issue and add the line to the MODULES.db anyway. Please be warned that this may break things downstream. \
                 In case you are interested, the line causing this issue has data name %s and data value %s" % (current_module_num, current_data_name, data_vals))
+                is_ok = True # let's pretend that everything is alright so that the next function will take the original parsed values
             else:
-                raise ConfigError("Found an issue with a KEGG Module line. Data values incorrectly parsed. Current data name is %s, here is the \
-            incorrectly-formatted data value field: %s" % (current_data_name, data_vals))
+                raise ConfigError("While parsing, anvi'o found an uncorrectable issue with a KEGG Module line in module %s. The current data name is %s, \
+                here is the incorrectly-formatted data value field: %s. If you think this is totally fine and want to ignore errors like this, please \
+                re-run the setup with the --just-do-it flag. But if you choose to do that of course we are obliged to inform you that things may eventually \
+                break as a result." % (current_module_num, current_data_name, data_vals))
 
         if is_corrected:
             self.num_corrected_errors += 1
