@@ -919,6 +919,11 @@ class KeggModulesDatabase(KeggContext):
 
         return data_values_to_ret
 
+    def get_modules_for_knum(self, knum):
+        """This function returns a list of modules that the given KO number belongs to."""
+        where_clause_string = "data_value = '%s'" % (knum)
+        return self.db.get_single_column_from_table(self.module_table_name, 'module', unique=True, where_clause=where_clause_string)
+
 
     def parse_kegg_class_value(self, class_data_val):
         """This function takes a data_value string for the CLASS field in the modules table and parses it into a dictionary.
