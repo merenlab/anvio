@@ -43,6 +43,7 @@ class KeggContext(object):
         self.orphan_data_dir = os.path.join(self.kofam_data_dir, "orphan_data")
         self.module_data_dir = os.path.join(self.kofam_data_dir, "modules")
         self.quiet = A('quiet') or False
+        self.just_do_it = A('just_do_it')
 
         # shared variables for all KOfam subclasses
         self.kofam_hmm_file_path = os.path.join(self.kofam_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
@@ -697,8 +698,12 @@ class KeggModulesDatabase(KeggContext):
 
         if not is_ok and not is_corrected:
             self.num_uncorrected_errors += 1
-            # we should allow a --just-do-it option here for people to ignore uncorrected errors
-            raise ConfigError("Found an issue with a KEGG Module line. Data values incorrectly parsed. Current data name is %s, here is the \
+            if self.just_do_it:
+                self.run.warning("While parsing, anvi'o found an uncorrectable issue with a KEGG Module line in module %s, but since you used the --just-do-it flag, \
+                anvi'o will quietly ignore this issue and add the line to the MODULES.db anyway. Please be warned that this may break things downstream. \
+                In case you are interested, the line causing this issue has data name %s and data value %s" % (current_module_num, current_data_name, data_vals))
+            else:
+                raise ConfigError("Found an issue with a KEGG Module line. Data values incorrectly parsed. Current data name is %s, here is the \
             incorrectly-formatted data value field: %s" % (current_data_name, data_vals))
 
         if is_corrected:
