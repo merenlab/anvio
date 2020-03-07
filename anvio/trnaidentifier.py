@@ -1125,7 +1125,7 @@ class Profile:
                     return profile_candidate
                 else:
                     profile_candidates.append(profile_candidate)
-            else: # partial feature (feature found despite truncated sequence)
+            else: # partial feature (truncated sequence meets requirements of feature)
                 profile_candidates.append((
                     p[0] + profiled_read,
                     features,
