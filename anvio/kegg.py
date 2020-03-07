@@ -517,22 +517,59 @@ class KeggRunHMMs(KeggContext):
         parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE')
         search_results_dict = parser.get_search_results(ko_list_dict=self.ko_dict)
 
-        # add functions to database
+        # add functions and KEGG modules info to database
         functions_dict = {}
+        kegg_module_names_dict = {}
+        kegg_module_classes_dict = {}
         counter = 0
         for hmm_hit in search_results_dict.values():
+            knum = hmm_hit['gene_name']
             functions_dict[counter] = {
                 'gene_callers_id': hmm_hit['gene_callers_id'],
                 'source': 'KOfam',
-                'accession': hmm_hit['gene_name'],
+                'accession': knum,
                 'function': self.get_annotation_from_ko_dict(hmm_hit['gene_name'], ok_if_missing_from_dict=True),
                 'e_value': hmm_hit['e_value'],
             }
+
+            # add associated KEGG module information to database
+            mods = self.kegg_modules_db.get_modules_for_knum(knum)
+            names = self.kegg_modules_db.get_module_names_for_knum(knum)
+            classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(knum)
+
+            # FIXME? some KOs are not associated with modules. Should we report this?
+            if mods:
+                mod_annotation = "\n".join(mods)
+                mod_class_annotation = "\n".join(classes)
+                mod_name_annotation = ""
+
+                for mod in mods:
+                    if mod_name_annotation:
+                        mod_name_annotation += "\n" + names[mod]
+                    else:
+                        mod_name_annotation = names[mod]
+
+                kegg_module_names_dict[counter] = {
+                    'gene_callers_id': hmm_hit['gene_callers_id'],
+                    'source': 'KEGG_Module',
+                    'accession': mod_annotation,
+                    'function': mod_name_annotation,
+                    'e_value': None,
+                }
+                kegg_module_classes_dict[counter] = {
+                    'gene_callers_id': hmm_hit['gene_callers_id'],
+                    'source': 'KEGG_Class',
+                    'accession': mod_annotation,
+                    'function': mod_class_annotation,
+                    'e_value': None,
+                }
 
             counter += 1
 
         if functions_dict:
             gene_function_calls_table.create(functions_dict)
+            gene_function_calls_table.create(kegg_module_names_dict)
+            gene_function_calls_table.create(kegg_module_classes_dict)
         else:
             self.run.warning("KOfam class has no hits to process. Returning empty handed, but still adding KOfam as \
                               a functional source.")
