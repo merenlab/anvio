@@ -615,8 +615,10 @@ class KeggModulesDatabase(KeggContext):
             self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
             self.run.info('Kegg Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
         else:
+            # if self.module_dict is None, then we tried to initialize the DB outside of setup
             if not self.module_dict:
-                raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a modules dictionary. IT WILL DIE NOW.")
+                raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a modules dictionary. This \
+                usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
 
     def touch(self):
         """Creates an empty Modules database on disk, and sets `self.db` to access to it.
