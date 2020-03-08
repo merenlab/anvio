@@ -17,6 +17,8 @@ anvio_codename = 'esther'
 
 DEBUG = '--debug' in sys.argv
 FORCE = '--force' in sys.argv
+QUIET = '--quiet' in sys.argv
+NO_PROGRESS = '--no-progress' in sys.argv
 FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
 
 def P(d, dont_exit=False):
@@ -47,7 +49,7 @@ def get_args(parser):
        to see can still be sorted out.
     """
 
-    allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables']
+    allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables', '--quiet', '--no-progress']
 
     args, unknown = parser.parse_known_args()
 
@@ -365,21 +367,6 @@ D = {
                      "codon frequencies opens doors to powerful evolutionary insights in downstream analyses, due to its "
                      "computational complexity, this feature comes 'off' by default. Using this flag you can rise against the "
                      "authority, as you always should, and make anvi'o profile codons."}
-                ),
-    'ignore-orphans': (
-            ['--ignore-orphans'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "Ignore orphan reads (paired reads that are not in a proper pair). The default is to include orphans."}
-                ),
-    'max-coverage-depth': (
-            ['-m', '--max-coverage-depth'],
-            {'default': 8000,
-             'metavar': 'INT',
-             'type': int,
-             'help': "Max depth of coverage to consider when reading from the BAM file. It means, nucleotide positions with "
-                     "coverages that exceed this value will have a flat coverage that is equal to this value. The default "
-                     "is %(default)d."}
                 ),
     'drop-previous-annotations': (
             ['--drop-previous-annotations'],
@@ -2033,7 +2020,22 @@ D = {
             {'default': 500,
              'metavar': 'INT',
              'required': False,
-             'help': "How many items should be kept in memory before they are written do the disk. The default is %(default)d. "
+             'help': "How many items should be kept in memory before they are written do the disk. The default is "
+                     "%(default)d. The larger the buffer size, the less frequent the program will access to the disk, yet the more memory "
+                     "will be consumed since the processed items will be cleared off the memory only after they are written "
+                     "to the disk. The default buffer size will likely work for most cases, but if "
+                     "you feel you need to reduce it, we trust you. Please keep an eye on the memory "
+                     "usage output to make sure the memory use never exceeds the size of the "
+                     "physical memory."}
+                ),
+    'write-buffer-size-per-thread': (
+            ['--write-buffer-size-per-thread'],
+            {'default': 500,
+             'metavar': 'INT',
+             'required': False,
+             'help': "How many items should be kept in memory before they are written do the disk. The default is "
+                     "%(default)d per thread. So a single-threaded job would have a write buffer size of "
+                     "%(default)d, whereas a job with 4 threads would have a write buffer size of 4*%(default)d. "
                      "The larger the buffer size, the less frequent the program will access to the disk, yet the more memory "
                      "will be consumed since the processed items will be cleared off the memory only after they are written "
                      "to the disk. The default buffer size will likely work for most cases, but if you have very large "

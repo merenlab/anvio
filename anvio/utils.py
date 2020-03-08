@@ -13,8 +13,10 @@ import shutil
 import smtplib
 import hashlib
 import textwrap
+import linecache
 import webbrowser
 import subprocess
+import tracemalloc
 import configparser
 import multiprocessing
 import urllib.request, urllib.error, urllib.parse
@@ -22,8 +24,9 @@ import urllib.request, urllib.error, urllib.parse
 import numpy as np
 import pandas as pd
 
-from email.mime.text import MIMEText
+from numba import jit
 from collections import Counter
+from email.mime.text import MIMEText
 
 import anvio
 import anvio.db as db
@@ -32,7 +35,7 @@ import anvio.fastalib as u
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.terminal import Run, Progress, SuppressAllOutput, get_date
+from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequence import Composition
 
@@ -68,86 +71,18 @@ run = Run()
 run.verbose = False
 
 
-class Multiprocessing:
-    def __init__(self, target_function, num_thread=None):
-        self.cpu_count = multiprocessing.cpu_count()
-        self.num_thread = num_thread or (self.cpu_count - (int(round(self.cpu_count / 10.0)) or 1))
-        self.target_function = target_function
-        self.processes = []
-        self.manager = multiprocessing.Manager()
+def get_total_memory_usage(keep_raw=False):
+    """Get the total memory, including children
 
-
-    def get_data_chunks(self, data_array, spiral=False):
-        data_chunk_size = (len(data_array) / self.num_thread) or 1
-        data_chunks = []
-
-        if len(data_array) <= self.num_thread:
-            return [[chunk] for chunk in data_array]
-
-        if spiral:
-            for i in range(0, self.num_thread):
-                data_chunks.append([data_array[j] for j in range(i, len(data_array), self.num_thread)])
-
-            return data_chunks
-        else:
-            for i in range(0, self.num_thread):
-                if i == self.num_thread - 1:
-                    data_chunks.append(data_array[i * data_chunk_size:])
-                else:
-                    data_chunks.append(data_array[i * data_chunk_size:i * data_chunk_size + data_chunk_size])
-
-        return data_chunks
-
-
-    def run(self, args, name=None):
-        t = multiprocessing.Process(name=name,
-                                    target=self.target_function,
-                                    args=args)
-        self.processes.append(t)
-        t.start()
-
-
-    def get_empty_shared_array(self):
-        return self.manager.list()
-
-
-    def get_empty_shared_dict(self):
-        return self.manager.dict()
-
-
-    def get_shared_integer(self):
-        return self.manager.Value('i', 0)
-
-    def run_processes(self, processes_to_run, progress=Progress(verbose=False)):
-        tot_num_processes = len(processes_to_run)
-        sent_to_run = 0
-        while True:
-            NumRunningProceses = lambda: len([p for p in self.processes if p.is_alive()])
-
-            if NumRunningProceses() < self.num_thread and processes_to_run:
-                for i in range(0, self.num_thread - NumRunningProceses()):
-                    if len(processes_to_run):
-                        sent_to_run += 1
-                        self.run(processes_to_run.pop())
-
-            if not NumRunningProceses() and not processes_to_run:
-                # let the program finish writing all output files.
-                # FIXME: this is ridiculous. find a better solution.
-                time.sleep(1)
-                break
-
-            progress.update('%d of %d done in %d threads (currently running processes: %d)'\
-                                                         % (sent_to_run - NumRunningProceses(),
-                                                            tot_num_processes,
-                                                            self.num_thread,
-                                                            NumRunningProceses()))
-            time.sleep(1)
-
-
-def get_total_memory_usage():
+    Parameters
+    ==========
+    keep_raw : bool, False
+        A human readable format is returned, e.g. "1.41 GB". If keep_raw, the raw number is
+        returned, e.g. 1515601920
+    """
     if not PSUTIL_OK:
         return None
-    
+
     current_process = psutil.Process(os.getpid())
     mem = current_process.memory_info().rss
     for child in current_process.children(recursive=True):
@@ -156,7 +91,68 @@ def get_total_memory_usage():
         except:
             pass
 
-    return human_readable_file_size(mem)
+    return mem if keep_raw else human_readable_file_size(mem)
+
+
+def display_top_memory_usage(snapshot, key_type='lineno', limit=10):
+    """A pretty-print for the tracemalloc memory usage module
+
+    Modified from https://docs.python.org/3/library/tracemalloc.html
+
+    Examples
+    ========
+    >>> import tracemalloc
+    >>> import anvio.utils as utils
+    >>> tracemalloc.start()
+    >>> snap = tracemalloc.take_snapshot
+    >>> utils.display_top_memory_usage(snap)
+    Top 10 lines
+    #1: anvio/bamops.py:160: 4671.3 KiB
+        constants.cigar_consumption,
+    #2: anvio/bamops.py:96: 2571.6 KiB
+        self.cigartuples = np.array(read.cigartuples)
+    #3: python3.6/linecache.py:137: 1100.0 KiB
+        lines = fp.readlines()
+    #4: <frozen importlib._bootstrap_external>:487: 961.4 KiB
+    #5: typing/templates.py:627: 334.3 KiB
+        return type(base)(name, (base,), dct)
+    #6: typing/templates.py:923: 315.7 KiB
+        class Template(cls):
+    #7: python3.6/_weakrefset.py:84: 225.2 KiB
+        self.data.add(ref(item, self._remove))
+    #8: targets/npyimpl.py:411: 143.2 KiB
+        class _KernelImpl(_Kernel):
+    #9: _vendor/pyparsing.py:3349: 139.7 KiB
+        self.errmsg = "Expected " + _ustr(self)
+    #10: typing/context.py:456: 105.1 KiB
+        def on_disposal(wr, pop=self._globals.pop):
+    3212 other: 4611.9 KiB
+    Total allocated size: 15179.4 KiB
+    """
+
+    snapshot = snapshot.filter_traces((
+        tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
+        tracemalloc.Filter(False, "<unknown>"),
+    ))
+    top_stats = snapshot.statistics(key_type)
+
+    print("Top %s lines" % limit)
+    for index, stat in enumerate(top_stats[:limit], 1):
+        frame = stat.traceback[0]
+        # replace "/path/to/module/file.py" with "module/file.py"
+        filename = os.sep.join(frame.filename.split(os.sep)[-2:])
+        print("#%s: %s:%s: %.1f KiB"
+              % (index, filename, frame.lineno, stat.size / 1024))
+        line = linecache.getline(frame.filename, frame.lineno).strip()
+        if line:
+            print('    %s' % line)
+
+    other = top_stats[limit:]
+    if other:
+        size = sum(stat.size for stat in other)
+        print("%s other: %.1f KiB" % (len(other), size / 1024))
+    total = sum(stat.size for stat in top_stats)
+    print("Total allocated size: %.1f KiB" % (total / 1024))
 
 
 def rev_comp(seq):
@@ -606,7 +602,6 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
     return output_path
 
 
-
 def convert_numpy_array_to_binary_blob(array, compress=True):
     if compress:
         return gzip.compress(memoryview(array), compresslevel=1)
@@ -619,6 +614,48 @@ def convert_binary_blob_to_numpy_array(blob, dtype, decompress=True):
         return np.frombuffer(gzip.decompress(blob), dtype=dtype)
     else:
         return np.frombuffer(blob, dtype=dtype)
+
+
+@jit(nopython=True)
+def add_to_2D_numeric_array(x, y, a, count=1):
+    """just-in-time compiled function
+
+    Parameters
+    ==========
+    x : array
+        array of row indices
+    y : array
+        array of corresponding y indices
+    count : int, 1
+        How much to add to each coordinate
+
+    Examples
+    ========
+
+    Make a 5x20000 array (a) and define 95 coordinate positions to update (i and p)
+
+    >>> a = np.zeros((5, 20000))
+    >>> i = np.random.choice(range(5), size=95, replace=True)
+    >>> p = np.random.choice(range(100), size=95, replace=False) + 1000
+
+    For comparison, define the slow method
+
+    >>> def add_to_2D_numeric_array_slow(x, y, a, count=1):
+    >>>     for idx, pos in zip(x, y):
+    >>>         a[idx, pos] += count
+    >>>     return a
+
+    Compare the speeds
+
+    >>> %timeit add_to_2D_numeric_array_slow(i, p, a)
+    74.5 µs ± 4.42 µs per loop (mean ± std. dev. of 7 runs, 10000 loops each)
+    >>> %timeit _add_to_2D_numeric_array(i, p, a)
+    798 ns ± 12.7 ns per loop (mean ± std. dev. of 7 runs, 1000000 loops each)
+    """
+    for idx, pos in zip(x, y):
+        a[idx, pos] += count
+
+    return a
 
 
 def is_all_columns_present_in_TAB_delim_file(columns, file_path):
@@ -973,6 +1010,77 @@ def get_values_of_gene_level_coverage_stats_as_dict(gene_level_coverage_stats_di
         return d
 
 
+def get_indices_for_outlier_values(c):
+    is_outlier = get_list_of_outliers(c)
+    return set([p for p in range(0, c.size) if is_outlier[p]])
+
+
+def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, median=None):
+    """Return boolean array of whether values are outliers (True means yes)
+
+    Modified from Joe Kington's (https://stackoverflow.com/users/325565/joe-kington)
+    implementation computing absolute deviation around the median.
+
+    Parameters
+    ==========
+    values : array-like
+        An numobservations by numdimensions array of observations
+
+    threshold : number, None
+        The modified z-score to use as a thresholdold. Observations with
+        a modified z-score (based on the median absolute deviation) greater
+        than this value will be classified as outliers.
+
+    median : array-like, None
+        Pass median value of values if you already calculated it to save time
+
+    Returns
+    =======
+    mask : numpy array (dtype=bool)
+        A numobservations-length boolean array.
+
+    References
+    ==========
+    Boris Iglewicz and David Hoaglin (1993), "Volume 16: How to Detect and
+    Handle Outliers", The ASQC Basic References in Quality Control:
+    Statistical Techniques, Edward F. Mykytka, Ph.D., Editor.
+
+    http://www.sciencedirect.com/science/article/pii/S0022103113000668
+    """
+
+    if threshold is None:
+        threshold = 1.5
+
+    if len(values.shape) == 1:
+        values = values[:, None]
+
+    if not median: median = np.median(values, axis=0)
+
+    diff = np.sum((values - median) ** 2, axis=-1)
+    diff = np.sqrt(diff)
+    median_absolute_deviation = np.median(diff)
+
+    if not median_absolute_deviation:
+       if values[0] == 0:
+            # A vector of all zeros is considered "all outliers"
+            return np.array([True] * values.size)
+       else:
+            # A vector of uniform non-zero values is "all non-outliers"
+            # This could be important for silly cases (like in megahit) in which there is a maximum value for coverage
+            return np.array([False] * values.size)
+
+    modified_z_score = 0.6745 * diff / median_absolute_deviation
+    non_outliers = modified_z_score > threshold
+
+    if not zeros_are_outliers:
+        return non_outliers
+    else:
+        zero_positions = [x for x in range(len(values)) if values[x] == 0]
+        for i in zero_positions:
+            non_outliers[i] = True
+        return non_outliers
+
+
 def get_gene_caller_ids_from_args(gene_caller_ids, delimiter):
     gene_caller_ids_set = set([])
     if gene_caller_ids:
@@ -1126,6 +1234,60 @@ def get_time_to_date(local_time, fmt='%Y-%m-%d %H:%M:%S'):
         raise ConfigError("utils::get_time_to_date is called with bad local_time.")
 
     return time.strftime(fmt, time.localtime(local_time))
+
+
+def compare_times(calls, as_matrix=False, iterations_per_call=1):
+    """Compare times between function calls
+
+    Parameters
+    ==========
+    calls : list of tuples
+        Each element should be a (name, function, args, kwargs) tuples. If there are no args or
+        kwargs, the element should look like (name, function, [], {})
+
+    as_matrix : bool, False
+        If True, results are output as a pandas matrix, where each element is a time difference between
+        calls. Otherwise, a dictionary is returned
+
+    iterations_per_call : int, 1
+        How many times should each function call be ran? Time will be averaged
+
+    Returns
+    =======
+    times : pd.DataFrame or dict
+        If as_matrix, pd.DataFrame is returned, where times[i, j] is how much faster i is than j.
+        Otherwise, dictionary of {name: time} is returned
+    """
+
+    call_times = np.zeros((len(calls), iterations_per_call))
+    names, *_ = zip(*calls)
+    for i, call in enumerate(calls):
+        name, function, args, kwargs = call
+
+        for j in range(iterations_per_call):
+            try:
+                with TimeCode(quiet=True) as t:
+                    function(*args, **kwargs)
+            except:
+                raise ConfigError("compare_times :: function call with name '%s' failed." % name)
+
+            call_times[i, j] = t.time.total_seconds()
+
+    averaged_call_times = np.mean(call_times, axis=1)
+
+    if not as_matrix:
+        return dict(zip(names, averaged_call_times))
+
+    matrix = []
+    for i, time in enumerate(call_times):
+        row = []
+
+        for j, time in enumerate(call_times):
+            row.append(averaged_call_times[j] - averaged_call_times[i] if i > j else 'NA')
+
+        matrix.append(row)
+
+    return pd.DataFrame(matrix, columns=names, index=names)
 
 
 def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
@@ -1351,37 +1513,11 @@ def get_consensus_and_departure_data(variable_item_frequencies):
     return (n2n1ratio, consensus, departure_from_consensus)
 
 
-def get_codon_order_to_nt_positions_dict(gene_call):
-    """Returns a dictionary to translate codons in a gene to nucleotide positions"""
-
-    if gene_call['partial']:
-        raise ConfigError("get_codon_order_to_nt_positions_dict: this simply will not work "
-                           "for partial gene calls, and this on *is* a partial one.")
-
-    start = gene_call['start']
-    stop = gene_call['stop']
-
-    codon_order_to_nt_positions = {}
-    codon_order = 0
-
-    if gene_call['direction'] == 'r':
-        for nt_pos in range(stop - 1, start - 1, -3):
-            codon_order_to_nt_positions[codon_order] = [nt_pos - 2, nt_pos - 1, nt_pos]
-            codon_order += 1
-    else:
-        for nt_pos in range(start, stop, 3):
-            codon_order_to_nt_positions[codon_order] = [nt_pos, nt_pos + 1, nt_pos + 2]
-            codon_order += 1
-
-    return codon_order_to_nt_positions
-
-
 def convert_sequence_indexing(index, source="M0", destination="M1"):
     """
-    Anvi'o zero-indexes sequences. For example, the methionine that every
-    ORF starts with has the index 0 (M0). This is in contrast to the rest of the
-    world, in which the methionine is indexed by 1 (M1). This function converts
-    between the two.
+    Anvi'o zero-indexes sequences. For example, the methionine that every ORF starts with has the
+    index 0 (M0). This is in contrast to the most conventions, in which the methionine is indexed by
+    1 (M1). This function converts between the two.
 
     index : integer, numpy array, pandas series, list
         The sequence index/indices you are converting.
@@ -1405,6 +1541,82 @@ def convert_sequence_indexing(index, source="M0", destination="M1"):
 
     return index
 
+
+@jit(nopython=True)
+def get_constant_value_blocks(array, value):
+    """Generator that returns blocks of consecutive numbers
+
+    Parameters
+    ==========
+    array : array
+        a numerical numpy array. If a list is passed, this function is very slow
+
+    value : number
+        The number you want to get constant blocks for.
+
+    Examples
+    ========
+
+    >>> a = np.array([47, 47, 47, 49, 50, 47, 47, 99])
+    >>> for i in get_constant_value_blocks(a, 47): print(i)
+    (0, 3)
+    (5, 7)
+    """
+    ans = []
+
+    matching = False
+    for i in range(len(array)):
+        if array[i] == value:
+            if not matching:
+                start = i
+                matching = True
+        else:
+            if matching:
+                matching = False
+                ans.append((start, i))
+
+    if matching:
+        ans.append((start, i + 1))
+
+    return ans
+
+
+@jit(nopython=True)
+def find_value_index(x, val, reverse_search=False):
+    """Returns first instance of indices where a value is found
+
+    Created this because unlike np.where, this stops after the first instance is found. If you only
+    want the first instance, this algorithm is therefore preferrable for array sizes < 1000 (see
+    examples)
+
+    Parameters
+    ==========
+    x : 1D array
+
+    val : number
+        return index of x where the value == val.
+
+    reverse_search : bool, False
+        Search in reverse order
+
+    Examples
+    ========
+    >>> import numpy as np
+    >>> import anvio.utils as utils
+    >>> x = np.arange(1000)
+    >>> %timeit utils.find_value_index(x, 999, rev=True)
+    574 ns ± 15.8 ns per loop (mean ± std. dev. of 7 runs, 1000000 loops each)
+    >>> %timeit utils.find_value_index(x, 999)
+    2.21 µs ± 36.7 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+    >>> %timeit np.where(x == 999)[0][0]
+    2.91 µs ± 563 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+    """
+
+    for i in range(len(x)) if not reverse_search else range(len(x)-1, -1, -1):
+        if x[i] == val:
+            return i
+
+
 def convert_SSM_to_single_accession(matrix_data):
     """
     The substitution scores from the SSM dictionaries created in anvio.data.SSMs are accessed via a dictionary of
@@ -1421,32 +1633,6 @@ def convert_SSM_to_single_accession(matrix_data):
                 continue
             new_data[''.join([row, column])] = matrix_data[row][column]
     return new_data
-
-
-def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=False):
-    sequence = sequence.upper()
-
-    if len(sequence) % 3.0 != 0:
-        raise ConfigError("The sequence corresponds to the gene callers id '%s' does not seem to "
-                           "have proper number of nucleotides to be translated :/ Here it is: %s" % (gene_callers_id, sequence))
-
-    translated_sequence = ''
-
-    for i in range(0, len(sequence), 3):
-        single_letter_code = constants.AA_to_single_letter_code[constants.codon_to_AA[sequence[i:i + 3]]]
-
-        if not single_letter_code:
-            single_letter_code = 'X'
-
-        translated_sequence += single_letter_code
-
-    if translated_sequence.endswith('*'):
-        if return_with_stops:
-            pass
-        else:
-            translated_sequence = translated_sequence[:-1]
-
-    return translated_sequence
 
 
 def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
@@ -1539,8 +1725,16 @@ def get_list_of_AAs_for_gene_call(gene_call, contig_sequences_dict):
     return list_of_AAs
 
 
-def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict):
-    codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call)
+def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs):
+    """Get a list of the codons for a gene call
+
+    Parameters
+    ==========
+    contig_sequences_dict : dict
+        An object that looks like that ContigsSuperClass.contig_sequences (initialized with
+        ContigsSuperClass.init_contig_sequences)
+    """
+    codon_order_to_nt_positions = get_codon_order_to_nt_positions_dict(gene_call, **kwargs)
 
     if gene_call['contig'] not in contig_sequences_dict:
         raise ConfigError("get_list_of_AAs_for_gene_call: The contig sequences dict sent to "
@@ -1570,6 +1764,205 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict):
             list_of_codons.append(None)
 
     return list_of_codons
+
+
+def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=False):
+    sequence = sequence.upper()
+
+    if len(sequence) % 3.0 != 0:
+        raise ConfigError("The sequence corresponds to the gene callers id '%s' does not seem to "
+                           "have proper number of nucleotides to be translated :/ Here it is: %s" % (gene_callers_id, sequence))
+
+    translated_sequence = ''
+
+    for i in range(0, len(sequence), 3):
+        single_letter_code = constants.AA_to_single_letter_code[constants.codon_to_AA[sequence[i:i + 3]]]
+
+        if not single_letter_code:
+            single_letter_code = 'X'
+
+        translated_sequence += single_letter_code
+
+    if translated_sequence.endswith('*'):
+        if return_with_stops:
+            pass
+        else:
+            translated_sequence = translated_sequence[:-1]
+
+    return translated_sequence
+
+
+def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
+    """Returns a dictionary to translate codons in a gene to nucleotide positions
+
+    Parameters
+    ==========
+    subtract_by : int, 0
+        Subtract the start and stop of the gene call by this amount. This could be useful if the
+        gene call start/stop are defined in terms of the contig, but you want the start/stop in
+        terms of the split. Then you could supply subtract_by=split_start, where split_start is the
+        start of the split
+    """
+
+    if gene_call['partial']:
+        raise ConfigError("get_codon_order_to_nt_positions_dict: this simply will not work "
+                           "for partial gene calls, and this on *is* a partial one.")
+
+    start = gene_call['start'] - subtract_by
+    stop = gene_call['stop'] - subtract_by
+
+    codon_order_to_nt_positions = {}
+    codon_order = 0
+
+    if gene_call['direction'] == 'r':
+        for nt_pos in range(stop - 1, start - 1, -3):
+            codon_order_to_nt_positions[codon_order] = [nt_pos - 2, nt_pos - 1, nt_pos]
+            codon_order += 1
+    else:
+        for nt_pos in range(start, stop, 3):
+            codon_order_to_nt_positions[codon_order] = [nt_pos, nt_pos + 1, nt_pos + 2]
+            codon_order += 1
+
+    return codon_order_to_nt_positions
+
+
+def nt_seq_to_nt_num_array(seq, is_ord=False):
+    """Convert a string of sequence into an array of numbers
+
+    Performance compared to {list comprehension with dictionary lookup} depends on sequence length.
+    See Examples
+
+    Parameters
+    ==========
+    seq : str
+        string with A, C, T, G, N as its characters, e.g. 'AATGCN'
+
+    is_ord : bool, False
+        set True if seq is already a numpy array, where each element is the ord of the sequence. E.g.
+        if `seq` is passed as array([65, 65, 67]), then it is already the ordinal representation of
+        'AAC'
+
+    Returns
+    =======
+    output : numpy array
+        E.g. if seq = 'AATGCN', output = array([0, 0, 2, 3, 1, 4])
+
+    Examples
+    ========
+
+    Init an environment
+
+    >>> import anvio.constants as constants
+    >>> import anvio.utils as utils
+    >>> seq_short = ''.join(list(np.random.choice(constants.nucleotides, size=100)))
+    >>> seq_long = ''.join(list(np.random.choice(constants.nucleotides, size=100_000_000)))
+    >>> nt_to_num =  {'A': 0, 'C': 1, 'T': 2, 'G': 3, 'N': 4}
+
+    Time short sequence:
+
+    >>> %timeit utils.nt_seq_to_nt_num_array(seq_short)
+    2.36 µs ± 20.9 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+    >>> %timeit [nt_to_num[s] for s in seq_short]
+    5.83 µs ± 20.7 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+
+    Time long sequence:
+
+    >>> %timeit utils.nt_seq_to_nt_num_array(seq_long)
+    653 ms ± 1.02 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+    >>> %timeit [nt_to_num[s] for s in seq_long]
+    5.27 s ± 13.4 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+    """
+
+    return constants.nt_to_num_lookup[seq if is_ord else np.frombuffer(seq.encode('ascii'), np.uint8)]
+
+
+def nt_seq_to_RC_nt_num_array(seq, is_ord=False):
+    """Convert a string of sequence into an array of numbers, reverse-complemented
+
+    Performance compared to {list comprehension with dictionary lookup} depends on sequence length.
+    See Examples
+
+    Parameters
+    ==========
+    seq : str
+        string with A, C, T, G, N as its characters, e.g. 'AATGCN'
+
+    is_ord : bool, False
+        set True if seq is already a numpy array, where each element is the ord of the sequence. E.g.
+        if `seq` is passed as array([65, 65, 67]), then it is already the ordinal representation of
+        'AAC'
+
+    Returns
+    =======
+    output : numpy array
+        E.g. if seq = 'AATGCN', output = array([4, 2, 0, 1, 3, 3])
+
+    Examples
+    ========
+    See `nt_seq_to_nt_num_array` docstring for examples
+    """
+
+    return constants.nt_to_RC_num_lookup[seq if is_ord else np.frombuffer(seq.encode('ascii'), np.uint8)][::-1]
+
+
+def nt_seq_to_codon_num_array(seq, is_ord=False):
+    """Convert a sequence into an array of numbers corresponding to codons
+
+    Parameters
+    ==========
+    seq : str
+        string with A, C, T, G as its characters, e.g. 'AATGCT'. seq must be divisible by 3
+
+    is_ord : bool, False
+        set True if seq is already a numpy array, where each element is the ord of the sequence. E.g.
+        if `seq` is passed as array([65, 65, 67]), then it is already the ordinal representation of
+        'AAC'
+
+    Notes
+    =====
+    - Delegates to just-in-time compiled function
+    """
+
+    return _nt_seq_to_codon_num_array(
+        seq if is_ord else np.frombuffer(seq.encode('ascii'), np.uint8),
+        constants.codon_to_num_lookup,
+    )
+
+
+def nt_seq_to_RC_codon_num_array(seq, is_ord=False):
+    """Convert a sequence into an array of numbers corresponding to codons, reverse-complemented
+
+    Parameters
+    ==========
+    seq : str
+        string with A, C, T, G as its characters, e.g. 'AATGCT'. seq must be divisible by 3
+
+    is_ord : bool, False
+        set True if seq is already a numpy array, where each element is the ord of the sequence. E.g.
+        if `seq` is passed as array([65, 65, 67]), then it is already the ordinal representation of
+        'AAC'
+
+    Notes
+    =====
+    - Delegates to just-in-time compiled function
+    """
+
+    return _nt_seq_to_codon_num_array(
+        seq if is_ord else np.frombuffer(seq.encode('ascii'), np.uint8),
+        constants.codon_to_RC_num_lookup,
+    )[::-1]
+
+
+@jit(nopython=True)
+def _nt_seq_to_codon_num_array(seq_as_ascii_ints, lookup_codon):
+    """Should be called through its parent functions `nt_seq_to_codon_num_array` and `nt_seq_to_RC_codon_num_array`"""
+
+    output = np.zeros(len(seq_as_ascii_ints)//3, dtype=np.uint8)
+
+    for i in range(0, seq_as_ascii_ints.shape[0], 3):
+        output[i//3] = lookup_codon[seq_as_ascii_ints[i], seq_as_ascii_ints[i+1], seq_as_ascii_ints[i+2]]
+
+    return output
 
 
 def is_amino_acid_functionally_conserved(amino_acid_residue_1, amino_acid_residue_2):
@@ -2741,7 +3134,6 @@ def get_enriched_groups(props, reps):
         returns a boolean vector where each group that has proportion above
         the "expected" (i.e. the overall proportion) is True and the rest are False.
     '''
-    import numpy as np
     # if the function doesn't occur at all then test_statistic is zero and p-value is 1
     if not np.count_nonzero(props):
         return np.zeros(len(props))

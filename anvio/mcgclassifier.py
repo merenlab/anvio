@@ -23,7 +23,6 @@ import anvio.filesnpaths as filesnpaths
 from scipy import odr as odr
 from anvio.mcgops import MCGPlots
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.sequence import get_list_of_outliers
 from matplotlib.backends.backend_pdf import PdfPages
 
 
@@ -606,7 +605,7 @@ def get_non_outliers_information(v, MAD_threshold=2.5, zeros_are_outliers=False)
     """ returns the non-outliers for the input pandas series using MAD"""
 
     d = pd.Series(index=columns_for_samples_coverage_stats_dict)
-    outliers = get_list_of_outliers(v, threshold=MAD_threshold, zeros_are_outliers=zeros_are_outliers)
+    outliers = utils.get_list_of_outliers(v, threshold=MAD_threshold, zeros_are_outliers=zeros_are_outliers)
     non_outliers = np.logical_not(outliers)
     non_outlier_indices = np.where(non_outliers)[0]
 
