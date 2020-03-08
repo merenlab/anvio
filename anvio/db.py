@@ -7,8 +7,9 @@
 import os
 import time
 import math
-import sqlite3
+import numpy
 import pandas as pd
+import sqlite3
 
 import anvio
 import anvio.tables as tables
@@ -16,7 +17,6 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -26,6 +26,11 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
+
+
+# Converts numpy numbers into storable python types that sqlite3 is expecting
+sqlite3.register_adapter(numpy.int64, int)
+sqlite3.register_adapter(numpy.float64, float)
 
 
 def get_list_in_chunks(input_list, num_items_in_each_chunk=5000):
@@ -110,6 +115,7 @@ class DB:
 
 
     def drop_table(self, table_name):
+        """Delete a table in the database if it exists"""
         self._exec('''DROP TABLE IF EXISTS %s;''' % table_name)
 
 
@@ -245,12 +251,15 @@ class DB:
 
 
     def insert_rows_from_dataframe(self, table_name, dataframe, raise_if_no_columns = True, key = None):
-        """
-        raise_if_no_columns, bool:
-            If true, if dataframe has no columns (e.g. dataframe = pd.DataFrame({})), this function
+        """Insert rows from a dataframe
+
+        Parameters
+        ==========
+        raise_if_no_columns : bool, True
+            If True, if dataframe has no columns (e.g. dataframe = pd.DataFrame({})), this function
             returns without raising error.
 
-        key, list-like:
+        key : list-like, None
             If table is meant to have a column with unique and sequential entries, the
             column name should be passed so appended rows retain sequential order. E.g., consider
 
@@ -266,6 +275,38 @@ class DB:
                 0          yes      30                0          yes      30
                 1          yes      23                1          yes      23
                 0          no       2                 2          no       2
+
+        Notes
+        =====
+        - This should one day be replaced with the following code:
+            if 'entry_id' in structure:
+                # This table has an entry_id of, we have to be aware of it
+                if 'entry_id' in df.columns:
+                    # The user already has an 'entry_id' column. We assume they know what they are doing
+                    next_available_id = df['entry_id'].max() + 1
+                else:
+                    num_entries = df.shape[0]
+                    next_available_id = self.get_max_value_in_column(name, 'entry_id', value_if_empty=-1) + 1
+                    df['entry_id'] = range(next_available_id, next_available_id + num_entries)
+                    next_available_id += num_entries
+            else:
+                next_available_id = None
+
+            # subset columns and reorder according to the table structure
+            df = df[structure]
+
+            dtypes = dict(zip(structure, types))
+
+            df.to_sql(
+                name,
+                self.conn,
+                if_exists='append',
+                chunksize=chunksize,
+                dtype=dtypes,
+                index=False
+            )
+
+            return next_available_id
         """
         if table_name not in self.get_table_names():
             raise ConfigError("insert_rows_from_dataframe :: A table with the name {} does "
