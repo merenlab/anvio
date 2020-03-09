@@ -332,7 +332,8 @@ class SCGTaxonomyEstimatorArgs(object):
         self.external_genomes = A('external_genomes')
 
 
-class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs):
+
+class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress(), skip_init=False):
         self.args = args
         self.run = run
@@ -340,6 +341,8 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs):
 
         SCGTaxonomyEstimatorArgs.__init__(self, self.args)
         self.ctx = ctx
+
+        SanityCheck.__init__(self)
 
         self.genomes = None
 
@@ -477,7 +480,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs):
         return scgs_ordered_based_on_frequency, contigs_dbs_ordered_based_on_num_scgs, scg_frequencies
 
 
-class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs):
+class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SanityCheck):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress(), skip_init=False):
         self.args = args
         self.run = run
@@ -493,6 +496,8 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs):
         SCGTaxonomyEstimatorArgs.__init__(self, self.args)
 
         self.ctx = ctx
+
+        SanityCheck.__init__(self)
 
         self.run.info('Contigs DB', self.contigs_db_path)
         self.run.info('Profile DB', self.profile_db_path)
@@ -1256,7 +1261,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs):
         return scg_coverages_across_samples_dict
 
 
-class SetupLocalSCGTaxonomyData:
+class SetupLocalSCGTaxonomyData(SanityCheck):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
@@ -1269,6 +1274,8 @@ class SetupLocalSCGTaxonomyData:
         self.num_threads = A('num_threads')
 
         self.ctx = ctx
+
+        SanityCheck.__init__(self)
 
 
     def setup(self):
@@ -1494,7 +1501,7 @@ class SetupLocalSCGTaxonomyData:
                 shutil.rmtree(dir_path)
 
 
-class PopulateContigsDatabaseWithSCGTaxonomy:
+class PopulateContigsDatabaseWithSCGTaxonomy(SanityCheck):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
@@ -1511,6 +1518,8 @@ class PopulateContigsDatabaseWithSCGTaxonomy:
         self.max_target_seqs = 20
         self.evalue = float(A('e_value')) if A('e_value') else 1e-05
         self.min_pct_id = float(A('min_percent_identity')) if A('min_percent_identity') else 90
+
+        SanityCheck.__init__(self)
 
         self.taxonomy_dict = OrderedDict()
 
