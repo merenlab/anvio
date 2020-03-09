@@ -260,6 +260,13 @@ class SanityCheck(object):
                             "arguments also include internal or external genoemes. There is something wrong here. Please "
                             "choose either. ")
 
+                if self.output_file_prefix:
+                    raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file path "
+                                      "than an output file prefix.")
+
+                if self.output_file_path:
+                    filesnpaths.is_output_file_writable(self.output_file_path)
+
                 if not self.contigs_db_path:
                     raise ConfigError("For these things to work, you need to provide a contigs database for the anvi'o SCG "
                                       "taxonomy workflow :(")
