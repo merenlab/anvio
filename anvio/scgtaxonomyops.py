@@ -308,6 +308,7 @@ class SanityCheck(object):
                         raise ConfigError("Updating the profile database with taxonomy layer data is only possible in metagenome "
                                           "mode :/ And not only that, you should also instruct anvi'o to compute single-copy core "
                                           "gene coverages.")
+
                     if not self.compute_scg_coverages:
                         raise ConfigError("You wish to update the profile database with taxonomy, but this will not work if anvi'o "
                                           "is computing coverages values of SCGs across samples (pro tip: you can ask anvi'o to do "
@@ -377,13 +378,19 @@ class SCGTaxonomyEstimatorArgs(object):
 
 class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress(), skip_init=False):
+        """Iterate through internal and/or external genome descriptions using SCGTaxonomyEstimatorSingle"""
+
         self.args = args
         self.run = run
         self.progress = progress
 
+        # update your self args
         SCGTaxonomyEstimatorArgs.__init__(self, self.args)
+
+        # set your context
         self.ctx = ctx
 
+        # intiate sanity check
         SanityCheck.__init__(self)
 
         self.genomes = None
@@ -412,6 +419,9 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
             self.run.info("Num external (meta)genomes", len(self.external_genome_names))
             self.run.info("Num internal (meta)genomes", len(self.internal_genome_names))
 
+        self.run.info("Taxonomic level of interest", self.user_taxonomic_level or "(None specified by the user, so 'all levels')")
+        self.run.info("Output fiel prefix", self.output_file_prefix)
+
         if self.report_scg_frequencies_path:
             self.report_scg_frequencies_as_TAB_delimited_file()
             return
@@ -431,8 +441,17 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
 
         scg_taxonomy_super_dict = self.get_taxonomy_super_dict()
 
+        self.print_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
+
+
+    def get_print_friendly_scg_taxonomy_super_dict(self, scg_taxonomy_super_dict):
         anvio.P(scg_taxonomy_super_dict)
 
+
+    def print_scg_taxonomy_super_dict(self, scg_taxonomy_super_dict):
+        self.progress.reset()
+
+        d = self.get_print_friendly_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
 
 
     def report_scg_frequencies_as_TAB_delimited_file(self):
