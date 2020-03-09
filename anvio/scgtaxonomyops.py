@@ -439,19 +439,66 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
         else:
             self.run.info("SCG [chosen by the user]", self.scg_name_for_metagenome_mode)
 
-        scg_taxonomy_super_dict = self.get_taxonomy_super_dict()
+        scg_taxonomy_super_dict_multi = self.get_scg_taxonomy_super_dict_multi()
 
-        self.print_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
+        self.print_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
 
 
-    def get_print_friendly_scg_taxonomy_super_dict(self, scg_taxonomy_super_dict):
-        anvio.P(scg_taxonomy_super_dict)
+    def get_print_friendly_scg_taxonomy_super_dict_multi(self, scg_taxonomy_super_dict_multi):
+        """Extract a more print-friendly data structure from `scg_taxonomy_super_dict_multi`
+
+        Returns
+        =======
+        d: dict
+            This is a dictionary that summarizes taxonomy and coverages per unique SCG in
+            a given metagenome and looks like this:
+
+            ----8<----8<----8<----8<----8<----8<----8<----8<----
+            {
+              "USA0001": {
+                "Ribosomal_L16_69898": {
+                  "gene_callers_id": 69898,
+                  "gene_name": "Ribosomal_L16",
+                  "accession": "CONSENSUS",
+                  "percent_identity": "100.0",
+                  "t_domain": "Bacteria",
+                  "t_phylum": "Bacteroidota",
+                  "t_class": "Bacteroidia",
+                  "t_order": "Bacteroidales",
+                  "t_family": "Rikenellaceae",
+                  "t_genus": "Alistipes",
+                  "t_species": "Alistipes shahii",
+                  "tax_hash": "7e3cc7fc",
+                  "USA0001_01": 18.146179401993354
+                },
+                "Ribosomal_L16_55413": {
+                  "gene_callers_id": 55413,
+                  "gene_name": "Ribosomal_L16",
+                  "accession": "CONSENSUS",
+                  "percent_identity": "100.0",
+                  "t_domain": "Bacteria",
+                  "t_phylum": "Bacteroidota",
+                  "t_class": "Bacteroidia",
+                  "t_order": "Bacteroidales",
+                  "t_family": "Tannerellaceae",
+                  "t_genus": "Parabacteroides",
+                  "t_species": null,
+                  "tax_hash": "d16f9017",
+                  "USA0001_01": 48.82825484764543
+                }
+
+                (...)
+
+            }
+            ----8<----8<----8<----8<----8<----8<----8<----8<----
+
+        """
 
 
     def print_scg_taxonomy_super_dict(self, scg_taxonomy_super_dict):
         self.progress.reset()
 
-        d = self.get_print_friendly_scg_taxonomy_super_dict(scg_taxonomy_super_dict)
+        d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
 
 
     def report_scg_frequencies_as_TAB_delimited_file(self):
@@ -511,7 +558,73 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
         return scg_taxonomy_super_dict
 
 
-    def get_taxonomy_super_dict(self):
+    def get_scg_taxonomy_super_dict_multi(self):
+        """Generates the taxonomy super dict, the primary data structure for this class.
+
+        The difference between this function and `get_scg_taxonomy_super_dict` in `SCGTaxonomyEstimatorSingle`
+        is that this one aggregates multiple `scg_taxonomy_super_dict` instances into a larger dictionary.
+
+        Returns
+        =======
+        scg_taxonomy_super_dict: dict
+            This is a complex dictionary that looks like this:
+
+            ----8<----8<----8<----8<----8<----8<----8<----8<----
+                {
+                  "USA0001": { # <- name given for this entry in internal/external genomes file
+                    "taxonomy": {
+                      "USA0001_01": {  # <- project name in contigs database
+                        "scgs": {
+                          "69898": {
+                            "gene_callers_id": 69898,
+                            "gene_name": "Ribosomal_L16",
+                            "accession": "CONSENSUS",
+                            "percent_identity": "100.0",
+                            "t_domain": "Bacteria",
+                            "t_phylum": "Bacteroidota",
+                            "t_class": "Bacteroidia",
+                            "t_order": "Bacteroidales",
+                            "t_family": "Rikenellaceae",
+                            "t_genus": "Alistipes",
+                            "t_species": "Alistipes shahii",
+                            "tax_hash": "7e3cc7fc"
+                          },
+                          "55413": {
+                            "gene_callers_id": 55413,
+                            "gene_name": "Ribosomal_L16",
+                            "accession": "CONSENSUS",
+                            "percent_identity": "100.0",
+                            "t_domain": "Bacteria",
+                            "t_phylum": "Bacteroidota",
+                            "t_class": "Bacteroidia",
+                            "t_order": "Bacteroidales",
+                            "t_family": "Tannerellaceae",
+                            "t_genus": "Parabacteroides",
+                            "t_species": null,
+                            "tax_hash": "d16f9017"
+                          }
+                        },
+                        "metagenome_mode": true
+                      }
+                    },
+                    "coverages": {
+                      "69898": {
+                        "USA0001_01": 18.146179401993354
+                      },
+                      "55413": {
+                        "USA0001_01": 48.82825484764543
+                      }
+                    }
+                  },
+
+                  (...)
+
+                }
+            ----8<----8<----8<----8<----8<----8<----8<----8<----
+
+            Coverages will be there only if `--compute-scg-coverages` flag was passed to the class.
+        """
+
         if self.external_genome_names and not self.internal_genome_names:
             return self.get_taxonomy_super_dict_for_external_genomes()
         elif self.internal_genome_names and not self.external_genome_names:
@@ -1004,7 +1117,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SanityCheck):
         """Function that returns the `scg_taxonomy_super_dict`.
 
            `scg_taxonomy_super_dict` contains a wealth of information regarding samples, SCGs,
-           SCG taxonoic affiliations, consensus taxonomy, and coverages of SCGs across samples.
+           SCG taxonomic affiliations, consensus taxonomy, and coverages of SCGs across samples.
         """
         scg_taxonomy_super_dict = {}
 
