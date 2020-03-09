@@ -23,8 +23,7 @@ __resources__ = [("Usage examples and warnings", "http://merenlab.org/scg-taxono
 __description__ = ("Estimates taxonomy at genome and metagenome level. This program is the entry point to"
                    "estimate taxonomy for a given set of contigs (i.e., all contigs in a contigs database,"
                    "or contigs described in collections as bins). For this, it uses single-copy core"
-                   "gene sequences identified across contigs, and the GTDB database to match them to taxa "
-                   "described previously.")
+                   "gene sequences and the GTDB database.")
 
 
 run = terminal.Run()
@@ -67,10 +66,14 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('internal-genomes'), **anvio.K('internal-genomes'))
     groupC.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
 
-    groupD = parser.add_argument_group('OUTPUT', "Anvi'o will offer you table for your viewing pleasure by default. In addition to that,\
-                                                  you can ask the information it produces to be stored in a TAB-delimited file (which is\
-                                                  a better way to go about it if you wish to add it to your study as supplementary information).")
+    groupD = parser.add_argument_group('OUTPUT', "Anvi'o will do its best to offer you some fancy output tables for your viewing pleasure by default. \
+                                                  But in addition to that, you can ask the resulting information to be stored in a TAB-delimited file \
+                                                  (which is a much better way to include the results in your study as supplementary information, or \
+                                                  work with these results using other analysis tools such as R). Depending on the mode you are running \
+                                                  this program, anvi'o may ask you to use an 'output file prefix' rather than an 'output file path'.")
     groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupD.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+    groupD.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level', {'default': None}))
 
     groupE = parser.add_argument_group('PERFORMANCE', "We are not sure if allocating more threads for this operation will change anything.\
                                                        But hey. One can try.")
