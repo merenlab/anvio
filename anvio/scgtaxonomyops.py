@@ -188,8 +188,8 @@ ctx = SCGTaxonomyContext()
 
 
 class SanityCheck(object):
-    def __init__(self):
-        if not self.skip_sanity_check:
+    def __init__(self, skip_sanity_check=False):
+        if not skip_sanity_check:
             self.sanity_check()
         else:
             self.run.warning("We are skipping all sanity checks :( Dangerous stuff is happening.")
@@ -206,11 +206,20 @@ class SanityCheck(object):
             raise ConfigError("`SetupLocalSCGTaxonomyData` class is upset because it was inherited without "
                               "a directory for SCG taxonomy data to be stored :( This variable can't be None.")
 
+        if self.user_taxonomic_level and self.user_taxonomic_level not in constants.levels_of_taxonomy:
+            raise ConfigError("The taxonomic level %s is not a level anvi'o knows about. Here is the list of "
+                              "taxonomic levels anvi'o recognizes: %s" % (', '.join(constants.levels_of_taxonomy)))
+
         # sanity checks specific to classes start below
         if self.__class__.__name__ in ['SetupLocalSCGTaxonomyData']:
             if self.reset and self.redo_databases:
                 raise ConfigError("You can't ask anvi'o to both `--reset` and `--redo-databases` at the same time. Well. "
                                   "You can, but then this happens :/")
+
+        if self.__class__.__name__ in ['SetupLocalSCGTaxonomyData', 'PopulateContigsDatabaseWithSCGTaxonomy']:
+            if self.user_taxonomic_level:
+                raise ConfigError("There is no need to set a taxonomic level while working with the class SetupLocalSCGTaxonomyData "
+                                  "or PopulateContigsDatabaseWithSCGTaxonomy. Something fishy is going on :/")
 
         if self.__class__.__name__ in ['PopulateContigsDatabaseWithSCGTaxonomy', 'SCGTaxonomyEstimatorSingle', 'SCGTaxonomyEstimatorMulti']:
             if not os.path.exists(self.ctx.SCGs_taxonomy_data_dir):
@@ -224,6 +233,9 @@ class SanityCheck(object):
                                   "file (in this case, the file to resolve accession IDs to taxon names). You may need to run "
                                   "the program `anvi-setup-scg-databases` with the `--reset` flag to set things right again.")
 
+            ###########################################################
+            # PopulateContigsDatabaseWithSCGTaxonomy
+            ###########################################################
             if self.__class__.__name__ in ['PopulateContigsDatabaseWithSCGTaxonomy']:
                 missing_SCG_databases = [SCG for SCG in self.ctx.SCGs if not os.path.exists(self.ctx.SCGs[SCG]['db'])]
                 if len(missing_SCG_databases):
@@ -233,6 +245,9 @@ class SanityCheck(object):
                                       "with the current genes configuration of this class (sources say this is a record, FYI)." % \
                                                 (len(missing_SCG_databases), len(self.ctx.SCGs)))
 
+            ###########################################################
+            # SCGTaxonomyEstimatorSingle
+            ###########################################################
             if self.__class__.__name__ in ['SCGTaxonomyEstimatorSingle']:
                 if self.external_genomes or self.internal_genomes:
                     raise ConfigError("Taxonomy estimation classes have been initiated with a single contigs database, but your "
@@ -285,16 +300,22 @@ class SanityCheck(object):
                                           "is computing coverages values of SCGs across samples (pro tip: you can ask anvi'o to do "
                                           "it by adding the flag `--compute-scg-coverages` to your command line).")
 
+            ###########################################################
+            # SCGTaxonomyEstimatorMulti
+            ###########################################################
             if self.__class__.__name__ in ['SCGTaxonomyEstimatorMulti']:
                 if self.args.contigs_db:
                     raise ConfigError("Taxonomy estimation classes have been initiated with internal or external genomes files, "
                                       "but your arguments include also a single contigs database path. Anvi'o is not nervous. "
                                       "Please limit your input to internal genomes, external genomes, or a single contigs database.")
 
-                pass
-
                 if self.output_file_path:
-                    filesnpaths.is_output_file_writable(self.output_file_path)
+                    raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file prefix rather "
+                                      "than an output file path. Anvi'o will use your prefix and will generate many files that start "
+                                      "with that prefix but ends with different names for each taxonomic level.")
+
+                if self.output_file_prefix:
+                    filesnpaths.is_output_file_writable(self.output_file_prefix)
 
 
 class SCGTaxonomyEstimatorArgs(object):
