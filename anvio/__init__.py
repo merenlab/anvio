@@ -63,7 +63,6 @@ def get_args(parser):
     return args
 
 
-import anvio.tables as tables
 import anvio.constants as constants
 
 
@@ -508,9 +507,10 @@ D = {
             ['--taxonomic-level'],
             {'default': 't_genus',
              'type': str,
-             'choices': tables.taxon_names_table_structure[1:],
-             'help': "The taxonomic level to use. The default is '%(default)s'. Only relevant if the "
-                     "anvi'o ontigs database contains taxonomic annotations."}
+             'choices': constants.levels_of_taxonomy,
+             'help': "The taxonomic level to use whenever relevant and/or available. The default taxonomic level "
+                     "is %(default)s, but if you choose something specific, anvi'o will focus on that whenever "
+                     "possible."}
                 ),
     'taxonomy-file': (
             ['-t', '--taxonomy-file'],
