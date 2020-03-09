@@ -530,6 +530,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
             scg_frequencies[contigs_db_name] = {}
 
             args = SCGTaxonomyEstimatorArgs(self.args, format_args_for_single_estimator=True)
+            args.compute_scg_coverages = False
             args.contigs_db = self.genomes[contigs_db_name]['contigs_db_path']
 
             e = SCGTaxonomyEstimatorSingle(args, run=run_quiet)
