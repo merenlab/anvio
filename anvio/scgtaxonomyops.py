@@ -333,6 +333,7 @@ class SCGTaxonomyEstimatorArgs(object):
         self.external_genomes = A('external_genomes')
         self.user_taxonomic_level = A('taxonomic_level')
 
+        self.skip_sanity_check = False
 
 
 class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
