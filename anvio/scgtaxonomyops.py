@@ -454,13 +454,10 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
                               "profiles for this to work.")
 
         for contigs_db_name in self.genomes:
-            args = SCGTaxonomyEstimatorArgs(self.args)
+            args = SCGTaxonomyEstimatorArgs(self.args, format_args_for_single_estimator=True)
             args.contigs_db = self.genomes[contigs_db_name]['contigs_db_path']
             args.profile_db = self.genomes[contigs_db_name]['profile_db_path']
             args.metagenome_mode = True
-
-            args.internal_genomes = None
-            args.external_genomes = None
 
             scg_taxonomy_super_dict[contigs_db_name] = SCGTaxonomyEstimatorSingle(args, run=run_quiet).get_scg_taxonomy_super_dict()
 
@@ -471,10 +468,8 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
         scg_taxonomy_super_dict = {}
 
         for contigs_db_name in self.genomes:
-            args = SCGTaxonomyEstimatorArgs(self.args)
+            args = SCGTaxonomyEstimatorArgs(self.args, format_args_for_single_estimator=True)
             args.contigs_db = self.genomes[contigs_db_name]['contigs_db_path']
-            args.internal_genomes = None
-            args.external_genomes = None
             args.metagenome_mode = True
 
             scg_taxonomy_super_dict[contigs_db_name] = SCGTaxonomyEstimatorSingle(args, run=run_quiet).get_scg_taxonomy_super_dict()
@@ -498,10 +493,8 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
         for contigs_db_name in self.genomes:
             scg_frequencies[contigs_db_name] = {}
 
-            args = SCGTaxonomyEstimatorArgs(self.args)
+            args = SCGTaxonomyEstimatorArgs(self.args, format_args_for_single_estimator=True)
             args.contigs_db = self.genomes[contigs_db_name]['contigs_db_path']
-            args.internal_genomes = None
-            args.external_genomes = None
 
             e = SCGTaxonomyEstimatorSingle(args, run=run_quiet)
             for scg_name in self.ctx.default_scgs_for_taxonomy:
