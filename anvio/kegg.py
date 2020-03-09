@@ -795,15 +795,6 @@ class KeggModulesDatabase(KeggContext):
                 is the line: %s)" % (line))
 
             current_data_name = fields[0]
-        # find the double DEFINITION field "errors"
-        elif current_data_name == "DEFINITION" and line[0] == ' ':
-            self.parsing_error_dict['multiple_definition_fields'].append(current_module)
-            self.num_uncorrected_errors += 1
-            if anvio.DEBUG and not self.quiet:
-                self.run.warning("While parsing a KEGG Module line, we found more than one DEFINITION field for module %s. This is unusual, but \
-                probably not REALLY an error, so we kept the extra line. Please note that we are counting it as an uncorrected error, though. \
-                We hope that doesn't freak you out." % current_module)
-                self.run.info("Extra DEFINITION field", line)
         # note that if data name is known, first field still exists but is actually the empty string ''
         # so no matter the situation, data value is field 1 and data definition (if any) is field 2
         data_vals = fields[1]
@@ -848,7 +839,7 @@ class KeggModulesDatabase(KeggContext):
         mod_table = KeggModulesTable(self.module_table_name)
 
         # keep track of errors encountered while parsing
-        self.parsing_error_dict = {"multiple_definition_fields" : [], "bad_line_splitting" : [], "bad_kegg_code_format" : []}
+        self.parsing_error_dict = {"bad_line_splitting" : [], "bad_kegg_code_format" : []}
         self.num_corrected_errors = 0
         self.num_uncorrected_errors = 0
 
@@ -892,7 +883,6 @@ class KeggModulesDatabase(KeggContext):
             self.run.warning("Several parsing errors were encountered while building the KEGG Modules DB. \
             Below you will see which modules threw each type of parsing error. Note that modules which threw multiple \
             errors will occur in the list as many times as it threw each error.")
-            self.run.info("Multiple DEFINITION lines (not corrected, but probably fine)", self.parsing_error_dict["multiple_definition_fields"])
             self.run.info("Bad line splitting (usually due to rogue or missing spaces)", self.parsing_error_dict["bad_line_splitting"])
             self.run.info("Bad KEGG code format (not corrected; possibly problematic)", self.parsing_error_dict["bad_kegg_code_format"])
         else: # less verbose
@@ -905,7 +895,6 @@ class KeggModulesDatabase(KeggContext):
             run setup again with --reset --debug --quiet to see exactly which modules had issues, or \
             run --reset --debug to see exactly which lines in which modules had issues. \
             Now, here is a kiss for you because you have been so patient and good with anvi'o 😚")
-            self.run.info("Multiple DEFINITION lines (in one module)", len(self.parsing_error_dict["multiple_definition_fields"]))
             self.run.info("Bad line splitting (usually due to rogue or missing spaces)", len(self.parsing_error_dict["bad_line_splitting"]))
             self.run.info("Bad KEGG code format (usually not correctable)", len(self.parsing_error_dict["bad_kegg_code_format"]))
 
