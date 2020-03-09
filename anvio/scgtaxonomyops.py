@@ -247,6 +247,12 @@ class SanityCheck(object):
 
             ###########################################################
             # SCGTaxonomyEstimatorSingle
+            #
+            # Note: if something down below complains about a paramter
+            #       because that actually belongs to the multi estimator
+            #       class, you may need to set it to null in the class
+            #       SCGTaxonomyEstimatorArgs for single estimator
+            #       initiation if clause
             ###########################################################
             if self.__class__.__name__ in ['SCGTaxonomyEstimatorSingle']:
                 if self.external_genomes or self.internal_genomes:
@@ -319,7 +325,25 @@ class SanityCheck(object):
 
 
 class SCGTaxonomyEstimatorArgs(object):
-    def __init__(self, args):
+    def __init__(self, args, format_args_for_single_estimator=False):
+        """A base class to fill in common arguments for single and multi estimators.
+
+        The purpose of this class is to reduce the complexity of setting member variables
+        so a single sanity check class could test for everything without annoying errors
+        regarding missing variables.
+
+        Parameters
+        ==========
+        format_args_for_single_estimator: bool
+            This is a special case where an args instance is generated to be passed to the
+            single estimator from within multi estimator. More specifically, the multi estimator
+            class is nothing but one that iterates through all internal and/or external geonomes
+            given to it using the single estimator class. So it needs to create instances of
+            single estimators, and collect results at upstream. The problem is, if a single
+            estimtor is initiated with the args of a multi estimator, the sanity check will
+            go haywire. This flag nullifies most common offenders.
+        """
+
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file_path = A('output_file')
         self.output_file_prefix = A('output_file_prefix')
@@ -332,6 +356,14 @@ class SCGTaxonomyEstimatorArgs(object):
         self.internal_genomes = A('internal_genomes')
         self.external_genomes = A('external_genomes')
         self.user_taxonomic_level = A('taxonomic_level')
+
+        if format_args_for_single_estimator:
+            # so you're here to get an args instance to fool a single estimator class.
+            # very cute. we shall make that happen.
+            self.internal_genomes = None
+            self.external_genomes = None
+            self.output_file_path = None
+            self.output_file_prefix = None
 
         self.skip_sanity_check = False
 
