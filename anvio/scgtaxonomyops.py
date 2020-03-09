@@ -322,6 +322,7 @@ class SCGTaxonomyEstimatorArgs(object):
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file_path = A('output_file')
+        self.output_file_prefix = A('output_file_prefix')
         self.just_do_it = A('just_do_it')
         self.simplify_taxonomy_information = A('simplify_taxonomy_information')
         self.metagenome_mode = True if A('metagenome_mode') else False
@@ -330,6 +331,7 @@ class SCGTaxonomyEstimatorArgs(object):
         self.report_scg_frequencies_path = A('report_scg_frequencies')
         self.internal_genomes = A('internal_genomes')
         self.external_genomes = A('external_genomes')
+        self.user_taxonomic_level = A('taxonomic_level')
 
 
 
@@ -389,7 +391,8 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
 
         scg_taxonomy_super_dict = self.get_taxonomy_super_dict()
 
-        print(scg_taxonomy_super_dict)
+        anvio.P(scg_taxonomy_super_dict)
+
 
 
     def report_scg_frequencies_as_TAB_delimited_file(self):
