@@ -188,11 +188,11 @@ ctx = SCGTaxonomyContext()
 
 
 class SanityCheck(object):
-    def __init__(self, skip_sanity_check=False):
-        if not skip_sanity_check:
-            self.sanity_check()
-        else:
+    def __init__(self):
+        if self.skip_sanity_check:
             self.run.warning("We are skipping all sanity checks :( Dangerous stuff is happening.")
+        else:
+            self.sanity_check()
 
 
     def sanity_check(self):
