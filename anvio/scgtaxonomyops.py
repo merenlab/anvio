@@ -463,7 +463,15 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
 
 
     def get_best_scg_name_for_metagenome_mode(self):
-        """'Best' is an overloaded term here. This function simply returns the most frequent SCG."""
+        """Identifies the best SCG to use for taxonomy.
+
+           Although in reality 'best' means pretty much nothing here as this
+           function simply returns the most frequent SCG. In an ideal world
+           there would be mulitple modes, one that takes into consideration
+           the prevalence of each SCG across each `self.genome`. If we ever
+           implement that, let's leave a FIXME here only to be remove by
+           that hero.
+        """
 
         scgs_ordered_based_on_frequency, contigs_dbs_ordered_based_on_num_scgs, scg_frequencies = self.get_scg_frequencies()
 
@@ -514,6 +522,8 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
 
 
     def get_scg_frequencies(self):
+        """Calculates the SCG frequencies across `self.genomes`."""
+
         scg_frequencies = {}
 
         for contigs_db_name in self.genomes:
