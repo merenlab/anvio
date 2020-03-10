@@ -20,7 +20,7 @@ __requires__ = ["contigs-db", "kofam-data", "kegg-modules-db", "kegg-functions",
 __description__ = "Reconstructs metabolic pathways and estimates pathway completeness for a given set of contigs."
 
 
-@terminal.time_program
+@time_program
 def main(args):
     m = kegg.KeggMetabolismEstimator(args)
     # call estimate driver function
