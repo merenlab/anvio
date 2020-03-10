@@ -15,11 +15,13 @@ import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+import anvio.tables as t
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
+from anvio.dbops import ContigsSuperclass, ContigsDatabase
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
@@ -486,7 +488,7 @@ class KeggRunHMMs(KeggContext):
         """This is a driver function for running HMMs against the KOfam database and processing the hits into the provided contigs DB"""
 
         tmp_directory_path = filesnpaths.get_temp_directory_path()
-        contigs_db = dbops.ContigsSuperclass(self.args) # initialize contigs db
+        contigs_db = ContigsSuperclass(self.args) # initialize contigs db
 
         # get AA sequences as FASTA
         target_files_dict = {'AA:GENE': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
