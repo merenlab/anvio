@@ -469,6 +469,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
                   "t_genus": "Alistipes",
                   "t_species": "Alistipes shahii",
                   "tax_hash": "7e3cc7fc",
+                  "coverage": 18.146179401993354
                 },
                 "Ribosomal_L16_55413": {
                   "gene_callers_id": 55413,
@@ -491,12 +492,65 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
             }
             ----8<----8<----8<----8<----8<----8<----8<----8<----
 
+            Note that sample names that hold coverage values are replaced in this dictionary
+            with variable name "coverage". See `get_contigs_db_name_to_project_name_dict` for
+            details. This variable will be absent in this dictionary if the user did not set
+            the flag `--compute-scg-coverages` True.
         """
 
+        scg_taxonomy_super_dict_multi_print_friendly = {}
+        contigs_db_name_to_sample_name = self.get_contigs_db_name_to_project_name_dict(scg_taxonomy_super_dict_multi)
 
-    def print_scg_taxonomy_super_dict(self, scg_taxonomy_super_dict):
-        self.progress.reset()
+        for contigs_db_name in scg_taxonomy_super_dict_multi:
+            args = SCGTaxonomyEstimatorArgs(self.args, format_args_for_single_estimator=True)
+            args.contigs_db = self.genomes[contigs_db_name]['contigs_db_path']
+            args.profile_db = self.genomes[contigs_db_name]['profile_db_path']
+            args.metagenome_mode = True
 
+            d = SCGTaxonomyEstimatorSingle(args, run=run_quiet).get_print_friendly_scg_taxonomy_super_dict(scg_taxonomy_super_dict_multi[contigs_db_name])
+
+            if self.compute_scg_coverages:
+                for scg_name in d:
+                    sample_name = contigs_db_name_to_sample_name[contigs_db_name]
+                    d[scg_name]['coverage'] = d[scg_name][sample_name]
+                    d[scg_name].pop(sample_name)
+
+            scg_taxonomy_super_dict_multi_print_friendly[contigs_db_name] = d
+
+
+        anvio.P(scg_taxonomy_super_dict_multi_print_friendly)
+
+
+    def get_contigs_db_name_to_project_name_dict(self, scg_taxonomy_super_dict_multi):
+        """Associate contigs db names to project names for contigs dbs.
+
+        This is necessary, simply becasue the contigs db name in the internal/external genomes file
+        may not match to the 'project_name' variable in the contigs db itself. This becomes an issue
+        because the `scg_taxonomy_super_dict` describes coverage values in metagenome mode using the
+        'project_name' variable. This dictionary will make it possible to find the exact key in the
+        `scg_taxonomy_super_dict_multi` to access to.
+
+        Returns
+        =======
+        contigs_db_name_to_sample_name: dict
+            A conversion dict for names. Looks like this:
+
+            ----8<----8<----8<----8<----8<----8<----8<----8<----
+            {
+              "USA0001": "USA0001_01",
+              (...)
+            }
+            ----8<----8<----8<----8<----8<----8<----8<----8<----
+        """
+
+        contigs_db_name_to_sample_name = {}
+        for contigs_db_name in scg_taxonomy_super_dict_multi:
+            contigs_db_name_to_sample_name[contigs_db_name] = list(scg_taxonomy_super_dict_multi[contigs_db_name]['taxonomy'].keys())[0]
+
+        return contigs_db_name_to_sample_name
+
+
+    def print_scg_taxonomy_super_dict_multi(self, scg_taxonomy_super_dict_multi):
         d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
 
 
