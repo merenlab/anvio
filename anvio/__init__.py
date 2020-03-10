@@ -634,11 +634,12 @@ D = {
              'help': "The directory path for your Pfam setup. Anvi'o will try to use the default path\
                       if you do not specify anything."}
                 ),
-    'kofam-data-dir': (
-            ['--kofam-data-dir'],
+    'kegg-data-dir': (
+            ['--kegg-data-dir'],
             {'default': None,
              'type': str,
-             'help': "The directory path for your KOfam setup. Anvi'o will try to use the default path\
+             'help': "The directory path for your KEGG setup, which will include things like \
+                      KOfam profiles and KEGG MODULE data. Anvi'o will try to use the default path\
                       if you do not specify anything."}
                 ),
     'hide-outlier-SNVs': (
