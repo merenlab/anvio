@@ -22,7 +22,7 @@ __description__ = "Reconstructs metabolic pathways and estimates pathway complet
 
 @terminal.time_program
 def main(args):
-    # initialize class
+    m = kegg.KeggMetabolismEstimator(args)
     # call estimate driver function
     print("Sorry, nothing is implemented yet. :(")
 
