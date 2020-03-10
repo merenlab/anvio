@@ -37,6 +37,7 @@ if __name__ == '__main__':
                                                     a metagenome, you should use the `--metagenome` flag to explicitly declare that.")
     groupI.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': True}))
     groupI.add_argument(*anvio.A('metagenome-mode'), **anvio.K('metagenome-mode'))
+    groupI.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
 
     args = anvio.get_args(parser)
 
