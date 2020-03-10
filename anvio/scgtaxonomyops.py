@@ -697,10 +697,13 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
 
 
     def store_scg_taxonomy_super_dict_multi(self, scg_taxonomy_super_dict_multi):
-        if self.long_format:
-            self.store_scg_taxonomy_super_dict_multi_long_format(scg_taxonomy_super_dict_multi)
+        if self.raw_output:
+            self.store_scg_taxonomy_super_dict_raw(scg_taxonomy_super_dict_multi)
         else:
-            self.store_scg_taxonomy_super_dict_multi_matrix_format(scg_taxonomy_super_dict_multi)
+            if self.long_format:
+                self.store_scg_taxonomy_super_dict_multi_long_format(scg_taxonomy_super_dict_multi)
+            else:
+                self.store_scg_taxonomy_super_dict_multi_matrix_format(scg_taxonomy_super_dict_multi)
 
 
     def store_scg_taxonomy_super_dict_multi_long_format(self, scg_taxonomy_super_dict_multi):
