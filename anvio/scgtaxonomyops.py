@@ -465,7 +465,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
         self.print_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
 
 
-    def get_print_friendly_scg_taxonomy_super_dict_multi(self, scg_taxonomy_super_dict_multi):
+    def get_print_friendly_scg_taxonomy_super_dict_multi(self, scg_taxonomy_super_dict_multi, as_data_frame=False):
         """Extract a more print-friendly data structure from `scg_taxonomy_super_dict_multi`
 
         Returns
@@ -537,6 +537,12 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
                     d[scg_name].pop(sample_name)
 
             scg_taxonomy_super_dict_multi_print_friendly[contigs_db_name] = d
+
+        if as_data_frame:
+            return self.print_friendly_scg_taxonomy_super_dict_multi_to_data_frame(scg_taxonomy_super_dict_multi_print_friendly)
+        else:
+            return scg_taxonomy_super_dict_multi_print_friendly
+
 
     def print_friendly_scg_taxonomy_super_dict_multi_to_data_frame(self, scg_taxonomy_super_dict_multi_print_friendly):
         """Take a `scg_taxonomy_super_dict_multi_print_friendly`, and turn it into a neat data frame.
