@@ -462,7 +462,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
 
         scg_taxonomy_super_dict_multi = self.get_scg_taxonomy_super_dict_multi()
 
-        self.print_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
+        self.store_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
 
 
     def get_print_friendly_scg_taxonomy_super_dict_multi(self, scg_taxonomy_super_dict_multi, as_data_frame=False):
