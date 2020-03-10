@@ -469,7 +469,6 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
                   "t_genus": "Alistipes",
                   "t_species": "Alistipes shahii",
                   "tax_hash": "7e3cc7fc",
-                  "USA0001_01": 18.146179401993354
                 },
                 "Ribosomal_L16_55413": {
                   "gene_callers_id": 55413,
@@ -484,7 +483,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
                   "t_genus": "Parabacteroides",
                   "t_species": null,
                   "tax_hash": "d16f9017",
-                  "USA0001_01": 48.82825484764543
+                  "coverage": 48.82825484764543
                 }
 
                 (...)
