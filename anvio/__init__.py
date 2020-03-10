@@ -1498,6 +1498,12 @@ D = {
              'help': "Report the output file as a long-format TAB-delmited file instead of a TAB-delimited "
                      "matrix."}
                 ),
+    'raw-output': (
+            ['--raw-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Just store the raw output without any processing of the primary data structure."}
+                ),
     'dry-run': (
             ['--dry-run'],
             {'default': False,
