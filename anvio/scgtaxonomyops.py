@@ -739,8 +739,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
 
 
     def store_scg_taxonomy_super_dict_multi_matrix_format(self, scg_taxonomy_super_dict_multi):
-        pass
-        d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
+        raise ConfigError("`store_scg_taxonomy_super_dict_multi_matrix_format` is not yet implemented :/ Try `--long-format`")
 
 
     def report_scg_frequencies_as_TAB_delimited_file(self):
