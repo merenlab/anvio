@@ -433,7 +433,9 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
                              "frequent SCG occurring across all %d contigs databases involved in this analysis. But this "
                              "is nothing more than some heuristic for your convenience, and we strongly advice you to "
                              "run this program with the parameter `--report-scg-frequencies` and examine the output "
-                             "to see if there is a better choice.")
+                             "to see if there is a better choice. As you can imagine, the most frequent SCG may not be "
+                             "the one that is more common across all genomes or metageomes you are interested." % \
+                                                (self.scg_name_for_metagenome_mode, len(self.genomes)))
 
             self.run.info("SCG [determined by anvi'o]", self.scg_name_for_metagenome_mode)
         else:
