@@ -706,7 +706,27 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
         self.run.info("Long-format output", output_file_path)
 
 
+    def store_scg_taxonomy_super_dict_raw(self, scg_taxonomy_super_dict_multi):
         d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
+
+        taxonomic_levels = [self.user_taxonomic_level] if self.user_taxonomic_level else self.ctx.levels_of_taxonomy
+
+        header = ['contigs_db_name', 'gene_name', 'gene_callers_id', 'percent_identity']
+
+        if self.compute_scg_coverages:
+            header += ['coverage']
+
+        header += taxonomic_levels
+
+        output_file_path = self.output_file_prefix + '-RAW-LONG-FORMAT.txt'
+        with open(output_file_path, 'w') as output:
+            output.write('\t'.join(header) + '\n')
+
+            for contigs_db_name in d:
+                for gene_name in d[contigs_db_name]:
+                    output.write('\t'.join([contigs_db_name] + [str(d[contigs_db_name][gene_name][h]) for h in header[1:]]) + '\n')
+
+        self.run.info("Raw output", output_file_path)
 
 
     def store_scg_taxonomy_super_dict_multi_matrix_format(self, scg_taxonomy_super_dict_multi):
