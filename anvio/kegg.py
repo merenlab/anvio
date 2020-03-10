@@ -619,6 +619,34 @@ class KeggMetabolismEstimator(KeggContext):
             you now know what you need to do to make this message go away." % ("MODULES.db", self.kegg_data_dir))
         self.kegg_modules_db = KeggModulesDatabase(os.path.join(self.kegg_data_dir, "MODULES.db"), args=self.args)
 
+    def init_hits_and_splits(self):
+        """This function loads splits and KOfam hits from the contigs DB.
+
+        We will need the hits with their KO numbers (accessions) so that we can go through the MODULES.db and determine
+        which steps are present in each module. And we will need the splits so that we can determine which hits belong
+        to which genomes/bins when we are handling multiple of these.
+        """
+
+        self.progress.new('Loading')
+        self.progress.update('Contigs DB')
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+        self.contigs_db_project_name = contigs_db.meta['project_name']
+        self.progress.update('Splits')
+        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "split, gene_callers_id")
+        self.progress.update('KOfam hits')
+        kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
+                                                where_clause="source = 'KOfam'")
+
+        self.progress.end()
+
+    def estimate_metabolism(self):
+        """This is the driver function for estimating metabolism.
+
+        It will decide what to do based on whether the input contigs DB is a genome or metagenome.
+        """
+
+        self.init_hits_and_splits()
+
 
 class KeggModulesDatabase(KeggContext):
     """To create or access a Modules DB.
