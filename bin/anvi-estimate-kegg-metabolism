@@ -23,8 +23,7 @@ __description__ = "Reconstructs metabolic pathways and estimates pathway complet
 @time_program
 def main(args):
     m = kegg.KeggMetabolismEstimator(args)
-    # call estimate driver function
-    print("Sorry, nothing is implemented yet. :(")
+    m.estimate_metabolism()
 
 if __name__ == '__main__':
     import argparse
