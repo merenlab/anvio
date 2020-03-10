@@ -39,16 +39,16 @@ class KeggContext(object):
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         # default data directory will be called KEGG and will store the KEGG Module data as well
-        self.kofam_data_dir = A('kofam_data_dir') or os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
-        self.orphan_data_dir = os.path.join(self.kofam_data_dir, "orphan_data")
-        self.module_data_dir = os.path.join(self.kofam_data_dir, "modules")
+        self.kegg_data_dir = A('kegg_data_dir') or os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
+        self.orphan_data_dir = os.path.join(self.kegg_data_dir, "orphan_data")
+        self.module_data_dir = os.path.join(self.kegg_data_dir, "modules")
         self.quiet = A('quiet') or False
         self.just_do_it = A('just_do_it')
 
         # shared variables for all KOfam subclasses
-        self.kofam_hmm_file_path = os.path.join(self.kofam_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
-        self.ko_list_file_path = os.path.join(self.kofam_data_dir, "ko_list")
-        self.kegg_module_file = os.path.join(self.kofam_data_dir, "ko00002.keg")
+        self.kofam_hmm_file_path = os.path.join(self.kegg_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
+        self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list")
+        self.kegg_module_file = os.path.join(self.kegg_data_dir, "ko00002.keg")
 
 
     def setup_ko_dict(self):
@@ -154,7 +154,7 @@ class KeggSetup(KeggContext):
         if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
 
-        filesnpaths.gen_output_directory(self.kofam_data_dir, delete_if_exists=args.reset)
+        filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
         filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
         filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
 
@@ -173,11 +173,11 @@ class KeggSetup(KeggContext):
         """This function determines whether the user has already downloaded the Kofam HMM profiles and KEGG modules."""
 
         if os.path.exists(self.kofam_hmm_file_path):
-            raise ConfigError("It seems you already have KOfam HMM profiles installed in '%s', please use --reset flag if you want to re-download it." % self.kofam_data_dir)
+            raise ConfigError("It seems you already have KOfam HMM profiles installed in '%s', please use --reset flag if you want to re-download it." % self.kegg_data_dir)
 
         if os.path.exists(self.kegg_module_file):
             raise ConfigError("Interestingly, though KOfam HMM profiles are not installed on your system, KEGG module information seems to have been \
-            already downloaded in %s. Please use the --reset flag to re-download everything from scratch." % self.kofam_data_dir)
+            already downloaded in %s. Please use the --reset flag to re-download everything from scratch." % self.kegg_data_dir)
 
         if os.path.exists(self.module_data_dir):
             raise ConfigError("It seems the KEGG module directory %s already exists on your system. This is even more strange because Kofam HMM \
@@ -190,7 +190,7 @@ class KeggSetup(KeggContext):
 
         for file_name in self.files:
             utils.download_file(self.database_url + '/' + file_name,
-                os.path.join(self.kofam_data_dir, file_name), progress=self.progress, run=self.run)
+                os.path.join(self.kegg_data_dir, file_name), progress=self.progress, run=self.run)
 
     def process_module_file(self):
         """This function reads the kegg module file into a dictionary. It should be called during setup to get the KEGG module numbers so that KEGG modules can be downloaded.
@@ -296,10 +296,10 @@ class KeggSetup(KeggContext):
 
         for file_name in self.files:
             self.progress.new('Decompressing file %s' % file_name)
-            full_path = os.path.join(self.kofam_data_dir, file_name)
+            full_path = os.path.join(self.kegg_data_dir, file_name)
 
             if full_path.endswith("tar.gz"):
-                utils.tar_extract_file(full_path, output_file_path = self.kofam_data_dir, keep_original=False)
+                utils.tar_extract_file(full_path, output_file_path = self.kegg_data_dir, keep_original=False)
             else:
                 utils.gzip_decompress_file(full_path, keep_original=False)
 
@@ -317,7 +317,7 @@ class KeggSetup(KeggContext):
         ko_nums = self.ko_dict.keys()
         for k in ko_nums:
             if k not in self.ko_skip_list:
-                hmm_path = os.path.join(self.kofam_data_dir, "profiles/%s.hmm" % k)
+                hmm_path = os.path.join(self.kegg_data_dir, "profiles/%s.hmm" % k)
                 if not os.path.exists(hmm_path):
                     raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong \
                                     while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset \
@@ -344,7 +344,7 @@ class KeggSetup(KeggContext):
         no_data_path = os.path.join(self.orphan_data_dir, "03_hmm_profiles_with_ko_fams_with_no_data.hmm")
         no_data_file_list = []
 
-        hmm_list = [k for k in glob.glob(os.path.join(self.kofam_data_dir, 'profiles/*.hmm'))]
+        hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
         for hmm_file in hmm_list:
             ko = re.search('profiles/(K\d{5})\.hmm', hmm_file).group(1)
             if ko not in self.ko_dict.keys():
@@ -382,25 +382,25 @@ class KeggSetup(KeggContext):
         """This function concatenates the Kofam profiles and runs hmmpress on them."""
 
         self.progress.new('Preparing Kofam HMM Profiles')
-        log_file_path = os.path.join(self.kofam_data_dir, '00_hmmpress_log.txt')
+        log_file_path = os.path.join(self.kegg_data_dir, '00_hmmpress_log.txt')
 
-        self.progress.update('Verifying the Kofam directory %s contains all HMM profiles' % self.kofam_data_dir)
+        self.progress.update('Verifying the Kofam directory %s contains all HMM profiles' % self.kegg_data_dir)
         self.confirm_downloaded_profiles()
 
         self.progress.update('Handling orphan files')
         self.move_orphan_files()
 
         self.progress.update('Concatenating HMM profiles into one file...')
-        hmm_list = [k for k in glob.glob(os.path.join(self.kofam_data_dir, 'profiles/*.hmm'))]
+        hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
         utils.concatenate_files(self.kofam_hmm_file_path, hmm_list, remove_concatenated_files=False)
 
         # there is no reason to keep the original HMM profiles around, unless we are debugging
         if not anvio.DEBUG:
-            shutil.rmtree((os.path.join(self.kofam_data_dir, "profiles")))
+            shutil.rmtree((os.path.join(self.kegg_data_dir, "profiles")))
 
         self.progress.update('Running hmmpress...')
         cmd_line = ['hmmpress', self.kofam_hmm_file_path]
-        log_file_path = os.path.join(self.kofam_data_dir, '00_hmmpress_log.txt')
+        log_file_path = os.path.join(self.kegg_data_dir, '00_hmmpress_log.txt')
         ret_val = utils.run_command(cmd_line, log_file_path)
 
         if ret_val:
@@ -415,7 +415,7 @@ class KeggSetup(KeggContext):
     def setup_modules_db(self):
         """This function creates the Modules DB from the Kegg Module files. """
 
-        mod_db = KeggModulesDatabase(os.path.join(self.kofam_data_dir, "MODULES.db"), args=self.args, module_dictionary=self.module_dict, run=run, progress=progress)
+        mod_db = KeggModulesDatabase(os.path.join(self.kegg_data_dir, "MODULES.db"), args=self.args, module_dictionary=self.module_dict, run=run, progress=progress)
         mod_db.create()
 
 
@@ -455,14 +455,14 @@ class KeggRunHMMs(KeggContext):
             raise ConfigError("Anvi'o is unable to find the Kofam.hmm file at %s. This can happen one of two ways. Either you \
                                 didn't specify the correct Kofam data directory using the flag --kofam-data-dir, or you haven't \
                                 yet set up the Kofam data by running `anvi-setup-kegg-kofams`. Hopefully you now know what to do \
-                                to fix this problem. :) " % self.kofam_data_dir)
+                                to fix this problem. :) " % self.kegg_data_dir)
 
         utils.is_contigs_db(self.contigs_db_path)
 
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
         # load existing kegg modules db
-        self.kegg_modules_db = KeggModulesDatabase(os.path.join(self.kofam_data_dir, "MODULES.db"), args=self.args)
+        self.kegg_modules_db = KeggModulesDatabase(os.path.join(self.kegg_data_dir, "MODULES.db"), args=self.args)
 
     def get_annotation_from_ko_dict(self, knum, ok_if_missing_from_dict=False):
         if not self.ko_dict:
