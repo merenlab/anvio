@@ -587,6 +587,33 @@ class KeggRunHMMs(KeggContext):
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
 
+class KeggMetabolismEstimator(KeggContext):
+    """ Class for reconstructing/estimating metabolism based on hits to KEGG databases.
+
+    ==========
+    args: Namespace object
+        All the arguments supplied by user to anvi-estimate-kegg-metabolism
+    """
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+        self.contigs_db_path = args.contigs_db
+
+        # init the base class
+        KeggContext.__init__(self, self.args)
+
+        # load existing kegg modules db
+        if not os.path.exists(os.path.join(self.kegg_data_dir, "MODULES.db")):
+            raise ConfigError("It appears that a modules database (%s) does not exist in the KEGG data directory %s. \
+            Perhaps you need to specify a different KEGG directory using --kegg-data-dir. Or perhaps you didn't run \
+            `anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case \
+            since you also cannot run `anvi-run-kegg-kofams` without first having run KEGG setup. But fine. Hopefully \
+            you now know what you need to do to make this message go away." % ("MODULES.db", self.kegg_data_dir))
+        self.kegg_modules_db = KeggModulesDatabase(os.path.join(self.kegg_data_dir, "MODULES.db"), args=self.args)
+
+
 class KeggModulesDatabase(KeggContext):
     """To create or access a Modules DB.
 
