@@ -538,8 +538,127 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
 
             scg_taxonomy_super_dict_multi_print_friendly[contigs_db_name] = d
 
+    def print_friendly_scg_taxonomy_super_dict_multi_to_data_frame(self, scg_taxonomy_super_dict_multi_print_friendly):
+        """Take a `scg_taxonomy_super_dict_multi_print_friendly`, and turn it into a neat data frame.
 
-        anvio.P(scg_taxonomy_super_dict_multi_print_friendly)
+        Not working with dataframes from the get go sounds like a silly thing to do, but Python
+        objects have been the way we passed around all the data (including to the interactive
+        interface) so it feels weird to change that completely now. But obviously there are many
+        advantages of working with dataframes, so the purpose of this function is to benefit from
+        those in the context of multi estimator class.
+
+        If the global `anvio.DEBUG` is True (via `--debug`), the dataframe is stored as a pickle
+        object to play.
+
+        Parameters
+        ==========
+        scg_taxonomy_super_dict_multi_print_friendly: dict
+             This data structure is defined in `get_print_friendly_scg_taxonomy_super_dict_multi`
+
+        Returns
+        =======
+        DF: pandas dataframe
+            A neatly sorted dataframe. Looks like this:
+
+            ----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<------
+                contigs_db_name                         taxon     coverage taxonomic_level
+            0           USA0001                      Bacteria  1077.277012        t_domain
+            1           USA0001               Unknown_domains     0.000000        t_domain
+            2           USA0003                      Bacteria  2668.593534        t_domain
+            3           USA0003               Unknown_domains     9.177677        t_domain
+            4           USA0001                  Bacteroidota   932.478308        t_phylum
+            5           USA0001                    Firmicutes   126.837011        t_phylum
+            6           USA0001                Proteobacteria    17.961694        t_phylum
+            7           USA0001                 Unknown_phyla     0.000000        t_phylum
+            8           USA0001             Verrucomicrobiota     0.000000        t_phylum
+            9           USA0003                    Firmicutes  1602.189160        t_phylum
+            10          USA0003                  Bacteroidota  1034.471363        t_phylum
+            11          USA0003             Verrucomicrobiota    22.668447        t_phylum
+            12          USA0003                Proteobacteria     9.264563        t_phylum
+            13          USA0003                 Unknown_phyla     9.177677        t_phylum
+            14          USA0001                   Bacteroidia   932.478308         t_class
+            15          USA0001                    Clostridia   116.441241         t_class
+            16          USA0001           Gammaproteobacteria    17.961694         t_class
+            17          USA0001                 Negativicutes    10.395770         t_class
+            18          USA0001                       Bacilli     0.000000         t_class
+            19          USA0001                 Lentisphaeria     0.000000         t_class
+            ..              ...                           ...          ...             ...
+            296         USA0003           CAG-302 sp001916775    11.435762       t_species
+            297         USA0003   Paramuribaculum sp001689565    11.149206       t_species
+            298         USA0003          CAG-1435 sp000433775    11.078189       t_species
+            299         USA0003           CAG-269 sp001916005     9.848404       t_species
+            300         USA0003            UBA737 sp002431945     7.497512       t_species
+            301         USA0003           CAG-345 sp000433315     6.733333       t_species
+            302         USA0003           UBA1829 sp002405835     6.684840       t_species
+            303         USA0003           TF01-11 sp001916135     6.060109       t_species
+            304         USA0003       Barnesiella sp002161555     0.000000       t_species
+            305         USA0003           CAG-115 sp000432175     0.000000       t_species
+            306         USA0003           CAG-452 sp000434035     0.000000       t_species
+            307         USA0003       Duncaniella sp002494015     0.000000       t_species
+            308         USA0003   Paramuribaculum sp001689535     0.000000       t_species
+            309         USA0003  Succiniclasticum sp002342505     0.000000       t_species
+            ----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<----8<------
+
+        """
+        taxonomic_levels = [self.user_taxonomic_level] if self.user_taxonomic_level else self.ctx.levels_of_taxonomy
+
+        df = pd.DataFrame.from_dict({(i,j): scg_taxonomy_super_dict_multi_print_friendly[i][j]
+                                for i in scg_taxonomy_super_dict_multi_print_friendly.keys()
+                                for j in scg_taxonomy_super_dict_multi_print_friendly[i].keys()}, orient='index')
+
+        df.reset_index(inplace=True)
+        df.rename(columns={"level_0": "contigs_db_name"}, inplace=True)
+        df.drop(['level_1'], axis=1, inplace=True)
+
+        if not self.compute_scg_coverages:
+            # NOTE: this is a bit critical. if the user are working with external genomes where there is no
+            # coverage information is availble for SCGs, the following code will explode for obvious
+            # reasons (which include the fact that `scg_taxonomy_super_dict_multi` will not have an entry
+            # for `coverage`). What we will do here is a little trick. First, we will add a coverage column
+            # to `df`. And at the very end, we will replace it with `times_observed`.
+            df["coverage"] = 1
+
+        DFx = pd.DataFrame(columns=['contigs_db_name', 'taxon', 'coverage', 'taxonomic_level'])
+        for taxonomic_level in taxonomic_levels:
+            x = df.fillna(constants.levels_of_taxonomy_unknown).groupby(['contigs_db_name', taxonomic_level])['coverage'].sum().reset_index()
+            x.columns = ['contigs_db_name', 'taxon', 'coverage']
+            x['taxonomic_level'] = taxonomic_level
+
+            # adding for each metagenome the missing taxon names
+            list_of_unique_taxon_names = x['taxon'].unique()
+            for contigs_db_name in x['contigs_db_name'].unique():
+                known_taxa = set(x[x['contigs_db_name'] == contigs_db_name]['taxon'])
+                missing_taxa = [taxon for taxon in list_of_unique_taxon_names if taxon not in known_taxa]
+                for taxon in missing_taxa:
+                    row = {'contigs_db_name': contigs_db_name, 'taxon': taxon, 'coverage': 0.0, 'taxonomic_level': taxonomic_level}
+                    x = x.append(row, ignore_index=True)
+
+            DFx = DFx.append(x, ignore_index=True)
+
+        DFx.sort_values(by=['contigs_db_name', 'taxonomic_level', 'coverage'], ascending=[True, True, False], inplace=True)
+
+        DF = pd.DataFrame(columns=['contigs_db_name', 'taxon', 'coverage', 'taxonomic_level'])
+        for taxonomic_level in constants.levels_of_taxonomy:
+            DF = DF.append(DFx[DFx['taxonomic_level'] == taxonomic_level], ignore_index=True)
+
+        del DFx
+
+        if anvio.DEBUG:
+            import pickle
+            with open('DataFrame.pickle', 'wb') as output:
+                pickle.dump(DF, output)
+
+            self.run.info_single("The `--debug` flag made anvi'o to dump the data frame that was generated by the "
+                                 "function `print_friendly_scg_taxonomy_super_dict_multi_to_data_frame` (lol) as "
+                                 "a picke object stored in file name 'DataFrame.pickle'. If you would like to play "
+                                 "with it, you can start an ipython session, and run the following: import pandas "
+                                 "as pd; import pickle; df = pickle.load(open('DataFrame.pickle', 'rb'))")
+
+        if not self.compute_scg_coverages:
+            DF.rename(columns={"coverage": "times_observed"}, inplace = True)
+            DF['times_observed'] = DF['times_observed'].astype(int)
+
+        return DF
 
 
     def get_contigs_db_name_to_project_name_dict(self, scg_taxonomy_super_dict_multi):
