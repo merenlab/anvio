@@ -1491,7 +1491,6 @@ D = {
              'help': "A prefix to be used while naming the output files (no file type "
                      "extensions please; just a prefix)."}
                 ),
-
     'long-format': (
             ['--long-format'],
             {'default': False,
