@@ -74,6 +74,7 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
     groupD.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
     groupD.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level', {'default': None}))
+    groupD.add_argument(*anvio.A('long-format'), **anvio.K('long-format'))
 
     groupE = parser.add_argument_group('PERFORMANCE', "We are not sure if allocating more threads for this operation will change anything.\
                                                        But hey. One can try.")
