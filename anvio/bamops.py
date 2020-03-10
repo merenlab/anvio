@@ -68,6 +68,12 @@ class BAMFileObject(pysam.AlignmentFile):
         defined region so that they fit inside the start and stop.
         """
         for read in self.fetch(contig_name, start, end, *args, **kwargs):
+            if read.cigartuples is None:
+                # This read has no associated cigar string. This either means it did not align but
+                # is in the BAM file anyways, or the mapping software decided it did not want to
+                # include a cigar string for this read.
+                continue
+
             read = Read(read)
 
             if start - read.reference_start > 0:
@@ -397,6 +403,11 @@ class Coverage:
           https://jakevdp.github.io/PythonDataScienceHandbook/02.07-fancy-indexing.html:
         """
         for read in iterator(contig_name, start, end):
+            if read.cigartuples is None:
+                # This read has no associated cigar string. This either means it did not align but
+                # is in the BAM file anyways, or the mapping software decided it did not want to
+                # include a cigar string for this read.
+                continue
 
             if len(read.cigartuples) == 1:
                 c[read.reference_start:(read.reference_start + read.cigartuples[0][1])] += 1
