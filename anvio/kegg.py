@@ -601,10 +601,14 @@ class KeggMetabolismEstimator(KeggContext):
         self.args = args
         self.run = run
         self.progress = progress
-        self.contigs_db_path = args.contigs_db
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
 
         # init the base class
         KeggContext.__init__(self, self.args)
+
+        utils.is_contigs_db(self.contigs_db_path)
 
         # load existing kegg modules db
         if not os.path.exists(os.path.join(self.kegg_data_dir, "MODULES.db")):
