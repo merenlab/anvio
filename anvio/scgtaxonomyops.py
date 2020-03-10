@@ -607,9 +607,11 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
 
         for contigs_db_name in self.genomes:
             args = SCGTaxonomyEstimatorArgs(self.args, format_args_for_single_estimator=True)
+
+            args.metagenome_mode = True
             args.contigs_db = self.genomes[contigs_db_name]['contigs_db_path']
             args.profile_db = self.genomes[contigs_db_name]['profile_db_path']
-            args.metagenome_mode = True
+            args.scg_name_for_metagenome_mode = self.scg_name_for_metagenome_mode
 
             scg_taxonomy_super_dict[contigs_db_name] = SCGTaxonomyEstimatorSingle(args, run=run_quiet).get_scg_taxonomy_super_dict()
 
@@ -621,8 +623,10 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
 
         for contigs_db_name in self.genomes:
             args = SCGTaxonomyEstimatorArgs(self.args, format_args_for_single_estimator=True)
-            args.contigs_db = self.genomes[contigs_db_name]['contigs_db_path']
+
             args.metagenome_mode = True
+            args.contigs_db = self.genomes[contigs_db_name]['contigs_db_path']
+            args.scg_name_for_metagenome_mode = self.scg_name_for_metagenome_mode
 
             scg_taxonomy_super_dict[contigs_db_name] = SCGTaxonomyEstimatorSingle(args, run=run_quiet).get_scg_taxonomy_super_dict()
 
