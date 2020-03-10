@@ -367,6 +367,7 @@ class SCGTaxonomyEstimatorArgs(object):
         self.internal_genomes = A('internal_genomes')
         self.external_genomes = A('external_genomes')
         self.user_taxonomic_level = A('taxonomic_level')
+        self.long_format = A('long_format')
 
         if format_args_for_single_estimator:
             # so you're here to get an args instance to fool a single estimator class.
@@ -555,7 +556,19 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
         return contigs_db_name_to_sample_name
 
 
-    def print_scg_taxonomy_super_dict_multi(self, scg_taxonomy_super_dict_multi):
+    def store_scg_taxonomy_super_dict_multi(self, scg_taxonomy_super_dict_multi):
+        if self.long_format:
+            self.store_scg_taxonomy_super_dict_multi_long_format(scg_taxonomy_super_dict_multi)
+        else:
+            self.store_scg_taxonomy_super_dict_multi_matrix_format(scg_taxonomy_super_dict_multi)
+
+
+    def store_scg_taxonomy_super_dict_multi_long_format(self, scg_taxonomy_super_dict_multi):
+        d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
+
+
+    def store_scg_taxonomy_super_dict_multi_matrix_format(self, scg_taxonomy_super_dict_multi):
+        pass
         d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
 
 

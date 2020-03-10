@@ -1491,6 +1491,14 @@ D = {
              'help': "A prefix to be used while naming the output files (no file type "
                      "extensions please; just a prefix)."}
                 ),
+
+    'long-format': (
+            ['--long-format'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Report the output file as a long-format TAB-delmited file instead of a TAB-delimited "
+                     "matrix."}
+                ),
     'dry-run': (
             ['--dry-run'],
             {'default': False,
