@@ -34,7 +34,7 @@ pp = terminal.pretty_print
 
 
 class KeggContext(object):
-    """The purpose of this base class is to define shared functions and file paths for all KOfam operations."""
+    """The purpose of this base class is to define shared functions and file paths for all KEGG operations."""
 
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -45,14 +45,14 @@ class KeggContext(object):
         self.quiet = A('quiet') or False
         self.just_do_it = A('just_do_it')
 
-        # shared variables for all KOfam subclasses
+        # shared variables for all KEGG subclasses
         self.kofam_hmm_file_path = os.path.join(self.kegg_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
         self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list")
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "ko00002.keg")
 
 
     def setup_ko_dict(self):
-        """The purpose of this function is to process the ko_list file into usable form by Kofam sub-classes.
+        """The purpose of this function is to process the ko_list file into usable form by KEGG sub-classes.
 
         The ko_list file (which is downloaded along with the KOfam HMM profiles) contains important
         information for each KEGG Orthology number (KO, or knum), incuding pre-defined scoring thresholds
@@ -64,7 +64,7 @@ class KeggContext(object):
         K00001    329.57    domain    trim    0.231663    1473    1069    1798    371    17.12    0.590    alcohol dehydrogenase [EC:1.1.1.1]
 
         Since this information is useful for both the setup process (we need to know all the knums) and HMM process,
-        all Kofam subclasses need to have access to this dictionary.
+        all KEGG subclasses need to have access to this dictionary.
 
         This is a dictionary (indexed by knum) of dictionaries(indexed by column name).
         Here is an example of the dictionary structure:
@@ -74,9 +74,9 @@ class KeggContext(object):
         self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
         self.ko_skip_list, self.ko_no_threshold_list = self.get_ko_skip_list()
 
-        # if we are currently setting up KOfams, we should generate a text file with the ko_list entries
+        # if we are currently setting up KEGG, we should generate a text file with the ko_list entries
         # of the KOs that have no scoring threshold
-        if self.__class__.__name__ in ['KofamSetup']:
+        if self.__class__.__name__ in ['KeggSetup']:
             orphan_ko_dict = {ko:self.ko_dict[ko] for ko in self.ko_skip_list}
             orphan_ko_dict.update({ko:self.ko_dict[ko] for ko in self.ko_no_threshold_list})
 
@@ -133,7 +133,10 @@ class KeggContext(object):
         return skip_list, no_threshold_list
 
 class KeggSetup(KeggContext):
-    """Class for setting up KEGG Kofam HMM profiles. It performs sanity checks and downloads, unpacks, and prepares the profiles for later use by `hmmscan`.
+    """Class for setting up KEGG Kofam HMM profiles and modules.
+
+    It performs sanity checks and downloads, unpacks, and prepares the profiles for later use by `hmmscan`.
+    It also downloads module files and creates the MODULES.db.
 
     Parameters
     ==========
@@ -420,7 +423,7 @@ class KeggSetup(KeggContext):
 
 
     def setup_profiles(self):
-        """This is a driver function which executes the Kofam setup process by downloading, decompressing, and hmmpressing the profiles."""
+        """This is a driver function which executes the KEGG setup process by downloading, decompressing, and hmmpressing the profiles."""
 
         self.download_profiles()
         self.decompress_files()
@@ -453,7 +456,7 @@ class KeggRunHMMs(KeggContext):
         # verify that Kofam HMM profiles have been set up
         if not os.path.exists(self.kofam_hmm_file_path):
             raise ConfigError("Anvi'o is unable to find the Kofam.hmm file at %s. This can happen one of two ways. Either you \
-                                didn't specify the correct Kofam data directory using the flag --kofam-data-dir, or you haven't \
+                                didn't specify the correct KEGG data directory using the flag --kegg-data-dir, or you haven't \
                                 yet set up the Kofam data by running `anvi-setup-kegg-kofams`. Hopefully you now know what to do \
                                 to fix this problem. :) " % self.kegg_data_dir)
 
@@ -587,7 +590,7 @@ class KeggRunHMMs(KeggContext):
 class KeggModulesDatabase(KeggContext):
     """To create or access a Modules DB.
 
-    This DB should be created in the Kegg Data folder during Kofam setup, and will be populated with information from the
+    This DB should be created in the Kegg Data folder during KEGG setup, and will be populated with information from the
     Kegg Module files.
     """
 
