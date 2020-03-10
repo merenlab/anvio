@@ -328,6 +328,9 @@ class SanityCheck(object):
                                       "than an output file path. Anvi'o will use your prefix and will generate many files that start "
                                       "with that prefix but ends with different names for each taxonomic level.")
 
+                if not self.output_file_prefix:
+                    raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file prefix :/")
+
                 if self.output_file_prefix:
                     filesnpaths.is_output_file_writable(self.output_file_prefix)
 
