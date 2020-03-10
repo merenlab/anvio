@@ -436,7 +436,10 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
             self.run.info("Num internal (meta)genomes", len(self.internal_genome_names))
 
         self.run.info("Taxonomic level of interest", self.user_taxonomic_level or "(None specified by the user, so 'all levels')")
-        self.run.info("Output fiel prefix", self.output_file_prefix)
+        self.run.info("Output file prefix", self.output_file_prefix)
+        self.run.info("Output long format", self.long_format)
+        self.run.info("Output raw data", self.raw_output)
+        self.run.info("SCG coverages will be computed?", self.compute_scg_coverages)
 
         if self.report_scg_frequencies_path:
             self.report_scg_frequencies_as_TAB_delimited_file()
