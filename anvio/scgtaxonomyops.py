@@ -267,6 +267,11 @@ class SanityCheck(object):
                 if self.output_file_path:
                     filesnpaths.is_output_file_writable(self.output_file_path)
 
+                if self.raw_output or self.long_format:
+                    raise ConfigError("Haha in this mode you can't ask for the raw output or long format .. yet (we know that "
+                                      "the parameter space of this program is like a mine field and we are very upset about it "
+                                      "as well).")
+
                 if not self.contigs_db_path:
                     raise ConfigError("For these things to work, you need to provide a contigs database for the anvi'o SCG "
                                       "taxonomy workflow :(")
@@ -331,6 +336,10 @@ class SanityCheck(object):
                 if not self.output_file_prefix:
                     raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file prefix :/")
 
+                if self.raw_output and self.long_format:
+                    raise ConfigError("Please don't request anvi'o to report the output both in raw and long format. Raw output "
+                                      "is the very ugly version of the long format anyway :(")
+
                 if self.output_file_prefix:
                     filesnpaths.is_output_file_writable(self.output_file_prefix)
 
@@ -368,6 +377,7 @@ class SCGTaxonomyEstimatorArgs(object):
         self.external_genomes = A('external_genomes')
         self.user_taxonomic_level = A('taxonomic_level')
         self.long_format = A('long_format')
+        self.raw_output = A('raw_output')
 
         if format_args_for_single_estimator:
             # so you're here to get an args instance to fool a single estimator class.
@@ -376,6 +386,8 @@ class SCGTaxonomyEstimatorArgs(object):
             self.external_genomes = None
             self.output_file_path = None
             self.output_file_prefix = None
+            self.long_format = None
+            self.raw_output = None
 
         self.skip_sanity_check = False
 
