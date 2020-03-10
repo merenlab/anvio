@@ -698,6 +698,14 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
 
 
     def store_scg_taxonomy_super_dict_multi_long_format(self, scg_taxonomy_super_dict_multi):
+        df = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi, as_data_frame=True)
+
+        output_file_path = self.output_file_prefix + '-LONG-FORMAT.txt'
+        df.to_csv(output_file_path, index=True, index_label="entry_id", sep='\t')
+
+        self.run.info("Long-format output", output_file_path)
+
+
         d = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi)
 
 
