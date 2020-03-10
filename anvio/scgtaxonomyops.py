@@ -875,7 +875,13 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
         elif self.internal_genome_names and not self.external_genome_names:
             return self.get_taxonomy_super_dict_for_internal_genomes()
         else:
-            self.run.warning("You have mixed stuff. Falling back to external gneomes only, so your profile databases will not be taken into consideration.")
+            self.run.warning("You have mixed stuff. Falling back to external gneomes only, "
+                             "so your profile databases will not be taken into consideration. This "
+                             "also means that anvi'o will now globally set the `--compute-scg-coverages` "
+                             "flag to `False` just in case.")
+
+            self.compute_scg_coverages = False
+
             return self.get_taxonomy_super_dict_for_external_genomes()
 
 
