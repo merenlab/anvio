@@ -1496,7 +1496,13 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Report the output file as a long-format TAB-delmited file instead of a TAB-delimited "
-                     "matrix."}
+                     "sparse matrix."}
+                ),
+    'matrix-format': (
+            ['--matrix-format'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Report the output as TAB-delmited sparse matrix files."}
                 ),
     'raw-output': (
             ['--raw-output'],
