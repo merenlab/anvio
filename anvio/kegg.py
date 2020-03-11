@@ -604,6 +604,21 @@ class KeggMetabolismEstimator(KeggContext):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
+        self.profile_db_path = A('profile_db')
+        self.collection_name = A('collection_name')
+        self.bin_id = A('bin_id')
+        self.bin_ids_file = A('bin_ids_file')
+
+        self.bin_ids_to_process = None
+        if self.bin_id and self.bin_ids_file:
+            raise ConfigError("You have provided anvi'o with both the individual bin id %s and a file with bin ids (%s). \
+            Please make up your mind. Which one do you want an estimate for? :)" % (self.bin_id, self.bin_ids_file))
+        elif self.bin_id:
+            self.bin_ids_to_process = [self.bin_id]
+        elif self.bin_ids_file:
+            filesnpaths.is_file_exists(self.bin_ids_file)
+            self.bin_ids_to_process = [line.strip() for line in open(self.bin_ids_file).readlines()]
+
 
         # init the base class
         KeggContext.__init__(self, self.args)
