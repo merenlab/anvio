@@ -251,7 +251,7 @@ class SanityCheck(object):
             # Note: if something down below complains about a paramter
             #       because that actually belongs to the multi estimator
             #       class, you may need to set it to null in the class
-            #       SCGTaxonomyEstimatorArgs for single estimator
+            #       SCGTaxonomyArgs for single estimator
             #       initiation if clause
             ###########################################################
             if self.__class__.__name__ in ['SCGTaxonomyEstimatorSingle']:
@@ -344,13 +344,13 @@ class SanityCheck(object):
                     filesnpaths.is_output_file_writable(self.output_file_prefix)
 
 
-class SCGTaxonomyEstimatorArgs(object):
+class SCGTaxonomyArgs(object):
     def __init__(self, args, format_args_for_single_estimator=False):
-        """A base class to fill in common arguments for single and multi estimators.
+        """A base class to fill in common arguments for SCG Taxonomy classes.
 
         The purpose of this class is to reduce the complexity of setting member variables
-        so a single sanity check class could test for everything without annoying errors
-        regarding missing variables.
+        for various classes in this module so we can get away with a single multi-talented
+        sanity check base class without any complaints regarding missing member variables.
 
         Parameters
         ==========
@@ -392,7 +392,7 @@ class SCGTaxonomyEstimatorArgs(object):
         self.skip_sanity_check = False
 
 
-class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
+class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress(), skip_init=False):
         """Iterate through internal and/or external genome descriptions using SCGTaxonomyEstimatorSingle"""
 
@@ -401,7 +401,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
         self.progress = progress
 
         # update your self args
-        SCGTaxonomyEstimatorArgs.__init__(self, self.args)
+        SCGTaxonomyArgs.__init__(self, self.args)
 
         # set your context
         self.ctx = ctx
@@ -523,7 +523,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
         contigs_db_name_to_sample_name = self.get_contigs_db_name_to_project_name_dict(scg_taxonomy_super_dict_multi)
 
         for contigs_db_name in scg_taxonomy_super_dict_multi:
-            args = SCGTaxonomyEstimatorArgs(self.args, format_args_for_single_estimator=True)
+            args = SCGTaxonomyArgs(self.args, format_args_for_single_estimator=True)
             args.contigs_db = self.genomes[contigs_db_name]['contigs_db_path']
             args.profile_db = self.genomes[contigs_db_name]['profile_db_path']
             args.metagenome_mode = True
@@ -776,7 +776,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
                               "profiles for this to work.")
 
         for contigs_db_name in self.genomes:
-            args = SCGTaxonomyEstimatorArgs(self.args, format_args_for_single_estimator=True)
+            args = SCGTaxonomyArgs(self.args, format_args_for_single_estimator=True)
 
             args.metagenome_mode = True
             args.contigs_db = self.genomes[contigs_db_name]['contigs_db_path']
@@ -792,7 +792,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
         scg_taxonomy_super_dict = {}
 
         for contigs_db_name in self.genomes:
-            args = SCGTaxonomyEstimatorArgs(self.args, format_args_for_single_estimator=True)
+            args = SCGTaxonomyArgs(self.args, format_args_for_single_estimator=True)
 
             args.metagenome_mode = True
             args.contigs_db = self.genomes[contigs_db_name]['contigs_db_path']
@@ -893,7 +893,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
         for contigs_db_name in self.genomes:
             scg_frequencies[contigs_db_name] = {}
 
-            args = SCGTaxonomyEstimatorArgs(self.args, format_args_for_single_estimator=True)
+            args = SCGTaxonomyArgs(self.args, format_args_for_single_estimator=True)
             args.compute_scg_coverages = False
             args.contigs_db = self.genomes[contigs_db_name]['contigs_db_path']
 
@@ -910,7 +910,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyEstimatorArgs, SanityCheck):
         return scgs_ordered_based_on_frequency, contigs_dbs_ordered_based_on_num_scgs, scg_frequencies
 
 
-class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SanityCheck):
+class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress(), skip_init=False):
         self.args = args
         self.run = run
@@ -923,7 +923,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SanityCheck):
         self.update_profile_db_with_taxonomy = A('update_profile_db_with_taxonomy')
         self.bin_id = A('bin_id')
 
-        SCGTaxonomyEstimatorArgs.__init__(self, self.args)
+        SCGTaxonomyArgs.__init__(self, self.args)
 
         self.ctx = ctx
 
@@ -1691,11 +1691,14 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyEstimatorArgs, SanityCheck):
         return scg_coverages_across_samples_dict
 
 
-class SetupLocalSCGTaxonomyData(SanityCheck):
+class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
         self.progress = progress
+
+        # update your self args
+        SCGTaxonomyArgs.__init__(self, self.args)
 
         # user accessible variables
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -1931,11 +1934,14 @@ class SetupLocalSCGTaxonomyData(SanityCheck):
                 shutil.rmtree(dir_path)
 
 
-class PopulateContigsDatabaseWithSCGTaxonomy(SanityCheck):
+class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
         self.progress = progress
+
+        # update your self args
+        SCGTaxonomyArgs.__init__(self, self.args)
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.write_buffer_size = int(A('write_buffer_size') if A('write_buffer_size') is not None else 1000)
