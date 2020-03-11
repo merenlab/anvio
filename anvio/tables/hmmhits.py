@@ -8,6 +8,7 @@ import anvio
 import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
+import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -67,6 +68,21 @@ class TablesForHMMHits(Table):
             self.set_next_available_id(t.hmm_hits_table_name)
             self.set_next_available_id(t.hmm_hits_splits_table_name)
 
+    def check_sources(self, sources):
+        sources_in_db = list(hmmops.SequencesForHMMHits(self.db_path).hmm_hits_info.keys())
+
+        sources_need_to_be_removed = set(sources.keys()).intersection(sources_in_db)
+
+        if len(sources_need_to_be_removed):
+            if self.just_do_it:
+                for source_name in sources_need_to_be_removed:
+                    self.remove_source(source_name)
+            else:
+                raise ConfigError("Some of the HMM sources you wish to run on this database are already in the database and anvi'o "
+                                  "refuses to overwrite them without your explicit input. You can either use `anvi-delete-hmms` "
+                                  "to remove them first, or run this program with `--just-do-it` flag so anvi'o would remove all "
+                                  "for you. Here are the list of HMM sources that need to be removed: '%s'." % (', '.join(sources_need_to_be_removed)))
+
 
     def populate_search_tables(self, sources={}):
         # make sure the output file is OK to write.
@@ -79,6 +95,8 @@ class TablesForHMMHits(Table):
 
         if not sources:
             return
+
+        self.check_sources(sources)
 
         target_files_dict = {}
 
@@ -150,7 +168,6 @@ class TablesForHMMHits(Table):
 
             if not len(search_results_dict):
                 run.info_single("The HMM source '%s' returned 0 hits. SAD (but it's stil OK)." % source, nl_before=1)
-
 
             if context == 'CONTIG':
                 # we are in trouble here. because our search results dictionary contains no gene calls, but contig
