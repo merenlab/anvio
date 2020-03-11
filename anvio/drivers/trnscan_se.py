@@ -19,7 +19,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 class tRNAScanSE:
-    """ Parent class for all fastANI usage
+    """Parent class for all tRNAScan-SE usage
 
     Parameters
     ==========
@@ -201,8 +201,8 @@ class tRNAScanSE:
                          "sequences in your data. When you publish your findings, please do not forget to properly credit "
                          "their work.", lc='green', header="CITATION")
 
-        self.progress.new('Running tRNAScan-SE')
-        self.progress.update('...')
+        self.progress.new('Processing')
+        self.progress.update('Running tRNAScan-SE scan in %d threads...' % self.num_threads)
 
         exit_code = utils.run_command(command, self.log_file_path)
 
