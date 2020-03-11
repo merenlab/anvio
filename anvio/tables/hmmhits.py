@@ -35,9 +35,10 @@ pp = terminal.pretty_print
 
 
 class TablesForHMMHits(Table):
-    def __init__(self, db_path, num_threads_to_use=1, run=run, progress=progress, initializing_for_deletion=False):
+    def __init__(self, db_path, num_threads_to_use=1, run=run, progress=progress, initializing_for_deletion=False, just_do_it=False):
         self.num_threads_to_use = num_threads_to_use
         self.db_path = db_path
+        self.just_do_it = just_do_it
 
         utils.is_contigs_db(self.db_path)
 

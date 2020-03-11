@@ -67,14 +67,12 @@ def main(args):
         # sources will be loaded from defaults.
         pass
 
-    search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use = args.num_threads)
+    search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use=args.num_threads, just_do_it=args.just_do_it)
     search_tables.populate_search_tables(sources)
 
     if not args.hmm_profile_dir and not args.installed_hmm_profile and not args.skip_scanning_trnas:
         tables_for_trna_hits = TablesForTransferRNAs(args)
         tables_for_trna_hits.populate_search_tables(args.contigs_db)
-
-
 
 
 if __name__ == '__main__':
@@ -104,6 +102,9 @@ if __name__ == '__main__':
     groupD = parser.add_argument_group("PERFORMANCE", "Stuff everyone forgets to set and then get upset with how slow "
                                                       "science goes.")
     groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+
+    groupE = parser.add_argument_group("AUTHORITY", "Because you are the boss.")
+    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = anvio.get_args(parser)
 
