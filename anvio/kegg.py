@@ -636,6 +636,20 @@ class KeggMetabolismEstimator(KeggContext):
         self.progress.update('KOfam hits')
         kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
                                                 where_clause="source = 'KOfam'")
+        contigs_db.disconnect()
+
+        # get rid of gene calls in genes_in_splits that are not associated with KOfam hits.
+        # Perhaps this is not a necessary step. But it makes me feel clean.
+        all_gene_calls_in_splits = set([tpl[1] for tpl in genes_in_splits])
+        gene_calls_with_kofam_hits = set([tpl[0] for tpl in kofam_hits])
+        gene_calls_without_kofam_hits = all_gene_calls_in_splits.difference(gene_calls_with_kofam_hits)
+
+        if gene_calls_without_kofam_hits:
+            self.progress.update("Removing %s gene calls without KOfam hits" % len(gene_calls_without_kofam_hits))
+            genes_in_splits = [tpl for tpl in genes_in_splits if tpl[1] not in gene_calls_without_kofam_hits]
+            if anvio.DEBUG:
+                self.run.warning("The following gene calls in your contigs DB were removed from consideration as they \
+                do not have any hits to the KOfam database: %s" % (gene_calls_without_kofam_hits))
 
         self.progress.end()
 
