@@ -9,8 +9,7 @@ import pandas as pd
 import argparse
 
 import anvio
-import anvio.contigops
-import anvio.sequence as seq
+import anvio.bamops as bamops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -127,8 +126,8 @@ class ComputeCoverage(object):
         self.progress.increment()
         self.progress.update('%s (%d/%d)' % (contig_name, self.progress.progress_current_item, self.progress.progress_total_items))
 
-        cov = seq.Coverage()
-        cov.run(self.bam, contig_name)
+        cov = bamops.Coverage()
+        cov.run(self.bam, contig_name, skip_coverage_stats=True)
 
         return cov.c
 
