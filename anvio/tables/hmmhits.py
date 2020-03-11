@@ -321,6 +321,13 @@ class TablesForHMMHits(Table):
     def append(self, source, reference, kind_of_search, domain, all_genes, search_results_dict):
         """Append a new HMM source in the contigs database."""
 
+        # just to make 100% sure.
+        if source in list(hmmops.SequencesForHMMHits(self.db_path).hmm_hits_info.keys()):
+            raise ConfigError("The source '%s' you're trying to append is already in the database :( "
+                              "You should have never been able to come here in the code unless you "
+                              "have passed the `check_sources` sanity check. Very good but not "
+                              "good really. Bad. Bad you." % source)
+
         # we want to define unique identifiers for each gene first. this information will be used to track genes that will
         # break into multiple pieces due to arbitrary split boundaries. while doing that, we will add the 'source' info
         # into the dictionary, so it perfectly matches to the table structure
