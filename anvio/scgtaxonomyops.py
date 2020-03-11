@@ -11,8 +11,9 @@ import copy
 import shutil
 import hashlib
 import argparse
-import pandas as pd
 import multiprocessing
+import pandas as pd
+import scipy.sparse as sps
 
 from tabulate import tabulate
 from collections import OrderedDict, Counter
@@ -740,7 +741,29 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
 
     def store_scg_taxonomy_super_dict_multi_matrix_format(self, scg_taxonomy_super_dict_multi):
-        raise ConfigError("`store_scg_taxonomy_super_dict_multi_matrix_format` is not yet implemented :/ Try `--long-format`")
+        df = self.get_print_friendly_scg_taxonomy_super_dict_multi(scg_taxonomy_super_dict_multi, as_data_frame=True)
+
+        taxonomic_levels = [self.user_taxonomic_level] if self.user_taxonomic_level else self.ctx.levels_of_taxonomy
+
+        for taxonomic_level in taxonomic_levels:
+            dfx = df[df['taxonomic_level'] == taxonomic_level]
+            dfx.set_index(['contigs_db_name', 'taxon'], inplace=True)
+
+            if self.compute_scg_coverages:
+                matrix = sps.coo_matrix((dfx.coverage, (dfx.index.labels[0], dfx.index.labels[1]))).todense().tolist()
+            else:
+                matrix = sps.coo_matrix((dfx.times_observed, (dfx.index.labels[0], dfx.index.labels[1]))).todense().tolist()
+
+            rows = dfx.index.levels[0].tolist()
+            cols = ['contigs_db_name'] + dfx.index.levels[1].tolist()
+
+            output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, taxonomic_level)
+            with open(output_file_path, 'w') as output:
+                output.write('\t'.join(cols) + '\n')
+                for i in range(0, len(matrix)):
+                    output.write('\t'.join([rows[i]] + ['%.2f' % c for c in matrix[i]]) + '\n')
+
+                self.run.info('Output matrix for "%s"' % taxonomic_level, output_file_path)
 
 
     def report_scg_frequencies_as_TAB_delimited_file(self):
