@@ -268,8 +268,8 @@ class SanityCheck(object):
                 if self.output_file_path:
                     filesnpaths.is_output_file_writable(self.output_file_path)
 
-                if self.raw_output or self.long_format:
-                    raise ConfigError("Haha in this mode you can't ask for the raw output or long format .. yet (we know that "
+                if self.raw_output or self.matrix_format:
+                    raise ConfigError("Haha in this mode you can't ask for the raw output or matrix format .. yet (we know that "
                                       "the parameter space of this program is like a mine field and we are very upset about it "
                                       "as well).")
 
@@ -337,9 +337,9 @@ class SanityCheck(object):
                 if not self.output_file_prefix:
                     raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file prefix :/")
 
-                if self.raw_output and self.long_format:
-                    raise ConfigError("Please don't request anvi'o to report the output both in raw and long format. Raw output "
-                                      "is the very ugly version of the long format anyway :(")
+                if self.raw_output and self.matrix_format:
+                    raise ConfigError("Please don't request anvi'o to report the output both in raw and matrix format. Anvi'o shall "
+                                      "not be confused :(")
 
                 if self.output_file_prefix:
                     filesnpaths.is_output_file_writable(self.output_file_prefix)
@@ -377,7 +377,7 @@ class SCGTaxonomyArgs(object):
         self.internal_genomes = A('internal_genomes')
         self.external_genomes = A('external_genomes')
         self.user_taxonomic_level = A('taxonomic_level')
-        self.long_format = A('long_format')
+        self.matrix_format = A('matrix_format')
         self.raw_output = A('raw_output')
 
         if format_args_for_single_estimator:
@@ -387,7 +387,7 @@ class SCGTaxonomyArgs(object):
             self.external_genomes = None
             self.output_file_path = None
             self.output_file_prefix = None
-            self.long_format = None
+            self.matrix_format = None
             self.raw_output = None
 
         self.skip_sanity_check = False
@@ -438,7 +438,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
         self.run.info("Taxonomic level of interest", self.user_taxonomic_level or "(None specified by the user, so 'all levels')")
         self.run.info("Output file prefix", self.output_file_prefix)
-        self.run.info("Output long format", self.long_format)
+        self.run.info("Output in matrix format", self.matrix_format)
         self.run.info("Output raw data", self.raw_output)
         self.run.info("SCG coverages will be computed?", self.compute_scg_coverages)
 
@@ -702,10 +702,10 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         if self.raw_output:
             self.store_scg_taxonomy_super_dict_raw(scg_taxonomy_super_dict_multi)
         else:
-            if self.long_format:
-                self.store_scg_taxonomy_super_dict_multi_long_format(scg_taxonomy_super_dict_multi)
-            else:
+            if self.matrix_format:
                 self.store_scg_taxonomy_super_dict_multi_matrix_format(scg_taxonomy_super_dict_multi)
+            else:
+                self.store_scg_taxonomy_super_dict_multi_long_format(scg_taxonomy_super_dict_multi)
 
 
     def store_scg_taxonomy_super_dict_multi_long_format(self, scg_taxonomy_super_dict_multi):
