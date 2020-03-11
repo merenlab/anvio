@@ -293,7 +293,7 @@ D = {
     'internal-genomes': (
             ['-i', '--internal-genomes'],
             {'metavar': 'FILE_PATH',
-             'help': "A five-column TAB-delimited flat text file. The header line must contain thse columns: 'name', 'bin_id', "
+             'help': "A five-column TAB-delimited flat text file. The header line must contain these columns: 'name', 'bin_id', "
                      "'collection_id', 'profile_db_path', 'contigs_db_path'. Each line should list a single entry, where 'name' "
                      "can be any name to describe the anvi'o bin identified as 'bin_id' that is stored in a collection."}
                 ),
@@ -565,7 +565,7 @@ D = {
              'action': 'store_true',
              'help': "When anvi'o knows all both taxonomic affiliations and coverages across samples for single-copy "
                      "core genes, it can, in theory add this information to the profile database. With this flag you "
-                     "can isntruct anvi'o to do that and find information on taxonomy in the `layers` tab of your "
+                     "can instruct anvi'o to do that and find information on taxonomy in the `layers` tab of your "
                      "interactive interface."}
                 ),
     'taxonomy-database': (
