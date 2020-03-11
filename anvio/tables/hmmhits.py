@@ -283,6 +283,8 @@ class TablesForHMMHits(Table):
 
 
     def remove_source(self, source):
+        """Remove an HMM source from the database."""
+
         tables_with_source = [
             t.hmm_hits_info_table_name,
             t.hmm_hits_table_name,
@@ -317,6 +319,8 @@ class TablesForHMMHits(Table):
 
 
     def append(self, source, reference, kind_of_search, domain, all_genes, search_results_dict):
+        """Append a new HMM source in the contigs database."""
+
         # we want to define unique identifiers for each gene first. this information will be used to track genes that will
         # break into multiple pieces due to arbitrary split boundaries. while doing that, we will add the 'source' info
         # into the dictionary, so it perfectly matches to the table structure
