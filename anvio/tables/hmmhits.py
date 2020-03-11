@@ -332,7 +332,6 @@ class TablesForHMMHits(Table):
         # we want to define unique identifiers for each gene first. this information will be used to track genes that will
         # break into multiple pieces due to arbitrary split boundaries. while doing that, we will add the 'source' info
         # into the dictionary, so it perfectly matches to the table structure
-
         for entry_id in search_results_dict:
             hit = search_results_dict[entry_id]
 
@@ -344,8 +343,6 @@ class TablesForHMMHits(Table):
                                                                      str(gene_call['start']),
                                                                      str(gene_call['stop'])]).encode('utf-8')).hexdigest()
             hit['source'] = source
-
-        self.remove_source(source)
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
