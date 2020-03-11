@@ -651,6 +651,7 @@ class KeggMetabolismEstimator(KeggContext):
         self.progress.update('KOfam hits')
         kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
                                                 where_clause="source = 'KOfam'")
+        min_contig_length_in_contigs_db = contigs_db.db.get_max_value_in_column(t.contigs_info_table_name, "length", return_min_instead=True)
         contigs_db.disconnect()
 
         # get rid of gene calls in genes_in_splits that are not associated with KOfam hits.
@@ -665,6 +666,34 @@ class KeggMetabolismEstimator(KeggContext):
             if anvio.DEBUG:
                 self.run.warning("The following gene calls in your contigs DB were removed from consideration as they \
                 do not have any hits to the KOfam database: %s" % (gene_calls_without_kofam_hits))
+
+        # get rid of splits (and their associated gene calls) that are not in the profile DB
+        if self.profile_db_path:
+            split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
+            split_names_in_contigs_db = set([tpl[0] for tpl in genes_in_splits])
+            splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
+
+            min_contig_length_in_profile_db = ProfileDatabase(self.profile_db_path).meta['min_contig_length']
+
+            if len(splits_missing_in_profile_db):
+                self.progress.reset()
+                self.run.warning("Please note that anvi'o found %s splits in your contigs database with KOfam hits. But only %s of them "
+                                 "appear in the profile database. As a result, anvi'o will now remove the %s splits with KOfam hits"
+                                 "that occur only in the contigs db from all downstream analyses. Where is this difference coming from though? "
+                                 "Well. This is often the case because the 'minimum contig length parameter' set during the `anvi-profile` "
+                                 "step can exclude many contigs from downstream analyses (often for good reasons, too). For "
+                                 "instance, in your case the minimum contig length goes as low as %s nts in your contigs database. "
+                                 "Yet, the minimum contig length set in the profile databaes is %s nts. Hence the difference. Anvi'o "
+                                 "hopes that this explaines some things." % (pp(len(split_names_in_contigs_db)),
+                                                                             pp(len(split_names_in_profile_db)),
+                                                                             pp(len(splits_missing_in_profile_db)),
+                                                                             pp(min_contig_length_in_contigs_db),
+                                                                             pp(min_contig_length_in_profile_db)))
+
+                self.progress.update("Removing %s splits (and associated gene calls) that were missing from the profile db" % pp(len(splits_missing_in_profile_db)))
+                genes_in_splits = [tpl for tpl in genes_in_splits if tpl[0] not in splits_missing_in_profile_db]
+                remaining_gene_calls = [tpl[1] for tpl in genes_in_splits]
+                kofam_hits = [tpl for tpl in kofam_hits if tpl[0] in remaining_gene_calls]
 
         self.progress.end()
 
