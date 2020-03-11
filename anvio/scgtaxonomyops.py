@@ -390,7 +390,7 @@ class SCGTaxonomyArgs(object):
             self.matrix_format = None
             self.raw_output = None
 
-        self.skip_sanity_check = False
+        self.skip_sanity_check = A('skip_sanity_check')
 
 
 class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
