@@ -70,18 +70,23 @@ progress = terminal.Progress()
 
 def main(args):
     if args.external_genomes and (args.contigs_db or args.profile_db):
-        raise ConfigError("If you are interested in using a list of external genomes, you shouldn't be using a contigs db or\
-                           profile db prameters.")
+        raise ConfigError("If you are interested in using a list of external genomes, you shouldn't be using a contigs db or "
+                          "profile db prameters.")
 
     if not (args.internal_genomes or args.external_genomes or args.contigs_db or args.profile_db):
         raise ConfigError("You gotta give this program some input files :/ Come on.")
 
     if args.concatenate_genes:
         if not args.return_best_hit:
-            raise ConfigError("If you want your genes to be concatenated into a multi-alignment file, you must also ask for\
-                               the best hit (using the `--return-best-hit`) flag to avoid issues if there are more than one\
-                               hit for a gene in a given genome. Anvi'o could have set this flag on your behalf, but it just\
-                               is not that kind of a platform :/")
+            raise ConfigError("If you want your genes to be concatenated into a multi-alignment file, you must also ask for "
+                              "the best hit (using the `--return-best-hit`) flag to avoid issues if there are more than one "
+                              "hit for a gene in a given genome. Anvi'o could have set this flag on your behalf, but it just "
+                              "is not that kind of a platform :/")
+
+    if not args.concatenate_genes and args.partition_file:
+        raise ConfigError("Partition files are only relevant when you use the flag `--concatenate-genes`.")
+
+    filesnpaths.is_output_file_writable(args.partition_file) if args.partition_file else None
 
     if args.concatenate_genes:
         # test whether we know about the aligner early on
@@ -89,8 +94,8 @@ def main(args):
         Aligners().select(args.align_with)
 
     if args.max_num_genes_missing_from_bin and not args.gene_names and not args.list_available_gene_names:
-        raise ConfigError("You can only use --max-num-genes-missing-from-bin flag if you already know what gene names you are\
-                           interested in (just to make sure you know what you are doing).")
+        raise ConfigError("You can only use --max-num-genes-missing-from-bin flag if you already know what gene names you are "
+                          "interested in (just to make sure you know what you are doing).")
 
     for param, value in [('--max-num-genes-missing-from-bin', args.max_num_genes_missing_from_bin),
                          ('--min-num-bins-gene-occurs', args.min_num_bins_gene_occurs)]:
@@ -118,8 +123,8 @@ def main(args):
         if hmm_sources:
             missing_hmm_sources = [s for s in hmm_sources if s not in info_table]
             if(missing_hmm_sources):
-                raise ConfigError("At least one of the HMM sources you requested are missing form the HMMs the contigs database\
-                                   knows about :/ Here they are: '%s'" % (', '.join(missing_hmm_sources)))
+                raise ConfigError("At least one of the HMM sources you requested are missing form the HMMs the contigs database "
+                                  "knows about :/ Here they are: '%s'" % (', '.join(missing_hmm_sources)))
 
         if args.list_hmm_sources:
             hmmops.SequencesForHMMHits(args.contigs_db).list_available_hmm_sources()
@@ -167,8 +172,8 @@ def main(args):
         if len(bins_removed):
             run.info('Filtered hits', '%d hits remain after filtering for `--max-num-genes-missing-from-bin` flag' % (len(hmm_sequences_dict)))
 
-            run.warning('The `--max-num-genes-missing-from-bin` flag caused the removal of %d bins (or genomes, whatever)\
-                         from your analysis. This is the list of bins that will live in our memories: %s' % \
+            run.warning('The `--max-num-genes-missing-from-bin` flag caused the removal of %d bins (or genomes, whatever) '
+                        'from your analysis. This is the list of bins that will live in our memories: %s' % \
                                                 (len(bins_removed), ', '.join(bins_removed)))
 
     if args.min_num_bins_gene_occurs is not None:
@@ -178,9 +183,9 @@ def main(args):
         if len(genes_removed):
             run.info('Filtered hits', '%d hits remain after filtering for `--min-num-bins-gene-occurs` flag' % (len(hmm_sequences_dict)))
 
-            run.warning("The `--min-num-bins-gene-occurs` parameter caused the removal of %d genes from your analysis because \
-                         they occurred in less than %d bins/genomes in your analysis. This is the list of genes that gon'\
-                         buhbye: %s." % (len(genes_removed), int(args.min_num_bins_gene_occurs), ', '.join(genes_removed)))
+            run.warning("The `--min-num-bins-gene-occurs` parameter caused the removal of %d genes from your analysis because "
+                        "they occurred in less than %d bins/genomes in your analysis. This is the list of genes that gon' "
+                        "buhbye: %s." % (len(genes_removed), int(args.min_num_bins_gene_occurs), ', '.join(genes_removed)))
 
             # update the gene names variable .. this is such a mess :( "WHO WROTE THIS SHIT CODE", yelled Meren, looking
             # at this cursed main function in his office on a Saturday night, knowing very well who did it. thanks
@@ -189,14 +194,14 @@ def main(args):
                 gene_names = [g for g in gene_names if g not in genes_removed]
 
     if args.return_best_hit:
-        run.warning("You requested only the best hits to be reported, which means, if, say, there are more than one RecA\
-                     hits in a bin for a given HMM source, only the one with the lowest e-value will be kept, and others\
-                     will be removed from your final results.")
+        run.warning("You requested only the best hits to be reported, which means, if, say, there are more than one RecA "
+                    "hits in a bin for a given HMM source, only the one with the lowest e-value will be kept, and others "
+                    "will be removed from your final results.")
 
         if not args.profile_db:
-            run.warning("You requested to get only the best hits, but you did not provide a profile database. At this point\
-                         anvi'o just hopes you know what you are doing. Since this is like the zone of 'potentially a terrible\
-                         idea but it may be quite relevant when done right'.")
+            run.warning("You requested to get only the best hits, but you did not provide a profile database. At this point "
+                        "anvi'o just hopes you know what you are doing. Since this is like the zone of 'potentially a terrible "
+                        "idea but it may be quite relevant when done right'.")
 
         hmm_sequences_dict = s.filter_hmm_sequences_dict_for_splits_to_keep_only_best_hits(hmm_sequences_dict)
         CHK()
@@ -216,6 +221,7 @@ def main(args):
     s.store_hmm_sequences_into_FASTA(hmm_sequences_dict,
                                      args.output_file,
                                      concatenate_genes=args.concatenate_genes,
+                                     partition_file_path=args.partition_file,
                                      separator=separator,
                                      wrap=None if args.no_wrap else 120,
                                      genes_order=list(gene_names) if len(gene_names) else None,
@@ -274,6 +280,7 @@ if __name__ == '__main__':
                                        using the `gene-names` argument. Each concatenated sequence will be separated from the other\
                                        ones by the `separator`.")
     groupG.add_argument(*anvio.A('concatenate-genes'), **anvio.K('concatenate-genes'))
+    groupG.add_argument(*anvio.A('partition-file'), **anvio.K('partition-file'))
     groupG.add_argument(*anvio.A('max-num-genes-missing-from-bin'), **anvio.K('max-num-genes-missing-from-bin'))
     groupG.add_argument(*anvio.A('min-num-bins-gene-occurs'), **anvio.K('min-num-bins-gene-occurs'))
     groupG.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))

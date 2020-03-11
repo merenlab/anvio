@@ -48,8 +48,8 @@ def main(args):
         profile_db = dbops.ProfileDatabase(args.profile_db)
 
         if not profile_db.meta['contigs_db_hash']:
-            raise ConfigError("This profile database is not affiliated with any contigs database. Anvi'o currently does not\
-                               summarize such stuff :/")
+            raise ConfigError("This profile database is not affiliated with any contigs database. Anvi'o currently does not "
+                              "summarize such stuff :/")
         profile_db.disconnect()
 
         if not args.contigs_db:
@@ -57,8 +57,8 @@ def main(args):
 
         summary = summarizer.ProfileSummarizer(args)
     else:
-        raise ConfigError("Well. '%s' is neither an anvi'o pan database, nor an anvi'o profile database. There is nothing this\
-                            program can't do for you if you feed it with the right stuff. Just sayin'" % args.pan_or_profile_db)
+        raise ConfigError("Well. '%s' is neither an anvi'o pan database, nor an anvi'o profile database. There is nothing this "
+                           "program can't do for you if you feed it with the right stuff. Just sayin'" % args.pan_or_profile_db)
 
     summary.process()
 

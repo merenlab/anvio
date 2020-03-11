@@ -45,14 +45,14 @@ class Sourmash:
         self.kmer_size = A('kmer_size') or 51
         self.scale = A('scale') or 1000
 
-        self.run.warning("Anvi'o will use 'sourmash' by Brown et al. (DOI: 10.21105/joss.00027) to compute kmer sequences and determine mash distances.\
-                         If you publish your findings, please do not forget to properly credit their work",
+        self.run.warning("Anvi'o will use 'sourmash' by Brown et al. (DOI: 10.21105/joss.00027) to compute kmer sequences and determine mash distances. "
+                        "If you publish your findings, please do not forget to properly credit their work",
                          lc='green', header="CITATION")
 
         if self.num_threads != 1:
             self.num_threads = 1
-            self.run.warning("Anvi'o speaking: sourmash currently doesn't support multithreading.\
-                             Anvi'o will have to reduce your number of threads to one :(")
+            self.run.warning("Anvi'o speaking: sourmash currently doesn't support multithreading. "
+                            "Anvi'o will have to reduce your number of threads to one :(")
 
         self.run.info('[sourmash] Log file path', self.log_file_path, nl_after=1)
 
@@ -87,9 +87,9 @@ class Sourmash:
         exit_code = utils.run_command(compute_command, self.log_file_path, remove_log_file_if_exists=False)
         if int(exit_code):
             self.progress.end()
-            raise ConfigError("sourmash returned with non-zero exit code, there may be some errors.\
-                              Please check the log file `%s` for details. Offending command: \
-                              `%s` ..." % (self.log_file_path, ' '.join([str(x) for x in compute_command[:7]])))
+            raise ConfigError("sourmash returned with non-zero exit code, there may be some errors. "
+                             "Please check the log file `%s` for details. Offending command: "
+                             "`%s` ..." % (self.log_file_path, ' '.join([str(x) for x in compute_command[:7]])))
 
         self.progress.update('Computing similarity matrix for kmer=%d, scale=%d' % (self.kmer_size, self.scale))
         compare_command = [self.program_name, 'compare',
@@ -101,9 +101,9 @@ class Sourmash:
         exit_code = utils.run_command(compare_command, self.log_file_path, remove_log_file_if_exists=False)
         if int(exit_code):
             self.progress.end()
-            raise ConfigError("sourmash returned with non-zero exit code, there may be some errors.\
-                              Please check the log file `%s` for details. Offending command: \
-                              `%s` ..." % (self.log_file_path, ' '.join([str(x) for x in compute_command[:7]])))
+            raise ConfigError("sourmash returned with non-zero exit code, there may be some errors. "
+                             "Please check the log file `%s` for details. Offending command: "
+                             "`%s` ..." % (self.log_file_path, ' '.join([str(x) for x in compute_command[:7]])))
 
         self.results[report_name] = utils.get_TAB_delimited_file_as_dictionary(os.path.join('output', report_name + '.txt'),
                                                                                indexing_field=-1,

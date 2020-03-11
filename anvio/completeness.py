@@ -94,11 +94,11 @@ class Completeness:
         if len(self.domains_missing_in_SCG_domain_predictor):
             num_domains_missing = len(self.domains_missing_in_SCG_domain_predictor)
             self.progress.reset()
-            self.run.warning("OK. We have a problem. You seem to have single-copy core gene collections for among your HMM hits %s that\
-                              are not included when the anvi'o domain predictor was trained :/ Here is the list of domains that are making\
-                              us upset here: \"%s\". This means either you put a new HMM single-copy core gene collection to the anvi'o HMMs\
-                              directory, or gave it as a parameter, and run `anvi-run-hmms` without updating the classifier anvi'o uses to\
-                              resolve domains for proper completion/redundancy estimates." % \
+            self.run.warning("OK. We have a problem. You seem to have single-copy core gene collections for among your HMM hits %s that "
+                             "are not included when the anvi'o domain predictor was trained :/ Here is the list of domains that are making "
+                             "us upset here: \"%s\". This means either you put a new HMM single-copy core gene collection to the anvi'o HMMs "
+                             "directory, or gave it as a parameter, and run `anvi-run-hmms` without updating the classifier anvi'o uses to "
+                             "resolve domains for proper completion/redundancy estimates." % \
                                            ('a domain' if num_domains_missing == 1 else '%s domains' % num_domains_missing,
                                             ', '.join(self.domains_missing_in_SCG_domain_predictor)))
             self.initialized_properly = False
@@ -106,12 +106,12 @@ class Completeness:
         if len(self.domains_missing_in_SCGs_run_for_contigs):
             num_domains_missing = len(self.domains_missing_in_SCGs_run_for_contigs)
             self.progress.reset()
-            self.run.warning("Things are not quite OK. It seems %d of the domains that are known to the classifier anvi'o uses to predict\
-                              domains for completion estimation are missing from your contigs database. This means, you didn't run the\
-                              program `anvi-run-hmms` with default parameters, or you removed some essential SCG domains from it later. Or\
-                              you did something else. Who knows. Here is the list of domains that are making us upset here: \"%s\". We hope\
-                              you are happy. If you want to get rid of this warning you can run `anvi-run-hmms` on this your contigs database\
-                              whenever it is convenient to you, so anvi'o can make sure you have everything in the right place." % \
+            self.run.warning("Things are not quite OK. It seems %d of the domains that are known to the classifier anvi'o uses to predict "
+                             "domains for completion estimation are missing from your contigs database. This means, you didn't run the "
+                             "program `anvi-run-hmms` with default parameters, or you removed some essential SCG domains from it later. Or "
+                             "you did something else. Who knows. Here is the list of domains that are making us upset here: \"%s\". We hope "
+                             "you are happy. If you want to get rid of this warning you can run `anvi-run-hmms` on this your contigs database "
+                             "whenever it is convenient to you, so anvi'o can make sure you have everything in the right place." % \
                                            (num_domains_missing, ', '.join(self.domains_missing_in_SCG_domain_predictor)))
 
             # since we just established that the user did not run these domains for their contigs database,
@@ -127,9 +127,9 @@ class Completeness:
         if len(self.sources_missing_in_SCGs_run_for_contigs):
             num_sources_missing = len(self.sources_missing_in_SCGs_run_for_contigs)
             self.progress.reset()
-            self.run.warning("OK. We have a VERY interesting problem. You have all the SCG domains necessary to run the predictor covered\
-                              in your contigs database, however, %s that are used during the training of the domain predictor does not seem\
-                              to occur in your contigs database :/ Here is the list of HMM sources that are making us upset here: \"%s\".\
+            self.run.warning("OK. We have a VERY interesting problem. You have all the SCG domains necessary to run the predictor covered "
+                             "in your contigs database, however, %s that are used during the training of the domain predictor does not seem "
+                             "to occur in your contigs database :/ Here is the list of HMM sources that are making us upset here: \"%s\".\
                               This most likely means you are using a new version of anvi'o with older single-copy core gene sources, or you are\
                               exploring new single-copy core gene sources to see how they behave. That's all good and very exciting, but unfortunately\
                               anvi'o will not be able to predict domains due to this incompatibility here. You could solve this problem by running\
@@ -413,15 +413,15 @@ class Completeness:
         if best_matching_domain and best_matching_domain not in control_domains:
             if best_matching_domain not in scg_hmm_hits:
                 self.progress.reset()
-                self.run.warning("Just so you know: Your process branched into a part of the anvi'o code that run into a weird situation.\
-                                  and wishes to tell you something. This may come accross confusing, and we apologize for that. The thing is,\
-                                  anvi'o is trying to estimate the completion and redundancy of a set of contigs here. Maybe it is doing it\
-                                  because you are running the interactive interface and clicked on something, or you are summarizing a\
-                                  collection, or doing something we never envisioned you would do. The bottom line is this: anvi'o predicts\
-                                  that this set of contigs belong to the domain %s. However, it seems the single-copy core genes for that\
-                                  domain were not run on this contigs database. Hence, you will not get any completion and redundancy\
-                                  estimates for this one :( That is fine and things will continue to run smoothly, but we thought you should\
-                                  know. Because knowledge is power .. even when you're not sure what it means." % best_matching_domain)
+                self.run.warning("Just so you know: Your process branched into a part of the anvi'o code that run into a weird situation. "
+                                 "and wishes to tell you something. This may come accross confusing, and we apologize for that. The thing is, "
+                                 "anvi'o is trying to estimate the completion and redundancy of a set of contigs here. Maybe it is doing it "
+                                 "because you are running the interactive interface and clicked on something, or you are summarizing a "
+                                 "collection, or doing something we never envisioned you would do. The bottom line is this: anvi'o predicts "
+                                 "that this set of contigs belong to the domain %s. However, it seems the single-copy core genes for that "
+                                 "domain were not run on this contigs database. Hence, you will not get any completion and redundancy "
+                                 "estimates for this one :( That is fine and things will continue to run smoothly, but we thought you should "
+                                 "know. Because knowledge is power .. even when you're not sure what it means." % best_matching_domain)
                 percent_completion, percent_redundancy = 0.0, 0.0
             else:
                 source = self.SCG_domain_predictor.SCG_domain_to_source[best_matching_domain]

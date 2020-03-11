@@ -81,9 +81,9 @@ class TableForItemAdditionalData(Table):
         self.just_do_it = A('just_do_it')
 
         if not self.db_path:
-            raise ConfigError("ItemAdditionalData class is inherited with args object that did not\
-                               contain any database path :/ Even though any of the following would\
-                               have worked: `pan_or_profile_db`, `profile_db`, `pan_db` :(")
+            raise ConfigError("ItemAdditionalData class is inherited with args object that did not "
+                              "contain any database path :/ Even though any of the following would "
+                              "have worked: `pan_or_profile_db`, `profile_db`, `pan_db` :(")
 
         database = db.DB(self.db_path, None, ignore_version=True)
         self.item_additional_data_keys = database.get_single_column_from_table(self.table_name, 'key')

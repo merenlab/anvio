@@ -87,8 +87,8 @@ class TableForSCGTaxonomy(Table):
         dictonnary_taxonomy_by_index=self.database.get_table_as_dict(t.scg_taxonomy_table_name)
         self.database.disconnect()
         if not len(dictonnary_taxonomy_by_index):
-            raise ConfigError("Your contigs database does not seem to contain any information anvi'o can use to\
-                               estimate taxonomy of anything. Please try running the program 'anvi-run-scg-taxonomy'\
-                               first.")
+            raise ConfigError("Your contigs database does not seem to contain any information anvi'o can use to "
+                              "estimate taxonomy of anything. Please try running the program 'anvi-run-scg-taxonomy' "
+                              "first.")
         else:
             return(dictonnary_taxonomy_by_index)

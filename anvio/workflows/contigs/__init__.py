@@ -66,7 +66,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.rule_acceptable_params_dict['anvi_run_scg_taxonomy'] = ['run', '--scgs-taxonomy-data-dir']
 
-        self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir']
+        self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir', '--skip-scanning-trnas']
 
         self.rule_acceptable_params_dict['anvi_run_pfams'] = ['run', '--pfam-data-dir']
 
@@ -147,9 +147,9 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         run_anvi_run_scg_taxonomy = self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]) == True
         if run_anvi_run_scg_taxonomy:
             if not run_anvi_run_hmms:
-                self.run.warning('You chose to run anvi_run_scg_taxonomy, but you didn\'t choose to run\
-                                  anvi_run_hmms. Continue at your own risk. If your contigs databases\
-                                  don\'t have HMM hits stored already then anvi_run_scg_taxonomy will fail.')
+                self.run.warning('You chose to run anvi_run_scg_taxonomy, but you didn\'t choose to run '
+                                 'anvi_run_hmms. Continue at your own risk. If your contigs databases '
+                                 'don\'t have HMM hits stored already then anvi_run_scg_taxonomy will fail.')
             optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "anvi_run_scg_taxonomy-{group}.done"))
 
         if self.get_param_value_from_config(["anvi_script_run_eggnog_mapper", "run"]) == True:
@@ -172,15 +172,15 @@ class ContigsDBWorkflow(WorkflowSuperClass):
     def sanity_check_contigs_project_name(self):
         contigs_project_name = self.get_param_value_from_config(['anvi_gen_contigs_database', '--project-name'])
         if contigs_project_name != self.default_config['anvi_gen_contigs_database']['--project-name'] and contigs_project_name is not None:
-            self.run.warning('You chose to set the "project_name" for your contigs databases\
-                         in the config file to %s. You are welcomed to do that, but at your own\
-                         risk. Just so you know, by default the project name would match\
-                         the name for each contigs file (as defined either in the samples_txt\
-                         or fasta_txt file that you supplied), by choosing to provide\
-                         a different name, it means that all your contigs databases would have\
-                         the same name, unless you incloded "{group}" in the name you provided\
-                         but even then, we did not test that option and we are not sure it would\
-                         work...' % contigs_project_name)
+            self.run.warning('You chose to set the "project_name" for your contigs databases '
+                        'in the config file to %s. You are welcomed to do that, but at your own '
+                        'risk. Just so you know, by default the project name would match '
+                        'the name for each contigs file (as defined either in the samples_txt '
+                        'or fasta_txt file that you supplied), by choosing to provide '
+                        'a different name, it means that all your contigs databases would have '
+                        'the same name, unless you incloded "{group}" in the name you provided '
+                        'but even then, we did not test that option and we are not sure it would '
+                        'work...' % contigs_project_name)
 
 
     def get_contigs_db_path(self):
@@ -299,10 +299,10 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         columns = next(iter(self.contigs_information.values()))
         bad_columns = [c for c in columns if c not in w.get_fields_for_fasta_information()]
         if bad_columns:
-            raise ConfigError("Your fasta_txt file contains columns that are \
-                               not familiar to us. These are the only columns \
-                               that we accept: '%s'. These are the columns that \
-                               we don't like in your file: '%s'." % (", ".join(w.get_fields_for_fasta_information()), \
+            raise ConfigError("Your fasta_txt file contains columns that are "
+                              "not familiar to us. These are the only columns "
+                              "that we accept: '%s'. These are the columns that "
+                              "we don't like in your file: '%s'." % (", ".join(w.get_fields_for_fasta_information()), \
                                                                    ", ".join(bad_columns)))
 
         contigs_with_external_functions_and_no_external_gene_calls = \
@@ -310,7 +310,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                     if self.contigs_information[c].get('gene_functional_annotation')
                     and not self.contigs_information[c].get('external_gene_calls')]
         if contigs_with_external_functions_and_no_external_gene_calls:
-            raise ConfigError('You can only provide gene_functional_annotation in \
-                               your fasta_txt if you also provide external_gene_calls. \
-                               The following entries in "%s" only have functions, but no \
-                               gene calls: "%s".' % (self.fasta_txt_file, ', '.join(contigs_with_external_functions_and_no_external_gene_calls)))
+            raise ConfigError('You can only provide gene_functional_annotation in '
+                              'your fasta_txt if you also provide external_gene_calls. '
+                              'The following entries in "%s" only have functions, but no '
+                              'gene calls: "%s".' % (self.fasta_txt_file, ', '.join(contigs_with_external_functions_and_no_external_gene_calls)))

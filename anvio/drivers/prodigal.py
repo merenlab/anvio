@@ -64,8 +64,8 @@ class Prodigal:
         fields = defline.split()
 
         if not len(fields) != 8 or fields[6] not in ['1', '-1']:
-            raise ConfigError('Somethings is wrong with this prodigal output :( The parser for the\
-                                version %s is failing to make sense of it.' % (self.installed_version))
+            raise ConfigError('Somethings is wrong with this prodigal output :( The parser for the '
+                               'version %s is failing to make sense of it.' % (self.installed_version))
 
         hit['direction'] = 'f' if fields[6] == '1' else 'r'
         hit['start'] = int(fields[2]) - 1
@@ -91,9 +91,9 @@ class Prodigal:
         version_found = output.split(b'\n')[1].split()[1].split(b':')[0].lower().decode("utf-8")
 
         if version_found not in self.available_parsers:
-            raise ConfigError("The prodigal version installed on your system is not compatible\
-                                with any of the versions anvi'o can work with. Please install\
-                                any of the following versions: %s" % (', '.join(list(self.available_parsers.keys()))))
+            raise ConfigError("The prodigal version installed on your system is not compatible "
+                               "with any of the versions anvi'o can work with. Please install "
+                               "any of the following versions: %s" % (', '.join(list(self.available_parsers.keys()))))
 
         self.installed_version = version_found
         self.parser = self.available_parsers[version_found]
@@ -121,13 +121,17 @@ class Prodigal:
 
         if self.prodigal_translation_table:
             cmd_line.extend(['-g', self.prodigal_translation_table])
-            self.run.warning("Prodigal translation table is set to '%s' (whatever you did has worked so far, but\
-                              keep an eye for errors from prodigal in case it doesn't like your translation table\
-                              parameter). This means we will not use prodigal in the metagenomics mode, due to this\
-                              issue: https://github.com/hyattpd/Prodigal/issues/19. If that issue is closed, and you\
-                              are reading this message, then please contact an anvi'o developer." % str(self.prodigal_translation_table))
+            self.run.warning("Prodigal translation table is set to '%s' (whatever you did has worked so far, but "
+                             "keep an eye for errors from prodigal in case it doesn't like your translation table "
+                             "parameter). This means we will not use prodigal in the metagenomics mode, due to this "
+                             "issue: https://github.com/hyattpd/Prodigal/issues/19. If that issue is closed, and you "
+                             "are reading this message, then please contact an anvi'o developer." % str(self.prodigal_translation_table))
         else:
             cmd_line.extend(['-p', 'meta'])
+
+        self.run.warning("Anvi'o will use 'prodigal' by Hyatt et al (doi:10.1186/1471-2105-11-119) to identify open "
+                         "reading frames in your data. When you publish your findings, please do not forget to properly "
+                         "credit their work.", lc='green', header="CITATION")
 
         self.progress.new('Processing')
         self.progress.update('Identifying ORFs in contigs ...')
@@ -136,10 +140,10 @@ class Prodigal:
 
         if not os.path.exists(self.amino_acid_sequences_in_contigs):
             self.progress.end()
-            raise ConfigError("Something went wrong with prodigal, and it failed to generate the\
-                               expected output :/ Fortunately, this log file should tell you what\
-                               might be the problem: '%s'. Please do not forget to include this\
-                               file if you were to ask for help." % log_file_path)
+            raise ConfigError("Something went wrong with prodigal, and it failed to generate the "
+                              "expected output :/ Fortunately, this log file should tell you what "
+                              "might be the problem: '%s'. Please do not forget to include this "
+                              "file if you were to ask for help." % log_file_path)
 
         if filesnpaths.is_file_empty(self.amino_acid_sequences_in_contigs):
             self.progress.end()

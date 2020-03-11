@@ -49,13 +49,13 @@ def print_proper(args, collection, completeness, run, progress):
 
     print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
 
-    run.info_single("The 'domain' shown in this table is the domain anvi'o predicted for your contigs in a given bin with the\
-                     amount of confidence for that call in the 'domain' column. If the domain is 'mixed', it means it is very\
-                     likely you have contigs in your bin that spans accross multiple domains of life (maybe it is worth a Nobel,\
-                     but more likely it is just garbage). If the domain is 'blank', it means anvi'o did not find enough signal \
-                     from single-copy core genes to determine what domain it should use to estimate the completion and redundancy\
-                     of this bin accurately. You can get much more information about these estimations by running the same command\
-                     line with the additinal flag `--debug`.", nl_before=1, nl_after=1)
+    run.info_single("The 'domain' shown in this table is the domain anvi'o predicted for your contigs in a given bin with the "
+                    "amount of confidence for that call in the 'domain' column. If the domain is 'mixed', it means it is very "
+                    "likely you have contigs in your bin that spans accross multiple domains of life (maybe it is worth a Nobel, "
+                    "but more likely it is just garbage). If the domain is 'blank', it means anvi'o did not find enough signal "
+                    "from single-copy core genes to determine what domain it should use to estimate the completion and redundancy "
+                    "of this bin accurately. You can get much more information about these estimations by running the same command "
+                    "line with the additinal flag `--debug`.", nl_before=1, nl_after=1)
 
     if output_file_path:
         utils.store_array_as_TAB_delimited_file(table, output_file_path, header=header)
@@ -66,8 +66,8 @@ def print_improper(args, collection, completeness, run, progress):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     output_file_path = A('output_file')
 
-    run.info_single("Hi. I am the function that is called when the completion class is not initialized properly, and the best I can\
-                     do is to dump all the raw the raw C/R estimates from all domains altogether.")
+    run.info_single("Hi. I am the function that is called when the completion class is not initialized properly, and the best I can "
+                    "do is to dump all the raw the raw C/R estimates from all domains altogether.")
 
     contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
@@ -114,20 +114,20 @@ def print_for_external_genomes(external_genomes_file_path):
                 genomes.pop(genome_name)
 
             if not len(genomes):
-                raise ConfigError("Anvi'o was ignoring genomes that were missing HMMs for single-cop core genes\
-                                   and left with 0 genomes in total. Great job.")
+                raise ConfigError("Anvi'o was ignoring genomes that were missing HMMs for single-cop core genes "
+                                  "and left with 0 genomes in total. Great job.")
 
-            run.warning("%d of your genomes in the external genomes file were missing HMMs for single-copy core\
-                         genes, and since you asked anvi'o to `--just-do-it`, it removed these genomes from the\
-                         list of genomes to be considered. You are left with %d." % (len(missing_hmms), len(genomes)), overwrite_verbose=True)
+            run.warning("%d of your genomes in the external genomes file were missing HMMs for single-copy core "
+                        "genes, and since you asked anvi'o to `--just-do-it`, it removed these genomes from the "
+                        "list of genomes to be considered. You are left with %d." % (len(missing_hmms), len(genomes)), overwrite_verbose=True)
         else:
             if anvio.DEBUG:
-                raise ConfigError("%d of your genomes in the external genomes file are missing HMMs for single-copy core\
-                                   genes. Here is the full list of them: %s." % (len(missing_hmms), ','.join(missing_hmms)))
+                raise ConfigError("%d of your genomes in the external genomes file are missing HMMs for single-copy core "
+                                  "genes. Here is the full list of them: %s." % (len(missing_hmms), ','.join(missing_hmms)))
             else:
-                raise ConfigError("%d of %d of your genomes in the external genomes file are missing HMMs for single-copy core\
-                                   genes. To see the full list, run the same command with `--debug` flag. If you want avni'o\
-                                   to simply ignore the ones that do not have HMMs, run the same command wiht `--just-do-it` flag." \
+                raise ConfigError("%d of %d of your genomes in the external genomes file are missing HMMs for single-copy core "
+                                  "genes. To see the full list, run the same command with `--debug` flag. If you want avni'o "
+                                  "to simply ignore the ones that do not have HMMs, run the same command wiht `--just-do-it` flag." \
                                                     % (len(missing_hmms), len(genomes)))
 
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -147,13 +147,13 @@ def print_for_external_genomes(external_genomes_file_path):
 
     print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
 
-    run.info_single("The 'domain' shown in this table is the domain anvi'o predicted for your contigs in a given bin with the\
-                     amount of confidence for that call in the 'domain' column. If the domain is 'mixed', it means it is very\
-                     likely you have contigs in your bin that spans accross multiple domains of life (maybe it is worth a Nobel,\
-                     but more likely it is just garbage). If the domain is 'blank', it means anvi'o did not find enough signal \
-                     from single-copy core genes to determine what domain it should use to estimate the completion and redundancy\
-                     of this bin accurately. You can get much more information about these estimations by running the same command\
-                     line with the additinal flag `--debug`.", nl_before=1, nl_after=1)
+    run.info_single("The 'domain' shown in this table is the domain anvi'o predicted for your contigs in a given bin with the "
+                    "amount of confidence for that call in the 'domain' column. If the domain is 'mixed', it means it is very "
+                    "likely you have contigs in your bin that spans accross multiple domains of life (maybe it is worth a Nobel, "
+                    "but more likely it is just garbage). If the domain is 'blank', it means anvi'o did not find enough signal "
+                    "from single-copy core genes to determine what domain it should use to estimate the completion and redundancy "
+                    "of this bin accurately. You can get much more information about these estimations by running the same command "
+                    "line with the additinal flag `--debug`.", nl_before=1, nl_after=1)
 
     if output_file_path:
         utils.store_array_as_TAB_delimited_file(table, output_file_path, header=header)
@@ -177,8 +177,8 @@ def print_for_a_single_contigs_db(contigs_db_path, profile_db_path=None, collect
         raise ConfigError("You can't use this program with a profile database but without a collection name. Yes. Because.")
 
     if contigs_db_path and not collection_name:
-        run.warning("You did not provide a collection name. Anvi'o will assume that what is in your contigs database\
-                     is a single genome (or genome bin).")
+        run.warning("You did not provide a collection name. Anvi'o will assume that what is in your contigs database "
+                    "is a single genome (or genome bin).")
 
     if collection_name and collection_name not in collections.collections_dict:
         raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % collection_name)
@@ -215,20 +215,20 @@ def main(args):
 
     if contigs_db_path:
         if external_genomes_file_path:
-            raise ConfigError("You can't work with a single contigs database and a set of external genomes\
-                               at the same time.")
+            raise ConfigError("You can't work with a single contigs database and a set of external genomes "
+                              "at the same time.")
 
         if not profile_db_path and list_collections:
-            raise ConfigError("When there is no profile database involved in your analysis, there is no\
-                               collections to list really :/")
+            raise ConfigError("When there is no profile database involved in your analysis, there is no "
+                              "collections to list really :/")
 
     if external_genomes_file_path:
         if profile_db_path:
-            raise ConfigError("If you want to work with a set of external genomes, there is no use of\
-                               declaring a profile database :/")
+            raise ConfigError("If you want to work with a set of external genomes, there is no use of "
+                              "declaring a profile database :/")
         if collection_name:
-            raise ConfigError("When working with external genomes, collection names are automatically\
-                               determined from the name column of the external genomes file.")
+            raise ConfigError("When working with external genomes, collection names are automatically "
+                              "determined from the name column of the external genomes file.")
 
         if list_collections:
             raise ConfigError("You are working with external genomes, there are no collections to list :/")

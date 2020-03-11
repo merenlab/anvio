@@ -39,15 +39,15 @@ def main(args):
         raise ConfigError("You really need to specify a parser.")
 
     if not args.input_files:
-        raise ConfigError("You need to use '--input-files' parameter to list file(s) that is/are required the\
-                            parser you chose. Please see the documentation for details.")
+        raise ConfigError("You need to use '--input-files' parameter to list file(s) that is/are required the "
+                           "parser you chose. Please see the documentation for details.")
 
     if utils.is_profile_db_merged(args.profile_db) and not utils.is_blank_profile(args.profile_db):
         raise ConfigError("This will not work with merged profile databases :(")
 
     if args.min_abundance < 0 or args.min_abundance > 5:
-        raise ConfigError("The minimum abundance value for taxon names to be included should be equal or\
-                           greater than 0%, and lower than 5% :/")
+        raise ConfigError("The minimum abundance value for taxon names to be included should be equal or "
+                          "greater than 0%, and lower than 5% :/")
 
     parser_obj = parsers.get_parser_obj('taxonomy_layers', args.parser)
 
@@ -90,8 +90,8 @@ def main(args):
         run.info_single("%d entries added into layers additional data as data group '%s'" % (len(data_keys_list), level))
 
         if taxa_excluded_count:
-            run.warning("A total of %d taxon names, which made up %.2f%% of the input data altogether were excluded\
-                         from this import due to the min abundance criterion of %.1f%% for inclusion." % \
+            run.warning("A total of %d taxon names, which made up %.2f%% of the input data altogether were excluded "
+                        "from this import due to the min abundance criterion of %.1f%% for inclusion." % \
                                 (len(taxa_excluded), taxa_excluded_count * 100 / total_count, args.min_abundance))
 
 if __name__ == '__main__':

@@ -36,8 +36,8 @@ def main(args):
     make_default = A('make_default')
 
     if not input_file_path or not db_path:
-        raise ConfigError("Probably it will come as a surprise, but you *must* provide a file path for the\
-                           input order and the target database :/")
+        raise ConfigError("Probably it will come as a surprise, but you *must* provide a file path for the "
+                          "input order and the target database :/")
 
     filesnpaths.is_file_plain_text(input_file_path)
     utils.is_pan_or_profile_db(db_path, genes_db_is_also_accepted=True)
@@ -49,9 +49,9 @@ def main(args):
         try:
             filesnpaths.is_proper_newick(order_data[0])
         except Exception as e:
-            raise ConfigError("Your input file contained a single line and anvi'o thought that it shold be a \
-                               newick tree, but then ETE complained about it, so we are all upset here: '%s'\
-                               :(" % (e))
+            raise ConfigError("Your input file contained a single line and anvi'o thought that it shold be a "
+                              "newick tree, but then ETE complained about it, so we are all upset here: '%s' "
+                              ":(" % (e))
 
         order_data = order_data[0]
         order_data_type_newick = True

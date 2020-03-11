@@ -43,9 +43,9 @@ def main(args):
 
         missing_bins = [b for b in bin_names_of_interest if b not in bin_names_in_collection]
         if len(missing_bins):
-            raise ConfigError("Some bin names you declared do not appear to be in the collection %s. \
-                                These are the bins that are missing: %s, these are the bins that are \
-                                actually in your collection: %s" % (args.collection_name, missing_bins, bin_names_in_collection))
+            raise ConfigError("Some bin names you declared do not appear to be in the collection %s. "
+                               "These are the bins that are missing: %s, these are the bins that are "
+                               "actually in your collection: %s" % (args.collection_name, missing_bins, bin_names_in_collection))
     elif args.bin_id:
         if args.bin_id not in bin_names_in_collection:
             raise ConfigError("The bin you declared, %s, does not appear to be in the collection %s." \

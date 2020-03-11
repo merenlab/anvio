@@ -66,11 +66,11 @@ class EggNOGMapper:
         self.COGs_data = cogs.COGsData(args)
 
         if not self.COGs_data.initialized:
-            raise ConfigError("It seems you don't have your COG data set up on this system. Unfortunately EggNOGmapper class\
-                                depends on it, so this is the end of the road for you. If you set up your COG directory to\
-                                a specific path, you can use `--cog-data-dir` parameter to show anvi'o where it is. If you\
-                                never set up one, then maybe it is time for you to take a look at the program\
-                                `anvi-setup-ncbi-cogs`.")
+            raise ConfigError("It seems you don't have your COG data set up on this system. Unfortunately EggNOGmapper class "
+                               "depends on it, so this is the end of the road for you. If you set up your COG directory to "
+                               "a specific path, you can use `--cog-data-dir` parameter to show anvi'o where it is. If you "
+                               "never set up one, then maybe it is time for you to take a look at the program "
+                               "`anvi-setup-ncbi-cogs`.")
 
         try:
             self.num_threads = int(self.num_threads) if self.num_threads else None
@@ -101,17 +101,18 @@ class EggNOGMapper:
 
         self.available_parsers = {'0.12.6': self.__parser_1,
                                   '1.0.3': self.__parser_2,
-                                  '2.0.0': self.__parser_3}
+                                  '2.0.0': self.__parser_3,
+                                  '2.0.1': self.__parser_3}
 
         self.check_version()
 
         if not self.num_threads:
             try:
-                run.warning("You have not set the number of threads, and the default is whatever the default is for eggnog-mapper. You\
-                             may really want to change that since if you have a large number of genes to annotate, this may take a very\
-                             long time. If you don't want to see this message again, just set the number of threads you want eggnog-mapper\
-                             to use explicitly. You can press CTRL + C to cancel this run, or simply do nothing since your operation\
-                             will contine in probably like 2 seconds or less ... depending how fast you read.")
+                run.warning("You have not set the number of threads, and the default is whatever the default is for eggnog-mapper. You "
+                            "may really want to change that since if you have a large number of genes to annotate, this may take a very "
+                            "long time. If you don't want to see this message again, just set the number of threads you want eggnog-mapper "
+                            "to use explicitly. You can press CTRL + C to cancel this run, or simply do nothing since your operation "
+                            "will contine in probably like 2 seconds or less ... depending how fast you read.")
                 time.sleep(25)
             except KeyboardInterrupt:
                 sys.exit()
@@ -123,8 +124,8 @@ class EggNOGMapper:
         if self.annotation and not self.use_version:
             raise ConfigError("You must provide a version number to use if you have your own annotations.")
         elif not self.annotation and self.use_version:
-            raise ConfigError("If you are not providing any annotations, you must let anvi'o figure out what\
-                               version of emapper to use.")
+            raise ConfigError("If you are not providing any annotations, you must let anvi'o figure out what "
+                              "version of emapper to use.")
 
 
         if self.annotation:
@@ -140,10 +141,10 @@ class EggNOGMapper:
                 raise ConfigError("Anvi'o does not know about the version you requested. Here are the ones available: %s" % \
                                                         (', '.join(list(self.available_parsers.keys()))))
             else:
-                raise ConfigError("Bad news :( This version of anvi'o does not have a parser for the eggnog-mapper installed\
-                                    on your system. This is the version you have on your system (if this looks totally alien\
-                                    to you it may indicate another problem, in which case consider writing to anvi'o developers):\
-                                    %s. For your reference, these are the versions anvi'o knows what to do with: %s" % \
+                raise ConfigError("Bad news :( This version of anvi'o does not have a parser for the eggnog-mapper installed "
+                                   "on your system. This is the version you have on your system (if this looks totally alien "
+                                   "to you it may indicate another problem, in which case consider writing to anvi'o developers): "
+                                   "%s. For your reference, these are the versions anvi'o knows what to do with: %s" % \
                                                         (version_to_use, ', '.join(list(self.available_parsers.keys()))))
 
         self.version_to_use = version_to_use 
@@ -161,16 +162,16 @@ class EggNOGMapper:
 
     def check_prefix_and_get_gene_callers_id(self, fields):
         if not fields[0].startswith(self.gene_caller_id_prefix):
-            raise ConfigError("Gene caller ids found in this annotation file does not start with the expected prefix. This is a historical\
-                               glitch that is not quite easy to address programmatically, so anvi'o asks you to add the expected prefix as the\
-                               first character of every gene call in your annotations file. This is the prefix what you need to add manually\
-                               to the very beginning of every line (anvi'o developers are very sorry for this step): '%s'." % self.gene_caller_id_prefix)
+            raise ConfigError("Gene caller ids found in this annotation file does not start with the expected prefix. This is a historical "
+                              "glitch that is not quite easy to address programmatically, so anvi'o asks you to add the expected prefix as the "
+                              "first character of every gene call in your annotations file. This is the prefix what you need to add manually "
+                              "to the very beginning of every line (anvi'o developers are very sorry for this step): '%s'." % self.gene_caller_id_prefix)
 
         try:
             gene_callers_id = int(fields[0][len(self.gene_caller_id_prefix):])
         except:
-            raise ConfigError("At least one gene caller id in this annotation file (%s) does not look like how anvi'o likes its gene calls. \
-                               Hint: what should remain after removing gene caller id prefix (%s) should be an integer value." %\
+            raise ConfigError("At least one gene caller id in this annotation file (%s) does not look like how anvi'o likes its gene calls. "
+                              "Hint: what should remain after removing gene caller id prefix (%s) should be an integer value." %\
                                                 (fields[0], self.gene_caller_id_prefix))
 
         return gene_callers_id
@@ -188,8 +189,8 @@ class EggNOGMapper:
         fields = defline.strip('\n').split('\t')
 
         if len(fields) != 12:
-            raise ConfigError("The parser for eggnog-mapper version %s does not know how to deal with this annotation fiel because the\
-                                number of fields in the file (%d) is not matching to what is expected (%s)." % (self.version_to_use, len(fields), 12))
+            raise ConfigError("The parser for eggnog-mapper version %s does not know how to deal with this annotation fiel because the "
+                               "number of fields in the file (%d) is not matching to what is expected (%s)." % (self.version_to_use, len(fields), 12))
 
         gene_callers_id = self.check_prefix_and_get_gene_callers_id(fields)
 
@@ -225,8 +226,8 @@ class EggNOGMapper:
         fields = defline.strip('\n').split('\t')
 
         if len(fields) != 13:
-            raise ConfigError("The parser for eggnog-mapper version %s does not know how to deal with this annotation fiel because the\
-                                number of fields in the file (%d) is not matching to what is expected (%s)." % (self.version_to_use, len(fields), 13))
+            raise ConfigError("The parser for eggnog-mapper version %s does not know how to deal with this annotation fiel because the "
+                               "number of fields in the file (%d) is not matching to what is expected (%s)." % (self.version_to_use, len(fields), 13))
 
         gene_callers_id = self.check_prefix_and_get_gene_callers_id(fields)
         
@@ -255,66 +256,63 @@ class EggNOGMapper:
 
     def __parser_3(self, defline):
         """parses this:
-        0           1                     2                     3                    4                          5                       6                    7          8        9             10           11             12           13     14       15    16             17                                                     18          19                 20                       21
-        query_name  seed_eggNOG_ortholog  seed_ortholog_evalue  seed_ortholog_score  Predicted_taxonomic_group  Predicted_protein_name  Gene_Ontology_terms  EC_number  KEGG_ko  KEGG_Pathway  KEGG_Module  KEGG_Reaction  KEGG_rclass  BRITE  KEGG_TC  CAZy  BiGG_Reaction  tax_scope:_eggNOG_taxonomic_level_used_for_annotation  eggNOG_OGs  bestOG_deprecated  COG_Functional_Category  eggNOG free text description        
+        0           1                           2                     3                    4                          5                       6                    7          8        9                10           11             12           13     14       15    16             17               18              19              20                      21
+        query_name  seed_eggNOG_ortholog        seed_ortholog_evalue  seed_ortholog_score  best_tax_level             Preferred_name          GOs                  EC         KEGG_ko  KEGG_Pathway     KEGG_Module  KEGG_Reaction  KEGG_rclass  BRITE  KEGG_TC  CAZy  BiGG_Reaction  taxonomic scope  eggNOG OGs      best eggNOG OG  COG Functional cat.     eggNOG free text desc.
+        g51	    562982.HMPREF0432_01129	1.4e-63	              248.8	           Bacillales incertae sedis  rpsK	              GO:00028,GO:00462    X          ko:K048  ko03010,map03010	M00178,M0017 X              X       	 br01610,ko00000,ko00001,ko00002,ko03011				Bacteria	1V3IK@1239,3WESA@539002,4HH2T@91061,COG0100@1,COG0100@2	NA|NA|NA	J	Located on the platform of the 30S subunit, it bridges several disparate RNA helices of the 16S rRNA. Forms part of the Shine-Dalgarno cleft in the 70S ribosome
         """
 
         fields = defline.strip('\n').split('\t')
 
         if len(fields) != 22:
-            raise ConfigError("The parser for eggnog-mapper version %s does not know how to deal with this annotation fiel because the\
-                                number of fields in the file (%d) is not matching to what is expected (%s)." % (self.version_to_use, len(fields), 22))
+            raise ConfigError("The parser for eggnog-mapper version %s does not know how to deal with this annotation fiel because the "
+                               "number of fields in the file (%d) is not matching to what is expected (%s)." % (self.version_to_use, len(fields), 22))
 
         gene_callers_id = self.check_prefix_and_get_gene_callers_id(fields)
         
-        if fields[21] and fields[21] != 'NA' and not fields[21].startswith('Protein of unknown function'):
-            self.add_entry(gene_callers_id, 'EGGNOG_%s' % self.database.upper(), fields[1], fields[12], fields[2])
-
-        if fields[19]:
-            COG_ids=[og[:-4] for og in fields[19].split(',') if og.endswith('@NOG') and og.startswith('COG')]
-
-            if COG_ids:
-                annotations = '; '.join([self.COGs_data.cogs[COG_id]['annotation'] for COG_id in COG_ids if COG_id in self.COGs_data.cogs])
-                self.add_entry(gene_callers_id, 'COG_FUNCTION', ', '.join(COG_ids), annotations, 0.0)
-
-        if fields[20]:
-            self.add_entry(gene_callers_id, 'COG_CATEGORY', '', fields[20], 0.0)
-
-        if fields[16]:
-            self.add_entry(gene_callers_id, 'BiGG_Reactions', '', ', '.join(fields[16].split(',')), 0.0)
-
-        if fields[6]:
-            self.add_entry(gene_callers_id, 'GO_TERMS', '', ', '.join(fields[6].split(',')), 0.0)
-
-        if fields[9]:
-            self.add_entry(gene_callers_id, 'KEGG_PATHWAYS', '', ', '.join(fields[9].split(',')), 0.0) 
-
-        if fields[5]:
-            self.add_entry(gene_callers_id, 'Preferred_Name', '', ', '.join(fields[5].split(',')), 0.0)
-
-        if fields[8]:
-            self.add_entry(gene_callers_id, 'KEGG_KO', '', ', '.join(fields[8].split(',')), 0.0)
-
-        if fields[10]:
-            self.add_entry(gene_callers_id, 'KEGG_MODULE', '', ', '.join(fields[10].split(',')), 0.0)
-
-        if fields[13]:
-            self.add_entry(gene_callers_id, 'BRITE', '', ', '.join(fields[13].split(',')), 0.0)
-
-        if fields[21]:
-            self.add_entry(gene_callers_id, 'eggNOG_free_text', '', ', '.join(fields[21].split(',')), 0.0)
+        if (fields[21] and fields[21] != 'NA' and not fields[21].startswith('Protein of unknown function')) or fields[5]:
+            if fields[5]:
+                self.add_entry(gene_callers_id, 'EGGNOG_%s' % self.database.upper(), fields[1], "%s :: %s" % (fields[5], fields[21]), fields[2])
+            else:
+                self.add_entry(gene_callers_id, 'EGGNOG_%s' % self.database.upper(), fields[1], fields[21], fields[2])
 
         if fields[4]:
-            self.add_entry(gene_callers_id, 'eggNOG_best_tax', '', ', '.join(fields[4].split(',')), 0.0)
+            self.add_entry(gene_callers_id, 'EGGNOG_BEST_TAX', fields[1], ', '.join(fields[4].split(',')), fields[2])
+
+        if fields[5]:
+            self.add_entry(gene_callers_id, 'EGGNOG_GENE_FUNCTION_NAME', fields[1], ', '.join(fields[5].split(',')), fields[2])
+
+        if fields[6]:
+            self.add_entry(gene_callers_id, 'EGGNOG_GO_TERMS', fields[1], ', '.join(fields[6].split(',')), fields[2])
 
         if fields[7]:
-            self.add_entry(gene_callers_id, 'EC_NUMBER', '', ', '.join(fields[7].split(',')), 0.0)
+            self.add_entry(gene_callers_id, 'EGGNOG_EC_NUMBER', fields[1], ', '.join(fields[7].split(',')), fields[2])
+
+        if fields[8]:
+            self.add_entry(gene_callers_id, 'EGGNOG_KEGG_KO', fields[1], ', '.join(fields[8].split(',')), fields[2])
+
+        if fields[9]:
+            self.add_entry(gene_callers_id, 'EGGNOG_KEGG_PATHWAYS', fields[1], ', '.join(fields[9].split(',')), fields[2]) 
+
+        if fields[10]:
+            self.add_entry(gene_callers_id, 'EGGNOG_KEGG_MODULE', fields[1], ', '.join(fields[10].split(',')), fields[2])
+
+        if fields[13]:
+            self.add_entry(gene_callers_id, 'EGGNOG_BRITE', fields[1], ', '.join(fields[13].split(',')), fields[2])
+
+        if fields[14]:
+            self.add_entry(gene_callers_id, 'EGGNOG_KEGG_TC', fields[1], ', '.join(fields[14].split(',')), fields[2])
+
+        if fields[15]:
+            self.add_entry(gene_callers_id, 'EGGNOG_CAZy', fields[1], ', '.join(fields[15].split(',')), fields[2])
+
+        if fields[16]:
+            self.add_entry(gene_callers_id, 'EGGNOG_BiGG_REACTIONS', fields[1], ', '.join(fields[16].split(',')), fields[2])
 
 
     def store_annotations_in_db(self, drop_previous_annotations=False):
         if not self.contigs_db_path:
-            raise ConfigError("EggNOGMapper::store_annotations_in_db() is speaking: you can't really call this function if you inherited\
-                                this class without a contigs database path :/ Well, yes, OK, you can call it, but it wouldn't work. Happy?")
+            raise ConfigError("EggNOGMapper::store_annotations_in_db() is speaking: you can't really call this function if you inherited "
+                               "this class without a contigs database path :/ Well, yes, OK, you can call it, but it wouldn't work. Happy?")
 
         if not len(self.annotations_dict):
             raise ConfigError('Annotations dictionary is empty :/ There is nothing to add to the database.')
@@ -349,16 +347,16 @@ class EggNOGMapper:
         """
 
         if not self.contigs_db_path:
-            raise ConfigError("EggNOGMapper::process() is speaking: you can't really call this function if you inherited\
-                                this class without a contigs database path :/ What are you doing?")
+            raise ConfigError("EggNOGMapper::process() is speaking: you can't really call this function if you inherited "
+                               "this class without a contigs database path :/ What are you doing?")
 
         filesnpaths.is_output_dir_writable(output_dir)
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         if not contigs_db.meta['genes_are_called']:
-            raise ConfigError("It seems genes were not called for this contigs database (%s). This is a\
-                                total no-no since we will need them to get amino acid seqeunces for functional\
-                                annotationd :/" % self.contigs_db_path)
+            raise ConfigError("It seems genes were not called for this contigs database (%s). This is a "
+                               "total no-no since we will need them to get amino acid seqeunces for functional "
+                               "annotationd :/" % self.contigs_db_path)
 
         aa_sequences_list = contigs_db.db.get_table_as_list_of_tuples(t.gene_amino_acid_sequences_table_name)
         num_aa_sequences = len(aa_sequences_list)
@@ -400,11 +398,11 @@ class EggNOGMapper:
 
         if not os.path.exists(self.annotations_file_name):
             self.progress.end()
-            raise ConfigError("Something went wrong with eggnog-mapper :( The annotations file is not where it is supposed to be.\
-                                If you are lucky, this log file will have enough output information for you to make sense of\
-                                what went wrong: '%s'. Due to this error, the output directory will be kept as is, and you\
-                                will have to remove it manually. Sorry about the inconvenience! Anvi'o developers know how much\
-                                it sucks when things just don't work." % os.path.join(output_dir, self.log_file_path))
+            raise ConfigError("Something went wrong with eggnog-mapper :( The annotations file is not where it is supposed to be. "
+                               "If you are lucky, this log file will have enough output information for you to make sense of "
+                               "what went wrong: '%s'. Due to this error, the output directory will be kept as is, and you "
+                               "will have to remove it manually. Sorry about the inconvenience! Anvi'o developers know how much "
+                               "it sucks when things just don't work." % os.path.join(output_dir, self.log_file_path))
 
         self.progress.end()
 

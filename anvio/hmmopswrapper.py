@@ -46,11 +46,11 @@ class SequencesForHMMHitsWrapperForMultipleContigs(SequencesForHMMHits, GenomeDe
         collection_names = set([g['collection_id'] for g in self.genomes.values() if 'collection_id' in g])
 
         if num_internal_genomes:
-            self.run.warning("SequencesForHMMHitsWrapperForMultipleContigs class is speaking (yes, the class is\
-                              quite aware of its very long name thankyouverymuch). Of the total %d genome descriptions\
-                              it was given, %d seem to represent internal genomes with bins in collection(s) '%s'. Anvi'o\
-                              will make sure HMM hits to be used for downstream analyses are only those that match to contigs\
-                              that were included in those selections." % (len(self.genomes), num_internal_genomes, ', '.join(collection_names)), lc="green")
+            self.run.warning("SequencesForHMMHitsWrapperForMultipleContigs class is speaking (yes, the class is "
+                             "quite aware of its very long name thankyouverymuch). Of the total %d genome descriptions "
+                             "it was given, %d seem to represent internal genomes with bins in collection(s) '%s'. Anvi'o "
+                             "will make sure HMM hits to be used for downstream analyses are only those that match to contigs "
+                             "that were included in those selections." % (len(self.genomes), num_internal_genomes, ', '.join(collection_names)), lc="green")
 
         # very hacky code follows. here we generate a self SequencesForHMMHits object,
         # and we will fill everything in it with slightly modified information so multiple
@@ -72,10 +72,10 @@ class SequencesForHMMHitsWrapperForMultipleContigs(SequencesForHMMHits, GenomeDe
             # to splits in this collection:
             if 'collection_id' in g:
                 if ('bin_id' not in g) or ('profile_db_path' not in g):
-                    raise ConfigError("There is something VERY weird going on. Your genome descriptions object contains\
-                                       a collection name, yet it doesn't know anything about a bin name or profile database\
-                                       path. While this is very interesting because it should never happen, anvi'o will say\
-                                       goodbye and abruptly quit in confusion :(")
+                    raise ConfigError("There is something VERY weird going on. Your genome descriptions object contains "
+                                      "a collection name, yet it doesn't know anything about a bin name or profile database "
+                                      "path. While this is very interesting because it should never happen, anvi'o will say "
+                                      "goodbye and abruptly quit in confusion :(")
 
                 # setup an args object, and recover the split names of interest
                 args = argparse.Namespace(profile_db=g['profile_db_path'],

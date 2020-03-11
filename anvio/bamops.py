@@ -411,13 +411,13 @@ class GetReadsFromBAM:
 
     def get_short_reads_for_splits_dict(self):
         if not self.initialized:
-            raise ConfigError('The `GetReadsFromBAM` class is not initialized :/ Ad hoc use of this class is\
-                               OK, but in that case you should set `self.initialized` to True, and provide\
-                               the split names of interest manually.')
+            raise ConfigError('The `GetReadsFromBAM` class is not initialized :/ Ad hoc use of this class is '
+                              'OK, but in that case you should set `self.initialized` to True, and provide '
+                              'the split names of interest manually.')
 
         if not len(self.split_names_of_interest):
-            raise ConfigError("The split names of interest set is empty. This should have never happened. Good\
-                               job.")
+            raise ConfigError("The split names of interest set is empty. This should have never happened. Good "
+                              "job.")
 
         short_reads_for_splits_dict = {}
         if self.split_R1_and_R2:
@@ -563,16 +563,16 @@ class GetReadsFromBAM:
                 error_message = e
 
         if len(bad_bam_files):
-            raise ConfigError('Samtools is not happy with some of your bam files. The following\
-                               file(s) do not look like proper BAM files [here is the actual\
-                               error: "%s"]: %s.' % (error_message, ','.join(bad_bam_files)))
+            raise ConfigError('Samtools is not happy with some of your bam files. The following '
+                              'file(s) do not look like proper BAM files [here is the actual '
+                              'error: "%s"]: %s.' % (error_message, ','.join(bad_bam_files)))
 
         if self.output_file_prefix and self.output_file_path:
             raise ConfigError("You must either use the parameter output file name, or output file prefix.")
 
         if self.output_file_prefix and not self.split_R1_and_R2:
-            raise ConfigError("Output file prefix parameter is only relevant when you want to split R1 reads\
-                               from R2 reads and so on.")
+            raise ConfigError("Output file prefix parameter is only relevant when you want to split R1 reads "
+                              "from R2 reads and so on.")
 
         if self.split_R1_and_R2 and not self.output_file_prefix:
             raise ConfigError("If you wish R1 and R2 reads to be reported in separate FASTA files, \
