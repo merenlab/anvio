@@ -36,7 +36,6 @@ import anvio.homogeneityindex as homogeneityindex
 
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
-from anvio.sequence import get_list_of_outliers
 
 from anvio.tables.tableops import Table
 from anvio.tables.states import TablesForStates
@@ -236,23 +235,45 @@ class ContigsSuperclass(object):
             self.run.info('Splits taxonomy', 'Initiated for taxonomic level for "%s"' % t_level)
 
 
-    def init_contig_sequences(self, min_contig_length=0, gene_caller_ids_of_interest=set([]), split_names_of_interest=set([])):
+    def init_contig_sequences(self, min_contig_length=0,
+                              gene_caller_ids_of_interest=set([]),
+                              split_names_of_interest=set([]),
+                              contig_names_of_interest=set([])):
         contigs_db = ContigsDatabase(self.contigs_db_path)
 
-        if len(gene_caller_ids_of_interest) and len(split_names_of_interest):
-            raise ConfigError("Ehem. Someone just called `init_contig_sequences` with gene caller ids of interest AND "
-                              "split names of interest. Someone should make up their mind and go for only one of those")
+        too_many_args = False
+        if len(gene_caller_ids_of_interest):
+            if len(split_names_of_interest):
+                too_many_args = True
+                opt1, opt2 = 'gener caller ids of interest', 'split names of interest'
+            elif len(contig_names_of_interest):
+                too_many_args = True
+                opt1, opt2 = 'gener caller ids of interest', 'contig names of interest'
+        elif len(split_names_of_interest):
+            if len(contig_names_of_interest):
+                too_many_args = True
+                opt1, opt2 = 'split names of interest', 'contig names of interest'
+        if too_many_args:
+            raise ConfigError("Ehem. Someone just called `init_contig_sequences` with %s AND %s. "
+                              "Someone should make up their mind and go for only one of those." % (opt1, opt2))
 
         # are we going to read everything, or only those that are of interest?
-        contig_names_of_interest = set([])
-        if gene_caller_ids_of_interest:
+        if contig_names_of_interest:
+            subset_provided = True
+            pass
+        elif gene_caller_ids_of_interest:
+            subset_provided = True
+            contig_names_of_interest = set([])
             for gene_callers_id in self.genes_in_contigs_dict:
                 if gene_callers_id in gene_caller_ids_of_interest:
                     contig_names_of_interest.add(self.genes_in_contigs_dict[gene_callers_id]['contig'])
         elif split_names_of_interest:
+            subset_provided = True
             contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in split_names_of_interest])
+        else:
+            subset_provided = False
 
-        if gene_caller_ids_of_interest or split_names_of_interest:
+        if subset_provided:
             # someone was interested in a subest of things, but found nothing for them?
             if not len(contig_names_of_interest):
                 raise ConfigError("Well, it turns out there are no contigs matching to the list of gene calls anvi'o "
@@ -260,10 +281,10 @@ class ContigsSuperclass(object):
                                   "our part, please let us know.")
 
             self.run.warning("Someone asked the contigs super class to initialize contig sequences that are affiliated "
-                             "with some of the gene calls or split names relevant for this operation (this is happening either "
-                             "becasue the user asked for it, or there was an optimization step somewhere). As a result "
-                             "of which, this class will only know %d contig sequences instead of %d in the database." \
-                                % (len(contig_names_of_interest), len(self.contigs_basic_info)),
+                             "with some of the gene calls, split names, or contig names, relevant for this operation "
+                             "(this is happening either becasue the user asked for it, or there was an optimization "
+                             "step somewhere). As a result of which, this class will only know %d contig sequences "
+                             "instead of %d in the database." % (len(contig_names_of_interest), len(self.contigs_basic_info)),
                              header="JUST SO YOU KNOW", lc='yellow')
 
             # load some
@@ -421,17 +442,21 @@ class ContigsSuperclass(object):
 
 
     def get_nt_position_info(self, contig_name, pos_in_contig):
-        """This function returns a tuple with three items for each nucleotide position.
+        """Returns a tuple with 3 pieces of information for a given nucleotide position.
 
-            (in_partial_gene_call, in_complete_gene_call, base_pos_in_codon)
+        This function accesses the self.nt_positions_info dictionary of arrays (each key is a contig
+        name) to return the tuple: (in_partial_gene_call, in_complete_gene_call, base_pos_in_codon).
 
-        See `init_nt_position_info_dict` for more info."""
+        Notes
+        =====
+        - If you plan on calling this function many times, consider instead `self.get_gene_info_for_each_position`
+        """
 
         if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
             return (0, 0, 0)
 
         if not self.nt_positions_info:
-            raise ConfigError("get_nt_position_info: I am asked to return stuff, but self.nt_position_info is None!")
+            raise ConfigError("get_nt_position_info :: I am asked to return stuff, but self.nt_positions_info is None!")
 
         position_info = self.nt_positions_info[contig_name][pos_in_contig]
 
@@ -597,8 +622,20 @@ class ContigsSuperclass(object):
 
 
     def get_corresponding_codon_order_in_gene(self, gene_caller_id, contig_name, pos_in_contig):
-        """Takes a gene caller id, a contig name, and a nucleotide position in that contig,
-           and returns the order of codon the nucleotide matches to."""
+        """Returns the order of codon a given nucleotide belongs to.
+
+        Parameters
+        ==========
+        gene_caller_id : int
+
+        contig_name : str
+
+        pos_in_contig : int
+
+        Notes
+        =====
+        - If calling many times, consider `self.get_gene_info_for_each_position`
+        """
 
         if not isinstance(pos_in_contig, int):
             raise ConfigError("get_corresponding_codon_order_in_gene :: pos_in_contig must be of type 'int'")
@@ -702,7 +739,14 @@ class ContigsSuperclass(object):
 
 
     def get_corresponding_gene_caller_ids_for_base_position(self, contig_name, pos_in_contig):
-        """For a given nucleotide position and contig name, returns all matching gene caller ids"""
+        """For a given nucleotide position and contig name, returns all matching gene caller ids
+
+        Notes
+        =====
+        - If you're calling this function many times, consider using
+          self.get_gene_info_for_each_position
+        """
+
         gene_start_stops_in_contig = self.get_gene_start_stops_in_contig(contig_name)
 
         if not gene_start_stops_in_contig:
@@ -711,6 +755,143 @@ class ContigsSuperclass(object):
         corresponding_gene_calls = [gene_callers_id for (gene_callers_id, start, stop) in gene_start_stops_in_contig if pos_in_contig >= start and pos_in_contig < stop]
 
         return corresponding_gene_calls
+
+
+    def get_gene_info_for_each_position(self, contig_name, info='all'):
+        """For a given contig, calculate per-position gene info
+
+        Returns a dictionary of arrays, each with length equal to the contig length. Each key in the
+        dictionary describes a different piece of gene info. By default, the dictionary has the
+        following keys:
+
+            'corresponding_gene_call' : To what gene_caller_id does the nt belong (-1 if there are 0
+                                        or multiple gene calls)?
+            'codon_order_in_gene'     : To which codon does the nt belong (0-indexed, -1 if
+                                        corresponding_gene_call is -1)?
+            'in_partial_gene_call'    : Does this position lie in a gene that is partial (0 or 1)?
+            'in_complete_gene_call'   : Does this position lie in a gene that is complete (0 or 1)?
+            'base_pos_in_codon'       : To what codon position (1, 2, or 3) does the nt belong (0 if
+                                        corresponding_gene_call is -1, or gene does not have codons,
+                                        e.g. ribosomal proteins)?
+            'forward'                 : 1 if gene direction is forward, 0 if it is reverse
+            'gene_start'              : Where in the contig does the gene start?
+            'gene_stop'               : Where in the contig does the gene end?
+
+        Parameters
+        ==========
+        contig_name : str
+
+        info : list, 'all'
+            A list of desired info names. By default, 'all' corresponds to
+            ['corresponding_gene_call', 'codon_order_in_gene', 'in_partial_gene_call',
+            'in_complete_gene_call', 'base_pos_in_codon', 'forward', 'gene_start', 'gene_stop'].
+            Please note that this is just a convenience for the programmer: _all_ keys are
+            calculated, and then only the requested subset is returned.
+
+        Notes
+        =====
+        - If you are interested in just a few nt positions, use instead the "per-nucleotide"
+          functions `get_nt_position_info`, `get_corresponding_gene_caller_ids_for_base_position`,
+          and `get_corresponding_codon_order_in_gene`
+        - This function gives per-nucleotide info about things that are potentially not
+          per-nucleotide, e.g. "corresponding_gene_call". That means the output of this function is
+          inherently redundant, and sometimes that's okay.
+        """
+
+        available_info = [
+            'in_partial_gene_call',
+            'in_complete_gene_call',
+            'base_pos_in_codon',
+            'corresponding_gene_call',
+            'codon_order_in_gene',
+            'forward',
+            'gene_start',
+            'gene_stop',
+        ]
+
+        if info == 'all':
+            column_names = available_info
+        else:
+            for i in info:
+                if i not in available_info:
+                    raise ConfigError("get_gene_info_for_each_position :: %s is not an available choice for info" % i)
+            column_names = info
+
+        output = {}
+        contig_length = len(self.contig_sequences[contig_name]['sequence'])
+        data_shape = (contig_length, len(available_info))
+
+        # Init the array. First 3 columns have defaults of 0, last 5 have defaults of -1
+        data = -numpy.ones(data_shape).astype(int)
+        data[:, :3] = 0
+
+        # First, we populate the first 3 columns of data, 'in_complete_gene_call',
+        # 'in_complete_gene_call', and 'base_pos_in_codon'. This is done straightforwardly by
+        # accessing self.nt_positions_info
+
+        if not self.nt_positions_info:
+            raise ConfigError("get_gene_info_for_each_position :: I am asked to return stuff, but "
+                              "self.nt_position_info is None!")
+
+        if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
+            # In these cases everything gets 0
+            pass
+        else:
+            data[self.nt_positions_info[contig_name] == 8, :3] = numpy.array([1,0,0])
+            data[self.nt_positions_info[contig_name] == 4, :3] = numpy.array([0,1,1])
+            data[self.nt_positions_info[contig_name] == 2, :3] = numpy.array([0,1,2])
+            data[self.nt_positions_info[contig_name] == 1, :3] = numpy.array([0,1,3])
+
+        # Next, we calculte the next 5 columns. As a first pass, we populate the splice of `data`
+        # corresponding to each gene call and set the "gene_caller_id" and "codon_order_in_gene"
+        # columns. This first ignores the fact that gene calls may overlap.
+
+        gene_calls = self.get_gene_start_stops_in_contig(contig_name)
+
+        for gene_caller_id, start, stop in gene_calls:
+            positions = numpy.arange(start, stop)
+
+            direction = self.genes_in_contigs_dict[gene_caller_id]['direction']
+
+            if direction == 'r':
+                codon_order_in_gene = (stop - start) / 3 - numpy.floor((positions - start) / 3) - 1
+            else:
+                codon_order_in_gene = numpy.floor((positions - start) / 3)
+
+            data[start:stop, 3] = gene_caller_id
+            data[start:stop, 4] = codon_order_in_gene
+            data[start:stop, 5] = direction == 'f'
+            data[start:stop, 6] = start
+            data[start:stop, 7] = stop
+
+        # Next, we compare each gene call to every other gene call. If they overlap, find the
+        # overlapping region and set all columns to their defaults. This conservatively says, "if
+        # there are two gene calls corresponding to a nucleotide position, anvi'o will simply say it
+        # does not belong to any gene."
+
+        gene_calls_to_compare = gene_calls.copy()
+
+        for gene_call_1 in gene_calls:
+            _, start1, stop1 = gene_call_1
+            gene_calls_to_compare.remove(gene_call_1)
+
+            for _, start2, stop2 in gene_calls_to_compare:
+                if ((start1 < stop2  and stop1 > start2) or (stop1  > start2 and stop2 > start1)):
+                    # There is overlap
+                    overlap_start, overlap_end = max(start1, start2), min(stop1, stop2)
+                    data[overlap_start:overlap_end, :3] = 0
+                    data[overlap_start:overlap_end, 3:] = -1
+
+        # Finally, we look for genes that have base_pos_in_codon == 0. These do not have
+        # codon_order_in_genes, and so we must set them to -1
+        data[data[:, 2] == 0, 4] = -1
+
+        # Recast the requested info into `output` and return
+        for i, c in enumerate(available_info):
+            if c in column_names:
+                output[c] = data[:, i]
+
+        return output
 
 
     def get_sequences_for_gene_callers_ids(self, gene_caller_ids_list, reverse_complement_if_necessary=True, include_aa_sequences=False):
@@ -2167,35 +2348,34 @@ class PanSuperclass(object):
 class ProfileSuperclass(object):
     """Fancy super class to deal with profile db stuff.
 
-       if you want to make use of this class directly (i.e., not as a superclass), get an instance
-       like this:
+    if you want to make use of this class directly (i.e., not as a superclass), get an instance
+    like this:
 
-            >>> import anvio.dbops as d
-            >>> import argparse
-            >>> args = argparse.Namespace(profile_db="/path/to/profile.db")
-            >>> p = ProfileSuperclass(args)
+         >>> import anvio.dbops as d
+         >>> import argparse
+         >>> args = argparse.Namespace(profile_db="/path/to/profile.db")
+         >>> p = ProfileSuperclass(args)
 
-       Alternatively, you can include a contigs database path (contigs_db) in args so you have access
-       to some functions that would require that.
+    Alternatively, you can include a contigs database path (contigs_db) in args so you have access
+    to some functions that would require that.
 
-       Alternatively, you can define a set of split names of interest to gain performance when it is
-       needed. There are two ways to do that, which are mutually exclusive (so you have to grow up and
-       pick one). One way is to explicitly mention which splits are of interest (for control freaks):
+    Alternatively, you can define a set of split names of interest to gain performance when it is
+    needed. There are two ways to do that, which are mutually exclusive (so you have to grow up and
+    pick one). One way is to explicitly mention which splits are of interest (for control freaks):
 
-            >>> args.split_names_of_interest = set([split_names])
-            >>> p = ProfileSuperclass(args)
+         >>> args.split_names_of_interest = set([split_names])
+         >>> p = ProfileSuperclass(args)
 
-        The second way to initialize ProfileSuper with a subset of splits a profile database contains
-        is to use the collections framework (the elegant way of doing this). For which, you need to
-        set collection name:
+    The second way to initialize ProfileSuper with a subset of splits a profile database contains
+    is to use the collections framework (the elegant way of doing this). For which, you need to
+    set collection name:
 
-            >>> args.collection_name = 'collection_name'
-            >>> args.bin_ids = 'bin_1,bin_2,bin_3' # if no bin_ids is provided, all bins will be used
-            >>> p = ProfileSuperClass(args)
+        >>> args.collection_name = 'collection_name'
+        >>> args.bin_ids = 'bin_1,bin_2,bin_3' # if no bin_ids is provided, all bins will be used
+        >>> p = ProfileSuperClass(args)
 
-
-        The best practice is to set anvi'o programs to put together `args` objects with these variables.
-       """
+    The best practice is to set anvi'o programs to put together `args` objects with these variables.
+    """
 
     def __init__(self, args, r=run, p=progress):
         self.args = args
@@ -2607,8 +2787,8 @@ class ProfileSuperclass(object):
     def get_gene_level_coverage_stats_entry_for_default(self, gene_callers_id, split_coverage, sample_name, gene_start, gene_stop, gene_length, outliers_threshold=1.5):
         """Returns coverage stats for a single gene in default mode.
 
-           The alternative to this mode is the INSEQ/Tn-SEQ mode that is handled in `get_gene_level_coverage_stats_entry_for_inseq`,
-           where coverage statistics are computed differently.
+        The alternative to this mode is the INSEQ/Tn-SEQ mode that is handled in `get_gene_level_coverage_stats_entry_for_inseq`,
+        where coverage statistics are computed differently.
         """
         # and recover the gene coverage array per position for a given sample:
         gene_coverage_values_per_nt = split_coverage[sample_name][gene_start:gene_stop]
@@ -2617,7 +2797,7 @@ class ProfileSuperclass(object):
         detection = numpy.count_nonzero(gene_coverage_values_per_nt) / gene_length
 
          # findout outlier positions, and get non-outliers
-        outliers_bool = get_list_of_outliers(gene_coverage_values_per_nt, outliers_threshold)
+        outliers_bool = utils.get_list_of_outliers(gene_coverage_values_per_nt, outliers_threshold)
         non_outlier_positions = numpy.invert(outliers_bool)
         non_outliers = gene_coverage_values_per_nt[non_outlier_positions]
 
@@ -2646,7 +2826,7 @@ class ProfileSuperclass(object):
            where coverage statistics are computed in most conventional ways.
         """
 
-        # Lets ignore those pesty warnings...
+        # Lets ignore those pesky warnings...
         numpy.seterr(divide='ignore', over='ignore')
 
         if not len(self.num_mapped_reads_per_sample):

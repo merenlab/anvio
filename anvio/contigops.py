@@ -8,6 +8,7 @@ import os
 import re
 import io
 import gzip
+import numpy as np
 import string
 import argparse
 
@@ -20,10 +21,8 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
-from anvio.sequence import Coverage
 from anvio.errors import ConfigError
-from anvio.variability import ColumnProfile
-from anvio.variability import VariablityTestFactory
+from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -82,14 +81,10 @@ class Contig:
         self.splits = []
         self.length = 0
         self.abundance = 0.0
-        self.coverage = Coverage()
+        self.coverage = anvio.bamops.Coverage()
 
         self.min_coverage_for_variability = 10
         self.skip_SNV_profiling = False
-        self.report_variability_full = False
-        self.ignore_orphans = False
-        self.max_coverage_depth = constants.max_depth_for_coverage
-        self.codon_frequencies_dict = {}
 
 
     def get_atomic_data_dict(self):
@@ -107,26 +102,34 @@ class Contig:
 
 
     def analyze_coverage(self, bam):
-        self.coverage.run(bam, self, method='accurate')
+
+        self.coverage.run(bam, self, method='accurate', max_coverage=anvio.auxiliarydataops.COVERAGE_MAX_VALUE)
+
+        if len(self.splits) == 1:
+            # Coverage.process_c is a potentially expensive operation (taking up ~90% of the time of
+            # analyze_coverage when coverage is low (but when coverage is >500X, the time taken is
+            # ~1%)). Regardless, this clause exists to catch the somewhat common occurence when a
+            # contig only has one split. In this case, the contig _is_ the split, and so all of the
+            # split.coverage attributes can simply be referenced directly from contig.coverage
+            split = self.splits[0]
+            split.coverage = anvio.bamops.Coverage()
+            split.coverage.c = self.coverage.c
+            split.coverage.min = self.coverage.min
+            split.coverage.max = self.coverage.max
+            split.coverage.median = self.coverage.median
+            split.coverage.mean = self.coverage.mean
+            split.coverage.std = self.coverage.std
+            split.coverage.detection = self.coverage.detection
+            split.coverage.is_outlier = self.coverage.is_outlier
+            split.coverage.is_outlier_in_parent = self.coverage.is_outlier
+            split.coverage.mean_Q2Q3 = self.coverage.mean_Q2Q3
+            return
 
         for split in self.splits:
-            split.coverage = Coverage()
+            split.coverage = anvio.bamops.Coverage()
             split.coverage.c = self.coverage.c[split.start:split.end]
+            split.coverage.is_outlier_in_parent = self.coverage.is_outlier[split.start:split.end]
             split.coverage.process_c(split.coverage.c)
-
-
-    def analyze_auxiliary(self, bam):
-        counter = 1
-        for split in self.splits:
-            split.auxiliary = Auxiliary(split,
-                                        bam,
-                                        parent_outlier_positions=self.coverage.outlier_positions,
-                                        min_coverage=self.min_coverage_for_variability,
-                                        report_variability_full=self.report_variability_full,
-                                        ignore_orphans=self.ignore_orphans,
-                                        max_coverage_depth=self.max_coverage_depth)
-
-            counter += 1
 
 
 class Split:
@@ -140,8 +143,13 @@ class Split:
         self.length = end - start
         self.explicit_length = 0
         self.abundance = 0.0
-        self.column_profiles = {}
         self.auxiliary = None
+        self.num_SNV_entries = 0
+        self.num_SCV_entries = {}
+        self.SNV_profiles = {}
+        self.SCV_profiles = {}
+        self.per_position_info = {} # stores per nt info that is not coverage
+
 
     def get_atomic_data_dict(self):
         d = {'std_coverage': self.coverage.std,
@@ -158,72 +166,288 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, bam, parent_outlier_positions,
-                 min_coverage=10,
-                 report_variability_full=False,
-                 ignore_orphans=False,
-                 max_coverage_depth=constants.max_depth_for_coverage):
-        self.v = []
-        self.rep_seq = ''
+    def __init__(self, split, min_coverage=10, report_variability_full=False, profile_SCVs=False, skip_SNV_profiling=False):
+
+        if anvio.DEBUG:
+            self.run = terminal.Run()
+
         self.split = split
         self.variation_density = 0.0
-        self.parent_outlier_positions = parent_outlier_positions
-        self.competing_nucleotides = {}
         self.min_coverage = min_coverage
-        self.column_profile = self.split.column_profiles
+        self.skip_SNV_profiling = skip_SNV_profiling
+        self.profile_SCVs = profile_SCVs
         self.report_variability_full = report_variability_full
-        self.ignore_orphans = ignore_orphans
-        self.max_coverage_depth = max_coverage_depth
 
-        self.run(bam)
+        # used during array processing
+        self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
+        self.cdn_to_array_index = {cdn: i for i, cdn in enumerate(constants.codons)}
+
+        if self.profile_SCVs:
+            if not all([necessary in self.split.per_position_info for necessary in ['forward', 'gene_start', 'gene_stop']]):
+                raise ConfigError("Auxiliary :: self.split.per_position_info does not contain the info required for SCV profiling")
 
 
-    def run(self, bam):
-        ratios = []
+    def process(self, bam):
+        self.run_SNVs(bam)
 
-        for pileupcolumn in bam.pileup(self.split.parent, self.split.start, self.split.end,
-                                    ignore_orphans=self.ignore_orphans, max_depth=self.max_coverage_depth):
+        if self.profile_SCVs:
+            self.run_SCVs(bam)
 
-            pos_in_contig = pileupcolumn.pos
-            if pos_in_contig < self.split.start or pos_in_contig >= self.split.end:
+
+    def run_SCVs(self, bam):
+        """Profile SCVs
+
+        Parameters
+        ==========
+        bam : bamops.BAMFileObject
+
+        Notes
+        =====
+        - Loop through reads and then finding the genes it overlaps with has proven to be the
+          fastest way to do this. Looping through genes with fetch(self.split.parent, gene_start,
+          gene_stop) is approximately twice as slow because trimming is expensive, and I/O
+          operations on the BAM file suffer
+        """
+
+        reference_codon_sequences = {}
+        gene_allele_counts = {}
+        gene_calls = {}
+
+        genes_with_SNVs = set(self.split.SNV_profiles['corresponding_gene_call'])
+
+        read_count = 0
+        for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
+            # This loop will be making extensive use of the vectorized form of Read, so it is well
+            # worth the time to vectorize it right off the bat
+            read.vectorize()
+
+            # Although rare, the read can overlap multiple genes. To generalize, we loop through the
+            # genes the read overlaps with. If the read overlaps just one, shortcuts are taken
+            # _within_ the loop.
+
+            gene_id_per_nt_in_read = self.split.per_position_info['corresponding_gene_call'][
+                (read.reference_start - self.split.start):(read.reference_end - self.split.start)
+            ]
+
+            genes_in_read = set(gene_id_per_nt_in_read)
+
+            for gene_id in genes_in_read:
+
+                if gene_id == -1:
+                    continue
+
+                if gene_id not in genes_with_SNVs:
+                    # By design, we include SCVs only if they contain a SNV. In this case, there were no
+                    # SNVs in the gene so there is nothing to do.
+                    continue
+
+                if len(genes_in_read) == 1:
+                    # The read maps entirely to 1 gene. Easy peasy.
+                    gene_overlap_start = read.reference_start
+                    segment_that_overlaps_gene = read.v
+                else:
+                    # Okay, we need to do some work to get the segment that overlaps
+
+                    # FIXME There is something extremely rare that can happen that leads to an
+                    # inaccuracy. Here's the situation: A read completely covers a very small gene
+                    # that is _fully_ inside another gene (such a situation can happen when running
+                    # tRNA HMMs). Since the genes overlap, the nt positions in the small gene are
+                    # given a value of -1, so gene_id_per_nt_in_read looks like [42, 42, 42, 42, -1,
+                    # ..., -1, 42, 42]. The portion of the read after the consecutive -1's will be
+                    # trimmed and not included. The solution to this problem is to better manage
+                    # which genes we include for SCV analysis. Resolving issue
+                    # https://github.com/merenlab/anvio/issues/1358 would enable a more elegant
+                    # scenario, where this would not happen.
+                    gene_overlap_start, gene_overlap_stop = utils.get_constant_value_blocks(gene_id_per_nt_in_read, gene_id)[0]
+                    gene_overlap_start += read.reference_start
+                    gene_overlap_stop += read.reference_start - 1
+                    start_index = utils.find_value_index(read[:, 0], gene_overlap_start)
+                    stop_index = utils.find_value_index(read[:, 0], gene_overlap_stop)
+                    segment_that_overlaps_gene = read[start_index:stop_index+1]
+
+                if gene_id not in gene_calls:
+                    # We make an on-the-fly gene call dict. See the NOTE in
+                    # profiler.BAMProfiler.populate_gene_info_for_splits if you are confused by why
+                    # we do not pass this information to split beforehand.
+                    #
+                    # We need to access gene-wide attributes from per-nt arrays, so any index in the
+                    # array will suffice, so long as it corresponds to the gene_id. We arbitrarily
+                    # pick the index corresponding to the genes starting position
+                    accessor = gene_overlap_start - self.split.start
+                    gene_calls[gene_id] = {
+                        'contig': self.split.parent,
+                        'start': self.split.per_position_info['gene_start'][accessor],
+                        'stop': self.split.per_position_info['gene_stop'][accessor],
+                        'direction': 'f' if self.split.per_position_info['forward'][accessor] else 'r',
+                        'partial': self.split.per_position_info['in_partial_gene_call'][accessor],
+                        'is_coding': 1 if self.split.per_position_info['base_pos_in_codon'][accessor] else 0,
+                    }
+
+                gene_call = gene_calls[gene_id]
+
+                if gene_call['partial'] or not gene_call['is_coding']:
+                    # We can't handle partial gene calls bc we do not know the frame
+                    # We cannot handle non-coding genes because they have no frame
+                    continue
+
+                for gapless_segment in read.iterate_blocks_by_mapping_type(mapping_type=0, array=segment_that_overlaps_gene):
+                    block_start, block_end = gapless_segment[0, 0], gapless_segment[-1, 0] + 1
+
+                    if block_end - block_start < 3:
+                        # This block does not contain a full codon
+                        continue
+
+                    block_start_split = block_start - self.split.start
+                    block_end_split = block_end - self.split.start
+
+                    # this read must not contribute to codons it does not fully cover. Hence, we
+                    # must determine by how many nts on each side we must trim
+                    base_positions = self.split.per_position_info['base_pos_in_codon'][block_start_split:block_end_split]
+
+                    first_pos = utils.find_value_index(base_positions, (1 if gene_call['direction'] == 'f' else 3))
+                    last_pos = utils.find_value_index(base_positions, (3 if gene_call['direction'] == 'f' else 1), reverse_search=True)
+
+                    if last_pos - first_pos < 3:
+                        # the required trimming creates a sequence that is less than a codon long.
+                        # We cannot use this read.
+                        continue
+
+                    # At this point, we are 100% sure this segment of the read will contribute to SCVs
+                    gapless_segment = gapless_segment[first_pos:(last_pos+1), :]
+
+                    # Update these for posterity
+                    block_start_split += first_pos
+                    block_end_split -= block_end - block_start - last_pos - 1
+
+                    if gene_id not in gene_allele_counts:
+                        # This is the first time a read has contributed to this gene_id, so we log
+                        # its reference codon sequence and initialize an allele counts array
+                        reference_codon_sequences[gene_id] = self.get_codon_sequence_for_gene(gene_call)
+                        gene_allele_counts[gene_id] = self.init_allele_counts_array(gene_call)
+
+                    codon_sequence_as_index = (
+                        utils.nt_seq_to_codon_num_array(gapless_segment[:, 1], is_ord=True)
+                        if gene_call['direction'] == 'f'
+                        else utils.nt_seq_to_RC_codon_num_array(gapless_segment[:, 1], is_ord=True)
+                    )
+
+                    start, stop = self.split.per_position_info['codon_order_in_gene'][[block_start_split, block_end_split - 1]]
+                    if gene_call['direction'] == 'r': start, stop = stop, start
+                    codon_orders = np.arange(start, stop + 1)
+
+                    # Codons with ambiguous characters have index values of 64. Remove them here
+                    codon_orders = codon_orders[codon_sequence_as_index <= 63]
+                    codon_sequence_as_index = codon_sequence_as_index[codon_sequence_as_index <= 63]
+
+                    gene_allele_counts[gene_id] = utils.add_to_2D_numeric_array(
+                        codon_sequence_as_index,
+                        codon_orders,
+                        gene_allele_counts[gene_id]
+                    )
+
+            read_count += 1
+
+        if anvio.DEBUG: self.run.info_single('Done SCVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
+
+        for gene_id in gene_allele_counts:
+            allele_counts = gene_allele_counts[gene_id]
+
+            if not np.sum(allele_counts):
+                # There were no viable reads that landed on the gene
                 continue
 
-            valid_nts = [pileupread.alignment.seq[pileupread.query_position] for pileupread in pileupcolumn.pileups if not pileupread.is_del and not pileupread.is_refskip]
+            cdn_profile = ProcessCodonCounts(
+                allele_counts=allele_counts,
+                allele_to_array_index=self.cdn_to_array_index,
+                sequence=reference_codon_sequences[gene_id],
+                min_coverage=1,
+            )
 
-            coverage = len(valid_nts)
-            if coverage < self.min_coverage:
-                continue
+            # By design, we include SCVs only if they contain a SNV--filter out those that do not
+            cdn_profile.filter(self.get_codon_orders_that_contain_SNVs(gene_id))
+            cdn_profile.process(skip_competing_items=True)
 
-            column = ''.join(valid_nts)
+            self.split.SCV_profiles[gene_id] = cdn_profile.d
 
-            pos_in_split = pos_in_contig - self.split.start
-            base_in_contig = self.split.sequence[pos_in_split]
+            self.split.num_SCV_entries[gene_id] = len(cdn_profile.d['coverage'])
 
-            cp = ColumnProfile(column,
-                               reference=base_in_contig,
-                               coverage=coverage,
-                               split_name=self.split.name,
-                               pos=pos_in_split,
-                               test_class=variability_test_class_null if self.report_variability_full else variability_test_class_default).profile
 
-            if cp['worth_reporting']:
-                ratios.append((cp['departure_from_reference'], cp['coverage']), )
-                cp['pos_in_contig'] = pos_in_contig
-                cp['cov_outlier_in_split'] = pos_in_split in self.split.coverage.outlier_positions
-                cp['cov_outlier_in_contig'] = pos_in_contig in self.parent_outlier_positions
-                self.column_profile[pos_in_contig] = cp
+    def get_codon_orders_that_contain_SNVs(self, gene_id):
+        """Helper for run_SCVs"""
 
-        # variation density = gene_callers_idber of SNVs per kb
-        self.variation_density = len(ratios) * 1000.0 / self.split.length
+        matches_gene_boolean = self.split.SNV_profiles['corresponding_gene_call'] == gene_id
 
-        for i in range(self.split.start, self.split.end):
-            if i in self.column_profile:
-                self.rep_seq += self.column_profile[i]['reference']
-                self.v.append(self.column_profile[i]['departure_from_reference'])
-                self.competing_nucleotides[self.column_profile[i]['pos']] = self.column_profile[i]['competing_nts']
-            else:
-                self.rep_seq += 'N'
-                self.v.append(0)
+        return np.unique(self.split.SNV_profiles['codon_order_in_gene'][matches_gene_boolean])
+
+
+    def get_codon_sequence_for_gene(self, gene_call):
+        """Helper for run_SCVs"""
+
+        seq_dict = {self.split.parent: {'sequence': self.split.sequence}}
+
+        return utils.get_list_of_codons_for_gene_call(gene_call, seq_dict, subtract_by=self.split.start)
+
+
+    def init_allele_counts_array(self, gene_call):
+        """Create the array that will house the codon allele counts for a gene"""
+
+        allele_counts_array_shape = (len(constants.codons), (gene_call['stop'] - gene_call['start']) // 3)
+
+        return np.zeros(allele_counts_array_shape)
+
+
+    def run_SNVs(self, bam):
+        """Profile SNVs
+
+        Parameters
+        ==========
+        bam : bamops.BAMFileObject
+        """
+
+        # make an array with as many rows as there are nucleotides in the split, and as many rows as
+        # there are nucleotide types. Each nucleotide (A, C, T, G, N) gets its own row which is
+        # defined by the self.nt_to_array_index dictionary
+        allele_counts_array_shape = (len(constants.nucleotides), self.split.length)
+        allele_counts_array = np.zeros(allele_counts_array_shape)
+
+        read_count = 0
+        for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
+            aligned_sequence_as_ord, reference_positions = read.get_aligned_sequence_and_reference_positions()
+            aligned_sequence_as_index = utils.nt_seq_to_nt_num_array(aligned_sequence_as_ord, is_ord=True)
+            reference_positions_in_split = reference_positions - self.split.start
+
+            allele_counts_array = utils.add_to_2D_numeric_array(aligned_sequence_as_index, reference_positions_in_split, allele_counts_array)
+
+            read_count += 1
+
+        if anvio.DEBUG: self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
+
+        additional_per_position_data = self.split.per_position_info
+        additional_per_position_data.update({
+            'cov_outlier_in_split': self.split.coverage.is_outlier.astype(int),
+            'cov_outlier_in_contig': self.split.coverage.is_outlier_in_parent.astype(int),
+        })
+
+        test_class = variability_test_class_null if self.report_variability_full else variability_test_class_default
+
+        split_as_index = utils.nt_seq_to_nt_num_array(self.split.sequence)
+
+        nt_profile = ProcessNucleotideCounts(
+            allele_counts=allele_counts_array,
+            allele_to_array_index=self.nt_to_array_index,
+            sequence=self.split.sequence,
+            sequence_as_index=split_as_index,
+            min_coverage=self.min_coverage,
+            test_class=test_class,
+            additional_per_position_data=additional_per_position_data,
+        )
+
+        nt_profile.process()
+
+        self.split.SNV_profiles = nt_profile.d
+
+        self.split.num_SNV_entries = len(nt_profile.d['coverage'])
+        self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length
 
 
 class GenbankToAnvioWrapper:
@@ -520,3 +744,5 @@ class GenbankToAnvio:
         return {'external_gene_calls': self.output_gene_calls_path,
                 'gene_functional_annotation': self.output_functions_path,
                 'path': self.output_fasta_path}
+
+

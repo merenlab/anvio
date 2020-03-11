@@ -4,6 +4,7 @@
 import os
 import sys
 import glob
+import numpy
 import string
 
 from collections import Counter
@@ -68,6 +69,38 @@ max_depth_for_coverage = 60000
 # default methods for hierarchical cluster analyses
 distance_metric_default = 'euclidean'
 linkage_method_default = 'ward'
+
+
+# Whether a cigarstring operation consumes the read, reference, or both
+#
+#Here are the possible bam operations.
+#
+#    M       BAM_CMATCH      0
+#    I       BAM_CINS        1
+#    D       BAM_CDEL        2
+#    N       BAM_CREF_SKIP   3
+#    S       BAM_CSOFT_CLIP  4
+#    H       BAM_CHARD_CLIP  5
+#    P       BAM_CPAD        6
+#    =       BAM_CEQUAL      7
+#    X       BAM_CDIFF       8
+#
+#Notes
+#=====
+#- A description of what possible cigar operations are possible, see
+#  https://imgur.com/a/fiQZXNg, which comes from here:
+#  https://samtools.github.io/hts-specs/SAMv1.pdf
+cigar_consumption = numpy.array([
+    (1, 1),
+    (1, 0),
+    (0, 1),
+    (0, 1),
+    (1, 0),
+    (0, 0),
+    (0, 0),
+    (1, 1),
+    (1, 1),
+])
 
 # this is to have a common language across multiple modules when genomes (whether they are MAGs,
 # SAGs, or isolate genomes):
@@ -288,3 +321,41 @@ def get_pretty_name(key):
         return pretty_names[key]
     else:
         return key
+
+
+def get_nt_to_num_lookup(d):
+    D = {order: ord(nt) for nt, order in d.items()}
+    lookup = 5 * numpy.ones(max(D.values()) + 1, dtype=numpy.uint8)
+
+    for order, num in D.items():
+        lookup[num] = order
+
+    return lookup
+
+
+def get_codon_to_num_lookup(reverse_complement=False):
+    nts = sorted(list(unambiguous_nucleotides))
+    as_ints = [ord(nt) for nt in nts]
+
+    size = max(as_ints) + 1
+    lookup = 64 * numpy.ones((size, size, size), dtype=numpy.uint8)
+
+    num_to_codon = dict(enumerate(codons))
+    if reverse_complement:
+        num_to_codon = {k: codon_to_codon_RC[codon] for k, codon in num_to_codon.items()}
+
+    D = {tuple([ord(nt) for nt in codon]): k for k, codon in num_to_codon.items()}
+
+    for a in as_ints:
+        for b in as_ints:
+            for c in as_ints:
+                lookup[a, b, c] = D[(a, b, c)]
+
+    return lookup
+
+
+# See utils.nt_seq_to_codon_num_array etc. for utilization of these lookup arrays
+nt_to_num_lookup = get_nt_to_num_lookup({'A': 0, 'C': 1, 'G': 2, 'T': 3, 'N': 4})
+nt_to_RC_num_lookup = get_nt_to_num_lookup({'A': 3, 'C': 2, 'G': 1, 'T': 0, 'N': 4})
+codon_to_num_lookup = get_codon_to_num_lookup(reverse_complement=False)
+codon_to_RC_num_lookup = get_codon_to_num_lookup(reverse_complement=True)
