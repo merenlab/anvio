@@ -658,7 +658,8 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                                  "function `print_friendly_scg_taxonomy_super_dict_multi_to_data_frame` (lol) as "
                                  "a picke object stored in file name 'DataFrame.pickle'. If you would like to play "
                                  "with it, you can start an ipython session, and run the following: import pandas "
-                                 "as pd; import pickle; df = pickle.load(open('DataFrame.pickle', 'rb'))")
+                                 "as pd; import pickle; df = pickle.load(open('DataFrame.pickle', 'rb'))",
+                                 nl_before=1, nl_after=1)
 
         if not self.compute_scg_coverages:
             DF.rename(columns={"coverage": "times_observed"}, inplace = True)
