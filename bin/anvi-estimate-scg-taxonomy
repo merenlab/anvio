@@ -20,10 +20,10 @@ __email__ = "quentin.clayssen@gmail.com"
 __requires__ = ['profile-db', 'contigs-db', 'scgs-taxonomy', 'collection', 'bin']
 __provides__ = ['genome-taxonomy', 'genome-taxonomy-txt']
 __resources__ = [("Usage examples and warnings", "http://merenlab.org/scg-taxonomy")]
-__description__ = ("Estimates taxonomy at genome and metagenome level. This program is the entry point to"
-                   "estimate taxonomy for a given set of contigs (i.e., all contigs in a contigs database,"
-                   "or contigs described in collections as bins). For this, it uses single-copy core"
-                   "gene sequences and the GTDB database.")
+__description__ = ("Estimates taxonomy at genome and metagenome level. This program is the entry point to "
+                   "estimate taxonomy for a given set of contigs (i.e., all contigs in a contigs database, "
+                   "or contigs described in collections as bins). For this, it uses single-copy core "
+                   "gene sequences and the GTDB database. ")
 
 
 run = terminal.Run()
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     groupA = parser.add_argument_group('INPUT #1', "The minimum you must provide this program is a contigs database. In which case\
                                                     anvi'o will attempt to estimate taxonomy for all contigs in it, assuming that\
                                                     the contigs database represents a single genome. If the contigs database is actually\
-                                                    a metagenome, you should use the `--metagenome` flag to excplicitly declare that.")
+                                                    a metagenome, you should use the `--metagenome` flag to explicitly declare that.")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('metagenome-mode'), **anvio.K('metagenome-mode'))
 
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     groupD.add_argument(*anvio.A('matrix-format'), **anvio.K('matrix-format', {'help': "If you want the reports to look like sparse matrices whenever "
                                                                                    "possible, declare this flag. Matrices are especially good to use "
                                                                                    "when you are working with internal/external genomes since they can "
-                                                                                   "show you quickly the distribution of each taxon across all metageomes "
+                                                                                   "show you quickly the distribution of each taxon across all metagenomes "
                                                                                    "in programs like EXCEL. WELL TRY IT AND SEE."}))
     groupD.add_argument(*anvio.A('raw-output'), **anvio.K('raw-output'))
 
