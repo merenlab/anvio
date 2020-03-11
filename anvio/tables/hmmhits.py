@@ -265,7 +265,37 @@ class TablesForHMMHits(Table):
 
 
     def remove_source(self, source):
-        self.delete_entries_for_key('source', source, [t.hmm_hits_info_table_name, t.hmm_hits_table_name, t.hmm_hits_splits_table_name])
+        tables_with_source = [
+            t.hmm_hits_info_table_name,
+            t.hmm_hits_table_name,
+            t.hmm_hits_splits_table_name,
+            t.genes_in_contigs_table_name,
+            t.gene_function_calls_table_name,
+        ]
+
+        tables_with_gene_callers_id = [
+            t.gene_amino_acid_sequences_table_name,
+            t.genes_taxonomy_table_name,
+        ]
+
+        # delete entries from tables with 'source' column
+        self.delete_entries_for_key('source', source, tables_with_source)
+
+        # collect gene caller ids that were added to the db via the HMM source
+        gene_caller_ids_to_remove = set(key for key, val in self.gene_calls_dict.items() if val['source'] == source)
+
+        # if there are any, remove them from tables with 'gene_callers_id' column
+        if len(gene_caller_ids_to_remove):
+            database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+            CLAUSE = "gene_callers_id in (%s)" % (','.join([str(x) for x in gene_caller_ids_to_remove]))
+            for table in tables_with_gene_callers_id:
+                database.remove_some_rows_from_table(table, CLAUSE)
+
+            database.disconnect()
+
+            run.warning("%d gene caller ids that were added via the HMM source have been removed from \"%s\"" \
+                        % (len(gene_caller_ids_to_remove), ', '.join(tables_with_gene_callers_id)))
 
 
     def append(self, source, reference, kind_of_search, domain, all_genes, search_results_dict):
