@@ -12,11 +12,13 @@ from collections import Counter
 
 import anvio
 import anvio.utils as utils
+import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 import anvio.drivers.trnscan_se as trnascan_se
 
+from anvio.errors import ConfigError
 from anvio.tables.hmmhits import TablesForHMMHits
 from anvio.tables.genefunctions import TableForGeneFunctions
 
@@ -104,6 +106,17 @@ class TablesForTransferRNAs:
 
     def populate_search_tables(self, contigs_db_path):
         utils.is_contigs_db(contigs_db_path)
+
+        info_table = hmmops.SequencesForHMMHits(contigs_db_path).hmm_hits_info
+
+        if self.source_name in info_table:
+            if self.just_do_it:
+                TablesForHMMHits(contigs_db_path, run=self.run, progress=self.progress).remove_source(self.source_name)
+            else:
+                raise ConfigError("There is already information for %s in the database :/ Anvi'o will not overwrite this "
+                                  "unless you ask for it explicitly. You can either use `anvi-delete-hmms` to remove it first, "
+                                  "or run `anvi-scan-trnas` with `--just-do-it` flag so anvi'o would remove it for you." % (self.source_name))
+
         filesnpaths.is_output_file_writable(contigs_db_path, ok_if_exists=True)
 
         contig_sequences_fasta_path = os.path.join(self.tmp_directory_path, 'contig_sequences.fa')
