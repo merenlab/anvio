@@ -296,6 +296,7 @@ class TablesForHMMHits(Table):
         tables_with_gene_callers_id = [
             t.gene_amino_acid_sequences_table_name,
             t.genes_taxonomy_table_name,
+            t.genes_in_splits_table_name
         ]
 
         # delete entries from tables with 'source' column
