@@ -16,6 +16,7 @@ available_hmm_sources = list(hmm_data.sources.keys())
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
 from anvio.tables.hmmhits import TablesForHMMHits
+from anvio.tables.trnahits import TablesForTransferRNAs
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -46,8 +47,8 @@ def main(args):
     # then check whether we are going to use the default HMM profiles, or run it for a new one.
     sources = {}
     if args.hmm_profile_dir and args.installed_hmm_profile:
-        raise ConfigError("You must select either an installed HMM profile, or provide a path for a profile directory.\
-                           But not both :/")
+        raise ConfigError("You must select either an installed HMM profile, or provide a path for a profile directory. "
+                          "But not both :/")
     elif args.hmm_profile_dir:
         if not os.path.exists(args.hmm_profile_dir):
             raise ConfigError('No such file or directory: "%s"' % args.hmm_profile_dir)
@@ -58,8 +59,8 @@ def main(args):
                                                                                                     for s in sources])))
     elif args.installed_hmm_profile:
         if args.installed_hmm_profile not in available_hmm_sources:
-            raise ConfigError("You managed to find a profile that is not actually installed :/ Available ones are\
-                               these: %s." % (', '.join(available_hmm_sources)))
+            raise ConfigError("You managed to find a profile that is not actually installed :/ Available ones are "
+                              "these: %s." % (', '.join(available_hmm_sources)))
 
         sources = {args.installed_hmm_profile: hmm_data.sources[args.installed_hmm_profile]}
     else:
@@ -69,21 +70,40 @@ def main(args):
     search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use = args.num_threads)
     search_tables.populate_search_tables(sources)
 
+    if not args.hmm_profile_dir and not args.installed_hmm_profile and not args.skip_scanning_trnas:
+        tables_for_trna_hits = TablesForTransferRNAs(args)
+        tables_for_trna_hits.populate_search_tables(args.contigs_db)
+
+
+
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description=__description__)
 
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    parser.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))
-    parser.add_argument(*anvio.A('installed-hmm-profile'), **anvio.K('installed-hmm-profile', {'help': "When you run this\
+    groupA = parser.add_argument_group("DB", "An anvi'o contigs adtabase to populate with HMM hits")
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+
+    groupB = parser.add_argument_group("HMM OPTIONS", "If you have your own HMMs, or if you would like to run only a set of "
+                                                      "default anvi'o HMM profiles rather than running them all, this is "
+                                                      "your stop.")
+    groupB.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))
+    groupB.add_argument(*anvio.A('installed-hmm-profile'), **anvio.K('installed-hmm-profile', {'help': "When you run this\
                                   program without any parameter, it runs all %d HMM profiles installed on your system. If\
                                   you want only a specific one to run, you can select it by using this parameter. These\
                                   are the currently available ones: %s." % \
                                                 (len(available_hmm_sources),
                                                  ', '.join(['"%s" (type: %s)' % (s, hmm_data.sources[s]['kind']) \
                                                                                     for s in available_hmm_sources]))}))
-    parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupC = parser.add_argument_group("tRNAs", "If you are running this program with everything, it will also scan "
+                                                "Transfer RNA sequences in your contigs database for free. But if you "
+                                                "do not like tRNAs for some reason (you're not alone) you can skip that "
+                                                "step.")
+    groupC.add_argument(*anvio.A('skip-scanning-trnas'), **anvio.K('skip-scanning-trnas'))
+
+    groupD = parser.add_argument_group("PERFORMANCE", "Stuff everyone forgets to set and then get upset with how slow "
+                                                      "science goes.")
+    groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
     args = anvio.get_args(parser)
 

@@ -118,8 +118,8 @@ class MetagenomeCentricGeneClassifier:
         """ setting the dictionaries for gene coverage stats and for split coverage per nucleotide"""
 
         if gene_level_coverage_stats_dict is None and split_coverage_values_per_nt_dict is None:
-            raise ConfigError("MCGC needs at least one of the following in order to work: \
-                                gene_level_coverage_stats_dict or/and split_coverage_values_per_nt_dict")
+            raise ConfigError("MCGC needs at least one of the following in order to work: "
+                               "gene_level_coverage_stats_dict or/and split_coverage_values_per_nt_dict")
 
         # We want to make sure these are empty in case we use "init" multiple times for different bins
         self.coverage_values_per_nt = None
@@ -177,8 +177,8 @@ class MetagenomeCentricGeneClassifier:
         if self.include_samples:
             samples_to_include_that_are_not_there = self.samples_to_include - samples
             if samples_to_include_that_are_not_there:
-                raise ConfigError("You requested to include some samples that are not in the profile database. Here are the samples in the profile database: %s. \
-                                And here are the samples you requested, and that are not there: %s" % (samples, samples_to_include_that_are_not_there))
+                raise ConfigError("You requested to include some samples that are not in the profile database. Here are the samples in the profile database: %s. "
+                               "And here are the samples you requested, and that are not there: %s" % (samples, samples_to_include_that_are_not_there))
             samples = self.samples_to_include
 
         self.samples = samples

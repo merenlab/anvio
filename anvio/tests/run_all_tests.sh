@@ -20,8 +20,7 @@ anvi-script-reformat-fasta $files/contigs.fa -o $output_dir/contigs.fa \
                                              --simplify-names \
                                              --prefix test_prefix \
                                              --report $output_dir/contigs-reformat-report.txt
-echo
-column -t $output_dir/contigs-reformat-report.txt
+SHOW_FILE $output_dir/contigs-reformat-report.txt
 
 # we first generate an empty contigs database using contigs.fa (keep in mind that 'contigs.fa'
 # is the original file all samples were mapped to). here we use split size of 1000 (the default split
@@ -51,6 +50,7 @@ anvi-db-info $output_dir/CONTIGS.db \
 
 INFO "Exporting gene calls from the contigs database"
 anvi-export-gene-calls -c $output_dir/CONTIGS.db \
+                       --gene-caller prodigal \
                        -o $output_dir/exported_gene_calls.txt
 
 INFO "Exporting contig sequences from the contigs database"
@@ -335,9 +335,7 @@ anvi-rename-bins -c $output_dir/CONTIGS.db \
                  --collection-to-write "cmdline_concoct_RENAMED" \
                  --report-file $output_dir/renaming-report.txt
 
-echo
-column -t $output_dir/renaming-report.txt
-echo
+SHOW_FILE $output_dir/renaming-report.txt
 
 INFO "Requesting collection info"
 anvi-estimate-genome-completeness -p $output_dir/SAMPLES-MERGED/PROFILE.db \
@@ -543,14 +541,14 @@ anvi-get-short-reads-mapping-to-a-gene -c $output_dir/CONTIGS.db \
 INFO "Get AA counts for the entire contigs database"
 anvi-get-aa-counts -c $output_dir/CONTIGS.db \
                    -o $output_dir/aa_counts_for_contigs_db.txt
-column -t $output_dir/aa_counts_for_contigs_db.txt
+SHOW_FILE $output_dir/aa_counts_for_contigs_db.txt
 
 INFO "Get AA counts for bins in collection CONCOCT stored in the merged profile"
 anvi-get-aa-counts -c $output_dir/CONTIGS.db \
                    -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                    -C CONCOCT \
                    -o $output_dir/aa_counts_for_bins_in_collection_CONCOCT.txt
-column -t $output_dir/aa_counts_for_bins_in_collection_CONCOCT.txt
+SHOW_FILE $output_dir/aa_counts_for_bins_in_collection_CONCOCT.txt
 
 INFO "Get AA counts for bin 'bin_3' in collection CONCOCT stored in the merged profile"
 anvi-get-aa-counts -c $output_dir/CONTIGS.db \
@@ -558,19 +556,19 @@ anvi-get-aa-counts -c $output_dir/CONTIGS.db \
                    -C CONCOCT \
                    -o $output_dir/aa_counts_for_bin_3_in_collection_CONCOCT.txt \
                    -B $files/sample_CONCOCT_bin_id.txt
-column -t $output_dir/aa_counts_for_bin_3_in_collection_CONCOCT.txt
+SHOW_FILE $output_dir/aa_counts_for_bin_3_in_collection_CONCOCT.txt
 
 INFO "Get AA counts for bin 'bin_3' in collection CONCOCT stored in the merged profile"
 anvi-get-aa-counts -c $output_dir/CONTIGS.db \
                    --contigs-of-interest $files/sample_contig_ids.txt \
                    -o $output_dir/aa_counts_for_two_contigs.txt
-column -t $output_dir/aa_counts_for_two_contigs.txt
+SHOW_FILE $output_dir/aa_counts_for_two_contigs.txt
 
 INFO "Get AA counts for five genes"
 anvi-get-aa-counts -c $output_dir/CONTIGS.db \
                    --gene-caller-ids $files/sample_gene_call_ids.txt \
                    -o $output_dir/aa_counts_for_five_genes.txt
-column -t $output_dir/aa_counts_for_five_genes.txt
+SHOW_FILE $output_dir/aa_counts_for_five_genes.txt
 
 INFO "Importing a state file into the merged profile"
 anvi-import-state -p $output_dir/SAMPLES-MERGED/PROFILE.db \
@@ -624,10 +622,40 @@ anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                     -C CONCOCT \
                     -b Bin_1 \
                     --exclude-samples $files/samples_to_exclude_for_mcg.txt
-#
-# INFO "Running anvi-mcg-classifier on a collection"
-# anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -O $output_dir/MCG_CLASSIFIER_OUTPUTS/MCG_CONCOCT -C CONCOCT
-#
+
+INFO "Generating mock external genome data"
+cp $files/mock_data_for_pangenomics/{01,02,03}.fa $output_dir/
+cp $files/mock_data_for_pangenomics/external-genomes.txt $output_dir/
+for g in 01 02 03
+do
+    echo -n "$g .. "
+    anvi-gen-contigs-database -f $output_dir/$g.fa \
+                              -o $output_dir/$g.db \
+                              --project-name $g >/dev/null 2>&1
+done; echo
+
+INFO "Dereplicating genomes using pyANI"
+anvi-dereplicate-genomes -o $output_dir/DEREPLICATION_FROM_SCRATCH \
+                         -e $output_dir/external-genomes.txt \
+                         --similarity 0.99 \
+                         --program pyANI
+SHOW_FILE $output_dir/DEREPLICATION_FROM_SCRATCH/CLUSTER_REPORT.txt
+
+INFO "Computing genome similarity"
+anvi-compute-genome-similarity -e $output_dir/external-genomes.txt \
+                               -o $output_dir/GENOME_SIMILARITY_OUTPUT \
+                               --fragment-length 250 \
+                               --min-num-fragments 1 \
+                               --program pyANI
+SHOW_FILE $output_dir/GENOME_SIMILARITY_OUTPUT/ANIb_percentage_identity.txt
+
+INFO "Dereplicating genomes using an existing genome similarity analysis directory"
+anvi-dereplicate-genomes --ani-dir $output_dir/GENOME_SIMILARITY_OUTPUT \
+                         -o $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS \
+                         --similarity 0.99 \
+                         --program pyANI
+SHOW_FILE $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS/CLUSTER_REPORT.txt
+
 INFO 'A dry run with an items order file for the merged profile without any clustering'
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  -c $output_dir/CONTIGS.db \

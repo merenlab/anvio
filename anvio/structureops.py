@@ -66,9 +66,9 @@ class StructureDatabase(object):
             self.genes_queried = self.genes_with_structure + self.genes_without_structure
 
             if not len(self.genes_queried):
-                raise ConfigError("Interesting...  this structure database has no gene caller ids. I'm\
-                                   not sure how you managed that. please send a report to the\
-                                   developers. Thank you.")
+                raise ConfigError("Interesting...  this structure database has no gene caller ids. I'm "
+                                  "not sure how you managed that. please send a report to the "
+                                  "developers. Thank you.")
 
         if not ignore_hash:
             self.check_hash()
@@ -294,19 +294,19 @@ class Structure(object):
 
         # Finally, raise warning if number of genes is greater than 20
         if len(self.genes_of_interest) > 20:
-            self.run.warning("Modelling protein structures is no joke. The number of genes you want protein structures for is \
-                              {}, which is a lot (of time!). If its taking too long, consider using the --very-fast flag. \
-                              CTRL + C to cancel.".format(len(self.genes_of_interest)))
+            self.run.warning("Modelling protein structures is no joke. The number of genes you want protein structures for is "
+                             "{}, which is a lot (of time!). If its taking too long, consider using the --very-fast flag. "
+                             "CTRL + C to cancel.".format(len(self.genes_of_interest)))
 
         # if self.percent_identical_cutoff is < 25, you should be careful about accuracy of models
         if self.percent_identical_cutoff < 25:
-            self.run.warning("You selected a percent identical cutoff of {}%. Below 25%, you should pay close attention \
-                              to the quality of the proteins...".format(self.percent_identical_cutoff))
+            self.run.warning("You selected a percent identical cutoff of {}%. Below 25%, you should pay close attention "
+                             "to the quality of the proteins...".format(self.percent_identical_cutoff))
 
         # check that DSSP exists and works
         if self.skip_DSSP:
-            self.run.warning("You requested to skip amino acid residue annotation with DSSP. A bold move only an expert could justify... \
-                              Anvi'o's respect for you increases slightly.")
+            self.run.warning("You requested to skip amino acid residue annotation with DSSP. A bold move only an expert could justify... "
+                             "Anvi'o's respect for you increases slightly.")
 
         else:
             if utils.is_program_exists("mkdssp", dont_raise=True): # mkdssp is newer and preferred
@@ -316,13 +316,13 @@ class Structure(object):
                 if utils.is_program_exists("dssp", dont_raise=True):
                     self.DSSP_executable = "dssp"
                 else:
-                    raise ConfigError("An anvi'o function needs 'mkdssp' or 'dssp' to be installed on your system, but\
-                                       neither seem to appear in your path :/ If you are certain you have either on your\
-                                       system (for instance you can run either by typing 'mkdssp' or 'dssp' in your terminal\
-                                       window), you may want to send a detailed bug report. If you want to install DSSP,\
-                                       check out http://merenlab.org/2016/06/18/installing-third-party-software/#dssp.\
-                                       If you want to skip secondary structure and solvent accessibility annotation,\
-                                       provide the flag --skip-DSSP.")
+                    raise ConfigError("An anvi'o function needs 'mkdssp' or 'dssp' to be installed on your system, but "
+                                      "neither seem to appear in your path :/ If you are certain you have either on your "
+                                      "system (for instance you can run either by typing 'mkdssp' or 'dssp' in your terminal "
+                                      "window), you may want to send a detailed bug report. If you want to install DSSP, "
+                                      "check out http://merenlab.org/2016/06/18/installing-third-party-software/#dssp. "
+                                      "If you want to skip secondary structure and solvent accessibility annotation, "
+                                      "provide the flag --skip-DSSP.")
 
             self.run.info_single("Anvi'o found the DSSP executable `%s`, and will use it."\
                                   % self.DSSP_executable, nl_before=1, nl_after=1)
@@ -340,16 +340,16 @@ class Structure(object):
         try:
             test_residue_annotation = DSSP(test_model, test_input, dssp = self.DSSP_executable, acc_array = "Wilke")
         except Exception as e:
-            raise ConfigError('Your executable of DSSP, `{}`, doesn\'t appear to be working. For information on how to test\
-                               that your version is working correctly, please visit\
-                               http://merenlab.org/2016/06/18/installing-third-party-software/#dssp'\
+            raise ConfigError('Your executable of DSSP, `{}`, doesn\'t appear to be working. For information on how to test '
+                              'that your version is working correctly, please visit '
+                              'http://merenlab.org/2016/06/18/installing-third-party-software/#dssp'\
                                .format(self.DSSP_executable))
 
         if not len(test_residue_annotation.keys()):
-            raise ConfigError("Your executable of DSSP, `{}`, exists but didn't return any meaningful output. This\
-                               is a known issue with certain distributions of DSSP. For information on how to test\
-                               that your version is working correctly, please visit\
-                               http://merenlab.org/2016/06/18/installing-third-party-software/#dssp"\
+            raise ConfigError("Your executable of DSSP, `{}`, exists but didn't return any meaningful output. This "
+                              "is a known issue with certain distributions of DSSP. For information on how to test "
+                              "that your version is working correctly, please visit "
+                              "http://merenlab.org/2016/06/18/installing-third-party-software/#dssp"\
                                .format(self.DSSP_executable))
 
         try:
@@ -358,9 +358,9 @@ class Structure(object):
             import pickle
             with open('troubleshoot_DDSP_output.pickle', 'wb') as output:
                 pickle.dump(test_residue_annotation, output, pickle.HIGHEST_PROTOCOL)
-            raise ConfigError('Your executable of DSSP ran and produced an output, but anvi\'o wasn\'t able to correctly parse it.\
-                               This is probably our fault. In your working directory should exist a file named "troubleshoot_DDSP_output.pickle".\
-                               Please send this to an anvio developer so that we can help identify what went wrong.')
+            raise ConfigError('Your executable of DSSP ran and produced an output, but anvi\'o wasn\'t able to correctly parse it. '
+                              'This is probably our fault. In your working directory should exist a file named "troubleshoot_DDSP_output.pickle". '
+                              'Please send this to an anvio developer so that we can help identify what went wrong.')
 
 
     def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None):
@@ -377,8 +377,8 @@ class Structure(object):
 
         # settling genes of interest
         if genes_of_interest_path and gene_caller_ids:
-            raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids\
-                               as a file at the same time, obviously.")
+            raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids "
+                              "as a file at the same time, obviously.")
 
         if gene_caller_ids:
             gene_caller_ids = set([x.strip() for x in gene_caller_ids.split(',')])
@@ -398,8 +398,8 @@ class Structure(object):
             try:
                 genes_of_interest = set([int(s.strip()) for s in open(genes_of_interest_path).readlines()])
             except ValueError:
-                raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... those gene IDs did not\
-                                   look like anvi'o gene caller ids :/ Anvi'o is now sad.")
+                raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... those gene IDs did not "
+                                  "look like anvi'o gene caller ids :/ Anvi'o is now sad.")
 
         if not genes_of_interest:
             # no genes of interest are specified. Assuming all, which could be innumerable--raise warning
@@ -416,9 +416,9 @@ class Structure(object):
             utils.is_gene_sequence_clean(fasta.seq, amino_acid=True, can_end_with_stop=False)
             return False
         except ConfigError as error:
-            self.run.warning("You wanted to model a structure for gene ID %d, but it is not what anvi'o \
-                              considers a 'clean gene'. Anvi'o will move onto the next gene. Here is the \
-                              error that was raised: \"%s\"" % (corresponding_gene_call, error.e))
+            self.run.warning("You wanted to model a structure for gene ID %d, but it is not what anvi'o "
+                             "considers a 'clean gene'. Anvi'o will move onto the next gene. Here is the "
+                             "error that was raised: \"%s\"" % (corresponding_gene_call, error.e))
             return True
 
 
@@ -759,8 +759,8 @@ class StructureUpdate(Structure):
                 self.run.info("Redundant gene caller ids that will be skipped", ",".join([str(x) for x in redundant_gene_caller_ids]))
                 self.genes_of_interest = [g for g in self.genes_of_interest if g not in redundant_gene_caller_ids]
                 if not self.genes_of_interest:
-                    raise ConfigError("Every gene you wanted to add is already in the database. Since you provided\
-                                       the --skip-genes-if-already-present flag, there is nothing to do :)")
+                    raise ConfigError("Every gene you wanted to add is already in the database. Since you provided "
+                                      "the --skip-genes-if-already-present flag, there is nothing to do :)")
 
         self.run.info("Gene caller ids to be added", ",".join([str(x) for x in self.genes_of_interest]))
 
@@ -785,15 +785,15 @@ class StructureUpdate(Structure):
         bad_ids = [x for x in remove if x not in self.structure_db.genes_queried]
         if len(bad_ids):
             if len(bad_ids) == len(remove):
-                self.run.warning("All of the gene caller IDs you asked to remove are missing from\
-                                  the structure database, so there's no genes to remove. Here they\
-                                  are: [{}]. Anvi'o's trust in you decreases significantly."\
+                self.run.warning("All of the gene caller IDs you asked to remove are missing from "
+                                 "the structure database, so there's no genes to remove. Here they "
+                                 "are: [{}]. Anvi'o's trust in you decreases significantly."\
                                       .format(",".join([str(x) for x in bad_ids])))
                 self.progress.end()
                 return
 
-            self.run.warning("Some of the gene caller ids you asked to remove aren't in the\
-                              structure database. Here they are: [{}].".format(",".join([str(x) for x in bad_ids])))
+            self.run.warning("Some of the gene caller ids you asked to remove aren't in the "
+                             "structure database. Here they are: [{}].".format(",".join([str(x) for x in bad_ids])))
 
         remove = set([x for x in remove if x not in bad_ids])
 
@@ -839,8 +839,8 @@ class StructureUpdate(Structure):
             try:
                 genes = set([int(s.strip()) for s in open(genes_filepath).readlines()])
             except ValueError:
-                raise ConfigError("Well. Anvi'o was working on your genes in `%s` ... and ... those gene IDs did not\
-                                   look like anvi'o gene caller ids :/ Anvi'o is now sad." % genes_filepath)
+                raise ConfigError("Well. Anvi'o was working on your genes in `%s` ... and ... those gene IDs did not "
+                                  "look like anvi'o gene caller ids :/ Anvi'o is now sad." % genes_filepath)
 
         return set(genes)
 
@@ -893,9 +893,9 @@ class StructureUpdate(Structure):
 
         # raise warning if number of genes is greater than 20
         if len(self.genes_of_interest) > 20:
-            self.run.warning("Modelling protein structures is no joke. The number of genes you want\
-                              to append to the structure database is {}, which is a lot (of time!).\
-                              CTRL + C to cancel.".format(len(self.genes_of_interest)))
+            self.run.warning("Modelling protein structures is no joke. The number of genes you want "
+                             "to append to the structure database is {}, which is a lot (of time!). "
+                             "CTRL + C to cancel.".format(len(self.genes_of_interest)))
 
         if not self.skip_DSSP:
             if utils.is_program_exists("mkdssp", dont_raise=True): # mkdssp is newer and preferred
@@ -905,13 +905,13 @@ class StructureUpdate(Structure):
                 if utils.is_program_exists("dssp", dont_raise=True):
                     self.DSSP_executable = "dssp"
                 else:
-                    raise ConfigError("An anvi'o function needs 'mkdssp' or 'dssp' to be installed on your system, but\
-                                       neither seem to appear in your path :/ If you are certain you have either on your\
-                                       system (for instance you can run either by typing 'mkdssp' or 'dssp' in your terminal\
-                                       window), you may want to send a detailed bug report. If you want to install DSSP,\
-                                       check out http://merenlab.org/2016/06/18/installing-third-party-software/#dssp.\
-                                       If you want to skip secondary structure and solvent accessibility annotation,\
-                                       provide the flag --skip-DSSP.")
+                    raise ConfigError("An anvi'o function needs 'mkdssp' or 'dssp' to be installed on your system, but "
+                                      "neither seem to appear in your path :/ If you are certain you have either on your "
+                                      "system (for instance you can run either by typing 'mkdssp' or 'dssp' in your terminal "
+                                      "window), you may want to send a detailed bug report. If you want to install DSSP, "
+                                      "check out http://merenlab.org/2016/06/18/installing-third-party-software/#dssp. "
+                                      "If you want to skip secondary structure and solvent accessibility annotation, "
+                                      "provide the flag --skip-DSSP.")
 
             self.run.info_single("Anvi'o found the DSSP executable `%s`, and will use it."\
                                   % self.DSSP_executable, nl_before=1, nl_after=1)
@@ -953,8 +953,8 @@ class StructureExport():
             genes_of_interest = None
 
             if genes_of_interest_path and gene_caller_ids:
-                raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids\
-                                   as a file at the same time, obviously.")
+                raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids "
+                                  "as a file at the same time, obviously.")
 
             if gene_caller_ids:
                 gene_caller_ids = set([x.strip() for x in gene_caller_ids.split(',')])
@@ -974,8 +974,8 @@ class StructureExport():
                 try:
                     genes_of_interest = set([int(s.strip()) for s in open(genes_of_interest_path).readlines()])
                 except ValueError:
-                    raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... those gene IDs did not\
-                                       look like anvi'o gene caller ids :/ Anvi'o is now sad.")
+                    raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... those gene IDs did not "
+                                      "look like anvi'o gene caller ids :/ Anvi'o is now sad.")
 
             if not genes_of_interest:
                 genes_of_interest = self.structure_db.genes_with_structure

@@ -34,8 +34,8 @@ def main(args):
         raise ConfigError("You really need to specify a parser.")
 
     if not args.input_files:
-        raise ConfigError("You need to use '--input-files' parameter to list file(s) that is/are required the\
-                            parser you chose. Please see the documentation for details.")
+        raise ConfigError("You need to use '--input-files' parameter to list file(s) that is/are required the "
+                           "parser you chose. Please see the documentation for details.")
 
     parser_obj = parsers.get_parser_obj('taxonomy_genes', args.parser)
 
@@ -45,10 +45,10 @@ def main(args):
     genes_taxonomy_dict, taxon_names_dict = parser.process()
 
     if not len(genes_taxonomy_dict):
-        raise ConfigError("Your parser (%s) returned an empty result for your input file. Something must have gone wrong.\
-                            Maybe you selected a wrong parser, or the input file format has changed between when this\
-                            parser was implemented and now. Either ways, if you have exhausted your ideas for troubleshooting\
-                            you should send an e-mail to anvio developers! Sorry for this!" % (args.parser))
+        raise ConfigError("Your parser (%s) returned an empty result for your input file. Something must have gone wrong. "
+                           "Maybe you selected a wrong parser, or the input file format has changed between when this "
+                           "parser was implemented and now. Either ways, if you have exhausted your ideas for troubleshooting "
+                           "you should send an e-mail to anvio developers! Sorry for this!" % (args.parser))
 
 
     tables_for_taxonomy = TablesForGeneLevelTaxonomy(args.contigs_db, run, progress)

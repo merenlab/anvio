@@ -1280,8 +1280,8 @@ function buildLayersTable(order, settings)
                         var type = getNamedLayerDefaults(layer_name, 'type', 'intensity');
                         var color_start = "#EEEEEE";
                     } else {
-                        var type = 'bar'
-                        var color_start = "#FFFFFF";
+                        var type = getNamedLayerDefaults(layer_name, 'type', 'bar');
+                        var color_start = getNamedLayerDefaults(layer_name, 'color-start', '#FFFFFF');
                     }
                 }
 

@@ -42,8 +42,8 @@ class TableForGeneFunctions(Table):
 
     def add_empty_sources_to_functional_sources(self, gene_function_sources):
         if type(gene_function_sources) is not set:
-            raise ConfigError('The programmer who called this function forgot that gene_function_sources must be of \
-                               type %s. If this is not your falut, please contact an anvi\'o developer.' % set)
+            raise ConfigError('The programmer who called this function forgot that gene_function_sources must be of '
+                              'type %s. If this is not your falut, please contact an anvi\'o developer.' % set)
         # open connection
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
@@ -72,8 +72,8 @@ class TableForGeneFunctions(Table):
 
         elif gene_function_sources_in_db and drop_previous_annotations_first:
             # there are gene calls, but the user wants everything to be dropeped.
-            self.run.warning("As per your request, anvi'o is DROPPING all previous function calls from %d sources\
-                              before adding the incoming data, which contains %d entries originating from %d sources: %s" \
+            self.run.warning("As per your request, anvi'o is DROPPING all previous function calls from %d sources "
+                             "before adding the incoming data, which contains %d entries originating from %d sources: %s" \
                                     % (len(gene_function_sources_in_db), len(gene_function_sources),
                                        len(gene_function_sources), ', '.join(gene_function_sources)))
 
@@ -87,8 +87,8 @@ class TableForGeneFunctions(Table):
 
         elif gene_function_sources_in_db and gene_function_sources_both_in_db_and_incoming_dict:
             # some of the functions in the incoming dict match to what is already in the db. remove
-            self.run.warning("Some of the annotation sources you want to add into the database are already in the db. So\
-                              anvi'o will REPLACE those with the incoming data from these sources: %s" % \
+            self.run.warning("Some of the annotation sources you want to add into the database are already in the db. So "
+                             "anvi'o will REPLACE those with the incoming data from these sources: %s" % \
                                             ', '.join(gene_function_sources_both_in_db_and_incoming_dict))
 
             # remove those entries for matching sources:

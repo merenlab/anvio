@@ -139,9 +139,9 @@ class VariabilityFilter:
         matrix. The default value for -m is 0, which means every x found in the database and
         survived previous filtering criteria will be reported. Naturally, -m can not be more than
         half of the number of samples.)"""
-        raise ConfigError("Woops. The function that handles --min-scatter doesn't do \
-                           what we thought it did. This will be fixed maybe. Sorry for \
-                           the inconvenience.")
+        raise ConfigError("Woops. The function that handles --min-scatter doesn't do "
+                          "what we thought it did. This will be fixed maybe. Sorry for "
+                          "the inconvenience.")
 
 
     def are_passed_arguments_valid(self, kwargs):
@@ -250,9 +250,9 @@ class VariabilityFilter:
 
         self.append_info_log("found attribute names", ", ".join(arg_val_names_found))
         if not filter_params:
-            raise ConfigError("VariabilityFilter :: Explicit parameters were not passed to\
-                               filter_data, so anvi'o tried its best to find attributes that made\
-                               sense given your filter criterion `%s`, but failed.")
+            raise ConfigError("VariabilityFilter :: Explicit parameters were not passed to "
+                              "filter_data, so anvi'o tried its best to find attributes that made "
+                              "sense given your filter criterion `%s`, but failed.")
         return filter_params
 
 
@@ -352,8 +352,8 @@ class VariabilityFilter:
                                        "criterion"     : self.criterion}
 
         else:
-            raise ConfigError("VariabilitySuper :: `%s` is not a keyword recognized by the built in\
-                               function methods of this class." % (keyword_name))
+            raise ConfigError("VariabilitySuper :: `%s` is not a keyword recognized by the built in "
+                              "function methods of this class." % (keyword_name))
 
         return d
 
@@ -372,8 +372,8 @@ class VariabilityFilter:
         for param in params_inspection:
             has_default = True if params_inspection[param].default is not inspect._empty else False
             if not has_default and param not in kwargs.keys():
-                raise ConfigError("`%s` was passed to filter_data. All its arguments without defaults must\
-                                   also be passed, but `%s` was not. Do so with \"%s = ...\"" \
+                raise ConfigError("`%s` was passed to filter_data. All its arguments without defaults must "
+                                  "also be passed, but `%s` was not. Do so with \"%s = ...\"" \
                                        % (self.passed_function, param, param))
             else:
                 self.append_info_log("`%s` of `%s` was passed or has default" % (param, self.passed_function), True)
@@ -392,10 +392,10 @@ class VariabilityFilter:
             if kwarg in self.known_kwargs:
                 if kwarg.endswith("_condition") and kwarg.replace("_condition","_filter") not in kwargs:
                     self.append_info_log("condition argument: `%s`" % (kwarg), "missing filter partner: `%s`" % (kwarg.replace("_condition","_filter")))
-                    raise ConfigError("VariabilityFilter :: The argument `%s` takes something that\
-                                       evaluates to True or False that determines whether or not the\
-                                       data will be filtered by the argument `%s`, which must\
-                                       also be passed." % (kwarg, kwarg.replace("_condition","_filter")))
+                    raise ConfigError("VariabilityFilter :: The argument `%s` takes something that "
+                                      "evaluates to True or False that determines whether or not the "
+                                      "data will be filtered by the argument `%s`, which must "
+                                      "also be passed." % (kwarg, kwarg.replace("_condition","_filter")))
                 else:
                     self.append_info_log("filter argument: `%s`" % (kwarg), "known kwarg")
 
@@ -432,8 +432,8 @@ class VariabilityFilter:
             self.df = getattr(self, self.name)
         except AttributeError as e:
             self.append_info_log("%s is an object" % self.name, False)
-            raise ConfigError("VariabilityFilter :: You tried to filter the object `%s` which is\
-                               not an attribute of VariabilitySuper or its parent classes." \
+            raise ConfigError("VariabilityFilter :: You tried to filter the object `%s` which is "
+                              "not an attribute of VariabilitySuper or its parent classes." \
                                    % (self.name))
         self.append_info_log("%s is an object" % self.name, True)
 
@@ -441,8 +441,8 @@ class VariabilityFilter:
     def is_df_a_dataframe(self):
         if type(self.df) != pd.core.frame.DataFrame:
             self.append_info_log("name points to a valid dataframe", False)
-            raise ConfigError("VariabilityFilter :: You tried to filter the object `%s` which is\
-                               of type `%s`. You can only filter pandas dataframes." \
+            raise ConfigError("VariabilityFilter :: You tried to filter the object `%s` which is "
+                              "of type `%s`. You can only filter pandas dataframes." \
                                    % (self.name, type(self.df)))
         self.append_info_log("name points to a valid dataframe", True)
 
@@ -453,8 +453,8 @@ class VariabilityFilter:
             return
 
         if not self.is_filter_criterion_a_column_in_dataframe():
-            raise ConfigError("VariabilityFilter :: The filter criterion `%s` does not exist as\
-                               a column in self.df. It must." % (self.criterion))
+            raise ConfigError("VariabilityFilter :: The filter criterion `%s` does not exist as "
+                              "a column in self.df. It must." % (self.criterion))
 
 
     def is_filter_criterion_a_column_in_dataframe(self):
@@ -657,8 +657,8 @@ class VariabilitySuper(VariabilityFilter, object):
 
     def sanity_check(self):
         if self.engine not in variability_engines:
-            raise ConfigError("The VariabilitySuper class is inherited with an unknown engine.\
-                               WTF is '%s'? Anvi'o needs an adult :(" % self.engine)
+            raise ConfigError("The VariabilitySuper class is inherited with an unknown engine. "
+                              "WTF is '%s'? Anvi'o needs an adult :(" % self.engine)
 
         if not self.table_provided:
             if not self.contigs_db_path:
@@ -668,67 +668,67 @@ class VariabilitySuper(VariabilityFilter, object):
                 raise ConfigError("You need to provide a profile database.")
 
         if self.table_provided and (self.contigs_db_path or self.profile_db_path):
-            raise ConfigError("You provided a variability table (--variability-profile), but you\
-                               also provided a contigs database and/or a profile database. You need\
-                               to supply either a variability table, or, both a profile database and\
-                               a contigs database combo.")
+            raise ConfigError("You provided a variability table (--variability-profile), but you "
+                              "also provided a contigs database and/or a profile database. You need "
+                              "to supply either a variability table, or, both a profile database and "
+                              "a contigs database combo.")
 
         if self.table_provided and (self.collection_name or self.bin_id):
-            raise ConfigError("You provided a variability table (--variability-profile), but you\
-                               also provided a collection name and/or a bin id, which are parameters\
-                               only used in conjunction with a profile database and a contigs\
-                               database. No big deal, just remove these parameters from your\
-                               command.")
+            raise ConfigError("You provided a variability table (--variability-profile), but you "
+                              "also provided a collection name and/or a bin id, which are parameters "
+                              "only used in conjunction with a profile database and a contigs "
+                              "database. No big deal, just remove these parameters from your "
+                              "command.")
 
         if self.table_provided and (self.splits_of_interest_path or self.splits_of_interest):
             if "split_name" not in self.data.columns:
-                raise ConfigError("Your variability profile does not have a split_name column, and\
-                                   therefore you cannot provide splits of interest\
-                                   (--splits-of-interest).")
+                raise ConfigError("Your variability profile does not have a split_name column, and "
+                                  "therefore you cannot provide splits of interest "
+                                  "(--splits-of-interest).")
 
         if self.genes_of_interest and (self.genes_of_interest_path or self.gene_caller_ids):
-            raise ConfigError("VariabilitySuper: you initialized me with self.genes_of_interest\
-                               because you're a programmer and you know what you're doing. But you\
-                               also initialized me with self.genes_of_interest_path and/or\
-                               self.gene_caller_ids. Because you didn't skip sanity_check(), I am\
-                               complaining. If you skip sanity_check, self.genes_of_interest_path\
-                               and self.gene_caller_ids will be ignored.")
+            raise ConfigError("VariabilitySuper: you initialized me with self.genes_of_interest "
+                              "because you're a programmer and you know what you're doing. But you "
+                              "also initialized me with self.genes_of_interest_path and/or "
+                              "self.gene_caller_ids. Because you didn't skip sanity_check(), I am "
+                              "complaining. If you skip sanity_check, self.genes_of_interest_path "
+                              "and self.gene_caller_ids will be ignored.")
 
         if self.sample_ids_of_interest and self.sample_ids_of_interest_path:
-            raise ConfigError("VariabilitySuper: you initialized me with self.sampes_of_interest\
-                               because you're a programmer and you know what you're doing.  But you\
-                               also initialized me with self.sampes_of_interest_path. Because you\
-                               didn't skip sanity_check(), I am complaining. If you skip\
-                               sanity_check, self.sampes_of_interest_path.")
+            raise ConfigError("VariabilitySuper: you initialized me with self.sampes_of_interest "
+                              "because you're a programmer and you know what you're doing.  But you "
+                              "also initialized me with self.sampes_of_interest_path. Because you "
+                              "didn't skip sanity_check(), I am complaining. If you skip "
+                              "sanity_check, self.sampes_of_interest_path.")
 
         if self.splits_of_interest and (self.splits_of_interest_path or self.bin_id or self.collection_name):
-            raise ConfigError("VariabilitySuper: you initialized me with self.splits_of_interest\
-                               because you're a programmer and you know what you're doing. But you\
-                               also initialized me with one/all/some of\
-                               self.splits_of_interest_path, self.bin_id, self.collection_name.\
-                               Because you didn't skip sanity_check(), I am complaining. If you skip\
-                               sanity_check, self.splits_of_interest_path, self.bin_id,\
-                               self.collection_name will all be ignored.")
+            raise ConfigError("VariabilitySuper: you initialized me with self.splits_of_interest "
+                              "because you're a programmer and you know what you're doing. But you "
+                              "also initialized me with one/all/some of "
+                              "self.splits_of_interest_path, self.bin_id, self.collection_name. "
+                              "Because you didn't skip sanity_check(), I am complaining. If you skip "
+                              "sanity_check, self.splits_of_interest_path, self.bin_id, "
+                              "self.collection_name will all be ignored.")
 
         if self.splits_of_interest_path and self.gene_caller_ids:
-            raise ConfigError("You can't declare a file for split names of interest and then list a\
-                               bunch of gene caller ids to focus :(")
+            raise ConfigError("You can't declare a file for split names of interest and then list a "
+                              "bunch of gene caller ids to focus :(")
 
         if self.splits_of_interest_path and self.genes_of_interest_path:
-            raise ConfigError("You can't declare files with split names of interest and gene caller\
-                               ids of interest :/ Pick one.")
+            raise ConfigError("You can't declare files with split names of interest and gene caller "
+                              "ids of interest :/ Pick one.")
 
         if self.genes_of_interest_path and self.gene_caller_ids:
-            raise ConfigError("Nice try. But it is not OK to list a bunch of gene caller ids to focus\
-                               and also provide a file path with gene caller ids :(")
+            raise ConfigError("Nice try. But it is not OK to list a bunch of gene caller ids to focus "
+                              "and also provide a file path with gene caller ids :(")
 
         if self.gene_caller_ids:
             if isinstance(self.gene_caller_ids, str):
                 try:
                     self.gene_caller_ids = [int(g.strip()) for g in self.gene_caller_ids.split(',')]
                 except:
-                    raise ConfigError("The gene caller ids anvi'o found does not seem like gene caller\
-                                       ids anvi'o use. There is something wrong here :(")
+                    raise ConfigError("The gene caller ids anvi'o found does not seem like gene caller "
+                                      "ids anvi'o use. There is something wrong here :(")
 
         if self.genes_of_interest_path:
             filesnpaths.is_file_tab_delimited(self.genes_of_interest_path, expected_number_of_fields=1)
@@ -736,8 +736,8 @@ class VariabilitySuper(VariabilityFilter, object):
             try:
                 self.gene_caller_ids = [int(g.strip()) for g in open(self.genes_of_interest_path, 'rU').readlines()]
             except:
-                raise ConfigError("The gene caller ids anvi'o found in that file does not seem like gene caller\
-                                   ids anvi'o would use. There is something wrong here :(")
+                raise ConfigError("The gene caller ids anvi'o found in that file does not seem like gene caller "
+                                  "ids anvi'o would use. There is something wrong here :(")
 
 
     def convert_counts_to_frequencies(self, retain_counts = False):
@@ -797,9 +797,9 @@ class VariabilitySuper(VariabilityFilter, object):
                 genes_of_interest = set([int(s.strip()) for s in open(genes_of_interest_path).readlines()])
             except ValueError:
                 self.progress.end()
-                raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... \
-                                   those gene IDs did not look like anvi'o gene caller ids :/ Anvi'o\
-                                   is now sad.")
+                raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... "
+                                  "those gene IDs did not look like anvi'o gene caller ids :/ Anvi'o "
+                                  "is now sad.")
 
         else:
             # looks like no genes were specified
@@ -835,11 +835,11 @@ class VariabilitySuper(VariabilityFilter, object):
 
         elif split_source == "bin_id":
             if self.collection_name and not self.bin_id:
-                raise ConfigError('When you declare a collection name, you must also declare a bin id\
-                                   (from which the split names of interest will be acquired).')
+                raise ConfigError('When you declare a collection name, you must also declare a bin id '
+                                  '(from which the split names of interest will be acquired).')
             if self.bin_id and not self.collection_name:
-                raise ConfigError("You declared a bin id but anvi'o doesn't know which collection\
-                                   it comes from. Please provide a collection name.")
+                raise ConfigError("You declared a bin id but anvi'o doesn't know which collection "
+                                  "it comes from. Please provide a collection name.")
             splits_of_interest = ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
 
         elif split_source == "split_names":
@@ -847,8 +847,8 @@ class VariabilitySuper(VariabilityFilter, object):
             splits_of_interest = set([c.strip().replace('\r', '') for c in open(splits_of_interest_path).readlines()])
 
         else:
-            raise ConfigError("Invalid split source '%s'. Expected 'split_names', 'bin_id', or\
-                               'gene_caller_ids'." % split_source)
+            raise ConfigError("Invalid split source '%s'. Expected 'split_names', 'bin_id', or "
+                              "'gene_caller_ids'." % split_source)
 
         return splits_of_interest
 
@@ -880,8 +880,8 @@ class VariabilitySuper(VariabilityFilter, object):
 
         if self.only_if_structure and not self.structure_db_path:
             self.progress.end()
-            raise ConfigError("You can't ask to only include genes with structures \
-                               (--only-if-structure) without providing a structure database.")
+            raise ConfigError("You can't ask to only include genes with structures "
+                              "(--only-if-structure) without providing a structure database.")
 
         self.progress.update('Checking the output file path ...')
         if self.output_file_path:
@@ -913,8 +913,8 @@ class VariabilitySuper(VariabilityFilter, object):
             if bad_gene_caller_ids:
                 self.progress.end()
                 some_to_report = bad_gene_caller_ids[:5] if len(bad_gene_caller_ids) <= 5 else bad_gene_caller_ids
-                raise ConfigError("{} of the gene caller ids you provided {} not {}. {}: {}. You only have 2 lives left.\
-                                   2 more mistakes, and anvi'o will automatically uninstall itself. Yes, seriously :(".\
+                raise ConfigError("{} of the gene caller ids you provided {} not {}. {}: {}. You only have 2 lives left. "
+                                  "2 more mistakes, and anvi'o will automatically uninstall itself. Yes, seriously :(".\
                                    format(len(bad_gene_caller_ids),
                                           "is" if len(bad_gene_caller_ids) == 1 else "are",
                                           "in this variability table" if self.table_provided else "known to this contigs database",
@@ -959,20 +959,20 @@ class VariabilitySuper(VariabilityFilter, object):
 
         if self.min_coverage_in_each_sample and not self.quince_mode:
             self.progress.end()
-            raise ConfigError("When you specify a coverage value through --min-coverage-in-each-sample, you must also\
-                                use --quince-mode flag, since the former parameter needs to know the coverage values in all\
-                                samples even if variation is reported for only one sample among others. This is the only way\
-                                to figure out whether variation is not reported for other samples due to low or zero coverage,\
-                                or there was no variation to report despite the high coverage. Anvi'o could turn --quince-mode\
-                                flat automatically for you, but it is much better if you have full control and understanding\
-                                of what is going on.")
+            raise ConfigError("When you specify a coverage value through --min-coverage-in-each-sample, you must also "
+                               "use --quince-mode flag, since the former parameter needs to know the coverage values in all "
+                               "samples even if variation is reported for only one sample among others. This is the only way "
+                               "to figure out whether variation is not reported for other samples due to low or zero coverage, "
+                               "or there was no variation to report despite the high coverage. Anvi'o could turn --quince-mode "
+                               "flat automatically for you, but it is much better if you have full control and understanding "
+                               "of what is going on.")
 
         if self.quince_mode:
             self.progress.update('Accessing auxiliary data file ...')
             auxiliary_data_file_path = dbops.get_auxiliary_data_path_for_profile_db(self.profile_db_path)
             if not os.path.exists(auxiliary_data_file_path):
-                raise ConfigError("Anvi'o needs the auxiliary data file to run this program with '--quince-mode' flag.\
-                                    However it wasn't found at '%s' :/" % auxiliary_data_file_path)
+                raise ConfigError("Anvi'o needs the auxiliary data file to run this program with '--quince-mode' flag. "
+                                   "However it wasn't found at '%s' :/" % auxiliary_data_file_path)
             self.merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_file_path, None, ignore_hash=True)
 
         self.input_file_path = '/' + '/'.join(os.path.abspath(self.profile_db_path).split('/')[:-1])
@@ -984,8 +984,8 @@ class VariabilitySuper(VariabilityFilter, object):
 
         if not profile_db.meta['SNVs_profiled']:
             self.progress.end()
-            raise ConfigError("Well well well. It seems SNVs were not characterized for this profile database.\
-                                Sorry, there is nothing to report here!")
+            raise ConfigError("Well well well. It seems SNVs were not characterized for this profile database. "
+                               "Sorry, there is nothing to report here!")
 
         profile_db.disconnect()
         self.progress.end()
@@ -1044,9 +1044,9 @@ class VariabilitySuper(VariabilityFilter, object):
 
         if not profile_db.meta['merged'] and self.quince_mode:
             self.progress.end()
-            raise ConfigError("You have selected --quince-mode, and you're very cool for doing so. But\
-                               your profile database `%s` is not a merged profile database, so it contains\
-                               only one sample. That don't make good sense." % self.profile_db_path)
+            raise ConfigError("You have selected --quince-mode, and you're very cool for doing so. But "
+                              "your profile database `%s` is not a merged profile database, so it contains "
+                              "only one sample. That don't make good sense." % self.profile_db_path)
 
         if self.engine == 'NT':
             self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name,
@@ -1101,9 +1101,9 @@ class VariabilitySuper(VariabilityFilter, object):
 
         if not genes_with_var_and_struct:
             self.progress.end()
-            raise ConfigError("There is no overlap between genes that have structures and genes that have variability.\
-                               Consider changing things upstream in your workflow or do not provide the structure db.\
-                               Here are the genes in your structure database: {}".\
+            raise ConfigError("There is no overlap between genes that have structures and genes that have variability. "
+                              "Consider changing things upstream in your workflow or do not provide the structure db. "
+                              "Here are the genes in your structure database: {}".\
                                format(", ".join([str(x) for x in self.genes_with_structure])))
 
         if self.only_if_structure:
@@ -1139,21 +1139,21 @@ class VariabilitySuper(VariabilityFilter, object):
 
         if not any(list(requested_split_source.values())):
             self.progress.end()
-            raise ConfigError("You must specify a list of genes (with --gene-caller-ids or\
-                               --genes-of-interest), OR a list of splits (--splits-of-interest), OR\
-                               a collection and bin combo (--collection-name and bin-id). You\
-                               supplied none of these parameters and so anvi'o doesn't know what you\
-                               want. If you are truly interested in everything, you\
-                               should run the script anvi-script-add-default-collection, and then\
-                               supply the collection name 'DEFAULT' and the bin id 'EVERYTHING'.")
+            raise ConfigError("You must specify a list of genes (with --gene-caller-ids or "
+                              "--genes-of-interest), OR a list of splits (--splits-of-interest), OR "
+                              "a collection and bin combo (--collection-name and bin-id). You "
+                              "supplied none of these parameters and so anvi'o doesn't know what you "
+                              "want. If you are truly interested in everything, you "
+                              "should run the script anvi-script-add-default-collection, and then "
+                              "supply the collection name 'DEFAULT' and the bin id 'EVERYTHING'.")
 
         if sum(list(requested_split_source.values())) > 1:
             self.progress.end()
-            raise ConfigError("You must specify a list of genes (with --gene-caller-ids or\
-                               --genes-of-interest), OR a list of splits (--splits-of-interest), OR a\
-                               collection and bin combo (--collection-name and bin-id). You\
-                               supplied too many of these parameters, and now anvi'o doesn't\
-                               know what you want.")
+            raise ConfigError("You must specify a list of genes (with --gene-caller-ids or "
+                              "--genes-of-interest), OR a list of splits (--splits-of-interest), OR a "
+                              "collection and bin combo (--collection-name and bin-id). You "
+                              "supplied too many of these parameters, and now anvi'o doesn't "
+                              "know what you want.")
 
         self.split_source = None
         for source in requested_split_source:
@@ -1168,8 +1168,8 @@ class VariabilitySuper(VariabilityFilter, object):
             samples_missing = [sample_id for sample_id in self.sample_ids_of_interest if sample_id not in self.available_sample_ids]
             if len(samples_missing):
                 self.progress.end()
-                raise ConfigError('One or more samples you are interested in seem to be missing from\
-                                   the %s: %s' % ('variability table' if self.table_provided else 'profile database',
+                raise ConfigError('One or more samples you are interested in seem to be missing from '
+                                  'the %s: %s' % ('variability table' if self.table_provided else 'profile database',
                                                   ', '.join(samples_missing)))
 
             self.available_sample_ids = sorted(list(self.sample_ids_of_interest))
@@ -1715,10 +1715,10 @@ class VariabilitySuper(VariabilityFilter, object):
         genes_with_var = list(self.data["corresponding_gene_call"].unique())
         genes_with_var_and_struct = [g for g in self.genes_with_structure if g in genes_with_var]
         if not genes_with_var_and_struct:
-            run.warning("Before filtering entries, there was an overlap between genes with\
-                         variability and genes with structuresr, however that is no longer the case. As a result,\
-                         no structure information columns will be added. Above you can see the number of genes\
-                         remaining with structures after each filtering step.")
+            run.warning("Before filtering entries, there was an overlap between genes with "
+                        "variability and genes with structuresr, however that is no longer the case. As a result, "
+                        "no structure information columns will be added. Above you can see the number of genes "
+                        "remaining with structures after each filtering step.")
             self.append_structure_residue_info = False
             return
 
@@ -2259,16 +2259,16 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
         self.sequence_name_key = 'gene_caller_id' if not self.contigs_mode else 'contig_name'
 
         if not self.engine:
-            raise ConfigError("You somehow managed to call the ConsensusSequences class with an args object that does not\
-                               contain an engine variable. Not appropriate.")
+            raise ConfigError("You somehow managed to call the ConsensusSequences class with an args object that does not "
+                              "contain an engine variable. Not appropriate.")
 
         if self.engine != 'NT':
             raise ConfigError("Currently the only available variability engine for this is 'NT'. You provided %s" % self.engine)
 
         if self.compress_samples:
             args.quince_mode = True
-            self.run.warning("You supplied --compress-samples, so coverage at each variant position for all sample needs to be\
-                              calculated. This will take significantly longer.")
+            self.run.warning("You supplied --compress-samples, so coverage at each variant position for all sample needs to be "
+                             "calculated. This will take significantly longer.")
         else:
             args.min_departure_from_reference = 0.5 # if < 0.5, consensus is guaranteed to be reference
                                                     # shortcut only used when not compressing samples
@@ -2310,10 +2310,10 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
 
         # no data no play.
         if not len(self.data):
-            raise ConfigError("ConsensusSequences class is upset because it doesn't have any data. There can be two reasons\
-                               to this. One, anvi'o variability engines reported nothing (in which case you should have gotten\
-                               an error much earler). Two, you are a programmer and failed to call the 'process()' on your\
-                               instance from this class. Do you see how the second option is much more likely? :/")
+            raise ConfigError("ConsensusSequences class is upset because it doesn't have any data. There can be two reasons "
+                              "to this. One, anvi'o variability engines reported nothing (in which case you should have gotten "
+                              "an error much earler). Two, you are a programmer and failed to call the 'process()' on your "
+                              "instance from this class. Do you see how the second option is much more likely? :/")
 
         # learn about the sequences, either contigs or genes
         if self.contigs_mode:
@@ -2468,8 +2468,8 @@ class VariabilityNetwork:
 
     def generate(self):
         if not self.data:
-            raise ConfigError("There is nothing to report. Either the input file you provided was empty, or you\
-                                haven't filled in the variable positions data into the class.")
+            raise ConfigError("There is nothing to report. Either the input file you provided was empty, or you "
+                               "haven't filled in the variable positions data into the class.")
 
         if self.max_num_unique_positions < 0:
             raise ConfigError("Max number of unique positions cannot be less than 0.. Obviously :/")
@@ -2480,10 +2480,10 @@ class VariabilityNetwork:
         if self.samples_information_dict:
             samples_missing_in_information_dict = [s for s in self.samples if s not in self.samples_information_dict]
             if len(samples_missing_in_information_dict):
-                raise ConfigError("The sample names you provided in the samples information data is not a subset of\
-                                    sample names found in the variable positions data :/ Essentially, every sample name\
-                                    appears in the variability data must be present in the samples information data,\
-                                    however, you are missing these ones from your samples information: %s."\
+                raise ConfigError("The sample names you provided in the samples information data is not a subset of "
+                                   "sample names found in the variable positions data :/ Essentially, every sample name "
+                                   "appears in the variability data must be present in the samples information data, "
+                                   "however, you are missing these ones from your samples information: %s."\
                                                 % (', '.join(samples_missing_in_information_dict)))
 
         self.unique_variable_nt_positions = set([e['unique_pos_identifier'] for e in list(self.data.values())])
@@ -2536,8 +2536,8 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         # determine the engine type of the variability table
         inferred_engine = utils.get_variability_table_engine_type(self.variability_table_path)
         if self.engine and self.engine != inferred_engine:
-            raise ConfigError("The engine you requested is {0}, but the engine inferred from {1} is {2}.\
-                               Explicitly declare the inferred engine type (--engine {2})".\
+            raise ConfigError("The engine you requested is {0}, but the engine inferred from {1} is {2}. "
+                              "Explicitly declare the inferred engine type (--engine {2})".\
                                format(self.engine, self.variability_table_path, inferred_engine))
         self.engine = inferred_engine
 
@@ -2606,9 +2606,9 @@ class VariabilityFixationIndex():
                 delattr(args_for_variability_class, 'contigs_db')
             if self.profile_db_path:
                 delattr(args_for_variability_class, 'profile_db')
-                self.run.warning('You supplied a variability table, but also a profile database.\
-                                  Any variability data used by anvi\'o will be drawn from the variability\
-                                  table, and not from this database.')
+                self.run.warning('You supplied a variability table, but also a profile database. '
+                                 'Any variability data used by anvi\'o will be drawn from the variability '
+                                 'table, and not from this database.')
             self.v = VariabilityData(args_for_variability_class, p=self.progress, r=self.run)
         else:
             self.v = variability_engines[self.engine](args_for_variability_class, p=self.progress, r=self.run)

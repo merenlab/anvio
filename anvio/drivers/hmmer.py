@@ -78,10 +78,10 @@ class HMMer:
         target = ':'.join([alphabet, context])
 
         if target not in self.target_files_dict:
-            raise ConfigError("You have an unknown target :/ Target, which defines an alphabet and context\
-                                to clarify whether the HMM search is supposed to be done using alphabets DNA,\
-                                RNA, or AA sequences, and contexts of GENEs or CONTIGs. Yours is %s, and it\
-                                doesn't work for anvi'o." % target)
+            raise ConfigError("You have an unknown target :/ Target, which defines an alphabet and context "
+                               "to clarify whether the HMM search is supposed to be done using alphabets DNA, "
+                               "RNA, or AA sequences, and contexts of GENEs or CONTIGs. Yours is %s, and it "
+                               "doesn't work for anvi'o." % target)
 
         if not self.target_files_dict[target]:
             raise ConfigError("HMMer class does not know about Sequences file for the target %s :/" % target)
@@ -118,8 +118,8 @@ class HMMer:
         if num_parts < self.num_threads_to_use:
             cores_per_process = self.num_threads_to_use // num_parts
 
-            self.run.warning("You requested %s cores but there were only %s entries in the fasta for the target '%s'.\
-                             Anvi'o will use %s process with %s cores each instead. I hope thats okay for you. " %
+            self.run.warning("You requested %s cores but there were only %s entries in the fasta for the target '%s'. "
+                            "Anvi'o will use %s process with %s cores each instead. I hope thats okay for you. " %
                              (str(self.num_threads_to_use), str(num_parts), target, str(num_parts), cores_per_process))
 
 
@@ -136,7 +136,7 @@ class HMMer:
                             hmm, part_file]
             else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
                 cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else 'hmmscan',
-                            '-o', output_file, 
+                            '-o', output_file,
                             '--cpu', cores_per_process,
                             '--tblout', shitty_file,
                             hmm, part_file]
@@ -176,9 +176,9 @@ class HMMer:
 
         if not os.path.exists(shitty_output_file):
             self.progress.end()
-            raise ConfigError("Something went wrong with hmmscan and it failed to generate the expected output :/ Fortunately\
-                               we have this log file which should clarify the problem: '%s'. Please do not forget to include this\
-                               file in your question if you were to seek help from the community." % log_file)
+            raise ConfigError("Something went wrong with hmmscan and it failed to generate the expected output :/ Fortunately "
+                              "we have this log file which should clarify the problem: '%s'. Please do not forget to include this "
+                              "file in your question if you were to seek help from the community." % log_file)
 
         detected_non_ascii = False
         lines_with_non_ascii = []
@@ -200,9 +200,9 @@ class HMMer:
                     merged_file_buffer.write('\t'.join(line.split()[0:18]) + '\n')
 
         if detected_non_ascii:
-            self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii charachters while processing \
-                              the file '%s' and cleared them. Here are the line numbers with non-ascii charachters: %s.\
-                              You may want to check those lines with a command like \"awk 'NR==<line number>' <file path> | cat -vte\"." %
+            self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii charachters while processing "
+                             "the file '%s' and cleared them. Here are the line numbers with non-ascii charachters: %s. "
+                             "You may want to check those lines with a command like \"awk 'NR==<line number>' <file path> | cat -vte\"." %
                                                  (shitty_output_file, ", ".join(map(str, lines_with_non_ascii))))
 
 

@@ -166,13 +166,13 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         self.just_do_it = A('just_do_it')
 
         if not self.db_path:
-            raise ConfigError("The AdditionalAndOrderDataBaseClass is inherited with an args object that did not\
-                               contain any database path :/ Even though any of the following would\
-                               have worked: `pan_or_profile_db`, `profile_db`, `pan_db` :(")
+            raise ConfigError("The AdditionalAndOrderDataBaseClass is inherited with an args object that did not "
+                              "contain any database path :/ Even though any of the following would "
+                              "have worked: `pan_or_profile_db`, `profile_db`, `pan_db` :(")
 
         if not self.table_name:
-            raise ConfigError("The AdditionalAndOrderDataBaseClass does not know anything about the table it should\
-                               be working with.")
+            raise ConfigError("The AdditionalAndOrderDataBaseClass does not know anything about the table it should "
+                              "be working with.")
 
         database = db.DB(self.db_path, None, ignore_version=True)
         self.additional_data_keys = database.get_single_column_from_table(self.table_name, 'data_key')
@@ -186,8 +186,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         data_dict = utils.get_TAB_delimited_file_as_dictionary(additional_data_file_path)
 
         if not len(data_keys):
-            raise ConfigError("There is something wrong with the additional data file for %s at %s.\
-                               It does not seem to have any additional keys for data :/" \
+            raise ConfigError("There is something wrong with the additional data file for %s at %s. "
+                              "It does not seem to have any additional keys for data :/" \
                                             % (self.target, additional_data_file_path))
 
         if self.target == 'layer_orders':
@@ -287,16 +287,16 @@ class TableForLayerOrders(OrderDataBaseClass):
 
 def check_samples_db_status():
     if 'ANVIO_SAMPLES_DB' not in os.environ:
-        raise ConfigError("Your migration did not finish, and your pan database is still at %s. We are sorry for the \
-                           frustration in advance, but this will be very simple if you read this message carefully. This upgrade\
-                           needs to know where your anvi'o samples database is, if you have one, via an environmental variable.\
-                           If you don't have a samples database associated with this project, or if you want to simply skip it,\
-                           you can run the migration program again this way, and your migration will continue:\
-                           'ANVIO_SAMPLES_DB=SKIP anvi-migrate-db YOUR_PAN_DB_PATH' (note that there are no space characters\
-                           between either sides of '='). If you have a samples database, you can tell anvi'o the location of it\
-                           using the same environmental variable: 'ANVIO_SAMPLES_DB=YOUR_SAMPLES_DB_PATH anvi-migrate-db\
-                           YOUR_PAN_DB_PATH'. If you are curious, this was necessary because there may be multiple samples\
-                           databases for a given project, or a samples database may be at any location and may have any name." \
+        raise ConfigError("Your migration did not finish, and your pan database is still at %s. We are sorry for the "
+                          "frustration in advance, but this will be very simple if you read this message carefully. This upgrade "
+                          "needs to know where your anvi'o samples database is, if you have one, via an environmental variable. "
+                          "If you don't have a samples database associated with this project, or if you want to simply skip it, "
+                          "you can run the migration program again this way, and your migration will continue: "
+                          "'ANVIO_SAMPLES_DB=SKIP anvi-migrate YOUR_PAN_DB_PATH' (note that there are no space characters "
+                          "between either sides of '='). If you have a samples database, you can tell anvi'o the location of it "
+                          "using the same environmental variable: 'ANVIO_SAMPLES_DB=YOUR_SAMPLES_DB_PATH anvi-migrate "
+                          "YOUR_PAN_DB_PATH'. If you are curious, this was necessary because there may be multiple samples "
+                          "databases for a given project, or a samples database may be at any location and may have any name." \
                             % current_version)
 
     if os.environ['ANVIO_SAMPLES_DB'] == 'SKIP':
@@ -305,11 +305,11 @@ def check_samples_db_status():
         samples_db_path = os.environ['ANVIO_SAMPLES_DB']
 
         if not os.path.exists(samples_db_path):
-            raise ConfigError("Your migration did not finish, and your pan database is still at %s. Although anvi'o found\
-                               the environmental variable ANVIO_SAMPLES_DB, the path it pointed, '%s', was nowhere to be found.\
-                               If you don't want to incorporate the information in the samples database associated with this\
-                               pan datbase you can simply call the migration script this way: 'ANVIO_SAMPLES_DB=SKIP anvi-migrate-db YOUR_PAN_DB_PATH'.\
-                               Otherwise, try again with a proper path." % (current_version, samples_db_path))
+            raise ConfigError("Your migration did not finish, and your pan database is still at %s. Although anvi'o found "
+                              "the environmental variable ANVIO_SAMPLES_DB, the path it pointed, '%s', was nowhere to be found. "
+                              "If you don't want to incorporate the information in the samples database associated with this "
+                              "pan datbase you can simply call the migration script this way: 'ANVIO_SAMPLES_DB=SKIP anvi-migrate YOUR_PAN_DB_PATH'. "
+                              "Otherwise, try again with a proper path." % (current_version, samples_db_path))
 
         try:
             database = db.DB(samples_db_path, None, ignore_version=True)
@@ -370,8 +370,8 @@ def migrate(db_path):
 
             fully_upgraded = True
         except Exception as e:
-            run.warning('Something went wrong adding the data found in samples database into the pan database. This is what\
-                         we know: "%s".' % e)
+            run.warning('Something went wrong adding the data found in samples database into the pan database. This is what '
+                        'we know: "%s".' % e)
             fully_upgraded = False
     else:
         fully_upgraded = False
@@ -379,14 +379,14 @@ def migrate(db_path):
 
     if fully_upgraded:
         shutil.move(samples_db_path, samples_db_path + '.OBSOLETE')
-        run.info_single("Your pan db is now version %s. You no longer need your old samples database (which is now \
-                         renamed to something ugly so you can see it." \
+        run.info_single("Your pan db is now version %s. You no longer need your old samples database (which is now "
+                        "renamed to something ugly so you can see it." \
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
     elif samples_db_path:
-        run.info_single("Your pan db is now version %s. BUT THERE WAS THIS: the actual purpose of this script was to\
-                         incorporate the data in your samples database into your pan database. But for some reason it\
-                         has failed. Probably everything is still alright, but you may have to do that step manually. The\
-                         Error messsage should be somewhere above." % next_version, nl_after=1, nl_before=1, mc='green')
+        run.info_single("Your pan db is now version %s. BUT THERE WAS THIS: the actual purpose of this script was to "
+                        "incorporate the data in your samples database into your pan database. But for some reason it "
+                        "has failed. Probably everything is still alright, but you may have to do that step manually. The "
+                        "Error messsage should be somewhere above." % next_version, nl_after=1, nl_before=1, mc='green')
     else:
         run.info_single("Your pan db is now version %s. BUT WITHOUT the samples database incorporation as you wished."\
                                                     % next_version, nl_after=1, nl_before=1, mc='green')
