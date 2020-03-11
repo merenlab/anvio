@@ -653,6 +653,9 @@ class KeggMetabolismEstimator(KeggContext):
 
         self.progress.end()
 
+        self.run.info("Contigs DB", 'An existing database, %s, has been loaded.' % self.contigs_db_path, quiet=self.quiet)
+        self.run.info("KOfam hits", "%d found" % len(kofam_hits))
+
     def estimate_metabolism(self):
         """This is the driver function for estimating metabolism.
 
