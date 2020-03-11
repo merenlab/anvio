@@ -60,7 +60,7 @@ def main(args):
         for source in info_table:
             hmm_tables.remove_source(source)
     else:
-        raise ConfigError("Anvi'o does not know how the hell did you end this part of its code. Please find a "
+        raise ConfigError("Anvi'o does not know how the hell you ended up in this part of its code. Please find a "
                           "developer, explain how you ended up here, and collect your prize.")
 
 
