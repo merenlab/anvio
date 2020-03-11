@@ -166,6 +166,11 @@ class TablesForTransferRNAs:
                 # so this one is reverse
                 entry['stop'] = entry['stop'] - 1
 
+            # just to double check for surprises (see https://github.com/merenlab/anvio/issues/1367 for details)
+            for pos in ['start', 'stop']:
+                if entry[pos] < 0:
+                    entry[pos] = 0
+
         for entry_id in entries_to_remove:
             search_results_dict.pop(entry_id)
 
