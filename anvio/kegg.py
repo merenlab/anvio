@@ -609,6 +609,7 @@ class KeggMetabolismEstimator(KeggContext):
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.bin_ids_file = A('bin_ids_file')
+        self.metagenome_mode = True if A('metagenome_mode') else False
 
         self.bin_ids_to_process = None
         if self.bin_id and self.bin_ids_file:
@@ -704,6 +705,7 @@ class KeggMetabolismEstimator(KeggContext):
         self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
         self.run.info("KOfam hits", "%d found" % len(kofam_hits), quiet=self.quiet)
         self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
+        self.run.info('Metagenome mode', self.metagenome_mode)
 
     def estimate_metabolism(self):
         """This is the driver function for estimating metabolism.
