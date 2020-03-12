@@ -21,7 +21,8 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
-from anvio.dbops import ContigsSuperclass, ContigsDatabase
+from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
