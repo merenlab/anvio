@@ -620,6 +620,9 @@ class KeggMetabolismEstimator(KeggContext):
             filesnpaths.is_file_exists(self.bin_ids_file)
             self.bin_ids_to_process = [line.strip() for line in open(self.bin_ids_file).readlines()]
 
+        if self.profile_db_path and not self.collection_name:
+            raise ConfigError("If you provide a profiles DB, you should also provide a collection name.")
+
 
         # init the base class
         KeggContext.__init__(self, self.args)
