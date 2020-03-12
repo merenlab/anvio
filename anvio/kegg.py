@@ -715,6 +715,26 @@ class KeggMetabolismEstimator(KeggContext):
 
         self.init_hits_and_splits()
 
+        if self.profile_db_path and not self.metagenome_mode:
+            raise ConfigError("This class doesn't know how to deal with that yet :/")
+            # isolate genome, with profiling
+            #something like self.estimate_for_bins_in_collection()
+        elif not self.profile_db_path and not self.metagenome_mode:
+            raise ConfigError("This class doesn't know how to deal with that yet :/")
+            # isolate genome without profiling
+            #something like self.estimate_for_contigs_db_for_genome()
+        elif self.profile_db_path and self.metagenome_mode:
+            raise ConfigError("This class doesn't know how to deal with that yet :/")
+            # metagenome, with profiling
+            #self.estimate_for_contigs_db_for_metagenome()
+        elif not self.profile_db_path and self.metagenome_mode:
+            raise ConfigError("This class doesn't know how to deal with that yet :/")
+            # metagenome without profiling
+            #self.estimate_for_contigs_db_for_metagenome()
+        else:
+            raise ConfigError("This class doesn't know how to deal with that yet :/")
+
+
 
 class KeggModulesDatabase(KeggContext):
     """To create or access a Modules DB.
