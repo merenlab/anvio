@@ -54,12 +54,9 @@ if __name__ == '__main__':
 
     groupB = parser.add_argument_group('INPUT #2', "In addition, you can also point out a profile database. In which case you also must\
                                                     provide a collection name. When you do that anvi'o will offer taxonomy estimates for\
-                                                    each bin in your collection. You can also limit those estimates to a single bin using\
-                                                    the parameters `--bin-id` or `--bin-ids-file`.")
+                                                    each bin in your collection.")
     groupB.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
     groupB.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    groupB.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
-    groupB.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
 
     groupC = parser.add_argument_group('INPUT #3', "You can also work with an external genomes file. In this case you would have multiple\
                                                     genomes you are interested in, and anvi'o would generate a singe output file for all.")
