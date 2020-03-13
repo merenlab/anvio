@@ -1045,7 +1045,7 @@ class KeggModulesDatabase(KeggContext):
 
         self.touch()
 
-        self.progress.new("Loading KEGG modules into Modules DB...")
+        self.progress.new("Loading %s KEGG modules into Modules DB..." % len(self.module_dict.keys()))
 
         # sanity check that we setup the modules previously.
         # It shouldn't be a problem since this function should only be called during the setup process after modules download, but just in case.
@@ -1094,9 +1094,14 @@ class KeggModulesDatabase(KeggContext):
                         # append_and_store will collect db entries and store every 10000 at a time
                         mod_table.append_and_store(self.db, mnum, name, val, definition, line)
 
-
+                f.close()
 
             num_modules_parsed += 1
+        # once we are done parsing all modules, we store whatever db entries remain in the db_entries list
+        # this is necessary because append_and_store() above only stores every 10000 entries
+        self.progress.update("Storing final batch of module entries into DB")
+        mod_table.store(self.db)
+
         self.progress.end()
 
         # warn user about parsing errors
@@ -1167,6 +1172,10 @@ class KeggModulesDatabase(KeggContext):
             but didn't come up with anything, so an empty list is being returned. This may cause errors down the line, and if so we're very sorry for that.")
 
         return data_values_to_ret
+
+    def get_all_modules_as_list(self):
+        """This function returns a list of all modules in the DB."""
+        return self.db.get_single_column_from_table(self.module_table_name, 'module', unique=True)
 
     def get_modules_for_knum(self, knum):
         """This function returns a list of modules that the given KO belongs to."""
