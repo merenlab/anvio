@@ -644,7 +644,13 @@ class KeggMetabolismEstimator(KeggContext):
 
         We will need the hits with their KO numbers (accessions) so that we can go through the MODULES.db and determine
         which steps are present in each module. And we will need the splits so that we can determine which hits belong
-        to which genomes/bins when we are handling multiple of these.
+        to which genomes/bins when we are handling multiple of these. This function gets these hits and splits (as lists
+        of tuples), and it makes sure that these lists don't include hits/splits we shouldn't be considering.
+
+        RETURNS
+        =======
+        kofam_hits          list of (gene_call_id, ko_num) tuples
+        genes_in_splits     list of (split, gene_call_id) tuples
         """
 
         self.progress.new('Loading')
@@ -707,22 +713,38 @@ class KeggMetabolismEstimator(KeggContext):
         self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
         self.run.info('Metagenome mode', self.metagenome_mode)
 
+        return kofam_hits, genes_in_splits
+
+    def estimate_for_genome(self):
+        """This is the metabolism estimation function for a contigs DB that contains a single genome.
+
+        It returns the initial metabolism completion dictionary for that genome, wrapped in the superdict format.
+        This dictionary will contain the KOs that are present in the genome for each KEGG module. The dict can
+        be processed later to estimate the completion of each module.
+        """
+        pass
+
+        # for each kofam hit, get the modules it belongs to
+        # for each module it belongs to, update the presence list
+
     def estimate_metabolism(self):
         """This is the driver function for estimating metabolism.
 
         It will decide what to do based on whether the input contigs DB is a genome or metagenome.
+        It returns the metabolism superdict which contains a metabolism completion dictionary for each genome/bin in the contigs db.
+        The metabolism completion dictionary is keyed by KEGG module number.
         """
 
-        self.init_hits_and_splits()
+        hits_to_consider, splits_to_consider = self.init_hits_and_splits()
+
+        kegg_metabolism_superdict = {}
 
         if self.profile_db_path and not self.metagenome_mode:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
             # isolate genome, with profiling
             #something like self.estimate_for_bins_in_collection()
         elif not self.profile_db_path and not self.metagenome_mode:
-            raise ConfigError("This class doesn't know how to deal with that yet :/")
-            # isolate genome without profiling
-            #something like self.estimate_for_contigs_db_for_genome()
+            kegg_metabolism_superdict = self.estimate_for_genome()
         elif self.profile_db_path and self.metagenome_mode:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
             # metagenome, with profiling
