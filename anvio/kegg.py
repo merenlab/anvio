@@ -610,6 +610,7 @@ class KeggMetabolismEstimator(KeggContext):
         self.bin_id = A('bin_id')
         self.bin_ids_file = A('bin_ids_file')
         self.metagenome_mode = True if A('metagenome_mode') else False
+        self.contigs_db_project_name = "Unknown"
 
         self.bin_ids_to_process = None
         if self.bin_id and self.bin_ids_file:
@@ -715,17 +716,63 @@ class KeggMetabolismEstimator(KeggContext):
 
         return kofam_hits, genes_in_splits
 
-    def estimate_for_genome(self):
+    def mark_kos_present_for_list_of_splits(kofam_hits_in_splits, split_list=None, bin_name=None):
+        """This function generates a bin-level dictionary of dictionary, which associates modules with the list of KOs
+        that are present in the bin for each module.
+
+        The structure of the dictionary is like this:
+        {mnum: {present_kos: [knum1, knum2, ....]}}
+        Why do we need an inner dictionary with just one list? Well. This dictionary will be expanded later by other functions, not to worry.
+
+        PARAMETERS
+        ==========
+        kofam_hits_in_splits        list of KO numbers that are hits in the current list of splits
+        split_list                  list of splits we are considering, this is only for debugging output
+        bin_name                    name of the bin containing these splits, this is only for debugging output
+
+        RETURNS
+        =======
+        bin_level_module_dict       dict of dicts that maps module number to dictionary of KOs present in the splits for that module
+        """
+
+        bin_level_module_dict = {}
+
+        if anvio.DEBUG:
+            self.run.info("Marking KOs present for bin", bin_name)
+            self.run.info("With splits", ",".join(split_list))
+        # initialize all modules with empty presence list
+        # for each kofam hit, get the modules it belongs to
+        # for each module it belongs to, update the presence list
+
+        return bin_level_module_dict
+
+    def estimate_for_genome(self, kofam_hits, genes_in_splits):
         """This is the metabolism estimation function for a contigs DB that contains a single genome.
 
         It returns the initial metabolism completion dictionary for that genome, wrapped in the superdict format.
-        This dictionary will contain the KOs that are present in the genome for each KEGG module. The dict can
-        be processed later to estimate the completion of each module.
-        """
-        pass
+        This dictionary at first contains the KOs that are present in the genome for each KEGG module. It is later
+        processed to estimate the completion of each module.
 
-        # for each kofam hit, get the modules it belongs to
-        # for each module it belongs to, update the presence list
+        PARAMETERS
+        ==========
+        kofam_hits          list of (gene_call_id, ko_num) tuples, all belong to this single genome
+        genes_in_splits     list of (split, gene_call_id) tuples, all belong to this single genome <- MAYBE UNNECESSARY
+
+        RETURNS
+        =======
+        genome_metabolism_dict      dictionary mapping genome name to its metabolism completeness dictionary
+        """
+
+        genome_metabolism_dict = {}
+        # get list of KOs only - since all splits belong to one genome, we can take all the hits
+        ko_in_genome = [tpl[1] for tpl in kofam_hits]
+        splits_in_genome = [tpl[0] for tpl in genes_in_splits]
+        # get KO presence in modules
+        genome_metabolism_dict[self.contigs_db_project_name] = self.mark_kos_present_for_list_of_splits(ko_in_genome, split_list=splits_in_genome, bin_name=self.contigs_db_project_name)
+        # TODO estimate module completeness
+
+        return genome_metabolism_dict
+
 
     def estimate_metabolism(self):
         """This is the driver function for estimating metabolism.
@@ -744,7 +791,7 @@ class KeggMetabolismEstimator(KeggContext):
             # isolate genome, with profiling
             #something like self.estimate_for_bins_in_collection()
         elif not self.profile_db_path and not self.metagenome_mode:
-            kegg_metabolism_superdict = self.estimate_for_genome()
+            kegg_metabolism_superdict = self.estimate_for_genome(hits_to_consider, splits_to_consider)
         elif self.profile_db_path and self.metagenome_mode:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
             # metagenome, with profiling
