@@ -501,3 +501,120 @@ class GenomeDescriptions(object):
                               "be happy to reconsider. If you think this is happening because you didn't set the right gene caller "
                               "you can always take a look at the gene caller sources in a given contigs database by running the "
                               "program `anvi-db-info`" % (len(genomes_with_no_gene_calls), len(self.genomes), ', '.join(genomes_with_no_gene_calls)))
+
+
+class MetagenomeDescriptions(object):
+    def __init__(self, args=None, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        self.metagenomes = {}
+        self.metagenomes_dict = None
+        self.profile_dbs_available = False
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.input_file_for_metagenomes = A('metagenomes')
+
+        if self.input_file_for_metagenomes:
+            self.read_paths_from_input_file()
+
+
+    def names_check(self):
+        names = utils.get_column_data_from_TAB_delim_file(self.input_file_for_metagenomes, [0])[0][1:]
+
+        if len(names) != len(set(names)):
+            raise ConfigError("Each entry in your metagenomes file must e unique :/")
+
+
+    def read_paths_from_input_file(self):
+        """Reads metagenome files, populates self.metagenomes"""
+
+        columns = utils.get_columns_of_TAB_delim_file(self.input_file_for_metagenomes)
+
+        if 'profile_db_path' in columns:
+            fields_for_metagenomes_input = ['name', 'contigs_db_path', 'profile_db_path']
+            self.profile_dbs_available = True
+        else:
+            fields_for_metagenomes_input = ['name', 'contigs_db_path']
+            self.profile_dbs_available = False
+
+        self.metagenomes_dict = utils.get_TAB_delimited_file_as_dictionary(self.input_file_for_metagenomes, expected_fields=fields_for_metagenomes_input) if self.input_file_for_metagenomes else {}
+
+
+    def load_metagenome_descriptions(self, skip_functions=False, init=True):
+        """Load metagenome descriptions"""
+
+        # start with a sanity check to make sure name are distinct
+        self.names_check()
+
+        self.metagenome_names = list(self.metagenomes_dict.keys())
+
+        for metagenome_name in self.metagenomes_dict:
+            self.metagenomes[metagenome_name] = self.metagenomes_dict[metagenome_name]
+            for db_path_var in ['contigs_db_path', 'profile_db_path']:
+                if db_path_var not in self.metagenomes[metagenome_name]:
+                    continue
+                path = self.metagenomes[metagenome_name][db_path_var]
+
+                if not path:
+                    raise ConfigError("Bad news: anvi'o was loading metagenome desriptions, and it run into an empty path for "
+                                      "the metagenome %s. How did this happen? HOW? :(" % metagenome_name)
+
+                if not path.startswith('/'):
+                    self.metagenomes[metagenome_name][db_path_var] = os.path.abspath(os.path.join(os.path.dirname(self.input_file_for_metagenomes), path))
+
+            # while we are going through all genomes and reconstructing self.metagenomes for the first time,
+            # let's add the 'name' attribute in it as well.'
+            self.metagenomes[metagenome_name]['name'] = metagenome_name
+
+        # add hashes for each metagenome in the self.metagenomes dict.
+        self.metagenome_hash_to_metagenome_name = {}
+        for metagenome_name in self.metagenome_names:
+            g_hash = self.get_metagenome_hash(self.metagenomes[metagenome_name])
+            self.metagenomes[metagenome_name]['metagenome_hash'] = g_hash
+            self.metagenome_hash_to_metagenome_name[g_hash] = metagenome_name
+
+        for metagenome_name in self.metagenomes:
+            g = self.metagenomes[metagenome_name]
+            contigs_db = dbops.ContigsDatabase(g['contigs_db_path'])
+            for key in contigs_db.meta:
+                g[key] = contigs_db.meta[key]
+
+        # make sure it is OK to go with self.genomes
+        self.sanity_check()
+
+
+    def get_metagenome_hash(self, entry):
+        utils.is_contigs_db(entry['contigs_db_path'])
+        contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
+        genome_hash = contigs_db.meta['contigs_db_hash']
+        contigs_db.disconnect()
+
+        return genome_hash
+
+
+    def sanity_check(self):
+        """Make sure self.metagenomes is good to go"""
+
+        if self.profile_dbs_available:
+            non_single_profiles = [m for m in self.metagenomes if utils.is_profile_db_merged(self.metagenomes[m]['profile_db_path'])
+                                                                  and not utils.is_blank_profile(self.metagenomes[m]['profile_db_path'])]
+
+            if len(non_single_profiles):
+                raise ConfigError("All profile databases associated with your metagenomes must be single profiles :( Here "
+                                  "is a list of them that are not: '%s'." % (', '.join(non_single_profiles)))
+
+        # make sure genes are called in every contigs db:
+        metagenomes_missing_gene_calls = [g for g in self.metagenomes if not self.metagenomes[g]['genes_are_called']]
+        if len(metagenomes_missing_gene_calls):
+            raise ConfigError('Genes must have been called during the generation of contigs database for this workflow to work. However,\
+                               these metagenomes do not have gene calls: %s' % (', '.join(metagenomes_missing_gene_calls)))
+
+        # if two contigs db has the same hash, we are kinda f'd:
+        if len(set([self.metagenomes[metagenome_name]['metagenome_hash'] for metagenome_name in self.metagenome_names])) != len(self.metagenome_names):
+            raise ConfigError('Not all hash values are unique across all contig databases you provided. Something '
+                               'very fishy is going on :/')
+
+        # make sure genome names are not funny (since they are going to end up being db variables soon)
+        [utils.is_this_name_OK_for_database('metagenome name "%s"' % metagenome_name, metagenome_name) for metagenome_name in self.metagenomes]
