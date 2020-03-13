@@ -740,7 +740,9 @@ class KeggMetabolismEstimator(KeggContext):
         if anvio.DEBUG:
             self.run.info("Marking KOs present for bin", bin_name)
             self.run.info("With splits", ",".join(split_list))
+
         # initialize all modules with empty presence list
+        modules = self.kegg_modules_db.get_all_modules_as_list()
         # for each kofam hit, get the modules it belongs to
         # for each module it belongs to, update the presence list
 
