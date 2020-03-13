@@ -1173,6 +1173,10 @@ class KeggModulesDatabase(KeggContext):
 
         return data_values_to_ret
 
+    def get_all_modules_as_list(self):
+        """This function returns a list of all modules in the DB."""
+        return self.db.get_single_column_from_table(self.module_table_name, 'module', unique=True)
+
     def get_modules_for_knum(self, knum):
         """This function returns a list of modules that the given KO belongs to."""
         where_clause_string = "data_value = '%s'" % (knum)
