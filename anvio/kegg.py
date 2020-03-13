@@ -716,7 +716,7 @@ class KeggMetabolismEstimator(KeggContext):
 
         return kofam_hits, genes_in_splits
 
-    def mark_kos_present_for_list_of_splits(kofam_hits_in_splits, split_list=None, bin_name=None):
+    def mark_kos_present_for_list_of_splits(self, kofam_hits_in_splits, split_list=None, bin_name=None):
         """This function generates a bin-level dictionary of dictionary, which associates modules with the list of KOs
         that are present in the bin for each module.
 
@@ -739,12 +739,26 @@ class KeggMetabolismEstimator(KeggContext):
 
         if anvio.DEBUG:
             self.run.info("Marking KOs present for bin", bin_name)
-            self.run.info("With splits", ",".join(split_list))
+            self.run.info("Number of splits", len(split_list))
 
         # initialize all modules with empty presence list
         modules = self.kegg_modules_db.get_all_modules_as_list()
-        # for each kofam hit, get the modules it belongs to
-        # for each module it belongs to, update the presence list
+        for mnum in modules:
+            bin_level_module_dict[mnum] = {"present_kos" : []}
+
+        kos_not_in_modules = []
+        for ko in kofam_hits_in_splits:
+            present_in_mods = self.kegg_modules_db.get_modules_for_knum(ko)
+            if not present_in_mods:
+                kos_not_in_modules.append(ko)
+            for m in present_in_mods:
+                bin_level_module_dict[m]["present_kos"].append(ko)
+
+        if anvio.DEBUG:
+            self.run.info("KOs processed", "%d in bin" % len(kofam_hits_in_splits))
+            if kos_not_in_modules:
+                self.run.warning("Just so you know, the following KOfam hits did not belong to any KEGG modules in the MODULES.db: %s"
+                % ", ".join(kos_not_in_modules))
 
         return bin_level_module_dict
 
@@ -770,9 +784,10 @@ class KeggMetabolismEstimator(KeggContext):
         ko_in_genome = [tpl[1] for tpl in kofam_hits]
         splits_in_genome = [tpl[0] for tpl in genes_in_splits]
         # get KO presence in modules
-        genome_metabolism_dict[self.contigs_db_project_name] = self.mark_kos_present_for_list_of_splits(ko_in_genome, split_list=splits_in_genome, bin_name=self.contigs_db_project_name)
+        genome_metabolism_dict[self.contigs_db_project_name] = self.mark_kos_present_for_list_of_splits(ko_in_genome, split_list=splits_in_genome,
+                                                                                                        bin_name=self.contigs_db_project_name)
         # TODO estimate module completeness
-
+        
         return genome_metabolism_dict
 
 
