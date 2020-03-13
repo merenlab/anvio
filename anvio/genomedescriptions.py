@@ -181,8 +181,7 @@ class GenomeDescriptions(object):
                 # let's add the 'name' attribute in it as well.'
                 self.genomes[genome_name]['name'] = genome_name
 
-        # add hashes for each genome in the self.genomes dict. this will allow us to see whether the HDF file already contains
-        # all the information we need.
+        # add hashes for each genome in the self.genomes dict.
         self.genome_hash_to_genome_name = {}
         for genome_name in self.external_genome_names:
             g_hash = self.get_genome_hash_for_external_genome(self.genomes[genome_name])
