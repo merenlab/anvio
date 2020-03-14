@@ -946,6 +946,8 @@ class StructureExport(object):
             self.structure_db.export_pdb_content(gene, file_path, ok_if_exists=True)
         self.progress.end()
 
+        self.run.info_single('All done!', mc='green')
+
 
     def get_genes_of_interest(self, genes_of_interest_path, gene_caller_ids):
         if self.genes_of_interest:
