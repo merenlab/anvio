@@ -230,7 +230,23 @@ class Structure(object):
         self.genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
 
         # residue annotation
-        self.residue_annotation_sources_info = self.get_residue_annotation_sources_info()
+        self.residue_annotation_sources_info = {
+            "DSSP": {
+                "method"    : self.run_DSSP,
+                "skip"      : self.skip_DSSP,
+                "structure" : dict(zip(t.residue_info_sources["DSSP"]["structure"],
+                                       t.residue_info_sources["DSSP"]["types"]))
+            },
+            "contact_map": {
+                "method"    : self.run_contact_map,
+                "skip"      : False,
+            },
+            "residue_identities": {
+                "method"    : self.run_residue_identity_annotation,
+                "skip"      : False,
+            },
+        }
+
         self.residue_info_table_structure, self.residue_info_table_types = self.get_residue_info_table_structure()
         self.residue_annotation_df = pd.DataFrame({})
 
@@ -266,32 +282,6 @@ class Structure(object):
                 structure.extend([x for x in d.keys()])
                 types.extend([d[y] for y in d.keys()])
         return structure, types
-
-
-    def get_residue_annotation_sources_info(self):
-        """
-        The residue_annotation_sources_info is a dictionary spelling out all column names relevant to each
-        annotation source, the method which returns the annotation dataframe, and the boolean
-        stating whether or not the annotation source will be called. Those without a `structure` key
-        are necessarily run and the columns they produce are statically present in
-        t.structure_residue_info_table_structure
-        """
-        return {
-            "DSSP": {
-                "method"    : self.run_DSSP,
-                "skip"      : self.skip_DSSP,
-                "structure" : dict(zip(t.residue_info_sources["DSSP"]["structure"],
-                                       t.residue_info_sources["DSSP"]["types"]))
-            },
-            "contact_map": {
-                "method"    : self.run_contact_map,
-                "skip"      : False,
-            },
-            "residue_identities": {
-                "method"    : self.run_residue_identity_annotation,
-                "skip"      : False,
-            },
-        }
 
 
     def sanity_check(self):
@@ -519,9 +509,9 @@ class Structure(object):
 
     def run_residue_annotation_for_gene(self, residue_annotation_methods, corresponding_gene_call, pdb_filepath):
         # residue_annotation_for_gene is a dataframe that stores residue annotations made by all residue
-        # annotation methods (e.g.  DSSP) for the current corresponding_gene_call. Each time a
-        # resideu annotation source is ran, its results are appended as columns to
-        # residue_annotation_for_gene.  All annotation sources must have the index called
+        # annotation methods (e.g. DSSP) for the current corresponding_gene_call. Each time a
+        # residue annotation source is ran, its results are appended as columns to
+        # residue_annotation_for_gene. All annotation sources must have the index called
         # "codon_order_in_gene" whose values are anvi'o-indexed, i.e. the methionine has index 0.
         # Each annotation source does NOT have to annotate each residue in the gene.
         residue_annotation_for_gene = pd.DataFrame({})
