@@ -414,7 +414,7 @@ class Structure(object):
 
         fasta = u.SequenceSource(fasta_path); next(fasta)
         try:
-            utils.is_gene_sequence_clean(fasta.seq, amino_acid=True, can_end_with_stop=False)
+            utils.is_gene_sequence_clean(fasta.seq, amino_acid=True, can_end_with_stop=False, must_start_with_met=False)
             return False
         except ConfigError as error:
             self.run.warning("You wanted to model a structure for gene ID %d, but it is not what anvi'o "
@@ -538,8 +538,7 @@ class Structure(object):
 
 
     def run_residue_identity_annotation(self, corresponding_gene_call, pdb_filepath):
-        nt_sequence = self.contigs_super.get_sequences_for_gene_callers_ids([corresponding_gene_call],
-                                                                             reverse_complement_if_necessary=True)
+        nt_sequence = self.contigs_super.get_sequences_for_gene_callers_ids([corresponding_gene_call])
         nt_sequence = nt_sequence[1][corresponding_gene_call]['sequence']
 
         seq_dict = {"codon_order_in_gene": [],
@@ -548,7 +547,7 @@ class Structure(object):
                     "amino_acid":          []}
 
         gene_length_in_codons = len(nt_sequence)//3 - 1 # subtract 1 because it's the stop codon
-        for codon_order_in_gene in range(0, gene_length_in_codons):
+        for codon_order_in_gene in range(gene_length_in_codons):
             seq_dict["codon_order_in_gene"].append(codon_order_in_gene)
             seq_dict["codon_number"].append(codon_order_in_gene+1)
             seq_dict["codon"].append(nt_sequence[3*codon_order_in_gene:3*(codon_order_in_gene + 1)])
@@ -918,7 +917,7 @@ class StructureUpdate(Structure):
             self.run.info_single("Anvi'o found the DSSP executable `%s`, and will use it."\
                                   % self.DSSP_executable, nl_before=1, nl_after=1)
 
-        genes_missing_from_structure_db = [gene for gene in genes_of_interest if gene not in self.structure_db.genes_with_structure]
+        genes_missing_from_structure_db = [gene for gene in self.genes_of_interest if gene not in self.structure_db.genes_with_structure]
         if genes_missing_from_structure_db:
             show_a_few = genes_missing_from_structure_db if len(genes_missing_from_structure_db) <= 10 else genes_missing_from_structure_db[:10]
             raise ConfigError("{} gene(s) were specified by you but don't exist in the structure database. Here are some of their IDs: {}".

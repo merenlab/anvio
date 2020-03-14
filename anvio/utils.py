@@ -1619,8 +1619,8 @@ def convert_SSM_to_single_accession(matrix_data):
     return new_data
 
 
-def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
-    """ Returns True if gene sequence is clean (amino acid or nucleotide), otherwise raises ConfigError
+def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False, must_start_with_met=True):
+    """Returns True if gene sequence is clean (amino acid or nucleotide), otherwise raises ConfigError
 
     Parameters
     ==========
@@ -1631,6 +1631,8 @@ def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
     can_end_with_stop : bool, False
         If True, the sequence can, but does not have to, end with * if amino_acid=True, or one of
         <TAG, TGA, TAA> if amino_acid=False.
+    must_start_with_met : bool, True
+        If True, the sequence must start with ATG if amino_acid=False or Met if amino_acid=True
 
     Returns
     =======
@@ -1664,7 +1666,7 @@ def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
 
         seq = new_seq
 
-    if not seq[0] == start_char:
+    if not seq[0] == start_char and must_start_with_met:
         raise ConfigError(error_msg_template % "Should start with methionine but instead starts with %s" % seq[0])
 
     for i, element in enumerate(seq[:-1]):
