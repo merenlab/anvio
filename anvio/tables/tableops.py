@@ -45,7 +45,6 @@ class Table(object):
     =====
     - This class needs to be redesigned so it better serves the purpose for both profile db and
       contigs db calls
-    - UPDATE and structure db
     """
 
     def __init__(self, db_path, version, run=run, progress=progress, quiet=False, simple=False):
