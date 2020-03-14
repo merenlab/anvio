@@ -144,8 +144,8 @@ then
     INFO "anvi-update-structure-database"
     anvi-update-structure-database -c test-output/one_contig_five_genes.db -s test-output/STRUCTURE.db --genes-to-remove 2 --genes-to-add 2
 
-    INFO "anvi-export-pdb-from-structure-database"
-    anvi-export-pdb-from-structure-database -o test-output/exported_pdbs -s test-output/STRUCTURE.db
+    INFO "anvi-export-structures"
+    anvi-export-structures -o test-output/exported_pdbs -s test-output/STRUCTURE.db
 
     INFO "anvi-gen-variability-profile --engine AA"
     gen_var_profile1
