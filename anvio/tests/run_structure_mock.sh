@@ -141,6 +141,9 @@ then
     INFO "anvi-gen-structure-database with DSSP"
     make_structure_db
 
+    INFO "anvi-update-structure-database"
+    anvi-update-genes-in-structure-database -c test-output/one_contig_five_genes.db -s test-output/STRUCTURE.db --genes-to-remove 2 --genes-to-add 2
+
     INFO "anvi-gen-variability-profile --engine AA"
     gen_var_profile1
 
