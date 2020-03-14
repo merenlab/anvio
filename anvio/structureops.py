@@ -39,13 +39,13 @@ class StructureDatabase(object):
                  progress=terminal.Progress(),
                  quiet=False):
 
-        self.db_type     = 'structure'
-        self.db_hash     = str(db_hash)
-        self.version     = anvio.__structure__version__
-        self.file_path   = file_path
-        self.quiet       = quiet
-        self.run         = run
-        self.progress    = progress
+        self.db_type = 'structure'
+        self.db_hash = str(db_hash)
+        self.version = anvio.__structure__version__
+        self.file_path = file_path
+        self.quiet = quiet
+        self.run = run
+        self.progress = progress
         self.table_names = None
         self.create_new = create_new
 
@@ -76,11 +76,11 @@ class StructureDatabase(object):
         # entries initialized as empty list are added with insert_many()
         # entries initialized as empty DataFrame are added with insert_rows_from_dataframe()
         self.entries = {
-            t.structure_pdb_data_table_name     : [],
+            t.structure_pdb_data_table_name : [],
             t.structure_residue_info_table_name : pd.DataFrame({}),
-            t.structure_templates_table_name    : pd.DataFrame({}),
-            t.structure_models_table_name       : pd.DataFrame({}),
-            }
+            t.structure_templates_table_name : pd.DataFrame({}),
+            t.structure_models_table_name : pd.DataFrame({}),
+        }
 
 
     def get_residue_info_table_structure(self, residue_info_structure_extras, residue_info_types_extras):
@@ -112,11 +112,12 @@ class StructureDatabase(object):
         self.db.create_table(t.structure_residue_info_table_name, self.residue_info_structure, self.residue_info_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
 
-        table_names = [t.structure_pdb_data_table_name,
-                       t.structure_templates_table_name,
-                       t.structure_models_table_name,
-                       t.structure_residue_info_table_name]
-        return table_names
+        return [
+            t.structure_pdb_data_table_name,
+            t.structure_templates_table_name,
+            t.structure_models_table_name,
+            t.structure_residue_info_table_name
+        ]
 
 
     def check_hash(self):
@@ -170,39 +171,38 @@ class StructureDatabase(object):
 
 
 class Structure(object):
-
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
         self.progress = progress
 
         # initialize self.arg parameters
-        A                             = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
-        null                          = lambda x: x
-        self.contigs_db_path          = A('contigs_db', null)
-        self.genes_of_interest_path   = A('genes_of_interest', null)
-        self.splits_of_interest_path  = A('splits_of_interest', null)
-        self.bin_id                   = A('bin_id', null)
-        self.collection_name          = A('collection_name', null)
-        self.gene_caller_ids          = A('gene_caller_ids', null)
-        self.output_db_path           = A('output_db_path', null)
-        self.full_modeller_output     = A('dump_dir', null)
-        self.skip_DSSP                = A('skip_DSSP', bool)
-        self.modeller_executable      = A('modeller_executable', null)
-        self.DSSP_executable          = None
+        A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
+        null = lambda x: x
+        self.contigs_db_path = A('contigs_db', null)
+        self.genes_of_interest_path = A('genes_of_interest', null)
+        self.splits_of_interest_path = A('splits_of_interest', null)
+        self.bin_id = A('bin_id', null)
+        self.collection_name = A('collection_name', null)
+        self.gene_caller_ids = A('gene_caller_ids', null)
+        self.output_db_path = A('output_db_path', null)
+        self.full_modeller_output = A('dump_dir', null)
+        self.skip_DSSP = A('skip_DSSP', bool)
+        self.modeller_executable = A('modeller_executable', null)
+        self.DSSP_executable = None
 
         utils.is_contigs_db(self.contigs_db_path)
-        self.contigs_db                = dbops.ContigsDatabase(self.contigs_db_path)
-        self.contigs_db_hash           = self.contigs_db.meta['contigs_db_hash']
+        self.contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        self.contigs_db_hash = self.contigs_db.meta['contigs_db_hash']
 
         # MODELLER params
-        self.modeller_database        = A('modeller_database', null)
-        self.scoring_method           = A('scoring_method', null)
-        self.max_number_templates     = A('max_number_templates', null)
+        self.modeller_database = A('modeller_database', null)
+        self.scoring_method = A('scoring_method', null)
+        self.max_number_templates = A('max_number_templates', null)
         self.percent_identical_cutoff = A('percent_identical_cutoff', null)
-        self.num_models               = A('num_models', null)
-        self.deviation                = A('deviation', null)
-        self.very_fast                = A('very_fast', bool)
+        self.num_models = A('num_models', null)
+        self.deviation = A('deviation', null)
+        self.very_fast = A('very_fast', bool)
 
         # check database output
         if not self.output_db_path:
@@ -226,11 +226,13 @@ class Structure(object):
         self.sanity_check()
 
         # initialize StructureDatabase
-        self.structure_db = StructureDatabase(self.output_db_path,
-                                              self.contigs_db_hash,
-                                              residue_info_structure_extras = self.residue_info_table_structure,
-                                              residue_info_types_extras = self.residue_info_table_types,
-                                              create_new=True)
+        self.structure_db = StructureDatabase(
+            self.output_db_path,
+            self.contigs_db_hash,
+            residue_info_structure_extras=self.residue_info_table_structure,
+            residue_info_types_extras=self.residue_info_table_types,
+            create_new=True,
+        )
 
         # init ContigsSuperClass
         self.contigs_super = ContigsSuperclass(self.args)
@@ -263,27 +265,25 @@ class Structure(object):
         are necessarily run and the columns they produce are statically present in
         t.structure_residue_info_table_structure
         """
-        residue_annotation_sources_info = {
+        return {
             "DSSP": {
                 "method"    : self.run_DSSP,
                 "skip"      : self.skip_DSSP,
                 "structure" : dict(zip(t.residue_info_sources["DSSP"]["structure"],
                                        t.residue_info_sources["DSSP"]["types"]))
-                },
+            },
             "contact_map": {
                 "method"    : self.run_contact_map,
                 "skip"      : False,
-                },
+            },
             "residue_identities": {
                 "method"    : self.run_residue_identity_annotation,
                 "skip"      : False,
-                },
-            }
-        return residue_annotation_sources_info
+            },
+        }
 
 
     def sanity_check(self):
-
         # check for genes that do not appear in the contigs database
         bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.genes_in_contigs_database]
         if bad_gene_caller_ids:
@@ -364,9 +364,8 @@ class Structure(object):
 
 
     def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None):
-        """
-        nabs the genes of interest based on user arguments (self.args)
-        """
+        """Nabs the genes of interest based on user arguments (self.args)"""
+
         genes_of_interest = None
 
         # identify the gene caller ids of all genes available
@@ -410,7 +409,8 @@ class Structure(object):
 
 
     def skip_gene_if_not_clean(self, corresponding_gene_call, fasta_path):
-        """ Do not try modelling gene if it is not clean """
+        """Do not try modelling gene if it is not clean"""
+
         fasta = u.SequenceSource(fasta_path); next(fasta)
         try:
             utils.is_gene_sequence_clean(fasta.seq, amino_acid=True, can_end_with_stop=False)
@@ -423,8 +423,6 @@ class Structure(object):
 
 
     def process(self):
-        """
-        """
         # will be empty if all sources in self.residue_annotation_sources_info have "skip": True
         residue_annotation_methods = [info["method"] for _, info in self.residue_annotation_sources_info.items() if not info["skip"]]
 
@@ -577,6 +575,7 @@ class Structure(object):
         DSSP is ran using the API developed in Biopython. That means we don't work directly from the
         text output of DSSP, but rather a Biopython object.
         """
+
         # Determine the model name by loading the structure file
         p = PDBParser()
         structure = p.get_structure(corresponding_gene_call, pdb_filepath)
@@ -590,7 +589,8 @@ class Structure(object):
 
 
     def convert_DSSP_output_from_biopython_to_dataframe(self, dssp_biopython_object):
-        """
+        """Convert the output of the DSSP module in Biopython to a dataframe
+
         From the DSSP module in Biopython:
             ============ ==================== ================
             Tuple Index  Biopython            Anvi'o
@@ -654,10 +654,12 @@ class Structure(object):
 
 
     def append_gene_info_to_tables(self, modeller_out, residue_info_dataframe):
+        """Append all info related to the gene into the database
+
+        In this method the data is wrangled into formats that can be appended to their respective
+        structure database tables.
         """
-        Modeller and residue annotation sources have been called, now it is time to wrangle these
-        data into formats that can be appended to their respective structure database tables.
-        """
+
         corresponding_gene_call = modeller_out["corresponding_gene_call"]
 
         # templates is always added, even when structure was not modelled
@@ -700,21 +702,21 @@ class StructureUpdate(Structure):
         self.progress = progress
 
         # initialize self.arg parameters
-        A                                  = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
-        null                               = lambda x: x
-        self.contigs_db_path               = A('contigs_db', null)
-        self.structure_db_path             = A('structure_db', null)
-        self.genes_to_remove               = A('genes_to_remove', null)
-        self.genes_to_remove_path          = A('genes_to_remove_file', null)
-        self.genes_to_add                  = A('genes_to_add', null)
-        self.genes_to_add_path             = A('genes_to_add_file', null)
-        self.full_modeller_output          = A('dump_dir', null)
-        self.modeller_executable           = A('modeller_executable', null)
+        A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
+        null = lambda x: x
+        self.contigs_db_path = A('contigs_db', null)
+        self.structure_db_path = A('structure_db', null)
+        self.genes_to_remove = A('genes_to_remove', null)
+        self.genes_to_remove_path = A('genes_to_remove_file', null)
+        self.genes_to_add = A('genes_to_add', null)
+        self.genes_to_add_path = A('genes_to_add_file', null)
+        self.full_modeller_output = A('dump_dir', null)
+        self.modeller_executable = A('modeller_executable', null)
         self.skip_genes_if_already_present = A('skip_genes_if_already_present', bool)
-        self.DSSP_executable               = None
+        self.DSSP_executable = None
 
         utils.is_contigs_db(self.contigs_db_path)
-        self.contigs_db      = dbops.ContigsDatabase(self.contigs_db_path)
+        self.contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         self.contigs_db_hash = self.contigs_db.meta['contigs_db_hash']
 
         # init ContigsSuperClass
@@ -822,7 +824,6 @@ class StructureUpdate(Structure):
 
 
     def parse_genes(self, comma_delimited_genes=None, genes_filepath=None):
-
         if comma_delimited_genes:
             gene_caller_ids = set([x.strip() for x in comma_delimited_genes.split(',')])
             genes = []
@@ -916,7 +917,7 @@ class StructureUpdate(Structure):
                                   % self.DSSP_executable, nl_before=1, nl_after=1)
 
 
-class StructureExport():
+class StructureExport(object):
     def __init__(self, args, genes_of_interest=None, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
