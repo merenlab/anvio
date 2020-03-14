@@ -28,16 +28,8 @@ from anvio.dbops import ContigsSuperclass
 
 
 class StructureDatabase(object):
-    def __init__(self,
-                 file_path,
-                 db_hash=None,
-                 residue_info_structure_extras=[],
-                 residue_info_types_extras=[],
-                 create_new=False,
-                 ignore_hash=False,
-                 run=terminal.Run(),
-                 progress=terminal.Progress(),
-                 quiet=False):
+    def __init__(self, file_path, db_hash=None, residue_info_structure_extras=[], residue_info_types_extras=[],
+                 create_new=False, ignore_hash=False, run=terminal.Run(), progress=terminal.Progress(), quiet=False):
 
         self.db_type = 'structure'
         self.db_hash = str(db_hash)
@@ -143,6 +135,8 @@ class StructureDatabase(object):
 
 
     def get_pdb_content(self, corresponding_gene_call):
+        """Returns the file content (as a string) of a pdb for a given gene"""
+
         if not corresponding_gene_call in self.genes_with_structure:
             raise ConfigError('The gene caller id {} was not found in the structure database :('.format(corresponding_gene_call))
 
@@ -151,10 +145,25 @@ class StructureDatabase(object):
 
 
     def export_pdb_content(self, corresponding_gene_call, filepath, ok_if_exists=False):
+        """Export the pdb of a gene to a filepath"""
+
         if filesnpaths.is_output_file_writable(filepath, ok_if_exists=ok_if_exists):
             pdb_content = self.get_pdb_content(corresponding_gene_call)
             with open(filepath, 'w') as f:
                 f.write(pdb_content)
+
+
+    def export_pdbs(self, genes_of_interest, output_dir, ok_if_exists=False):
+        """Exports the pdbs of a collection of genes to an output dir (calls self.export_pdb_content)"""
+
+        filesnpaths.check_output_directory(output_dir, ok_if_exists=ok_if_exists)
+        filesnpaths.gen_output_directory(output_dir)
+
+        for i, gene in enumerate(genes_of_interest):
+            file_path = os.path.join(output_dir, 'gene_{}.pdb'.format(gene))
+            self.export_pdb_content(gene, file_path, ok_if_exists=ok_if_exists)
+
+        self.run.info('PDB file output', output_dir)
 
 
     def get_summary_for_interactive(self, corresponding_gene_call):
