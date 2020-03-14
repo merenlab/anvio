@@ -889,7 +889,7 @@ class StructureUpdate(Structure):
                                is already in the structure database: {}. If you want to re-do the\
                                modelling, then first remove it with --genes-to-remove or\
                                --genes-to-remove-file (you can do it in the same\
-                               anvi-update-genes-in-structure-database command).".\
+                               anvi-update-structure-database command).".\
                                    format(",".join([str(x) for x in redundant_gene_caller_ids])))
 
         # raise warning if number of genes is greater than 20
