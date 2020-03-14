@@ -1065,7 +1065,7 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
         return non_outliers
 
 
-def get_gene_caller_ids_from_args(gene_caller_ids, delimiter):
+def get_gene_caller_ids_from_args(gene_caller_ids, delimiter=','):
     gene_caller_ids_set = set([])
     if gene_caller_ids:
         if os.path.exists(gene_caller_ids):
