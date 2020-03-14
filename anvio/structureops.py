@@ -167,6 +167,8 @@ class StructureDatabase(object):
 
 
     def get_summary_for_interactive(self, corresponding_gene_call):
+        """A very specific use case function. FIXME Should be moved to interactive.StructureInteractive"""
+
         summary = {}
         summary['pdb_content'] = self.get_pdb_content(corresponding_gene_call)
         summary['residue_info'] = self.db.get_table_as_dataframe(t.structure_residue_info_table_name,
