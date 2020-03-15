@@ -1163,7 +1163,7 @@ class KeggModulesDatabase(KeggContext):
         """This function returns data_value elements from the modules table for the specified module and data_name pair.
 
         All elements corresponding to the pair (ie, M00001 and ORTHOLOGY) will be returned.
-        The function relies on the db.get_some_rows_from_table_as_dict() functino to first fetch all rows corresponding \
+        The function relies on the db.get_some_rows_from_table_as_dict() function to first fetch all rows corresponding \
         to a particular model, and then parses the resulting dictionary to find all the elements with the given data_name field.
 
         PARAMETERS
