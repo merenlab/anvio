@@ -137,6 +137,7 @@ then
 
     rm -rf test-output/STRUCTURE.db
     rm -rf test-output/RAW_MODELLER_OUTPUT
+    rm -rf test-output/exported_pdbs
 
     INFO "anvi-gen-structure-database with DSSP"
     make_structure_db
