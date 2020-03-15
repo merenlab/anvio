@@ -237,8 +237,8 @@ structure_models_table_structure  = ['entry_id' , 'corresponding_gene_call' , 'm
 structure_models_table_types      = ['integer'  , 'integer'                 , 'real'   , 'real'        , 'real'       , 'integer']
 
 structure_residue_info_table_name       = 'residue_info'
-structure_residue_info_table_structure  = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'contact_numbers', 'codon', 'amino_acid', 'codon_number', 'codon_order_in_gene' , 'aa'   , 'sec_struct' , 'rel_solvent_acc' , 'phi'  , 'psi'  , 'NH_O_1_index' , 'NH_O_1_energy' , 'O_NH_1_index' , 'O_NH_1_energy' , 'NH_O_2_index' , 'NH_O_2_energy' , 'O_NH_2_index' , 'O_NH_2_energy']
-structure_residue_info_table_types      = ['integer',         'integer'        ,        'integer'     ,   'text'          , 'text',  'text',       'integer',      'integer'             , 'text' , 'text'       , 'real'            , 'real' , 'real' , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real']
+structure_residue_info_table_structure  = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'contact_numbers', 'codon', 'amino_acid', 'codon_number', 'aa'   , 'sec_struct' , 'rel_solvent_acc' , 'phi'  , 'psi'  , 'NH_O_1_index' , 'NH_O_1_energy' , 'O_NH_1_index' , 'O_NH_1_energy' , 'NH_O_2_index' , 'NH_O_2_energy' , 'O_NH_2_index' , 'O_NH_2_energy']
+structure_residue_info_table_types      = ['integer',         'integer'        ,        'integer'     ,   'text'          , 'text',  'text',       'integer',      'text' , 'text'       , 'real'            , 'real' , 'real' , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real']
 
 ####################################################################################################
 #
