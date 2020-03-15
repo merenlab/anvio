@@ -2185,6 +2185,15 @@ D = {
              'help': "Provide if working with INSeq/Tn-Seq genomic data. With this, all gene level "
                      "coverage stats will be calculated using INSeq/Tn-Seq statistical methods."}
                 ),
+    'module-completion-threshold': (
+            ['--module-completion-threshold'],
+            {'default': 0.75,
+             'metavar': 'NUM',
+             'type': float,
+             'help': "This threshold defines the point at which we consider a KEGG module to be 'complete' or "
+                     "'present' in a given genome or bin. It is the fraction of steps that must be complete in "
+                     " in order for the entire module to be marked complete. The default is %(default)g."}
+                ),
 }
 
 # two functions that works with the dictionary above.
