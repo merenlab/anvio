@@ -5,18 +5,17 @@
 
 import os
 import time
-import shutil
 import numpy as np
+import shutil
 import pandas as pd
 
-from Bio.PDB import DSSP
-from Bio.PDB import PDBParser
+from Bio.PDB import DSSP, PDBParser
 
 import anvio
 import anvio.db as db
-import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
+import anvio.tables as t
 import anvio.fastalib as u
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -926,6 +925,161 @@ class StructureUpdate(Structure):
                                               ignore_hash=True,
                                               create_new=False)
 
+
+class DSSPClass(object):
+    def __init__(self, pdb_path, executable=None, check_executable=True):
+        self.pdb_path = pdb_path
+        self.executable = executable
+        self.check_executable = check_executable
+
+        self.set_executable()
+        utils.is_program_exists(self.executable)
+        if self.check_executable:
+            self.is_executable_a_working_DSSP_program()
+
+        self.columns = [
+            'codon_order_in_gene',
+            'aa',
+            'sec_struct',
+            'rel_solvent_acc',
+            'phi',
+            'psi',
+            'NH_O_1_index',
+            'NH_O_1_energy',
+            'O_NH_1_index',
+            'O_NH_1_energy',
+            'NH_O_2_index',
+            'NH_O_2_energy',
+            'O_NH_2_index',
+            'O_NH_2_energy',
+        ]
+
+
+    def set_executable(self):
+        if self.executable:
+            return
+
+        # Determine what DSSP program should be used. Tries mkdssp and then dssp, and raises
+        # error if neither are found. mkdssp is newer and preferred
+        if utils.is_program_exists("mkdssp", dont_raise=True):
+            self.executable = "mkdssp"
+        else:
+            if utils.is_program_exists("dssp", dont_raise=True):
+                self.executable = "dssp"
+            else:
+                raise ConfigError("'mkdssp' or 'dssp' must be installed on your system, but "
+                                  "neither seem to appear in your path :/ If you are certain you have either on your "
+                                  "system (for instance you can run either by typing 'mkdssp' or 'dssp' in your terminal "
+                                  "window), you may want to send a detailed bug report. If you want to install DSSP, "
+                                  "check out http://merenlab.org/2016/06/18/installing-third-party-software/#dssp. "
+                                  "If you want to skip secondary structure and solvent accessibility annotation, "
+                                  "provide the flag --skip-DSSP.")
+
+
+    def is_executable_a_working_DSSP_program(self):
+        test_input = os.path.join(os.path.dirname(anvio.__file__), 'tests/sandbox/mock_data_for_structure/STRUCTURES/0.pdb')
+
+        p = PDBParser()
+        test_structure = p.get_structure('test', test_input)
+        test_model = test_structure[0] # pdb files can have multiple models. DSSP assumes the first.
+
+        # run DSSP
+        try:
+            test_residue_annotation = DSSP(test_model, test_input, dssp = self.executable, acc_array = "Wilke")
+        except Exception as e:
+            raise ConfigError('Your executable of DSSP, `{}`, doesn\'t appear to be working. For information on how to test '
+                              'that your version is working correctly, please visit '
+                              'http://merenlab.org/2016/06/18/installing-third-party-software/#dssp'\
+                               .format(self.executable))
+
+        if not len(test_residue_annotation.keys()):
+            raise ConfigError("Your executable of DSSP, `{}`, exists but didn't return any meaningful output. This "
+                              "is a known issue with certain distributions of DSSP. For information on how to test "
+                              "that your version is working correctly, please visit "
+                              "http://merenlab.org/2016/06/18/installing-third-party-software/#dssp"\
+                               .format(self.executable))
+
+        #try:
+        #    self.convert_DSSP_output_from_biopython_to_dataframe(test_residue_annotation)
+        #except:
+        #    import pickle
+        #    with open('troubleshoot_DDSP_output.pickle', 'wb') as output:
+        #        pickle.dump(test_residue_annotation, output, pickle.HIGHEST_PROTOCOL)
+        #    raise ConfigError('Your executable of DSSP ran and produced an output, but anvi\'o wasn\'t able to correctly parse it. '
+        #                      'This is probably our fault. In your working directory should exist a file named "troubleshoot_DDSP_output.pickle". '
+        #                      'Please send this to an anvio developer so that we can help identify what went wrong.')
+        self.convert_DSSP_output_from_biopython_to_dataframe(test_residue_annotation)
+
+
+    def run_DSSP(self, pdb_filepath, id_for_protein=None):
+
+        # Determine the model name by loading the structure file
+        p = PDBParser()
+        structure = p.get_structure(id_for_protein, pdb_filepath)
+        model = structure[0] # pdb files can have multiple models. DSSP assumes the first.
+
+        # run DSSP
+        residue_annotation = DSSP(model, pdb_filepath, dssp = self.executable, acc_array = "Wilke")
+
+        # convert to a digestible format
+        return self.convert_DSSP_output_from_biopython_to_dataframe(residue_annotation)
+
+
+    def convert_DSSP_output_from_biopython_to_dataframe(self, dssp_biopython_object):
+        """Convert the output of the DSSP module in Biopython to a dataframe
+
+        From the DSSP module in Biopython:
+            ============ ==================== ================
+            Tuple Index  Biopython            Anvi'o
+            ============ ==================== ================
+            0            DSSP index           codon_order_in_gene
+            1            Amino acid           aa
+            2            Secondary structure  sec_struct
+            3            Relative ASA         rel_solvent_acc
+            4            Phi                  phi
+            5            Psi                  psi
+            6            NH__>O_1_relidx      NH_O_1_index
+            7            NH__>O_1_energy      NH_O_1_energy
+            8            O__>NH_1_relidx      O_NH_1_index
+            9            O__>NH_1_energy      O_NH_1_energy
+            10           NH__>O_2_relidx      NH_O_2_index
+            11           NH__>O_2_energy      NH_O_2_energy
+            12           O__>NH_2_relidx      O_NH_2_index
+            13           O__>NH_2_energy      O_NH_2_energy
+            ============ ==================== ================
+
+        Changes from Biopython format to anvi'o format:
+            - residue index converted from 1Met to 0Met
+            - aa converted to 3-letter code
+            - ss type "-" is converted to coil (C)
+            - relative indicies for h-bonds replaced with absolute residue indices
+              (e.g. if relative index = -1 for residue 4, the absolute residue index is 3)
+        """
+        one_to_three = {v: k for k, v in constants.AA_to_single_letter_code.items()}
+
+        # convert biopython object to dictionary d
+        d = {}
+        for key in dssp_biopython_object.keys():
+            d[key] = list(dssp_biopython_object[key])
+            d[key][self.columns.index("codon_order_in_gene")] = utils.convert_sequence_indexing(d[key][self.columns.index("codon_order_in_gene")], source="M1", destination="M0")
+            d[key][self.columns.index("aa")] = one_to_three[d[key][self.columns.index("aa")]]
+
+            if d[key][self.columns.index("sec_struct")] == "-":
+                d[key][self.columns.index("sec_struct")] = "C"
+
+            for hbond in ["NH_O_1", "O_NH_1", "NH_O_2", "O_NH_2"]:
+                res_index = d[key][self.columns.index("codon_order_in_gene")]
+                rel_index = d[key][self.columns.index(hbond+"_index")]
+
+                if rel_index == 0:
+                    d[key][self.columns.index(hbond+"_index")] = np.nan
+                    d[key][self.columns.index(hbond+"_energy")] = np.nan
+
+                else:
+                    d[key][self.columns.index(hbond+"_index")] = res_index + rel_index
+
+        # convert dictionary d to dataframe df
+        return pd.DataFrame(d, index=self.columns).T.set_index("codon_order_in_gene")
 
 
 class ContactMap(object):
