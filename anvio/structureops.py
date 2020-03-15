@@ -28,8 +28,7 @@ from anvio.dbops import ContigsSuperclass
 
 
 class StructureDatabase(object):
-    def __init__(self, file_path, db_hash=None, residue_info_structure_extras=[], residue_info_types_extras=[],
-                 create_new=False, ignore_hash=False, run=terminal.Run(), progress=terminal.Progress(), quiet=False):
+    def __init__(self, file_path, db_hash=None, create_new=False, ignore_hash=False, run=terminal.Run(), progress=terminal.Progress(), quiet=False):
 
         self.db_type = 'structure'
         self.db_hash = str(db_hash)
@@ -38,7 +37,6 @@ class StructureDatabase(object):
         self.quiet = quiet
         self.run = run
         self.progress = progress
-        self.table_names = None
         self.create_new = create_new
 
         if not db_hash and create_new:
@@ -47,15 +45,12 @@ class StructureDatabase(object):
         self.db = db.DB(self.file_path, self.version, new_database = create_new)
 
         if create_new:
-            # structure of the residue info table depend on residue annotation sources used
-            self.residue_info_structure, self.residue_info_types = self.get_residue_info_table_structure(residue_info_structure_extras, residue_info_types_extras)
-            self.table_names = self.create_tables()
+            self.create_tables()
         else:
             self.db_hash = str(self.db.get_meta_value('contigs_db_hash'))
-
-            self.genes_with_structure = [int(x) for x in self.db.get_meta_value('genes_with_structure', try_as_type_int=False).split(',') if not x == '']
-            self.genes_without_structure = [int(x) for x in self.db.get_meta_value('genes_without_structure', try_as_type_int=False).split(',') if not x == '']
-            self.genes_queried = self.genes_with_structure + self.genes_without_structure
+            self.genes_with_structure = self.get_genes_with_structure()
+            self.genes_without_structure = self.genes_without_structure()
+            self.genes_queried = self.get_genes_queried()
 
             if not len(self.genes_queried):
                 raise ConfigError("Interesting...  this structure database has no gene caller ids. I'm "
@@ -75,22 +70,28 @@ class StructureDatabase(object):
         }
 
 
-    def get_residue_info_table_structure(self, residue_info_structure_extras, residue_info_types_extras):
-        """
-        The structure (i.e. column numbers and labels) of the residue_info table depend on
-        residue annotation sources used, and are taken from residue_info_structure_extras.
-        """
-        # If residue_info_structure_extras was sloppily passed to this class, it may have
-        # some items already in t.structure_residue_info_table_name. So we delete them if they exist
-        indices_to_del = [residue_info_structure_extras.index(x) for x in residue_info_structure_extras \
-                                                                     if x in t.structure_residue_info_table_structure]
-        for index in indices_to_del:
-            del residue_info_structure_extras[index]
-            del residue_info_types_extras[index]
+    def get_genes_with_structure(self):
+        """Returns list of gene caller ids that have a structure in the DB"""
 
-        residue_info_structure = t.structure_residue_info_table_structure + residue_info_structure_extras
-        residue_info_types = t.structure_residue_info_table_types + residue_info_types_extras
-        return residue_info_structure, residue_info_types
+        return [int(x) for x in self.db.get_meta_value('genes_with_structure', try_as_type_int=False).split(',') if not x == '']
+
+
+    def get_genes_without_structure(self):
+        """Returns list of gene caller ids that failed to generate a structure"""
+
+        return [int(x) for x in self.db.get_meta_value('genes_without_structure', try_as_type_int=False).split(',') if not x == '']
+
+
+    def get_genes_queried(self):
+        """Returns list of all gene caller ids that structures were attempted for, regardless of success or failure
+
+        Notes
+        =====
+        - FIXME This inefficiency could pose problems in 2030 when we have structure dbs with
+          millions of structures
+        """
+
+        return self.get_genes_with_structure() + self.get_genes_without_structure()
 
 
     def create_tables(self):
@@ -101,15 +102,8 @@ class StructureDatabase(object):
         self.db.create_table(t.structure_pdb_data_table_name, t.structure_pdb_data_table_structure, t.structure_pdb_data_table_types)
         self.db.create_table(t.structure_templates_table_name, t.structure_templates_table_structure, t.structure_templates_table_types)
         self.db.create_table(t.structure_models_table_name, t.structure_models_table_structure, t.structure_models_table_types)
-        self.db.create_table(t.structure_residue_info_table_name, self.residue_info_structure, self.residue_info_types)
+        self.db.create_table(t.structure_residue_info_table_name, t.residue_info_structure, t.residue_info_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
-
-        return [
-            t.structure_pdb_data_table_name,
-            t.structure_templates_table_name,
-            t.structure_models_table_name,
-            t.structure_residue_info_table_name
-        ]
 
 
     def check_hash(self):
