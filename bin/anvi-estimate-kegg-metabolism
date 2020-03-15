@@ -47,6 +47,9 @@ if __name__ == '__main__':
     groupP.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     groupP.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
 
+    groupC = parser.add_argument_group('OUTPUT', "Parameters for controlling estimation output.")
+    groupC.add_argument(*anvio.A('module-completion-threshold'), **anvio.K('module-completion-threshold'))
+
     args = anvio.get_args(parser)
 
     try:
