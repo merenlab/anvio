@@ -909,12 +909,11 @@ class DSSPClass(object):
 
 
 class ContactMap(object):
-    def __init__(self, distance_method='CA', threshold=6, p=terminal.Progress(), r=terminal.Run()):
-        self.distance_method = distance_method
+    def __init__(self, threshold=6, p=terminal.Progress(), r=terminal.Run()):
         self.threshold = threshold
 
         self.distances_methods_dict = {
-            "CA": self.calc_CA_dist,
+            'CA': self.calc_CA_dist,
         }
 
 
@@ -925,7 +924,7 @@ class ContactMap(object):
         return structure
 
 
-    def get_contact_map(self, pdb_path):
+    def get_contact_map(self, pdb_path, distance_method='CA'):
         """Returns contact map as a NxN matrix, where N is the # of AAs"""
 
         structure = self.load_pdb_file(pdb_path)
@@ -933,7 +932,7 @@ class ContactMap(object):
         contact_map = np.zeros((len(structure), len(structure)))
         for i, residue1 in enumerate(structure):
             for j, residue2 in enumerate(structure):
-                contact_map[i, j] = self.distances_methods_dict[self.distance_method](residue1, residue2)
+                contact_map[i, j] = self.distances_methods_dict[distance_method](residue1, residue2)
 
         if self.threshold is not None:
             contact_map[contact_map <= self.threshold] = 1
