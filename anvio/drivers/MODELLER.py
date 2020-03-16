@@ -41,11 +41,10 @@ class MODELLER:
     parameters required to run the script.
     """
 
-    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress(), progress_title=None):
+    def __init__(self, args, run=terminal.Run()):
 
         self.args = args
         self.run = run
-        self.progress = progress
 
         self.up_to_date_modeller_exec = "mod9.22" # default exec to use
 
@@ -106,18 +105,12 @@ class MODELLER:
         # self.directory and self.start_dir
         self.start_dir = os.getcwd()
 
-        self.progress_title = progress_title
-        if not self.progress_title:
-            self.progress_title = "Running MODELLER for gene id {}".format(self.corresponding_gene_call)
-
 
     def process(self):
 
         self.run.warning("Working directory: {}".format(self.directory),
                          header='Modelling structure for gene ID {}'.format(self.corresponding_gene_call),
                          lc="green")
-
-        self.progress.new(self.progress_title)
 
         try:
             self.run_fasta_to_pir()
@@ -151,7 +144,6 @@ class MODELLER:
         finally:
             self.abort()
 
-        self.progress.end()
         return self.out
 
 
@@ -160,7 +152,6 @@ class MODELLER:
         Downloads structure files for self.top_seq_seq_matches using Biopython
         If the 4-letter code is `wxyz`, the downloaded file is `pdbwxyz.ent`.
         """
-        self.progress.update("Downloading homologs from PDB")
 
         # define directory path name to store the template PDBs (it can already exist)
         self.template_pdbs = os.path.join(self.directory, "{}_TEMPLATE_PDBS".format(self.corresponding_gene_call))
@@ -171,12 +162,11 @@ class MODELLER:
         self.top_seq_matches = [(code, chain_code) for code, chain_code in self.top_seq_matches if code in downloaded]
 
         if not len(self.top_seq_matches):
-            self.progress.end()
             self.run.warning("No structures of the homologous proteins (templates) were downloadable. Probably something "
                              "is wrong. Maybe you are not connected to the internet. Stopping here.")
             raise self.EndModeller
 
-        self.run.info("Structures downloaded for", ", ".join([code[0] for code in self.top_seq_matches]), progress=self.progress)
+        self.run.info("Structures downloaded for", ", ".join([code[0] for code in self.top_seq_matches]))
 
 
     def parse_search_results(self):
@@ -188,8 +178,6 @@ class MODELLER:
         if not self.percent_identical_cutoff or not self.max_number_templates:
             raise ConfigError("parse_search_results::You initiated this class without providing values for percent_identical_cutoff "
                               "and max_number_templates, which is required for this function.")
-
-        self.progress.update("Parsing and filtering homologs")
 
         # put names to the columns
         column_names = (      "idx"      ,  "code_and_chain"  ,       "type"     ,  "iteration_num"  ,
@@ -203,7 +191,6 @@ class MODELLER:
         matches_found = len(search_df) - 1
 
         if not matches_found:
-            self.progress.end()
             self.run.warning("No proteins with homologous sequence were found for {}. No structure will be modelled".format(self.corresponding_gene_call))
             raise self.EndModeller
 
@@ -221,7 +208,6 @@ class MODELLER:
         # Order them and take the first self.modeller.max_number_templates.
         matches_after_filter = len(search_df)
         if not matches_after_filter:
-            self.progress.end()
             self.run.warning("Gene {} did not have a search result with proper percent identicalness above or equal "
                              "to {}%. The best match was chain {} of https://www.rcsb.org/structure/{}, which had a "
                              "proper percent identicalness of {:.2f}%. No structure will be modelled.".\
@@ -239,10 +225,10 @@ class MODELLER:
         # Get their chain and 4-letter ids
         self.top_seq_matches = list(zip(search_df["code"], search_df["chain"]))
 
-        self.run.info("Max number of templates allowed", self.max_number_templates, progress=self.progress)
-        self.run.info("Number of candidate templates", matches_found, progress=self.progress)
-        self.run.info("After >{}% identical filter".format(self.percent_identical_cutoff), matches_after_filter, progress=self.progress)
-        self.run.info("Number accepted as templates", len(self.top_seq_matches), progress=self.progress)
+        self.run.info("Max number of templates allowed", self.max_number_templates)
+        self.run.info("Number of candidate templates", matches_found)
+        self.run.info("After >{}% identical filter".format(self.percent_identical_cutoff), matches_after_filter)
+        self.run.info("Number accepted as templates", len(self.top_seq_matches))
 
         # update user on which templates are used, and write the templates to self.out
         for i in range(len(self.top_seq_matches)):
@@ -254,8 +240,7 @@ class MODELLER:
             self.out["templates"]["ppi"].append(ppi)
 
             self.run.info("Template {}".format(i+1),
-                          "Protein ID: {}, Chain {} ({:.1f}% identical)".format(pdb_id, chain_id, ppi),
-                          progress=self.progress)
+                          "Protein ID: {}, Chain {} ({:.1f}% identical)".format(pdb_id, chain_id, ppi))
 
 
     def sanity_check(self):
@@ -444,9 +429,9 @@ class MODELLER:
         # model info
         self.model_info_path = J(self.directory, "gene_{}_ModelInfo.txt".format(self.corresponding_gene_call))
 
-        self.run.info("Number of models", num_models, progress=self.progress)
-        self.run.info("Deviation", str(deviation) + " angstroms", progress=self.progress)
-        self.run.info("Fast optimization", str(very_fast), progress=self.progress)
+        self.run.info("Number of models", num_models)
+        self.run.info("Deviation", str(deviation) + " angstroms")
+        self.run.info("Fast optimization", str(very_fast))
 
         if not deviation and num_models > 1:
             raise ConfigError("run_get_modeli :: deviation must be > 0 if num_models > 1.")
@@ -469,7 +454,7 @@ class MODELLER:
         # load the model results information as a dataframe
         self.model_info = pd.read_csv(self.model_info_path, sep="\t", index_col=False)
 
-        self.run.info("Model info", os.path.basename(self.model_info_path), progress=self.progress)
+        self.run.info("Model info", os.path.basename(self.model_info_path))
 
 
     def run_align_to_templates(self, templates_info):
@@ -515,10 +500,9 @@ class MODELLER:
                                          self.alignment_pap_path,
                                          self.template_family_matrix_path])
 
-        self.run.info("Similarity matrix of templates", os.path.basename(self.template_family_matrix_path), progress=self.progress)
+        self.run.info("Similarity matrix of templates", os.path.basename(self.template_family_matrix_path))
         self.run.info("Target alignment to templates", ", ".join([os.path.basename(self.alignment_pir_path),
-                                                                  os.path.basename(self.alignment_pap_path)]),
-                                                                  progress=self.progress)
+                                                                  os.path.basename(self.alignment_pap_path)]))
 
 
     def run_search(self):
@@ -544,7 +528,7 @@ class MODELLER:
                          progress_update = "Searching DB for sequence homologs",
                          check_output = [self.search_results_path])
 
-        self.run.info("Search results for similar AA sequences", os.path.basename(self.search_results_path), progress=self.progress)
+        self.run.info("Search results for similar AA sequences", os.path.basename(self.search_results_path))
 
 
     def check_database(self):
@@ -567,7 +551,6 @@ class MODELLER:
             return
 
         if not pir_exists and not bin_exists:
-            self.progress.clear()
             self.run.warning("Anvi'o looked in {} for a database with the name {} and with an extension "
                              "of either .bin or .pir, but didn't find anything matching that "
                              "criteria. Anvi'o will try and download the best database it knows of from "
@@ -582,7 +565,6 @@ class MODELLER:
             pir_exists = utils.filesnpaths.is_file_exists(pir_db_path, dont_raise=True)
 
         if pir_exists and not bin_exists:
-            self.progress.clear()
             self.run.warning("Your database is not in binary format. That means accessing its contents is slower "
                              "than it could be. Anvi'o is going to make a binary format. Just FYI")
             self.run_binarize_database(pir_db_path, bin_db_path)
@@ -612,7 +594,7 @@ class MODELLER:
                          progress_update = "Binarizing database",
                          check_output=[bin_db_path])
 
-        self.run.info("New database", bin_db_path, progress=self.progress)
+        self.run.info("New database", bin_db_path)
 
 
     def copy_script_to_directory(self, script_name, add_to_scripts_dict=True, directory=None):
@@ -711,7 +693,7 @@ class MODELLER:
                          progress_update = "Convert FASTA to MODELLER format",
                          check_output = [self.target_pir_path])
 
-        self.run.info("Target alignment file", os.path.basename(self.target_pir_path), progress=self.progress)
+        self.run.info("Target alignment file", os.path.basename(self.target_pir_path))
 
 
     def run_command(self, command, script_name, progress_update, check_output=None):
@@ -725,16 +707,12 @@ class MODELLER:
         # first things first, we CD into MODELLER's directory
         os.chdir(self.directory)
 
-        # run the command
-        self.progress.update(progress_update)
-
         # try and execute the command
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = process.communicate()
 
         # if MODELLER script gave a traceback, it is caught here and everything is stopped
         if process.returncode:
-            self.progress.end()
             error = error.decode('utf-8').strip()
 
             error = "\n" + "\n".join(error.split('\n'))
@@ -757,7 +735,7 @@ class MODELLER:
         # add to logs
         self.logs[script_name] = new_log_name
 
-        self.run.info("Log of {}".format(script_name), new_log_name, progress=self.progress)
+        self.run.info("Log of {}".format(script_name), new_log_name)
 
         # last things last, we CD back into the starting directory
         os.chdir(self.start_dir)
