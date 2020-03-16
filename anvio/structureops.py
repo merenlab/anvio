@@ -930,11 +930,31 @@ class ContactMap(object):
         p = PDBParser()
         model = p.get_structure(name_id, pdb_path)[0] # [0] = first model
         structure = model['A'] # ['A'] = get first chain in model
+
         return structure
 
 
     def get_contact_map(self, pdb_path, distance_method='CA'):
-        """Returns contact map as a NxN matrix, where N is the # of AAs"""
+        """Returns a contact map (pairwise distances in Angstroms)
+
+        Parameters
+        ==========
+        pdb_path : str
+            The PDB file (takes first chain)
+
+        distance_method : str, 'CA'
+            Which distance method? 'CA' is for alpha carbon distances. See
+            self.distances_methods_dict for options
+
+        Returns
+        =======
+        output: NxN 2-dim array
+            Where N is the # of AAs
+
+        Notes
+        =====
+        - See also `get_boolean_contact_map`
+        """
 
         structure = self.load_pdb_file(pdb_path)
 
@@ -943,9 +963,39 @@ class ContactMap(object):
             for j, residue2 in enumerate(structure):
                 contact_map[i, j] = self.distances_methods_dict[distance_method](residue1, residue2)
 
-        if self.threshold is not None:
-            contact_map[contact_map <= self.threshold] = 1
-            contact_map[contact_map >  self.threshold] = 0
+        return contact_map
+
+
+    def get_boolean_contact_map(self, pdb_path, distance_method='CA', threshold=6):
+        """Returns a boolean contact map (1 for touching, 0 for not)
+
+        Parameters
+        ==========
+        pdb_path : str
+            The PDB file (takes first chain)
+
+        distance_method : str, 'CA'
+            Which distance method? 'CA' is for alpha carbon distances. See
+            self.distances_methods_dict for options
+
+        threshold : int or float, 6
+            Residues are considered touching if their distances are less than or equal to this
+            amount. Units are in Angstroms
+
+        Returns
+        =======
+        output: NxN 2-dim array
+            Where N is the # of AAs
+
+        Notes
+        =====
+        - See also `get_contact_map`
+        """
+
+        contact_map = self.get_contact_map(pdb_path, distance_method=distance_method)
+
+        contact_map[contact_map <= threshold] = 1
+        contact_map[contact_map >  threshold] = 0
 
         return contact_map
 
