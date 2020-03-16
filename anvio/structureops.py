@@ -266,6 +266,13 @@ class Structure(object):
             self.run.warning("You requested to skip amino acid residue annotation with DSSP. A bold move only an expert could justify... "
                              "Anvi'o's respect for you increases slightly.")
 
+        # Perform a rather extensive check on whether the MODELLER executable is going to work. We
+        # do this here so we can initiate MODELLER.MODELLER with lazy_init so it does not do this
+        # check every time
+        self.args.modeller_executable = MODELLER.check_MODELLER(self.modeller_executable)
+        self.modeller_executable = self.args.modeller_executable
+        self.run.info_single("Anvi'o found the MODELLER executable %s, so will use it" % self.modeller_executable, nl_after=1, mc='green')
+
 
     def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None):
         """Nabs the genes of interest based on user arguments (self.args)"""
@@ -457,7 +464,7 @@ class Structure(object):
 
 
     def run_modeller(self):
-        self.modeller = MODELLER.MODELLER(self.args)
+        self.modeller = MODELLER.MODELLER(self.args, lazy_init=True)
         modeller_out = self.modeller.process()
 
         return modeller_out
@@ -466,7 +473,7 @@ class Structure(object):
     def dump_raw_results(self):
         """Dump all raw modeller output into self.output_gene_dir if self.full_modeller_output"""
 
-        if self.full_modeller_output:
+        if not self.full_modeller_output:
             return
 
         output_gene_dir = os.path.join(self.full_modeller_output, self.modeller.corresponding_gene_call)

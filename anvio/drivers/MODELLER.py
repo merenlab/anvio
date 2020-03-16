@@ -27,7 +27,7 @@ __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 
 
-pp = terminal.pretty_print
+up_to_date_modeller_exec = "mod9.23" # default exec to use
 
 J = lambda x, y: os.path.join(x, y)
 
@@ -45,12 +45,11 @@ class MODELLER:
       self.run_align_to_templates. Please see that method if you want to add your own script.
     """
 
-    def __init__(self, args, run=terminal.Run()):
+    def __init__(self, args, run=terminal.Run(), lazy_init=False):
 
         self.args = args
         self.run = run
-
-        self.up_to_date_modeller_exec = "mod9.23" # default exec to use
+        self.lazy_init = lazy_init
 
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
@@ -58,13 +57,16 @@ class MODELLER:
         self.deviation = A('deviation', float)
         self.directory = A('directory', str)
         self.very_fast = A('very_fast', bool)
-        self.executable = A('modeller_executable', null) or self.up_to_date_modeller_exec
+        self.executable = A('modeller_executable', null) or up_to_date_modeller_exec
         self.num_models = A('num_models', int)
         self.target_fasta_path = A('target_fasta_path', str)
         self.modeller_database = A('modeller_database', str) or "pdb_95"
         self.max_number_templates = A('max_number_templates', null)
         self.percent_identical_cutoff = A('percent_identical_cutoff', null)
         self.deviation = A('deviation', null)
+
+        # All MODELLER scripts are housed in self.script_folder
+        self.scripts_folder = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
 
         self.alignment_pap_path = None
         self.alignment_pir_path = None
@@ -269,41 +271,8 @@ class MODELLER:
         else:
             filesnpaths.gen_output_directory(self.directory)
 
-        # All MODELLER scripts are housed in self.script_folder
-        self.scripts_folder = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
-        if utils.filesnpaths.is_dir_empty(self.scripts_folder):
-            raise ConfigError("Anvi'o houses all its MODELLER scripts in {}, but your directory "
-                              "contains no scripts. Why you do dat?")
-
-        # check that MODELLER exists
-        if self.args.__dict__['modeller_executable'] if 'modeller_executable' in self.args.__dict__ else None:
-            self.run.info_single("As per your request, anvi'o will attempt to use `%s` to run MODELLER." % self.executable, nl_before=1)
-
-        try:
-            utils.is_program_exists(self.executable)
-            self.run.info_single("Anvi'o found the executable for MODELLER, `%s`, and will "
-                                 "use it." % self.executable, nl_before=1)
-        except ConfigError as e:
-            *prefix, sub_version = self.up_to_date_modeller_exec.split('.')
-            prefix, sub_version = ''.join(prefix), int(sub_version)
-            for alternate_version in reversed(range(sub_version - 10, sub_version + 10)):
-                alternate_program = prefix + '.' + str(alternate_version)
-                if utils.is_program_exists(alternate_program, dont_raise=True):
-                    self.run.warning("Anvi'o didn't find %s to be a proper program, but it did "
-                                     "find a similarly named program %s, that it will use "
-                                     "instead." % (self.executable, alternate_program),
-                                     header='Alternate MODELLER executable found')
-                    self.executable = alternate_program
-                    break
-            else:
-                raise ConfigError("Anvi'o needs a MODELLER program to be installed on your system. You didn't specify one "
-                                  "(which can be done with `--modeller-executable`), so anvi'o tried the most recent version "
-                                  "it knows about: '%s'. If you are certain you have it on your system (for instance you can run it "
-                                  "by typing '%s' in your terminal window), you may want to send a detailed bug report. If you "
-                                  "don't have it on your system, check out these installation instructions on our website: "
-                                  "http://merenlab.org/2016/06/18/installing-third-party-software/#modeller" % (self.executable, self.executable))
-
-        self.is_executable_a_MODELLER_program()
+        if not self.lazy_init:
+            self.executable = check_MODELLER(self.executable)
 
         # does target_fasta_path point to a fasta file?
         utils.filesnpaths.is_file_fasta_formatted(self.target_fasta_path)
@@ -637,54 +606,6 @@ class MODELLER:
         shutil.copy2(script_path, directory)
 
 
-    def is_executable_a_MODELLER_program(self):
-        # temp_dir created because log file outputs to wherever fasta_to_pir.py is
-        temp_dir = filesnpaths.get_temp_directory_path()
-        self.copy_script_to_directory('fasta_to_pir.py', add_to_scripts_dict=False, directory=temp_dir)
-        test_script = J(temp_dir, 'fasta_to_pir.py')
-        test_input = J(os.path.dirname(anvio.__file__), 'tests/sandbox/mock_data_for_structure/proteins.fa')
-        test_output = J(temp_dir, 'test_out')
-
-        command = [self.executable,
-                   test_script,
-                   test_input,
-                   test_output]
-
-        # try and execute the command
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = process.communicate()
-
-        if process.returncode:
-            # modeller has failed
-            error = error.decode('utf-8').strip()
-
-            is_licence_key_error = True if error.find('Invalid license key') > -1 else False
-            if is_licence_key_error:
-                # its a valid modeller program with no license key
-                license_target_file = error.split('\n')[-1]
-                raise ConfigError("You're making progress and anvi'o is proud of you! You just need to validate your MODELLER "
-                                  "with a license key (it's free). Please go to https://salilab.org/modeller/registration.html "
-                                  "to register for a new license. After you receive an e-mail with your key, please open '%s' "
-                                  "and replace the characters XXXXX with your own key. Save the file and try again. " % license_target_file)
-
-            else:
-                error = "\n" + "\n".join(error.split('\n'))
-                print(terminal.c(error, color='red'))
-                raise ConfigError("The executable you requested is called `%s`, but anvi'o doesn't agree with you that "
-                                  "it is a working MODELLER program. That was determined by running the command `%s`, which raised the "
-                                  "error seen above. If you want to specify a specific MODELLER program, you can specify it with "
-                                  "`--modeller-executable`." % (self.executable, " ".join(command)))
-
-        # no error was raised. now check if output file exists
-        try:
-            filesnpaths.is_file_exists(test_output)
-        except FilesNPathsError:
-            raise ConfigError("The executable you requested is called `%s`, but anvi'o doesn't agree with you that "
-                              "it is a working MODELLER program. That was determined by running the command `%s`, which did not "
-                              "output the file expected. If you want to specify a specific MODELLER program, you can specify it with "
-                              "`--modeller-executable`." % (self.executable, " ".join(command)))
-
-
     def run_fasta_to_pir(self):
         """
         MODELLER uses their own .pir format for search and alignment instead of .fasta. This script
@@ -758,5 +679,92 @@ class MODELLER:
 
     class EndModeller(Exception):
         pass
+
+
+def check_MODELLER(executable=None):
+    """Test if MODELLER is going to work.
+
+    Exists outside of the class MODELLER so it does not have to be checked everytime. Checks the
+    executable exists, that a license exists, and can produce the expected output of a modeller
+    executable.
+
+    Returns
+    =======
+    output : executable, str
+        Returns the executable that you _should_ use, which is not necessarily what is input
+    """
+
+    executable = executable if executable else up_to_date_modeller_exec
+
+    scripts_folder = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
+    if utils.filesnpaths.is_dir_empty(scripts_folder):
+        raise ConfigError("Anvi'o houses all its MODELLER scripts in %s, but your directory "
+                          "contains no scripts. Why you did dat?" % scripts_folder)
+
+    try:
+        utils.is_program_exists(executable)
+    except ConfigError as e:
+        *prefix, sub_version = up_to_date_modeller_exec.split('.')
+        prefix, sub_version = ''.join(prefix), int(sub_version)
+        for alternate_version in reversed(range(sub_version - 10, sub_version + 10)):
+            alternate_program = prefix + '.' + str(alternate_version)
+            if utils.is_program_exists(alternate_program, dont_raise=True):
+                executable = alternate_program
+                break
+        else:
+            raise ConfigError("Anvi'o needs a MODELLER program to be installed on your system. You didn't specify one "
+                              "(which can be done with `--modeller-executable`), so anvi'o tried the most recent version "
+                              "it knows about: '%s'. If you are certain you have it on your system (for instance you can run it "
+                              "by typing '%s' in your terminal window), you may want to send a detailed bug report. If you "
+                              "don't have it on your system, check out these installation instructions on our website: "
+                              "http://merenlab.org/2016/06/18/installing-third-party-software/#modeller" % (executable, executable))
+
+    temp_dir = filesnpaths.get_temp_directory_path()
+    shutil.copy2(J(scripts_folder, 'fasta_to_pir.py'), temp_dir)
+
+    test_script = J(temp_dir, 'fasta_to_pir.py')
+    test_input = J(os.path.dirname(anvio.__file__), 'tests/sandbox/mock_data_for_structure/proteins.fa')
+    test_output = J(temp_dir, 'test_out')
+
+    command = [executable,
+               test_script,
+               test_input,
+               test_output]
+
+    # try and execute the command
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, error = process.communicate()
+
+    if process.returncode:
+        # modeller has failed
+        error = error.decode('utf-8').strip()
+
+        is_licence_key_error = True if error.find('Invalid license key') > -1 else False
+        if is_licence_key_error:
+            # its a valid modeller program with no license key
+            license_target_file = error.split('\n')[-1]
+            raise ConfigError("You're making progress and anvi'o is proud of you! You just need to validate your MODELLER "
+                              "with a license key (it's free). Please go to https://salilab.org/modeller/registration.html "
+                              "to register for a new license. After you receive an e-mail with your key, please open '%s' "
+                              "and replace the characters XXXXX with your own key. Save the file and try again. " % license_target_file)
+
+        else:
+            error = "\n" + "\n".join(error.split('\n'))
+            print(terminal.c(error, color='red'))
+            raise ConfigError("The executable you requested is called `%s`, but anvi'o doesn't agree with you that "
+                              "it is a working MODELLER program. That was determined by running the command `%s`, which raised the "
+                              "error seen above. If you want to specify a specific MODELLER program, you can specify it with "
+                              "`--modeller-executable`." % (executable, " ".join(command)))
+
+    # no error was raised. now check if output file exists
+    try:
+        filesnpaths.is_file_exists(test_output)
+    except FilesNPathsError:
+        raise ConfigError("The executable you requested is called `%s`, but anvi'o doesn't agree with you that "
+                          "it is a working MODELLER program. That was determined by running the command `%s`, which did not "
+                          "output the file expected. If you want to specify a specific MODELLER program, you can specify it with "
+                          "`--modeller-executable`." % (executable, " ".join(command)))
+
+    return executable
 
 
