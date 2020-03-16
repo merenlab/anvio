@@ -27,8 +27,9 @@ from anvio.dbops import ContigsSuperclass
 
 
 class StructureDatabase(object):
-    def __init__(self, file_path, db_hash=None, create_new=False, ignore_hash=False, run=terminal.Run(), progress=terminal.Progress(), quiet=False):
+    """Structure database operations"""
 
+    def __init__(self, file_path, db_hash=None, create_new=False, ignore_hash=False, run=terminal.Run(), progress=terminal.Progress(), quiet=False):
         self.db_type = 'structure'
         self.db_hash = str(db_hash)
         self.version = anvio.__structure__version__
@@ -52,7 +53,7 @@ class StructureDatabase(object):
             self.genes_queried = self.get_genes_queried()
 
             if not len(self.genes_queried):
-                raise ConfigError("Interesting...  this structure database has no gene caller ids. I'm "
+                raise ConfigError("Interesting... This structure database has no gene caller ids. Anvi'o is"
                                   "not sure how you managed that. please send a report to the "
                                   "developers. Thank you.")
 
@@ -350,8 +351,7 @@ class Structure(object):
                 continue
 
             # Model structure
-            progress_title = 'Modelling gene ID %d; (%d of %d processed)' % (corresponding_gene_call, num_genes_tried, num_genes_to_try)
-            modeller_out = self.run_modeller(corresponding_gene_call, progress_title)
+            modeller_out = self.run_modeller(corresponding_gene_call)
             if modeller_out["structure_exists"]:
                 self.run.info_single("Gene successfully modelled!", nl_after=1, mc="green")
 
@@ -363,7 +363,7 @@ class Structure(object):
                 residue_info_dataframe = self.run_residue_annotation_for_gene(corresponding_gene_call,
                                                                               modeller_out["best_model_path"])
             # Append info to tables
-            self.append_gene_info_to_tables(modeller_out, residue_info_dataframe)
+            self.store_gene(modeller_out, residue_info_dataframe)
 
             # Append metadata to self
             self.update_structure_database_meta_table(has_structure)
@@ -443,7 +443,7 @@ class Structure(object):
         """Returns the contact map in compressed form with index 'codon_order_in_gene' and column 'contact_numbers'"""
 
         # Run ContactMap class
-        contact_map = self.contactmap.get_contact_map(pdb_path)
+        contact_map = self.contactmap.get_boolean_contact_map(pdb_path)
         compressed_rep = self.contactmap.get_compressed_representation(contact_map, c='number')
 
         # Customize for this class and return
@@ -457,8 +457,8 @@ class Structure(object):
         return compressed_rep.rename(columns=column_rename).set_index('codon_order_in_gene')
 
 
-    def run_modeller(self, corresponding_gene_call, progress_title):
-        self.modeller = MODELLER.MODELLER(self.args, run=self.run, progress=self.progress, progress_title=progress_title)
+    def run_modeller(self, corresponding_gene_call):
+        self.modeller = MODELLER.MODELLER(self.args)
         modeller_out = self.modeller.process()
 
         return modeller_out
@@ -475,12 +475,8 @@ class Structure(object):
         shutil.move(self.modeller.directory, output_gene_dir)
 
 
-    def append_gene_info_to_tables(self, modeller_out, residue_info_dataframe):
-        """Append all info related to the gene into the database
-
-        In this method the data is wrangled into formats that can be appended to their respective
-        structure database tables.
-        """
+    def store_gene(self, modeller_out, residue_info_dataframe):
+        """Store a gene's info into the structure database"""
 
         corresponding_gene_call = modeller_out["corresponding_gene_call"]
 
@@ -900,31 +896,29 @@ class DSSPClass(object):
         d = {}
         for key in dssp_biopython_object.keys():
             d[key] = list(dssp_biopython_object[key])
-            d[key][self.fields.index("codon_order_in_gene")] = utils.convert_sequence_indexing(d[key][self.fields.index("codon_order_in_gene")], source="M1", destination="M0")
-            d[key][self.fields.index("aa")] = one_to_three[d[key][self.fields.index("aa")]]
+            d[key][self.fields.index('codon_order_in_gene')] = utils.convert_sequence_indexing(d[key][self.fields.index('codon_order_in_gene')], source='M1', destination='M0')
+            d[key][self.fields.index('aa')] = one_to_three[d[key][self.fields.index('aa')]]
 
-            if d[key][self.fields.index("sec_struct")] == "-":
-                d[key][self.fields.index("sec_struct")] = "C"
+            if d[key][self.fields.index('sec_struct')] == '-':
+                d[key][self.fields.index('sec_struct')] = 'C'
 
-            for hbond in ["NH_O_1", "O_NH_1", "NH_O_2", "O_NH_2"]:
-                res_index = d[key][self.fields.index("codon_order_in_gene")]
-                rel_index = d[key][self.fields.index(hbond+"_index")]
+            for hbond in ['NH_O_1', 'O_NH_1', 'NH_O_2', 'O_NH_2']:
+                res_index = d[key][self.fields.index('codon_order_in_gene')]
+                rel_index = d[key][self.fields.index(hbond + '_index')]
 
                 if rel_index == 0:
-                    d[key][self.fields.index(hbond+"_index")] = np.nan
-                    d[key][self.fields.index(hbond+"_energy")] = np.nan
+                    d[key][self.fields.index(hbond + '_index')] = np.nan
+                    d[key][self.fields.index(hbond + '_energy')] = np.nan
 
                 else:
-                    d[key][self.fields.index(hbond+"_index")] = res_index + rel_index
+                    d[key][self.fields.index(hbond + '_index')] = res_index + rel_index
 
         # convert dictionary d to dataframe df
-        return pd.DataFrame(d, index=self.fields).T.set_index("codon_order_in_gene").drop(drop, axis=1)
+        return pd.DataFrame(d, index=self.fields).T.set_index('codon_order_in_gene').drop(drop, axis=1)
 
 
 class ContactMap(object):
-    def __init__(self, threshold=6, p=terminal.Progress(), r=terminal.Run()):
-        self.threshold = threshold
-
+    def __init__(self, p=terminal.Progress(), r=terminal.Run()):
         self.distances_methods_dict = {
             'CA': self.calc_CA_dist,
         }
