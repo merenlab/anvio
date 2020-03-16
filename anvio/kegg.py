@@ -808,6 +808,7 @@ class KeggMetabolismEstimator(KeggContext):
             if anvio.DEBUG:
                 self.run.warning("No KOs present for module %s. Parsing for completeness is still being done to obtain module steps." % mnum)
 
+        # module information to return
         module_step_list = [] # while we are at it, we'll remember what the (essential) steps are
         module_complete_steps = [] # and what the complete steps are
         module_nonessential_steps = [] # steps that aren't necessary for module completeness
@@ -816,6 +817,8 @@ class KeggMetabolismEstimator(KeggContext):
         module_num_complete_steps = 0
         module_num_nonessential_steps = 0
         module_num_complete_nonessential_steps = 0
+        has_nonessential_step = False
+        has_no_ko_step = False
 
         def_lines = self.kegg_modules_db.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
         for d in def_lines:
@@ -872,12 +875,10 @@ class KeggMetabolismEstimator(KeggContext):
                         """
                         # if this is the first KO in the step and we find a space after this KO, then we have found a non-essential step
                         if step_is_present_condition_statement == "" and (cur_index == len(d) or d[cur_index] == " "):
+                            has_nonessential_step = True
                             module_nonessential_steps.append(d[last_step_end_index:cur_index])
                             module_num_nonessential_steps += 1
-                            if not self.quiet:
-                                self.run.warning("Just a note here - anvi'o found the following non-essential step in module %s: %s. "
-                                "At this time, we are not counting this step in our completion estimates. If you have a problem with that, "
-                                "then...! Well. Let us know. " % (mnum, d[last_step_end_index:cur_index]))
+
                             if nonessential_ko in present_list_for_mnum:
                                 module_complete_nonessential_steps.append(d[last_step_end_index:cur_index])
                                 module_num_complete_nonessential_steps += 1
@@ -896,16 +897,10 @@ class KeggMetabolismEstimator(KeggContext):
                     elif d[cur_index+1] == "-":
                         # when '--' in a DEFINITION line happens, it signifies a reaction step that has no associated KO.
                         # we assume that such steps are not complete,  because we really can't know if it is from the KOfam hits alone
+                        has_no_ko_step = True
                         step_is_present_condition_statement += "False"
                         cur_index += 2 # skip over both '-', the next character should be a space or end of DEFINITION line
-                        if not self.quiet:
-                            self.run.warning("Just so you know, while estimating the completeness of KEGG module %s, anvi'o saw "
-                                             "'--' in the module DEFINITION. This indicates a step in the pathway that has no "
-                                             "associated KO. So we really cannot know just based on KOfam hits whether or not this "
-                                             "step is present. By default, anvi'o is marking this step incomplete. But it may not be, "
-                                             "and as a result this module may be falsely considered incomplete. So it may be in your "
-                                             "interest to go back and take a look at this individual module to see if you can find the "
-                                             "missing enzyme in some other way. Best of luck to you." % (mnum))
+
                         if cur_index < len(d) and d[cur_index] != " ":
                             raise ConfigError("Serious, serious parsing sadness is happening. We just processed a '--' in "
                                               "a DEFINITION line for module %s, but did not see a space afterwards. Instead, we found %s. "
@@ -941,7 +936,7 @@ class KeggMetabolismEstimator(KeggContext):
                     # for example, photosynthesis module M00611 is defined as (M00161,M00163) M00165 === (photosystem II or photosystem I) and calvin cycle
                     # I don't know what to do about this yet so we are just going to return empty things for now
                     # THIS WILL CAUSE ISSUES DOWN THE ROAD SO WATCH OUT!
-                    return [], [], [], [], None, None, None, None, None, None
+                    return [], [], [], [], None, None, None, None, None, None, None, None
 
                 else:
                     raise ConfigError("While parsing the DEFINITION field for module %s, (which is %s), anvi'o found the following character "
@@ -962,9 +957,10 @@ class KeggMetabolismEstimator(KeggContext):
         module_completeness = module_num_complete_steps / module_total_steps * 100.0
         over_complete_threshold = True if module_completeness > self.completeness_threshold else False
 
+
         return module_step_list, module_complete_steps, module_nonessential_steps, module_complete_nonessential_steps, \
                 module_total_steps, module_num_complete_steps, module_num_nonessential_steps, module_num_complete_nonessential_steps, \
-                module_completeness, over_complete_threshold
+                module_completeness, over_complete_threshold, has_nonessential_step, has_no_ko_step
 
 
     def estimate_for_genome(self, kofam_hits, genes_in_splits):
@@ -992,10 +988,15 @@ class KeggMetabolismEstimator(KeggContext):
         genome_metabolism_dict[self.contigs_db_project_name] = self.mark_kos_present_for_list_of_splits(ko_in_genome, split_list=splits_in_genome,
                                                                                                     bin_name=self.contigs_db_project_name)
         num_complete_modules = 0
+        # modules to warn about
+        mods_with_unassociated_ko = [] # a list of modules that have "--" steps without an associated KO
+        mods_with_nonessential_steps = [] # a list of modules that have nonessential steps like "-K11024"
+
         # estimate completeness of each module
         for mod in genome_metabolism_dict[self.contigs_db_project_name].keys():
             mod_steps, mod_complete_steps, mod_nonessential_steps, mod_complete_nonessential_steps, mod_num_steps, mod_num_complete_steps, \
-            mod_num_nonessential_steps, mod_num_complete_nonessential_steps, mod_percent_complete, mod_is_complete \
+            mod_num_nonessential_steps, mod_num_complete_nonessential_steps, mod_percent_complete, \
+            mod_is_complete, has_nonessential_step, has_no_ko_step \
             = self.compute_module_completeness(mod, genome_metabolism_dict[self.contigs_db_project_name][mod]["present_kos"])
             # assign completeness info back to module dict
             genome_metabolism_dict[self.contigs_db_project_name][mod]["step_list"] = mod_steps
@@ -1011,8 +1012,30 @@ class KeggMetabolismEstimator(KeggContext):
 
             if mod_is_complete:
                 num_complete_modules += 1
+            if has_nonessential_step:
+                mods_with_nonessential_steps.append(mod)
+            if has_no_ko_step:
+                mods_with_unassociated_ko.append(mod)
 
         genome_metabolism_dict[self.contigs_db_project_name]["num_complete_modules"] = num_complete_modules
+
+        # notify user of the modules that gave some fishy results
+        if not self.quiet:
+            if mods_with_nonessential_steps:
+                self.run.warning("Please note that anvi'o found one or more non-essential steps in the following KEGG modules: %s.   "
+                "At this time, we are not counting these steps in our percent completion estimates. But we still kept track of which "
+                "of these non-essential steps were found to be complete. You can see this information in the output file."
+                % (", ".join(mods_with_nonessential_steps)))
+
+            if mods_with_unassociated_ko:
+                self.run.warning("Just so you know, while estimating the completeness of some KEGG modules, anvi'o saw "
+                                 "'--' in the module DEFINITION. This indicates a step in the pathway that has no "
+                                 "associated KO. So we really cannot know just based on KOfam hits whether or not this "
+                                 "step is present. By default, anvi'o marks these steps incomplete. But they may not be, "
+                                 "and as a result their modules may be falsely considered incomplete. So it may be in your "
+                                 "interest to go back and take a look at these individual modules to see if you can find the "
+                                 "missing enzyme in some other way. Best of luck to you. Here is the list of modules to check out: %s"
+                                 % (", ".join(mods_with_unassociated_ko)))
 
         self.run.info("Module completion threshold", self.completeness_threshold)
         self.run.info("Number of complete modules", num_complete_modules)
