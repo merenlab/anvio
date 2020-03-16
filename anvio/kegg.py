@@ -808,9 +808,10 @@ class KeggMetabolismEstimator(KeggContext):
             if anvio.DEBUG:
                 self.run.warning("No KOs present for module %s. Parsing for completeness is still being done to obtain module steps." % mnum)
 
-        module_step_list = [] # while we are at it, we'll remember what the steps are
+        module_step_list = [] # while we are at it, we'll remember what the (essential) steps are
         module_complete_steps = [] # and what the complete steps are
         module_nonessential_steps = [] # steps that aren't necessary for module completeness
+        module_complete_nonessential_steps = [] # and those nonessential steps which we find are complete
         module_total_steps = 0
         module_num_complete_steps = 0
         module_num_nonessential_steps = 0
@@ -878,7 +879,9 @@ class KeggMetabolismEstimator(KeggContext):
                                 "At this time, we are not counting this step in our completion estimates. If you have a problem with that, "
                                 "then...! Well. Let us know. " % (mnum, d[last_step_end_index:cur_index]))
                             if nonessential_ko in present_list_for_mnum:
+                                module_complete_nonessential_steps.append(d[last_step_end_index:cur_index])
                                 module_num_complete_nonessential_steps += 1
+
                             # reset for next step
                             last_step_end_index = cur_index + 1
                             cur_index += 1
@@ -958,7 +961,7 @@ class KeggMetabolismEstimator(KeggContext):
         # once we have processed all DEFINITION lines, we can compute the overall completeness
         module_completeness = module_num_complete_steps / module_total_steps * 100.0
         over_complete_threshold = True if module_completeness > self.completeness_threshold else False
-        return module_step_list, module_complete_steps, module_nonessential_steps, module_total_steps, module_num_complete_steps, \
+        return module_step_list, module_complete_steps, module_nonessential_steps, module_complete_nonessential_steps, module_total_steps, module_num_complete_steps, \
                module_num_nonessential_steps, module_num_complete_nonessential_steps, module_completeness, over_complete_threshold
 
 
@@ -989,13 +992,14 @@ class KeggMetabolismEstimator(KeggContext):
         num_complete_modules = 0
         # estimate completeness of each module
         for mod in genome_metabolism_dict[self.contigs_db_project_name].keys():
-            mod_steps, mod_complete_steps, mod_nonessential_steps, mod_num_steps, mod_num_complete_steps, mod_num_nonessential_steps, \
+            mod_steps, mod_complete_steps, mod_nonessential_steps, mod_complete_nonessential_steps, mod_num_steps, mod_num_complete_steps, mod_num_nonessential_steps, \
             mod_num_complete_nonessential_steps, mod_percent_complete, mod_is_complete \
             = self.compute_module_completeness(mod, genome_metabolism_dict[self.contigs_db_project_name][mod]["present_kos"])
             # assign completeness info back to module dict
             genome_metabolism_dict[self.contigs_db_project_name][mod]["step_list"] = mod_steps
             genome_metabolism_dict[self.contigs_db_project_name][mod]["complete_step_list"] = mod_complete_steps
             genome_metabolism_dict[self.contigs_db_project_name][mod]["nonessential_step_list"] = mod_nonessential_steps
+            genome_metabolism_dict[self.contigs_db_project_name][mod]["complete_nonessential_step_list"]= mod_complete_nonessential_steps
             genome_metabolism_dict[self.contigs_db_project_name][mod]["num_steps"] = mod_num_steps
             genome_metabolism_dict[self.contigs_db_project_name][mod]["num_complete_steps"] = mod_num_complete_steps
             genome_metabolism_dict[self.contigs_db_project_name][mod]["num_nonessential_steps"] = mod_num_nonessential_steps
