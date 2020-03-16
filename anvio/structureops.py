@@ -48,7 +48,7 @@ class StructureDatabase(object):
         else:
             self.db_hash = str(self.db.get_meta_value('contigs_db_hash'))
             self.genes_with_structure = self.get_genes_with_structure()
-            self.genes_without_structure = self.genes_without_structure()
+            self.genes_without_structure = self.get_genes_without_structure()
             self.genes_queried = self.get_genes_queried()
 
             if not len(self.genes_queried):
@@ -62,10 +62,10 @@ class StructureDatabase(object):
         # entries initialized as empty list are added with insert_many()
         # entries initialized as empty DataFrame are added with insert_rows_from_dataframe()
         self.entries = {
-            t.structure_pdb_data_table_name : [],
-            t.structure_residue_info_table_name : pd.DataFrame({}),
-            t.structure_templates_table_name : pd.DataFrame({}),
-            t.structure_models_table_name : pd.DataFrame({}),
+            t.pdb_data_table_name : [],
+            t.residue_info_table_name : pd.DataFrame({}),
+            t.templates_table_name : pd.DataFrame({}),
+            t.models_table_name : pd.DataFrame({}),
         }
 
 
@@ -98,10 +98,10 @@ class StructureDatabase(object):
         self.db.set_meta_value('contigs_db_hash', self.db_hash)
         self.db.set_meta_value('creation_date', time.time())
 
-        self.db.create_table(t.structure_pdb_data_table_name, t.structure_pdb_data_table_structure, t.structure_pdb_data_table_types)
-        self.db.create_table(t.structure_templates_table_name, t.structure_templates_table_structure, t.structure_templates_table_types)
-        self.db.create_table(t.structure_models_table_name, t.structure_models_table_structure, t.structure_models_table_types)
-        self.db.create_table(t.structure_residue_info_table_name, t.residue_info_structure, t.residue_info_types)
+        self.db.create_table(t.pdb_data_table_name, t.pdb_data_table_structure, t.pdb_data_table_types)
+        self.db.create_table(t.templates_table_name, t.templates_table_structure, t.templates_table_types)
+        self.db.create_table(t.models_table_name, t.models_table_structure, t.models_table_types)
+        self.db.create_table(t.residue_info_table_name, t.residue_info_table_structure, t.residue_info_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
 
 
@@ -133,7 +133,7 @@ class StructureDatabase(object):
         if not corresponding_gene_call in self.genes_with_structure:
             raise ConfigError('The gene caller id {} was not found in the structure database :('.format(corresponding_gene_call))
 
-        return self.db.get_single_column_from_table(t.structure_pdb_data_table_name,
+        return self.db.get_single_column_from_table(t.pdb_data_table_name,
             'pdb_content', where_clause="corresponding_gene_call = %d" % corresponding_gene_call)[0].decode('utf-8')
 
 
@@ -164,7 +164,7 @@ class StructureDatabase(object):
 
         summary = {}
         summary['pdb_content'] = self.get_pdb_content(corresponding_gene_call)
-        summary['residue_info'] = self.db.get_table_as_dataframe(t.structure_residue_info_table_name,
+        summary['residue_info'] = self.db.get_table_as_dataframe(t.residue_info_table_name,
             where_clause = "corresponding_gene_call = %d" % corresponding_gene_call).to_json(orient='index')
 
         return summary
@@ -180,7 +180,6 @@ class Structure(object):
         self.run = run
         self.progress = progress
 
-        # initialize self.arg parameters
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
         self.contigs_db_path = A('contigs_db', null)
@@ -193,7 +192,6 @@ class Structure(object):
         self.full_modeller_output = A('dump_dir', null)
         self.skip_DSSP = A('skip_DSSP', bool)
         self.modeller_executable = A('modeller_executable', null)
-        self.DSSP_executable = None
 
         utils.is_contigs_db(self.contigs_db_path)
         self.contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
@@ -222,59 +220,25 @@ class Structure(object):
         # identify which genes user wants to model structures for
         self.genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
 
-        # residue annotation
-        self.residue_annotation_sources_info = {
-            "DSSP": {
-                "method"    : self.run_DSSP,
-                "skip"      : self.skip_DSSP,
-                "structure" : dict(zip(t.residue_info_sources["DSSP"]["structure"],
-                                       t.residue_info_sources["DSSP"]["types"]))
-            },
-            "contact_map": {
-                "method"    : self.run_contact_map,
-                "skip"      : False,
-            },
-            "residue_identities": {
-                "method"    : self.run_residue_identity_annotation,
-                "skip"      : False,
-            },
-        }
-
-        self.residue_info_table_structure, self.residue_info_table_types = self.get_residue_info_table_structure()
+        # FIXME may not need
         self.residue_annotation_df = pd.DataFrame({})
 
         self.sanity_check()
 
-        # initialize StructureDatabase
+        # init StructureDatabase
         self.structure_db = StructureDatabase(
             self.output_db_path,
             self.contigs_db_hash,
-            residue_info_structure_extras=self.residue_info_table_structure,
-            residue_info_types_extras=self.residue_info_table_types,
             create_new=True,
         )
 
         # init ContigsSuperClass
         self.contigs_super = ContigsSuperclass(self.args)
 
-
-    def get_residue_info_table_structure(self):
-        """
-        Table structure is dependent on which residue annotation sources are available or of interest.
-        That's why it is defined on the fly when db is created. To generate on the fly, the columns
-        from each source are added, but only if skip=False for the residue annotation source.  codon_order_in_gene
-        is ignored Since it is common to each residue annotation source and is already present in
-        t.structure_residue_info_table_structure.
-        """
-        structure = []
-        types = []
-
-        for source, info in self.residue_annotation_sources_info.items():
-            if not info["skip"] and info.get("structure"):
-                d = {k: v for k, v in info["structure"].items() if k != "codon_order_in_gene"}
-                structure.extend([x for x in d.keys()])
-                types.extend([d[y] for y in d.keys()])
-        return structure, types
+        # init annotation sources
+        self.contactmap = ContactMap()
+        if not self.skip_DSSP:
+            self.dssp = DSSPClass()
 
 
     def sanity_check(self):
@@ -297,64 +261,9 @@ class Structure(object):
             self.run.warning("You selected a percent identical cutoff of {}%. Below 25%, you should pay close attention "
                              "to the quality of the proteins...".format(self.percent_identical_cutoff))
 
-        # check that DSSP exists and works
         if self.skip_DSSP:
             self.run.warning("You requested to skip amino acid residue annotation with DSSP. A bold move only an expert could justify... "
                              "Anvi'o's respect for you increases slightly.")
-
-        else:
-            if utils.is_program_exists("mkdssp", dont_raise=True): # mkdssp is newer and preferred
-                self.DSSP_executable = "mkdssp"
-
-            if not self.DSSP_executable:
-                if utils.is_program_exists("dssp", dont_raise=True):
-                    self.DSSP_executable = "dssp"
-                else:
-                    raise ConfigError("An anvi'o function needs 'mkdssp' or 'dssp' to be installed on your system, but "
-                                      "neither seem to appear in your path :/ If you are certain you have either on your "
-                                      "system (for instance you can run either by typing 'mkdssp' or 'dssp' in your terminal "
-                                      "window), you may want to send a detailed bug report. If you want to install DSSP, "
-                                      "check out http://merenlab.org/2016/06/18/installing-third-party-software/#dssp. "
-                                      "If you want to skip secondary structure and solvent accessibility annotation, "
-                                      "provide the flag --skip-DSSP.")
-
-            self.run.info_single("Anvi'o found the DSSP executable `%s`, and will use it."\
-                                  % self.DSSP_executable, nl_before=1, nl_after=1)
-            self.is_executable_a_working_DSSP_program()
-
-
-    def is_executable_a_working_DSSP_program(self):
-        test_input = os.path.join(os.path.dirname(anvio.__file__), 'tests/sandbox/mock_data_for_structure/STRUCTURES/0.pdb')
-
-        p = PDBParser()
-        test_structure = p.get_structure('test', test_input)
-        test_model = test_structure[0] # pdb files can have multiple models. DSSP assumes the first.
-
-        # run DSSP
-        try:
-            test_residue_annotation = DSSP(test_model, test_input, dssp = self.DSSP_executable, acc_array = "Wilke")
-        except Exception as e:
-            raise ConfigError('Your executable of DSSP, `{}`, doesn\'t appear to be working. For information on how to test '
-                              'that your version is working correctly, please visit '
-                              'http://merenlab.org/2016/06/18/installing-third-party-software/#dssp'\
-                               .format(self.DSSP_executable))
-
-        if not len(test_residue_annotation.keys()):
-            raise ConfigError("Your executable of DSSP, `{}`, exists but didn't return any meaningful output. This "
-                              "is a known issue with certain distributions of DSSP. For information on how to test "
-                              "that your version is working correctly, please visit "
-                              "http://merenlab.org/2016/06/18/installing-third-party-software/#dssp"\
-                               .format(self.DSSP_executable))
-
-        try:
-            self.convert_DSSP_output_from_biopython_to_dataframe(test_residue_annotation)
-        except:
-            import pickle
-            with open('troubleshoot_DDSP_output.pickle', 'wb') as output:
-                pickle.dump(test_residue_annotation, output, pickle.HIGHEST_PROTOCOL)
-            raise ConfigError('Your executable of DSSP ran and produced an output, but anvi\'o wasn\'t able to correctly parse it. '
-                              'This is probably our fault. In your working directory should exist a file named "troubleshoot_DDSP_output.pickle". '
-                              'Please send this to an anvio developer so that we can help identify what went wrong.')
 
 
     def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None):
@@ -417,9 +326,6 @@ class Structure(object):
 
 
     def process(self):
-        # will be empty if all sources in self.residue_annotation_sources_info have "skip": True
-        residue_annotation_methods = [info["method"] for _, info in self.residue_annotation_sources_info.items() if not info["skip"]]
-
         # which genes had structures and which did not. this information is added to the structure database self table
         has_structure = {True: [], False: []}
 
@@ -454,8 +360,7 @@ class Structure(object):
             # Annotate residues
             residue_info_dataframe = None
             if modeller_out["structure_exists"]:
-                residue_info_dataframe = self.run_residue_annotation_for_gene(residue_annotation_methods,
-                                                                              corresponding_gene_call,
+                residue_info_dataframe = self.run_residue_annotation_for_gene(corresponding_gene_call,
                                                                               modeller_out["best_model_path"])
             # Append info to tables
             self.append_gene_info_to_tables(modeller_out, residue_info_dataframe)
@@ -487,8 +392,7 @@ class Structure(object):
             self.structure_db.db.set_meta_value('deviation', self.deviation)
             self.structure_db.db.set_meta_value('max_number_templates', self.max_number_templates)
             self.structure_db.db.set_meta_value('num_models', self.num_models)
-            for key, val in self.residue_annotation_sources_info.items():
-                self.structure_db.db.set_meta_value("skip_" + key, str(int(val["skip"])))
+            self.structure_db.db.set_meta_value('skip_DSSP', self.skip_DSSP)
 
         else:
             new_genes_queried = list(self.structure_db.genes_queried) + list(self.genes_of_interest)
@@ -500,16 +404,13 @@ class Structure(object):
             self.structure_db.db.update_meta_value('genes_without_structure', ",".join([str(x) for x in new_genes_without_structure]))
 
 
-    def run_residue_annotation_for_gene(self, residue_annotation_methods, corresponding_gene_call, pdb_filepath):
-        # residue_annotation_for_gene is a dataframe that stores residue annotations made by all residue
-        # annotation methods (e.g. DSSP) for the current corresponding_gene_call. Each time a
-        # residue annotation source is ran, its results are appended as columns to
-        # residue_annotation_for_gene. All annotation sources must have the index called
-        # "codon_order_in_gene" whose values are anvi'o-indexed, i.e. the methionine has index 0.
-        # Each annotation source does NOT have to annotate each residue in the gene.
-        residue_annotation_for_gene = pd.DataFrame({})
-        for method in residue_annotation_methods:
-            residue_annotation_for_gene = pd.concat([residue_annotation_for_gene, method(corresponding_gene_call, pdb_filepath)], axis=1, sort=True)
+    def run_residue_annotation_for_gene(self, corresponding_gene_call, pdb_filepath):
+        results = [
+            self.dssp.run(pdb_filepath, id_for_protein=corresponding_gene_call),
+            self.run_contact_map_annotation(pdb_filepath),
+            self.run_residue_identity_annotation(corresponding_gene_call, pdb_filepath),
+        ]
+        residue_annotation_for_gene = pd.concat(results, axis=1, sort=True)
 
         # add corresponding_gene_call and codon_order_in_gene as 0th and 1st columns
         residue_annotation_for_gene.insert(0, "entry_id", list(range(residue_annotation_for_gene.shape[0])))
@@ -517,17 +418,6 @@ class Structure(object):
         residue_annotation_for_gene.insert(2, "codon_order_in_gene", residue_annotation_for_gene.index)
 
         return residue_annotation_for_gene
-
-
-    def dump_results_to_full_output(self):
-        """
-        if self.full_modeller_output, all files from MODELLERs temp directory are recursively moved into
-        output_gene_dir. Otherwise, the list of files we care about are defined in this function
-        and moved into output_gene_dir.
-        """
-        output_gene_dir = os.path.join(self.full_modeller_output, self.modeller.corresponding_gene_call)
-        filesnpaths.check_output_directory(output_gene_dir)
-        shutil.move(self.modeller.directory, output_gene_dir)
 
 
     def run_residue_identity_annotation(self, corresponding_gene_call, pdb_filepath):
@@ -549,94 +439,9 @@ class Structure(object):
         return pd.DataFrame(seq_dict).set_index("codon_order_in_gene")
 
 
-    def run_contact_map(self, corresponding_gene_call, pdb_filepath):
-        contact_map_matrix = ContactMap(pdb_filepath).compute_contact_map()
-
-        contacts_dict = {"codon_order_in_gene": [],
-                         "contact_numbers":     []}
-        for codon_order_in_gene in range(contact_map_matrix.shape[0]):
-            contacts = np.add(np.where(contact_map_matrix[codon_order_in_gene, :] == 1)[0], 1).astype(str)
-
-            contacts_dict["codon_order_in_gene"].append(codon_order_in_gene)
-            contacts_dict["contact_numbers"].append(",".join(contacts))
-
-        return pd.DataFrame(contacts_dict).set_index("codon_order_in_gene")
-
-
-    def run_DSSP(self, corresponding_gene_call, pdb_filepath):
-        """
-        DSSP is ran using the API developed in Biopython. That means we don't work directly from the
-        text output of DSSP, but rather a Biopython object.
-        """
-
-        # Determine the model name by loading the structure file
-        p = PDBParser()
-        structure = p.get_structure(corresponding_gene_call, pdb_filepath)
-        model = structure[0] # pdb files can have multiple models. DSSP assumes the first.
-
-        # run DSSP
-        residue_annotation = DSSP(model, pdb_filepath, dssp = self.DSSP_executable, acc_array = "Wilke")
-
-        # convert to a digestible format
-        return self.convert_DSSP_output_from_biopython_to_dataframe(residue_annotation)
-
-
-    def convert_DSSP_output_from_biopython_to_dataframe(self, dssp_biopython_object):
-        """Convert the output of the DSSP module in Biopython to a dataframe
-
-        From the DSSP module in Biopython:
-            ============ ==================== ================
-            Tuple Index  Biopython            Anvi'o
-            ============ ==================== ================
-            0            DSSP index           codon_order_in_gene
-            1            Amino acid           aa
-            2            Secondary structure  sec_struct
-            3            Relative ASA         rel_solvent_acc
-            4            Phi                  phi
-            5            Psi                  psi
-            6            NH__>O_1_relidx      NH_O_1_index
-            7            NH__>O_1_energy      NH_O_1_energy
-            8            O__>NH_1_relidx      O_NH_1_index
-            9            O__>NH_1_energy      O_NH_1_energy
-            10           NH__>O_2_relidx      NH_O_2_index
-            11           NH__>O_2_energy      NH_O_2_energy
-            12           O__>NH_2_relidx      O_NH_2_index
-            13           O__>NH_2_energy      O_NH_2_energy
-            ============ ==================== ================
-
-        Changes from Biopython format to anvi'o format:
-            - residue index converted from 1Met to 0Met
-            - aa converted to 3-letter code
-            - ss type "-" is converted to coil (C)
-            - relative indicies for h-bonds replaced with absolute residue indices
-              (e.g. if relative index = -1 for residue 4, the absolute residue index is 3)
-        """
-        one_to_three = {v: k for k, v in constants.AA_to_single_letter_code.items()}
-        columns = list(self.residue_annotation_sources_info["DSSP"]["structure"].keys())
-
-        # convert biopython object to dictionary d
-        d = {}
-        for key in dssp_biopython_object.keys():
-            d[key] = list(dssp_biopython_object[key])
-            d[key][columns.index("codon_order_in_gene")] = utils.convert_sequence_indexing(d[key][columns.index("codon_order_in_gene")], source="M1", destination="M0")
-            d[key][columns.index("aa")] = one_to_three[d[key][columns.index("aa")]]
-
-            if d[key][columns.index("sec_struct")] == "-":
-                d[key][columns.index("sec_struct")] = "C"
-
-            for hbond in ["NH_O_1", "O_NH_1", "NH_O_2", "O_NH_2"]:
-                res_index = d[key][columns.index("codon_order_in_gene")]
-                rel_index = d[key][columns.index(hbond+"_index")]
-
-                if rel_index == 0:
-                    d[key][columns.index(hbond+"_index")] = np.nan
-                    d[key][columns.index(hbond+"_energy")] = np.nan
-
-                else:
-                    d[key][columns.index(hbond+"_index")] = res_index + rel_index
-
-        # convert dictionary d to dataframe df
-        return pd.DataFrame(d, index=columns).T.set_index("codon_order_in_gene")
+    def run_contact_map_annotation(self, pdb_path):
+        contact_map = self.contactmap.get_contact_map(pdb_path)
+        return self.contactmap.get_compressed_representation(contact_map)
 
 
     def run_modeller(self, corresponding_gene_call, progress_title):
@@ -644,6 +449,17 @@ class Structure(object):
         modeller_out = self.modeller.process()
 
         return modeller_out
+
+
+    def dump_results_to_full_output(self):
+        """
+        if self.full_modeller_output, all files from MODELLERs temp directory are recursively moved into
+        output_gene_dir. Otherwise, the list of files we care about are defined in this function
+        and moved into output_gene_dir.
+        """
+        output_gene_dir = os.path.join(self.full_modeller_output, self.modeller.corresponding_gene_call)
+        filesnpaths.check_output_directory(output_gene_dir)
+        shutil.move(self.modeller.directory, output_gene_dir)
 
 
     def append_gene_info_to_tables(self, modeller_out, residue_info_dataframe):
@@ -659,9 +475,9 @@ class Structure(object):
         templates = pd.DataFrame(modeller_out["templates"])
         templates.insert(0, "corresponding_gene_call", corresponding_gene_call)
         templates = templates.reset_index().rename(columns={"index": "entry_id"})
-        self.structure_db.entries[t.structure_templates_table_name] = \
-            self.structure_db.entries[t.structure_templates_table_name].append(templates)
-        self.structure_db.store(t.structure_templates_table_name, key="entry_id")
+        self.structure_db.entries[t.templates_table_name] = \
+            self.structure_db.entries[t.templates_table_name].append(templates)
+        self.structure_db.store(t.templates_table_name, key="entry_id")
 
         # entries that are only added if a structure was modelled
         if modeller_out["structure_exists"]:
@@ -670,22 +486,22 @@ class Structure(object):
             models = pd.DataFrame(modeller_out["models"])
             models.insert(0, "corresponding_gene_call", corresponding_gene_call)
             models = models.reset_index().rename(columns={"index": "entry_id"})
-            self.structure_db.entries[t.structure_models_table_name] = \
-                self.structure_db.entries[t.structure_models_table_name].append(models)
-            self.structure_db.store(t.structure_models_table_name, key="entry_id")
+            self.structure_db.entries[t.models_table_name] = \
+                self.structure_db.entries[t.models_table_name].append(models)
+            self.structure_db.store(t.models_table_name, key="entry_id")
 
             # pdb file data
             pdb_file = open(modeller_out["best_model_path"], 'rb')
             pdb_contents = pdb_file.read()
             pdb_file.close()
             pdb_table_entry = (corresponding_gene_call, pdb_contents)
-            self.structure_db.entries[t.structure_pdb_data_table_name].append(pdb_table_entry)
-            self.structure_db.store(t.structure_pdb_data_table_name)
+            self.structure_db.entries[t.pdb_data_table_name].append(pdb_table_entry)
+            self.structure_db.store(t.pdb_data_table_name)
 
             # residue_info
-            self.structure_db.entries[t.structure_residue_info_table_name] = \
-                self.structure_db.entries[t.structure_residue_info_table_name].append(residue_info_dataframe)
-            self.structure_db.store(t.structure_residue_info_table_name, key="entry_id")
+            self.structure_db.entries[t.residue_info_table_name] = \
+                self.structure_db.entries[t.residue_info_table_name].append(residue_info_dataframe)
+            self.structure_db.store(t.residue_info_table_name, key="entry_id")
 
 
 class StructureUpdate(Structure):
@@ -927,17 +743,11 @@ class StructureUpdate(Structure):
 
 
 class DSSPClass(object):
-    def __init__(self, pdb_path, executable=None, check_executable=True):
-        self.pdb_path = pdb_path
+    def __init__(self, executable=None, check_executable=True):
         self.executable = executable
         self.check_executable = check_executable
 
-        self.set_executable()
-        utils.is_program_exists(self.executable)
-        if self.check_executable:
-            self.is_executable_a_working_DSSP_program()
-
-        self.columns = [
+        self.fields = [
             'codon_order_in_gene',
             'aa',
             'sec_struct',
@@ -953,6 +763,24 @@ class DSSPClass(object):
             'O_NH_2_index',
             'O_NH_2_energy',
         ]
+
+        self.set_executable()
+        utils.is_program_exists(self.executable)
+        if self.check_executable:
+            self.is_executable_a_working_DSSP_program()
+
+
+    def run(self, pdb_filepath, id_for_protein=None):
+        # Determine the model name by loading the structure file
+        p = PDBParser()
+        structure = p.get_structure(id_for_protein, pdb_filepath)
+        model = structure[0] # pdb files can have multiple models. DSSP assumes the first.
+
+        # run DSSP
+        residue_annotation = DSSP(model, pdb_filepath, dssp = self.executable, acc_array = "Wilke")
+
+        # convert to a digestible format
+        return self.convert_DSSP_output_from_biopython_to_dataframe(residue_annotation, drop=['aa'])
 
 
     def set_executable(self):
@@ -1011,24 +839,11 @@ class DSSPClass(object):
         self.convert_DSSP_output_from_biopython_to_dataframe(test_residue_annotation)
 
 
-    def run_DSSP(self, pdb_filepath, id_for_protein=None):
-
-        # Determine the model name by loading the structure file
-        p = PDBParser()
-        structure = p.get_structure(id_for_protein, pdb_filepath)
-        model = structure[0] # pdb files can have multiple models. DSSP assumes the first.
-
-        # run DSSP
-        residue_annotation = DSSP(model, pdb_filepath, dssp = self.executable, acc_array = "Wilke")
-
-        # convert to a digestible format
-        return self.convert_DSSP_output_from_biopython_to_dataframe(residue_annotation)
-
-
-    def convert_DSSP_output_from_biopython_to_dataframe(self, dssp_biopython_object):
+    def convert_DSSP_output_from_biopython_to_dataframe(self, dssp_biopython_object, drop=[]):
         """Convert the output of the DSSP module in Biopython to a dataframe
 
         From the DSSP module in Biopython:
+
             ============ ==================== ================
             Tuple Index  Biopython            Anvi'o
             ============ ==================== ================
@@ -1054,38 +869,48 @@ class DSSPClass(object):
             - ss type "-" is converted to coil (C)
             - relative indicies for h-bonds replaced with absolute residue indices
               (e.g. if relative index = -1 for residue 4, the absolute residue index is 3)
+
+        Parameters
+        ==========
+        dssp_biopython_object : output of Bio.PDB.DSSP
+
+        drop : list, []
+            drop these columns (i.e. ['sec_struct', 'psi'])
+
+        Returns
+        =======
+        output : pandas DataFrame
         """
+
         one_to_three = {v: k for k, v in constants.AA_to_single_letter_code.items()}
 
         # convert biopython object to dictionary d
         d = {}
         for key in dssp_biopython_object.keys():
             d[key] = list(dssp_biopython_object[key])
-            d[key][self.columns.index("codon_order_in_gene")] = utils.convert_sequence_indexing(d[key][self.columns.index("codon_order_in_gene")], source="M1", destination="M0")
-            d[key][self.columns.index("aa")] = one_to_three[d[key][self.columns.index("aa")]]
+            d[key][self.fields.index("codon_order_in_gene")] = utils.convert_sequence_indexing(d[key][self.fields.index("codon_order_in_gene")], source="M1", destination="M0")
+            d[key][self.fields.index("aa")] = one_to_three[d[key][self.fields.index("aa")]]
 
-            if d[key][self.columns.index("sec_struct")] == "-":
-                d[key][self.columns.index("sec_struct")] = "C"
+            if d[key][self.fields.index("sec_struct")] == "-":
+                d[key][self.fields.index("sec_struct")] = "C"
 
             for hbond in ["NH_O_1", "O_NH_1", "NH_O_2", "O_NH_2"]:
-                res_index = d[key][self.columns.index("codon_order_in_gene")]
-                rel_index = d[key][self.columns.index(hbond+"_index")]
+                res_index = d[key][self.fields.index("codon_order_in_gene")]
+                rel_index = d[key][self.fields.index(hbond+"_index")]
 
                 if rel_index == 0:
-                    d[key][self.columns.index(hbond+"_index")] = np.nan
-                    d[key][self.columns.index(hbond+"_energy")] = np.nan
+                    d[key][self.fields.index(hbond+"_index")] = np.nan
+                    d[key][self.fields.index(hbond+"_energy")] = np.nan
 
                 else:
-                    d[key][self.columns.index(hbond+"_index")] = res_index + rel_index
+                    d[key][self.fields.index(hbond+"_index")] = res_index + rel_index
 
         # convert dictionary d to dataframe df
-        return pd.DataFrame(d, index=self.columns).T.set_index("codon_order_in_gene")
+        return pd.DataFrame(d, index=self.fields).T.set_index("codon_order_in_gene").drop(drop, axis=1)
 
 
 class ContactMap(object):
-    def __init__(self, pdb_path, distance_method='CA', threshold=6, p=terminal.Progress(), r=terminal.Run()):
-        self.pdb_path = pdb_path
-        self.contact_map = None
+    def __init__(self, distance_method='CA', threshold=6, p=terminal.Progress(), r=terminal.Run()):
         self.distance_method = distance_method
         self.threshold = threshold
 
@@ -1094,15 +919,17 @@ class ContactMap(object):
         }
 
 
-    def load_pdb_file(self, name_id = 'structure'):
+    def load_pdb_file(self, pdb_path, name_id = 'structure'):
         p = PDBParser()
-        model = p.get_structure(name_id, self.pdb_path)[0] # [0] = first model
+        model = p.get_structure(name_id, pdb_path)[0] # [0] = first model
         structure = model['A'] # ['A'] = get first chain in model
         return structure
 
 
-    def compute_contact_map(self):
-        structure = self.load_pdb_file()
+    def get_contact_map(self, pdb_path):
+        """Returns contact map as a NxN matrix, where N is the # of AAs"""
+
+        structure = self.load_pdb_file(pdb_path)
 
         contact_map = np.zeros((len(structure), len(structure)))
         for i, residue1 in enumerate(structure):
@@ -1116,9 +943,33 @@ class ContactMap(object):
         return contact_map
 
 
+    def get_compressed_representation(self, contact_map):
+        """Converts contact map into condensed representation
+
+        Returns
+        =======
+        output : pandas DataFrame
+            A dataframe with 2 columns, 'codon_order_in_gene', and 'contact_numbers'.
+        """
+
+        contacts_dict = {"codon_order_in_gene": [],
+                         "contact_numbers":     []}
+        for codon_order_in_gene in range(contact_map.shape[0]):
+            contacts = np.add(np.where(contact_map[codon_order_in_gene, :] == 1)[0], 1).astype(str)
+
+            contacts_dict["codon_order_in_gene"].append(codon_order_in_gene)
+            contacts_dict["contact_numbers"].append(",".join(contacts))
+
+        return pd.DataFrame(contacts_dict).set_index("codon_order_in_gene")
+
+
     def calc_CA_dist(self, residue1, residue2):
         """Returns the C-alpha distance between two residues"""
+
         diff_vector = residue1["CA"].coord - residue2["CA"].coord
         return np.sqrt(np.sum(diff_vector**2))
+
+
+
 
 
