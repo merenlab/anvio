@@ -941,24 +941,47 @@ class ContactMap(object):
         return contact_map
 
 
-    def get_compressed_representation(self, contact_map):
+    def get_compressed_representation(self, contact_map, c='order'):
         """Converts contact map into condensed representation
+
+        Parameters
+        ==========
+        c : str, 'order'
+            Determines whether contacts are defined according to codon_order_in_gene (i.e. 1st Met
+            is 0) or codon_number (i.e. 1st Met is 1). Choose 'order' for codon_order_in_gene and
+            'number' for codon_number
 
         Returns
         =======
         output : pandas DataFrame
-            A dataframe with 2 columns, 'codon_order_in_gene', and 'contact_numbers'.
+            A dataframe with 2 columns, 'codon_order_in_gene'/'codon_number' (see Parameters for
+            which it will be), and 'contacts'
         """
 
-        contacts_dict = {"codon_order_in_gene": [],
-                         "contact_numbers":     []}
+        col_name = 'codon_order_in_gene' if c == 'order' else 'codon_number'
+
+        contacts_dict = {
+            col_name: [],
+            'contacts': [],
+        }
+
         for codon_order_in_gene in range(contact_map.shape[0]):
-            contacts = np.add(np.where(contact_map[codon_order_in_gene, :] == 1)[0], 1).astype(str)
+            contacts = np.add(np.where(contact_map[codon_order_in_gene, :] == 1)[0], 1)
 
-            contacts_dict["codon_order_in_gene"].append(codon_order_in_gene)
-            contacts_dict["contact_numbers"].append(",".join(contacts))
+            # logic that handles if user wants in terms of codon_order_in_gene or codon_number
+            if c == 'order':
+                contacts = utils.convert_sequence_indexing(contacts, source='M1', destination='M0')
+                index = codon_order_in_gene
+            else:
+                index = utils.convert_sequence_indexing(codon_order_in_gene, source='M0', destination='M1')
 
-        return pd.DataFrame(contacts_dict).set_index("codon_order_in_gene")
+            # residues are not contacts with themselves
+            contacts = contacts[contacts != index]
+
+            contacts_dict[col_name].append(index)
+            contacts_dict['contacts'].append(",".join([str(x) for x in contacts]))
+
+        return pd.DataFrame(contacts_dict)
 
 
     def calc_CA_dist(self, residue1, residue2):
