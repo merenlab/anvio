@@ -353,7 +353,7 @@ class Structure(object):
                 continue
 
             # Model structure
-            modeller_out = self.run_modeller(corresponding_gene_call)
+            modeller_out = self.run_modeller()
             if modeller_out["structure_exists"]:
                 self.run.info_single("Gene successfully modelled!", nl_after=1, mc="green")
 
@@ -364,14 +364,11 @@ class Structure(object):
             if modeller_out["structure_exists"]:
                 residue_info_dataframe = self.run_residue_annotation_for_gene(corresponding_gene_call,
                                                                               modeller_out["best_model_path"])
-            # Append info to tables
             self.store_gene(modeller_out, residue_info_dataframe)
 
-            # Append metadata to self
             self.update_structure_database_meta_table(has_structure)
 
-            if self.full_modeller_output:
-                self.dump_results_to_full_output()
+            self.dump_raw_results()
 
             num_genes_tried += 1
 
@@ -459,19 +456,19 @@ class Structure(object):
         return compressed_rep.rename(columns=column_rename).set_index('codon_order_in_gene')
 
 
-    def run_modeller(self, corresponding_gene_call):
+    def run_modeller(self):
         self.modeller = MODELLER.MODELLER(self.args)
         modeller_out = self.modeller.process()
 
         return modeller_out
 
 
-    def dump_results_to_full_output(self):
-        """
-        if self.full_modeller_output, all files from MODELLERs temp directory are recursively moved into
-        output_gene_dir. Otherwise, the list of files we care about are defined in this function
-        and moved into output_gene_dir.
-        """
+    def dump_raw_results(self):
+        """Dump all raw modeller output into self.output_gene_dir if self.full_modeller_output"""
+
+        if self.full_modeller_output:
+            return
+
         output_gene_dir = os.path.join(self.full_modeller_output, self.modeller.corresponding_gene_call)
         filesnpaths.check_output_directory(output_gene_dir)
         shutil.move(self.modeller.directory, output_gene_dir)
@@ -1048,8 +1045,5 @@ class ContactMap(object):
 
         diff_vector = residue1["CA"].coord - residue2["CA"].coord
         return np.sqrt(np.sum(diff_vector**2))
-
-
-
 
 
