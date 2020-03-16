@@ -18,13 +18,13 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError, ModellerError, ModellerScriptError
 
 
-__author__ = "A. Murat Eren"
+__author__ = "Evan Kiefl"
 __copyright__ = "Copyright 2016, The anvio Project"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
+__maintainer__ = "Evan Kiefl"
+__email__ = "kiefl.evan@gmail.com"
 
 
 pp = terminal.pretty_print
@@ -32,13 +32,17 @@ pp = terminal.pretty_print
 J = lambda x, y: os.path.join(x, y)
 
 class MODELLER:
-    """
+    """Driver class for MODELLER
+
     This class is a driver to run MODELLER scripts. MODELLER scripts are written
-    in python 2.3 which is the language MODELLER uses to, you can make as many
-    MODELLER scripts as you want, and they are all stored in
-    anvio/data/misc/MODELLER/scripts. each script should have its own function
-    in this class called run_<script_name>(self, <params>) which initializes the
-    parameters required to run the script.
+    in python 2.3 which is the language MODELLER uses.
+
+    Notes
+    =====
+    - You can add MODELLER scripts by storing them in anvio/data/misc/MODELLER/scripts. Each script
+      should have its own function in this class. For example, align_to_templates.py is a script
+      anvi'o has found in that directory and has a corresponding function in this class called
+      self.run_align_to_templates. Please see that method if you want to add your own script.
     """
 
     def __init__(self, args, run=terminal.Run()):
@@ -89,7 +93,7 @@ class MODELLER:
             "percent_identical_cutoff" : self.percent_identical_cutoff,
             "very_fast"                : self.very_fast,
             "deviation"                : self.deviation,
-            }
+        }
 
         # All MODELLER databases are housed in self.database_dir
         self.database_dir = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
