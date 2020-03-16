@@ -37,6 +37,16 @@ class MODELLER:
     This class is a driver to run MODELLER scripts. MODELLER scripts are written
     in python 2.3 which is the language MODELLER uses.
 
+    Parameters
+    ==========
+    args : argparse.Namespace object
+        Check __init__ for details. Very importantly, is providing args.target_fasta_path, which is
+        an amino acid sequence fasta file with 1 sequence, the gene to be modelled. The defline
+        should be an integer (perhaps its gene caller id is a sensible choice)
+
+    lazy_init : bool, False
+        If True, check_MODELLER will not be called
+
     Notes
     =====
     - You can add MODELLER scripts by storing them in anvio/data/misc/MODELLER/scripts. Each script
@@ -114,6 +124,8 @@ class MODELLER:
 
 
     def get_corresponding_gene_call_from_target_fasta_path(self):
+        """corresponding_gene_call is assumed to be the definline of self.argstarget_fast_path"""
+
         target_fasta = u.SequenceSource(self.target_fasta_path, lazy_init=False)
         while next(target_fasta):
             corresponding_gene_call = target_fasta.id
@@ -123,7 +135,6 @@ class MODELLER:
 
 
     def process(self):
-
         self.run.warning("Working directory: {}".format(self.directory),
                          header='Modelling structure for gene ID {}'.format(self.corresponding_gene_call),
                          lc="green")
@@ -164,18 +175,20 @@ class MODELLER:
 
 
     def download_structures(self):
-        """
-        Downloads structure files for self.top_seq_seq_matches using Biopython
+        """Download structure files for self.top_seq_seq_matches using Biopython
+
+        Places downloads in self.template_pdbs
+
         If the 4-letter code is `wxyz`, the downloaded file is `pdbwxyz.ent`.
         """
 
         # define directory path name to store the template PDBs (it can already exist)
         self.template_pdbs = os.path.join(self.directory, "{}_TEMPLATE_PDBS".format(self.corresponding_gene_call))
 
-        downloaded = utils.download_protein_structures([code[0] for code in self.top_seq_matches], self.template_pdbs)
+        pdb_ids = utils.download_protein_structures([code[0] for code in self.top_seq_matches], self.template_pdbs)
 
         # redefine self.top_seq_matches in case not all were downloaded
-        self.top_seq_matches = [(code, chain_code) for code, chain_code in self.top_seq_matches if code in downloaded]
+        self.top_seq_matches = [(code, chain_code) for code, chain_code in self.top_seq_matches if code in pdb_ids]
 
         if not len(self.top_seq_matches):
             self.run.warning("No structures of the homologous proteins (templates) were downloadable. Probably something "
@@ -297,18 +310,9 @@ class MODELLER:
             self.run.warning("Since you chose --very-fast, there will be little difference, if at all, between models. You "
                              "can potentially save a lot of time by setting --num-models to 1.")
 
-        if self.percent_identical_cutoff <= 20:
-            self.run.warning("Two completely unrelated sequences of same length can expect to have around 10% proper "
-                             "percent identicalness... Having this parameter below 20% is probably a bad idea.")
-
 
     def pick_best_model(self):
-        """
-        The user is not interested in all of this output. They just want a pdb file for a given
-        self.corresponding_gene_call. renames as gene_<corresponding_gene_call>.pdb.
-
-        self.scoring_method must be one of the ["molpdf", "GA341_score", "DOPE_score"]
-        """
+        """Pick best model based on self.scoring_method and rename to gene_<corresponding_gene_call>.pdb"""
 
         # initialize new model_info column
         self.model_info["picked_as_best"] = False
@@ -341,19 +345,19 @@ class MODELLER:
 
 
     def abort(self):
-        """
-        For whatever reason, this gene was not modelled. Make sure we are in the directory we
-        started in.
-        """
+        """Gene was not modelled. Return to the starting directory"""
+
         os.chdir(self.start_dir)
 
 
     def tidyup(self):
+        """Tidyup operations after running get_model.py
+
+        Some of the files in here are unnecessary, some of the names are disgusting. rename from
+        "2.B99990001.pdb" to "gene_2_Model001.pdb" if normal model. Rename from "cluster.opt" to
+        "gene_2_ModelAvg.pdb"
         """
-        get_model.py has been ran. Some of the files in here are unnecessary, some of the names are
-        disgusting. rename from "2.B99990001.pdb" to "gene_2_Model001.pdb" if normal model. Rename
-        from "cluster.opt" to "gene_2_ModelAvg.pdb"
-        """
+
         if not "get_model.py" in self.scripts.keys():
             raise ConfigError("You are out of line calling tidyup without running get_model.py")
 
@@ -379,9 +383,8 @@ class MODELLER:
 
 
     def run_add_chain_identifiers_to_best_model(self):
-        """
-        Some third-party services expect a chain identifier, this adds it to the chosen model
-        """
+        """Add chain identifier to best model to appease some third-party services"""
+
         script_name = "add_chain_identifiers_to_best_model.py"
 
         # check script exists, then copy the script into the working directory
@@ -395,16 +398,18 @@ class MODELLER:
                    base_name]
 
         self.run_command(command,
-                         script_name = script_name,
-                         progress_update = "Adding chain identifier to best model")
+                         script_name=script_name,
+                         progress_update="Adding chain identifier to best model")
 
 
     def run_get_model(self, num_models, deviation, very_fast):
-        """
+        """Run get model
+
         This is the magic of MODELLER. Based on the template alignment file, the structures of the
         templates, and satisfaction of physical constraints, the target protein structure is
         modelled without further user input.
         """
+
         script_name = "get_model.py"
 
         # check script exists, then copy the script into the working directory
@@ -442,14 +447,19 @@ class MODELLER:
 
 
     def run_align_to_templates(self, templates_info):
-        """
+        """Align the sequence to the best candidate protein sequences
+
         After identifying best candidate proteins based on sequence data, this function aligns the
         protein. This alignment file is the main input (besides structures) for the homology
         protein.
 
-        templates_info is a list of 2-tuples; the zeroth element is the 4-letter protein code
-        and the first element is the chain number. an example is [('4sda', 'A'), ('iq8p', 'E')]
+        Parameters
+        ==========
+        templates_info : list of 2-tuples
+            The zeroth element is the 4-letter protein code and the first element is the chain
+            number. E.g. [('4sda', 'A'), ('iq8p', 'E')]
         """
+
         script_name = "align_to_templates.py"
 
         # check script exists, then copy the script into the working directory
@@ -490,9 +500,8 @@ class MODELLER:
 
 
     def run_search(self):
-        """
-        Align the protein against the database based on sequence alone
-        """
+        """Align the protein against the database based on only sequence"""
+
         script_name = "search.py"
 
         # check script exists, then copy the script into the working directory
@@ -516,10 +525,8 @@ class MODELLER:
 
 
     def check_database(self):
-        """
-        Checks for the .bin version of database. If it only finds the .pir version, it binarizes it.
-        Sets the db filepath.
-        """
+        """Checks for the .bin version of database. Binarizes if only .pir version found. Sets the db filepath."""
+
         extensionless, extension = os.path.splitext(self.modeller_database)
         if extension not in [".bin",".pir",""]:
             raise ConfigError("MODELLER :: The only possible database extensions are .bin and .pir")
@@ -556,10 +563,20 @@ class MODELLER:
 
 
     def run_binarize_database(self, pir_db_path, bin_db_path):
-        """
+        """Binarizes a .pir file
+
         Databases can be read in .pir format, but can be more quickly read in binarized format. This
         does that.
+
+        Parameters
+        ==========
+        pir_db_path : str
+            Path to existing .pir file
+
+        bin_db_path : str
+            Path to the will-be-made .bin file
         """
+
         script_name = "binarize_database.py"
 
         # check script exists, then copy the script into the working directory
@@ -582,13 +599,15 @@ class MODELLER:
 
 
     def copy_script_to_directory(self, script_name, add_to_scripts_dict=True, directory=None):
-        """
+        """Copy source script to working directory
+
         All MODELLER scripts are housed in anvio/data/misc/MODELLER/scripts/. This function checks
         that script_name is in anvio/data/misc/MODELLER/scripts/ and then copies the script into
         self.directory. Why copy into self.directory? Whenever a script is ran by MODELLER, a log
         file is output in the directory of the script. By copying the script into self.directory,
         the log is written there instead of anvio/data/misc/MODELLER/scripts/.
         """
+
         if not directory:
             directory = self.directory
 
@@ -607,10 +626,22 @@ class MODELLER:
 
 
     def run_fasta_to_pir(self):
-        """
+        """Convert a fasta file to a pir format.
+
         MODELLER uses their own .pir format for search and alignment instead of .fasta. This script
-        does the conversion. An example is found at https://salilab.org/modeller/tutorial/basic.html
+        does the conversion. An example pir formatted sequence shown here:
+
+            >P1;TvLDH
+            sequence:TvLDH:::::::0.00: 0.00
+            MSEAAHVLITGAAGQIGYILSHWIASGELYGDRQVYLHLLDIPPAMNRLTALTMELEDCAFPHLAGFVATTDPKA
+            AFKDIDCAFLVASMPLKPGQVRADLISSNSVIFKNTGEYLSKWAKPSVKVLVIGNPDNTNCEIAMLHAKNLKPEN
+            FSSLSMLDQNRAYYEVASKLGVDVKDVHDIIVWGNHGESMVADLTQATFTKEGKTQKVVDVLDHDYVFDTFFKKI
+            GHRAWDILEHRGFTSAASPTKAAIQHMKAWLFGTAPGEVLSMGIPVPEGNPYGIKPGVVFSFPCNVDKEGKIHVV
+            EGFKVNDWLREKLDFTEKDLFHEKEIALNHLAQGG*
+
+        You can find more details via https://salilab.org/modeller/tutorial/basic.html
         """
+
         script_name = "fasta_to_pir.py"
 
         # check script exists, then copy the script into the working directory
@@ -633,13 +664,25 @@ class MODELLER:
 
 
     def run_command(self, command, script_name, progress_update, check_output=None):
+        """Base routine for running MODELLER scripts
+
+        Parameters
+        ==========
+        command : list of strs
+            E.g. ['mod921', 'test_script.py', 'input1', 'input2'] corresponds to the command line
+            "mod9.21 test_script.py input1 input2"
+
+        script_name : str
+            E.g. 'test_script.py'
+
+        progress_update : str
+            Description of what you're doing. This is added to the Timer, which is printed if
+            anvio.DEBUG
+
+        check_output : list, None
+            Verify that this list of filepaths exist after the command is ran
         """
-        Runs a script. Must provide script_name (e.g. "script.py") and progress_update (e.g.
-        "BINARIZING DATABASE"). Optionally can provide list of output files whose existences are
-        checked to make sure command was successfully ran. We ALWAYS cd into the MODELLER's
-        directory before running a script, and we ALWAYS cd back into the original directory after
-        running a script.
-        """
+
         # first things first, we CD into MODELLER's directory
         os.chdir(self.directory)
 

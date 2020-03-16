@@ -12,6 +12,7 @@ import socket
 import shutil
 import smtplib
 import hashlib
+import Bio.PDB as PDB
 import textwrap
 import linecache
 import webbrowser
@@ -3253,11 +3254,21 @@ def get_remote_file_content(url, gzipped=False):
 
 
 def download_protein_structures(protein_code_list, output_dir):
+    """Downloads protein structures using Biopython.
+
+    Parameters
+    ==========
+    protein_code_list : list
+        Each element is a 4-letter protein code
+
+    output_dir : str
+        A non-existing output directory
+
+    Returns
+    =======
+    output : list
+        subset of protein_code_list that successfully downloaded
     """
-    Downloads protein structures using Biopython. protein_code_list is a list
-    of 4-letter protein codes. Returns list of successful downloads
-    """
-    import Bio.PDB as PDB
 
     progress.new("Downloading proteins from PDB")
 
@@ -3268,6 +3279,7 @@ def download_protein_structures(protein_code_list, output_dir):
     # this rule may one day change
     get_protein_path = lambda x: os.path.join(output_dir, "pdb" + x + ".ent")
 
+    successfully_downloaded = []
     for protein_code in protein_code_list:
         progress.update("Downloading protein structure: {}".format(protein_code))
 
@@ -3277,10 +3289,12 @@ def download_protein_structures(protein_code_list, output_dir):
         # raise warning if structure was not downloaded
         if not filesnpaths.is_file_exists(get_protein_path(protein_code), dont_raise=True):
             run.warning("The protein {} could not be downloaded. Are you connected to internet?".format(protein_code))
-            protein_code_list.remove(protein_code)
+        else:
+            successfully_downloaded.append(protein_code)
 
     progress.end()
-    return protein_code_list
+
+    return successfully_downloaded
 
 
 def get_hash_for_list(l):
