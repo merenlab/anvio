@@ -3,7 +3,7 @@ bottle==0.12.13
 pysam==0.15.2
 ete3==3.1.1
 scipy>=0.13.3
-scikit-learn==0.21.2
+scikit-learn==0.22.2.post1
 django==2.2.10
 cherrypy==8.9.1
 requests==2.20.0
@@ -12,10 +12,10 @@ mistune==0.8.1
 six==1.11.0
 pandas==0.23.1
 matplotlib==2.2.3
-pyani==0.2.9
+pyani==0.2.10
 statsmodels==0.9.0
 snakemake==5.10.0
 colored==1.3.93
-illumina-utils==2.6
+illumina-utils==2.7
 tabulate==0.8.3
 numba==0.48.0
