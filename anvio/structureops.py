@@ -440,8 +440,21 @@ class Structure(object):
 
 
     def run_contact_map_annotation(self, pdb_path):
+        """Returns the contact map in compressed form with index 'codon_order_in_gene' and column 'contact_numbers'"""
+
+        # Run ContactMap class
         contact_map = self.contactmap.get_contact_map(pdb_path)
-        return self.contactmap.get_compressed_representation(contact_map)
+        compressed_rep = self.contactmap.get_compressed_representation(contact_map, c='number')
+
+        # Customize for this class and return
+        column_rename = {
+            'codon_number': 'codon_order_in_gene',
+            'contacts': 'contact_numbers',
+        }
+
+        compressed_rep['codon_number'] -= 1
+
+        return compressed_rep.rename(columns=column_rename).set_index('codon_order_in_gene')
 
 
     def run_modeller(self, corresponding_gene_call, progress_title):
