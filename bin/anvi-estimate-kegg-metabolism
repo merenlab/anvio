@@ -47,8 +47,10 @@ if __name__ == '__main__':
     groupP.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     groupP.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
 
-    groupC = parser.add_argument_group('OUTPUT', "Parameters for controlling estimation output.")
+    groupC = parser.add_argument_group('OUTPUT', "Parameters for controlling estimation output. The output will be a TAB-delimited file which by \
+                                                 default is called kegg-metabolism.txt, but you can of course change that name here.")
     groupC.add_argument(*anvio.A('module-completion-threshold'), **anvio.K('module-completion-threshold'))
+    groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
     args = anvio.get_args(parser)
 

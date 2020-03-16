@@ -611,6 +611,7 @@ class KeggMetabolismEstimator(KeggContext):
         self.bin_ids_file = A('bin_ids_file')
         self.metagenome_mode = True if A('metagenome_mode') else False
         self.completeness_threshold = A('module-completion-threshold') or 0.75
+        self.output_file_path = A('output_file') or "kegg-metabolism.txt"
         self.contigs_db_project_name = "Unknown"
 
         self.bin_ids_to_process = None
