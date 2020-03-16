@@ -50,7 +50,7 @@ class MODELLER:
         self.args = args
         self.run = run
 
-        self.up_to_date_modeller_exec = "mod9.22" # default exec to use
+        self.up_to_date_modeller_exec = "mod9.23" # default exec to use
 
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
@@ -80,6 +80,7 @@ class MODELLER:
         self.scripts = {}
 
         self.sanity_check()
+        self.corresponding_gene_call = self.get_corresponding_gene_call_from_target_fasta_path()
 
         # as reward, whoever called this class will receive self.out when they run self.process()
         self.out = {
@@ -108,6 +109,15 @@ class MODELLER:
         # store the original directory so we can cd back and forth between
         # self.directory and self.start_dir
         self.start_dir = os.getcwd()
+
+
+    def get_corresponding_gene_call_from_target_fasta_path(self):
+        target_fasta = u.SequenceSource(self.target_fasta_path, lazy_init=False)
+        while next(target_fasta):
+            corresponding_gene_call = target_fasta.id
+        target_fasta.close()
+
+        return corresponding_gene_call
 
 
     def process(self):
@@ -301,12 +311,13 @@ class MODELLER:
         # make sure target_fasta is valid
         target_fasta = u.SequenceSource(self.target_fasta_path, lazy_init=False)
         if target_fasta.total_seq != 1:
-            raise ConfigError("MODELLER::The input FASTA file must have exactly one sequence. "
+            raise ConfigError("MODELLER :: The input FASTA file must have exactly one sequence. "
                               "You provided one with {}.".format(target_fasta.total_seq))
-
-        # (not sanity check but we get self.corresponding_gene_call since target_fasta is opened)
-        while next(target_fasta):
-            self.corresponding_gene_call = target_fasta.id
+        try:
+            while next(target_fasta):
+                int(target_fasta.id)
+        except:
+            raise ConfigError("MODELLER :: The defline of this fasta file must be an integer")
         target_fasta.close()
 
         # parameter consistencies
