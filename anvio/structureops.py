@@ -348,6 +348,8 @@ class Structure(object):
                                                       quiet = True)
 
             if self.skip_gene_if_not_clean(corresponding_gene_call, self.args.target_fasta_path):
+                num_genes_tried += 1
+                has_structure[False].append(corresponding_gene_call)
                 continue
 
             # Model structure
