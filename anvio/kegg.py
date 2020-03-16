@@ -1049,6 +1049,31 @@ class KeggMetabolismEstimator(KeggContext):
         else:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
 
+        self.store_kegg_metabolism_superdict(kegg_metabolism_superdict)
+
+
+    def store_kegg_metabolism_superdict(self, kegg_superdict):
+        """This function writes the metabolism superdict to a tab-delimited file.
+
+        The metabolism superdict is a three-level dictionary (genomes/bins, modules, and module completion information).
+        To distill this information into one line, we need to convert the dictionary on-the-fly to a dict of dicts,
+        where each genome/bin-module pair is keyed by an arbitrary integer.
+        """
+
+        d = {}
+        i = 0
+        for bin, mod_dict in kegg_superdict.items():
+            for mnum, c_dict in mod_dict.items():
+                if mnum == "num_complete_modules":
+                    continue
+                d[i] = c_dict
+                d[i]["bin_name"] = bin
+                d[i]["kegg_module"] = mnum
+                i += 1
+
+
+        utils.store_dict_as_TAB_delimited_file(d, self.output_file_path, key_header="unique_id")
+        self.run.info("Output file", self.output_file_path, nl_before=1)
 
 
 class KeggModulesDatabase(KeggContext):
