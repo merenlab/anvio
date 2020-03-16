@@ -763,6 +763,204 @@ class KeggMetabolismEstimator(KeggContext):
 
         return bin_level_module_dict
 
+    def compute_module_completeness(self, mnum, present_list_for_mnum):
+        """This function calculates the completeness of the specified module.
+
+        This requires some parsing of the module DEFINITION fields. In these fields, we have the following:
+        "Kxxxxx"    (KO numbers) indicating which enzyme contributes to a step in the module
+        " "         (spaces) separating module steps; indicating an AND operation
+        ","         (commas) separating alternatives (which can be singular KOs or entire pathways); indicating an OR operation
+        "()"        (parentheses) enclosing comma-separated alternatives
+        "+"         (plus sign) indicating the following KO is a necessary component of a complex; indicating an AND operation
+        "-"         (minus sign) indicating the following KO is non-essential in a complex; so in other words we don't care if it is there
+
+        What we will do is build a condition statement out of each step which will evaulate to True if the step can be considered present based
+        on the available KOs in the current genome/bin.
+        For example, suppose we have a step like: (K13937,((K00036,K19243) (K01057,K07404)))
+        This will be parsed into the condition statement: (K13937 OR ((K00036 OR K19243) AND (K01057 OR K07404)))
+        where the KOs will be replaced by True if they are present and False otherwise.
+
+        While we are parsing, we save the individual module steps in lists (one for all steps, one for complete steps) for easy access later.
+        Afterwards we compute the completeness of the module based on the specified completion threshold.
+        Then, we return a bunch of information about the completeness of the module, which can then be placed into the module completeness dictionary.
+
+        PARAMETERS
+        ==========
+        mnum                    string, module number to work on
+        present_list_for_mnum   list of strings, the KOs found to be present in this module for the current genome/bin
+
+        RETURNS
+        =======
+        module_step_list                list of strings, each string is an individual step in the module (may have sub-steps if there are alternate pathways)
+        module_complete_steps           list of strings, each string is a step in the module that is considered complete based on KO availability
+        module_nonessential_steps       list of strings, each string is a step in the module that doesn't count for completeness estimates
+        module_total_steps              int, the total number of steps in the module
+        module_num_complete_steps       int, the number of complete steps in the module
+        module_num_nonessential_steps           int, the total number of nonessential steps in the module
+        module_num_complete_nonessential_steps  int, the number of nonessential steps in the module that were found to be complete
+        module_completeness             float, a decimal indicating the fraction of complete steps in the module
+        over_complete_threshold         boolean, whether or not the module is considered "complete" overall based on the threshold fraction of completeness
+        """
+
+        if not present_list_for_mnum:
+            # no KOs in this module are present
+            if anvio.DEBUG:
+                self.run.warning("No KOs present for module %s. Parsing for completeness is still being done to obtain module steps." % mnum)
+
+        module_step_list = [] # while we are at it, we'll remember what the steps are
+        module_complete_steps = [] # and what the complete steps are
+        module_nonessential_steps = [] # steps that aren't necessary for module completeness
+        module_total_steps = 0
+        module_num_complete_steps = 0
+        module_num_nonessential_steps = 0
+        module_num_complete_nonessential_steps = 0
+
+        def_lines = self.kegg_modules_db.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
+        for d in def_lines:
+            d = d.strip()
+            cur_index = 0  # current position in the DEFINITION line
+            parens_level = 0 # how deep we are in nested parentheses
+            step_is_present_condition_statement = ""
+            last_step_end_index = 0
+
+            while cur_index < len(d):
+                if d[cur_index] == "K": # we have found a KO
+                    ko = d[cur_index:cur_index+6]
+                    if ko in present_list_for_mnum:
+                        step_is_present_condition_statement += "True"
+                    else:
+                        step_is_present_condition_statement += "False"
+                    cur_index += 6
+
+                elif d[cur_index] == "(":
+                    parens_level += 1
+                    step_is_present_condition_statement += "("
+                    cur_index += 1
+
+                elif d[cur_index] == ")":
+                    parens_level -= 1
+                    step_is_present_condition_statement += ")"
+                    cur_index += 1
+
+                elif d[cur_index] == ",":
+                    step_is_present_condition_statement += " or "
+                    cur_index += 1
+
+                elif d[cur_index] == "+":
+                    step_is_present_condition_statement += " and "
+                    cur_index += 1
+
+                elif d[cur_index] == "-":
+                    # either a singular KO or a set of KOs in parentheses can follow this character
+                    # since the following KO(s) are non-essential in the complex, we skip over them to ignore them
+                    # unless this is its own step, in which case we consider the whole step non-essential
+
+                    # singular nonessential KO
+                    if d[cur_index+1] == "K":
+                        nonessential_ko = d[cur_index+1:cur_index+7]
+                        cur_index += 7
+                        """
+                        OKAY, SO HERE WE HAVE SOME POOPINESS THAT MAY NEED TO BE FIXED EVENTUALLY.
+                        Basically, some DEFINITION lines have KOs that seem to be marked non-essential;
+                        ie, "-K11024" in "K11023 -K11024 K11025 K11026 K11027".
+                        It was difficult to decide whether we should consider only K11024, or K11024 and all following KOs, to be non-essential.
+                        For instance, the module M00778 is a complex case that gave us pause - see Fiesta issue 955.
+                        But for now, we have decided to just track only the one KO as a 'non-essential step', and to not include such steps in
+                        the module completeness estimate.
+                        """
+                        # if this is the first KO in the step and we find a space after this KO, then we have found a non-essential step
+                        if step_is_present_condition_statement == "" and (cur_index == len(d) or d[cur_index] == " "):
+                            module_nonessential_steps.append(d[last_step_end_index:cur_index])
+                            module_num_nonessential_steps += 1
+                            if not self.quiet:
+                                self.run.warning("Just a note here - anvi'o found the following non-essential step in module %s: %s. "
+                                "At this time, we are not counting this step in our completion estimates. If you have a problem with that, "
+                                "then...! Well. Let us know. " % (mnum, d[last_step_end_index:cur_index]))
+                            if nonessential_ko in present_list_for_mnum:
+                                module_num_complete_nonessential_steps += 1
+                            # reset for next step
+                            last_step_end_index = cur_index + 1
+                            cur_index += 1
+
+                    # a whole set of nonessential KOs
+                    elif d[cur_index+1] == "(":
+                        while d[cur_index] != ")":
+                            cur_index += 1
+                        cur_index += 1 # skip over the ')'
+
+                    # the '--' (no KO) situation
+                    elif d[cur_index+1] == "-":
+                        # when '--' in a DEFINITION line happens, it signifies a reaction step that has no associated KO.
+                        # we assume that such steps are not complete,  because we really can't know if it is from the KOfam hits alone
+                        step_is_present_condition_statement += "False"
+                        cur_index += 2 # skip over both '-', the next character should be a space or end of DEFINITION line
+                        if not self.quiet:
+                            self.run.warning("Just so you know, while estimating the completeness of KEGG module %s, anvi'o saw "
+                                             "'--' in the module DEFINITION. This indicates a step in the pathway that has no "
+                                             "associated KO. So we really cannot know just based on KOfam hits whether or not this "
+                                             "step is present. By default, anvi'o is marking this step incomplete. But it may not be, "
+                                             "and as a result this module may be falsely considered incomplete. So it may be in your "
+                                             "interest to go back and take a look at this individual module to see if you can find the "
+                                             "missing enzyme in some other way. Best of luck to you." % (mnum))
+                        if cur_index < len(d) and d[cur_index] != " ":
+                            raise ConfigError("Serious, serious parsing sadness is happening. We just processed a '--' in "
+                                              "a DEFINITION line for module %s, but did not see a space afterwards. Instead, we found %s. "
+                                              "WHAT DO WE DO NOW?" % (mnum, d[cur_index+1]))
+                    # anything else that follows a '-'
+                    else:
+                        raise ConfigError("The following character follows a '-' in the DEFINITION line for module %s "
+                        "and we just don't know what to do: %s" % (mnum, d[cur_index+1]))
+
+                elif d[cur_index] == " ":
+                    # if we are outside of parentheses, we are done processing the current step
+                    if parens_level == 0:
+                        module_step_list.append(d[last_step_end_index:cur_index])
+                        module_total_steps += 1
+                        step_is_present = eval(step_is_present_condition_statement)
+                        if step_is_present:
+                            module_complete_steps.append(d[last_step_end_index:cur_index])
+                            module_num_complete_steps += 1
+                        # reset for next step
+                        step_is_present_condition_statement = ""
+                        last_step_end_index = cur_index + 1
+                        cur_index += 1
+                    # otherwise, we are processing an alternative path so AND is required
+                    else:
+                        step_is_present_condition_statement += " and "
+                        cur_index += 1
+
+                elif d[cur_index] == "M":
+                    print("OH NO. We found a module (%s) defined by other modules. We don't know what to do about this, so we are just "
+                    "giving up for now." % mnum)
+                    # FIXME
+                    # this happens when a module is defined by other modules
+                    # for example, photosynthesis module M00611 is defined as (M00161,M00163) M00165 === (photosystem II or photosystem I) and calvin cycle
+                    # I don't know what to do about this yet so we are just going to return empty things for now
+                    # THIS WILL CAUSE ISSUES DOWN THE ROAD SO WATCH OUT!
+                    return [], [], [], None, None, None, None, None, None
+
+                else:
+                    raise ConfigError("While parsing the DEFINITION field for module %s, (which is %s), anvi'o found the following character "
+                                        "that she didn't understand: %s. Unfortunately, this means we cannot determine the module "
+                                        "completeness. For context, here is the current index in the DEFINITION line: %s and the "
+                                        "surrounding characters: %s" % (mnum, d, d[cur_index], cur_index, d[cur_index-5:cur_index+6]))
+
+            # once we have processed the whole line, we still need to eval the last step. Unless we already did (this can happen with non-essential steps)
+            if step_is_present_condition_statement != "":
+                module_step_list.append(d[last_step_end_index:cur_index])
+                module_total_steps += 1
+                step_is_present = eval(step_is_present_condition_statement)
+                if step_is_present:
+                    module_complete_steps.append(d[last_step_end_index:cur_index])
+                    module_num_complete_steps += 1
+
+        # once we have processed all DEFINITION lines, we can compute the overall completeness
+        module_completeness = module_num_complete_steps / module_total_steps
+        over_complete_threshold = True if module_completeness > self.completeness_threshold else False
+        return module_step_list, module_complete_steps, module_nonessential_steps, module_total_steps, module_num_complete_steps, \
+               module_num_nonessential_steps, module_num_complete_nonessential_steps, module_completeness, over_complete_threshold
+
+
     def estimate_for_genome(self, kofam_hits, genes_in_splits):
         """This is the metabolism estimation function for a contigs DB that contains a single genome.
 
@@ -786,9 +984,32 @@ class KeggMetabolismEstimator(KeggContext):
         splits_in_genome = [tpl[0] for tpl in genes_in_splits]
         # get KO presence in modules
         genome_metabolism_dict[self.contigs_db_project_name] = self.mark_kos_present_for_list_of_splits(ko_in_genome, split_list=splits_in_genome,
-                                                                                                        bin_name=self.contigs_db_project_name)
-        # TODO estimate module completeness
-        
+                                                                                                    bin_name=self.contigs_db_project_name)
+        num_complete_modules = 0
+        # estimate completeness of each module
+        for mod in genome_metabolism_dict[self.contigs_db_project_name].keys():
+            mod_steps, mod_complete_steps, mod_nonessential_steps, mod_num_steps, mod_num_complete_steps, mod_num_nonessential_steps, \
+            mod_num_complete_nonessential_steps, mod_complete_fraction, mod_is_complete \
+            = self.compute_module_completeness(mod, genome_metabolism_dict[self.contigs_db_project_name][mod]["present_kos"])
+            # assign completeness info back to module dict
+            genome_metabolism_dict[self.contigs_db_project_name][mod]["step_list"] = mod_steps
+            genome_metabolism_dict[self.contigs_db_project_name][mod]["complete_step_list"] = mod_complete_steps
+            genome_metabolism_dict[self.contigs_db_project_name][mod]["nonessential_step_list"] = mod_nonessential_steps
+            genome_metabolism_dict[self.contigs_db_project_name][mod]["num_steps"] = mod_num_steps
+            genome_metabolism_dict[self.contigs_db_project_name][mod]["num_complete_steps"] = mod_num_complete_steps
+            genome_metabolism_dict[self.contigs_db_project_name][mod]["num_nonessential_steps"] = mod_num_nonessential_steps
+            genome_metabolism_dict[self.contigs_db_project_name][mod]["num_complete_nonessential_steps"] = mod_num_complete_nonessential_steps
+            genome_metabolism_dict[self.contigs_db_project_name][mod]["fraction_complete"] = mod_complete_fraction
+            genome_metabolism_dict[self.contigs_db_project_name][mod]["complete"] = mod_is_complete
+
+            if mod_is_complete:
+                num_complete_modules += 1
+
+        genome_metabolism_dict[self.contigs_db_project_name]["num_complete_modules"] = num_complete_modules
+
+        self.run.info("Module completion threshold", self.completeness_threshold)
+        self.run.info("Number of complete modules", num_complete_modules)
+
         return genome_metabolism_dict
 
 
