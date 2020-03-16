@@ -785,23 +785,23 @@ class DSSPClass(object):
 
     def set_executable(self):
         if self.executable:
+            utils.is_program_exists(self.executable, dont_raise=True)
             return
 
         # Determine what DSSP program should be used. Tries mkdssp and then dssp, and raises
         # error if neither are found. mkdssp is newer and preferred
         if utils.is_program_exists("mkdssp", dont_raise=True):
             self.executable = "mkdssp"
+        elif utils.is_program_exists("dssp", dont_raise=True):
+            self.executable = "dssp"
         else:
-            if utils.is_program_exists("dssp", dont_raise=True):
-                self.executable = "dssp"
-            else:
-                raise ConfigError("'mkdssp' or 'dssp' must be installed on your system, but "
-                                  "neither seem to appear in your path :/ If you are certain you have either on your "
-                                  "system (for instance you can run either by typing 'mkdssp' or 'dssp' in your terminal "
-                                  "window), you may want to send a detailed bug report. If you want to install DSSP, "
-                                  "check out http://merenlab.org/2016/06/18/installing-third-party-software/#dssp. "
-                                  "If you want to skip secondary structure and solvent accessibility annotation, "
-                                  "provide the flag --skip-DSSP.")
+            raise ConfigError("'mkdssp' or 'dssp' must be installed on your system, but "
+                              "neither seem to appear in your path :/ If you are certain you have either on your "
+                              "system (for instance you can run either by typing 'mkdssp' or 'dssp' in your terminal "
+                              "window), you may want to send a detailed bug report. If you want to install DSSP, "
+                              "check out http://merenlab.org/2016/06/18/installing-third-party-software/#dssp. "
+                              "If you want to skip secondary structure and solvent accessibility annotation, "
+                              "provide the flag --skip-DSSP.")
 
 
     def is_executable_a_working_DSSP_program(self):
