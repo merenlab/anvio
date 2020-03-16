@@ -827,16 +827,15 @@ class DSSPClass(object):
                               "http://merenlab.org/2016/06/18/installing-third-party-software/#dssp"\
                                .format(self.executable))
 
-        #try:
-        #    self.convert_DSSP_output_from_biopython_to_dataframe(test_residue_annotation)
-        #except:
-        #    import pickle
-        #    with open('troubleshoot_DDSP_output.pickle', 'wb') as output:
-        #        pickle.dump(test_residue_annotation, output, pickle.HIGHEST_PROTOCOL)
-        #    raise ConfigError('Your executable of DSSP ran and produced an output, but anvi\'o wasn\'t able to correctly parse it. '
-        #                      'This is probably our fault. In your working directory should exist a file named "troubleshoot_DDSP_output.pickle". '
-        #                      'Please send this to an anvio developer so that we can help identify what went wrong.')
-        self.convert_DSSP_output_from_biopython_to_dataframe(test_residue_annotation)
+        try:
+            self.convert_DSSP_output_from_biopython_to_dataframe(test_residue_annotation)
+        except:
+            import pickle
+            with open('troubleshoot_DDSP_output.pickle', 'wb') as output:
+                pickle.dump(test_residue_annotation, output, pickle.HIGHEST_PROTOCOL)
+            raise ConfigError('Your executable of DSSP ran and produced an output, but anvi\'o wasn\'t able to correctly parse it. '
+                              'This is probably our fault. In your working directory should exist a file named "troubleshoot_DDSP_output.pickle". '
+                              'Please send this to an anvio developer so that we can help identify what went wrong.')
 
 
     def convert_DSSP_output_from_biopython_to_dataframe(self, dssp_biopython_object, drop=[]):
