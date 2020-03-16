@@ -941,7 +941,7 @@ class KeggMetabolismEstimator(KeggContext):
                     # for example, photosynthesis module M00611 is defined as (M00161,M00163) M00165 === (photosystem II or photosystem I) and calvin cycle
                     # I don't know what to do about this yet so we are just going to return empty things for now
                     # THIS WILL CAUSE ISSUES DOWN THE ROAD SO WATCH OUT!
-                    return [], [], [], None, None, None, None, None, None
+                    return [], [], [], [], None, None, None, None, None, None
 
                 else:
                     raise ConfigError("While parsing the DEFINITION field for module %s, (which is %s), anvi'o found the following character "
@@ -961,8 +961,10 @@ class KeggMetabolismEstimator(KeggContext):
         # once we have processed all DEFINITION lines, we can compute the overall completeness
         module_completeness = module_num_complete_steps / module_total_steps * 100.0
         over_complete_threshold = True if module_completeness > self.completeness_threshold else False
-        return module_step_list, module_complete_steps, module_nonessential_steps, module_complete_nonessential_steps, module_total_steps, module_num_complete_steps, \
-               module_num_nonessential_steps, module_num_complete_nonessential_steps, module_completeness, over_complete_threshold
+
+        return module_step_list, module_complete_steps, module_nonessential_steps, module_complete_nonessential_steps, \
+                module_total_steps, module_num_complete_steps, module_num_nonessential_steps, module_num_complete_nonessential_steps, \
+                module_completeness, over_complete_threshold
 
 
     def estimate_for_genome(self, kofam_hits, genes_in_splits):
@@ -992,8 +994,8 @@ class KeggMetabolismEstimator(KeggContext):
         num_complete_modules = 0
         # estimate completeness of each module
         for mod in genome_metabolism_dict[self.contigs_db_project_name].keys():
-            mod_steps, mod_complete_steps, mod_nonessential_steps, mod_complete_nonessential_steps, mod_num_steps, mod_num_complete_steps, mod_num_nonessential_steps, \
-            mod_num_complete_nonessential_steps, mod_percent_complete, mod_is_complete \
+            mod_steps, mod_complete_steps, mod_nonessential_steps, mod_complete_nonessential_steps, mod_num_steps, mod_num_complete_steps, \
+            mod_num_nonessential_steps, mod_num_complete_nonessential_steps, mod_percent_complete, mod_is_complete \
             = self.compute_module_completeness(mod, genome_metabolism_dict[self.contigs_db_project_name][mod]["present_kos"])
             # assign completeness info back to module dict
             genome_metabolism_dict[self.contigs_db_project_name][mod]["step_list"] = mod_steps
