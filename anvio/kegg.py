@@ -16,6 +16,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.tables as t
+import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.drivers.hmmer import HMMer
