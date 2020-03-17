@@ -1019,12 +1019,13 @@ class KeggMetabolismEstimator(KeggContext):
         # modules to warn about
         mods_with_unassociated_ko = [] # a list of modules that have "--" steps without an associated KO
         mods_with_nonessential_steps = [] # a list of modules that have nonessential steps like "-K11024"
+        mods_def_by_modules = [] # a list of modules that have module numbers in their definitions
 
         # estimate completeness of each module
         for mod in genome_metabolism_dict[self.contigs_db_project_name].keys():
             mod_steps, mod_complete_steps, mod_nonessential_steps, mod_complete_nonessential_steps, mod_num_steps, mod_num_complete_steps, \
             mod_num_nonessential_steps, mod_num_complete_nonessential_steps, mod_percent_complete, \
-            mod_is_complete, has_nonessential_step, has_no_ko_step \
+            mod_is_complete, has_nonessential_step, has_no_ko_step, defined_by_modules \
             = self.compute_module_completeness(mod, genome_metabolism_dict[self.contigs_db_project_name][mod]["present_kos"])
             # assign completeness info back to module dict
             genome_metabolism_dict[self.contigs_db_project_name][mod]["step_list"] = mod_steps
@@ -1044,6 +1045,85 @@ class KeggMetabolismEstimator(KeggContext):
                 mods_with_nonessential_steps.append(mod)
             if has_no_ko_step:
                 mods_with_unassociated_ko.append(mod)
+            if defined_by_modules:
+                mods_def_by_modules.append(mod)
+
+        # go back and adjust completeness of modules that are defined by other modules
+        if mods_def_by_modules:
+            for mod in mods_def_by_modules:
+                print("Re-calculating for module %s with steps %s" % (mod, " ".join(genome_metabolism_dict[self.contigs_db_project_name][mod]["step_list"])))
+                for step in genome_metabolism_dict[self.contigs_db_project_name][mod]["step_list"]:
+                    print("Step: ", step)
+                    cur_index = 0  # current position in the step definition
+                    parens_level = 0 # how deep we are in nested parentheses
+                    step_is_present_condition_statement = ""
+                    is_ko_step = False
+                    while cur_index < len(step):
+                        # we have found a KO so we can ignore this step; it has already been counted as complete or not
+                        if step[cur_index] == "K":
+                            print("breaking from step")
+                            is_ko_step = True
+                            break
+
+                        # we have found a module so we must evaluate this steps's completeness by checking if the module is complete
+                        elif step[cur_index] == "M":
+                            mnum = step[cur_index:cur_index+6]
+                            if genome_metabolism_dict[self.contigs_db_project_name][mnum]["complete"]:
+                                print("module %s found complete" % mnum)
+                                step_is_present_condition_statement += "True"
+                            else:
+                                print("module %s found INcomplete" % mnum)
+                                step_is_present_condition_statement += "False"
+                            cur_index += 6
+
+                        elif step[cur_index] == "(":
+                            parens_level += 1
+                            step_is_present_condition_statement += "("
+                            cur_index += 1
+
+                        elif step[cur_index] == ")":
+                            parens_level -= 1
+                            step_is_present_condition_statement += ")"
+                            cur_index += 1
+
+                        elif step[cur_index] == ",":
+                            step_is_present_condition_statement += " or "
+                            cur_index += 1
+
+                        elif step[cur_index] == " ":
+                            # if we are outside of parentheses, something is wrong because this should all be just one step
+                            if parens_level == 0:
+                                raise ConfigError("Much parsing sadness. We thought we were re-evaluating the completeness of just one step in "
+                                                  "module %s (step: %s), but we found a space that seems to indicate another step. HALP." % (mod, step))
+                            # otherwise, we are processing an alternative path so AND is required
+                            else:
+                                step_is_present_condition_statement += " and "
+                                cur_index += 1
+
+                        else:
+                            raise ConfigError("While correcting completeness for module %s, (step %s), anvi'o found the following character "
+                                                "that she didn't understand: %s. Unfortunately, this means we cannot determine the module "
+                                                "completeness. For context, here is the current index in the DEFINITION line: %s and the "
+                                                "surrounding characters: %s" % (mod, step, step[cur_index], cur_index, step[cur_index-5:cur_index+6]))
+                    # once we have processed everything, we need to re-evaluate the step (provided its not a KO step that has already been evaluated)
+                    if not is_ko_step:
+                        print("condition statement: ", step_is_present_condition_statement)
+                        step_is_present = eval(step_is_present_condition_statement)
+                        print("evaluates to ", step_is_present)
+                        if step_is_present:
+                            genome_metabolism_dict[self.contigs_db_project_name][mod]["complete_step_list"].append(step)
+                            genome_metabolism_dict[self.contigs_db_project_name][mod]["num_complete_steps"] += 1
+
+                # now, we recalculate module completeness
+                print("module previously had completeness ", genome_metabolism_dict[self.contigs_db_project_name][mod]["percent_complete"])
+                genome_metabolism_dict[self.contigs_db_project_name][mod]["percent_complete"] = genome_metabolism_dict[self.contigs_db_project_name][mod]["num_complete_steps"] / genome_metabolism_dict[self.contigs_db_project_name][mod]["num_steps"]
+                now_complete = True if genome_metabolism_dict[self.contigs_db_project_name][mod]["percent_complete"] >= self.completeness_threshold else False
+                genome_metabolism_dict[self.contigs_db_project_name][mod]["complete"] = now_complete
+                if now_complete:
+                    print("module %s is now COMPLETE" % mod)
+                    num_complete_modules += 1
+                print("module now has completeness ", genome_metabolism_dict[self.contigs_db_project_name][mod]["percent_complete"])
+
 
         genome_metabolism_dict[self.contigs_db_project_name]["num_complete_modules"] = num_complete_modules
 
