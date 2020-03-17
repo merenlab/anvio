@@ -31,6 +31,7 @@ up_to_date_modeller_exec = "mod9.23" # default exec to use
 
 J = lambda x, y: os.path.join(x, y)
 
+
 class MODELLER:
     """Driver class for MODELLER
 
@@ -40,9 +41,14 @@ class MODELLER:
     Parameters
     ==========
     args : argparse.Namespace object
-        Check __init__ for details. Very importantly, is providing args.target_fasta_path, which is
-        an amino acid sequence fasta file with 1 sequence, the gene to be modelled. The defline
-        should be an integer (perhaps its gene caller id is a sensible choice)
+        Check __init__ for allowable attributes
+
+    target_fasta_path: str
+        Path to amino acid sequence fasta file with 1 sequence, the gene to be modelled. The defline
+        should be an integer (This class will assume this integer is the genes gene caller id)
+
+    directory: str, None
+        Path to directory that MODELLER will be run in. If None, temp dir will be created
 
     lazy_init : bool, False
         If True, check_MODELLER will not be called
@@ -55,21 +61,22 @@ class MODELLER:
       self.run_align_to_templates. Please see that method if you want to add your own script.
     """
 
-    def __init__(self, args, run=terminal.Run(), lazy_init=False):
+    def __init__(self, args, target_fasta_path, directory=None, run=terminal.Run(), lazy_init=False):
 
         self.args = args
         self.run = run
         self.lazy_init = lazy_init
 
+        self.target_fasta_path = target_fasta_path
+        self.directory = directory if directory else filesnpaths.get_temp_directory_path()
+
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
         self.scoring_method = A('scoring_method', str)
         self.deviation = A('deviation', float)
-        self.directory = A('directory', str)
         self.very_fast = A('very_fast', bool)
         self.executable = A('modeller_executable', null) or up_to_date_modeller_exec
         self.num_models = A('num_models', int)
-        self.target_fasta_path = A('target_fasta_path', str)
         self.modeller_database = A('modeller_database', str) or "pdb_95"
         self.max_number_templates = A('max_number_templates', null)
         self.percent_identical_cutoff = A('percent_identical_cutoff', null)
@@ -136,10 +143,6 @@ class MODELLER:
 
 
     def process(self):
-        self.run.warning("Working directory: {}".format(self.directory),
-                         header='Modelling structure for gene ID {}'.format(self.corresponding_gene_call),
-                         lc="green")
-
         try:
             self.run_fasta_to_pir()
 
@@ -398,9 +401,7 @@ class MODELLER:
                    dir_name,
                    base_name]
 
-        self.run_command(command,
-                         script_name=script_name,
-                         progress_update="Adding chain identifier to best model")
+        self.run_command(command, script_name=script_name)
 
 
     def run_get_model(self, num_models, deviation, very_fast):
@@ -438,7 +439,6 @@ class MODELLER:
 
         self.run_command(command,
                          script_name = script_name,
-                         progress_update = "Calculating 3D model(s)",
                          check_output = [self.model_info_path])
 
         # load the model results information as a dataframe
@@ -490,7 +490,6 @@ class MODELLER:
 
         self.run_command(command,
                          script_name = script_name,
-                         progress_update = "Aligning sequence to template structures",
                          check_output = [self.alignment_pir_path,
                                          self.alignment_pap_path,
                                          self.template_family_matrix_path])
@@ -519,7 +518,6 @@ class MODELLER:
 
         self.run_command(command,
                          script_name = script_name,
-                         progress_update = "Searching DB for sequence homologs",
                          check_output = [self.search_results_path])
 
         self.run.info("Search results for similar AA sequences", os.path.basename(self.search_results_path))
@@ -593,7 +591,6 @@ class MODELLER:
 
         self.run_command(command,
                          script_name = script_name,
-                         progress_update = "Binarizing database",
                          check_output=[bin_db_path])
 
         self.run.info("New database", bin_db_path)
@@ -658,13 +655,12 @@ class MODELLER:
 
         self.run_command(command,
                          script_name = script_name,
-                         progress_update = "Convert FASTA to MODELLER format",
                          check_output = [self.target_pir_path])
 
         self.run.info("Target alignment file", os.path.basename(self.target_pir_path))
 
 
-    def run_command(self, command, script_name, progress_update, check_output=None):
+    def run_command(self, command, script_name, check_output=None):
         """Base routine for running MODELLER scripts
 
         Parameters
@@ -675,10 +671,6 @@ class MODELLER:
 
         script_name : str
             E.g. 'test_script.py'
-
-        progress_update : str
-            Description of what you're doing. This is added to the Timer, which is printed if
-            anvio.DEBUG
 
         check_output : list, None
             Verify that this list of filepaths exist after the command is ran
