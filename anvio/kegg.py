@@ -982,8 +982,8 @@ class KeggMetabolismEstimator(KeggContext):
                         module_num_complete_steps += 1
 
         # once we have processed all DEFINITION lines, we can compute the overall completeness
-        module_completeness = module_num_complete_steps / module_total_steps * 100.0
-        over_complete_threshold = True if module_completeness > self.completeness_threshold else False
+        module_completeness = module_num_complete_steps / module_total_steps
+        over_complete_threshold = True if module_completeness >= self.completeness_threshold else False
 
 
         return module_step_list, module_complete_steps, module_nonessential_steps, module_complete_nonessential_steps, \
