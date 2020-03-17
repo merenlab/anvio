@@ -1099,7 +1099,7 @@ class KeggMetabolismEstimator(KeggContext):
         PARAMETERS
         ==========
         kofam_hits          list of (gene_call_id, ko_num) tuples, all belong to this single genome
-        genes_in_splits     list of (split, gene_call_id) tuples, all belong to this single genome <- MAYBE UNNECESSARY
+        genes_in_splits     list of (split, gene_call_id) tuples, all belong to this single genome
 
         RETURNS
         =======
@@ -1126,7 +1126,6 @@ class KeggMetabolismEstimator(KeggContext):
                 continue
             mod_is_complete, has_nonessential_step, has_no_ko_step, defined_by_modules \
             = self.compute_module_completeness_for_bin(mod, genome_metabolism_dict[self.contigs_db_project_name])
-
 
             if mod_is_complete:
                 complete_mods.append(mod)
@@ -1220,7 +1219,6 @@ class KeggMetabolismEstimator(KeggContext):
                 d[i]["bin_name"] = bin
                 d[i]["kegg_module"] = mnum
                 i += 1
-
 
         utils.store_dict_as_TAB_delimited_file(d, self.output_file_path, key_header="unique_id")
         self.run.info("Output file", self.output_file_path, nl_before=1)
