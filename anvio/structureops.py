@@ -360,9 +360,9 @@ class Structure(object):
         genes_of_interest = None
 
         # identify the gene caller ids of all genes available
-        self.genes_in_contigs_database = set(self.contigs_super.genes_in_contigs_dict.keys())
+        genes_in_contigs_database = set(self.contigs_super.genes_in_contigs_dict.keys())
 
-        if not self.genes_in_contigs_database:
+        if not genes_in_contigs_database:
             raise ConfigError("This contigs database does not contain any identified genes...")
 
         # settling genes of interest
@@ -393,8 +393,23 @@ class Structure(object):
 
         if not genes_of_interest:
             # no genes of interest are specified. Assuming all, which could be innumerable--raise warning
-            genes_of_interest = self.genes_in_contigs_database
+            genes_of_interest = genes_in_contigs_database
             self.run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
+
+        # Check for genes that do not appear in the contigs database
+        bad_gene_caller_ids = [g for g in genes_of_interest if g not in genes_in_contigs_database]
+        if bad_gene_caller_ids:
+            raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else \
+                               "These gene caller ids you provided are") + " not known to this contigs database: {}.\
+                               You have only 2 lives left. 2 more mistakes, and anvi'o will automatically uninstall \
+                               itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
+
+        # Finally, raise warning if number of genes is greater than 20 FIXME determine average time
+        # per gene and describe here
+        if len(genes_of_interest) > 20:
+            self.run.warning("Modelling protein structures is no joke. The number of genes you want protein structures for is "
+                             "{}, which is a lot (of time!). If its taking too long, consider using the --very-fast flag. "
+                             "CTRL + C to cancel.".format(len(genes_of_interest)))
 
         return genes_of_interest
 
@@ -449,34 +464,32 @@ class Structure(object):
             # Annotate residues
             residue_info_dataframe = None
             if modeller_out["structure_exists"]:
-                residue_info_dataframe = self.get_residue_info_table_for_gene(corresponding_gene_call,
-                                                                              modeller_out["best_model_path"])
+                residue_info_dataframe = self.get_gene_contribution_to_residue_info_table(
+                    corresponding_gene_call=corresponding_gene_call,
+                    pdb_filepath=modeller_out["best_model_path"]
+                )
+
             self.store_gene(modeller_out, residue_info_dataframe)
 
             self.dump_raw_results()
 
             num_genes_tried += 1
 
+            # We update self.table every gene so that if the operation is cancelled, the db survives
+            # as a valid db
+            self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in self.genes_of_interest]))
+            self.structure_db.db.set_meta_value('genes_with_structure', ",".join(has_structure[True]))
+            self.structure_db.db.set_meta_value('genes_without_structure', ",".join(has_structure[False]))
+
         if not has_structure[True]:
             raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
 
-        self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in self.genes_of_interest]))
-        self.structure_db.db.set_meta_value('genes_with_structure', ",".join(has_structure[True]))
-        self.structure_db.db.set_meta_value('genes_without_structure', ",".join(has_structure[False]))
-        self.structure_db.db.set_meta_value('modeller_database', self.modeller.modeller_database)
-        self.structure_db.db.set_meta_value('scoring_method', self.scoring_method)
-        self.structure_db.db.set_meta_value('percent_identical_cutoff', str(self.percent_identical_cutoff))
-        self.structure_db.db.set_meta_value('very_fast', str(int(self.very_fast)))
-        self.structure_db.db.set_meta_value('deviation', self.deviation)
-        self.structure_db.db.set_meta_value('max_number_templates', self.max_number_templates)
-        self.structure_db.db.set_meta_value('num_models', self.num_models)
-        self.structure_db.db.set_meta_value('skip_DSSP', self.skip_DSSP)
-
         self.structure_db.disconnect()
+
         self.run.info("Structure database", self.structure_db_path)
 
 
-    def get_residue_info_table_for_gene(self, corresponding_gene_call, pdb_filepath):
+    def get_gene_contribution_to_residue_info_table(self, corresponding_gene_call, pdb_filepath):
         results = [
             self.dssp.run(pdb_filepath, id_for_protein=corresponding_gene_call),
             self.run_contact_map_annotation(pdb_filepath),
