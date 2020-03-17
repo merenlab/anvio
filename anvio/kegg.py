@@ -837,6 +837,7 @@ class KeggMetabolismEstimator(KeggContext):
         module_num_complete_nonessential_steps = 0
         has_nonessential_step = False
         has_no_ko_step = False
+        defined_by_modules = False
 
         def_lines = self.kegg_modules_db.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
         for d in def_lines:
@@ -849,6 +850,7 @@ class KeggMetabolismEstimator(KeggContext):
             while cur_index < len(d):
                 if d[cur_index] == "K": # we have found a KO
                     ko = d[cur_index:cur_index+6]
+                    defined_by_modules = False  # reset this flag just in case KO-defined step comes after a module-defined step
                     if ko in present_list_for_mnum:
                         step_is_present_condition_statement += "True"
                     else:
@@ -933,10 +935,12 @@ class KeggMetabolismEstimator(KeggContext):
                     if parens_level == 0:
                         module_step_list.append(d[last_step_end_index:cur_index])
                         module_total_steps += 1
-                        step_is_present = eval(step_is_present_condition_statement)
-                        if step_is_present:
-                            module_complete_steps.append(d[last_step_end_index:cur_index])
-                            module_num_complete_steps += 1
+                        # we do not evaluate completeness of this step yet if it is defined by other modules
+                        if not defined_by_modules:
+                            step_is_present = eval(step_is_present_condition_statement)
+                            if step_is_present:
+                                module_complete_steps.append(d[last_step_end_index:cur_index])
+                                module_num_complete_steps += 1
                         # reset for next step
                         step_is_present_condition_statement = ""
                         last_step_end_index = cur_index + 1
@@ -947,14 +951,17 @@ class KeggMetabolismEstimator(KeggContext):
                         cur_index += 1
 
                 elif d[cur_index] == "M":
-                    print("OH NO. We found a module (%s) defined by other modules. We don't know what to do about this, so we are just "
-                    "giving up for now." % mnum)
-                    # FIXME
-                    # this happens when a module is defined by other modules
-                    # for example, photosynthesis module M00611 is defined as (M00161,M00163) M00165 === (photosystem II or photosystem I) and calvin cycle
-                    # I don't know what to do about this yet so we are just going to return empty things for now
-                    # THIS WILL CAUSE ISSUES DOWN THE ROAD SO WATCH OUT!
-                    return [], [], [], [], None, None, None, None, None, None, None, None
+                    """
+                    This happens when a module is defined by other modules. For example, photosynthesis module M00611 is defined as
+                    (M00161,M00163) M00165 === (photosystem II or photosystem I) and calvin cycle
+
+                    We need all the modules to have been evaluated before we can determine completeness of steps with module numbers.
+                    So what we will do here is just add the step to the appropriate lists without evaluating completeness, and use a
+                    flag variable to keep track of the modules that have this sort of definition in a list so we can go back and
+                    evaluate completeness of steps with module numbers later.
+                    """
+                    defined_by_modules = True
+                    cur_index += 6
 
                 else:
                     raise ConfigError("While parsing the DEFINITION field for module %s, (which is %s), anvi'o found the following character "
@@ -962,14 +969,17 @@ class KeggMetabolismEstimator(KeggContext):
                                         "completeness. For context, here is the current index in the DEFINITION line: %s and the "
                                         "surrounding characters: %s" % (mnum, d, d[cur_index], cur_index, d[cur_index-5:cur_index+6]))
 
-            # once we have processed the whole line, we still need to eval the last step. Unless we already did (this can happen with non-essential steps)
-            if step_is_present_condition_statement != "":
+            # once we have processed the whole line, we still need to eval the last step.
+            # Unless we already did (this can happen with non-essential steps), which we check by seeing if the condition statement is empty
+            # However, if this step is defined by modules, the condition statement will be empty, but we still need to save the step
+            if step_is_present_condition_statement != "" or defined_by_modules:
                 module_step_list.append(d[last_step_end_index:cur_index])
                 module_total_steps += 1
-                step_is_present = eval(step_is_present_condition_statement)
-                if step_is_present:
-                    module_complete_steps.append(d[last_step_end_index:cur_index])
-                    module_num_complete_steps += 1
+                if not defined_by_modules:
+                    step_is_present = eval(step_is_present_condition_statement)
+                    if step_is_present:
+                        module_complete_steps.append(d[last_step_end_index:cur_index])
+                        module_num_complete_steps += 1
 
         # once we have processed all DEFINITION lines, we can compute the overall completeness
         module_completeness = module_num_complete_steps / module_total_steps * 100.0
