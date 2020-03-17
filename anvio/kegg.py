@@ -1017,6 +1017,10 @@ class KeggMetabolismEstimator(KeggContext):
         ==========
         mod                 string, the module number to adjust
         meta_dict_for_bin   metabolism completeness dictionary for the current bin
+
+        RETURNS
+        =======
+        now_complete        boolean, whether or not the module is NOW considered "complete" overall based on the threshold fraction of completeness
         """
 
         for step in meta_dict_for_bin[mod]["step_list"]:
@@ -1082,6 +1086,8 @@ class KeggMetabolismEstimator(KeggContext):
         if now_complete:
             meta_dict_for_bin["num_complete_modules"] += 1
 
+        return now_complete
+
 
     def estimate_for_genome(self, kofam_hits, genes_in_splits):
         """This is the metabolism estimation function for a contigs DB that contains a single genome.
@@ -1131,12 +1137,13 @@ class KeggMetabolismEstimator(KeggContext):
             if defined_by_modules:
                 mods_def_by_modules.append(mod)
 
-        genome_metabolism_dict[self.contigs_db_project_name]["num_complete_modules"] = num_complete_modules
-
         # go back and adjust completeness of modules that are defined by other modules
         if mods_def_by_modules:
             for mod in mods_def_by_modules:
-                self.adjust_module_completeness_for_bin(mod, genome_metabolism_dict[self.contigs_db_project_name])
+                mod_is_complete = self.adjust_module_completeness_for_bin(mod, genome_metabolism_dict[self.contigs_db_project_name])
+
+                if mod_is_complete:
+                    complete_mods.append(mod)
 
         # notify user of the modules that gave some fishy results
         if not self.quiet:
