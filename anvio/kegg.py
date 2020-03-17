@@ -1086,6 +1086,7 @@ class KeggMetabolismEstimator(KeggContext):
         genome_metabolism_dict[self.contigs_db_project_name] = self.mark_kos_present_for_list_of_splits(ko_in_genome, split_list=splits_in_genome,
                                                                                                     bin_name=self.contigs_db_project_name)
         num_complete_modules = 0
+        complete_mods = []
         # modules to warn about
         mods_with_unassociated_ko = [] # a list of modules that have "--" steps without an associated KO
         mods_with_nonessential_steps = [] # a list of modules that have nonessential steps like "-K11024"
@@ -1111,6 +1112,7 @@ class KeggMetabolismEstimator(KeggContext):
 
             if mod_is_complete:
                 num_complete_modules += 1
+                complete_mods.append(mod)
             if has_nonessential_step:
                 mods_with_nonessential_steps.append(mod)
             if has_no_ko_step:
@@ -1145,6 +1147,7 @@ class KeggMetabolismEstimator(KeggContext):
 
         self.run.info("Module completion threshold", self.completeness_threshold)
         self.run.info("Number of complete modules", num_complete_modules)
+        self.run.info("Complete modules", ", ".join(complete_mods))
 
         return genome_metabolism_dict
 
