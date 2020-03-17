@@ -719,7 +719,7 @@ class KeggMetabolismEstimator(KeggContext):
         return kofam_hits, genes_in_splits
 
     def mark_kos_present_for_list_of_splits(self, kofam_hits_in_splits, split_list=None, bin_name=None):
-        """This function generates a bin-level dictionary of dictionary, which associates modules with the list of KOs
+        """This function generates a bin-level dictionary of dictionaries, which associates modules with the list of KOs
         that are present in the bin for each module.
 
         The structure of the dictionary is like this:
