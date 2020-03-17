@@ -446,6 +446,8 @@ class Structure(object):
 
 
     def run_residue_identity_annotation(self, corresponding_gene_call, pdb_filepath):
+        """A small routine to return a data frame containing codon numbers, codons, and amino acids"""
+
         nt_sequence = self.contigs_super.get_sequences_for_gene_callers_ids([corresponding_gene_call])
         nt_sequence = nt_sequence[1][corresponding_gene_call]['sequence']
 
@@ -483,6 +485,8 @@ class Structure(object):
 
 
     def run_modeller(self):
+        """Calls and returns results of MODELLER.MODELLER driver"""
+
         self.modeller = MODELLER.MODELLER(self.args, lazy_init=True)
         modeller_out = self.modeller.process()
 
