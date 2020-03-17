@@ -1,4 +1,4 @@
-FROM continuumio/miniconda3:4.7.10
+FROM continuumio/miniconda3:4.8.2
 ENV ANVIO_VERSION "6.1_master"
 
 RUN conda config --env --add channels conda-forge
@@ -16,7 +16,8 @@ SHELL ["/bin/bash", "-c"]
 RUN conda install -y conda-build
 
 COPY conda-recipe /tmp/conda-recipe
-RUN conda-build /tmp/conda-recipe/anvio-minimal && conda-build /tmp/conda-recipe/anvio
+RUN conda-build /tmp/conda-recipe/anvio-minimal
+RUN conda-build /tmp/conda-recipe/anvio
 
 # Install Anvi'o
 RUN conda index /opt/conda/envs/anvioenv/conda-bld/
