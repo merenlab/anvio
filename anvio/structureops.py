@@ -123,6 +123,27 @@ class StructureDatabase(object):
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
 
 
+    def store_modeller_params(self, modeller_params):
+        """Store all run parameters in the self table
+
+        Parameters
+        ==========
+        modeller_params : dict
+            For e.g. {
+                'modeller_database': 'pdb_95',
+                'scoring_method': 'DOPE_score',
+                'max_number_templates': 5,
+                'percent_identical_cutoff': 30,
+                'num_models': 1,
+                'deviation': 4.0,
+                'very_fast': True
+            }
+        """
+
+        for param, value in modeller_params.items():
+            self.db.set_meta_value(param, value)
+
+
     def check_hash(self):
         actual_db_hash = str(self.db.get_meta_value('contigs_db_hash'))
         if self.db_hash != actual_db_hash:
