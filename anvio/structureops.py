@@ -70,6 +70,23 @@ class StructureDatabase(object):
         }
 
 
+    def get_run_params_dict(self):
+        """Return dictionary containing all pertinent run parameters that were used during the creation of this DB"""
+
+        run_params_dict = {}
+
+        run_params_dict['modeller_database'] = self.db.get_meta_value('modeller_database', try_as_type_int=False)
+        run_params_dict['scoring_method'] = self.db.get_meta_value('scoring_method', try_as_type_int=False)
+        run_params_dict['percent_identical_cutoff'] = float(self.db.get_meta_value('percent_identical_cutoff', try_as_type_int=False))
+        run_params_dict['very_fast'] = bool(self.db.get_meta_value('very_fast', try_as_type_int=True))
+        run_params_dict['deviation'] = float(self.db.get_meta_value('deviation', try_as_type_int=False))
+        run_params_dict['max_number_templates'] = self.db.get_meta_value('max_number_templates', try_as_type_int=True)
+        run_params_dict['num_models'] = self.db.get_meta_value('num_models', try_as_type_int=True)
+        run_params_dict['skip_DSSP'] = bool(self.db.get_meta_value('skip_DSSP', try_as_type_int=True))
+
+        return run_params_dict
+
+
     def get_genes_with_structure(self):
         """Returns list of gene caller ids that have a structure in the DB"""
 
