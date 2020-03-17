@@ -2029,9 +2029,8 @@ D = {
                      "%(default)d, whereas a job with 4 threads would have a write buffer size of 4*%(default)d. "
                      "The larger the buffer size, the less frequent the program will access to the disk, yet the more memory "
                      "will be consumed since the processed items will be cleared off the memory only after they are written "
-                     "to the disk. The default buffer size will likely work for most cases, but if you have very large "
-                     "contigs, you may need to decrease this value. Please keep an eye on the memory usage output to make sure "
-                     "the memory use never exceeds the size of the physical memory."}
+                     "to the disk. The default buffer size will likely work for most cases. Please keep an eye on the memory "
+                     "usage output to make sure the memory use never exceeds the size of the physical memory."}
                 ),
     'export-gff3': (
         ['--export-gff3'],
