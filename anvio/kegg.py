@@ -1164,7 +1164,7 @@ class KeggMetabolismEstimator(KeggContext):
                                  % (", ".join(mods_with_unassociated_ko)))
 
         self.run.info("Module completion threshold", self.completeness_threshold)
-        self.run.info("Number of complete modules", num_complete_modules)
+        self.run.info("Number of complete modules", genome_metabolism_dict[self.contigs_db_project_name]["num_complete_modules"])
         self.run.info("Complete modules", ", ".join(complete_mods))
 
         return genome_metabolism_dict
