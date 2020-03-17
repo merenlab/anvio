@@ -195,43 +195,47 @@ class Structure(object):
 
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
+
         self.contigs_db_path = A('contigs_db', null)
+        self.structure_db_path = A('structure_db_path', null)
+        self.modeller_executable = A('modeller_executable', null)
+        self.full_modeller_output = A('dump_dir', null)
+
         self.genes_of_interest_path = A('genes_of_interest', null)
+        self.gene_caller_ids = A('gene_caller_ids', null)
         self.splits_of_interest_path = A('splits_of_interest', null)
         self.bin_id = A('bin_id', null)
         self.collection_name = A('collection_name', null)
-        self.gene_caller_ids = A('gene_caller_ids', null)
-        self.structure_db_path = A('structure_db_path', null)
-        self.full_modeller_output = A('dump_dir', null)
-        self.skip_DSSP = A('skip_DSSP', bool)
-        self.modeller_executable = A('modeller_executable', null)
 
         utils.is_contigs_db(self.contigs_db_path)
         self.contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         self.contigs_db_hash = self.contigs_db.meta['contigs_db_hash']
 
-        # MODELLER params
-        self.modeller_database = A('modeller_database', null)
-        self.scoring_method = A('scoring_method', null)
-        self.max_number_templates = A('max_number_templates', null)
-        self.percent_identical_cutoff = A('percent_identical_cutoff', null)
-        self.num_models = A('num_models', null)
-        self.deviation = A('deviation', null)
-        self.very_fast = A('very_fast', bool)
+        if self.create:
+            # MODELLER params FIXME may not be needed
+            self.modeller_database = A('modeller_databaseth ', null)
+            self.scoring_method = A('scoring_method', null)
+            self.max_number_templates = A('max_number_templates', null)
+            self.percent_identical_cutoff = A('percent_identical_cutoff', null)
+            self.num_models = A('num_models', null)
+            self.deviation = A('deviation', null)
+            self.very_fast = A('very_fast', bool)
 
-        # check database output
-        if not self.structure_db_path:
-            self.structure_db_path = "STRUCTURE.db"
-        if not self.structure_db_path.endswith('.db'):
-            raise ConfigError("The structure database output file (`-o / --output`) must end with '.db'")
-        filesnpaths.is_output_file_writable(self.structure_db_path)
+            self.skip_DSSP = A('skip_DSSP', bool)
 
-        # check modeller output
-        if self.full_modeller_output:
-            self.full_modeller_output = filesnpaths.check_output_directory(self.full_modeller_output, ok_if_exists=False)
+            # check database output
+            if not self.structure_db_path:
+                self.structure_db_path = "STRUCTURE.db"
+            if not self.structure_db_path.endswith('.db'):
+                raise ConfigError("The structure database output file (`-o / --output`) must end with '.db'")
+            filesnpaths.is_output_file_writable(self.structure_db_path)
 
-        # identify which genes user wants to model structures for
-        self.genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
+            # identify which genes user wants to model structures for
+            self.genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
+
+        else:
+            self.genes_of_interest = None
+            self.set_modeller_params()
 
         self.sanity_check()
 
@@ -239,7 +243,7 @@ class Structure(object):
         self.structure_db = StructureDatabase(
             self.structure_db_path,
             self.contigs_db_hash,
-            create_new=True,
+            create_new=create,
         )
 
         # init ContigsSuperClass
@@ -253,19 +257,21 @@ class Structure(object):
 
 
     def sanity_check(self):
-        # check for genes that do not appear in the contigs database
-        bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.genes_in_contigs_database]
-        if bad_gene_caller_ids:
-            raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else \
-                               "These gene caller ids you provided are") + " not known to this contigs database: {}.\
-                               You have only 2 lives left. 2 more mistakes, and anvi'o will automatically uninstall \
-                               itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
+        if self.genes_of_interest:
+            # Check for genes that do not appear in the contigs database
+            bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.genes_in_contigs_database]
+            if bad_gene_caller_ids:
+                raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else \
+                                   "These gene caller ids you provided are") + " not known to this contigs database: {}.\
+                                   You have only 2 lives left. 2 more mistakes, and anvi'o will automatically uninstall \
+                                   itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
 
-        # Finally, raise warning if number of genes is greater than 20
-        if len(self.genes_of_interest) > 20:
-            self.run.warning("Modelling protein structures is no joke. The number of genes you want protein structures for is "
-                             "{}, which is a lot (of time!). If its taking too long, consider using the --very-fast flag. "
-                             "CTRL + C to cancel.".format(len(self.genes_of_interest)))
+            # Finally, raise warning if number of genes is greater than 20 FIXME determine average time
+            # per gene and describe here
+            if len(self.genes_of_interest) > 20:
+                self.run.warning("Modelling protein structures is no joke. The number of genes you want protein structures for is "
+                                 "{}, which is a lot (of time!). If its taking too long, consider using the --very-fast flag. "
+                                 "CTRL + C to cancel.".format(len(self.genes_of_interest)))
 
         # if self.percent_identical_cutoff is < 25, you should be careful about accuracy of models
         if self.percent_identical_cutoff < 25:
@@ -487,7 +493,6 @@ class Structure(object):
             return
 
         output_gene_dir = os.path.join(self.full_modeller_output, self.modeller.corresponding_gene_call)
-        filesnpaths.check_output_directory(output_gene_dir)
         shutil.move(self.modeller.directory, output_gene_dir)
 
 
