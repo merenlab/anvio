@@ -1195,6 +1195,24 @@ class KeggMetabolismEstimator(KeggContext):
         return genome_metabolism_superdict
 
 
+    def estimate_for_bins_in_collection(self, kofam_hits, genes_in_splits):
+        bins_metabolism_superdict = {}
+
+        bin_name_to_split_names_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
+        self.run.info_single("%s split names associated with %s bins of in collection '%s' have been "
+                             "successfully recovered 🎊" % (pp(sum([len(v) for v in bin_name_to_split_names_dict.values()])),
+                                                           pp(len(bin_name_to_split_names_dict)),
+                                                           self.collection_name), nl_before=1)
+
+        for bin_name in bin_name_to_split_names_dict:
+            splits_in_bin = bin_name_to_split_names_dict[bin_name]
+            genes_in_bin = [tpl[1] for tpl in genes_in_splits if tpl[0] in splits_in_bin]
+            ko_in_bin = [tpl[1] for tpl in kofam_hits if tpl[0] in genes_in_bin]
+            bins_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(ko_in_bin, splits=splits_in_bin, bin_name=self.bin_name)
+
+        return bins_metabolism_superdict
+
+
     def estimate_metabolism(self):
         """This is the driver function for estimating metabolism.
 
@@ -1208,9 +1226,7 @@ class KeggMetabolismEstimator(KeggContext):
         kegg_metabolism_superdict = {}
 
         if self.profile_db_path and not self.metagenome_mode:
-            raise ConfigError("This class doesn't know how to deal with that yet :/")
-            # isolate genome, with profiling
-            #something like self.estimate_for_bins_in_collection()
+            kegg_metabolism_superdict = self.estimate_for_bins_in_collection(hits_to_consider, splits_to_consider)
         elif not self.profile_db_path and not self.metagenome_mode:
             kegg_metabolism_superdict = self.estimate_for_genome(hits_to_consider, splits_to_consider)
         elif self.profile_db_path and self.metagenome_mode:
