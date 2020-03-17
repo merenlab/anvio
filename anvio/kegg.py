@@ -991,10 +991,17 @@ class KeggMetabolismEstimator(KeggContext):
                 module_completeness, over_complete_threshold, has_nonessential_step, has_no_ko_step, defined_by_modules
 
 
-    def adjust_module_completeness(self, mod, meta_dict_for_bin):
+    def adjust_module_completeness_for_bin(self, mod, meta_dict_for_bin):
         """This function adjusts completeness of modules that are defined by other modules.
 
         This can only be done after all other modules have been evaluated for completeness.
+        The function uses similar logic as compute_module_completeness_for_bin() to re-assess whether steps defined
+        by other modules are complete, and updates the metabolism completess dictionary accordingly.
+
+        PARAMETERS
+        ==========
+        mod                 string, the module number to adjust
+        meta_dict_for_bin   metabolism completeness dictionary for the current bin
         """
 
         for step in meta_dict_for_bin[mod]["step_list"]:
@@ -1125,7 +1132,7 @@ class KeggMetabolismEstimator(KeggContext):
         # go back and adjust completeness of modules that are defined by other modules
         if mods_def_by_modules:
             for mod in mods_def_by_modules:
-                self.adjust_module_completeness(mod, genome_metabolism_dict[self.contigs_db_project_name])
+                self.adjust_module_completeness_for_bin(mod, genome_metabolism_dict[self.contigs_db_project_name])
 
         # notify user of the modules that gave some fishy results
         if not self.quiet:
