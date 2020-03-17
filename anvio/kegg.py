@@ -988,7 +988,7 @@ class KeggMetabolismEstimator(KeggContext):
 
         return module_step_list, module_complete_steps, module_nonessential_steps, module_complete_nonessential_steps, \
                 module_total_steps, module_num_complete_steps, module_num_nonessential_steps, module_num_complete_nonessential_steps, \
-                module_completeness, over_complete_threshold, has_nonessential_step, has_no_ko_step
+                module_completeness, over_complete_threshold, has_nonessential_step, has_no_ko_step, defined_by_modules
 
 
     def estimate_for_genome(self, kofam_hits, genes_in_splits):
