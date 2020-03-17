@@ -265,11 +265,6 @@ class Structure(object):
 
             filesnpaths.is_output_file_writable(self.structure_db_path)
 
-            # identify which genes user wants to model structures for
-            self.genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
-        else:
-            self.genes_of_interest = None
-
         # init StructureDatabase
         self.structure_db = StructureDatabase(self.structure_db_path, self.contigs_db_hash, create_new=create)
 
@@ -278,8 +273,10 @@ class Structure(object):
         # overwrite self.args.skip_DSSP if create=False
         self.modeller_params = self.get_modeller_params()
         self.skip_DSSP = A('skip_DSSP', bool)
-        self.structure_db.store_modeller_params(self.modeller_params)
-        self.structure_db.db.set_meta_value('skip_DSSP', self.skip_DSSP)
+
+        if self.create:
+            self.structure_db.store_modeller_params(self.modeller_params)
+            self.structure_db.db.set_meta_value('skip_DSSP', self.skip_DSSP)
 
         # init annotation sources
         self.contactmap = ContactMap()
@@ -414,28 +411,16 @@ class Structure(object):
         return genes_of_interest
 
 
-    def skip_gene_if_not_clean(self, corresponding_gene_call, fasta_path):
-        """Do not try modelling gene if it is not clean"""
-
-        fasta = u.SequenceSource(fasta_path); next(fasta)
-        try:
-            utils.is_gene_sequence_clean(fasta.seq, amino_acid=True, can_end_with_stop=False, must_start_with_met=False)
-            return False
-        except ConfigError as error:
-            self.run.warning("You wanted to model a structure for gene ID %d, but it is not what anvi'o "
-                             "considers a 'clean gene'. Anvi'o will move onto the next gene. Here is the "
-                             "error that was raised: \"%s\"" % (corresponding_gene_call, error.e))
-            return True
-
-
     def process(self):
+        genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
+
         # which genes had structures and which did not. this information is added to the structure database self table
         has_structure = {True: [], False: []}
 
         num_genes_tried = 0
-        num_genes_to_try = len(self.genes_of_interest)
+        num_genes_to_try = len(genes_of_interest)
 
-        for corresponding_gene_call in self.genes_of_interest:
+        for corresponding_gene_call in genes_of_interest:
             # MODELLER outputs a lot of stuff into its working directory. A temporary directory is
             # made for each instance of MODELLER (i.e. each protein), And bits and pieces of this
             # directory are used in the creation of the structure database. If self.full_modeller_output is
@@ -471,13 +456,13 @@ class Structure(object):
 
             self.store_gene(modeller_out, residue_info_dataframe)
 
-            self.dump_raw_results()
+            self.dump_raw_results(modeller_out)
 
             num_genes_tried += 1
 
             # We update self.table every gene so that if the operation is cancelled, the db survives
             # as a valid db
-            self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in self.genes_of_interest]))
+            self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in genes_of_interest]))
             self.structure_db.db.set_meta_value('genes_with_structure', ",".join(has_structure[True]))
             self.structure_db.db.set_meta_value('genes_without_structure', ",".join(has_structure[False]))
 
@@ -487,6 +472,20 @@ class Structure(object):
         self.structure_db.disconnect()
 
         self.run.info("Structure database", self.structure_db_path)
+
+
+    def skip_gene_if_not_clean(self, corresponding_gene_call, fasta_path):
+        """Do not try modelling gene if it is not clean"""
+
+        fasta = u.SequenceSource(fasta_path); next(fasta)
+        try:
+            utils.is_gene_sequence_clean(fasta.seq, amino_acid=True, can_end_with_stop=False, must_start_with_met=False)
+            return False
+        except ConfigError as error:
+            self.run.warning("You wanted to model a structure for gene ID %d, but it is not what anvi'o "
+                             "considers a 'clean gene'. Anvi'o will move onto the next gene. Here is the "
+                             "error that was raised: \"%s\"" % (corresponding_gene_call, error.e))
+            return True
 
 
     def get_gene_contribution_to_residue_info_table(self, corresponding_gene_call, pdb_filepath):
@@ -547,20 +546,17 @@ class Structure(object):
     def run_modeller(self):
         """Calls and returns results of MODELLER.MODELLER driver"""
 
-        self.modeller = MODELLER.MODELLER(self.args, lazy_init=True)
-        modeller_out = self.modeller.process()
-
-        return modeller_out
+        return MODELLER.MODELLER(self.args, lazy_init=True).process()
 
 
-    def dump_raw_results(self):
+    def dump_raw_results(self, modeller_out):
         """Dump all raw modeller output into self.output_gene_dir if self.full_modeller_output"""
 
         if not self.full_modeller_output:
             return
 
-        output_gene_dir = os.path.join(self.full_modeller_output, self.modeller.corresponding_gene_call)
-        shutil.move(self.modeller.directory, output_gene_dir)
+        output_gene_dir = os.path.join(self.full_modeller_output, modeller_out['corresponding_gene_call'])
+        shutil.move(modeller_out['directory'], output_gene_dir)
 
 
     def store_gene(self, modeller_out, residue_info_dataframe):

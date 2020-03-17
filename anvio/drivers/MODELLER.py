@@ -106,6 +106,7 @@ class MODELLER:
             "percent_identical_cutoff" : self.percent_identical_cutoff,
             "very_fast"                : self.very_fast,
             "deviation"                : self.deviation,
+            "directory"                : self.directory,
         }
 
         # All MODELLER databases are housed in self.database_dir
