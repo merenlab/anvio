@@ -152,6 +152,8 @@ class StructureDatabase(object):
 
 
     def store(self, table_name, key=None):
+        """Stores entries placed in self.entries[table_name], then empties self.entries[table_name]"""
+
         rows_data = self.entries[table_name]
 
         if type(rows_data) == list:
@@ -249,43 +251,35 @@ class Structure(object):
         self.contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         self.contigs_db_hash = self.contigs_db.meta['contigs_db_hash']
 
+        # init ContigsSuperClass
+        self.contigs_super = ContigsSuperclass(self.args)
+
         if self.create:
-            # MODELLER params FIXME may not be needed
-            self.modeller_database = A('modeller_databaseth ', null)
-            self.scoring_method = A('scoring_method', null)
-            self.max_number_templates = A('max_number_templates', null)
-            self.percent_identical_cutoff = A('percent_identical_cutoff', null)
-            self.num_models = A('num_models', null)
-            self.deviation = A('deviation', null)
-            self.very_fast = A('very_fast', bool)
-
-            self.skip_DSSP = A('skip_DSSP', bool)
-
             # check database output
             if not self.structure_db_path:
                 self.structure_db_path = "STRUCTURE.db"
             if not self.structure_db_path.endswith('.db'):
                 raise ConfigError("The structure database output file (`-o / --output`) must end with '.db'")
+            if filesnpaths.is_file_exists(self.structure_db_path, dont_raise=True):
+                raise ConfigError("This structure DB already exists. Anvi'o will not overwrite")
+
             filesnpaths.is_output_file_writable(self.structure_db_path)
 
             # identify which genes user wants to model structures for
             self.genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
-
         else:
             self.genes_of_interest = None
-            self.set_modeller_params()
-
-        self.sanity_check()
 
         # init StructureDatabase
-        self.structure_db = StructureDatabase(
-            self.structure_db_path,
-            self.contigs_db_hash,
-            create_new=create,
-        )
+        self.structure_db = StructureDatabase(self.structure_db_path, self.contigs_db_hash, create_new=create)
 
-        # init ContigsSuperClass
-        self.contigs_super = ContigsSuperclass(self.args)
+        # Determine the modeller parameters and store in db
+        # NOTE self.skip_DSSP is down here because get_modeller_params has the potential to
+        # overwrite self.args.skip_DSSP if create=False
+        self.modeller_params = self.get_modeller_params()
+        self.skip_DSSP = A('skip_DSSP', bool)
+        self.structure_db.store_modeller_params(self.modeller_params)
+        self.structure_db.db.set_meta_value('skip_DSSP', self.skip_DSSP)
 
         # init annotation sources
         self.contactmap = ContactMap()
@@ -293,28 +287,60 @@ class Structure(object):
         if not self.skip_DSSP:
             self.dssp = DSSPClass()
 
+        self.sanity_check()
+
+
+    def get_modeller_params(self):
+        """Parses self.args to return dictionary of modeller parameters
+
+        Returns
+        =======
+        output : dict
+
+        Notes
+        =====
+        - If self.create=False, parameters in self.args accessed by this function are first set via
+          self.set_prior_modeller_params
+        """
+
+        if not self.create:
+            # Populates attributes of self.args based on metavalues in database
+            self.set_prior_modeller_params()
+
+        A = lambda x, t: t(self.args.__dict__[x]) if x in self.args.__dict__ else None
+        null = lambda x: x
+
+        return {
+            'modeller_database': A('modeller_database', null),
+            'scoring_method': A('scoring_method', null),
+            'max_number_templates': A('max_number_templates', null),
+            'percent_identical_cutoff': A('percent_identical_cutoff', null),
+            'num_models': A('num_models', null),
+            'deviation': A('deviation', null),
+            'very_fast': A('very_fast', bool),
+        }
+
+
+    def set_prior_modeller_params(self):
+        """Add the previous run parameters used during database creation into self.args
+
+        If the class is initiated with create=False, it means that the user is going to modify the
+        currently existing database, probably by running modeller. To ensure consistency between
+        parameters used during creation and during modification, the previously used run parameters
+        are determined from the structure database here and then set as arguments to self.args.
+        """
+
+        run_params_dict = self.structure_db.get_run_params_dict()
+        for param, value in run_params_dict.items():
+            setattr(self.args, param, value)
+
 
     def sanity_check(self):
-        if self.genes_of_interest:
-            # Check for genes that do not appear in the contigs database
-            bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.genes_in_contigs_database]
-            if bad_gene_caller_ids:
-                raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else \
-                                   "These gene caller ids you provided are") + " not known to this contigs database: {}.\
-                                   You have only 2 lives left. 2 more mistakes, and anvi'o will automatically uninstall \
-                                   itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
-
-            # Finally, raise warning if number of genes is greater than 20 FIXME determine average time
-            # per gene and describe here
-            if len(self.genes_of_interest) > 20:
-                self.run.warning("Modelling protein structures is no joke. The number of genes you want protein structures for is "
-                                 "{}, which is a lot (of time!). If its taking too long, consider using the --very-fast flag. "
-                                 "CTRL + C to cancel.".format(len(self.genes_of_interest)))
-
         # if self.percent_identical_cutoff is < 25, you should be careful about accuracy of models
-        if self.percent_identical_cutoff < 25:
+        if self.modeller_params['percent_identical_cutoff'] < 25:
             self.run.warning("You selected a percent identical cutoff of {}%. Below 25%, you should pay close attention "
-                             "to the quality of the proteins...".format(self.percent_identical_cutoff))
+                             "to the quality of the proteins... Keep in mind random sequence are expected to share "
+                             "around 10% identity.".format(self.modeller_params['percent_identical_cutoff']))
 
         if self.skip_DSSP:
             self.run.warning("You requested to skip amino acid residue annotation with DSSP. A bold move only an expert could justify... "
