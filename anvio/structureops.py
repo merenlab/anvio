@@ -176,8 +176,20 @@ class StructureDatabase(object):
 
 
 class Structure(object):
-    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+    """Structure operations
+
+    Parameters
+    ==========
+    args : argparse.Namespace
+
+    create : bool, False
+        Whether or not the structure DB is going to be made or not. If False, it should already
+        exist
+    """
+
+    def __init__(self, args, create=False, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
+        self.create = create
         self.run = run
         self.progress = progress
 
@@ -189,7 +201,7 @@ class Structure(object):
         self.bin_id = A('bin_id', null)
         self.collection_name = A('collection_name', null)
         self.gene_caller_ids = A('gene_caller_ids', null)
-        self.output_db_path = A('output_db_path', null)
+        self.structure_db_path = A('structure_db_path', null)
         self.full_modeller_output = A('dump_dir', null)
         self.skip_DSSP = A('skip_DSSP', bool)
         self.modeller_executable = A('modeller_executable', null)
@@ -208,11 +220,11 @@ class Structure(object):
         self.very_fast = A('very_fast', bool)
 
         # check database output
-        if not self.output_db_path:
-            self.output_db_path = "STRUCTURE.db"
-        if not self.output_db_path.endswith('.db'):
+        if not self.structure_db_path:
+            self.structure_db_path = "STRUCTURE.db"
+        if not self.structure_db_path.endswith('.db'):
             raise ConfigError("The structure database output file (`-o / --output`) must end with '.db'")
-        filesnpaths.is_output_file_writable(self.output_db_path)
+        filesnpaths.is_output_file_writable(self.structure_db_path)
 
         # check modeller output
         if self.full_modeller_output:
@@ -221,14 +233,11 @@ class Structure(object):
         # identify which genes user wants to model structures for
         self.genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
 
-        # FIXME may not need
-        self.residue_annotation_df = pd.DataFrame({})
-
         self.sanity_check()
 
         # init StructureDatabase
         self.structure_db = StructureDatabase(
-            self.output_db_path,
+            self.structure_db_path,
             self.contigs_db_hash,
             create_new=True,
         )
@@ -238,6 +247,7 @@ class Structure(object):
 
         # init annotation sources
         self.contactmap = ContactMap()
+
         if not self.skip_DSSP:
             self.dssp = DSSPClass()
 
@@ -383,7 +393,7 @@ class Structure(object):
             raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
 
         self.structure_db.disconnect()
-        self.run.info("Structure database", self.output_db_path)
+        self.run.info("Structure database", self.structure_db_path)
 
 
     def update_structure_database_meta_table(self, has_structure):
@@ -542,7 +552,7 @@ class StructureUpdate(Structure):
         utils.is_contigs_db(self.contigs_db_path)
         self.contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         self.contigs_db_hash = self.contigs_db.meta['contigs_db_hash']
-        self.output_db_path = self.structure_db_path
+        self.structure_db_path = self.structure_db_path
 
         # init ContigsSuperClass
         self.contigs_super = ContigsSuperclass(self.args)

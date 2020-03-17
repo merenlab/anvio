@@ -35,9 +35,11 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 
+@terminal.time_program
 def main(args):
+    args.structure_db_path = args.output_db_path
 
-    structure = structops.Structure(args)
+    structure = structops.Structure(args, create=True)
     structure.process()
 
 
