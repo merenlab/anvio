@@ -39,7 +39,8 @@ progress = terminal.Progress()
 def main(args):
     args.structure_db_path = args.output_db_path
     structure = structops.Structure(args, create=True)
-    structure.process()
+    #structure.process()
+    structure.run_multi_thread()
 
 
 if __name__ == '__main__':
@@ -105,7 +106,7 @@ if __name__ == '__main__':
                         the proper percent identical is 50%%. (This helps us avoid the inflation of
                         identity scores due to only partially good matches). The default is 30.""")
 
-    groupM.add_argument("--max-number-templates", "-T", type=int, default=5, help = \
+    groupM.add_argument("--max-number-templates", "-t", type=int, default=5, help = \
                         """Generally speaking it is best to use as many templates as possible given
                         that they have high proper percent identity to the gene of interest. Taken
                         from https://salilab.org/modeller/methenz/andras/node4.html: 'The use of
@@ -131,6 +132,9 @@ if __name__ == '__main__':
 
     groupE.add_argument("--modeller-executable", type=str, help = \
                         """ The MODELLER program to use. For example, `mod9.19`. The default is `mod9.22`""")
+
+    groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupE.add_argument(*anvio.A('write-buffer-size-per-thread'), **anvio.K('write-buffer-size-per-thread', {'default':10}))
 
     args = anvio.get_args(parser)
 
