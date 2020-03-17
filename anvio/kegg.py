@@ -769,6 +769,7 @@ class KeggMetabolismEstimator(KeggContext):
 
         This requires some parsing of the module DEFINITION fields. In these fields, we have the following:
         "Kxxxxx"    (KO numbers) indicating which enzyme contributes to a step in the module
+        "Mxxxxx"    (module numbers) indicating that the module encompasses another module. This is rare. See note below.
         " "         (spaces) separating module steps; indicating an AND operation
         ","         (commas) separating alternatives (which can be singular KOs or entire pathways); indicating an OR operation
         "()"        (parentheses) enclosing comma-separated alternatives
@@ -781,9 +782,22 @@ class KeggMetabolismEstimator(KeggContext):
         This will be parsed into the condition statement: (K13937 OR ((K00036 OR K19243) AND (K01057 OR K07404)))
         where the KOs will be replaced by True if they are present and False otherwise.
 
-        While we are parsing, we save the individual module steps in lists (one for all steps, one for complete steps) for easy access later.
+        While we are parsing, we save the individual module steps in lists (ie, one for all steps, one for complete steps) for easy access later.
         Afterwards we compute the completeness of the module based on the specified completion threshold.
         Then, we return a bunch of information about the completeness of the module, which can then be placed into the module completeness dictionary.
+
+        There are 3 special cases to consider here.
+        1) Non-essential steps. These are steps that are marked with a preceding "-" to indicate that they are not required for the module to
+           be considered complete. They often occur in pathways with multiple forks. What we do with these is save and count them separately as
+           non-essential steps, but we do not use them in our module completeness calculations. Another thing we do is continue parsing the rest
+           of the module steps as normal, even though some of them may affect steps after the non-essential one. That may eventually change.
+           See comments in the code below.
+        2) Steps without associated KOs. These are steps marked as "--". They may require an enzyme, but if so that enzyme is not in the KOfam
+           database, so we can't know whether they are complete or not from our KOfam hits. Therefore, we assume these steps are incomplete, and
+           warn the user to go back and check the module manually.
+        3) Steps defined by entire modules. These steps have module numbers instead of KOs, so they require an entire module to be complete in
+           order to be complete. We can't figure this out until after we've evaluated all modules, so we simply parse these steps without marking
+           them complete, and later will go back to adjust the completeness score once all modules have been marked complete or not.
 
         PARAMETERS
         ==========
@@ -795,12 +809,16 @@ class KeggMetabolismEstimator(KeggContext):
         module_step_list                list of strings, each string is an individual step in the module (may have sub-steps if there are alternate pathways)
         module_complete_steps           list of strings, each string is a step in the module that is considered complete based on KO availability
         module_nonessential_steps       list of strings, each string is a step in the module that doesn't count for completeness estimates
-        module_total_steps              int, the total number of steps in the module
-        module_num_complete_steps       int, the number of complete steps in the module
-        module_num_nonessential_steps           int, the total number of nonessential steps in the module
-        module_num_complete_nonessential_steps  int, the number of nonessential steps in the module that were found to be complete
+        module_complete_nonessential_steps          list of strings, each string is a non-essential step that is considered complete based on KO availability
+        module_total_steps                  int, the total number of steps in the module
+        module_num_complete_steps           int, the number of complete steps in the module
+        module_num_nonessential_steps       int, the total number of nonessential steps in the module
+        module_num_complete_nonessential_steps      int, the number of nonessential steps in the module that were found to be complete
         module_completeness             float, a decimal indicating the fraction of complete steps in the module
         over_complete_threshold         boolean, whether or not the module is considered "complete" overall based on the threshold fraction of completeness
+        has_nonessential_step           boolean, whether or not the module contains non-essential steps. Used for warning the user about these.
+        has_no_ko_step                  boolean, whether or not the module contains steps without associated KOs. Used for warning the user about these.
+        defined_by_modules              boolean, whether or not the module contains steps defined by other modules. Used for going back to adjust completeness later.
         """
 
         if not present_list_for_mnum:
