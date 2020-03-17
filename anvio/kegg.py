@@ -764,7 +764,7 @@ class KeggMetabolismEstimator(KeggContext):
 
         return bin_level_module_dict
 
-    def compute_module_completeness(self, mnum, present_list_for_mnum):
+    def compute_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
         """This function calculates the completeness of the specified module.
 
         This requires some parsing of the module DEFINITION fields. In these fields, we have the following:
@@ -802,9 +802,9 @@ class KeggMetabolismEstimator(KeggContext):
         PARAMETERS
         ==========
         mnum                    string, module number to work on
-        present_list_for_mnum   list of strings, the KOs found to be present in this module for the current genome/bin
+        meta_dict_for_bin       metabolism completeness dict for the current bin, to be modified in-place
 
-        RETURNS
+        VARIABLES FOR UPDATING METABOLISM COMPLETENESS DICT
         =======
         module_step_list                list of strings, each string is an individual step in the module (may have sub-steps if there are alternate pathways)
         module_complete_steps           list of strings, each string is a step in the module that is considered complete based on KO availability
@@ -815,12 +815,16 @@ class KeggMetabolismEstimator(KeggContext):
         module_num_nonessential_steps       int, the total number of nonessential steps in the module
         module_num_complete_nonessential_steps      int, the number of nonessential steps in the module that were found to be complete
         module_completeness             float, a decimal indicating the fraction of complete steps in the module
+
+        RETURNS
+        =======
         over_complete_threshold         boolean, whether or not the module is considered "complete" overall based on the threshold fraction of completeness
         has_nonessential_step           boolean, whether or not the module contains non-essential steps. Used for warning the user about these.
         has_no_ko_step                  boolean, whether or not the module contains steps without associated KOs. Used for warning the user about these.
         defined_by_modules              boolean, whether or not the module contains steps defined by other modules. Used for going back to adjust completeness later.
         """
 
+        present_list_for_mnum = meta_dict_for_bin[mnum]["present_kos"]
         if not present_list_for_mnum:
             # no KOs in this module are present
             if anvio.DEBUG:
@@ -985,10 +989,21 @@ class KeggMetabolismEstimator(KeggContext):
         module_completeness = module_num_complete_steps / module_total_steps
         over_complete_threshold = True if module_completeness >= self.completeness_threshold else False
 
+        # instead of returning everything, we update the metabolism completeness dictionary in place
+        meta_dict_for_bin[mnum]["step_list"] = module_step_list
+        meta_dict_for_bin[mnum]["complete_step_list"] = module_complete_steps
+        meta_dict_for_bin[mnum]["nonessential_step_list"] = module_nonessential_steps
+        meta_dict_for_bin[mnum]["complete_nonessential_step_list"]= module_complete_nonessential_steps
+        meta_dict_for_bin[mnum]["num_steps"] = module_total_steps
+        meta_dict_for_bin[mnum]["num_complete_steps"] = module_num_complete_steps
+        meta_dict_for_bin[mnum]["num_nonessential_steps"] = module_num_nonessential_steps
+        meta_dict_for_bin[mnum]["num_complete_nonessential_steps"] = module_num_complete_nonessential_steps
+        meta_dict_for_bin[mnum]["percent_complete"] = module_completeness
+        meta_dict_for_bin[mnum]["complete"] = over_complete_threshold
+        if over_complete_threshold:
+            meta_dict_for_bin["num_complete_modules"] += 1
 
-        return module_step_list, module_complete_steps, module_nonessential_steps, module_complete_nonessential_steps, \
-                module_total_steps, module_num_complete_steps, module_num_nonessential_steps, module_num_complete_nonessential_steps, \
-                module_completeness, over_complete_threshold, has_nonessential_step, has_no_ko_step, defined_by_modules
+        return over_complete_threshold, has_nonessential_step, has_no_ko_step, defined_by_modules
 
 
     def adjust_module_completeness_for_bin(self, mod, meta_dict_for_bin):
@@ -1092,33 +1107,22 @@ class KeggMetabolismEstimator(KeggContext):
         # get KO presence in modules
         genome_metabolism_dict[self.contigs_db_project_name] = self.mark_kos_present_for_list_of_splits(ko_in_genome, split_list=splits_in_genome,
                                                                                                     bin_name=self.contigs_db_project_name)
-        num_complete_modules = 0
+        genome_metabolism_dict[self.contigs_db_project_name]["num_complete_modules"] = 0
         complete_mods = []
+        mods_def_by_modules = [] # a list of modules that have module numbers in their definitions
         # modules to warn about
         mods_with_unassociated_ko = [] # a list of modules that have "--" steps without an associated KO
         mods_with_nonessential_steps = [] # a list of modules that have nonessential steps like "-K11024"
-        mods_def_by_modules = [] # a list of modules that have module numbers in their definitions
 
         # estimate completeness of each module
         for mod in genome_metabolism_dict[self.contigs_db_project_name].keys():
-            mod_steps, mod_complete_steps, mod_nonessential_steps, mod_complete_nonessential_steps, mod_num_steps, mod_num_complete_steps, \
-            mod_num_nonessential_steps, mod_num_complete_nonessential_steps, mod_percent_complete, \
+            if mod == "num_complete_modules":
+                continue
             mod_is_complete, has_nonessential_step, has_no_ko_step, defined_by_modules \
-            = self.compute_module_completeness(mod, genome_metabolism_dict[self.contigs_db_project_name][mod]["present_kos"])
-            # assign completeness info back to module dict
-            genome_metabolism_dict[self.contigs_db_project_name][mod]["step_list"] = mod_steps
-            genome_metabolism_dict[self.contigs_db_project_name][mod]["complete_step_list"] = mod_complete_steps
-            genome_metabolism_dict[self.contigs_db_project_name][mod]["nonessential_step_list"] = mod_nonessential_steps
-            genome_metabolism_dict[self.contigs_db_project_name][mod]["complete_nonessential_step_list"]= mod_complete_nonessential_steps
-            genome_metabolism_dict[self.contigs_db_project_name][mod]["num_steps"] = mod_num_steps
-            genome_metabolism_dict[self.contigs_db_project_name][mod]["num_complete_steps"] = mod_num_complete_steps
-            genome_metabolism_dict[self.contigs_db_project_name][mod]["num_nonessential_steps"] = mod_num_nonessential_steps
-            genome_metabolism_dict[self.contigs_db_project_name][mod]["num_complete_nonessential_steps"] = mod_num_complete_nonessential_steps
-            genome_metabolism_dict[self.contigs_db_project_name][mod]["percent_complete"] = mod_percent_complete
-            genome_metabolism_dict[self.contigs_db_project_name][mod]["complete"] = mod_is_complete
+            = self.compute_module_completeness_for_bin(mod, genome_metabolism_dict[self.contigs_db_project_name])
+
 
             if mod_is_complete:
-                num_complete_modules += 1
                 complete_mods.append(mod)
             if has_nonessential_step:
                 mods_with_nonessential_steps.append(mod)
