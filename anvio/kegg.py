@@ -1088,32 +1088,31 @@ class KeggMetabolismEstimator(KeggContext):
 
         return now_complete
 
+    def estimate_for_list_of_splits(self, ko_hits_in_splits, splits=None, bin_name=None):
+        """This is the atomic metabolism estimator function, which builds a metabolism completeness dictionary for an arbitrary list of splits.
 
-    def estimate_for_genome(self, kofam_hits, genes_in_splits):
-        """This is the metabolism estimation function for a contigs DB that contains a single genome.
-
-        It returns the initial metabolism completion dictionary for that genome, wrapped in the superdict format.
-        This dictionary at first contains the KOs that are present in the genome for each KEGG module. It is later
-        processed to estimate the completion of each module.
+        For example, the list of splits may represent a bin or a single isolate genome.
+        The metabolism completeness dictionary is first initialized to contain the KOs that are present in the genome for each KEGG module.
+        It is later updated with the individual steps and completion estimates for each module.
 
         PARAMETERS
         ==========
-        kofam_hits          list of (gene_call_id, ko_num) tuples, all belong to this single genome
-        genes_in_splits     list of (split, gene_call_id) tuples, all belong to this single genome
+        ko_hits_in_splits       a list of KO numbers indicating the KOfam hits that have occurred in this list of splits
+        splits                  a list of splits identifiers
+        bin_name                the name of the bin that we are working with
 
         RETURNS
         =======
-        genome_metabolism_dict      dictionary mapping genome name to its metabolism completeness dictionary
+        metabolism_dict_for_list_of_splits      the metabolism completeness dictionary of dictionaries for this list of splits. It contains
+                                                one dictionary of module steps and completion information for each module (keyed by module number),
+                                                as well as one key num_complete_modules that tracks the number of complete modules found in these splits.
+                                                Calling functions should assign this dictionary to a metabolism superdict with the bin name as a key.
         """
 
-        genome_metabolism_dict = {}
-        # get list of KOs only - since all splits belong to one genome, we can take all the hits
-        ko_in_genome = [tpl[1] for tpl in kofam_hits]
-        splits_in_genome = [tpl[0] for tpl in genes_in_splits]
-        # get KO presence in modules
-        genome_metabolism_dict[self.contigs_db_project_name] = self.mark_kos_present_for_list_of_splits(ko_in_genome, split_list=splits_in_genome,
-                                                                                                    bin_name=self.contigs_db_project_name)
-        genome_metabolism_dict[self.contigs_db_project_name]["num_complete_modules"] = 0
+        metabolism_dict_for_list_of_splits = self.mark_kos_present_for_list_of_splits(ko_hits_in_splits, split_list=splits,
+                                                                                                    bin_name=bin_name)
+        metabolism_dict_for_list_of_splits["num_complete_modules"] = 0
+
         complete_mods = []
         mods_def_by_modules = [] # a list of modules that have module numbers in their definitions
         # modules to warn about
@@ -1121,11 +1120,11 @@ class KeggMetabolismEstimator(KeggContext):
         mods_with_nonessential_steps = [] # a list of modules that have nonessential steps like "-K11024"
 
         # estimate completeness of each module
-        for mod in genome_metabolism_dict[self.contigs_db_project_name].keys():
+        for mod in metabolism_dict_for_list_of_splits.keys():
             if mod == "num_complete_modules":
                 continue
             mod_is_complete, has_nonessential_step, has_no_ko_step, defined_by_modules \
-            = self.compute_module_completeness_for_bin(mod, genome_metabolism_dict[self.contigs_db_project_name])
+            = self.compute_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
 
             if mod_is_complete:
                 complete_mods.append(mod)
@@ -1139,7 +1138,7 @@ class KeggMetabolismEstimator(KeggContext):
         # go back and adjust completeness of modules that are defined by other modules
         if mods_def_by_modules:
             for mod in mods_def_by_modules:
-                mod_is_complete = self.adjust_module_completeness_for_bin(mod, genome_metabolism_dict[self.contigs_db_project_name])
+                mod_is_complete = self.adjust_module_completeness_for_bin(mod, metabolism_dict_for_list_of_splits)
 
                 if mod_is_complete:
                     complete_mods.append(mod)
@@ -1163,8 +1162,34 @@ class KeggMetabolismEstimator(KeggContext):
                                  % (", ".join(mods_with_unassociated_ko)))
 
         self.run.info("Module completion threshold", self.completeness_threshold)
-        self.run.info("Number of complete modules", genome_metabolism_dict[self.contigs_db_project_name]["num_complete_modules"])
+        self.run.info("Number of complete modules", metabolism_dict_for_list_of_splits["num_complete_modules"])
         self.run.info("Complete modules", ", ".join(complete_mods))
+
+        return metabolism_dict_for_list_of_splits
+
+
+    def estimate_for_genome(self, kofam_hits, genes_in_splits):
+        """This is the metabolism estimation function for a contigs DB that contains a single genome.
+
+        Assuming this contigs DB contains only one genome, it sends all of the splits and their kofam hits to the atomic
+        estimation function for processing. It then returns the metabolism completion dictionary for the genome, wrapped in the superdict format.
+
+        PARAMETERS
+        ==========
+        kofam_hits          list of (gene_call_id, ko_num) tuples, all belong to this single genome
+        genes_in_splits     list of (split, gene_call_id) tuples, all belong to this single genome
+
+        RETURNS
+        =======
+        genome_metabolism_dict      dictionary mapping genome name to its metabolism completeness dictionary
+        """
+
+        genome_metabolism_dict = {}
+        # get list of KOs only - since all splits belong to one genome, we can take all the hits
+        ko_in_genome = [tpl[1] for tpl in kofam_hits]
+        splits_in_genome = [tpl[0] for tpl in genes_in_splits]
+
+        genome_metabolism_dict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(ko_in_genome, splits=splits_in_genome, bin_name=self.contigs_db_project_name)
 
         return genome_metabolism_dict
 
