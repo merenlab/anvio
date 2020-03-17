@@ -991,6 +991,14 @@ class KeggMetabolismEstimator(KeggContext):
                 module_completeness, over_complete_threshold, has_nonessential_step, has_no_ko_step, defined_by_modules
 
 
+    def adjust_module_completeness(self, mod, meta_dict_for_bin):
+        """This function adjusts completeness of modules that are defined by other modules.
+
+        This can only be done after all other modules have been evaluated for completeness.
+        """
+        pass
+
+
     def estimate_for_genome(self, kofam_hits, genes_in_splits):
         """This is the metabolism estimation function for a contigs DB that contains a single genome.
 
