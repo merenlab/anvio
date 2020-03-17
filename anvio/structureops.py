@@ -313,7 +313,7 @@ class Structure(object):
         genes_of_interest = None
 
         # identify the gene caller ids of all genes available
-        self.genes_in_contigs_database = set(dbops.ContigsSuperclass(self.args).genes_in_splits.keys())
+        self.genes_in_contigs_database = set(self.contigs_super.genes_in_contigs_dict.keys())
 
         if not self.genes_in_contigs_database:
             raise ConfigError("This contigs database does not contain any identified genes...")
