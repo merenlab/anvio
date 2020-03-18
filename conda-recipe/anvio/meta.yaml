@@ -28,7 +28,9 @@ requirements:
     - r
     - r-stringi
     - r-tidyverse
+    - r-magrittr
     - bioconductor-qvalue
+    - trnascan-se
 
 test:
   commands:
