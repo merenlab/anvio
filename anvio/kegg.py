@@ -1208,7 +1208,7 @@ class KeggMetabolismEstimator(KeggContext):
             splits_in_bin = bin_name_to_split_names_dict[bin_name]
             genes_in_bin = [tpl[1] for tpl in genes_in_splits if tpl[0] in splits_in_bin]
             ko_in_bin = [tpl[1] for tpl in kofam_hits if tpl[0] in genes_in_bin]
-            bins_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(ko_in_bin, splits=splits_in_bin, bin_name=self.bin_name)
+            bins_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(ko_in_bin, splits=splits_in_bin, bin_name=bin_name)
 
         return bins_metabolism_superdict
 
