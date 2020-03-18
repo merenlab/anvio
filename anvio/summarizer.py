@@ -27,10 +27,7 @@ import anvio.summarizer as summarizer
 import os
 import sys
 import gzip
-import glob
 import numpy
-import shutil
-import hashlib
 import mistune
 import argparse
 import textwrap
@@ -39,7 +36,6 @@ import pandas as pd
 from collections import Counter
 
 import anvio
-import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.sequence as seqlib
