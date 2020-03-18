@@ -36,7 +36,7 @@ class MODELLER:
     """Driver class for MODELLER
 
     This class is a driver to run MODELLER scripts. MODELLER scripts are written
-    in python 2.3 which is the language MODELLER uses.
+    in python 2.3 which is the language MODELLER used when this driver was written.
 
     Parameters
     ==========
@@ -53,6 +53,9 @@ class MODELLER:
     lazy_init : bool, False
         If True, check_MODELLER will not be called
 
+    skip_warnings : bool, False
+        If True, all warnings will be suppressed
+
     Notes
     =====
     - You can add MODELLER scripts by storing them in anvio/data/misc/MODELLER/scripts. Each script
@@ -61,10 +64,12 @@ class MODELLER:
       self.run_align_to_templates. Please see that method if you want to add your own script.
     """
 
-    def __init__(self, args, target_fasta_path, directory=None, run=terminal.Run(), lazy_init=False):
+    def __init__(self, args, target_fasta_path, directory=None, run=terminal.Run(), lazy_init=False, skip_warnings=False):
 
         self.args = args
         self.run = run
+        if skip_warnings:
+            self.run.verbose = False
         self.lazy_init = lazy_init
 
         self.target_fasta_path = target_fasta_path
@@ -77,7 +82,7 @@ class MODELLER:
         self.very_fast = A('very_fast', bool)
         self.executable = A('modeller_executable', null) or up_to_date_modeller_exec
         self.num_models = A('num_models', int)
-        self.modeller_database = A('modeller_database', str) or "pdb_95"
+        self.modeller_database = A('modeller_database', str) or 'pdb_95'
         self.max_number_templates = A('max_number_templates', null)
         self.percent_identical_cutoff = A('percent_identical_cutoff', null)
         self.deviation = A('deviation', null)
@@ -167,7 +172,7 @@ class MODELLER:
             self.out["structure_exists"] = True
 
         except self.EndModeller as e:
-            print(e)
+            pass
 
         except ModellerScriptError as e:
             print(e)
@@ -276,7 +281,7 @@ class MODELLER:
                           "Protein ID: {}, Chain {} ({:.1f}% identical)".format(pdb_id, chain_id, ppi))
 
 
-    def sanity_check(self):
+    def sanity_check(self, skip_warnings=False):
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
 
