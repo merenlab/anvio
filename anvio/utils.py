@@ -18,7 +18,6 @@ import webbrowser
 import subprocess
 import tracemalloc
 import configparser
-import multiprocessing
 import urllib.request, urllib.error, urllib.parse
 
 import numpy as np
@@ -1263,10 +1262,10 @@ def compare_times(calls, as_matrix=False, iterations_per_call=1):
         return dict(zip(names, averaged_call_times))
 
     matrix = []
-    for i, time in enumerate(call_times):
+    for i, _time in enumerate(call_times):
         row = []
 
-        for j, time in enumerate(call_times):
+        for j, _time in enumerate(call_times):
             row.append(averaged_call_times[j] - averaged_call_times[i] if i > j else 'NA')
 
         matrix.append(row)
