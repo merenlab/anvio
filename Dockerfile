@@ -16,12 +16,15 @@ SHELL ["/bin/bash", "-c"]
 RUN conda install -y conda-build
 
 COPY conda-recipe /tmp/conda-recipe
-RUN conda-build /tmp/conda-recipe/anvio-minimal
-RUN conda-build /tmp/conda-recipe/anvio
 
-# Install Anvi'o
+# build and install anvio-minimal
+RUN conda-build /tmp/conda-recipe/anvio-minimal
 RUN conda index /opt/conda/envs/anvioenv/conda-bld/
 RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio-minimal=$ANVIO_VERSION
+
+# build and install anvio meta package
+RUN conda-build /tmp/conda-recipe/anvio
+RUN conda index /opt/conda/envs/anvioenv/conda-bld/
 RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio=$ANVIO_VERSION
 
 # Install METABAT and DAS_TOOL
@@ -49,7 +52,10 @@ RUN echo 'export PATH=/opt/MaxBin-2.2.7:$PATH' >> ~/.bashrc
 RUN pip install virtualenv
 RUN apt-get install vim util-linux -yy
 
-# Setup the environment
+# this one is too painful to install through Conda
+RUN Rscript -e 'install.packages(c("optparse"), repos="https://cran.rstudio.com")'
+
+# Cutify the environment
 RUN echo "export PS1=\"\[\e[0m\e[47m\e[1;30m\] :: anvi'o v$ANVIO_VERSION :: \[\e[0m\e[0m \[\e[1;34m\]\]\w\[\e[m\] \[\e[1;32m\]>>>\[\e[m\] \[\e[0m\]\"" >> /root/.bashrc
 
 CMD /bin/bash -l
