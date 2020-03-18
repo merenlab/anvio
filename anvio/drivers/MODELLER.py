@@ -68,7 +68,7 @@ class MODELLER:
 
         self.args = args
         self.run = run
-        if skip_warnings:
+        if skip_warnings and not anvio.DEBUG:
             self.run.verbose = False
         self.lazy_init = lazy_init
 
