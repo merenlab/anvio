@@ -768,7 +768,7 @@ class TrackMemory(object):
 
     def measure(self):
         if self.t is None:
-            raise ConfigError("TrackMemory :: You must start the tracker with self.start()")
+            raise TerminalError("TrackMemory :: You must start the tracker with self.start()")
 
         if self.t.timedelta_to_checkpoint(self.t.timestamp(), self.t.last_checkpoint_key) < datetime.timedelta(seconds = self.at_most_every):
             return False

@@ -108,6 +108,13 @@ essential_genome_info = ['gc_content', 'num_contigs', 'num_splits', 'total_lengt
                          'genes_are_called', 'avg_gene_length', 'num_genes_per_kb', ]
 
 levels_of_taxonomy = ["t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+levels_of_taxonomy_unknown = {"t_domain": 'Unknown_domains',
+                              "t_phylum": 'Unknown_phyla',
+                              "t_class": 'Unknown_classes',
+                              "t_order": 'Unknown_orders',
+                              "t_family": 'Unknown_families',
+                              "t_genus": 'Unknown_genera',
+                              "t_species": 'Unknown_species'}
 
 for run_type_and_default_config_tuples in [('single', single_default), ('merged', merged_default), ('blank', blank_default)]:
     run_type, default_config = run_type_and_default_config_tuples
