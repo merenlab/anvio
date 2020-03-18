@@ -547,12 +547,12 @@ class KeggRunHMMs(KeggContext):
             # FIXME? some KOs are not associated with modules. Should we report this?
             if mods:
                 mod_annotation = "\n".join(mods)
-                mod_class_annotation = "\n".join(classes)
+                mod_class_annotation = "!!!".join(classes) # why do we split by '!!!'? Because that is how it is done in COGs. So so sorry. :'(
                 mod_name_annotation = ""
 
                 for mod in mods:
                     if mod_name_annotation:
-                        mod_name_annotation += "\n" + names[mod]
+                        mod_name_annotation += "!!!" + names[mod]
                     else:
                         mod_name_annotation = names[mod]
 
@@ -1192,7 +1192,7 @@ class KeggMetabolismEstimator(KeggContext):
         # get list of KOs only - since all splits belong to one genome, we can take all the hits
         ko_in_genome = [tpl[1] for tpl in kofam_hits]
         splits_in_genome = [tpl[0] for tpl in genes_in_splits]
-        
+
         genome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(ko_in_genome, splits=splits_in_genome, bin_name=self.contigs_db_project_name)
 
         return genome_metabolism_superdict
