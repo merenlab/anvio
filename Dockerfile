@@ -25,7 +25,7 @@ RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio-minimal=$A
 # build and install anvio meta package. please note that the next line is quite a memory
 # intensive step. if your docker build command is getting killed abruptly, you may want
 # to increase the memory docker allowed to use (from the docker preferences or otherwise).
-RUN conda-build --debug /tmp/conda-recipe/anvio
+RUN conda-build /tmp/conda-recipe/anvio
 RUN conda index /opt/conda/envs/anvioenv/conda-bld/
 RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio=$ANVIO_VERSION
 
