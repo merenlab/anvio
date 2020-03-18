@@ -4379,6 +4379,13 @@ def get_default_item_order_name(default_item_order_requested, item_orders_dict, 
 
 
 def export_aa_sequences_from_contigs_db(contigs_db_path, output_file_path, gene_caller_ids=set([]), quiet=False):
+    if quiet:
+        run = terminal.Run(verbose=False)
+        progress = terminal.Progress(verbose=False)
+    else:
+        run = terminal.Run()
+        progress = terminal.Progress()
+
     filesnpaths.is_file_exists(contigs_db_path)
     filesnpaths.is_output_file_writable(output_file_path)
 
