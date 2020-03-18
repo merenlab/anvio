@@ -316,8 +316,9 @@ class MODELLER:
             self.run.warning("You realize that deviation is given in angstroms, right? You chose {}".format(self.deviation))
 
         if self.very_fast and self.num_models > 1:
-            self.run.warning("Since you chose --very-fast, there will be little difference, if at all, between models. You "
-                             "can potentially save a lot of time by setting --num-models to 1.")
+            self.num_models = 1
+            self.run.warning("Since you chose --very-fast, there will be little difference, if at all, between models. Anvi'o "
+                             "authoritatively sets --num-models to 1 to save you time.")
 
 
     def pick_best_model(self):
