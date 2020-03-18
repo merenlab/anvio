@@ -131,8 +131,6 @@ anvi-export-functions -c $output_dir/CONTIGS.db \
 INFO "Export all functional annotations"
 anvi-export-functions -c $output_dir/CONTIGS.db \
                       -o $output_dir/exported_functions_from_all_sources.txt
-echo
-head $output_dir/exported_functions_from_all_sources.txt | tr ' ' @@ | column -t | tr @@ ' '
 
 INFO "Export genomic locus using functional annotation search"
 anvi-export-locus -c $output_dir/CONTIGS.db \
@@ -160,8 +158,6 @@ INFO "Export only Pfam annotations"
 anvi-export-functions -c $output_dir/CONTIGS.db \
                       -o $output_dir/exported_functions_from_source_Pfam.txt \
                       --annotation-sources Pfam
-echo
-head $output_dir/exported_functions_from_source_Pfam.txt | tr ' ' @@ | column -t | tr @@ ' '
 
 INFO "Contigs DB is ready; here are the tables in it:"
 sqlite3 $output_dir/CONTIGS.db '.tables'
