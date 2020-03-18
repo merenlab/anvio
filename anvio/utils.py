@@ -539,7 +539,7 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
     return output_path
 
 
-def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None):
+def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None):
     '''
         Store a dictionary of dictionaries as a TAB-delimited file.
         input:
@@ -565,7 +565,23 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
 
     f.write('%s\n' % '\t'.join(headers))
 
-    for k in sorted(d.keys()):
+    if not keys_order:
+        keys_order = sorted(d.keys())
+    else:
+        missing_keys = [k for k in keys_order if k not in d]
+        if len(missing_keys):
+            if anvio.DEBUG:
+                if len(missing_keys) > 10:
+                    raise ConfigError("Some keys (n=%d) are not in your dictionary :/ Here is the first ten "
+                                      " of them: %s" % (len(missing_keys), missing_keys[:10].__str__()))
+                else:
+                    raise ConfigError("Some keys are not in your dictionary :/ Here they are: %s" % missing_keys.__str__())
+            else:
+                raise ConfigError("Some keys are not in your dictionary :/ Use `--debug` to see where this "
+                                  "error is coming from the codebase with a list of example keys that are "
+                                  "missing.")
+
+    for k in keys_order:
         line = [str(k)]
         for header in headers[1:]:
             try:
