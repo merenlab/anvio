@@ -93,7 +93,7 @@ class HMMer:
         self.run.info('Context', context)
         self.run.info('Domain', domain if domain else 'N\\A')
         self.run.info('HMM model path', hmm)
-        self.run.info('Number of genes', num_genes_in_model)
+        self.run.info('Number of genes in HMM model', num_genes_in_model)
         self.run.info('Noise cutoff term(s)', noise_cutoff_terms)
         self.run.info('Number of CPUs will be used for search', self.num_threads_to_use)
 
