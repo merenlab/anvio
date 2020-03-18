@@ -257,7 +257,7 @@ class Structure(object):
         self.contigs_db_hash = self.contigs_db.meta['contigs_db_hash']
 
         # init ContigsSuperClass
-        self.contigs_super = ContigsSuperclass(self.args)
+        self.contigs_super = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
         if self.create:
             # check database output
@@ -285,9 +285,7 @@ class Structure(object):
 
         # init annotation sources
         self.contactmap = ContactMap()
-
-        if not self.skip_DSSP:
-            self.dssp = DSSPClass()
+        self.dssp = DSSPClass(skip_sanity_check=self.skip_DSSP) # If we skip DSSP, skip sanity_check
 
         self.sanity_check()
 
@@ -427,8 +425,40 @@ class Structure(object):
         return
 
 
+    def _run(self):
+        """Calls either run_multi_thread or run_single_thread"""
+
+        self.run.warning('', header='General info', nl_after=0, lc='green')
+        self.run.info('contigs_db', self.contigs_db_path)
+        self.run.info('contigs_db_hash', self.contigs_db_hash)
+        self.run.info('structure_db_path', self.structure_db_path)
+        self.run.info('num_threads', self.num_threads)
+        self.run.info('write_buffer_size', self.write_buffer_size)
+        self.run.info('genes_of_interest', self.genes_of_interest_path)
+        self.run.info('gene_caller_ids', self.gene_caller_ids)
+        self.run.info('skip_DSSP', self.skip_DSSP)
+
+        self.run.warning('', header='Modeller parameters', nl_after=0, lc='green')
+        self.run.info('modeller_executable', self.modeller_executable)
+        for param, value in self.modeller_params.items():
+            self.run.info(param, value)
+        self.run.info('dump_dir', self.full_modeller_output, nl_after=1)
+
+        if not anvio.DEBUG:
+            self.run.warning("Do you want live info about how the modelling procedure is going for "
+                             "each gene? Then restart this process with the --debug flag", lc='yellow')
+
+        if not self.full_modeller_output:
+            self.run.warning("When this finishes, do you want a potentially massive folder that "
+                             "contains a murder of unorganized data in volumes that far exceed what "
+                             "you could possibly want? Perfect, then restart this process and "
+                             "provide a --dump-dir", lc='yellow')
+
+        self.run_multi_thread() if self.num_threads > 1 else self.run_single_thread()
+
+
     def run_multi_thread(self):
-        self.structure_infos = []
+        structure_infos = []
 
         manager = multiprocessing.Manager()
         available_index_queue = manager.Queue()
@@ -449,36 +479,55 @@ class Structure(object):
         for proc in processes:
             proc.start()
 
-        received_genes = 0
-        discarded_genes = 0
-
-        self.progress.new('Profiling w/%d threads' % self.num_threads)
-        self.progress.update('initializing threads ...')
-
-        mem_tracker = terminal.TrackMemory(at_most_every=5)
+        mem_tracker = terminal.TrackMemory(at_most_every=0.1)
         mem_usage, mem_diff = mem_tracker.start()
 
-        while received_genes < num_genes:
+        with_structure = []
+        without_structure = []
+        tried = 0
+
+        self.progress.new('Using %d threads' % self.num_threads, progress_total_items=num_genes)
+        msg = self.msg() % (tried, num_genes, len(with_structure), mem_usage, mem_diff)
+        self.progress.update(msg)
+
+        while tried < num_genes:
             try:
-                self.progress.update('Genes are being processed ...')
                 structure_info = output_queue.get()
 
-                # if we have a contig back, it means we are good to go with it,
-                # otherwise it is garbage.
-                if structure_info['has_structure']:
-                    self.structure_infos.append(structure_info)
-                else:
-                    discarded_genes += 1
+                tried += 1
 
-                received_genes += 1
+                # Add it to the storage buffer
+                structure_infos.append(structure_info)
+
+                if structure_info['has_structure']:
+                    with_structure.append(structure_info['corresponding_gene_call'])
+                else:
+                    without_structure.append(structure_info['corresponding_gene_call'])
 
                 if mem_tracker.measure():
                     mem_usage = mem_tracker.get_last()
                     mem_diff = mem_tracker.get_last_diff()
 
-                #self.progress.increment(received_genes)
-                msg = '%d/%d genes ⚙  | MEMORY 🧠  %s (%s)' % (received_genes, num_genes, mem_usage, mem_diff)
+                self.progress.increment(tried)
+                msg = self.msg() % (tried, num_genes, len(with_structure), mem_usage, mem_diff)
                 self.progress.update(msg)
+
+                if self.write_buffer_size > 0 and len(with_structure) % self.write_buffer_size == 0:
+                    self.progress.update('%d/%d GENES PROCESSED | WRITING TO DB 💾 ...' % \
+                        (tried, num_genes))
+
+                    # Store tables
+                    self.store_genes(structure_infos)
+
+                    # Empty storage buffer
+                    structure_infos = []
+
+                    # Update self table
+                    self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in with_structure + without_structure]))
+                    self.structure_db.db.set_meta_value('genes_with_structure', ",".join([str(g) for g in with_structure]))
+                    self.structure_db.db.set_meta_value('genes_without_structure', ",".join([str(g) for g in without_structure]))
+
+                    self.progress.update(msg)
 
             except KeyboardInterrupt:
                 self.run.info_single("Anvi'o profiler received SIGINT, terminating all processes...", nl_before=2)
@@ -487,26 +536,104 @@ class Structure(object):
         for proc in processes:
             proc.terminate()
 
-        self.progress.update('%d/%d genes ⚙  | WRITING TO DB 💾 ...' % (received_genes, num_genes))
-        self.store_structure_infos_buffer()
+        self.progress.update('%d/%d GENES PROCESSED | WRITING TO DB 💾 ...' % (tried, num_genes))
+
+        # Store tables
+        self.store_genes(structure_infos)
+
+        # Empty storage buffer
+        structure_infos = []
+
+        # Update self table
+        self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in with_structure + without_structure]))
+        self.structure_db.db.set_meta_value('genes_with_structure', ",".join([str(g) for g in with_structure]))
+        self.structure_db.db.set_meta_value('genes_without_structure', ",".join([str(g) for g in without_structure]))
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
+        if not len(with_structure):
+            raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
+
+        self.structure_db.disconnect()
+
+        self.run.info("Structure database", self.structure_db_path)
+
+
+    def run_single_thread(self):
+        genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
+        num_genes = len(genes_of_interest)
+
+        mem_tracker = terminal.TrackMemory(at_most_every=0.1)
+        mem_usage, mem_diff = mem_tracker.start()
+
+        with_structure = []
+        without_structure = []
+        tried = 0
+
+        self.progress.new('Using 1 thread', progress_total_items=num_genes)
+        msg = self.msg() % (tried, num_genes, len(with_structure), mem_usage, mem_diff)
+        self.progress.update(msg)
+
+        for corresponding_gene_call in genes_of_interest:
+            structure_info = self.process_gene(corresponding_gene_call)
+
+            self.progress.increment(tried)
+            msg = self.msg() % (tried, num_genes, len(with_structure), mem_usage, mem_diff)
+            self.progress.update(msg)
+
+            if structure_info['has_structure']:
+                with_structure.append(corresponding_gene_call)
+            else:
+                without_structure.append(corresponding_gene_call)
+
+            if mem_tracker.measure():
+                mem_usage = mem_tracker.get_last()
+                mem_diff = mem_tracker.get_last_diff()
+
+            self.store_gene(structure_info)
+
+            self.dump_raw_results(structure_info)
+
+            # We update self.table every gene because there is no GIL cost with single thread and it
+            # allows user to CTRL+C and still have a valid DB
+            self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in with_structure + without_structure]))
+            self.structure_db.db.set_meta_value('genes_with_structure', ",".join([str(g) for g in with_structure]))
+            self.structure_db.db.set_meta_value('genes_without_structure', ",".join([str(g) for g in without_structure]))
+
+            tried += 1
+
+        self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
+
+        if not len(with_structure):
+            raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
+
+        self.structure_db.disconnect()
+
+        self.run.info("Structure database", self.structure_db_path)
+
+
+    def msg(self):
+        return '│ PROCESSED: %d/%d │ STRUCTURES: %d │ MEMORY: 🧠  %s (%s) │'
+
 
     def process_gene(self, corresponding_gene_call):
-        structure_info = {}
+        structure_info = {
+            'corresponding_gene_call': corresponding_gene_call,
+            'has_structure': False,
+        }
 
         directory = filesnpaths.get_temp_directory_path()
-        target_fasta_path = filesnpaths.get_temp_file_path()
 
         # Export sequence
-        dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path,
-                                                  target_fasta_path,
-                                                  set([corresponding_gene_call]),
-                                                  quiet=True)
+        target_fasta_path = filesnpaths.get_temp_file_path()
+        dbops.export_aa_sequences_from_contigs_db(
+            self.contigs_db_path,
+            target_fasta_path,
+            set([corresponding_gene_call]),
+            quiet=True
+        )
 
         if self.skip_gene_if_not_clean(corresponding_gene_call, target_fasta_path):
-            structure_info['has_structure'] = False
             return structure_info
 
         # Model structure
@@ -515,40 +642,13 @@ class Structure(object):
         # Annotate residues
         if structure_info['modeller']['structure_exists']:
             structure_info['has_structure'] = True
+
             structure_info['residue_info'] = self.get_gene_contribution_to_residue_info_table(
                 corresponding_gene_call=corresponding_gene_call,
                 pdb_filepath=structure_info['modeller']['best_model_path'],
             )
-        else:
-            structure_info['has_structure'] = False
 
         return structure_info
-
-
-    def process(self):
-        genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
-
-        # which genes had structures and which did not. this information is added to the structure database self table
-        has_structure = {True: [], False: []}
-
-        for corresponding_gene_call in genes_of_interest:
-            structure_info = self.process_gene(corresponding_gene_call)
-            has_structure[structure_info['has_structure']].append(corresponding_gene_call)
-            self.store_gene(structure_info)
-            self.dump_raw_results(structure_info)
-
-            # We update self.table every gene so that if the operation is cancelled, the db survives
-            # as a valid db
-            self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in genes_of_interest]))
-            self.structure_db.db.set_meta_value('genes_with_structure', ",".join([str(g) for g in has_structure[True]]))
-            self.structure_db.db.set_meta_value('genes_without_structure', ",".join([str(g) for g in has_structure[False]]))
-
-        if not has_structure[True]:
-            raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
-
-        self.structure_db.disconnect()
-
-        self.run.info("Structure database", self.structure_db_path)
 
 
     def skip_gene_if_not_clean(self, corresponding_gene_call, fasta_path):
@@ -567,7 +667,7 @@ class Structure(object):
 
     def get_gene_contribution_to_residue_info_table(self, corresponding_gene_call, pdb_filepath):
         results = [
-            self.dssp.run(pdb_filepath, id_for_protein=corresponding_gene_call),
+            self.dssp.run(pdb_filepath, id_for_protein=corresponding_gene_call, dont_run=self.skip_DSSP),
             self.run_contact_map_annotation(pdb_filepath),
             self.run_residue_identity_annotation(corresponding_gene_call, pdb_filepath),
         ]
@@ -623,7 +723,7 @@ class Structure(object):
     def run_modeller(self, target_fasta_path, directory):
         """Calls and returns results of MODELLER.MODELLER driver"""
 
-        return MODELLER.MODELLER(self.args, target_fasta_path, directory=directory, lazy_init=True).process()
+        return MODELLER.MODELLER(self.args, target_fasta_path, directory=directory, lazy_init=True, skip_warnings=True).process()
 
 
     def dump_raw_results(self, structure_info):
@@ -639,32 +739,34 @@ class Structure(object):
     def store_gene(self, structure_info):
         """Store a gene's info into the structure database"""
 
-        modeller_out = structure_info['modeller']
-        residue_info_dataframe = structure_info['residue_info']
+        if 'modeller' not in structure_info:
+            # There is nothing to store
+            return
 
-        corresponding_gene_call = modeller_out["corresponding_gene_call"]
+        corresponding_gene_call = structure_info["corresponding_gene_call"]
+        modeller_out = structure_info['modeller']
 
         # templates is always added, even when structure was not modelled
-        templates = pd.DataFrame(modeller_out["templates"])
-        templates.insert(0, "corresponding_gene_call", corresponding_gene_call)
-        templates = templates.reset_index().rename(columns={"index": "entry_id"})
+        templates = pd.DataFrame(modeller_out['templates'])
+        templates.insert(0, 'corresponding_gene_call', corresponding_gene_call)
+        templates = templates.reset_index().rename(columns={'index': 'entry_id'})
         self.structure_db.entries[t.templates_table_name] = \
             self.structure_db.entries[t.templates_table_name].append(templates)
-        self.structure_db.store(t.templates_table_name, key="entry_id")
+        self.structure_db.store(t.templates_table_name, key='entry_id')
 
         # entries that are only added if a structure was modelled
-        if modeller_out["structure_exists"]:
+        if modeller_out['structure_exists']:
 
             # models
-            models = pd.DataFrame(modeller_out["models"])
-            models.insert(0, "corresponding_gene_call", corresponding_gene_call)
-            models = models.reset_index().rename(columns={"index": "entry_id"})
+            models = pd.DataFrame(modeller_out['models'])
+            models.insert(0, 'corresponding_gene_call', corresponding_gene_call)
+            models = models.reset_index().rename(columns={'index': 'entry_id'})
             self.structure_db.entries[t.models_table_name] = \
                 self.structure_db.entries[t.models_table_name].append(models)
             self.structure_db.store(t.models_table_name, key="entry_id")
 
             # pdb file data
-            pdb_file = open(modeller_out["best_model_path"], 'rb')
+            pdb_file = open(modeller_out['best_model_path'], 'rb')
             pdb_contents = pdb_file.read()
             pdb_file.close()
             pdb_table_entry = (corresponding_gene_call, pdb_contents)
@@ -673,14 +775,22 @@ class Structure(object):
 
             # residue_info
             self.structure_db.entries[t.residue_info_table_name] = \
-                self.structure_db.entries[t.residue_info_table_name].append(residue_info_dataframe)
-            self.structure_db.store(t.residue_info_table_name, key="entry_id")
+                self.structure_db.entries[t.residue_info_table_name].append(structure_info['residue_info'])
+            self.structure_db.store(t.residue_info_table_name, key='entry_id')
+
+
+    def store_genes(self, structure_infos):
+        """Store info for a list of structure_infos. Calls self.store_gene"""
+
+        for structure_info in structure_infos:
+            self.store_gene(structure_info)
+            self.dump_raw_results(structure_info)
 
 
 class DSSPClass(object):
-    def __init__(self, executable=None, check_executable=True):
+    def __init__(self, executable=None, skip_sanity_check=False):
         self.executable = executable
-        self.check_executable = check_executable
+        self.skip_sanity_check = skip_sanity_check
 
         self.fields = [
             'codon_order_in_gene',
@@ -699,23 +809,52 @@ class DSSPClass(object):
             'O_NH_2_energy',
         ]
 
-        self.set_executable()
-        utils.is_program_exists(self.executable)
-        if self.check_executable:
+        if not self.skip_sanity_check:
+            self.set_executable()
+            utils.is_program_exists(self.executable)
             self.is_executable_a_working_DSSP_program()
 
 
-    def run(self, pdb_filepath, id_for_protein=None):
+    def run(self, pdb_filepath, id_for_protein=None, dont_run=False):
+        """Run DSSP through Biopython. Return a dataframe
+
+        Parameters
+        ==========
+        pdb_filepath : str
+            Path to the pdb file you wish to run on. Assumes first model in file
+
+        id_for_protein : str
+            Name your protein?
+
+        dont_run : bool, False
+            If True, DSSP is not actually run. Instead, an empty dataframe is populated
+        """
+
+        if dont_run:
+            # We don't actually run DSSP, we just make a dataframe populated with null values
+            return self.get_null_dataframe(pdb_filepath)
+
         # Determine the model name by loading the structure file
         p = PDBParser()
         structure = p.get_structure(id_for_protein, pdb_filepath)
         model = structure[0] # pdb files can have multiple models. DSSP assumes the first.
 
         # run DSSP
-        residue_annotation = DSSP(model, pdb_filepath, dssp = self.executable, acc_array = "Wilke")
+        residue_annotation = DSSP(model, pdb_filepath, dssp=self.executable, acc_array='Wilke')
 
         # convert to a digestible format
         return self.convert_DSSP_output_from_biopython_to_dataframe(residue_annotation, drop=['aa'])
+
+
+    def get_null_dataframe(self, pdb_filepath):
+        """Return a correctly sized dataframe with all null values"""
+
+        # Determine the model name by loading the structure file
+        p = PDBParser()
+        structure = p.get_structure(None, pdb_filepath)
+        model = structure[0] # pdb files can have multiple models. DSSP assumes the first.
+
+        num_residues = len(model.child_list[0])
 
 
     def set_executable(self):
