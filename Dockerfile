@@ -23,7 +23,7 @@ RUN conda index /opt/conda/envs/anvioenv/conda-bld/
 RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio-minimal=$ANVIO_VERSION
 
 # build and install anvio meta package
-RUN conda-build /tmp/conda-recipe/anvio
+RUN conda-build --debug /tmp/conda-recipe/anvio
 RUN conda index /opt/conda/envs/anvioenv/conda-bld/
 RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio=$ANVIO_VERSION
 
