@@ -1517,12 +1517,12 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck):
             # setting up the table columns here.
             if self.metagenome_mode:
                 row = [bin_name, str(bin_data['percent_identity']), taxon_text]
-
-                # if there are coverages, add samples to the display too
-                if self.compute_scg_coverages:
-                    row += [d[bin_name]['coverages'][sample_name] for sample_name in sample_names_to_display]
             else:
                 row = [bin_name, str(bin_data['total_scgs']), str(bin_data['supporting_scgs']), taxon_text]
+
+            # if there are coverages, add samples to the display too
+            if self.compute_scg_coverages:
+                row += [d[bin_name]['coverages'][sample_name] for sample_name in sample_names_to_display]
 
             if samples_not_shown:
                 row += ['... %d more' % len(samples_not_shown)]
