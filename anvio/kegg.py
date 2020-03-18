@@ -716,6 +716,8 @@ class KeggMetabolismEstimator(KeggContext):
         self.run.info("KOfam hits", "%d found" % len(kofam_hits), quiet=self.quiet)
         self.run.info("Profile DB", self.profile_db_path, quiet=self.quiet)
         self.run.info('Metagenome mode', self.metagenome_mode)
+        if self.collection_name:
+            self.run.info('Collection', self.collection_name)
 
         return kofam_hits, genes_in_splits
 
@@ -1164,7 +1166,8 @@ class KeggMetabolismEstimator(KeggContext):
 
         self.run.info("Module completion threshold", self.completeness_threshold)
         self.run.info("Number of complete modules", metabolism_dict_for_list_of_splits["num_complete_modules"])
-        self.run.info("Complete modules", ", ".join(complete_mods))
+        if complete_mods:
+            self.run.info("Complete modules", ", ".join(complete_mods))
 
         return metabolism_dict_for_list_of_splits
 
@@ -1189,7 +1192,7 @@ class KeggMetabolismEstimator(KeggContext):
         # get list of KOs only - since all splits belong to one genome, we can take all the hits
         ko_in_genome = [tpl[1] for tpl in kofam_hits]
         splits_in_genome = [tpl[0] for tpl in genes_in_splits]
-
+        
         genome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(ko_in_genome, splits=splits_in_genome, bin_name=self.contigs_db_project_name)
 
         return genome_metabolism_superdict
