@@ -718,6 +718,10 @@ class KeggMetabolismEstimator(KeggContext):
         self.run.info('Metagenome mode', self.metagenome_mode)
         if self.collection_name:
             self.run.info('Collection', self.collection_name)
+        if self.bin_id:
+            self.run.info('Bin ID', self.bin_id)
+        elif self.bin_ids_file:
+            self.run.info('Bin IDs file', self.bin_ids_file)
 
         return kofam_hits, genes_in_splits
 
