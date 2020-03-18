@@ -6,6 +6,7 @@ contigs databases with taxon names, and estimate taxonomy for genomes and metagn
 """
 
 import os
+import sys
 import glob
 import copy
 import shutil
@@ -995,6 +996,14 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck):
 
     def init(self):
         self.init_scg_data()
+
+        if self.report_scg_frequencies_path:
+            with open(self.report_scg_frequencies_path, 'w') as output:
+                for scg_name, frequency in self.frequency_of_scgs_with_taxonomy.items():
+                    output.write("%s\t%d\n" % (scg_name, frequency))
+
+            self.run.info('SCG frequencies within the contigs db', self.report_scg_frequencies_path, nl_before=1)
+            sys.exit()
 
         if self.profile_db_path:
             self.sample_names_in_profile_db = ProfileDatabase(self.profile_db_path).samples
