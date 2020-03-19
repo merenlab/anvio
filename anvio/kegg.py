@@ -749,7 +749,7 @@ class KeggMetabolismEstimator(KeggContext):
 
         PARAMETERS
         ==========
-        kofam_hits_in_splits        list of KO numbers that are hits in the current list of splits
+        kofam_hits_in_splits        list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
         split_list                  list of splits we are considering, this is only for debugging output
         bin_name                    name of the bin containing these splits, this is only for debugging output
 
@@ -770,7 +770,7 @@ class KeggMetabolismEstimator(KeggContext):
             bin_level_module_dict[mnum] = {"present_kos" : []}
 
         kos_not_in_modules = []
-        for ko in kofam_hits_in_splits:
+        for ko, gene_call_id, split, contig in kofam_hits_in_splits:
             present_in_mods = self.kegg_modules_db.get_modules_for_knum(ko)
             if not present_in_mods:
                 kos_not_in_modules.append(ko)
@@ -1118,7 +1118,7 @@ class KeggMetabolismEstimator(KeggContext):
 
         PARAMETERS
         ==========
-        ko_hits_in_splits       a list of KO numbers indicating the KOfam hits that have occurred in this list of splits
+        ko_hits_in_splits       list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
         splits                  a list of splits identifiers
         bin_name                the name of the bin that we are working with
 
@@ -1208,7 +1208,7 @@ class KeggMetabolismEstimator(KeggContext):
 
         genome_metabolism_superdict = {}
         # since all hits belong to one genome, we can take the split info from all the hits
-        splits_in_genome = unique([tpl[2] for tpl in kofam_gene_split_contig])
+        splits_in_genome = list(set([tpl[2] for tpl in kofam_gene_split_contig]))
 
         genome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(kofam_gene_split_contig, splits=splits_in_genome, bin_name=self.contigs_db_project_name)
 
