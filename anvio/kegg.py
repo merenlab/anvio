@@ -663,6 +663,7 @@ class KeggMetabolismEstimator(KeggContext):
         self.contigs_db_project_name = contigs_db.meta['project_name']
         self.progress.update('Splits')
         genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "split, gene_callers_id")
+        genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "contig, gene_callers_id")
         self.progress.update('KOfam hits')
         kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
                                                 where_clause="source = 'KOfam'")
