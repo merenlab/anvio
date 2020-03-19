@@ -2516,6 +2516,8 @@ class ProfileSuperclass(object):
                               "flaw, but THANKS for reminding anyway... The best way to address this is to make sure all anvi'o "
                               "profile and pan databases maintain a table with all item names they are supposed to be working with.")
 
+        self.progress.end()
+
         # learn the number of mapped reads and set it in a nice variable VERY CAREFULLY (blank profiles don't have it,
         # and some ancient anvi'o databases may be lacking it).
         if self.p_meta['blank']:
@@ -2542,6 +2544,7 @@ class ProfileSuperclass(object):
         if not self.item_orders:
             self.p_meta['default_item_order'] = None
 
+        self.progress.new('Initializing the profile database superclass')
         self.progress.update('Accessing the auxiliary data file')
         self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
         if not os.path.exists(self.auxiliary_data_path):
