@@ -768,9 +768,9 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
             dfx.set_index(['metagenome_name', 'taxon'], inplace=True)
 
             if self.compute_scg_coverages:
-                matrix = sps.coo_matrix((dfx.coverage, (dfx.index.labels[0], dfx.index.labels[1]))).todense().tolist()
+                matrix = sps.coo_matrix((dfx.coverage, (dfx.index.codes[0], dfx.index.codes[1]))).todense().tolist()
             else:
-                matrix = sps.coo_matrix((dfx.times_observed, (dfx.index.labels[0], dfx.index.labels[1]))).todense().tolist()
+                matrix = sps.coo_matrix((dfx.times_observed, (dfx.index.codes[0], dfx.index.codes[1]))).todense().tolist()
 
             rows = dfx.index.levels[0].tolist()
             cols = ['metagenome_name'] + dfx.index.levels[1].tolist()
