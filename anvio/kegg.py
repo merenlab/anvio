@@ -1191,7 +1191,7 @@ class KeggMetabolismEstimator(KeggContext):
         return metabolism_dict_for_list_of_splits
 
 
-    def estimate_for_genome(self, kofam_hits, genes_in_splits):
+    def estimate_for_genome(self, kofam_gene_split_contig):
         """This is the metabolism estimation function for a contigs DB that contains a single genome.
 
         Assuming this contigs DB contains only one genome, it sends all of the splits and their kofam hits to the atomic
@@ -1199,8 +1199,7 @@ class KeggMetabolismEstimator(KeggContext):
 
         PARAMETERS
         ==========
-        kofam_hits          list of (gene_call_id, ko_num) tuples, all belong to this single genome
-        genes_in_splits     list of (split, gene_call_id) tuples, all belong to this single genome
+        kofam_gene_split_contig     list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
 
         RETURNS
         =======
@@ -1208,11 +1207,10 @@ class KeggMetabolismEstimator(KeggContext):
         """
 
         genome_metabolism_superdict = {}
-        # get list of KOs only - since all splits belong to one genome, we can take all the hits
-        ko_in_genome = [tpl[1] for tpl in kofam_hits]
-        splits_in_genome = [tpl[0] for tpl in genes_in_splits]
+        # since all hits belong to one genome, we can take the split info from all the hits
+        splits_in_genome = unique([tpl[2] for tpl in kofam_gene_split_contig])
 
-        genome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(ko_in_genome, splits=splits_in_genome, bin_name=self.contigs_db_project_name)
+        genome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(kofam_gene_split_contig, splits=splits_in_genome, bin_name=self.contigs_db_project_name)
 
         return genome_metabolism_superdict
 
