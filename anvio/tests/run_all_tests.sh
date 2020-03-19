@@ -81,7 +81,8 @@ anvi-run-hmms -c $output_dir/CONTIGS.db \
 
 INFO "Rerunning HMMs for a specific installed profile"
 anvi-run-hmms -c $output_dir/CONTIGS.db \
-              -I Ribosomal_RNAs
+              -I Ribosomal_RNAs \
+              --just-do-it
 
 INFO "Listing all available HMM sources in the contigs database"
 anvi-delete-hmms -c $output_dir/CONTIGS.db \
