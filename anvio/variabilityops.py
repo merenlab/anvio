@@ -1745,7 +1745,10 @@ class VariabilitySuper(VariabilityFilter, object):
 
         # append columns that are not redundant
         redundant_columns = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'aa', 'amino_acid', 'codon', 'codon_number']
-        self.columns_to_report['structural'].extend([(x, C[y]) for x, y in zip(t.residue_info_table_structure, t.residue_info_table_types) if x not in redundant_columns])
+        self.columns_to_report['structural'].extend([(x, C[y])
+                                                     for x, y in zip(t.residue_info_table_structure, t.residue_info_table_types)
+                                                     if x not in redundant_columns
+                                                     and x in self.structure_residue_info.columns])
 
         self.progress.end()
 
