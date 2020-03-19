@@ -31,6 +31,7 @@ versions_for_db_types = {'contigs': contigs_db_version,
                          'auxiliary data for coverages': auxiliary_data_version,
                          'config': workflow_config_version}
 
+
 ####################################################################################################
 #
 #     TABLE DESCRIPTIONS SPECIFIC FOR THE PAN DATABASE (THE REST COMES FROM THE PROFILE DATABASE)
