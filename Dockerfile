@@ -1,11 +1,13 @@
 FROM continuumio/miniconda3:4.8.2
 ENV ANVIO_VERSION "6.1_master"
 
-RUN conda config --env --add channels conda-forge
+# add channels, conda-forge has the highest priority
+RUN conda config --env --add channels r
 RUN conda config --env --add channels bioconda
-RUN conda create -n anvioenv python=3.6
+RUN conda config --env --add channels conda-forge
 
-# Activate environment
+# Create and activate an environment
+RUN conda create -n anvioenv python=3.6
 ENV PATH /opt/conda/envs/anvioenv/bin:$PATH
 ENV CONDA_DEFAULT_ENV anvioenv
 ENV CONDA_PREFIX /opt/conda/envs/anvioenv
