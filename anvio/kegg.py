@@ -1207,7 +1207,7 @@ class KeggMetabolismEstimator(KeggContext):
         """
 
         genome_metabolism_superdict = {}
-        # since all hits belong to one genome, we can take the split info from all the hits
+        # since all hits belong to one genome, we can take the UNIQUE splits from all the hits
         splits_in_genome = list(set([tpl[2] for tpl in kofam_gene_split_contig]))
 
         genome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(kofam_gene_split_contig, splits=splits_in_genome, bin_name=self.contigs_db_project_name)
