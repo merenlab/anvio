@@ -954,7 +954,7 @@ def get_required_packages_for_enrichment_test():
     packages = ["tidyverse", "stringi", "magrittr", "qvalue", "optparse"]
 
     installation_instructions = ["conda install -c r r-tidyverse",
-                                 "conda install -c r r-stringi"
+                                 "conda install -c r r-stringi",
                                  "conda install -c bioconda r-magrittr",
                                  "conda install -c bioconda bioconductor-qvalue",
                                  "conda install -c conda-forge r-optparse"]
