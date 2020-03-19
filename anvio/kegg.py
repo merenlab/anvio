@@ -644,49 +644,47 @@ class KeggMetabolismEstimator(KeggContext):
         self.kegg_modules_db = KeggModulesDatabase(os.path.join(self.kegg_data_dir, "MODULES.db"), args=self.args)
 
     def init_hits_and_splits(self):
-        """This function loads splits and KOfam hits from the contigs DB.
+        """This function loads KOfam hits, gene calls, splits, and contigs from the contigs DB.
 
         We will need the hits with their KO numbers (accessions) so that we can go through the MODULES.db and determine
-        which steps are present in each module. And we will need the splits so that we can determine which hits belong
-        to which genomes/bins when we are handling multiple of these. This function gets these hits and splits (as lists
-        of tuples), and it makes sure that these lists don't include hits/splits we shouldn't be considering.
+        which steps are present in each module. And we will need the other information so that we can determine which hits belong
+        to which genomes/bins when we are handling multiple of these, and for help in computing redundancy.
+        This function gets this info as a list of tuples (one tuple per kofam hit), and it makes sure that these lists don't include
+        hits that we shouldn't be considering.
 
         RETURNS
         =======
-        kofam_hits          list of (gene_call_id, ko_num) tuples
-        genes_in_splits     list of (split, gene_call_id) tuples
+        kofam_gene_split_contig list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
         """
 
-        self.progress.new('Loading')
-        self.progress.update('Contigs DB')
+        self.progress.new('Loading data from Contigs DB')
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
         self.contigs_db_project_name = contigs_db.meta['project_name']
-        self.progress.update('Splits')
-        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "split, gene_callers_id")
-        genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "contig, gene_callers_id")
-        self.progress.update('KOfam hits')
+        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "gene_callers_id, split")
+        genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig")
         kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
                                                 where_clause="source = 'KOfam'")
         min_contig_length_in_contigs_db = contigs_db.db.get_max_value_in_column(t.contigs_info_table_name, "length", return_min_instead=True)
         contigs_db.disconnect()
 
-        # get rid of gene calls in genes_in_splits that are not associated with KOfam hits.
-        # Perhaps this is not a necessary step. But it makes me feel clean.
-        all_gene_calls_in_splits = set([tpl[1] for tpl in genes_in_splits])
+        # get rid of gene calls that are not associated with KOfam hits.
+        all_gene_calls_in_splits = set([tpl[0] for tpl in genes_in_splits])
         gene_calls_with_kofam_hits = set([tpl[0] for tpl in kofam_hits])
         gene_calls_without_kofam_hits = all_gene_calls_in_splits.difference(gene_calls_with_kofam_hits)
 
         if gene_calls_without_kofam_hits:
             self.progress.update("Removing %s gene calls without KOfam hits" % len(gene_calls_without_kofam_hits))
-            genes_in_splits = [tpl for tpl in genes_in_splits if tpl[1] not in gene_calls_without_kofam_hits]
+            genes_in_splits = [tpl for tpl in genes_in_splits if tpl[0] not in gene_calls_without_kofam_hits]
+            genes_in_contigs = [tpl for tpl in genes_in_contigs if tpl[0] not in gene_calls_without_kofam_hits]
             if anvio.DEBUG:
                 self.run.warning("The following gene calls in your contigs DB were removed from consideration as they \
                 do not have any hits to the KOfam database: %s" % (gene_calls_without_kofam_hits))
 
-        # get rid of splits (and their associated gene calls) that are not in the profile DB
+
+        # get rid of splits and contigs (and their associated gene calls) that are not in the profile DB
         if self.profile_db_path:
             split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
-            split_names_in_contigs_db = set([tpl[0] for tpl in genes_in_splits])
+            split_names_in_contigs_db = set([tpl[1] for tpl in genes_in_splits])
             splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
 
             min_contig_length_in_profile_db = ProfileDatabase(self.profile_db_path).meta['min_contig_length']
@@ -707,10 +705,25 @@ class KeggMetabolismEstimator(KeggContext):
                                                                              pp(min_contig_length_in_profile_db)))
 
                 self.progress.update("Removing %s splits (and associated gene calls) that were missing from the profile db" % pp(len(splits_missing_in_profile_db)))
-                genes_in_splits = [tpl for tpl in genes_in_splits if tpl[0] not in splits_missing_in_profile_db]
-                remaining_gene_calls = [tpl[1] for tpl in genes_in_splits]
+                genes_in_splits = [tpl for tpl in genes_in_splits if tpl[1] not in splits_missing_in_profile_db]
+                remaining_gene_calls = [tpl[0] for tpl in genes_in_splits]
+                genes_in_contigs = [tpl for tpl in genes_in_contigs if tpl[0] in remaining_gene_calls]
                 kofam_hits = [tpl for tpl in kofam_hits if tpl[0] in remaining_gene_calls]
 
+        # combine the information for each gene call into neat tuples for returning
+        # each gene call is only on one split of one contig, so we can convert these lists of tuples into dictionaries for easy access
+        # but some gene calls have multiple kofam hits (and some kofams have multiple gene calls), so we must keep the tuple structure for those
+        self.progress.update("Organizing KOfam hit data")
+        gene_calls_splits_dict = {tpl[0] : tpl[1] for tpl in genes_in_splits}
+        gene_calls_contigs_dict = {tpl[0] : tpl[1] for tpl in genes_in_contigs}
+        assert len(gene_calls_splits_dict.keys()) == len(genes_in_splits)
+        assert len(gene_calls_splits_dict.keys()) == len(genes_in_contigs)
+
+        kofam_gene_split_contig = []
+        for gene_call_id, ko in kofam_hits:
+            kofam_gene_split_contig.append((ko, gene_call_id, gene_calls_splits_dict[gene_call_id], gene_calls_contigs_dict[gene_call_id]))
+
+        self.progress.update("Done")
         self.progress.end()
 
         self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
@@ -724,7 +737,7 @@ class KeggMetabolismEstimator(KeggContext):
         elif self.bin_ids_file:
             self.run.info('Bin IDs file', self.bin_ids_file)
 
-        return kofam_hits, genes_in_splits
+        return kofam_gene_split_contig
 
     def mark_kos_present_for_list_of_splits(self, kofam_hits_in_splits, split_list=None, bin_name=None):
         """This function generates a bin-level dictionary of dictionaries, which associates modules with the list of KOs
