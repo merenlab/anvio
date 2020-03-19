@@ -1081,7 +1081,8 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def load_structure_data(self):
-        """ Loads structure residue info from structure db as self.structure_residue_info """
+        """Loads structure residue info from structure db as self.structure_residue_info"""
+
         if not self.append_structure_residue_info:
             return
 
@@ -1090,6 +1091,13 @@ class VariabilitySuper(VariabilityFilter, object):
         self.progress.update('Reading the structure database ...')
         structure_db = structureops.StructureDatabase(self.structure_db_path)
         self.structure_residue_info = structure_db.db.get_table_as_dataframe(t.residue_info_table_name)
+
+        # Keep only columns where not all values are null
+        columns_to_keep = []
+        for col in self.structure_residue_info.columns:
+            if not self.structure_residue_info[col].isna().all() and not (self.structure_residue_info[col] == '').all():
+                columns_to_keep.append(col)
+        self.structure_residue_info = self.structure_residue_info[columns_to_keep]
 
         self.genes_with_structure = set(self.structure_residue_info["corresponding_gene_call"].unique())
         # genes_included = genes_of_interest, unless genes_of_interest weren't specified. then
