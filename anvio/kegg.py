@@ -1168,6 +1168,7 @@ class KeggMetabolismEstimator(KeggContext):
                                  "missing enzyme in some other way. Best of luck to you. Here is the list of modules to check out: %s"
                                  % (", ".join(mods_with_unassociated_ko)))
 
+        self.run.info("Bin name", bin_name)
         self.run.info("Module completion threshold", self.completeness_threshold)
         self.run.info("Number of complete modules", metabolism_dict_for_list_of_splits["num_complete_modules"])
         if complete_mods:
