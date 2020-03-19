@@ -951,9 +951,10 @@ def apply_and_concat(df, fields, func, column_names, func_args=tuple([])):
 
 def get_required_packages_for_enrichment_test():
     ''' Return a dict with the packages as keys and installation instrucstions as values'''
-    packages = ["tidyverse", "magrittr", "qvalue", "optparse"]
+    packages = ["tidyverse", "stringi", "magrittr", "qvalue", "optparse"]
 
     installation_instructions = ["conda install -c r r-tidyverse",
+                                 "conda install -c r r-stringi"
                                  "conda install -c bioconda r-magrittr",
                                  "conda install -c bioconda bioconductor-qvalue",
                                  "conda install -c conda-forge r-optparse"]
