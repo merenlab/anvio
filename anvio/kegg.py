@@ -654,7 +654,7 @@ class KeggMetabolismEstimator(KeggContext):
 
         RETURNS
         =======
-        kofam_gene_split_contig list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
+        kofam_gene_split_contig     list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
         """
 
         self.progress.new('Loading data from Contigs DB')
@@ -1217,7 +1217,19 @@ class KeggMetabolismEstimator(KeggContext):
         return genome_metabolism_superdict
 
 
-    def estimate_for_bins_in_collection(self, kofam_hits, genes_in_splits):
+    def estimate_for_bins_in_collection(self, kofam_gene_split_contig):
+        """
+        This function calls metabolism estimation for every bin the user requests.
+
+        PARAMETERS
+        ==========
+        kofam_gene_split_contig     list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
+
+        RETURNS
+        =======
+        bins_metabolism_superdict      dictionary mapping bin name to its metabolism completeness dictionary
+        """
+
         bins_metabolism_superdict = {}
 
         bin_name_to_split_names_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
