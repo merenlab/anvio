@@ -1240,8 +1240,7 @@ class KeggMetabolismEstimator(KeggContext):
 
         for bin_name in bin_name_to_split_names_dict:
             splits_in_bin = bin_name_to_split_names_dict[bin_name]
-            genes_in_bin = [tpl[1] for tpl in genes_in_splits if tpl[0] in splits_in_bin]
-            ko_in_bin = [tpl[1] for tpl in kofam_hits if tpl[0] in genes_in_bin]
+            ko_in_bin = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_bin]
             bins_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(ko_in_bin, splits=splits_in_bin, bin_name=bin_name)
 
         return bins_metabolism_superdict
@@ -1252,17 +1251,17 @@ class KeggMetabolismEstimator(KeggContext):
 
         It will decide what to do based on whether the input contigs DB is a genome or metagenome.
         It returns the metabolism superdict which contains a metabolism completion dictionary for each genome/bin in the contigs db.
-        The metabolism completion dictionary is keyed by KEGG module number.
+        The metabolism completion dictionary is keyed by KEGG module number, with a few exceptions for summary data (ie, 'num_complete_modules').
         """
 
-        hits_to_consider, splits_to_consider = self.init_hits_and_splits()
+        kofam_hits_info = self.init_hits_and_splits()
 
         kegg_metabolism_superdict = {}
 
         if self.profile_db_path and not self.metagenome_mode:
-            kegg_metabolism_superdict = self.estimate_for_bins_in_collection(hits_to_consider, splits_to_consider)
+            kegg_metabolism_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
         elif not self.profile_db_path and not self.metagenome_mode:
-            kegg_metabolism_superdict = self.estimate_for_genome(hits_to_consider, splits_to_consider)
+            kegg_metabolism_superdict = self.estimate_for_genome(kofam_hits_info)
         elif self.profile_db_path and self.metagenome_mode:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
             # metagenome, with profiling
