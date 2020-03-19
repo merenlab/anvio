@@ -667,7 +667,7 @@ class Structure(object):
 
     def get_gene_contribution_to_residue_info_table(self, corresponding_gene_call, pdb_filepath):
         results = [
-            self.dssp.run(pdb_filepath, id_for_protein=corresponding_gene_call, dont_run=self.skip_DSSP),
+            self.dssp.run(pdb_filepath, dont_run=self.skip_DSSP, drop=['aa']),
             self.run_contact_map_annotation(pdb_filepath),
             self.run_residue_identity_annotation(corresponding_gene_call, pdb_filepath),
         ]
@@ -815,7 +815,7 @@ class DSSPClass(object):
             self.is_executable_a_working_DSSP_program()
 
 
-    def run(self, pdb_filepath, id_for_protein=None, dont_run=False):
+    def run(self, pdb_filepath, drop=[], dont_run=False):
         """Run DSSP through Biopython. Return a dataframe
 
         Parameters
@@ -823,8 +823,8 @@ class DSSPClass(object):
         pdb_filepath : str
             Path to the pdb file you wish to run on. Assumes first model in file
 
-        id_for_protein : str
-            Name your protein?
+        drop : list, []
+            Which of self.fields do you want to removed from the dataframe?
 
         dont_run : bool, False
             If True, DSSP is not actually run. Instead, an empty dataframe is populated
@@ -832,32 +832,44 @@ class DSSPClass(object):
 
         if dont_run:
             # We don't actually run DSSP, we just make a dataframe populated with null values
-            return self.get_null_dataframe(pdb_filepath)
-
-        # Determine the model name by loading the structure file
-        p = PDBParser()
-        structure = p.get_structure(id_for_protein, pdb_filepath)
-        model = structure[0] # pdb files can have multiple models. DSSP assumes the first.
-
-        # run DSSP
-        residue_annotation = DSSP(model, pdb_filepath, dssp=self.executable, acc_array='Wilke')
-
-        # convert to a digestible format
-        return self.convert_DSSP_output_from_biopython_to_dataframe(residue_annotation, drop=['aa'])
-
-
-    def get_null_dataframe(self, pdb_filepath):
-        """Return a correctly sized dataframe with all null values"""
+            return self.get_null_dataframe(pdb_filepath, drop=drop)
 
         # Determine the model name by loading the structure file
         p = PDBParser()
         structure = p.get_structure(None, pdb_filepath)
         model = structure[0] # pdb files can have multiple models. DSSP assumes the first.
 
-        num_residues = len(model.child_list[0])
+        # run DSSP
+        residue_annotation = DSSP(model, pdb_filepath, dssp=self.executable, acc_array='Wilke')
+
+        # convert to a digestible format
+        return self.convert_DSSP_output_from_biopython_to_dataframe(residue_annotation, drop=drop)
+
+
+    def get_null_dataframe(self, pdb_filepath, drop=[]):
+        """Return a correctly sized dataframe with all null values, and codon_order_in_gene as the index"""
+
+        # Get number of residues from PDB file
+        num_residues = len(PDBParser().get_structure(None, pdb_filepath)[0].child_list[0])
+
+        # Fields that take on null values
+        fields = [field for field in self.fields if field not in drop and field != 'codon_order_in_gene']
+
+        # Dict to define which column gets which null value
+        fields_to_null_value_dict = {
+            field: {'integer': np.nan, 'text': '', 'real': np.nan}[typ]
+            for field, typ in zip(t.residue_info_table_structure, t.residue_info_table_types)
+            if field in fields
+        }
+
+        d = {field: [fields_to_null_value_dict[field]] * num_residues for field in fields}
+
+        return pd.DataFrame(d)
 
 
     def set_executable(self):
+        """Determine which DSSP executables exist and should be used. Set to self.executable"""
+
         if self.executable:
             utils.is_program_exists(self.executable, dont_raise=True)
             return
