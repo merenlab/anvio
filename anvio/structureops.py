@@ -182,14 +182,41 @@ class StructureDatabase(object):
             raise ConfigError("store :: rows_data must be either a list of tuples or a pandas dataframe.")
 
 
+    def remove_gene(self, corresponding_gene_call, remove_from_self=True):
+        """Remove a gene from the structure database"""
+
+        # Remove from tables
+        self.db.remove_some_rows_from_table(
+            t.residue_info_table_name,
+            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+        )
+        self.db.remove_some_rows_from_table(
+            t.templates_table_name,
+            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+        )
+        self.db.remove_some_rows_from_table(
+            t.models_table_name,
+            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+        )
+
+        if remove_from_self:
+            # Remove from self entries
+            self.genes_queried.remove(corresponding_gene_call)
+            self.genes_with_structure.remove(corresponding_gene_call)
+            self.update_genes_with_and_without_structure()
+
+
     def get_pdb_content(self, corresponding_gene_call):
         """Returns the file content (as a string) of a pdb for a given gene"""
 
         if not corresponding_gene_call in self.genes_with_structure:
             raise ConfigError('The gene caller id {} was not found in the structure database :('.format(corresponding_gene_call))
 
-        return self.db.get_single_column_from_table(t.pdb_data_table_name,
-            'pdb_content', where_clause="corresponding_gene_call = %d" % corresponding_gene_call)[0].decode('utf-8')
+        return self.db.get_single_column_from_table(
+            t.pdb_data_table_name,
+            'pdb_content',
+            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+        )[0].decode('utf-8')
 
 
     def export_pdb_content(self, corresponding_gene_call, filepath, ok_if_exists=False):
@@ -779,6 +806,11 @@ class Structure(object):
 
         corresponding_gene_call = structure_info["corresponding_gene_call"]
         modeller_out = structure_info['modeller']
+
+        # If the gene is present in the database, remove it first
+        if corresponding_gene_call in self.structure_db.genes_with_structure:
+            # We do not remove the gene from self because that is handled in _run
+            self.structure_db.remove_gene(corresponding_gene_call, remove_from_self=False)
 
         # templates is always added, even when structure was not modelled
         templates = pd.DataFrame(modeller_out['templates'])
