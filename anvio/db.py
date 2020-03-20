@@ -10,6 +10,7 @@ import math
 import numpy
 import pandas as pd
 import sqlite3
+import warnings
 
 import anvio
 import anvio.tables as tables
@@ -31,6 +32,7 @@ __status__ = "Development"
 # Converts numpy numbers into storable python types that sqlite3 is expecting
 sqlite3.register_adapter(numpy.int64, int)
 sqlite3.register_adapter(numpy.float64, float)
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 def get_list_in_chunks(input_list, num_items_in_each_chunk=5000):
@@ -544,7 +546,7 @@ class DB:
         return results_dict
 
 
-    def get_table_as_dataframe(self, table_name, where_clause=None, columns_of_interest=None, error_if_no_data=True):
+    def get_table_as_dataframe(self, table_name, where_clause=None, columns_of_interest=None, drop_if_null=False, error_if_no_data=True):
         """Get the table as a pandas DataFrame object
 
         Parameters
@@ -556,6 +558,9 @@ class DB:
 
         columns_of_interest : list, None
             Which columns do you want to return? If None, all are returned. Applied after where_clause.
+
+        drop_if_null : bool, False
+            Drop columns if they contain all NULL values, i.e. np.nan, or ''
 
         error_if_no_data : bool, True
             Raise an error if the dataframe has 0 rows. Checked after where_clause.
@@ -573,6 +578,16 @@ class DB:
 
         if results_df.empty and error_if_no_data:
             raise ConfigError("DB.get_table_as_dataframe :: The dataframe requested is empty")
+
+        if drop_if_null:
+            for col in columns_of_interest.copy():
+                if results_df[col].isna().all():
+                    # Column contains only entries that equate to pandas NA
+                    columns_of_interest.remove(col)
+
+                elif (results_df[col] == '').all():
+                    # Column contains all empty strings
+                    columns_of_interest.remove(col)
 
         return results_df.loc[:, columns_of_interest]
 
