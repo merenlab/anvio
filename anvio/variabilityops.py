@@ -41,6 +41,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 pd.options.display.max_columns=100
 pd.options.display.max_rows=100
+
 pp = terminal.pretty_print
 progress = terminal.Progress()
 run = terminal.Run(width=62)
@@ -1090,14 +1091,8 @@ class VariabilitySuper(VariabilityFilter, object):
         self.progress.new('Loading structure information')
         self.progress.update('Reading the structure database ...')
         structure_db = structureops.StructureDatabase(self.structure_db_path)
-        self.structure_residue_info = structure_db.db.get_table_as_dataframe(t.residue_info_table_name)
 
-        # Keep only columns where not all values are null
-        columns_to_keep = []
-        for col in self.structure_residue_info.columns:
-            if not self.structure_residue_info[col].isna().all() and not (self.structure_residue_info[col] == '').all():
-                columns_to_keep.append(col)
-        self.structure_residue_info = self.structure_residue_info[columns_to_keep]
+        self.structure_residue_info = structure_db.get_residue_info_for_all()
 
         self.genes_with_structure = set(self.structure_residue_info["corresponding_gene_call"].unique())
         # genes_included = genes_of_interest, unless genes_of_interest weren't specified. then
