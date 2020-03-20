@@ -47,6 +47,9 @@ class StructureDatabase(object):
 
         if create_new:
             self.create_tables()
+            self.genes_with_structure = set([])
+            self.genes_without_structure = set([])
+            self.genes_queried = set([])
         else:
             self.db_hash = str(self.db.get_meta_value('contigs_db_hash'))
             self.genes_with_structure = self.get_genes_with_structure()
@@ -89,19 +92,21 @@ class StructureDatabase(object):
 
 
     def get_genes_with_structure(self):
-        """Returns list of gene caller ids that have a structure in the DB"""
+        """Returns set of gene caller ids that have a structure in the DB, queried from self table"""
 
-        return [int(x) for x in self.db.get_meta_value('genes_with_structure', try_as_type_int=False).split(',') if not x == '']
+        return set([int(x) for x in self.db.get_meta_value('genes_with_structure', try_as_type_int=False).split(',') if not x == ''])
 
 
     def get_genes_without_structure(self):
-        """Returns list of gene caller ids that failed to generate a structure"""
+        """Returns set of gene caller ids that failed to generate a structure, queried from self table"""
 
-        return [int(x) for x in self.db.get_meta_value('genes_without_structure', try_as_type_int=False).split(',') if not x == '']
+        return set([int(x) for x in self.db.get_meta_value('genes_without_structure', try_as_type_int=False).split(',') if not x == ''])
 
 
     def get_genes_queried(self):
-        """Returns list of all gene caller ids that structures were attempted for, regardless of success or failure
+        """Returns set of all gene caller ids that structures were attempted for, regardless of success or failure
+
+        Queried from self table
 
         Notes
         =====
@@ -109,7 +114,15 @@ class StructureDatabase(object):
           millions of structures
         """
 
-        return self.get_genes_with_structure() + self.get_genes_without_structure()
+        return self.get_genes_with_structure() | self.get_genes_without_structure()
+
+
+    def update_genes_with_and_without_structure(self):
+        """Writes genes_queried, genes_with_structure, and genes_without_structure entries in self table"""
+
+        self.db.set_meta_value('genes_queried', ",".join(str(g) for g in self.genes_queried))
+        self.db.set_meta_value('genes_with_structure', ",".join(str(g) for g in self.genes_with_structure))
+        self.db.set_meta_value('genes_without_structure', ",".join(str(g) for g in self.genes_without_structure))
 
 
     def create_tables(self):
@@ -363,8 +376,8 @@ class Structure(object):
                              "around 10% identity.".format(self.modeller_params['percent_identical_cutoff']))
 
         if self.skip_DSSP:
-            self.run.warning("You requested to skip amino acid residue annotation with DSSP. A bold move only an expert could justify... "
-                             "Anvi'o's respect for you increases slightly.")
+            self.run.warning("It was requested that amino acid residue annotation with DSSP be skipped. A bold move only "
+                             "an expert could justify... Anvi'o's respect for you increases slightly.")
 
         # Perform a rather extensive check on whether the MODELLER executable is going to work. We
         # do this here so we can initiate MODELLER.MODELLER with lazy_init so it does not do this
@@ -502,39 +515,44 @@ class Structure(object):
         mem_tracker = terminal.TrackMemory(at_most_every=0.1)
         mem_usage, mem_diff = mem_tracker.start()
 
-        with_structure = []
-        without_structure = []
-        tried = 0
+        num_with_structure = 0
+        num_without_structure = 0
+        num_tried = 0
 
         self.progress.new('Using %d threads' % self.num_threads, progress_total_items=num_genes)
-        msg = self.msg() % (tried, num_genes, len(with_structure), mem_usage, mem_diff)
+        msg = self.msg() % (num_tried, num_genes, num_with_structure, mem_usage, mem_diff)
         self.progress.update(msg)
 
-        while tried < num_genes:
+        while num_tried < num_genes:
             try:
                 structure_info = output_queue.get()
 
-                tried += 1
+                corresponding_gene_call = structure_info['corresponding_gene_call']
 
                 # Add it to the storage buffer
                 structure_infos.append(structure_info)
 
+                num_tried += 1
+                self.structure_db.genes_queried.add(corresponding_gene_call)
+
                 if structure_info['has_structure']:
-                    with_structure.append(structure_info['corresponding_gene_call'])
+                    num_with_structure += 1
+                    self.structure_db.genes_with_structure.add(corresponding_gene_call)
                 else:
-                    without_structure.append(structure_info['corresponding_gene_call'])
+                    num_without_structure += 1
+                    self.structure_db.genes_without_structure.add(corresponding_gene_call)
 
                 if mem_tracker.measure():
                     mem_usage = mem_tracker.get_last()
                     mem_diff = mem_tracker.get_last_diff()
 
-                self.progress.increment(tried)
-                msg = self.msg() % (tried, num_genes, len(with_structure), mem_usage, mem_diff)
+                self.progress.increment(num_tried)
+                msg = self.msg() % (num_tried, num_genes, num_with_structure, mem_usage, mem_diff)
                 self.progress.update(msg)
 
-                if self.write_buffer_size > 0 and len(with_structure) % self.write_buffer_size == 0:
+                if self.write_buffer_size > 0 and num_with_structure % self.write_buffer_size == 0:
                     self.progress.update('%d/%d GENES PROCESSED | WRITING TO DB 💾 ...' % \
-                        (tried, num_genes))
+                        (num_tried, num_genes))
 
                     # Store tables
                     self.store_genes(structure_infos)
@@ -543,20 +561,18 @@ class Structure(object):
                     structure_infos = []
 
                     # Update self table
-                    self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in with_structure + without_structure]))
-                    self.structure_db.db.set_meta_value('genes_with_structure', ",".join([str(g) for g in with_structure]))
-                    self.structure_db.db.set_meta_value('genes_without_structure', ",".join([str(g) for g in without_structure]))
+                    self.structure_db.update_genes_with_and_without_structure()
 
                     self.progress.update(msg)
 
             except KeyboardInterrupt:
-                self.run.info_single("Anvi'o profiler received SIGINT, terminating all processes...", nl_before=2)
+                self.run.info_single("Anvi'o received SIGINT, terminating all processes...", nl_before=2)
                 break
 
         for proc in processes:
             proc.terminate()
 
-        self.progress.update('%d/%d GENES PROCESSED | WRITING TO DB 💾 ...' % (tried, num_genes))
+        self.progress.update('%d/%d GENES PROCESSED | WRITING TO DB 💾 ...' % (num_tried, num_genes))
 
         # Store tables
         self.store_genes(structure_infos)
@@ -565,13 +581,11 @@ class Structure(object):
         structure_infos = []
 
         # Update self table
-        self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in with_structure + without_structure]))
-        self.structure_db.db.set_meta_value('genes_with_structure', ",".join([str(g) for g in with_structure]))
-        self.structure_db.db.set_meta_value('genes_without_structure', ",".join([str(g) for g in without_structure]))
+        self.structure_db.update_genes_with_and_without_structure()
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
-        if not len(with_structure):
+        if not num_with_structure:
             raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
 
         self.structure_db.disconnect()
@@ -579,32 +593,36 @@ class Structure(object):
         self.run.info("Structure database", self.structure_db_path)
 
 
-    def run_single_thread(self):
-        genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
+    def run_single_thread(self, genes_of_interest):
         num_genes = len(genes_of_interest)
 
         mem_tracker = terminal.TrackMemory(at_most_every=0.1)
         mem_usage, mem_diff = mem_tracker.start()
 
-        with_structure = []
-        without_structure = []
-        tried = 0
+        num_with_structure = 0
+        num_without_structure = 0
+        num_tried = 0
 
         self.progress.new('Using 1 thread', progress_total_items=num_genes)
-        msg = self.msg() % (tried, num_genes, len(with_structure), mem_usage, mem_diff)
+        msg = self.msg() % (num_tried, num_genes, num_with_structure, mem_usage, mem_diff)
         self.progress.update(msg)
 
         for corresponding_gene_call in genes_of_interest:
             structure_info = self.process_gene(corresponding_gene_call)
 
-            self.progress.increment(tried)
-            msg = self.msg() % (tried, num_genes, len(with_structure), mem_usage, mem_diff)
+            self.progress.increment(num_tried)
+            msg = self.msg() % (num_tried, num_genes, num_with_structure, mem_usage, mem_diff)
             self.progress.update(msg)
 
+            num_tried += 1
+            self.structure_db.genes_queried.add(corresponding_gene_call)
+
             if structure_info['has_structure']:
-                with_structure.append(corresponding_gene_call)
+                num_with_structure += 1
+                self.structure_db.genes_with_structure.add(corresponding_gene_call)
             else:
-                without_structure.append(corresponding_gene_call)
+                num_without_structure += 1
+                self.structure_db.genes_without_structure.add(corresponding_gene_call)
 
             if mem_tracker.measure():
                 mem_usage = mem_tracker.get_last()
@@ -616,15 +634,11 @@ class Structure(object):
 
             # We update self.table every gene because there is no GIL cost with single thread and it
             # allows user to CTRL+C and still have a valid DB
-            self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in with_structure + without_structure]))
-            self.structure_db.db.set_meta_value('genes_with_structure', ",".join([str(g) for g in with_structure]))
-            self.structure_db.db.set_meta_value('genes_without_structure', ",".join([str(g) for g in without_structure]))
-
-            tried += 1
+            self.structure_db.update_genes_with_and_without_structure()
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
-        if not len(with_structure):
+        if not num_with_structure:
             raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
 
         self.structure_db.disconnect()
