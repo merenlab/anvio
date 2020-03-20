@@ -678,34 +678,37 @@ class Structure(object):
         msg = self.msg() % (num_tried, num_genes, num_with_structure, mem_usage, mem_diff)
         self.progress.update(msg)
 
-        for corresponding_gene_call in genes_of_interest:
-            structure_info = self.process_gene(corresponding_gene_call)
+        try:
+            for corresponding_gene_call in genes_of_interest:
+                structure_info = self.process_gene(corresponding_gene_call)
 
-            self.progress.increment(num_tried)
-            msg = self.msg() % (num_tried, num_genes, num_with_structure, mem_usage, mem_diff)
-            self.progress.update(msg)
+                self.progress.increment(num_tried)
+                msg = self.msg() % (num_tried, num_genes, num_with_structure, mem_usage, mem_diff)
+                self.progress.update(msg)
 
-            if mem_tracker.measure():
-                mem_usage = mem_tracker.get_last()
-                mem_diff = mem_tracker.get_last_diff()
+                if mem_tracker.measure():
+                    mem_usage = mem_tracker.get_last()
+                    mem_diff = mem_tracker.get_last_diff()
 
-            self.store_gene(structure_info)
+                self.store_gene(structure_info)
 
-            self.dump_raw_results(structure_info)
+                self.dump_raw_results(structure_info)
 
-            num_tried += 1
-            self.structure_db.genes_queried.add(corresponding_gene_call)
+                num_tried += 1
+                self.structure_db.genes_queried.add(corresponding_gene_call)
 
-            if structure_info['has_structure']:
-                num_with_structure += 1
-                self.structure_db.genes_with_structure.add(corresponding_gene_call)
-            else:
-                num_without_structure += 1
-                self.structure_db.genes_without_structure.add(corresponding_gene_call)
+                if structure_info['has_structure']:
+                    num_with_structure += 1
+                    self.structure_db.genes_with_structure.add(corresponding_gene_call)
+                else:
+                    num_without_structure += 1
+                    self.structure_db.genes_without_structure.add(corresponding_gene_call)
 
-            # We update self.table every gene because there is no GIL cost with single thread and it
-            # allows user to CTRL+C and still have a valid DB
-            self.structure_db.update_genes_with_and_without_structure()
+                # We update self.table every gene because there is no GIL cost with single thread and it
+                # allows user to CTRL+C and still have a valid DB
+                self.structure_db.update_genes_with_and_without_structure()
+        except KeyboardInterrupt:
+            self.run.info_single("Anvi'o received SIGINT, terminating all processes...", nl_before=2)
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
