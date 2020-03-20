@@ -2119,11 +2119,24 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
 
     def get_structure(self, gene_callers_id):
-        structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
-        summary = structure_db.get_summary_for_interactive(gene_callers_id)
-        structure_db.disconnect()
+        """Calls self.profile_gene_variability_data, then returns `summary`
 
+        Returns
+        =======
+        summary : dict
+            summary has the following keys: {'pdb_content', 'residue_info', 'histograms'}
+        """
+
+        # Put the gene in self.variability_storage if it isn't already there
         self.profile_gene_variability_data(gene_callers_id)
+
+        # Build summary
+        summary = {}
+
+        structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
+        summary['pdb_content'] = structure_db.get_pdb_content(gene_callers_id)
+        summary['residue_info'] = structure_db.get_residue_info_for_gene(gene_callers_id).to_json(orient='index')
+        structure_db.disconnect()
 
         summary['histograms'] = {}
         for engine in self.available_engines:
