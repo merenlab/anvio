@@ -421,8 +421,17 @@ class Structure(object):
         self.run.info_single("Anvi'o found the MODELLER executable %s, so will use it" % self.modeller_executable, nl_after=1, mc='green')
 
 
-    def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None):
-        """Nabs the genes of interest based on user arguments (self.args)"""
+    def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None, raise_if_none=False):
+        """Nabs the genes of interest based on genes_of_interest_path and gene_caller_ids
+
+        If no genes of interest are provided through either genes_of_interest_path or
+        gene_caller_ids, all will be assumed
+
+        Parameters
+        ==========
+        raise_if_none : bool, False
+            If True, an error will be raised if genes_of_interest_path and gene_caller_ids are both None
+        """
 
         genes_of_interest = None
 
@@ -459,6 +468,9 @@ class Structure(object):
                                   "look like anvi'o gene caller ids :/ Anvi'o is now sad.")
 
         if not genes_of_interest:
+            if raise_if_none:
+                raise ConfigError("You gotta supply some genes of interest.")
+
             # no genes of interest are specified. Assuming all, which could be innumerable--raise warning
             genes_of_interest = genes_in_contigs_database
             self.run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
