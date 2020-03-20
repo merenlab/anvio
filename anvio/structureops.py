@@ -232,16 +232,6 @@ class StructureDatabase(object):
         )
 
 
-    def get_summary_for_interactive(self, corresponding_gene_call):
-        """A very specific use case function. FIXME Should be moved to interactive.StructureInteractive"""
-
-        summary = {}
-        summary['pdb_content'] = self.get_pdb_content(corresponding_gene_call)
-        summary['residue_info'] = self.get_residue_info_for_gene(corresponding_gene_call).to_json(orient='index')
-
-        return summary
-
-
     def disconnect(self):
         self.db.disconnect()
 
