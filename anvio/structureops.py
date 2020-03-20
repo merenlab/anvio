@@ -237,8 +237,7 @@ class StructureDatabase(object):
 
         summary = {}
         summary['pdb_content'] = self.get_pdb_content(corresponding_gene_call)
-        summary['residue_info'] = self.db.get_table_as_dataframe(t.residue_info_table_name,
-            where_clause = "corresponding_gene_call = %d" % corresponding_gene_call).to_json(orient='index')
+        summary['residue_info'] = self.get_residue_info_for_gene(corresponding_gene_call).to_json(orient='index')
 
         return summary
 
