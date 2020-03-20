@@ -802,6 +802,7 @@ class KeggMetabolismEstimator(KeggContext):
                 else:
                     bin_level_module_dict[m]["contigs_to_genes"][contig] = set([gene_call_id])
 
+        # TODO: at some point I think we should save these KOs somewhere so that the user can look at them manually
         if anvio.DEBUG:
             self.run.info("KOs processed", "%d in bin" % len(kofam_hits_in_splits))
             if kos_not_in_modules:
