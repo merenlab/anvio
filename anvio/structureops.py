@@ -201,6 +201,37 @@ class StructureDatabase(object):
         self.run.info('PDB file output', output_dir)
 
 
+    def get_residue_info_for_gene(self, corresponding_gene_call, drop_null=True):
+        """Get residue info for gene as a dataframe
+
+        Parameters
+        ==========
+        drop_null : bool, True
+            Drop columns that have all null values.
+        """
+
+        return self.db.get_table_as_dataframe(
+            table_name=t.residue_info_table_name,
+            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            drop_if_null=drop_null,
+        )
+
+
+    def get_residue_info_for_all(self, drop_null=True):
+        """Get the full residue info table as a dataframe
+
+        Parameters
+        ==========
+        drop_null : bool, True
+            Drop columns that have all null values.
+        """
+
+        return self.db.get_table_as_dataframe(
+            table_name=t.residue_info_table_name,
+            drop_if_null=drop_null,
+        )
+
+
     def get_summary_for_interactive(self, corresponding_gene_call):
         """A very specific use case function. FIXME Should be moved to interactive.StructureInteractive"""
 
