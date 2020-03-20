@@ -740,12 +740,22 @@ class KeggMetabolismEstimator(KeggContext):
         return kofam_gene_split_contig
 
     def mark_kos_present_for_list_of_splits(self, kofam_hits_in_splits, split_list=None, bin_name=None):
-        """This function generates a bin-level dictionary of dictionaries, which associates modules with the list of KOs
+        """This function generates a bin-level dictionary of dictionaries, which associates modules with the KOs
         that are present in the bin for each module.
 
-        The structure of the dictionary is like this:
-        {mnum: {present_kos: [knum1, knum2, ....]}}
-        Why do we need an inner dictionary with just one list? Well. This dictionary will be expanded later by other functions, not to worry.
+        The structure of the dictionary is like this example:
+        {mnum: {"gene_caller_ids" : set([132, 133, 431, 6777])
+                "kofam_hits" : {'K00033' : [431, 6777],
+                                'K01057' : [133],
+                                'K00036' : [132] },
+                "genes_to_contigs": {132: 0,
+                                     133: 0,
+                                     431: 2,
+                                    6777: 1 },
+                "contigs_to_genes": { 0: set([132, 133]),
+                                      1: set(6777),
+                                      2: set(431) },}}
+        This dictionary will be expanded later by other functions.
 
         PARAMETERS
         ==========
@@ -764,10 +774,15 @@ class KeggMetabolismEstimator(KeggContext):
             self.run.info("Marking KOs present for bin", bin_name)
             self.run.info("Number of splits", len(split_list))
 
-        # initialize all modules with empty presence list
+        # initialize all modules with empty lists and dicts for kos, gene calls
         modules = self.kegg_modules_db.get_all_modules_as_list()
         for mnum in modules:
-            bin_level_module_dict[mnum] = {"present_kos" : []}
+            bin_level_module_dict[mnum] = {"present_kos" : [],   # TODO: get rid of this key eventually
+                                           "gene_caller_ids" : set(),
+                                           "kofam_hits" : {},
+                                           "genes_to_contigs" : {},
+                                           "contigs_to_genes" : {}
+                                          }
 
         kos_not_in_modules = []
         for ko, gene_call_id, split, contig in kofam_hits_in_splits:
@@ -775,7 +790,17 @@ class KeggMetabolismEstimator(KeggContext):
             if not present_in_mods:
                 kos_not_in_modules.append(ko)
             for m in present_in_mods:
-                bin_level_module_dict[m]["present_kos"].append(ko)
+                bin_level_module_dict[m]["present_kos"].append(ko)  # TODO: get rid of this eventually
+                bin_level_module_dict[m]["gene_caller_ids"].add(gene_call_id)
+                if ko in bin_level_module_dict[m]["kofam_hits"]:
+                    bin_level_module_dict[m]["kofam_hits"][ko].append(gene_call_id)
+                else:
+                    bin_level_module_dict[m]["kofam_hits"][ko] = [gene_call_id]
+                bin_level_module_dict[m]["genes_to_contigs"][gene_call_id] = contig
+                if contig in bin_level_module_dict[m]["contigs_to_genes"]:
+                    bin_level_module_dict[m]["contigs_to_genes"][contig].add(gene_call_id)
+                else:
+                    bin_level_module_dict[m]["contigs_to_genes"][contig] = set([gene_call_id])
 
         if anvio.DEBUG:
             self.run.info("KOs processed", "%d in bin" % len(kofam_hits_in_splits))
