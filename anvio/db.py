@@ -544,8 +544,22 @@ class DB:
         return results_dict
 
 
-    def get_table_as_dataframe(self, table_name, columns_of_interest=None, error_if_no_data=True, where_clause=None):
-        """Get the table as a pandas DataFrame object"""
+    def get_table_as_dataframe(self, table_name, where_clause=None, columns_of_interest=None, error_if_no_data=True):
+        """Get the table as a pandas DataFrame object
+
+        Parameters
+        ==========
+        table_name : str
+
+        where_clause : str, None
+            SQL WHERE clause. If None, everything is fetched.
+
+        columns_of_interest : list, None
+            Which columns do you want to return? If None, all are returned. Applied after where_clause.
+
+        error_if_no_data : bool, True
+            Raise an error if the dataframe has 0 rows. Checked after where_clause.
+        """
 
         table_structure = self.get_table_structure(table_name)
 
@@ -556,6 +570,9 @@ class DB:
             results_df = pd.read_sql('''SELECT * FROM "%s" WHERE %s''' % (table_name, where_clause), self.conn, columns=table_structure)
         else:
             results_df = pd.read_sql('''SELECT * FROM "%s"''' % table_name, self.conn, columns=table_structure)
+
+        if results_df.empty and error_if_no_data:
+            raise ConfigError("DB.get_table_as_dataframe :: The dataframe requested is empty")
 
         return results_df.loc[:, columns_of_interest]
 
