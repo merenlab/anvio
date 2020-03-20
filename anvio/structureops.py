@@ -298,8 +298,9 @@ class Structure(object):
         null = lambda x: x
 
         self.contigs_db_path = A('contigs_db', null)
-        self.structure_db_path = A('structure_db_path', null)
+        self.structure_db_path = A('structure_db', null)
         self.modeller_executable = A('modeller_executable', null)
+        self.list_modeller_params = A('list_modeller_params', null)
         self.full_modeller_output = A('dump_dir', null)
 
         self.num_threads = A('num_threads', int)
@@ -332,6 +333,12 @@ class Structure(object):
 
         # init StructureDatabase
         self.structure_db = StructureDatabase(self.structure_db_path, self.contigs_db_hash, create_new=create)
+
+        if self.list_modeller_params:
+            params_dict = self.structure_db.get_run_params_dict()
+            for param, value in params_dict.items():
+                self.run.info(param, value)
+            import sys; sys.exit()
 
         # Determine the modeller parameters and store in db
         # NOTE self.skip_DSSP is down here because get_modeller_params has the potential to
