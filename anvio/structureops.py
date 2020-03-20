@@ -309,6 +309,7 @@ class Structure(object):
 
         self.genes_of_interest_path = A('genes_of_interest', null)
         self.gene_caller_ids = A('gene_caller_ids', null)
+        self.rerun_genes = A('rerun_genes', null)
         self.splits_of_interest_path = A('splits_of_interest', null)
         self.bin_id = A('bin_id', null)
         self.collection_name = A('collection_name', null)
@@ -533,10 +534,36 @@ class Structure(object):
                              "you could possibly want? Perfect, then restart this process and "
                              "provide a --dump-dir", lc='yellow')
 
-        self.run_multi_thread() if self.num_threads > 1 else self.run_single_thread()
+        # Are we creating a new database, or updating an old one?
+        update_db = True if not self.create else False
+
+        if not update_db:
+            # If creating new db, its simple. Just define the genes of interest
+            genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
+        else:
+            # If updating a db, we a bit more to do
+            genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids, raise_if_none=True)
+
+            if self.rerun_genes:
+                self.run.warning("You've requested to re-run structural modelling if your genes of interest are already "
+                                 "present in the database. Just so you know.")
+            else:
+                genes_already_in_db = []
+                for gene in genes_of_interest:
+                    if gene in self.structure_db.genes_with_structure:
+                        genes_already_in_db.append(gene)
+
+                if len(genes_already_in_db):
+                    raise ConfigError("Of your %d genes of interest, %d already exist in the DB. If you want to rerun "
+                                      "modelling for these genes, use the flag --rerun. Here are the first 5 such gene "
+                                      "IDs that are in your DB already: %s." % (len(genes_of_interest),
+                                                                                len(genes_already_in_db),
+                                                                                genes_already_in_db[:5]))
+
+        self.run_multi_thread(genes_of_interest) if self.num_threads > 1 else self.run_single_thread(genes_of_interest)
 
 
-    def run_multi_thread(self):
+    def run_multi_thread(self, genes_of_interest):
         structure_infos = []
 
         manager = multiprocessing.Manager()
@@ -544,7 +571,6 @@ class Structure(object):
         output_queue = manager.Queue(self.queue_size)
 
         # Get the genes of interest
-        genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
         num_genes = len(genes_of_interest)
 
         # put contig indices into the queue to be read from within the worker
@@ -597,8 +623,7 @@ class Structure(object):
                 self.progress.update(msg)
 
                 if self.write_buffer_size > 0 and num_with_structure % self.write_buffer_size == 0:
-                    self.progress.update('%d/%d GENES PROCESSED | WRITING TO DB 💾 ...' % \
-                        (num_tried, num_genes))
+                    self.progress.update('%d/%d GENES PROCESSED | WRITING TO DB 💾 ...' % (num_tried, num_genes))
 
                     # Store tables
                     self.store_genes(structure_infos)
@@ -660,6 +685,14 @@ class Structure(object):
             msg = self.msg() % (num_tried, num_genes, num_with_structure, mem_usage, mem_diff)
             self.progress.update(msg)
 
+            if mem_tracker.measure():
+                mem_usage = mem_tracker.get_last()
+                mem_diff = mem_tracker.get_last_diff()
+
+            self.store_gene(structure_info)
+
+            self.dump_raw_results(structure_info)
+
             num_tried += 1
             self.structure_db.genes_queried.add(corresponding_gene_call)
 
@@ -669,14 +702,6 @@ class Structure(object):
             else:
                 num_without_structure += 1
                 self.structure_db.genes_without_structure.add(corresponding_gene_call)
-
-            if mem_tracker.measure():
-                mem_usage = mem_tracker.get_last()
-                mem_diff = mem_tracker.get_last_diff()
-
-            self.store_gene(structure_info)
-
-            self.dump_raw_results(structure_info)
 
             # We update self.table every gene because there is no GIL cost with single thread and it
             # allows user to CTRL+C and still have a valid DB
@@ -862,6 +887,7 @@ class Structure(object):
             self.structure_db.entries[t.residue_info_table_name] = \
                 self.structure_db.entries[t.residue_info_table_name].append(structure_info['residue_info'])
             self.structure_db.store(t.residue_info_table_name, key='entry_id')
+
 
 
     def store_genes(self, structure_infos):
