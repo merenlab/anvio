@@ -655,11 +655,9 @@ class MetagenomeDescriptions(object):
 
     def get_metagenome_hash(self, entry):
         utils.is_contigs_db(entry['contigs_db_path'])
-        contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
-        genome_hash = contigs_db.meta['contigs_db_hash']
-        contigs_db.disconnect()
+        contigs_db_hash = db.DB(entry['contigs_db_path'], None, ignore_version=True).get_meta_value('contigs_db_hash')
 
-        return genome_hash
+        return contigs_db_hash
 
 
     def sanity_check(self):
