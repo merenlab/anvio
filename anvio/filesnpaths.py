@@ -124,7 +124,7 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
 
     if len(line.split(separator)) == 1 and expected_number_of_fields != 1:
         raise FilesNPathsError("File '%s' does not seem to have TAB characters. "
-                           "Did you export this file on MAC using EXCEL? :(" % file_path)
+                               "Did you export this file on MAC using EXCEL? :(" % file_path)
 
     f.seek(0)
     num_fields_set = set([len(line.split(separator)) for line in f.readlines()])
@@ -135,7 +135,7 @@ def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=N
         num_fields_in_file = list(num_fields_set)[0]
         if num_fields_in_file != expected_number_of_fields:
             raise FilesNPathsError("The expected number of columns for '%s' is %d. Yet, it has %d "
-                                    "of them :/" % (file_path, expected_number_of_fields, num_fields_in_file))
+                                   "of them :/" % (file_path, expected_number_of_fields, num_fields_in_file))
 
     f.close()
     return True
