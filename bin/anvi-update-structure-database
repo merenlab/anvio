@@ -23,7 +23,7 @@ __description__ = ("Add or re-run genes from an already existing structure datab
 
 
 def main(args):
-    structops.Structure(args, create=False)._run()
+    structops.StructureSuperclass(args, create=False)._run()
 
 
 if __name__ == '__main__':
