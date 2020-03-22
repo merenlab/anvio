@@ -25,7 +25,7 @@ __description__ = ("Setup or update an offline database of representative PDB st
 
 @terminal.time_program
 def main(args):
-    print('hi')
+    structops.PDBDatabase(args)
 
 
 if __name__ == '__main__':

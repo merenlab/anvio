@@ -602,7 +602,7 @@ D = {
              'action': 'store_true',
              'help': "Remove all the previously stored files and start over. If something is feels wrong "
                      "for some reason and if you believe re-downloading files and setting them up could "
-                     "address the issue, this is the flag that will tell anvi'o to act like a real comptuer "
+                     "address the issue, this is the flag that will tell anvi'o to act like a real computer "
                      "scientist challenged with a computational problem."}
                 ),
     'redo-databases': (
@@ -625,6 +625,21 @@ D = {
              'type': str,
              'help': "The directory path for your Pfam setup. Anvi'o will try to use the default path "
                      "if you do not specify anything."}
+                ),
+    'pdb-database-path': (
+            ['--pdb-database-path'],
+            {'default': None,
+             'type': str,
+             'metavar': 'PATH',
+             'help': "The path for the PDB database to be stored (or read from, depending on the context). "
+                     "If you leave it as is without specifying anything, anvi'o will set up everything in "
+                     "(or try to read things from) a pre-defined default directory. The advantage of using "
+                     "the default directory at the time of set up is that every user of anvi'o on a computer "
+                     "system will be using a single data directory, but then you may need to run the setup "
+                     "program with superuser privileges. If you don't have superuser privileges, then you can "
+                     "use this parameter to tell anvi'o the location you wish to use to setup your database. "
+                     "If you are using a program (such as `anvi-gen-structure-database`) "
+                     "you will have to use this parameter to tell such programs where your PDB data is."}
                 ),
     'hide-outlier-SNVs': (
             ['--hide-outlier-SNVs'],

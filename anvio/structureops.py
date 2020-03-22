@@ -26,6 +26,7 @@ import anvio.drivers.MODELLER as MODELLER
 from anvio.errors import ConfigError
 from anvio.dbops import ContigsSuperclass
 
+J = lambda x, y: os.path.join(x, y)
 
 class StructureDatabase(object):
     """Structure database operations"""
@@ -1239,3 +1240,111 @@ class ContactMap(object):
         return np.sqrt(np.sum(diff_vector**2))
 
 
+class PDBDatabase(object):
+    """This class manages the PDB database generated and managed by anvi-setup-pdb-database
+
+    This class does not model structures, and does not create 'structure databases'. It generates
+    and manages an exhaustive repository of available PDB structures. The database therefore allows
+    offline access to the entire 'globe' of available structures.
+
+    The collection of structures this database is a moving target as more structures become solved,
+    but our friends at the Sali lab continually update this collection. For more information, see
+    https://salilab.org/modeller/supplemental.html and for the list of PDB codes in the current
+    version as well as when it was last updated please see
+    https://salilab.org/modeller/downloads/pdb_95.cod.gz
+    """
+
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
+        null = lambda x: x
+
+        self.db_path = A('pdb-database-path', null)
+        if not self.db_path:
+            self.db_path = J(os.path.dirname(anvio.__file__), 'data/misc/PDB.db')
+
+        self.num_threads = A('num_threads', int)
+        self.queue_size = self.num_threads * 10
+
+        #FIXME
+        try:
+            os.remove(self.db_path)
+        except:
+            pass
+        #FIXME
+
+        self.db = db.DB(self.db_path, '0.1', new_database=True)
+
+        self.create_tables()
+
+        path = self.download_clusters()
+        clusters = self.parse_clusters_file(path)
+        self.update_clusters_table(clusters)
+        self.db.disconnect()
+
+
+    def create_tables(self):
+        self.db.set_meta_value('creation_date', time.time())
+        self.db.create_table('structures', ['cluster', 'representative_id', 'pdb_content'], ['text', 'text', 'blob'])
+        self.db.create_table('clusters', ['cluster', 'id', 'representative'], ['text', 'text', 'integer'])
+
+
+    def update_clusters_table(self, clusters):
+        self.db._exec('''DELETE FROM %s''' % 'clusters')
+        self.db.insert_rows_from_dataframe('clusters', clusters)
+
+
+    def parse_clusters_file(self, path):
+        """Parse a clusters file and return a clusters dataframe
+
+        Returns
+        =======
+        output : pandas DataFrame
+            output has columns Index(['cluster', 'id', 'representative'])
+        """
+
+        d = {'cluster': [], 'id': [], 'representative': []}
+
+        with open(path, 'r') as f:
+            for cluster, line in enumerate(f.readlines()):
+                line = line.strip()
+                rep_id, ids = line.split(':')
+                rep_id = rep_id.strip()
+                ids = ids.strip().split(' ')
+
+                for pdb_id in ids:
+                    d['cluster'].append('cluster_%06d' % cluster)
+                    d['id'].append(pdb_id)
+                    d['representative'].append(1 if pdb_id == rep_id else 0)
+
+        return pd.DataFrame(d)
+
+
+    def download_clusters(self, directory=None):
+        """Downloads the current 95% cluster groups
+
+        Downloads https://salilab.org/modeller/downloads/pdb_95.grp.gz and then decompresses the
+        file with `gzip -d`
+
+        Parameters
+        ==========
+        directory : str
+            Directory that the file will be placed in. Temporary directory assumed if None
+
+        Returns
+        =======
+        output : str
+            The path of the downloaded and decompressed file.
+        """
+
+        if not directory:
+            directory = filesnpaths.get_temp_directory_path()
+
+        path = os.path.join(directory, "pdb_95.grp.gz")
+        utils.download_file("https://salilab.org/modeller/downloads/pdb_95.grp.gz", path)
+        utils.run_command(['gzip', '-d', path], log_file_path=filesnpaths.get_temp_file_path())
+
+        return path.rstrip('.gz')
