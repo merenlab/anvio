@@ -2092,52 +2092,77 @@ def check_contig_names(contig_names, dont_raise=False):
 
 def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
     """genome_desc is an instance of GenomeDescriptions"""
+
     if genome_desc is None and fasta_txt is None:
         raise ConfigError("Anvi'o was given no internal genomes, no external genomes, and no fasta "
-                         "files. Although anvi'o can technically go ahead and create a temporary "
-                         "FASTA directory, what's the point if there's nothing to do?")
+                          "files. Although anvi'o can technically go ahead and create a temporary "
+                          "FASTA directory, what's the point if there's nothing to do?")
 
     temp_dir = filesnpaths.get_temp_directory_path()
     hash_to_name = {}
     name_to_path = {}
     genome_names = set([])
     file_paths = set([])
+
     if genome_desc is not None:
-        for genome_name in genome_desc.genomes:
-            genome_names.add(genome_name)
-            contigs_db_path = genome_desc.genomes[genome_name]['contigs_db_path']
-            hash_for_output_file = hashlib.sha256(genome_name.encode('utf-8')).hexdigest()
-            hash_to_name[hash_for_output_file] = genome_name
+        # first figure out internal genomes that are bound by the same collection name and
+        # profile db path
+        genome_subsets = {}
+        for entry in genome_desc.genomes.values():
+            if 'bin_id' in entry:
+                # if we are here, this entry represents an internal genome. we will add this genome
+                # to genome_subsets data structure to be processed later.
+                profile_and_collection_descriptor = '_'.join([entry['profile_db_path'], entry['collection_id']])
+                if profile_and_collection_descriptor in genome_subsets:
+                    genome_subsets[profile_and_collection_descriptor]['genome_name_bin_name_tpl'].add((entry['name'], entry['bin_id']),)
+                else:
+                    genome_subsets[profile_and_collection_descriptor] = {'genome_name_bin_name_tpl': set([(entry['name'], entry['bin_id'])]),
+                                                                         'profile_db_path': entry['profile_db_path'],
+                                                                         'contigs_db_path': entry['contigs_db_path'],
+                                                                         'collection_id': entry['collection_id']}
+            else:
+                # If we are here, this means this is an external genome, so we can basically take care of it here immediately.
+                genome_name = entry['name']
+                genome_names.add(genome_name)
+                contigs_db_path = genome_desc.genomes[genome_name]['contigs_db_path']
+                hash_for_output_file = hashlib.sha256(genome_name.encode('utf-8')).hexdigest()
+                hash_to_name[hash_for_output_file] = genome_name
 
-            path = os.path.join(temp_dir, hash_for_output_file + '.fa')
-            file_paths.add(path)
+                path = os.path.join(temp_dir, hash_for_output_file + '.fa')
+                file_paths.add(path)
 
-            name_to_path[genome_name] = path
+                name_to_path[genome_name] = path
 
-            if 'bin_id' in genome_desc.genomes[genome_name]:
-                # Internal genome
-                bin_id = genome_desc.genomes[genome_name]['bin_id']
-                collection_id = genome_desc.genomes[genome_name]['collection_id']
-                profile_db_path = genome_desc.genomes[genome_name]['profile_db_path']
+                export_sequences_from_contigs_db(contigs_db_path, path)
 
-                class Args: None
-                summary_args = Args()
+        # when we are here, all we have are interanl genomes as genome subsets.
+        for genome_subset in genome_subsets.values():
+            args = anvio.summarizer.ArgsTemplateForSummarizerClass()
+            args.contigs_db = genome_subset['contigs_db_path']
+            args.profile_db = genome_subset['profile_db_path']
+            args.collection_name = genome_subset['collection_id']
+            args.output_dir = filesnpaths.get_temp_directory_path(just_the_path=True)
+            args.quick_summary = True
 
-                summary_args.profile_db = profile_db_path
-                summary_args.contigs_db = contigs_db_path
-                summary_args.collection_name = collection_id
-                summary_args.quick = True
+            # note that we're initializing the summary class only for once for a given
+            # genome subset
+            summary = anvio.summarizer.ProfileSummarizer(args, r=Run(verbose=False))
+            summary.init()
 
-                summary = anvio.summarizer.ProfileSummarizer(summary_args, r=Run(verbose=False))
-                summary.init()
+            for genome_name, bin_name in genome_subset['genome_name_bin_name_tpl']:
+                genome_names.add(genome_name)
 
-                bin_summary = anvio.summarizer.Bin(summary, bin_id)
+                hash_for_output_file = hashlib.sha256(genome_name.encode('utf-8')).hexdigest()
+                hash_to_name[hash_for_output_file] = genome_name
+                path = os.path.join(temp_dir, hash_for_output_file + '.fa')
+                file_paths.add(path)
+                name_to_path[genome_name] = path
+
+                bin_summary = anvio.summarizer.Bin(summary, bin_name)
 
                 with open(path, 'w') as fasta:
                     fasta.write(bin_summary.get_bin_sequence())
-            else:
-                # External genome
-                export_sequences_from_contigs_db(contigs_db_path, path)
+
 
     if fasta_txt is not None:
         fastas = get_TAB_delimited_file_as_dictionary(fasta_txt, expected_fields=['name', 'path'], only_expected_fields=True)
