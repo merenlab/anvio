@@ -46,6 +46,7 @@ class KeggContext(object):
         self.kegg_data_dir = A('kegg_data_dir') or os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
         self.orphan_data_dir = os.path.join(self.kegg_data_dir, "orphan_data")
         self.module_data_dir = os.path.join(self.kegg_data_dir, "modules")
+        self.pathway_data_dir = os.path.join(self.kegg_data_dir, "pathways")
         self.quiet = A('quiet') or False
         self.just_do_it = A('just_do_it')
 
@@ -53,6 +54,7 @@ class KeggContext(object):
         self.kofam_hmm_file_path = os.path.join(self.kegg_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
         self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list")
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "ko00002.keg")
+        self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "br08901.keg")
 
 
     def setup_ko_dict(self):
@@ -173,6 +175,7 @@ class KeggSetup(KeggContext):
 
         # Kegg module text files
         self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
+        self.kegg_pathway_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=br08901.keg&format=htext&filedir="
         self.kegg_rest_api_get = "http://rest.kegg.jp/get"
 
 
