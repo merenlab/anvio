@@ -15,6 +15,7 @@ import hashlib
 import argparse
 
 import anvio
+import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
@@ -61,6 +62,41 @@ class GenomeDescriptions(object):
 
         if self.input_file_for_internal_genomes or self.input_file_for_external_genomes:
             self.read_genome_paths_from_input_files()
+
+        # see `self.is_proper_db` function for these two variables:
+        self.contigs_dbs_found = set([])
+        self.profile_dbs_found = set([])
+
+
+    def is_proper_db(self, db_path, db_type):
+        """Check if contigs db or profile db is OK.
+
+        A given contigs database have multiple entries in an internal or external genomes file.
+        The same goes for a profile database. One of the things we have to do during initialization
+        is to check whether each entry in int/ext genomes files is associated with a legitimate
+        contigs or profile databases. This function fills up `self.contigs_dbs_found` and
+        `self.profile_dbs_found` variables every time it is called. If there is alread an entry
+        it returns True without any additional function call.
+
+        Parameters
+        ==========
+            db_path: str
+                path to the database
+            db_type: str in ['contigs', 'profile']
+                whether a given database is assumed to be a contigs or profile database
+
+        """
+        db_types_factory = {'contigs': {'check': utils.is_contigs_db, 'variable': self.contigs_dbs_found},
+                            'profile': {'check': utils.is_profile_db, 'variable': self.profile_dbs_found}}
+
+        if db_type not in db_types_factory:
+            raise ConfigError("is_proper_db :: wrong `db_type` :/ Pick either: %s" % ', '.join(db_types_factory))
+
+        if db_path in db_types_factory[db_type]['variable']:
+            return True
+        else:
+            db_types_factory[db_type]['check'](db_path)
+            db_types_factory[db_type]['variable'].add(db_path)
 
 
     def names_check(self):
@@ -316,20 +352,31 @@ class GenomeDescriptions(object):
 
 
     def get_genome_hash_for_external_genome(self, entry):
-        utils.is_contigs_db(entry['contigs_db_path'])
-        contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
-        genome_hash = contigs_db.meta['contigs_db_hash']
-        contigs_db.disconnect()
+        self.is_proper_db(entry['contigs_db_path'], db_type='contigs')
+        genome_hash = db.DB(entry['contigs_db_path'], None, ignore_version=True).get_meta_value('contigs_db_hash')
+
+        if genome_hash in self.genome_hash_to_genome_name:
+            self.progress.reset()
+            raise ConfigError("While working on your external genomes, anvi'o realized that genome %s and %s seem to have the same hash. "
+                              "If you are certain these genomes represent two different genomes, please re-run the program, and if they appear "
+                              "again please let the developers know about the problem." % (self.genome_hash_to_genome_name[genome_hash], entry['name']))
 
         return genome_hash
 
 
     def get_genome_hash_for_internal_genome(self, entry):
-        utils.is_contigs_db(entry['contigs_db_path'])
+        self.is_proper_db(entry['contigs_db_path'], db_type='contigs')
         split_names_of_interest = self.get_split_names_of_interest_for_internal_genome(entry)
-        contigs_db = dbops.ContigsDatabase(entry['contigs_db_path'])
-        genome_hash = hashlib.sha224('_'.join([''.join(split_names_of_interest), contigs_db.meta['contigs_db_hash']]).encode('utf-8')).hexdigest()[0:12]
-        contigs_db.disconnect()
+        contigs_db_hash = db.DB(entry['contigs_db_path'], None, ignore_version=True).get_meta_value('contigs_db_hash')
+        genome_hash = hashlib.sha224('_'.join([''.join(split_names_of_interest), contigs_db_hash]).encode('utf-8')).hexdigest()[0:12]
+
+        if genome_hash in self.genome_hash_to_genome_name:
+            self.progress.reset()
+            raise ConfigError("According to hash values anvi'o has been generating for your internal genomes, not all genomes you have seem to be uniuqe. "
+                              "It is most likely you unintentionally listed the same information for different genome names. If you would like "
+                              "to double check, genome %s and genome %s seem to have the same hash. "
+                              "If you are certain these genomes represent two different genomes, please re-run the program, and if they appear "
+                              "again please let the developers know about the problem." % (self.genome_hash_to_genome_name[genome_hash], entry['name']))
 
         return genome_hash
 
@@ -399,7 +446,7 @@ class GenomeDescriptions(object):
 
 
     def get_split_names_of_interest_for_internal_genome(self, entry):
-        utils.is_profile_db(entry['profile_db_path'])
+        self.is_proper_db(entry['profile_db_path'], db_type='profile')
         # get splits of interest:
         class Args: pass
         args = Args()
