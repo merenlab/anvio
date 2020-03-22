@@ -332,7 +332,8 @@ class KeggSetup(KeggContext):
                 elif first_char == "C":
                     fields = re.split('\s{2,}', line)
                     konum = fields[1]
-                    self.pathway_dict[konum] = {"name" : fields[2], "category" : current_category, "subcategory" : current_subcategory}
+                    if konum[:2] != "07" and konum[:3] != "011" and konum[:3] != "012":
+                        self.pathway_dict[konum] = {"name" : fields[2], "category" : current_category, "subcategory" : current_subcategory}
                 # unknown code
                 else:
                     raise ConfigError("While parsing the KEGG file %s, we found an unknown line code %s. This has \
