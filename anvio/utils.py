@@ -2092,10 +2092,11 @@ def check_contig_names(contig_names, dont_raise=False):
 
 def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
     """genome_desc is an instance of GenomeDescriptions"""
+
     if genome_desc is None and fasta_txt is None:
         raise ConfigError("Anvi'o was given no internal genomes, no external genomes, and no fasta "
-                         "files. Although anvi'o can technically go ahead and create a temporary "
-                         "FASTA directory, what's the point if there's nothing to do?")
+                          "files. Although anvi'o can technically go ahead and create a temporary "
+                          "FASTA directory, what's the point if there's nothing to do?")
 
     temp_dir = filesnpaths.get_temp_directory_path()
     hash_to_name = {}
