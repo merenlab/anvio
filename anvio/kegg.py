@@ -301,14 +301,11 @@ class KeggSetup(KeggContext):
         B = Sub-category of Pathway Map
         C = Pathway Map identifier number and name
 
-        We only want the Pathway files that have KOs, not any that are just maps or don't have associated KOs. We can ignore identifiers
-        that start with the following codes, as they belong to categories or sub-categories that won't have an ORTHOLOGY section:
-        011 global map (lines linked to KOs)
-        012 overview map (lines linked to KOs)
-        07 drug structure map (no KO expansion)
+        Note that not all Pathway Maps that we download will have ORTHOLOGY fields. We don't exclude these here, but processing later
+        will have to be aware of the fact that not all pathways will have associated KOs.
 
-        NOTE: this may change at some point. Global and overview maps may not have KOs, but they can be made up of MODULES. So we may eventually
-        want to integrate these with the Modules information at some point.
+        We do, however, exclude Pathway Maps that don't have existing `koXXXXX` identifiers (these yield 404 errors when attempting to
+        download them). For instance, we exclude those that start with the code 010 (chemical structure maps).
         """
 
         self.pathway_dict = {}
@@ -321,6 +318,7 @@ class KeggSetup(KeggContext):
 
         current_category = None
         current_subcategory = None
+
 
         for line in f.readlines():
             line = line.strip('\n')
@@ -340,8 +338,8 @@ class KeggSetup(KeggContext):
                     current_subcategory = fields[1]
                 elif first_char == "C":
                     fields = re.split('\s{2,}', line)
-                    konum = fields[1]
-                    if konum[:2] != "07" and konum[:3] != "011" and konum[:3] != "012":
+                    konum = "ko" + fields[1]
+                    if konum[:5] != "ko010":
                         self.pathway_dict[konum] = {"name" : fields[2], "category" : current_category, "subcategory" : current_subcategory}
                 # unknown code
                 else:
