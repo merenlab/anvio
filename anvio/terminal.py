@@ -219,7 +219,7 @@ class Progress:
         self.step = None
 
 
-    def update(self, msg):
+    def update(self, msg, increment=False):
         self.msg = msg
 
         if not self.verbose:
@@ -227,6 +227,9 @@ class Progress:
 
         if not self.pid:
             raise TerminalError('Progress with null pid will not update for msg "%s"' % msg)
+
+        if increment:
+            self.increment()
 
         self.clear()
         self.write('\r[%s] %s' % (self.pid, msg))
