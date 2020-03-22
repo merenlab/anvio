@@ -3284,10 +3284,25 @@ def download_protein_structure(protein_code, output_dir=None, chain=None, raise_
 
     try:
         if not filesnpaths.is_file_exists(output_path, dont_raise=(not raise_if_fail)):
-            output_path = None
             run.warning("The protein {} could not be downloaded. Are you connected to internet?".format(protein_code))
+            return None
     except FilesNPathsError:
         raise ConfigError("The protein {} could not be downloaded. Are you connected to internet?".format(protein_code))
+
+    if chain is not None:
+        class ChainSelect(PDB.Select):
+            def accept_chain(self, chain_in_struct):
+                return 1 if chain_in_struct._id == chain else 0
+
+        # Load structure
+        p = PDB.PDBParser()
+        structure = p.get_structure(None, output_path)
+
+        # Overwrite file with chain-only structure
+        with SuppressAllOutput():
+            io = PDB.PDBIO()
+            io.set_structure(structure)
+            io.save(output_path, ChainSelect())
 
     return output_path
 
