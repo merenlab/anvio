@@ -392,8 +392,7 @@ class GenomeDescriptions(object):
             c = self.genomes[genome_name]
             c['external_genome'] = True
 
-            self.progress.increment() 
-            self.progress.update('working on %s' % (genome_name))
+            self.progress.update('working on %s' % (genome_name), increment=True)
 
             contigs_db_summary = summarizer.ContigSummarizer(c['contigs_db_path']).get_contigs_db_info_dict(gene_caller_to_use=self.gene_caller)
 
