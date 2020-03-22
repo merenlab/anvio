@@ -377,11 +377,15 @@ class GenomeDescriptions(object):
 
         if genome_hash in self.genome_hash_to_genome_name:
             self.progress.reset()
+            genome_1, genome_2 = self.genome_hash_to_genome_name[genome_hash], entry['name']
             raise ConfigError("According to hash values anvi'o has been generating for your internal genomes, not all genomes you have seem to be uniuqe. "
                               "It is most likely you unintentionally listed the same information for different genome names. If you would like "
-                              "to double check, genome %s and genome %s seem to have the same hash. "
+                              "to double check, genome %s (in '%s') and genome %s (in '%s') seem to have the same hash (so they are basically the same genomes). "
                               "If you are certain these genomes represent two different genomes, please re-run the program, and if they appear "
-                              "again please let the developers know about the problem." % (self.genome_hash_to_genome_name[genome_hash], entry['name']))
+                              "again please let the developers know about the problem." % (genome_1,
+                                                                                           self.genomes[genome_1]['collection_id'],
+                                                                                           genome_2,
+                                                                                           self.genomes[genome_2]['collection_id']))
 
         return genome_hash
 
