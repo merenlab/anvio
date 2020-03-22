@@ -414,12 +414,16 @@ class Dereplicate:
                 full_dict[name]['total_length'] = sum(utils.get_read_lengths_from_fasta(fastas[name]['path']).values())
 
         if self.representative_method == 'Qscore':
+            missing_completion = False
             for genome in full_dict:
                 if not full_dict[genome].get('percent_completion') or not full_dict[genome].get('percent_redundancy'):
                     self.representative_method = 'centrality'
-                    run.warning('At least one of your genomes does not have completion and/or redundancy scores, which makes '
-                                'it impossible to use Qscore to pick best representatives from each cluster. One of these '
-                                'genomes is %s. Anvi\'o will switch you to the \'centrality\' method for picking representatives.')
+                    missing_completion = genome
+
+            if missing_completion:
+                run.warning("At least one of your genomes does not have completion and/or redundancy scores, which makes "
+                            "it impossible to use Qscore to pick best representatives from each cluster. One of these "
+                            "genomes is %s. Anvi'o switched you to the 'centrality' method for picking representatives." % (genome))
 
         self.genomes_info_dict = full_dict
 
