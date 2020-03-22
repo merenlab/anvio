@@ -194,10 +194,13 @@ class MODELLER:
         # define directory path name to store the template PDBs (it can already exist)
         self.template_pdbs = os.path.join(self.directory, "{}_TEMPLATE_PDBS".format(self.corresponding_gene_call))
 
-        pdb_ids = utils.download_protein_structures([code[0] for code in self.top_seq_matches], self.template_pdbs)
+        pdb_paths = utils.download_protein_structures([code[0] for code in self.top_seq_matches], self.template_pdbs)
+
+        # Some downloads may have failed
+        pdb_paths = {code: path for code, path in pdb_paths.items() if path is not None}
 
         # redefine self.top_seq_matches in case not all were downloaded
-        self.top_seq_matches = [(code, chain_code) for code, chain_code in self.top_seq_matches if code in pdb_ids]
+        self.top_seq_matches = [(code, chain_code) for code, chain_code in self.top_seq_matches if code in pdb_paths]
 
         if not len(self.top_seq_matches):
             self.run.warning("No structures of the homologous proteins (templates) were downloadable. Probably something "

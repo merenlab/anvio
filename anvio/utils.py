@@ -3253,6 +3253,45 @@ def get_remote_file_content(url, gzipped=False):
     return remote_file.content.decode('utf-8')
 
 
+def download_protein_structure(protein_code, output_dir=None, chain=None, raise_if_fail=True):
+    """Downloads protein structures using Biopython.
+
+    Parameters
+    ==========
+    protein_code : str
+        Each element is a 4-letter protein code
+
+    output_dir : str
+        A dir to write the file to. Temporary directory is chosen if None
+
+    chain : str, None
+        If None, all chains remain in the PDB file. If specified, only the chain with the chain ID
+        `chain` will be saved.
+
+    raise_if_fail : bool, True
+        If the file does not download, raise an error
+
+    Returns
+    =======
+    output : output_path
+        Returns the filepath of the written file. Returns None if download failed
+    """
+
+    pdb_list = PDB.PDBList()
+
+    with SuppressAllOutput():
+        output_path = pdb_list.retrieve_pdb_file(protein_code, file_format='pdb', pdir=output_dir, overwrite=True)
+
+    try:
+        if not filesnpaths.is_file_exists(output_path, dont_raise=(not raise_if_fail)):
+            output_path = None
+            run.warning("The protein {} could not be downloaded. Are you connected to internet?".format(protein_code))
+    except FilesNPathsError:
+        raise ConfigError("The protein {} could not be downloaded. Are you connected to internet?".format(protein_code))
+
+    return output_path
+
+
 def download_protein_structures(protein_code_list, output_dir):
     """Downloads protein structures using Biopython.
 
@@ -3266,35 +3305,23 @@ def download_protein_structures(protein_code_list, output_dir):
 
     Returns
     =======
-    output : list
-        subset of protein_code_list that successfully downloaded
+    output : dict
+        A dictionary of output paths. {pdb_code: path}. If download failed, path is None
     """
 
     progress.new("Downloading proteins from PDB")
 
     filesnpaths.gen_output_directory(output_dir)
 
-    pdb_list = PDB.PDBList()
-
-    # this rule may one day change
-    get_protein_path = lambda x: os.path.join(output_dir, "pdb" + x + ".ent")
-
-    successfully_downloaded = []
+    paths = {}
     for protein_code in protein_code_list:
         progress.update("Downloading protein structure: {}".format(protein_code))
-
-        with SuppressAllOutput(): # FIXME SuppressAllOutput gives error
-            pdb_list.retrieve_pdb_file(protein_code, file_format="pdb", pdir=output_dir, overwrite=True)
-
-        # raise warning if structure was not downloaded
-        if not filesnpaths.is_file_exists(get_protein_path(protein_code), dont_raise=True):
-            run.warning("The protein {} could not be downloaded. Are you connected to internet?".format(protein_code))
-        else:
-            successfully_downloaded.append(protein_code)
+        path = download_protein_structure(protein_code, output_dir=output_dir, raise_if_fail=False)
+        paths[protein_code] = path
 
     progress.end()
 
-    return successfully_downloaded
+    return paths
 
 
 def get_hash_for_list(l):
