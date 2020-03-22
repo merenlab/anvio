@@ -206,8 +206,13 @@ def is_program_exists(program):
     raise FilesNPathsError("'%s' is not found" % program)
 
 
-def get_temp_directory_path():
-    return tempfile.mkdtemp()
+def get_temp_directory_path(just_the_path=False):
+    temp_directory_path = tempfile.mkdtemp()
+
+    if just_the_path:
+        shutil.rmtree(temp_directory_path)
+
+    return temp_directory_path
 
 
 def get_temp_file_path(prefix=None, just_the_path=True):
