@@ -484,18 +484,6 @@ class GenomeDescriptions(object):
             raise ConfigError('Genes must have been called during the generation of contigs database for this workflow to work. However,\
                                 these external genomes do not have gene calls: %s' % (', '.join(genomes_missing_gene_calls)))
 
-        # if two contigs db has the same hash, we are kinda f'd:
-        if len(set([self.genomes[genome_name]['genome_hash'] for genome_name in self.external_genome_names])) != len(self.external_genome_names):
-            raise ConfigError('Not all hash values are unique across all contig databases you provided. Something '
-                               'very fishy is going on :/')
-
-
-        if len(set([self.genomes[genome_name]['genome_hash'] for genome_name in self.internal_genome_names])) != len(self.internal_genome_names):
-            raise ConfigError("Not all hash values are unique across internal genomes. This is almost impossible to happen unless something very "
-                              "wrong with your workflow :/ It is most likely you managed to list the same information for different genome names. "
-                              "Please double check whether you internal genomes file looks perfectly fine. If it does, then perhaps let the "
-                              "developers know about the problem.")
-
         if not self.full_init:
             # if this is not full init, stop the sanity check here.
             self.progress.end()
