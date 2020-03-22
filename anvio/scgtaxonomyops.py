@@ -776,12 +776,15 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
             cols = ['metagenome_name'] + dfx.index.levels[1].tolist()
 
             output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, taxonomic_level)
-            with open(output_file_path, 'w') as output:
+            temp_file_path = filesnpaths.get_temp_file_path()
+            with open(temp_file_path, 'w') as output:
                 output.write('\t'.join(cols) + '\n')
                 for i in range(0, len(matrix)):
                     output.write('\t'.join([rows[i]] + ['%.2f' % c for c in matrix[i]]) + '\n')
 
-                self.run.info('Output matrix for "%s"' % taxonomic_level, output_file_path)
+            utils.transpose_tab_delimited_file(temp_file_path, output_file_path, remove_after=True)
+
+            self.run.info('Output matrix for "%s"' % taxonomic_level, output_file_path)
 
 
     def report_scg_frequencies_as_TAB_delimited_file(self):
