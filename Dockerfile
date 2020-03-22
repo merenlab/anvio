@@ -1,13 +1,28 @@
+# To start a build in an absolutely pristine Docker environment you can use the following
+# to clean up your docker (although please note that it will remove all existing containers
+# and cached states):
+#
+# docker rmi --force $(docker images -a --filter=dangling=true -q)
+# docker rm --force $(docker ps --filter=status=exited --filter=status=created -q)
+# docker system prune --force -a
+#
+# after that, you can start the build with the following: 
+#
+# docker build -t meren/anvio:test-build .
+
 FROM continuumio/miniconda3:4.8.2
 ENV ANVIO_VERSION "6.1_master"
 
-# add channels, conda-forge has the highest priority
-RUN conda config --env --add channels r
 RUN conda config --env --add channels bioconda
 RUN conda config --env --add channels conda-forge
 
-# Create and activate an environment
 RUN conda create -n anvioenv python=3.6
+
+# Install nano early on so the container has
+# something to edit files if debug is necessary
+RUN conda install -y nano
+
+# Activate environment
 ENV PATH /opt/conda/envs/anvioenv/bin:$PATH
 ENV CONDA_DEFAULT_ENV anvioenv
 ENV CONDA_PREFIX /opt/conda/envs/anvioenv
@@ -23,6 +38,7 @@ COPY conda-recipe /tmp/conda-recipe
 RUN conda-build /tmp/conda-recipe/anvio-minimal
 RUN conda index /opt/conda/envs/anvioenv/conda-bld/
 RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio-minimal=$ANVIO_VERSION
+RUN conda build purge-all
 
 # build and install anvio meta package. please note that the next line is quite a memory
 # intensive step. if your docker build command is getting killed abruptly, you may want
@@ -30,12 +46,14 @@ RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio-minimal=$A
 RUN conda-build /tmp/conda-recipe/anvio
 RUN conda index /opt/conda/envs/anvioenv/conda-bld/
 RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio=$ANVIO_VERSION
+RUN conda build purge-all
 
 # Install METABAT and DAS_TOOL
 RUN conda install metabat2 das_tool
 
 # Install CONCOCT
 RUN apt-get update && apt-get install -qq build-essential libgsl0-dev bedtools mummer samtools perl libssl-dev
+RUN conda install cython
 RUN pip install https://github.com/BinPro/CONCOCT/archive/1.1.0.tar.gz
 
 # Install BINSANITY
