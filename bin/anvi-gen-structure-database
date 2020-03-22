@@ -34,7 +34,7 @@ __description__ = ("Identifies genes in your contigs database that encode protei
 @terminal.time_program
 def main(args):
     args.structure_db = args.output_db_path
-    structops.Structure(args, create=True)._run()
+    structops.StructureSuperclass(args, create=True)._run()
 
 
 if __name__ == '__main__':

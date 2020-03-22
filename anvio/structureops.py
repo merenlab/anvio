@@ -277,7 +277,7 @@ class StructureDatabase(object):
         self.db.disconnect()
 
 
-class Structure(object):
+class StructureSuperclass(object):
     """Structure operations
 
     Parameters
