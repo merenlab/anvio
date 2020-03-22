@@ -677,8 +677,7 @@ def HTMLColorToRGB(colorstring, scaled=True):
         return (r, g, b)
 
 
-def transpose_tab_delimited_file(input_file_path, output_file_path):
-    filesnpaths.is_file_exists(input_file_path)
+def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after=False):
     filesnpaths.is_file_tab_delimited(input_file_path)
     filesnpaths.is_output_file_writable(output_file_path)
 
@@ -688,6 +687,9 @@ def transpose_tab_delimited_file(input_file_path, output_file_path):
     for entry in zip(*file_content):
         output_file.write('\t'.join(entry) + '\n')
     output_file.close()
+
+    if remove_after:
+        os.remove(input_file_path)
 
     return output_file_path
 
