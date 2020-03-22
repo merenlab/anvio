@@ -252,7 +252,7 @@ class DB:
             return self._exec_many(query, entries)
 
 
-    def insert_rows_from_dataframe(self, table_name, dataframe, raise_if_no_columns = True, key = None):
+    def insert_rows_from_dataframe(self, table_name, dataframe, raise_if_no_columns=True, key=None):
         """Insert rows from a dataframe
 
         Parameters
@@ -310,6 +310,7 @@ class DB:
 
             return next_available_id
         """
+
         if table_name not in self.get_table_names():
             raise ConfigError("insert_rows_from_dataframe :: A table with the name {} does "
                               "not exist in the database you requested. {} are the tables "
