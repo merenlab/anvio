@@ -31,10 +31,6 @@ __description__ = ("Identifies genes in your contigs database that encode protei
                    "http://merenlab.org/2018/09/04/structural-biology-with-anvio/")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
-
 @terminal.time_program
 def main(args):
     args.structure_db = args.output_db_path
