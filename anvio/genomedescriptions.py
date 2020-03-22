@@ -219,14 +219,19 @@ class GenomeDescriptions(object):
 
         # add hashes for each genome in the self.genomes dict.
         self.genome_hash_to_genome_name = {}
+
+        self.progress.new('Setting up genome hash dicts', progress_total_items=len(self.genomes))
         for genome_name in self.external_genome_names:
+            self.progress.update("working on %s (external)" % (genome_name), increment=True)
             g_hash = self.get_genome_hash_for_external_genome(self.genomes[genome_name])
             self.genomes[genome_name]['genome_hash'] = g_hash
             self.genome_hash_to_genome_name[g_hash] = genome_name
         for genome_name in self.internal_genome_names:
+            self.progress.update("working on %s (internal)" % (genome_name), increment=True)
             g_hash = self.get_genome_hash_for_internal_genome(self.genomes[genome_name])
             self.genomes[genome_name]['genome_hash'] = g_hash
             self.genome_hash_to_genome_name[g_hash] = genome_name
+        self.progress.end()
 
         # if the client is not interested in functions, skip the rest.
         if skip_functions:
@@ -465,12 +470,17 @@ class GenomeDescriptions(object):
     def sanity_check(self):
         """Make sure self.genomes is good to go"""
 
+        self.progress.new('Sanity checks')
+
         # depending on whether args requested such behavior.
+        self.progress.update("...")
         self.list_HMM_info_and_quit()
 
         # make sure genes are called in every contigs db:
+        self.progress.update("Checking gene calls ..")
         genomes_missing_gene_calls = [g for g in self.genomes if not self.genomes[g]['genes_are_called']]
         if len(genomes_missing_gene_calls):
+            self.progress.end()
             raise ConfigError('Genes must have been called during the generation of contigs database for this workflow to work. However,\
                                 these external genomes do not have gene calls: %s' % (', '.join(genomes_missing_gene_calls)))
 
@@ -488,30 +498,37 @@ class GenomeDescriptions(object):
 
         if not self.full_init:
             # if this is not full init, stop the sanity check here.
+            self.progress.end()
             self.run.warning("You (or the programmer) requested genome descriptions for your internal and/or external "
                              "genomes to be loaded without a 'full init'. There is nothing for you to be concerned. "
                              "This is just a friendly reminder to make sure if something goes terribly wrong (like your "
                              "computer sets itself on fire), this may be the reason.")
+
             return
 
+        self.progress.update("Checking HMMs and SCGs ..")
         # make sure HMMs for SCGs were run for every contigs db:
         genomes_missing_hmms_for_scgs =  [g for g in self.genomes if not self.genomes[g]['hmms_for_scgs_were_run']]
         if len(genomes_missing_hmms_for_scgs):
             if len(genomes_missing_hmms_for_scgs) == len(self.genomes):
+                self.progress.reset()
                 self.run.warning("The contigs databases you are using for this analysis are missing HMMs for single-copy core genes. "
                                  "Maybe you haven't run `anvi-run-hmms` on your contigs database, or they didn't contain any hits. "
                                  "It is perfectly legal to have anvi'o contigs databases without HMMs or SCGs for things to work, "
                                  "but we wanted to give you heads up so you can have your 'aha' moment if you see funny things in "
                                  "the interface.")
             else:
+                self.progress.end()
                 raise ConfigError("Some of the genomes you have for this analysis are missing HMM hits for SCGs (%d of %d of them, to be precise). You "
                                    "can run `anvi-run-hmms` on them to recover from this. Here is the list: %s" % \
                                                     (len(genomes_missing_hmms_for_scgs), len(self.genomes), ','.join(genomes_missing_hmms_for_scgs)))
 
         # make sure genome names are not funny (since they are going to end up being db variables soon)
+        self.progress.update("Checking genome names ..")
         [utils.is_this_name_OK_for_database('genome name "%s"' % genome_name, genome_name) for genome_name in self.genomes]
 
         # figure out whether there are genomes with gene calls that are NOT processed
+        self.progress.update("Checking gene calls that are not processed ..")
         genomes_with_non_reported_gene_calls_from_other_gene_callers = []
         for genome_name in self.genomes:
             if self.genomes[genome_name]['gene_calls_from_other_gene_callers']:
@@ -526,6 +543,7 @@ class GenomeDescriptions(object):
 
             gene_caller = list(self.genomes.values())[0]['gene_caller']
             if anvio.DEBUG:
+                self.progress.reset()
                 self.run.warning("Some of your genomes had gene calls identified by gene callers other than "
                                  "the gene caller anvi'o used, which was set to '%s' either by default, or because you asked for it. "
                                  "The following genomes contained genes that were not processed (this may be exactly what you expect "
@@ -533,14 +551,17 @@ class GenomeDescriptions(object):
                                  "the gene caller it should be using): %s." % \
                                                 (gene_caller, ', '.join(info)), header="PLEASE READ CAREFULLY", lc='green')
             else:
+                self.progress.reset()
                 self.run.warning("Some of your genomes had gene calls identified by gene callers other than "
                                  "the anvi'o default, '%s', and will not be processed. Use the `--debug` flag "
                                  "if this sounds important and you would like to see more of this message." % \
                                                 (gene_caller), header="JUST FYI", lc='green')
 
         # check whether every genome has at least one gene call.
+        self.progress.update("Making sure each genome has at least one gene call ..")
         genomes_with_no_gene_calls = [g for g in self.genomes if not self.genomes[g]['num_genes']]
         if len(genomes_with_no_gene_calls):
+            self.progress.reset()
             raise ConfigError("Well, %d of your %d genomes had 0 gene calls. We can't think of any reason to include genomes that "
                               "contain no gene calls into a genomes, hence, we are going to stop here and ask you to remove these "
                               "genomes from your analysis first: %s. If you think this is a dumb thing to do, and they should be "
