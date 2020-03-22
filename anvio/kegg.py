@@ -305,7 +305,7 @@ class KeggSetup(KeggContext):
         will have to be aware of the fact that not all pathways will have associated KOs.
 
         We do, however, exclude Pathway Maps that don't have existing `koXXXXX` identifiers (these yield 404 errors when attempting to
-        download them). For instance, we exclude those that start with the code 010 (chemical structure maps).
+        download them). For instance, we exclude those that start with the code 010 (chemical structure maps) or with 07 (drug structure maps).
         """
 
         self.pathway_dict = {}
@@ -339,7 +339,7 @@ class KeggSetup(KeggContext):
                 elif first_char == "C":
                     fields = re.split('\s{2,}', line)
                     konum = "ko" + fields[1]
-                    if konum[:5] != "ko010":
+                    if konum[:5] != "ko010" and konum[:4] != "ko07":
                         self.pathway_dict[konum] = {"name" : fields[2], "category" : current_category, "subcategory" : current_subcategory}
                 # unknown code
                 else:
