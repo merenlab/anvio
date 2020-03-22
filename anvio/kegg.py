@@ -270,6 +270,76 @@ class KeggSetup(KeggContext):
                     made the file unparseable. Sad. :(" % (self.kegg_module_file, first_char))
         self.progress.end()
 
+
+    def process_pathway_file(self):
+        """This function reads the kegg pathway map file into a dictionary. It should be called during setup to get the KEGG pathway ids so the pathways can be downloaded.
+
+        The structure of this file is like this:
+
+        +C	Map number
+        #<h2><a href="/kegg/kegg2.html"><img src="/Fig/bget/kegg3.gif" align="middle" border=0></a>&nbsp; KEGG Pathway Maps</h2>
+        !
+        A<b>Metabolism</b>
+        B  Global and overview maps
+        C    01100  Metabolic pathways
+        C    01110  Biosynthesis of secondary metabolites
+        C    01120  Microbial metabolism in diverse environments
+        C    01200  Carbon metabolism
+        C    01210  2-Oxocarboxylic acid metabolism
+
+        Initial lines can be ignored and thereafter the line's information can be determined by the one-letter code at the start.
+        A = Category of Pathway Map
+        B = Sub-category of Pathway Map
+        C = Pathway Map identifier number and name
+
+        We only want the Pathway files that have KOs, not any that are just maps or don't have associated KOs. We can ignore identifiers
+        that start with the following codes, as they belong to categories or sub-categories that won't have an ORTHOLOGY section:
+        011 global map (lines linked to KOs)
+        012 overview map (lines linked to KOs)
+        07 drug structure map (no KO expansion)
+
+        NOTE: this may change at some point. Global and overview maps may not have KOs, but they can be made up of MODULES. So we may eventually
+        want to integrate these with the Modules information at some point.
+        """
+
+        self.pathway_dict = {}
+
+        filesnpaths.is_file_exists(self.kegg_pathway_file)
+        filesnpaths.is_file_plain_text(self.kegg_pathway_file)
+
+        f = open(self.kegg_pathway_file, 'rU')
+        self.progress.new("Parsing KEGG Pathway file")
+
+        current_category = None
+        current_subcategory = None
+
+        for line in f.readlines():
+            line = line.strip('\n')
+            first_char = line[0]
+
+            # garbage lines
+            if first_char in ["+", "#", "!"]:
+                continue
+            else:
+                # Category
+                if first_char == "A":
+                    fields = re.split('<[^>]*>', line) # we split by the html tag here
+                    current_category = fields[1]
+                # Sub-category
+                elif first_char == "B":
+                    fields = re.split('\s{2,}', line) # don't want to split the subcategory name, so we have to split at least 2 spaces
+                    current_subcategory = fields[1]
+                elif first_char == "C":
+                    fields = re.split('\s{2,}', line)
+                    konum = fields[1]
+                    self.pathway_dict[konum] = {"name" : fields[2], "category" : current_category, "subcategory" : current_subcategory}
+                # unknown code
+                else:
+                    raise ConfigError("While parsing the KEGG file %s, we found an unknown line code %s. This has \
+                    made the file unparseable. Sad. :(" % (self.kegg_pathway_file, first_char))
+        self.progress.end()
+
+
     def download_modules(self):
         """This function downloads the KEGG modules.
 
@@ -298,6 +368,38 @@ class KeggSetup(KeggContext):
             last_line = f.readline().strip('\n')
             if not last_line == '///':
                 raise ConfigError("The KEGG module file %s was not downloaded properly. We were expecting the last line in the file \
+                to be '///', but instead it was %s." % (file_path, last_line))
+
+
+    def download_pathways(self):
+        """This function downloads the KEGG Pathways.
+
+        To do so, it first processes a KEGG file containing pathway and map identifiers into a dictionary via the process_pathway_file()
+        function. To verify that each file has been downloaded properly, we check that the last line is '///'.
+        """
+
+        # note that this is the same as the REST API for modules - perhaps at some point this should be printed elsewhere so we don't repeat ourselves.
+        self.run.info("KEGG Pathway Database URL", self.kegg_rest_api_get)
+
+        # download the kegg pathway file, which lists all modules
+        utils.download_file(self.kegg_pathway_download_path, self.kegg_pathway_file, progress=self.progress, run=self.run)
+
+        # get pathway dict
+        self.process_pathway_file()
+        self.run.info("Number of KEGG Pathways", len(self.pathway_dict.keys()))
+
+        # download all pathways
+        for konum in self.pathway_dict.keys():
+            file_path = os.path.join(self.pathway_data_dir, konum)
+            utils.download_file(self.kegg_rest_api_get + '/' + konum,
+                file_path, progress=self.progress, run=self.run)
+            # verify entire file has been downloaded
+            f = open(file_path, 'rU')
+            f.seek(0, os.SEEK_END)
+            f.seek(f.tell() - 4, os.SEEK_SET)
+            last_line = f.readline().strip('\n')
+            if not last_line == '///':
+                raise ConfigError("The KEGG pathway file %s was not downloaded properly. We were expecting the last line in the file \
                 to be '///', but instead it was %s." % (file_path, last_line))
 
 
