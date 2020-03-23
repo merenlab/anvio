@@ -8,6 +8,7 @@ import time
 import numpy as np
 import shutil
 import pandas as pd
+import warnings
 import multiprocessing
 
 from Bio.PDB import DSSP, PDBParser
@@ -27,6 +28,10 @@ from anvio.errors import ConfigError
 from anvio.dbops import ContigsSuperclass
 
 J = lambda x, y: os.path.join(x, y)
+
+from Bio.PDB.PDBExceptions import PDBConstructionWarning
+warnings.simplefilter(action='ignore', category=PDBConstructionWarning)
+
 
 class StructureDatabase(object):
     """Structure database operations"""
@@ -1116,10 +1121,10 @@ class ContactMap(object):
         }
 
 
-    def load_pdb_file(self, pdb_path, name_id = 'structure'):
+    def load_pdb_file(self, pdb_path, name_id='structure', chain='A'):
         p = PDBParser()
         model = p.get_structure(name_id, pdb_path)[0] # [0] = first model
-        structure = model['A'] # ['A'] = get first chain in model
+        structure = model[chain]
 
         return structure
 
@@ -1268,6 +1273,7 @@ class PDBDatabase(object):
 
         self.num_threads = A('num_threads', int)
         self.queue_size = self.num_threads * 10
+        self.buffer_size = self.num_threads * 10
 
         #FIXME
         try:
@@ -1283,12 +1289,106 @@ class PDBDatabase(object):
         path = self.download_clusters()
         clusters = self.parse_clusters_file(path)
         self.update_clusters_table(clusters)
+        self.run_structure_routine(clusters)
         self.db.disconnect()
+
+
+    def get_representative_ids(self, clusters):
+        return list(clusters.loc[clusters['representative'] == 1, 'id'].tolist())
+
+
+    def run_structure_routine(self, clusters):
+        structures = []
+
+        manager = multiprocessing.Manager()
+        available_index_queue = manager.Queue()
+        output_queue = manager.Queue(self.queue_size)
+
+        # pdb IDs of representative structures
+        pdb_ids = self.get_representative_ids(clusters)
+
+        # FIXME check if already in database
+        pdb_ids = pdb_ids
+
+        num_structures = len(pdb_ids)
+
+        # put contig indices into the queue to be read from within the worker
+        for p in pdb_ids:
+            available_index_queue.put(p)
+
+        processes = []
+        for _ in range(self.num_threads):
+            processes.append(multiprocessing.Process(target=PDBDatabase.get_structure, args=(self, available_index_queue, output_queue)))
+
+        for proc in processes:
+            proc.start()
+
+        done = 0
+
+        self.progress.new('Using %d threads' % self.num_threads, progress_total_items=num_structures)
+        self.progress.update('Added %d of %d structures' % (done, num_structures))
+
+        db_size = self.size_of_database()
+
+        while done < num_structures:
+            try:
+                pdb_id, structure = output_queue.get()
+                structures.append((pdb_id, structure))
+
+                done += 1
+
+                self.progress.increment(done)
+                self.progress.update('%d / %d downloaded | total DB size %s' % (done, num_structures, db_size))
+
+                if len(structures) > self.buffer_size:
+                    self.update_structures_table(structures)
+                    db_size = self.size_of_database()
+                    structures = []
+
+            except KeyboardInterrupt:
+                self.run.info_single("Anvi'o received SIGINT, terminating all processes...", nl_before=2)
+                break
+
+        for proc in processes:
+            proc.terminate()
+
+        self.update_structures_table(structures)
+        structures = []
+
+        self.progress.end()
+
+
+    def size_of_database(self):
+        return utils.human_readable_file_size(os.path.getsize(self.db_path))
+
+
+    @staticmethod
+    def get_structure(self, available_index_queue, output_queue):
+        while True:
+            pdb_id = available_index_queue.get(True)
+
+            temp_dir = filesnpaths.get_temp_directory_path()
+
+            four_letter_code = pdb_id[:4]
+            chain_id = pdb_id[-1]
+
+            path = utils.download_protein_structure(four_letter_code, output_dir=temp_dir, chain=chain_id)
+            with open(path, 'rb') as f:
+                output_queue.put((pdb_id, f.read()))
+
+            shutil.rmtree(temp_dir)
+
+        # Never reachces here because process is killed by main thread
+        return
+
+
+    def update_structures_table(self, structures):
+        self.db.insert_many('structures', entries=structures)
 
 
     def create_tables(self):
         self.db.set_meta_value('creation_date', time.time())
-        self.db.create_table('structures', ['cluster', 'representative_id', 'pdb_content'], ['text', 'text', 'blob'])
+        self.db.create_table('structures', ['representative_id', 'pdb_content'], ['text', 'blob'])
         self.db.create_table('clusters', ['cluster', 'id', 'representative'], ['text', 'text', 'integer'])
 
 
