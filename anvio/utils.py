@@ -3243,7 +3243,7 @@ def get_remote_file_content(url, gzipped=False):
     remote_file = requests.get(url)
 
     if remote_file.status_code == 404:
-        raise ConfigError("Bad news. The remove file at '%s' was not found :(" % url)
+        raise ConfigError("Bad news. The remote file at '%s' was not found :(" % url)
 
     if gzipped:
         buf = BytesIO(remote_file.content)
@@ -3253,7 +3253,7 @@ def get_remote_file_content(url, gzipped=False):
     return remote_file.content.decode('utf-8')
 
 
-def download_protein_structure(protein_code, output_dir=None, chain=None, raise_if_fail=True, max_attempts=20):
+def download_protein_structure(protein_code, output_dir=None, chain=None, raise_if_fail=True, max_attempts=5):
     """Downloads protein structures using Biopython.
 
     Parameters
@@ -3271,7 +3271,7 @@ def download_protein_structure(protein_code, output_dir=None, chain=None, raise_
     raise_if_fail : bool, True
         If the file does not download, raise an error
 
-    max_attempts : int, 20
+    max_attempts : int, 5
         How many attempts should be made if downloading fails (2 second pause between each attempt)?
         After all attempts are used, function returns empty handed or raises error, depending on the
         value of raise_if_fail
@@ -3286,11 +3286,14 @@ def download_protein_structure(protein_code, output_dir=None, chain=None, raise_
 
     # Try and download the PDB file at most `max_attempts` times
     for attempts in range(max_attempts):
-        with SuppressAllOutput():
-            # We suppress output that looks like this:
-            # >>> WARNING: The default download format has changed from PDB to PDBx/mmCif
-            # >>> Downloading PDB structure '5w6y'...
-            output_path = pdb_list.retrieve_pdb_file(protein_code, file_format='pdb', pdir=output_dir, overwrite=True)
+        try:
+            with SuppressAllOutput():
+                # We suppress output that looks like this:
+                # >>> WARNING: The default download format has changed from PDB to PDBx/mmCif
+                # >>> Downloading PDB structure '5w6y'...
+                output_path = pdb_list.retrieve_pdb_file(protein_code, file_format='pdb', pdir=output_dir, overwrite=True)
+        except:
+            pass
 
         if filesnpaths.is_file_exists(output_path, dont_raise=True):
             # Success
