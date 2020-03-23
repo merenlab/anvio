@@ -9,6 +9,7 @@ import numpy as np
 import shutil
 import pandas as pd
 import warnings
+import datetime
 import multiprocessing
 
 from Bio.PDB import DSSP, PDBParser
@@ -1257,6 +1258,18 @@ class PDBDatabase(object):
     https://salilab.org/modeller/supplemental.html and for the list of PDB codes in the current
     version as well as when it was last updated please see
     https://salilab.org/modeller/downloads/pdb_95.cod.gz
+
+    Parameters
+    ==========
+    pdb_database_path : str, None
+        If None, the default data/misc/PDB.db filepath is used
+
+    reset : bool, False
+        If True, the DB is totally wiped and recreated from scratch
+
+    update : bool, True
+        Check to see if the DB is up to date. If it is not, store the latest additions. This can
+        also be used if the previous run was cancelled prematurely.
     """
 
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
@@ -1267,34 +1280,53 @@ class PDBDatabase(object):
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
 
-        self.db_path = A('pdb-database-path', null)
+        self.reset = A('reset', null)
+        self.update = A('update', null)
+        self.db_path = A('pdb_database_path', null)
         if not self.db_path:
             self.db_path = J(os.path.dirname(anvio.__file__), 'data/misc/PDB.db')
 
         self.num_threads = A('num_threads', int)
-        self.queue_size = self.num_threads * 10
-        self.buffer_size = self.num_threads * 10
+        self.queue_size = self.num_threads * 5
+        self.buffer_size = self.num_threads * 20
 
-        #FIXME
-        try:
-            os.remove(self.db_path)
-        except:
-            pass
-        #FIXME
+        self.exists = os.path.exists(self.db_path)
 
-        self.db = db.DB(self.db_path, '0.1', new_database=True)
 
-        self.create_tables()
+    def process(self):
+        """Main method"""
 
+        self.run.info('Previous database found', self.exists)
+        self.run.info('Database path', self.db_path)
+
+        if self.reset:
+            self.reset()
+
+        if (self.exists and self.update) or (not self.exists and not self.update):
+            self.load_or_create_db()
+            self.database_summary()
+            self._run()
+        elif self.exists and not self.update:
+            self.load_or_create_db()
+            self.database_summary()
+            self.run.warning("Your database already exists, so anvi'o doesn't know what you "
+                             "want to do. If you want to update your already existing database "
+                             "use --update. If you want to delete it and start fresh use --reset. "
+                             "Above are some stats for your currently existing database.",
+                             header = "NOTHING TO DO", lc='yellow')
+        elif not self.exists and self.update:
+            raise ConfigError("You asked to update the database, but the database was not found.")
+        else:
+            raise ConfigError("HOW?!")
+
+
+    def _run(self):
         path = self.download_clusters()
         clusters = self.parse_clusters_file(path)
         self.update_clusters_table(clusters)
         self.run_structure_routine(clusters)
+        self.db.set_meta_value('last_update', str(datetime.datetime.now()))
         self.db.disconnect()
-
-
-    def get_representative_ids(self, clusters):
-        return list(clusters.loc[clusters['representative'] == 1, 'id'].tolist())
 
 
     def run_structure_routine(self, clusters):
@@ -1304,13 +1336,15 @@ class PDBDatabase(object):
         available_index_queue = manager.Queue()
         output_queue = manager.Queue(self.queue_size)
 
-        # pdb IDs of representative structures
+        # Consider only PDB ids that aren't already stored
         pdb_ids = self.get_representative_ids(clusters)
-
-        # FIXME check if already in database
-        pdb_ids = pdb_ids
+        already_stored = self.get_stored_structures()
+        pdb_ids = pdb_ids.difference(already_stored)
 
         num_structures = len(pdb_ids)
+
+        if num_structures == 0:
+            raise self.run.warning("The database is up to date :)")
 
         # put contig indices into the queue to be read from within the worker
         for p in pdb_ids:
@@ -1358,10 +1392,6 @@ class PDBDatabase(object):
         self.progress.end()
 
 
-    def size_of_database(self):
-        return utils.human_readable_file_size(os.path.getsize(self.db_path))
-
-
     @staticmethod
     def get_structure(self, available_index_queue, output_queue):
         while True:
@@ -1380,21 +1410,6 @@ class PDBDatabase(object):
 
         # Never reachces here because process is killed by main thread
         return
-
-
-    def update_structures_table(self, structures):
-        self.db.insert_many('structures', entries=structures)
-
-
-    def create_tables(self):
-        self.db.set_meta_value('creation_date', time.time())
-        self.db.create_table('structures', ['representative_id', 'pdb_content'], ['text', 'blob'])
-        self.db.create_table('clusters', ['cluster', 'id', 'representative'], ['text', 'text', 'integer'])
-
-
-    def update_clusters_table(self, clusters):
-        self.db._exec('''DELETE FROM %s''' % 'clusters')
-        self.db.insert_rows_from_dataframe('clusters', clusters)
 
 
     def parse_clusters_file(self, path):
@@ -1448,3 +1463,61 @@ class PDBDatabase(object):
         utils.run_command(['gzip', '-d', path], log_file_path=filesnpaths.get_temp_file_path())
 
         return path.rstrip('.gz')
+
+
+    def load_or_create_db(self):
+        """Load the DB. Create it if it doesn't exist"""
+
+        self.db = db.DB(self.db_path, '0.1', new_database=(not self.exists))
+
+        if not self.exists:
+            self.db.set_meta_value('last_update', str(datetime.datetime.now()))
+            self.db.set_meta_value('clustered_at', '95%')
+            self.db.create_table('structures', ['representative_id', 'pdb_content'], ['text', 'blob'])
+            self.db.create_table('clusters', ['cluster', 'id', 'representative'], ['text', 'text', 'integer'])
+
+
+    def reset(self):
+        if not self.exists:
+            raise ConfigError("You asked to --reset the database, but the database doesn't exist")
+
+        self.run.warning("You want to --reset the database (size %s), which seems potentially rash. "
+                         "Anvi'o is putting you in time out for 20 seconds before deleting. Press "
+                         "CTRL+C at any time during your time out to cancel the deletion." \
+                            % self.size_of_database())
+        time.sleep(20)
+        os.remove(self.db_path)
+        self.exists = False
+
+
+    def update_clusters_table(self, clusters):
+        self.db._exec('''DELETE FROM %s''' % 'clusters')
+        self.db.insert_rows_from_dataframe('clusters', clusters)
+
+
+    def database_summary(self):
+        self.run.info('DB size', self.size_of_database())
+        self.run.info('Last updated', self.db.get_meta_value('last_update'))
+        self.run.info('Number of structures', self.db.get_row_counts_from_table('structures'))
+
+
+    def get_representative_ids(self, clusters):
+        return set(clusters.loc[clusters['representative'] == 1, 'id'].tolist())
+
+
+    def get_clusters(self):
+        return self.db.get_table_as_dataframe('clusters')
+
+
+    def get_stored_structures(self):
+        return set(self.db.get_single_column_from_table('structures', 'representative_id'))
+
+
+    def size_of_database(self):
+        return utils.human_readable_file_size(os.path.getsize(self.db_path))
+
+
+    def update_structures_table(self, structures):
+        self.db.insert_many('structures', entries=structures)
+
+
