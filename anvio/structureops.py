@@ -1300,7 +1300,7 @@ class PDBDatabase(object):
         self.run.info('Database path', self.db_path)
 
         if self.reset:
-            self.reset()
+            self.reset_db()
 
         if (self.exists and self.update) or (not self.exists and not self.update):
             self.load_or_create_db()
@@ -1358,21 +1358,25 @@ class PDBDatabase(object):
             proc.start()
 
         done = 0
+        db_size = self.size_of_database()
 
         self.progress.new('Using %d threads' % self.num_threads, progress_total_items=num_structures)
-        self.progress.update('Added %d of %d structures' % (done, num_structures))
+        self.progress.update('%d / %d processed | total DB size %s' % (done, num_structures, db_size))
 
-        db_size = self.size_of_database()
 
         while done < num_structures:
             try:
                 pdb_id, structure = output_queue.get()
-                structures.append((pdb_id, structure))
+
+                if structure is not None:
+                    structures.append((pdb_id, structure))
+                else:
+                    self.run.warning("%s was not downloaded :\\" % pdb_id)
 
                 done += 1
 
                 self.progress.increment(done)
-                self.progress.update('%d / %d downloaded | total DB size %s' % (done, num_structures, db_size))
+                self.progress.update('%d / %d processed | total DB size %s' % (done, num_structures, db_size))
 
                 if len(structures) > self.buffer_size:
                     self.update_structures_table(structures)
@@ -1404,13 +1408,13 @@ class PDBDatabase(object):
 
             path = utils.download_protein_structure(four_letter_code, output_dir=temp_dir, chain=chain_id, raise_if_fail=False)
 
-            if not path:
+            if path:
+                with open(path, 'rb') as f:
+                    output_queue.put((pdb_id, f.read()))
+            else:
                 # The structure could not be downloaded. Interesting :\
-                shutil.rmtree(temp_dir)
-                continue
-
-            with open(path, 'rb') as f:
-                output_queue.put((pdb_id, f.read()))
+                output_queue.put((pdb_id, None))
+                self.run.warning("%s was not downloaded :\\")
 
             shutil.rmtree(temp_dir)
 
@@ -1483,7 +1487,7 @@ class PDBDatabase(object):
             self.db.create_table('clusters', ['cluster', 'id', 'representative'], ['text', 'text', 'integer'])
 
 
-    def reset(self):
+    def reset_db(self):
         if not self.exists:
             raise ConfigError("You asked to --reset the database, but the database doesn't exist")
 
