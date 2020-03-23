@@ -477,7 +477,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                              "is nothing more than some heuristic for your convenience, and we strongly advice you to "
                              "run this program with the parameter `--report-scg-frequencies` and examine the output "
                              "to see if there is a better choice. As you can imagine, the most frequent SCG may not be "
-                             "the one that is more common across all genomes or metageomes you are interested." % \
+                             "the one that is more common across all genomes or metagenomes you are interested." % \
                                                 (self.scg_name_for_metagenome_mode, len(self.metagenomes)))
 
             self.run.info("SCG [determined by anvi'o]", self.scg_name_for_metagenome_mode, nl_after=1, mc="green")
@@ -773,7 +773,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                 matrix = sps.coo_matrix((dfx.times_observed, (dfx.index.codes[0], dfx.index.codes[1]))).todense().tolist()
 
             rows = dfx.index.levels[0].tolist()
-            cols = ['metagenome_name'] + dfx.index.levels[1].tolist()
+            cols = ['taxon'] + dfx.index.levels[1].tolist()
 
             output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, taxonomic_level)
             temp_file_path = filesnpaths.get_temp_file_path()
