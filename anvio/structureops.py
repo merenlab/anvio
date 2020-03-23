@@ -1402,7 +1402,13 @@ class PDBDatabase(object):
             four_letter_code = pdb_id[:4]
             chain_id = pdb_id[-1]
 
-            path = utils.download_protein_structure(four_letter_code, output_dir=temp_dir, chain=chain_id)
+            path = utils.download_protein_structure(four_letter_code, output_dir=temp_dir, chain=chain_id, raise_if_fail=False)
+
+            if not path:
+                # The structure could not be downloaded. Interesting :\
+                shutil.rmtree(temp_dir)
+                continue
+
             with open(path, 'rb') as f:
                 output_queue.put((pdb_id, f.read()))
 
