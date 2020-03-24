@@ -1288,9 +1288,10 @@ class PDBDatabase(object):
 
         self.num_threads = A('num_threads', int)
         self.queue_size = self.num_threads * 5
-        self.buffer_size = self.num_threads * 20
+        self.buffer_size = self.num_threads * 2
 
         self.exists = os.path.exists(self.db_path)
+        self.clusters = pd.DataFrame({})
 
 
     def process(self):
@@ -1302,7 +1303,7 @@ class PDBDatabase(object):
         if (self.exists and self.update) or (not self.exists and not self.update):
             self.load_or_create_db()
             self.database_summary()
-            self.run()
+            self._run()
         elif self.exists and not self.update:
             self.run.warning("Your database already exists, so anvi'o doesn't know what you "
                              "want to do. If you want to update your already existing database "
@@ -1318,16 +1319,26 @@ class PDBDatabase(object):
             raise ConfigError("HOW?!")
 
 
-    def run(self):
-        path = self.download_clusters()
-        clusters = self.parse_clusters_file(path)
-        self.update_clusters_table(clusters)
-        self._run(clusters)
-        self.db.set_meta_value('last_update', str(datetime.datetime.now()))
-        self.db.disconnect()
+    def get_clusters_dataframe(self):
+        self.progress.new('Downloading')
+        self.progress.update('95% clusters')
+
+        clusters_path = self.download_clusters()
+        clusters = self.parse_clusters_file(clusters_path)
+
+        self.progress.end()
+
+        self.run.info('Total structures', clusters.shape[0])
+        self.run.info('Number of clusters', clusters['cluster'].nunique(), nl_after=1)
+
+        return clusters
 
 
-    def _run(self, clusters):
+    def _run(self):
+        self.clusters = self.get_clusters_dataframe()
+
+        self.run.info_single("Anvi'o will now download structures from the RSCB PDB server. Press CTRL+C once to cancel.", nl_after=1)
+
         structures = []
         failed = []
 
@@ -1336,7 +1347,8 @@ class PDBDatabase(object):
         output_queue = manager.Queue(self.queue_size)
 
         # Consider only PDB ids that aren't already stored
-        pdb_ids = self.get_representative_ids(clusters).difference(self.get_stored_structures())
+        pdb_ids = self.get_representative_ids(self.clusters).difference(self.get_stored_structures())
+        pdb_ids = np.random.choice(list(pdb_ids), size = len(pdb_ids), replace = False)
 
         num_structures = len(pdb_ids)
 
@@ -1362,12 +1374,11 @@ class PDBDatabase(object):
 
         while done < num_structures:
             try:
-                pdb_id, structure = output_queue.get()
+                structure = output_queue.get()
+                structures.append(structure)
 
-                if structure is not None:
-                    structures.append((pdb_id, structure))
-                else:
-                    failed.append(pdb_id)
+                if structure['failed']:
+                    failed.append(structure['id'])
 
                 done += 1
 
@@ -1375,7 +1386,7 @@ class PDBDatabase(object):
                 self.progress.update('%d / %d processed | total DB size %s' % (done, num_structures, db_size))
 
                 if len(structures) > self.buffer_size:
-                    self.update_structures_table(structures)
+                    self.store_buffer(structures)
                     db_size = self.size_of_database()
                     structures = []
 
@@ -1386,14 +1397,15 @@ class PDBDatabase(object):
         for proc in processes:
             proc.terminate()
 
-        self.update_structures_table(structures)
-        structures = []
+        self.store_buffer(structures)
+        self.db.set_meta_value('last_update', str(datetime.datetime.now()))
 
         if len(failed):
             self.run.warning("The following structures (%d in total) couldn't be downloaded for whatever reason. Anvi'o "
                              "suggests you run this again with the --update flag to see if you can download "
                              "them. If you can't don't worry. %s" % (len(failed), failed))
 
+        self.db.disconnect()
         self.progress.end()
 
 
@@ -1402,24 +1414,69 @@ class PDBDatabase(object):
         while True:
             pdb_id = available_index_queue.get(True)
 
-            temp_dir = filesnpaths.get_temp_directory_path()
+            structure = {}
+            structure['id'] = pdb_id
+            structure['pdb_content'] = self.download_and_return_pdb_content(pdb_id)
+            structure['failed'] = False if structure['pdb_content'] else True
+            structure['cluster_info'] = self.get_cluster_info(pdb_id)
 
-            four_letter_code = pdb_id[:4]
-            chain_id = pdb_id[-1]
+            output_queue.put(structure)
 
-            path = utils.download_protein_structure(four_letter_code, output_dir=temp_dir, chain=chain_id, raise_if_fail=False)
-
-            if path:
-                with open(path, 'rb') as f:
-                    output_queue.put((pdb_id, f.read()))
-            else:
-                # The structure could not be downloaded. Interesting :\
-                self.run.warning("%s, chain %s was not downloaded :\\" % (pdb_id[:4], pdb_id[-1]))
-
-            shutil.rmtree(temp_dir)
-
-        # Never reachces here because process is killed by main thread
+        # Never reaches here because process is killed by main thread
         return
+
+
+    def get_cluster_info(self, representative_id):
+        cluster_id = self.clusters.loc[self.clusters['id'] == representative_id, 'cluster'].iloc[0]
+
+        return self.clusters.loc[self.clusters['cluster'] == cluster_id, :]
+
+
+    def download_and_return_pdb_content(self, pdb_id):
+        """Download and return binary pdb content. pdb_id is a 5-letter code (PDB code + chain ID)"""
+
+        temp_dir = filesnpaths.get_temp_directory_path()
+
+        four_letter_code = pdb_id[:4]
+        chain_id = pdb_id[-1]
+
+        path = utils.download_protein_structure(four_letter_code, output_dir=temp_dir, chain=chain_id, raise_if_fail=False)
+
+        if path:
+            with open(path, 'rb') as f:
+                pdb_content = f.read()
+        else:
+            # The structure could not be downloaded. Interesting :\
+            self.run.warning("%s, chain %s was not downloaded :\\" % (pdb_id[:4], pdb_id[-1]))
+            pdb_content = None
+
+        shutil.rmtree(temp_dir)
+
+        return pdb_content
+
+
+    def store_buffer(self, structures):
+        # Remove any already existing entries
+        new_clusters = set([])
+        new_structure_ids = set([])
+
+        for structure in structures:
+            new_clusters.add(structure['cluster_info']['cluster'].iloc[0])
+            new_structure_ids.add(structure['id'])
+
+        if len(new_clusters):
+            self.db.remove_some_rows_from_table('clusters', 'cluster IN (%s)' % ','.join(['"' + x + '"' for x in new_clusters]))
+
+        if len(new_structure_ids):
+            self.db.remove_some_rows_from_table('structures', 'representative_id IN (%s)' % ','.join(['"' + x + '"' for x in new_structure_ids]))
+
+        # Add the new entries
+        for structure in structures:
+            # store the pdb content
+            self.db.insert('structures', (structure['id'], structure['pdb_content']))
+
+            # store the cluster
+            self.db.insert_rows_from_dataframe('clusters', structure['cluster_info'])
 
 
     def parse_clusters_file(self, path):
@@ -1500,18 +1557,13 @@ class PDBDatabase(object):
         self.exists = False
 
 
-    def update_clusters_table(self, clusters):
-        self.db._exec('''DELETE FROM %s''' % 'clusters')
-        self.db.insert_rows_from_dataframe('clusters', clusters)
-
-
     def database_summary(self):
-        self.run.warning("", header="DATABASE INFO", lc='yellow')
+        self.run.warning("", header="DATABASE INFO", lc='green')
         self.run.info('Previous database found', self.exists)
         self.run.info('Database path', self.db_path)
         self.run.info('DB size', self.size_of_database())
         self.run.info('Last updated', self.db.get_meta_value('last_update'))
-        self.run.info('Number of structures', self.db.get_row_counts_from_table('structures'))
+        self.run.info('Number of structures', self.db.get_row_counts_from_table('structures'), nl_after=1)
 
 
     def get_representative_ids(self, clusters):
@@ -1528,9 +1580,5 @@ class PDBDatabase(object):
 
     def size_of_database(self):
         return utils.human_readable_file_size(os.path.getsize(self.db_path))
-
-
-    def update_structures_table(self, structures):
-        self.db.insert_many('structures', entries=structures)
 
 
