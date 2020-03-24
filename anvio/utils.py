@@ -3253,7 +3253,7 @@ def get_remote_file_content(url, gzipped=False):
     return remote_file.content.decode('utf-8')
 
 
-def download_protein_structure(protein_code, output_dir=None, chain=None, raise_if_fail=True, max_attempts=5):
+def download_protein_structure(protein_code, output_dir=None, chain=None, raise_if_fail=True):
     """Downloads protein structures using Biopython.
 
     Parameters
@@ -3271,11 +3271,6 @@ def download_protein_structure(protein_code, output_dir=None, chain=None, raise_
     raise_if_fail : bool, True
         If the file does not download, raise an error
 
-    max_attempts : int, 5
-        How many attempts should be made if downloading fails (2 second pause between each attempt)?
-        After all attempts are used, function returns empty handed or raises error, depending on the
-        value of raise_if_fail
-
     Returns
     =======
     output : output_path
@@ -3284,28 +3279,20 @@ def download_protein_structure(protein_code, output_dir=None, chain=None, raise_
 
     pdb_list = PDB.PDBList()
 
-    # Try and download the PDB file at most `max_attempts` times
-    for attempts in range(max_attempts):
+    try:
         with SuppressAllOutput():
             # We suppress output that looks like this:
             # >>> WARNING: The default download format has changed from PDB to PDBx/mmCif
             # >>> Downloading PDB structure '5w6y'...
-            try:
-                output_path = pdb_list.retrieve_pdb_file(protein_code, file_format='pdb', pdir=output_dir, overwrite=True)
-            except:
-                pass
+            output_path = pdb_list.retrieve_pdb_file(protein_code, file_format='pdb', pdir=output_dir, overwrite=True)
+    except:
+        pass
 
-        if filesnpaths.is_file_exists(output_path, dont_raise=True):
-            # Success
-            break
-
-        time.sleep(2)
-    else:
-        # Structure was not found
+    if not filesnpaths.is_file_exists(output_path, dont_raise=True):
+        # The file wasn't downloaded
         if raise_if_fail:
-            raise ConfigError("The protein {} could not be downloaded. Are you connected to internet?".format(protein_code))
+            raise ConfigError("The protein %s could not be downloaded. Are you connected to internet?" % protein_code)
         else:
-            run.warning("The protein %s could not be downloaded. Are you connected to internet?" % protein_code)
             return None
 
     if chain is not None:
@@ -3318,10 +3305,9 @@ def download_protein_structure(protein_code, output_dir=None, chain=None, raise_
         structure = p.get_structure(None, output_path)
 
         # Overwrite file with chain-only structure
-        with SuppressAllOutput():
-            io = PDB.PDBIO()
-            io.set_structure(structure)
-            io.save(output_path, ChainSelect())
+        io = PDB.PDBIO()
+        io.set_structure(structure)
+        io.save(output_path, ChainSelect())
 
     return output_path
 
