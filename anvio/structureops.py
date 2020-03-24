@@ -1305,7 +1305,7 @@ class PDBDatabase(object):
         if (self.exists and self.update) or (not self.exists and not self.update):
             self.load_or_create_db()
             self.database_summary()
-            self._run()
+            self.run()
         elif self.exists and not self.update:
             self.load_or_create_db()
             self.database_summary()
@@ -1320,16 +1320,16 @@ class PDBDatabase(object):
             raise ConfigError("HOW?!")
 
 
-    def _run(self):
+    def run(self):
         path = self.download_clusters()
         clusters = self.parse_clusters_file(path)
         self.update_clusters_table(clusters)
-        self.run_structure_routine(clusters)
+        self._run(clusters)
         self.db.set_meta_value('last_update', str(datetime.datetime.now()))
         self.db.disconnect()
 
 
-    def run_structure_routine(self, clusters):
+    def _run(self, clusters):
         structures = []
         failed = []
 
@@ -1361,7 +1361,6 @@ class PDBDatabase(object):
 
         self.progress.new('Using %d threads' % self.num_threads, progress_total_items=num_structures)
         self.progress.update('%d / %d processed | total DB size %s' % (done, num_structures, db_size))
-
 
         while done < num_structures:
             try:
@@ -1417,7 +1416,7 @@ class PDBDatabase(object):
                     output_queue.put((pdb_id, f.read()))
             else:
                 # The structure could not be downloaded. Interesting :\
-                self.run.watedng("%s, chain %s was not downloaded :\\" % (pdb_id[:4], pdb_id[-1]))
+                self.run.warning("%s, chain %s was not downloaded :\\" % (pdb_id[:4], pdb_id[-1]))
 
             shutil.rmtree(temp_dir)
 
