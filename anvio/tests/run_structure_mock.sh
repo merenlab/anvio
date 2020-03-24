@@ -143,7 +143,7 @@ then
     make_structure_db
 
     INFO "anvi-update-structure-database"
-    anvi-update-structure-database -c test-output/one_contig_five_genes.db -s test-output/STRUCTURE.db --genes-to-remove 2 --genes-to-add 2
+    anvi-update-structure-database -c test-output/one_contig_five_genes.db -s test-output/STRUCTURE.db --gene-caller-ids 2 --rerun
 
     INFO "anvi-export-structures"
     anvi-export-structures -o test-output/exported_pdbs -s test-output/STRUCTURE.db
