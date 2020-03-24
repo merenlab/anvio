@@ -1338,9 +1338,7 @@ class PDBDatabase(object):
         output_queue = manager.Queue(self.queue_size)
 
         # Consider only PDB ids that aren't already stored
-        pdb_ids = self.get_representative_ids(clusters)
-        already_stored = self.get_stored_structures()
-        pdb_ids = pdb_ids.difference(already_stored)
+        pdb_ids = self.get_representative_ids(clusters).difference(self.get_stored_structures())
 
         num_structures = len(pdb_ids)
 

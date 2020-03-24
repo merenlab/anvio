@@ -3286,14 +3286,14 @@ def download_protein_structure(protein_code, output_dir=None, chain=None, raise_
 
     # Try and download the PDB file at most `max_attempts` times
     for attempts in range(max_attempts):
-        try:
-            with SuppressAllOutput():
-                # We suppress output that looks like this:
-                # >>> WARNING: The default download format has changed from PDB to PDBx/mmCif
-                # >>> Downloading PDB structure '5w6y'...
+        with SuppressAllOutput():
+            # We suppress output that looks like this:
+            # >>> WARNING: The default download format has changed from PDB to PDBx/mmCif
+            # >>> Downloading PDB structure '5w6y'...
+            try:
                 output_path = pdb_list.retrieve_pdb_file(protein_code, file_format='pdb', pdir=output_dir, overwrite=True)
-        except:
-            pass
+            except:
+                pass
 
         if filesnpaths.is_file_exists(output_path, dont_raise=True):
             # Success
