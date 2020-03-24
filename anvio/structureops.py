@@ -1296,9 +1296,6 @@ class PDBDatabase(object):
     def process(self):
         """Main method"""
 
-        self.run.info('Previous database found', self.exists)
-        self.run.info('Database path', self.db_path)
-
         if self.reset:
             self.reset_db()
 
@@ -1307,13 +1304,14 @@ class PDBDatabase(object):
             self.database_summary()
             self.run()
         elif self.exists and not self.update:
-            self.load_or_create_db()
-            self.database_summary()
             self.run.warning("Your database already exists, so anvi'o doesn't know what you "
                              "want to do. If you want to update your already existing database "
                              "use --update. If you want to delete it and start fresh use --reset. "
-                             "Above are some stats for your currently existing database.",
+                             "Anvi'o is now in the process of displaying some stats for your "
+                             "currently existing database. Afterwards, it will exit.",
                              header = "NOTHING TO DO", lc='yellow')
+            self.load_or_create_db()
+            self.database_summary()
         elif not self.exists and self.update:
             raise ConfigError("You asked to update the database, but the database was not found.")
         else:
@@ -1508,6 +1506,9 @@ class PDBDatabase(object):
 
 
     def database_summary(self):
+        self.run.warning("", header="DATABASE INFO", lc='yellow')
+        self.run.info('Previous database found', self.exists)
+        self.run.info('Database path', self.db_path)
         self.run.info('DB size', self.size_of_database())
         self.run.info('Last updated', self.db.get_meta_value('last_update'))
         self.run.info('Number of structures', self.db.get_row_counts_from_table('structures'))
