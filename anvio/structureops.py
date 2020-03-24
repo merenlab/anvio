@@ -688,6 +688,7 @@ class StructureSuperclass(object):
         try:
             for corresponding_gene_call in genes_of_interest:
                 structure_info = self.process_gene(corresponding_gene_call)
+                num_tried += 1
 
                 self.progress.increment(num_tried)
                 msg = self.msg() % (num_tried, num_genes, num_with_structure, mem_usage, mem_diff)
@@ -701,7 +702,6 @@ class StructureSuperclass(object):
 
                 self.dump_raw_results(structure_info)
 
-                num_tried += 1
                 self.structure_db.genes_queried.add(corresponding_gene_call)
 
                 if structure_info['has_structure']:
@@ -1369,8 +1369,8 @@ class PDBDatabase(object):
 
         self.run.info_single("Anvi'o will now download structures from the RSCB PDB server. Press CTRL+C once to cancel.", nl_after=1)
 
-        structures = []
         failed = []
+        structures = []
 
         manager = multiprocessing.Manager()
         available_index_queue = manager.Queue()
