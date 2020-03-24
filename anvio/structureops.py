@@ -586,7 +586,7 @@ class StructureSuperclass(object):
 
         processes = []
         for _ in range(self.num_threads):
-            processes.append(multiprocessing.Process(target=Structure.worker, args=(self, available_index_queue, output_queue)))
+            processes.append(multiprocessing.Process(target=StructureSuperclass.worker, args=(self, available_index_queue, output_queue)))
 
         for proc in processes:
             proc.start()
@@ -1377,7 +1377,15 @@ class PDBDatabase(object):
         output_queue = manager.Queue(self.queue_size)
 
         # Consider only PDB ids that aren't already stored
-        pdb_ids = self.get_representative_ids(self.clusters).difference(self.get_stored_structures())
+        pdb_ids = self.get_representative_ids(self.clusters).difference(self.get_stored_structure_ids())
+
+        pdb_ids = set([
+            '5zx3E',
+            '4e16A',
+            '1cbfA',
+            '3ndcA',
+            '3neiA',
+        ])
 
         num_structures = len(pdb_ids)
 
@@ -1603,8 +1611,12 @@ class PDBDatabase(object):
         return self.db.get_table_as_dataframe('clusters')
 
 
-    def get_stored_structures(self):
+    def get_stored_structure_ids(self):
         return set(self.db.get_single_column_from_table('structures', 'representative_id'))
+
+
+    def export_pdb(self, pdb_id, output_path):
+        pass
 
 
     def size_of_database(self):
