@@ -1288,7 +1288,7 @@ class PDBDatabase(object):
 
         self.num_threads = A('num_threads', int)
         self.queue_size = self.num_threads * 5
-        self.buffer_size = self.num_threads * 2
+        self.buffer_size = self.num_threads * 10
 
         self.exists = os.path.exists(self.db_path)
         self.clusters = pd.DataFrame({})
