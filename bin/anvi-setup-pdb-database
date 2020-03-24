@@ -33,8 +33,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__description__)
     parser.add_argument(*anvio.A('pdb-database-path'), **anvio.K('pdb-database-path'))
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    parser.add_argument('--update', action='store_true', help="Use this flag if you would like to "
-                                                              "update your current database.")
+    parser.add_argument('--update', action='store_true',
+                        help="Use this flag if you would like to update your current database.")
+    parser.add_argument('--skip-modeller-update', action='store_true',
+                        help="By default, MODELLER's search DB is updated when this program is ran "
+                             "so that if MODELLER finds a protein, its structure is guaranteed "
+                             "to be in this database. If you don't want to touch the MODELLER "
+                             "database, use this flag.")
     parser.add_argument(*anvio.A('reset'), **anvio.K('reset'))
 
     args = anvio.get_args(parser)

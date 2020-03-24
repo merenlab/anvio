@@ -1283,6 +1283,7 @@ class PDBDatabase(object):
         self.reset = A('reset', null)
         self.update = A('update', null)
         self.db_path = A('pdb_database_path', null)
+        self.skip_modeller_update = A('skip_modeller_update', null)
         if not self.db_path:
             self.db_path = J(os.path.dirname(anvio.__file__), 'data/misc/PDB.db')
 
@@ -1334,8 +1335,37 @@ class PDBDatabase(object):
         return clusters
 
 
+    def update_modeller_database(self):
+        """Update the search database used by MODELLER so it shares the same proteins as this database"""
+
+        modeller_database_dir = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
+        pir_db = J(modeller_database_dir, 'pdb_95.pir')
+        bin_db = J(modeller_database_dir, 'pdb_95.bin')
+
+        if self.skip_modeller_update or not filesnpaths.is_output_file_writable(pir_db):
+            return
+
+        self.progress.new('Updating')
+        self.progress.update('MODELLER\'s search DB')
+
+        if filesnpaths.is_file_exists(pir_db, dont_raise=True):
+            os.remove(pir_db)
+
+        if filesnpaths.is_file_exists(bin_db, dont_raise=True):
+            os.remove(bin_db)
+
+        db_download_path = os.path.join(modeller_database_dir, "pdb_95.pir.gz")
+        utils.download_file("https://salilab.org/modeller/downloads/pdb_95.pir.gz", db_download_path)
+        utils.run_command(['gzip', '-d', db_download_path], log_file_path=filesnpaths.get_temp_file_path())
+
+        self.progress.end()
+
+        self.run.info('MODELLER search DB updated', db_download_path.rstrip('.gz'), nl_after=1)
+
+
     def _run(self):
         self.clusters = self.get_clusters_dataframe()
+        self.update_modeller_database()
 
         self.run.info_single("Anvi'o will now download structures from the RSCB PDB server. Press CTRL+C once to cancel.", nl_after=1)
 
