@@ -1348,7 +1348,6 @@ class PDBDatabase(object):
 
         # Consider only PDB ids that aren't already stored
         pdb_ids = self.get_representative_ids(self.clusters).difference(self.get_stored_structures())
-        pdb_ids = np.random.choice(list(pdb_ids), size = len(pdb_ids), replace = False)
 
         num_structures = len(pdb_ids)
 
