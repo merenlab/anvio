@@ -1331,6 +1331,7 @@ class PDBDatabase(object):
 
     def run_structure_routine(self, clusters):
         structures = []
+        failed = []
 
         manager = multiprocessing.Manager()
         available_index_queue = manager.Queue()
@@ -1371,7 +1372,7 @@ class PDBDatabase(object):
                 if structure is not None:
                     structures.append((pdb_id, structure))
                 else:
-                    self.run.warning("%s was not downloaded :\\" % pdb_id)
+                    failed.append(pdb_id)
 
                 done += 1
 
@@ -1393,6 +1394,11 @@ class PDBDatabase(object):
         self.update_structures_table(structures)
         structures = []
 
+        if len(failed):
+            self.run.warning("The following structures (%d in total) couldn't be downloaded for whatever reason. Anvi'o "
+                             "suggests you run this again with the --update flag to see if you can download "
+                             "them. If you can't don't worry. %s" % (len(failed), failed))
+
         self.progress.end()
 
 
@@ -1413,8 +1419,7 @@ class PDBDatabase(object):
                     output_queue.put((pdb_id, f.read()))
             else:
                 # The structure could not be downloaded. Interesting :\
-                output_queue.put((pdb_id, None))
-                self.run.warning("%s was not downloaded :\\")
+                self.run.watedng("%s, chain %s was not downloaded :\\" % (pdb_id[:4], pdb_id[-1]))
 
             shutil.rmtree(temp_dir)
 
