@@ -1567,11 +1567,24 @@ class PDBDatabase(object):
 
 
     def load_or_create_db(self):
-        """Load the DB. Create it if it doesn't exist"""
+        """Load the DB. Complain if it sucks. Create it if it doesn't exist"""
 
-        self.db = db.DB(self.db_path, '0.1', new_database=(not self.exists))
+        if self.exists:
+            try:
+                self.db = db.DB(self.db_path, '0.1', new_database=False)
+            except:
+                raise ConfigError("Anvi'o is not convinced %s was generated with anvi-setup-pdb-database" % self.db_path)
+
+            table_names = self.db.get_table_names()
+
+            if 'structures' not in table_names:
+                raise ConfigError("Anvi'o was expecting to find the table with the name 'structures' in %s" % self.db_path)
+
+            if 'clusters' not in table_names:
+                raise ConfigError("Anvi'o was expecting to find the table with the name 'clusters' in %s" % self.db_path)
 
         if not self.exists:
+            self.db = db.DB(self.db_path, '0.1', new_database=True)
             self.db.set_meta_value('last_update', str(datetime.datetime.now()))
             self.db.set_meta_value('clustered_at', '95%')
             self.db.create_table('structures', ['representative_id', 'pdb_content'], ['text', 'blob'])
