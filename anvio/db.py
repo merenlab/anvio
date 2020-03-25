@@ -590,7 +590,7 @@ class DB:
                     # Column contains all empty strings
                     columns_of_interest.remove(col)
 
-        return results_df.loc[:, columns_of_interest]
+        return results_df[columns_of_interest]
 
 
     def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False):
