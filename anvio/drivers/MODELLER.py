@@ -243,13 +243,13 @@ class MODELLER:
             self.run.info('%s obtained from' % five_letter_id, source)
 
             if path:
-                pdb_paths[code] = path
+                pdb_paths[five_letter_id] = path
 
         # remove templates whose structures are not available
         self.list_of_template_code_and_chain_ids = [
             (code, chain_code)
             for code, chain_code in self.list_of_template_code_and_chain_ids
-            if code in pdb_paths
+            if code + chain_code in pdb_paths
         ]
 
         if not len(self.list_of_template_code_and_chain_ids):
@@ -258,33 +258,6 @@ class MODELLER:
             raise self.EndModeller
 
         self.run.info("Structures obtained for", ", ".join([code[0]+code[1] for code in self.list_of_template_code_and_chain_ids]))
-
-
-    def download_structures(self):
-        """Download structure files for self.top_seq_seq_matches using Biopython
-
-        Places downloads in self.template_pdb_dir
-
-        If the 4-letter code is `wxyz`, the downloaded file is `pdbwxyz.ent`.
-        """
-
-        # define directory path name to store the template PDBs (it can already exist)
-        self.template_pdb_dir = os.path.join(self.directory, "{}_TEMPLATE_PDBS".format(self.corresponding_gene_call))
-
-        pdb_paths = utils.download_protein_structures([code[0] for code in self.list_of_template_code_and_chain_ids], self.template_pdb_dir)
-
-        # Some downloads may have failed
-        pdb_paths = {code: path for code, path in pdb_paths.items() if path is not None}
-
-        # redefine self.list_of_template_code_and_chain_ids in case not all were downloaded
-        self.list_of_template_code_and_chain_ids = [(code, chain_code) for code, chain_code in self.list_of_template_code_and_chain_ids if code in pdb_paths]
-
-        if not len(self.list_of_template_code_and_chain_ids):
-            self.run.warning("No structures of the homologous proteins (templates) were downloadable. Probably something "
-                             "is wrong. Maybe you are not connected to the internet. Stopping here.")
-            raise self.EndModeller
-
-        self.run.info("Structures downloaded for", ", ".join([code[0] for code in self.list_of_template_code_and_chain_ids]))
 
 
     def parse_search_results(self):
