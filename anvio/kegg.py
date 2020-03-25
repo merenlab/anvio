@@ -812,8 +812,7 @@ class KeggMetabolismEstimator(KeggContext):
 
         return bin_level_module_dict
 
-
-    def compute_module_completeness_for_bin_DEPRECATED(self, mnum, meta_dict_for_bin):
+    def compute_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
         """This function calculates the completeness of the specified module.
 
         This requires some parsing of the module DEFINITION fields. In these fields, we have the following:
@@ -1052,27 +1051,6 @@ class KeggMetabolismEstimator(KeggContext):
         if over_complete_threshold:
             meta_dict_for_bin["num_complete_modules"] += 1
 
-        return over_complete_threshold, has_nonessential_step, has_no_ko_step, defined_by_modules
-
-
-    def compute_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
-        """This calculates the completeness of the specified module within the given bin metabolism dictionary."""
-
-        present_list_for_mnum = meta_dict_for_bin[mnum]["kofam_hits"].keys()
-        if not present_list_for_mnum:
-            # no KOs in this module are present
-            if anvio.DEBUG:
-                self.run.warning("No KOs present for module %s. Parsing for completeness is still being done to obtain module steps." % mnum)
-
-        # Now I have decided that we need to have all possible paths through a module unrolled during KEGG setup.
-        # That way it is done once for all modules, and we can just load the path list into memory during an init.
-        # Then, here in this function, we can just access the path list quickly for the purposes of computing completeness.
-
-        # these are just here to remind myself what I need to be returning later
-        over_complete_threshold = False
-        has_nonessential_step = False
-        has_no_ko_step = False
-        defined_by_modules = False
         return over_complete_threshold, has_nonessential_step, has_no_ko_step, defined_by_modules
 
 
