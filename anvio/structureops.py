@@ -1379,14 +1379,6 @@ class PDBDatabase(object):
         # Consider only PDB ids that aren't already stored
         pdb_ids = self.get_representative_ids(self.clusters).difference(self.get_stored_structure_ids())
 
-        pdb_ids = set([
-            '5zx3E',
-            '4e16A',
-            '1cbfA',
-            '3ndcA',
-            '3neiA',
-        ])
-
         num_structures = len(pdb_ids)
 
         if num_structures == 0:
