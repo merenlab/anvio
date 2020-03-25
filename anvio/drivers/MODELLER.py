@@ -89,6 +89,7 @@ class MODELLER:
         self.percent_identical_cutoff = A('percent_identical_cutoff', null)
         self.deviation = A('deviation', null)
         self.pdb_db_path = A('pdb_db', null)
+        self.offline_mode = A('offline_mode', null)
 
         # All MODELLER scripts are housed in self.script_folder
         self.scripts_folder = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
@@ -167,6 +168,7 @@ class MODELLER:
             # The user has a database there! Try and load it
             self.pdb_db = anvio.structureops.PDBDatabase(argparse.Namespace(pdb_database_path=self.pdb_db_path))
             self.pdb_db.load_or_create_db()
+            self.pdb_db.get_stored_structure_ids()
             self.use_pdb_db = True
         else:
             self.use_pdb_db = False
@@ -184,9 +186,9 @@ class MODELLER:
 
             self.parse_search_results()
 
-            self.download_structures()
+            self.get_structures()
 
-            self.run_align_to_templates(self.top_seq_matches)
+            self.run_align_to_templates(self.list_of_template_code_and_chain_ids)
 
             self.run_get_model(self.num_models, self.deviation, self.very_fast)
 
@@ -210,6 +212,54 @@ class MODELLER:
         return self.out
 
 
+    def get_structures(self):
+        """Populate self.template_pdb_dir with template structure PDBs"""
+
+        self.template_pdb_dir = os.path.join(self.directory, "%s_TEMPLATE_PDBS" % str(self.corresponding_gene_call))
+        filesnpaths.gen_output_directory(self.template_pdb_dir) # does nothing if already exists
+
+        pdb_paths = {}
+        for code, chain in self.list_of_template_code_and_chain_ids:
+            five_letter_id = code + chain
+            requested_path = J(self.template_pdb_dir, '%s.pdb' % code)
+
+            if self.use_pdb_db and five_letter_id in self.pdb_db.stored_structure_ids:
+                # This chain exists in the external database. Export it and get the path
+                path = self.pdb_db.export_pdb(five_letter_id, requested_path)
+                source = 'Offline DB'
+
+            elif not self.offline_mode:
+                # This chain doesn't exist in an external database, and internet access is assumed.
+                # We try and download the protein from the RCSB PDB server. If downloading fails,
+                # path is None
+                path = utils.download_protein_structure(code, chain=chain, output_path=requested_path, raise_if_fail=False)
+                source = 'RSCB PDB Server'
+
+            else:
+                # Internet access is not assumed, and the chain wasn't in the external database
+                path = None
+                source = 'Nowhere'
+
+            self.run.info('%s obtained from' % five_letter_id, source)
+
+            if path:
+                pdb_paths[code] = path
+
+        # remove templates whose structures are not available
+        self.list_of_template_code_and_chain_ids = [
+            (code, chain_code)
+            for code, chain_code in self.list_of_template_code_and_chain_ids
+            if code in pdb_paths
+        ]
+
+        if not len(self.list_of_template_code_and_chain_ids):
+            self.run.warning("No structures of the homologous proteins (templates) were available. Probably something "
+                             "is wrong. Stopping here.")
+            raise self.EndModeller
+
+        self.run.info("Structures obtained for", ", ".join([code[0]+code[1] for code in self.list_of_template_code_and_chain_ids]))
+
+
     def download_structures(self):
         """Download structure files for self.top_seq_seq_matches using Biopython
 
@@ -221,20 +271,20 @@ class MODELLER:
         # define directory path name to store the template PDBs (it can already exist)
         self.template_pdb_dir = os.path.join(self.directory, "{}_TEMPLATE_PDBS".format(self.corresponding_gene_call))
 
-        pdb_paths = utils.download_protein_structures([code[0] for code in self.top_seq_matches], self.template_pdb_dir)
+        pdb_paths = utils.download_protein_structures([code[0] for code in self.list_of_template_code_and_chain_ids], self.template_pdb_dir)
 
         # Some downloads may have failed
         pdb_paths = {code: path for code, path in pdb_paths.items() if path is not None}
 
-        # redefine self.top_seq_matches in case not all were downloaded
-        self.top_seq_matches = [(code, chain_code) for code, chain_code in self.top_seq_matches if code in pdb_paths]
+        # redefine self.list_of_template_code_and_chain_ids in case not all were downloaded
+        self.list_of_template_code_and_chain_ids = [(code, chain_code) for code, chain_code in self.list_of_template_code_and_chain_ids if code in pdb_paths]
 
-        if not len(self.top_seq_matches):
+        if not len(self.list_of_template_code_and_chain_ids):
             self.run.warning("No structures of the homologous proteins (templates) were downloadable. Probably something "
                              "is wrong. Maybe you are not connected to the internet. Stopping here.")
             raise self.EndModeller
 
-        self.run.info("Structures downloaded for", ", ".join([code[0] for code in self.top_seq_matches]))
+        self.run.info("Structures downloaded for", ", ".join([code[0] for code in self.list_of_template_code_and_chain_ids]))
 
 
     def parse_search_results(self):
@@ -291,16 +341,16 @@ class MODELLER:
         search_df = search_df.iloc[:min([len(search_df), self.max_number_templates])]
 
         # Get their chain and 4-letter ids
-        self.top_seq_matches = list(zip(search_df["code"], search_df["chain"]))
+        self.list_of_template_code_and_chain_ids = list(zip(search_df["code"], search_df["chain"]))
 
         self.run.info("Max number of templates allowed", self.max_number_templates)
         self.run.info("Number of candidate templates", matches_found)
         self.run.info("After >{}% identical filter".format(self.percent_identical_cutoff), matches_after_filter)
-        self.run.info("Number accepted as templates", len(self.top_seq_matches))
+        self.run.info("Number accepted as templates", len(self.list_of_template_code_and_chain_ids))
 
         # update user on which templates are used, and write the templates to self.out
-        for i in range(len(self.top_seq_matches)):
-            pdb_id, chain_id = self.top_seq_matches[i]
+        for i in range(len(self.list_of_template_code_and_chain_ids)):
+            pdb_id, chain_id = self.list_of_template_code_and_chain_ids[i]
             ppi = search_df["proper_pident"].iloc[i]
 
             self.out["templates"]["pdb_id"].append(pdb_id)
