@@ -8,7 +8,6 @@ import shutil
 import requests
 import glob
 import re
-import copy
 
 import anvio
 import anvio.db as db
@@ -1754,149 +1753,121 @@ class KeggModulesDatabase(KeggContext):
         return self.parse_kegg_class_value(class_value)
 
     def unroll_module_definition(self, mnum):
-        """This function accesses the DEFINITION of a module, unrolls it into all possible paths, and returns the list of all paths.
-
-        Here is how we handle some specific caveats of module definitions:
-        1)  Protein complexes are designated by a series of KOs separated by '+' (essential component) or '-' (non-essential component).
-            We keep the entire complex together (ie, as KXXXXX+KYYYYY-KZZZZZ) in each path.
-        2) Some modules have non-essential steps, marked by a leading '-'. These steps are also placed into each path with the leading '-'.
-        3) Some modules have steps without associated KOs, '--'. These steps are also placed into each path.
-
-        Note that the above means that downstream processing of the paths through a module will require additional parsing.
-        """
+        """This function accesses the DEFINITION of a module, unrolls it into all possible paths, and returns the list of all paths."""
 
         def_lines = self.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
-        all_paths = [[]]  # a list of lists, where each inner list is a path
-        #seed_path = []
-        num_paths = 1
+        all_paths = []
+        seed_path = []
 
         for d in def_lines:
             d = d.strip()
-            cur_index = 0           # current position in the DEFINITION line
-            parens_level = 0        # how deep we are in nested parentheses
-            ko_in_step = {}         # dictionary keyed by parens_level, containing a list of KOs in compound step at that level
-
-
-            while cur_index < len(d):
-                if d[cur_index] == "K": # we have found a KO
-                    ko = d[cur_index:cur_index+6]
-                    cur_index += 6
-                    defined_by_modules = False  # reset this flag just in case KO-defined step comes after a module-defined step
-
-                    # our heuristic for + and - is to keep the complex together as one "mega-KO" in the path.
-                    # downstream completeness estimation can parse it (I'm sorry future me T.T )
-                    # so here we check if this is a complex
-                    while d[cur_index] == "+" or d[cur_index] == "-":
-                        # adding an entire set of alternative KOs into the complex
-                        # Ex. K00239+K00240+K00241-(K00242,K18859,K18860)
-                        if d[cur_index + 1] == "(":
-                            ko += d[cur_index] # add the + or - to the end of the ko complex string
-                            cur_index += 2 # skip over + or - and (
-                            parens_level += 1
-                            ko_in_step[parens_level] = []
-                            while d[cur_index] != ")":
-                                if d[cur_index] == "K":
-                                    nonessential_alternative_ko = d[cur_index:cur_index+6]
-                                    cur_index += 6
-                                    ko_copy_with_alternative = ko + nonessential_alternative_ko
-                                    ko_in_step[parens_level].append(ko_copy_with_alternative)
-                                elif d[cur_index] == ",":
-                                    cur_index += 1
-                                else:
-                                    raise ConfigError("Another niche parsing error. We were parsing a non-essential complex in definition "
-                                    "line %s, and we found a character we couldn't handle there: %s" % (d, d[cur_index]))
-                            # now we've found all alternatives at this level. Below, we will add the alternatives
-                            # if this is a set of inner parentheses, we add these to alternatives at the lower parens level
-                            cur_index += 1 # skip over the )
-
-
-                        else: # adding just one KO into the complex
-                            ko += d[cur_index:cur_index+7]
-                            cur_index += 7
-
-                    # singular KO or KO-complex - add directly to end of each path
-                    if parens_level == 0:
-                        for i in range(num_paths):
-                            all_paths[i].append(ko)
-                    # parentheses encircle a compound step - kos must be collected and added to paths later
-                    elif parens_level == 1:
-                        ko_in_step[parens_level].append(ko)
-                    elif parens_level == 2:
-                        for alt in ko_in_step[parens_level]:
-                            ko_in_step[parens_level - 1].append(alt)
-                        parens_level -= 1
-
-                elif d[cur_index] == "(":
-                    parens_level += 1
-                    ko_in_step[parens_level] = [] # initialize list to keep track of kos in this step
-                    cur_index += 1
-
-                elif d[cur_index] == ")":
-                    ko_at_level = ko_in_step[parens_level]
-                    # now that we've ended a compound step, we distribute the kos to paths
-                    for path in all_paths:
-                        for i in range(len(ko_at_level) - 1):
-                            new_path_copy = copy.copy(path)
-                            new_path_copy.append(ko_at_level[i+1])
-                            all_paths.append(new_path_copy)
-                        path.append(ko_at_level[0])
-                    cur_index += 1
-                    ko_in_step[parens_level] = None
-                    parens_level -= 1
-
-                elif d[cur_index] == ",":
-
-                    cur_index += 1
-
-
-                elif d[cur_index] == "+":
-                    raise ConfigError("While unrolling a module definition, we found a rogue '+' character that was not part of a "
-                    "KO complex. Not sure what happened here but this is the definition line: %s" % d)
-
-                # here, outside of complexes, the '-' denotes either non-essential steps or -- steps that don't have associated KOs
-                elif d[cur_index] == "-":
-                    # a nonessential KO
-                    if d[cur_index+1] == "K":
-                        nonessential_ko = d[cur_index+1:cur_index+7]
-                        cur_index += 7
-
-                        if parens_level == 0:
-                            for i in range(num_paths):
-                                all_paths[i].append(nonessential_ko)
-                        else:
-                            raise ConfigError("Found a nonessential KO that was within some parentheses. Definition line is %s." % d)
-
-                    # the '--' (no KO) situation
-                    elif d[cur_index+1] == "-":
-                        if parens_level == 0:
-                            for i in range(num_paths):
-                                all_paths[i].append("--")
-                        else:
-                            raise ConfigError("Found a '--' step that was within some parentheses. Definition line is %s." % d)
-
-
-                        cur_index += 2 # skip over both '-', the next character should be a space or end of DEFINITION line
-
-                        if cur_index < len(d) and d[cur_index] != " ":
-                            raise ConfigError("Serious, serious parsing sadness is happening. We just processed a '--' in "
-                                              "a DEFINITION line for module %s, but did not see a space afterwards. Instead, we found %s. "
-                                              "WHAT DO WE DO NOW?" % (mnum, d[cur_index+1]))
-                    # anything else that follows a '-'
-                    else:
-                        raise ConfigError("The following character follows a '-' in the DEFINITION line for module %s "
-                        "and we just don't know what to do: %s" % (mnum, d[cur_index+1]))
-
-            ########################### FIXME STARTING FROM HERE
-                elif d[cur_index] == " ":
-                    # if we are outside of parentheses, we are done processing the current step
-                    if parens_level == 0:
-                        # reset for next step
-
-                        cur_index += 1
-                    # otherwise, we are processing an alternative path so AND is required
-                    else:
-                        step_is_present_condition_statement += " and "
-                        cur_index += 1
+            # cur_index = 0  # current position in the DEFINITION line
+            # parens_level = 0 # how deep we are in nested parentheses
+            # step_is_present_condition_statement = ""
+            # last_step_end_index = 0
+            #
+            # while cur_index < len(d):
+            #     if d[cur_index] == "K": # we have found a KO
+            #         ko = d[cur_index:cur_index+6]
+            #         defined_by_modules = False  # reset this flag just in case KO-defined step comes after a module-defined step
+            #         if ko in present_list_for_mnum:
+            #             step_is_present_condition_statement += "True"
+            #         else:
+            #             step_is_present_condition_statement += "False"
+            #         cur_index += 6
+            #
+            #     elif d[cur_index] == "(":
+            #         parens_level += 1
+            #         step_is_present_condition_statement += "("
+            #         cur_index += 1
+            #
+            #     elif d[cur_index] == ")":
+            #         parens_level -= 1
+            #         step_is_present_condition_statement += ")"
+            #         cur_index += 1
+            #
+            #     elif d[cur_index] == ",":
+            #         step_is_present_condition_statement += " or "
+            #         cur_index += 1
+            #
+            #     elif d[cur_index] == "+":
+            #         step_is_present_condition_statement += " and "
+            #         cur_index += 1
+            #
+            #     elif d[cur_index] == "-":
+            #         # either a singular KO or a set of KOs in parentheses can follow this character
+            #         # since the following KO(s) are non-essential in the complex, we skip over them to ignore them
+            #         # unless this is its own step, in which case we consider the whole step non-essential
+            #
+            #         # singular nonessential KO
+            #         if d[cur_index+1] == "K":
+            #             nonessential_ko = d[cur_index+1:cur_index+7]
+            #             cur_index += 7
+            #             """
+            #             OKAY, SO HERE WE HAVE SOME POOPINESS THAT MAY NEED TO BE FIXED EVENTUALLY.
+            #             Basically, some DEFINITION lines have KOs that seem to be marked non-essential;
+            #             ie, "-K11024" in "K11023 -K11024 K11025 K11026 K11027".
+            #             It was difficult to decide whether we should consider only K11024, or K11024 and all following KOs, to be non-essential.
+            #             For instance, the module M00778 is a complex case that gave us pause - see Fiesta issue 955.
+            #             But for now, we have decided to just track only the one KO as a 'non-essential step', and to not include such steps in
+            #             the module completeness estimate.
+            #             """
+            #             # if this is the first KO in the step and we find a space after this KO, then we have found a non-essential step
+            #             if step_is_present_condition_statement == "" and (cur_index == len(d) or d[cur_index] == " "):
+            #                 has_nonessential_step = True
+            #                 module_nonessential_steps.append(d[last_step_end_index:cur_index])
+            #                 module_num_nonessential_steps += 1
+            #
+            #                 if nonessential_ko in present_list_for_mnum:
+            #                     module_complete_nonessential_steps.append(d[last_step_end_index:cur_index])
+            #                     module_num_complete_nonessential_steps += 1
+            #
+            #                 # reset for next step
+            #                 last_step_end_index = cur_index + 1
+            #                 cur_index += 1
+            #
+            #         # a whole set of nonessential KOs
+            #         elif d[cur_index+1] == "(":
+            #             while d[cur_index] != ")":
+            #                 cur_index += 1
+            #             cur_index += 1 # skip over the ')'
+            #
+            #         # the '--' (no KO) situation
+            #         elif d[cur_index+1] == "-":
+            #             # when '--' in a DEFINITION line happens, it signifies a reaction step that has no associated KO.
+            #             # we assume that such steps are not complete,  because we really can't know if it is from the KOfam hits alone
+            #             has_no_ko_step = True
+            #             step_is_present_condition_statement += "False"
+            #             cur_index += 2 # skip over both '-', the next character should be a space or end of DEFINITION line
+            #
+            #             if cur_index < len(d) and d[cur_index] != " ":
+            #                 raise ConfigError("Serious, serious parsing sadness is happening. We just processed a '--' in "
+            #                                   "a DEFINITION line for module %s, but did not see a space afterwards. Instead, we found %s. "
+            #                                   "WHAT DO WE DO NOW?" % (mnum, d[cur_index+1]))
+            #         # anything else that follows a '-'
+            #         else:
+            #             raise ConfigError("The following character follows a '-' in the DEFINITION line for module %s "
+            #             "and we just don't know what to do: %s" % (mnum, d[cur_index+1]))
+            #
+            #     elif d[cur_index] == " ":
+            #         # if we are outside of parentheses, we are done processing the current step
+            #         if parens_level == 0:
+            #             module_step_list.append(d[last_step_end_index:cur_index])
+            #             module_total_steps += 1
+            #             # we do not evaluate completeness of this step yet if it is defined by other modules
+            #             if not defined_by_modules:
+            #                 step_is_present = eval(step_is_present_condition_statement)
+            #                 if step_is_present:
+            #                     module_complete_steps.append(d[last_step_end_index:cur_index])
+            #                     module_num_complete_steps += 1
+            #             # reset for next step
+            #             step_is_present_condition_statement = ""
+            #             last_step_end_index = cur_index + 1
+            #             cur_index += 1
+            #         # otherwise, we are processing an alternative path so AND is required
+            #         else:
+            #             step_is_present_condition_statement += " and "
+            #             cur_index += 1
             #
             #     elif d[cur_index] == "M":
             #         """
