@@ -3253,7 +3253,7 @@ def get_remote_file_content(url, gzipped=False):
     return remote_file.content.decode('utf-8')
 
 
-def download_protein_structure(protein_code, output_dir=None, chain=None, raise_if_fail=True):
+def download_protein_structure(protein_code, output_path=None, chain=None, raise_if_fail=True):
     """Downloads protein structures using Biopython.
 
     Parameters
@@ -3261,8 +3261,8 @@ def download_protein_structure(protein_code, output_dir=None, chain=None, raise_
     protein_code : str
         Each element is a 4-letter protein code
 
-    output_dir : str
-        A dir to write the file to. Temporary directory is chosen if None
+    output_path : str
+        Path where structure is written to. Temporary directory is chosen if None
 
     chain : str, None
         If None, all chains remain in the PDB file. If specified, only the chain with the chain ID
@@ -3277,6 +3277,8 @@ def download_protein_structure(protein_code, output_dir=None, chain=None, raise_
         Returns the filepath of the written file. Returns None if download failed
     """
 
+    output_dir = os.path.dirname(output_path)
+
     pdb_list = PDB.PDBList()
 
     try:
@@ -3284,11 +3286,11 @@ def download_protein_structure(protein_code, output_dir=None, chain=None, raise_
             # We suppress output that looks like this:
             # >>> WARNING: The default download format has changed from PDB to PDBx/mmCif
             # >>> Downloading PDB structure '5w6y'...
-            output_path = pdb_list.retrieve_pdb_file(protein_code, file_format='pdb', pdir=output_dir, overwrite=True)
+            temp_output_path = pdb_list.retrieve_pdb_file(protein_code, file_format='pdb', pdir=output_dir, overwrite=True)
     except:
         pass
 
-    if not filesnpaths.is_file_exists(output_path, dont_raise=True):
+    if not filesnpaths.is_file_exists(temp_output_path, dont_raise=True):
         # The file wasn't downloaded
         if raise_if_fail:
             raise ConfigError("The protein %s could not be downloaded. Are you connected to internet?" % protein_code)
@@ -3300,14 +3302,22 @@ def download_protein_structure(protein_code, output_dir=None, chain=None, raise_
             def accept_chain(self, chain_in_struct):
                 return 1 if chain_in_struct._id == chain else 0
 
-        # Load structure
         p = PDB.PDBParser()
-        structure = p.get_structure(None, output_path)
+        try:
+            structure = p.get_structure(None, temp_output_path)
+        except:
+            # FIXME Something very rare happened on Biopython's end. We silently return the whole
+            # file instead of only the chain. Probably from parsing REMARK 465 headers that describe
+            # missing residues
+            shutil.move(temp_output_path, output_path)
+            return output_path
 
         # Overwrite file with chain-only structure
         io = PDB.PDBIO()
         io.set_structure(structure)
-        io.save(output_path, ChainSelect())
+        io.save(temp_output_path, ChainSelect())
+
+    shutil.move(temp_output_path, output_path)
 
     return output_path
 
