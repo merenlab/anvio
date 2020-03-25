@@ -100,7 +100,7 @@ class MODELLER:
         self.target_pir_path = None
         self.template_family_matrix_path = None
         self.template_info_path = None
-        self.template_pdbs = None
+        self.template_pdb_dir = None
         self.model_info = None
         self.pdb_db = None
         self.use_pdb_db = False
@@ -213,15 +213,15 @@ class MODELLER:
     def download_structures(self):
         """Download structure files for self.top_seq_seq_matches using Biopython
 
-        Places downloads in self.template_pdbs
+        Places downloads in self.template_pdb_dir
 
         If the 4-letter code is `wxyz`, the downloaded file is `pdbwxyz.ent`.
         """
 
         # define directory path name to store the template PDBs (it can already exist)
-        self.template_pdbs = os.path.join(self.directory, "{}_TEMPLATE_PDBS".format(self.corresponding_gene_call))
+        self.template_pdb_dir = os.path.join(self.directory, "{}_TEMPLATE_PDBS".format(self.corresponding_gene_call))
 
-        pdb_paths = utils.download_protein_structures([code[0] for code in self.top_seq_matches], self.template_pdbs)
+        pdb_paths = utils.download_protein_structures([code[0] for code in self.top_seq_matches], self.template_pdb_dir)
 
         # Some downloads may have failed
         pdb_paths = {code: path for code, path in pdb_paths.items() if path is not None}
