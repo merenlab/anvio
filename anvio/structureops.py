@@ -1377,7 +1377,12 @@ class PDBDatabase(object):
         output_queue = manager.Queue(self.queue_size)
 
         # Consider only PDB ids that aren't already stored
-        pdb_ids = self.get_representative_ids(self.clusters).difference(self.get_stored_structure_ids())
+        # NOTE We store as list so order is retained when debugging
+        pdb_ids = [
+            pdb_id
+            for pdb_id in self.get_representative_ids(self.clusters)
+            if pdb_id not in self.get_stored_structure_ids()
+        ]
 
         num_structures = len(pdb_ids)
 
@@ -1596,15 +1601,21 @@ class PDBDatabase(object):
 
 
     def get_representative_ids(self, clusters):
-        return set(clusters.loc[clusters['representative'] == 1, 'id'].tolist())
+        """Get representative IDs from a clusters dataframe"""
 
-
-    def get_clusters(self):
-        return self.db.get_table_as_dataframe('clusters')
+        return clusters.loc[clusters['representative'] == 1, 'id'].tolist()
 
 
     def get_stored_structure_ids(self):
-        return set(self.db.get_single_column_from_table('structures', 'representative_id'))
+        """Get structure IDs of those stored in DB"""
+
+        return self.get_representative_ids(self.db.get_table_as_dataframe('clusters'))
+
+
+    def get_clusters(self):
+        """Get 'clusters' table as a dataframe"""
+
+        return self.db.get_table_as_dataframe('clusters')
 
 
     def export_pdb(self, pdb_id, output_path):
