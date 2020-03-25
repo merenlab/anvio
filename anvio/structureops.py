@@ -33,7 +33,6 @@ J = lambda x, y: os.path.join(x, y)
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 warnings.simplefilter(action='ignore', category=PDBConstructionWarning)
 
-
 class StructureDatabase(object):
     """Structure database operations"""
 
@@ -1282,10 +1281,8 @@ class PDBDatabase(object):
 
         self.reset = A('reset', null)
         self.update = A('update', null)
-        self.db_path = A('pdb_database_path', null)
+        self.db_path = A('pdb_database_path', null) or constants.default_pdb_database_path
         self.skip_modeller_update = A('skip_modeller_update', null)
-        if not self.db_path:
-            self.db_path = J(os.path.dirname(anvio.__file__), 'data/misc/PDB.db')
 
         self.num_threads = A('num_threads', int) or 1
         self.queue_size = self.num_threads * 5
@@ -1632,7 +1629,8 @@ class PDBDatabase(object):
 
 
     def export_pdb(self, pdb_id, output_path):
-        pass
+        x = self.db.get_some_rows_from_table('structures', 'representative_id = "%s"' % pdb_id)
+        import pdb; pdb.set_trace()
 
 
     def size_of_database(self):
