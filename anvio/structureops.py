@@ -1470,12 +1470,12 @@ class PDBDatabase(object):
     def download_and_return_pdb_content(self, pdb_id):
         """Download and return binary pdb content. pdb_id is a 5-letter code (PDB code + chain ID)"""
 
-        temp_dir = filesnpaths.get_temp_directory_path()
+        temp_path = filesnpaths.get_temp_file_path()
 
         four_letter_code = pdb_id[:4]
         chain_id = pdb_id[-1]
 
-        path = utils.download_protein_structure(four_letter_code, output_dir=temp_dir, chain=chain_id, raise_if_fail=False)
+        path = utils.download_protein_structure(four_letter_code, output_path=temp_path, chain=chain_id, raise_if_fail=False)
 
         if path:
             with open(path, 'rb') as f:
@@ -1485,7 +1485,7 @@ class PDBDatabase(object):
             self.run.warning("%s, chain %s was not downloaded :\\" % (pdb_id[:4], pdb_id[-1]))
             pdb_content = None
 
-        shutil.rmtree(temp_dir)
+        os.remove(temp_path)
 
         return pdb_content
 
