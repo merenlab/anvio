@@ -1623,7 +1623,9 @@ class PDBDatabase(object):
     def get_stored_structure_ids(self):
         """Get structure IDs of those stored in DB"""
 
-        return self.get_representative_ids(self.get_clusters())
+        self.stored_structure_ids = self.get_representative_ids(self.get_clusters())
+
+        return self.stored_structure_ids
 
 
     def get_clusters(self):
@@ -1632,9 +1634,15 @@ class PDBDatabase(object):
         return self.db.get_table_as_dataframe('clusters', error_if_no_data=False)
 
 
-    def export_pdb(self, pdb_id, output_path):
-        x = self.db.get_some_rows_from_table('structures', 'representative_id = "%s"' % pdb_id)
-        import pdb; pdb.set_trace()
+    def export_pdb(self, pdb_id, output_path=None):
+        if not output_path:
+            output_path = filesnpaths.get_temp_file_path()
+
+        as_bytes = self.db.get_some_rows_from_table_as_dict('structures', 'representative_id = "%s"' % pdb_id)[pdb_id]['pdb_content']
+        with open(output_path, 'wb') as f:
+            f.write(as_bytes)
+
+        return output_path
 
 
     def size_of_database(self):
