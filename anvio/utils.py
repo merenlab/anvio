@@ -3307,8 +3307,8 @@ def download_protein_structure(protein_code, output_path=None, chain=None, raise
             structure = p.get_structure(None, temp_output_path)
         except:
             # FIXME Something very rare happened on Biopython's end. We silently return the whole
-            # file instead of only the chain. Probably from parsing REMARK 465 headers that describe
-            # missing residues
+            # file instead of only the chain. Here is one such reason for failure we stumbled upon:
+            # https://github.com/biopython/biopython/issues/2819
             shutil.move(temp_output_path, output_path)
             return output_path
 
