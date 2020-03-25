@@ -1775,6 +1775,26 @@ class KeggModulesDatabase(KeggContext):
         return self.parse_kegg_class_value(class_value)
 
 
+    def unroll_module_definition(self, mnum):
+        """This function accesses the DEFINITION line of a KEGG Module, unrolls it into all possible paths through the module, and returns the list of all paths."""
+
+        all_paths = []
+        # call recursive function here
+
+        return all_paths
+
+    def recursive_definition_unroller(self, step):
+        """This function recursively splits a module step into its components."""
+
+        # base case: step is a KO or module number, just return it
+
+        # otherwise, if there are spaces, split by space (not in parens) and recurse on each
+        # otherwise, if there are commas, split by comma (not in parens) and recurse on each but put the result in copies of current path
+        # complexes? Keep them together?
+        # -- or -K0000s? Keep them as is?
+        # T.T
+
+
 class KeggModulesTable:
     """This class defines operations for creating the KEGG Modules table in Modules.db"""
 
