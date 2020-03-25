@@ -1326,6 +1326,7 @@ class PDBDatabase(object):
 
         self.progress.end()
 
+        self.run.warning("", header="DOWNLOADED CLUSTERS INFO", lc='green')
         self.run.info('Total structures', clusters.shape[0])
         self.run.info('Number of clusters', clusters['cluster'].nunique(), nl_after=1)
 
@@ -1366,6 +1367,9 @@ class PDBDatabase(object):
 
         self.run.info_single("Anvi'o will now download structures from the RSCB PDB server. Press CTRL+C once to cancel.", nl_after=1)
 
+        self.progress.new('Setup')
+        self.progress.update('setting up threads')
+
         failed = []
         structures = []
 
@@ -1373,13 +1377,12 @@ class PDBDatabase(object):
         available_index_queue = manager.Queue()
         output_queue = manager.Queue(self.queue_size)
 
+        self.progress.update('Determining the set of pdb ids')
         # Consider only PDB ids that aren't already stored
         # NOTE We store as list so order is retained when debugging
-        pdb_ids = [
-            pdb_id
-            for pdb_id in self.get_representative_ids(self.clusters)
-            if pdb_id not in self.get_stored_structure_ids()
-        ]
+        pdb_ids = self.get_representative_ids(self.clusters)
+        already_stored = self.get_stored_structure_ids()
+        pdb_ids = [pdb_id for pdb_id in pdb_ids if pdb_id not in already_stored]
 
         num_structures = len(pdb_ids)
 
@@ -1400,6 +1403,7 @@ class PDBDatabase(object):
         done = 0
         db_size = self.size_of_database()
 
+        self.progress.end()
         self.progress.new('Using %d threads' % self.num_threads, progress_total_items=num_structures)
         self.progress.update('%d / %d processed | total DB size %s' % (done, num_structures, db_size))
 
@@ -1619,13 +1623,13 @@ class PDBDatabase(object):
     def get_stored_structure_ids(self):
         """Get structure IDs of those stored in DB"""
 
-        return self.get_representative_ids(self.db.get_table_as_dataframe('clusters'))
+        return self.get_representative_ids(self.get_clusters())
 
 
     def get_clusters(self):
         """Get 'clusters' table as a dataframe"""
 
-        return self.db.get_table_as_dataframe('clusters')
+        return self.db.get_table_as_dataframe('clusters', error_if_no_data=False)
 
 
     def export_pdb(self, pdb_id, output_path):
