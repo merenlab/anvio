@@ -1287,7 +1287,7 @@ class PDBDatabase(object):
         if not self.db_path:
             self.db_path = J(os.path.dirname(anvio.__file__), 'data/misc/PDB.db')
 
-        self.num_threads = A('num_threads', int)
+        self.num_threads = A('num_threads', int) or 1
         self.queue_size = self.num_threads * 5
         self.buffer_size = self.num_threads * 10
 
