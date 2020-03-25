@@ -7,12 +7,14 @@ import os
 import sys
 import anvio
 import shutil
+import argparse
 import subprocess
 
 import pandas as pd
 import anvio.utils as utils
 import anvio.fastalib as u
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, ModellerError, ModellerScriptError
@@ -86,6 +88,7 @@ class MODELLER:
         self.max_number_templates = A('max_number_templates', null)
         self.percent_identical_cutoff = A('percent_identical_cutoff', null)
         self.deviation = A('deviation', null)
+        self.pdb_db_path = A('pdb_db', null)
 
         # All MODELLER scripts are housed in self.script_folder
         self.scripts_folder = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
@@ -99,6 +102,8 @@ class MODELLER:
         self.template_info_path = None
         self.template_pdbs = None
         self.model_info = None
+        self.pdb_db = None
+        self.use_pdb_db = False
 
         self.logs = {}
         self.scripts = {}
@@ -147,8 +152,30 @@ class MODELLER:
         return corresponding_gene_call
 
 
+    def load_pdb_db(self):
+        """Try loading a PDB database with path equal to self.pdb_db_path
+
+        Modifies self.pdb_db and self.use_pdb_db
+        """
+
+        if not self.pdb_db_path:
+            self.pdb_db_path = constants.default_pdb_database_path
+
+        ok_if_absent = True if self.pdb_db_path == constants.default_pdb_database_path else False
+
+        if filesnpaths.is_file_exists(self.pdb_db_path, dont_raise=ok_if_absent):
+            # The user has a database there! Try and load it
+            self.pdb_db = anvio.structureops.PDBDatabase(argparse.Namespace(pdb_database_path=self.pdb_db_path))
+            self.pdb_db.load_or_create_db()
+            self.use_pdb_db = True
+        else:
+            self.use_pdb_db = False
+
+
     def process(self):
         try:
+            self.load_pdb_db()
+
             self.run_fasta_to_pir()
 
             self.check_database()
