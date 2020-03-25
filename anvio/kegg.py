@@ -1784,15 +1784,30 @@ class KeggModulesDatabase(KeggContext):
         return all_paths
 
     def recursive_definition_unroller(self, step):
-        """This function recursively splits a module step into its components."""
+        """This function recursively splits a module definition into its components."""
 
-        # base case: step is a KO or module number, just return it
+        # first, split definition into steps by spaces outside parentheses
+        # establish a list to save the path
+        # for each step,
+        #    base case: step is a ko, mnum, etc, so we extend the list with it
+        #    parentheses case: step has alternative paths, so we call the split path function which will return the alternatives
+                # for each alternative, make a new copy of the path and extend() with the alternative 
+        #    complex case: could have alternatives so call a function to return those?
 
-        # otherwise, if there are spaces, split by space (not in parens) and recurse on each
-        # otherwise, if there are commas, split by comma (not in parens) and recurse on each but put the result in copies of current path
-        # complexes? Keep them together?
-        # -- or -K0000s? Keep them as is?
-        # T.T
+        # split_path function: takes a step as input
+        # first, get rid of surrounding parentheses
+        # second, split by comma into substeps
+        # for each substep:
+            # make a copy of the path so far to append to
+            # call recursive_definition_unroller to extend() to the path from this step
+        # return all path lists
+
+        # base case: step is a KO, module number, --, or -K0000, just return it
+        if (len(step) == 6 and step[0] == "K") or (len(step) == 6 and step[0] == "M") or (step == "--") or (len(step) == 7 and step[0] == "-"):
+            return step
+
+
+        # anyway we need to extend() each path list with the recursive return value
 
 
 class KeggModulesTable:
