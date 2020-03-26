@@ -1485,7 +1485,8 @@ class PDBDatabase(object):
             self.run.warning("%s, chain %s was not downloaded :\\" % (pdb_id[:4], pdb_id[-1]))
             pdb_content = None
 
-        os.remove(temp_path)
+        if filesnpaths.is_file_exists(temp_path, dont_raise=True):
+            os.remove(temp_path)
 
         return pdb_content
 
