@@ -112,7 +112,7 @@ class MMseqs2:
         Returns
         =======
         fasta_file_path: str
-            Seed sequences of clusters
+            Cluster seed sequences, the longest sequence in each cluster
         align_file_path: str
             Tabular m8 file of alignment information
         """
@@ -264,8 +264,9 @@ class MMseqs2:
                     seq_db_path,
                     cluster_db_path,
                     cluster_tmp_dir,
+                    '--cluster-mode', 2, # Greedy clustering by sequence length
+                    '--cov-mode', 1, # Threshold based on coverage of TARGET SEQUENCE
                     '-c', cov_thresh,
-                    '--cov-mode', 2, # Threshold based on coverage of QUERY SEQUENCE
                     '--min-seq-id', min_seq_id,
                     '--threads', self.num_threads,
                     '-v', self.verbosity_level]
