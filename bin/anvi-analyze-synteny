@@ -61,7 +61,7 @@ __description__ = ("This program helps you extract synteny patterns from a group
                    "is accomplished by deconstructing loci into Ngrams (group of neighboring genes of which N is the number of genes) of gene "
                    "functions using a sliding window method. Once completed, anvi'o will export a table with Ngrams counts "
                    "for you to work with. By default anvi'o will ignore Ngrams that contain genes without annotations. If "
-                   "you would like to override this, you can use the -- analyze-unknown-functions flag.")
+                   "you would like to override this, you can use the --analyze-unknown-functions flag.")
 
 
 
