@@ -3322,38 +3322,6 @@ def download_protein_structure(protein_code, output_path=None, chain=None, raise
     return output_path
 
 
-def download_protein_structures(protein_code_list, output_dir):
-    """Downloads protein structures using Biopython.
-
-    Parameters
-    ==========
-    protein_code_list : list
-        Each element is a 4-letter protein code
-
-    output_dir : str
-        A non-existing output directory
-
-    Returns
-    =======
-    output : dict
-        A dictionary of output paths. {pdb_code: path}. If download failed, path is None
-    """
-
-    progress.new("Downloading proteins from PDB")
-
-    filesnpaths.gen_output_directory(output_dir)
-
-    paths = {}
-    for protein_code in protein_code_list:
-        progress.update("Downloading protein structure: {}".format(protein_code))
-        path = download_protein_structure(protein_code, output_dir=output_dir, raise_if_fail=False)
-        paths[protein_code] = path
-
-    progress.end()
-
-    return paths
-
-
 def get_hash_for_list(l):
     return 'hash' + str(hashlib.sha224(''.join(sorted(list(l))).encode('utf-8')).hexdigest()[0:8])
 
