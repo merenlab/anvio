@@ -8,6 +8,8 @@ make_structure_db() {
                                 --dump-dir test-output/RAW_MODELLER_OUTPUT \
                                 --output-db-path test-output/STRUCTURE.db \
                                 --very-fast \
+                                --debug \
+                                --num-threads 2 \
                                 --num-models 1
 }
 gen_var_profile1() {
