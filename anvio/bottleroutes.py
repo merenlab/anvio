@@ -210,7 +210,7 @@ class BottleApplication(Bottle):
                 run.info_single("The server is now listening the port number '%d'. When you are finished, press CTRL+C to "
                                 "terminate the server. If you are using OSX and if the server terminates prematurely before "
                                 "you can see anything in your browser, try to run the same command by putting 'sudo ' at the "
-                                "beginning of it (you will be likely prompted to enter your passwor as this command will require"
+                                "beginning of it (you will be likely prompted to enter your password as this command will require "
                                 "super user rights to run)" % port, 'green', nl_before = 1, nl_after=1)
 
             server_process.join()
