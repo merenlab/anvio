@@ -2,8 +2,9 @@
 # pylint: disable=line-too-long
 """ Table schemas for databases."""
 
-from anvio.constants import codons, nucleotides, essential_genome_info
+from anvio.constants import codons, nucleotides, essential_genome_info, alphanumeric_tRNA_feature_names
 
+import itertools
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -20,7 +21,7 @@ pan_db_version = "13"
 auxiliary_data_version = "2"
 structure_db_version = "1"
 genomes_storage_vesion = "6"
-tRNA_db_version = "1"
+tRNAseq_db_version = "1"
 trnaseeds_db_version = "1"
 
 versions_for_db_types = {'contigs': contigs_db_version,
@@ -30,7 +31,7 @@ versions_for_db_types = {'contigs': contigs_db_version,
                          'pan': pan_db_version,
                          'genomestorage': genomes_storage_vesion,
                          'auxiliary data for coverages': auxiliary_data_version,
-                         'tRNA': tRNA_db_version,
+                         'tRNAseq': tRNAseq_db_version,
                          'trnaseeds': trnaseeds_db_version}
 
 ####################################################################################################
@@ -94,17 +95,17 @@ genes_taxonomy_table_name              = 'genes_taxonomy'
 genes_taxonomy_table_structure         = ['gene_callers_id', 'taxon_id',]
 genes_taxonomy_table_types             = [    'numeric'    ,  'numeric',]
 
-trnaseeds_sequences_table_name         = 'trnaseeds_sequences'
-trnaseeds_sequences_table_structure    = ['trnaseed', 'sequence']
-trnaseeds_sequences_table_types        = ['str'     , 'str'     ]
+# trnaseeds_sequences_table_name         = 'trnaseeds_sequences'
+# trnaseeds_sequences_table_structure    = ['trnaseed', 'sequence']
+# trnaseeds_sequences_table_types        = ['str'     , 'str'     ]
 
-trnaseeds_taxonomy_table_name          = 'trnaseeds_taxonomy'
-trnaseeds_taxonomy_table_structure     = ['trnaseed', 'taxon_id']
-trnaseeds_taxonomy_table_types         = ['str'     , 'numeric' ]
+# trnaseeds_taxonomy_table_name          = 'trnaseeds_taxonomy'
+# trnaseeds_taxonomy_table_structure     = ['trnaseed', 'taxon_id']
+# trnaseeds_taxonomy_table_types         = ['str'     , 'numeric' ]
 
-trnaseeds_info_table_name                = 'trnaseeds_basic_info'
-trnaseeds_info_table_structure           = ['trnaseed', 'length' ]
-trnaseeds_info_table_types               = ['str'     , 'numeric']
+# trnaseeds_info_table_name                = 'trnaseeds_basic_info'
+# trnaseeds_info_table_structure           = ['trnaseed', 'length' ]
+# trnaseeds_info_table_types               = ['str'     , 'numeric']
 
 hmm_hits_info_table_name               = 'hmm_hits_info'
 hmm_hits_info_table_structure          = ['source', 'ref' , 'search_type', 'domain', 'genes']
@@ -259,6 +260,32 @@ structure_residue_info_table_types      = ['integer',         'integer'        ,
 residue_info_sources = {"DSSP":        {"structure": ['codon_order_in_gene' , 'aa'   , 'sec_struct' , 'rel_solvent_acc' , 'phi'  , 'psi'  , 'NH_O_1_index' , 'NH_O_1_energy' , 'O_NH_1_index' , 'O_NH_1_energy' , 'NH_O_2_index' , 'NH_O_2_energy' , 'O_NH_2_index' , 'O_NH_2_energy'],
                                         "types":     ['integer'             , 'text' , 'text'       , 'real'            , 'real' , 'real' , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real']},
                        }
+
+####################################################################################################
+#
+#     TABLE DESCRIPTIONS FOR THE tRNASEQ DB
+#
+####################################################################################################
+
+tRNAseq_sequences_table_name            = 'tRNA_sequences'
+tRNAseq_sequences_table_structure       = ['name', 'sequence']
+tRNAseq_sequences_table_types           = ['str' , 'str']
+
+tRNAseq_info_table_name                 = 'tRNA_basic_info'
+tRNAseq_info_table_structure            = ['name', 'is_mature', 'anticodon_sequence', 'sequence_length', 'profiled_features_start', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature']
+tRNAseq_info_table_types                = ['str' , 'bool'     , 'str'               , 'numeric'        , 'numeric'                , 'numeric'      , 'numeric'        , 'numeric'   , 'numeric'     , 'numeric']
+
+tRNAseq_features_table_name             = 'tRNA_features'
+tRNAseq_features_table_structure        = ['name'] + list(itertools.chain(*zip([f + '_start' for f in alphanumeric_tRNA_feature_names], [f + '_stop' for f in alphanumeric_tRNA_feature_names])))
+tRNAseq_features_table_types            = ['str']  + ['str'] * len(alphanumeric_tRNA_feature_names) * 2
+
+tRNAseq_unconserved_table_name          = 'tRNA_unconserved_nucleotides'
+tRNAseq_unconserved_table_structure     = ['name', 'pos'    , 'observed_nucleotide', 'expected_nucleotides']
+tRNAseq_unconserved_table_types         = ['str' , 'numeric', 'str'                , 'str']
+
+tRNAseq_unpaired_table_name             = 'tRNA_unpaired_nucleotides'
+tRNAseq_unpaired_table_structure        = ['name', 'fiveprime_pos', 'threeprime_pos', 'observed_fiveprime_nucleotide', 'observed_threeprime_nucleotide']
+tRNAseq_unpaired_table_types            = ['str' , 'numeric'      , 'numeric'       , 'str'                          , 'str']
 
 ####################################################################################################
 #

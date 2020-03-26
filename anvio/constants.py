@@ -257,6 +257,61 @@ conserved_amino_acid_groups = {
 # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5330540/
 longest_known_trna_length = 101
 
+tRNA_feature_names =[
+    'tRNA-His Position 0',
+    'Acceptor Stem',
+    '5\' Acceptor Stem Sequence',
+    'Position 8',
+    'Position 9',
+    'D Arm',
+    'D Stem',
+    '5\' D Stem Sequence',
+    'D Loop',
+    '3\' D Stem Sequence',
+    'Position 26',
+    'Anticodon Arm',
+    'Anticodon Stem',
+    '5\' Anticodon Stem Sequence',
+    'Anticodon Loop',
+    '3\' Anticodon Stem Sequence',
+    'V Loop',
+    'T Arm',
+    'T Stem',
+    '5\' T Stem Sequence',
+    'T Loop',
+    '3\' T Stem Sequence',
+    '3\' Acceptor Stem Sequence',
+    'Discriminator',
+    'Acceptor'
+]
+db_formatted_tRNA_feature_names = [
+    'trna_his_position_0',
+    'acceptor_stem',
+    'fiveprime_acceptor_stem_sequence',
+    'position_8',
+    'position_9',
+    'd_arm',
+    'd_stem',
+    'fiveprime_d_stem_sequence',
+    'd_loop',
+    'threeprime_d_stem_sequence',
+    'position_26',
+    'anticodon_arm',
+    'anticodon_stem',
+    'fiveprime_anticodon_stem_sequence',
+    'anticodon_loop',
+    'threeprime_anticodon_stem_sequence',
+    'v_loop',
+    't_arm',
+    't_stem',
+    'fiveprime_t_stem_sequence',
+    't_loop',
+    'threeprime_t_stem_sequence',
+    'threeprime_acceptor_stem_sequence',
+    'discriminator',
+    'acceptor'
+]
+
 amino_acid_property_group = {}
 for key in ['A','I','L','V','M','C']:
     amino_acid_property_group[key] = 'Nonpolar'
