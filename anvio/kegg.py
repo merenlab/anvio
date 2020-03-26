@@ -1851,7 +1851,7 @@ class KeggModulesDatabase(KeggContext):
                         extended_complex = prefix + a[0]
                         for p in paths_list:
                             p_copy = copy.copy(p)
-                            p_copy.extend(extended_complex)
+                            p_copy.extend([extended_complex])
                             new_paths_list.append(p_copy)
                     paths_list = new_paths_list
 
