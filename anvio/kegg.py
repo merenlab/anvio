@@ -1794,15 +1794,18 @@ class KeggModulesDatabase(KeggContext):
 
         return all_paths
 
-    def split_by_delim_not_within_parens(self, d, delim):
-        """Takes a string, and splits it on the given delimter as long as the delimeter is not within parentheses. Returns the list of strings."""
+    def split_by_delim_not_within_parens(self, d, delims, return_delims=False):
+        """Takes a string, and splits it on the given delimeter(s) as long as the delimeter is not within parentheses. Returns the list of strings."""
+       #print("splitting on delimiters: ", delims)
         parens_level = 0
         last_split_index = 0
         splits = []
+        delim_list = []
         for i in range(len(d)):
             # only split if not within parentheses
-            if d[i] == delim and parens_level == 0:
+            if d[i] in delims and parens_level == 0:
                 splits.append(d[last_split_index:i])
+                delim_list.append(d[i])
                 last_split_index = i + 1 # we add 1 here to skip the space
             elif d[i] == "(":
                 parens_level += 1
@@ -1813,9 +1816,11 @@ class KeggModulesDatabase(KeggContext):
             # this happens in cases like (K00963 (K00693+K00750,K16150,K16153,K13679,K20812)),(K00975 (K00703,K13679,K20812))
             # where both sides of the comma have balanced parentheses but there is no () around the whole thing
             if parens_level < 0:
-                #print("found unbalanced parentheses at position %d in definition %s" % (i,d))
+               #print("found unbalanced parentheses at position %d in definition %s" % (i,d))
                 return False
         splits.append(d[last_split_index:len(d)])
+        if return_delims:
+            return splits, delim_list
         return splits
 
     def recursive_definition_unroller(self, step):
@@ -1823,7 +1828,7 @@ class KeggModulesDatabase(KeggContext):
 
         # first, split definition into steps by spaces outside parentheses
         split_steps = self.split_by_delim_not_within_parens(step, " ")
-        #print("split definition into steps: ", split_steps)
+       #print("split definition into steps: ", split_steps)
         # establish a list to save all paths in, with an initial empty list to extend from
         paths_list = [[]]
         for s in split_steps:
@@ -1831,43 +1836,58 @@ class KeggModulesDatabase(KeggContext):
             if (len(s) == 6 and s[0] == "K") or (len(s) == 6 and s[0] == "M") or (s == "--") or (len(s) == 7 and s[0] == "-"):
                 for p in paths_list:
                     p.extend([s])
-                #print("found base case: ", s)
+               #print("found base case: ", s)
             else:
-                # try splitting to see if there are commas outside parentheses
+                # try splitting to see if there are commas or spaces outside parentheses
                 # (the only way to figure this out is to try it because regex cannot handle nested parentheses)
-                substeps = self.split_by_delim_not_within_parens(s[1:-1], ",")
-                if not substeps: # if it doesn't work, try without removing surrounding parentheses
-                    substeps = self.split_by_delim_not_within_parens(s, ",")
+                comma_substeps = self.split_by_delim_not_within_parens(s[1:-1], ",")
+                if not comma_substeps: # if it doesn't work, try without removing surrounding parentheses
+                    comma_substeps = self.split_by_delim_not_within_parens(s, ",")
+                space_substeps = self.split_by_delim_not_within_parens(s[1:-1], " ")
+                if not space_substeps: # if it doesn't work, try without removing surrounding parentheses
+                    space_substeps = self.split_by_delim_not_within_parens(s, " ")
 
-                # complex case: no commas outside parentheses so we are still at an atomic definition, but its a protein complex rather than a base case step
+                # complex case: no commas OR spaces outside parentheses so we are still at an atomic definition, but its a protein complex rather than a base case step
                 # complex cases taken care of by this block: A+B+C  ;  A+(B,C)+D  ;  A+B+C+(D,E)  ; (A,B+C)+D+E
-                if len(substeps) == 1:
-                    # remove external () if present
-                    if s[0] == '(' and s[-1] == ')':
-                        s = s[1:-1]
-                    # find out location of parentheses, if it has them
-                    open_parens_loc = s.find('(')
-                    close_parens_loc = s.find(')')
-                    if open_parens_loc == -1: # no () so just extend with the whole complex as one element of a list
+                if len(comma_substeps) == 1 and len(space_substeps) == 1:
+                    # split on + or -
+                    complex_components, delimiters = self.split_by_delim_not_within_parens(s, ["+","-"], return_delims=True)
+                   #print("split complex into components: ", complex_components)
+                    # for each component we need to reconstruct the complex (or alternate possible complexes) while keeping the +/- structure the same
+                    complex_strs = [""]
+                    for i in range(len(complex_components)):
+                        c = complex_components[i]
+                        if c[0] == '(':
+                            alts = self.split_path(c)
+                           #print("alts in complex are: ", alts)
+                            new_complex_strs = []
+                            # for each alternative (should just be one in each list), make a new copy of the complex and extend with the alternative
+                            for a in alts:
+                                if len(a) > 1:
+                                    raise ConfigError("Uh oh. We found a protein complex with more than one KO per alternative option here: %s" % s)
+                                for cs in complex_strs:
+                                    extended_complex = cs + a[0]
+                                    new_complex_strs.append(extended_complex)
+                            complex_strs = new_complex_strs
+                        else:
+                            for j in range(len(complex_strs)):
+                                complex_strs[j] += c
+
+                        if i < len(delimiters):
+                            for j in range(len(complex_strs)):
+                                complex_strs[j] += delimiters[i]
+
+                    # add all possible complexes to end of each path
+                   #print("all possible complexes: ", complex_strs)
+                    new_paths_list = []
+                    # for each alternative, make a new copy of each path and extend() with the alternative
+                    for cs in complex_strs:
                         for p in paths_list:
-                            p.extend([s])
-                        #print("found complex case: ", s)
-                    else: # if so, take out the parentheses section and send to split_path to get back alternatives list
-                        prefix = s[:open_parens_loc]
-                        suffix = s[close_parens_loc+1:]
-                        alts = self.split_path(s[open_parens_loc:close_parens_loc+1])
-                        new_paths_list = []
-                        # for each alternative (should just be one in each list), make a new copy of each path and extend() with the alternative
-                        for a in alts:
-                            if len(a) > 1:
-                                raise ConfigError("Uh oh. We found a protein complex with more than one KO per alternative option here: %s" % s)
-                            extended_complex = prefix + a[0] + suffix
-                            for p in paths_list:
-                                p_copy = copy.copy(p)
-                                p_copy.extend([extended_complex])
-                                new_paths_list.append(p_copy)
-                        paths_list = new_paths_list
-                        #print("after processing complex parentheses case, paths_list is now: ", paths_list)
+                            p_copy = copy.copy(p)
+                            p_copy.extend([cs])
+                            new_paths_list.append(p_copy)
+                    paths_list = new_paths_list
+                   #print("after processing complex case, paths_list is now: ", paths_list)
 
 
             #    alternatives case: step has alternative paths, so we call the split path function which will return the alternatives
@@ -1896,7 +1916,7 @@ class KeggModulesDatabase(KeggContext):
         substeps = self.split_by_delim_not_within_parens(step[1:-1], ",")
         if not substeps: # if it doesn't work, try without removing surrounding parentheses
             substeps = self.split_by_delim_not_within_parens(step, ",")
-        #print("split path %s into substeps: %s" % (step, substeps))
+       #print("split path %s into substeps: %s" % (step, substeps))
         # make a final list for returning
         alt_path_list = []
         for s in substeps:
