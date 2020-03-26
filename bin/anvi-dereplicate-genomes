@@ -59,8 +59,8 @@ if __name__ == '__main__':
                                                                    Only if `--program` is set to `fastANI`")
     group_FASTANI.add_argument('--fastani-kmer-size', type=int, default=16, help="Choose a kmer. The default is %(default)s.")
     group_FASTANI.add_argument('--fragment-length', type=int, default=3000, help="Choose a fragment length. The default is %(default)s.")
-    group_FASTANI.add_argument('--min-num-fragments', type=int, default=50, help="Choose the minimum number of fragment lengths to that can\
-                                                                                  can be trusted. The default is %(default)s.")
+    group_FASTANI.add_argument('--min-fraction', type=int, default=0.25, help="Minimum fraction of alignment to be shared between genome pairs \
+                        to calculate ANI. If reference and query genome size differ, smaller one among the two is considered. The default is %(default)s.")
 
     groupE = parser.add_argument_group('pyANI Settings', "Tell anvi'o to tell pyANI what method you wish to use and what settings to set.\
                         Only if `--program` is set to `pyANI`")

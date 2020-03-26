@@ -101,7 +101,7 @@ class BottleApplication(Bottle):
         # if there is a contigs database, and scg taxonomy was run on it get an instance
         # of the SCG Taxonomy class early on:
         if A('contigs_db') and dbops.ContigsDatabase(A('contigs_db')).meta['scg_taxonomy_was_run']:
-            self.scg_taxonomy = scgtaxonomyops.SCGTaxonomyEstimator(argparse.Namespace(contigs_db=self.interactive.contigs_db_path))
+            self.scg_taxonomy = scgtaxonomyops.SCGTaxonomyEstimatorSingle(argparse.Namespace(contigs_db=self.interactive.contigs_db_path))
         else:
             self.scg_taxonomy = None
 
@@ -207,7 +207,12 @@ class BottleApplication(Bottle):
                                           browser_path=self.browser_path,
                                           run=run)
 
-            run.info_single('The server is now listening the port number "%d". When you are finished, press CTRL+C to terminate the server.' % port, 'green', nl_before = 1, nl_after=1)
+                run.info_single("The server is now listening the port number '%d'. When you are finished, press CTRL+C to "
+                                "terminate the server. If you are using OSX and if the server terminates prematurely before "
+                                "you can see anything in your browser, try to run the same command by putting 'sudo ' at the "
+                                "beginning of it (you will be likely prompted to enter your passwor as this command will require"
+                                "super user rights to run)" % port, 'green', nl_before = 1, nl_after=1)
+
             server_process.join()
         except KeyboardInterrupt:
             run.warning('The server is being terminated.', header='Please wait...')
@@ -216,7 +221,7 @@ class BottleApplication(Bottle):
 
 
     def redirect_to_app(self):
-        homepage = 'index.html' 
+        homepage = 'index.html'
         if self.interactive.mode == 'contigs':
             homepage = 'contigs.html'
         elif self.interactive.mode == 'structure':

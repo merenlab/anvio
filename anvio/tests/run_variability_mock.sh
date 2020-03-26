@@ -108,7 +108,7 @@ anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
                              --quince-mode \
                              --engine NT
 
-column -t test-output/variability_NT.txt | head
+head test-output/variability_NT.txt
 
 INFO "anvi-gen-variability for AA"
 anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
@@ -118,7 +118,7 @@ anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
                              --quince-mode \
                              --engine AA
 
-column -t test-output/variability_AA.txt | head
+head test-output/variability_AA.txt
 
 INFO "anvi-gen-variability for CDN"
 anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
@@ -128,7 +128,7 @@ anvi-gen-variability-profile -p test-output/SAMPLES-MERGED/PROFILE.db \
                              --quince-mode \
                              --engine CDN
 
-column -t test-output/variability_CDN.txt | head
+head test-output/variability_CDN.txt
 
 
 INFO "Do you want thhe interactive interface? Run the following:"
