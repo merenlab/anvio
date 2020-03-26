@@ -104,7 +104,7 @@ class NGram(object):
             raise ConfigError("anvi'o would love to slice and dice your loci, but... the "
                               "Format of window_range must be x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
 
-        self.window_range = [int(n) for n in self.window_range.split(":")] 
+        self.window_range = [int(n) for n in self.window_range.split(":")]
         if self.window_range[0] > self.window_range[1]:
             raise ConfigError("anvi'o would love to slice and dice your loci, but... the "
                               "window-range needs to be from small to big")
@@ -121,11 +121,6 @@ class NGram(object):
             contigs_db = dbops.ContigsDatabase(contigs_db_path)
 
             genes_in_contigs = contigs_db.db.get_table_as_dataframe('genes_in_contigs')
-            num_genes_per_contig = genes_in_contigs['contig'].value_counts()
-            for contig, num_genes in num_genes_per_contig.items():
-                if num_genes < self.window_range[1]:
-                    raise ConfigError("Contig %s has less genes than the maximum requested window size of %d. "
-                                      "Please pick a smaller window range" % (contig, self.window_range[1]))
 
             self.num_contigs_in_external_genomes_with_genes += genes_in_contigs['contig'].nunique()
 
@@ -188,9 +183,9 @@ class NGram(object):
         for ngram_attribute in self.ngram_attributes_list:
             ngram = "::".join(map(str, list(ngram_attribute[0])))
             df = pd.DataFrame(columns=['ngram', 'count', 'contigDB','contig_name','N','number_of_loci'])
-            df = df.append({'ngram': ngram, 
-                            'count': ngram_attribute[1], 
-                            'contigDB': ngram_attribute[2], 
+            df = df.append({'ngram': ngram,
+                            'count': ngram_attribute[1],
+                            'contigDB': ngram_attribute[2],
                             'contig_name':ngram_attribute[3],
                             'N':ngram_attribute[4],
                             'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
@@ -223,7 +218,7 @@ class NGram(object):
         
         # extract contigs names
         genes_in_contigs = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
-       
+        
         # extract annotations and filter for the sources designated by user using self.annotation_source
         annotations_dict = contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name)
         annotations_dict = utils.get_filtered_dict(annotations_dict, 'source', set([self.annotation_source]))
@@ -236,7 +231,7 @@ class NGram(object):
         counter = 0
         for gci in genes_in_contigs: # gci = gene-caller-id
             list_of_gene_attributes = []
-            
+
             if gci in gci_to_accession_dict:
                 accession = gci_to_accession_dict[gci]
                 accession = accession.replace(" ","")
@@ -249,7 +244,6 @@ class NGram(object):
                 contig_name = genes_in_contigs[counter]['contig']
                 list_of_gene_attributes.extend((counter,accession,contig_name))
                 genes_and_functions_list.append(list_of_gene_attributes)
-           
             counter = counter + 1
 
         return genes_and_functions_list
@@ -258,8 +252,8 @@ class NGram(object):
     def count_synteny(self, function_list, n):
         """This method will count NGrams in contigs
 
-        This method will interate through a dict of contigs {contig_name: genes_and_functions_list} count NGrams 
-        in each contig using a sliding window of size N. The final output will be a dictionary {ngram:count} 
+        This method will interate through a dict of contigs {contig_name: genes_and_functions_list} count NGrams
+        in each contig using a sliding window of size N. The final output will be a dictionary {ngram:count}
 
         Parameters
         ==========
@@ -276,10 +270,10 @@ class NGram(object):
 
         Notes
         =====
-        Future goal: Need to return counts for 1 contig at a time and 
+        Future goal: Need to return counts for 1 contig at a time and
         give back a dictionary with contig {contig_name: {ngram:count}}
         """
-    
+
         NGramFreq_dict = {}
         for i in range(0, len(function_list) - n + 1):
             # window = sorted(function_list[i:i + n])
