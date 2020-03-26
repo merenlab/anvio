@@ -33,6 +33,7 @@ import anvio.ccollections as ccolections
 import anvio.genomestorage as genomestorage
 import anvio.auxiliarydataops as auxiliarydataops
 import anvio.homogeneityindex as homogeneityindex
+import anvio.trnaidentifier as trnaidentifier
 
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
@@ -47,8 +48,7 @@ from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
-from anvio.tables.trnaseedsinfo import TableForTRNASeedsInfo
-
+# from anvio.tables.trnaseedsinfo import TableForTRNASeedsInfo
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -3285,8 +3285,7 @@ class PanDatabase:
         self.db.disconnect()
 
 
-class TRNASeedsDatabase:
-    """To create an empty tRNA seeds database and/or access one."""
+class tRNASeqDatabase:
     def __init__(self, db_path, run=run, progress=progress, quiet=True, skip_init=False):
         self.db = None
         self.db_path = db_path
@@ -3303,37 +3302,23 @@ class TRNASeedsDatabase:
 
     def init(self):
         if os.path.exists(self.db_path):
-            utils.is_trnaseeds_db(self.db_path)
-            self.db = db.DB(self.db_path, anvio.__trnaseeds__version__)
+            self.db = db.DB(self.db_path, anvio.__tRNAseq__version__)
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
-            try:
-                for key in ['num_trnaseeds', 'total_length', 'taxonomy_was_run']:
-                    self.meta[key] = int(self.meta[key])
-            except KeyError:
-                raise ConfigError("Oh no :( There is a tRNA seeds database here at '%s', but it seems to be broken :( It is very\
-                                   likely that the process that was trying to create this database failed, and left behind\
-                                   this unfinished thingy (if you would like to picture its state you should imagine the baby\
-                                   Voldemort at King's Cross). Well, anvi'o believes it is best if you make it go away with\
-                                   fire, and try whatever you were trying before you got this error one more time with a\
-                                   proper tRNA seeds database. End of sad news. Bye now." % self.db_path)
-
             if 'creation_date' not in self.meta:
-                raise ConfigError("The tRNA seeds database ('%s') seems to be corrupted :/ This happens if the process \
-                                    that generates the database ends prematurely. Most probably, you will need to generate\
-                                    the tRNA seeds database from scratch. Sorry!" % (self.db_path))
+                raise ConfigError(
+                    "The tRNA seeds database ('%s') seems to be corrupted :/ "
+                    "This happens if the process that generates the database ends prematurely. "
+                    "Most probably, you will need to generate the tRNA-seq database from scratch. "
+                    "Sorry!" % (self.db_path))
 
-            self.run.info('tRNA seeds database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
-            self.run.info('Number of tRNA trnaseeds', self.meta['num_trnaseeds'], quiet=self.quiet)
-            self.run.info('Total number of nucleotides', self.meta['total_length'], quiet=self.quiet)
-
+            self.run.info('tRNA-seq database',
+                          'An existing database, %s, has been initiated.' % self.db_path,
+                          quiet=self.quiet)
+            self.run.info('Sample name', self.meta['sample_name'], quiet=self.quiet)
         else:
             self.db = None
-
-
-    def get_date(self):
-        return time.time()
 
 
     def get_hash(self):
@@ -3341,203 +3326,465 @@ class TRNASeedsDatabase:
 
 
     def touch(self):
-        """Creates an empty tRNA seeds database on disk, and sets `self.db` to access to it.
+        is_db_ok_to_create(self.db_path, 'tRNAseq')
 
-        At some point self.db.disconnect() must be called to complete the creation of the new db."""
-
-        is_db_ok_to_create(self.db_path, 'trnaseeds')
-
-        self.db = db.DB(self.db_path, anvio.__trnaseeds__version__, new_database=True)
+        self.db = db.DB(self.db_path, anvio.__tRNAseq__version__, new_database=True)
 
         # creating empty default tables
-        self.db.create_table(t.trnaseeds_taxonomy_table_name, t.trnaseeds_taxonomy_table_structure, t.trnaseeds_taxonomy_table_types)
-        self.db.create_table(t.taxon_names_table_name, t.taxon_names_table_structure, t.taxon_names_table_types)
-        self.db.create_table(t.trnaseeds_sequences_table_name, t.trnaseeds_sequences_table_structure, t.trnaseeds_sequences_table_types)
-        self.db.create_table(t.trnaseeds_info_table_name, t.trnaseeds_info_table_structure, t.trnaseeds_info_table_types)
+        self.db.create_table(t.tRNAseq_sequences_table_name,
+                             t.tRNAseq_sequences_table_structure,
+                             t.tRNAseq_sequences_table_types)
+        self.db.create_table(t.tRNAseq_info_table_name,
+                             t.tRNAseq_info_table_structure,
+                             t.tRNAseq_info_table_types)
+        self.db.create_table(t.tRNAseq_features_table_name,
+                             t.tRNAseq_features_table_structure,
+                             t.tRNAseq_features_table_types)
+        self.db.create_table(t.tRNAseq_unconserved_table_name,
+                             t.tRNAseq_unconserved_table_structure,
+                             t.tRNAseq_unconserved_table_types)
+        self.db.create_table(t.tRNAseq_unpaired_table_name,
+                             t.tRNAseq_unpaired_table_structure,
+                             t.tRNAseq_unpaired_table_types)
 
         return self.db
 
 
     def create(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        trnaseeds_fasta = A('trnaseeds_fasta')
+        tRNAseq_fasta = os.path.abspath(A('tRNAseq_fasta'))
         project_name = A('project_name')
         description_file_path = A('description')
 
-        filesnpaths.is_file_fasta_formatted(trnaseeds_fasta)
-        trnaseeds_fasta = os.path.abspath(trnaseeds_fasta)
-
-        # let the user see what's up
-        self.run.info('Input FASTA file', trnaseeds_fasta)
+        filesnpaths.is_file_fasta_formatted(tRNAseq_fasta)
+        self.run.info('Input FASTA file', tRNAseq_fasta)
 
         if not project_name:
-            project_name = '.'.join(os.path.basename(os.path.abspath(trnaseeds_fasta)).split('.')[:-1])
-
+            project_name = os.path.splitext(os.path.basename(tRNAseq_fasta))[0]
             if project_name:
-                self.run.warning("You are generating a new anvi'o tRNA seeds database, but you are not specifying a\
-                                  project name for it. FINE. Anvi'o, in desperation, will use the input file name\
-                                  to set the project name for this tRNA seeds database (which is '%s'). If you are not\
-                                  happy with that, feel free to kill and restart this process. If you are not happy\
-                                  with this name, but you don't like killing things either, maybe next time you\
-                                  should either name your FASTA files better, or use the `--project-name` parameter\
-                                  to set your desired name." % project_name, "Anvi'o made things up for you")
+                self.run.warning(
+                    "You are generating a new Anvi'o tRNAseq database, "
+                    "but you are not specifying a project name for it. FINE. "
+                    "Anvi'o, in desperation, will use the input file name "
+                    "to set the project name for this tRNAseq database (which is '%s'). "
+                    "If you are not happy with that, feel free to kill and restart this process. "
+                    "If you are not happy with this name, "
+                    "but you don't like killing things either, "
+                    "maybe next time you should either name your FASTA files better, "
+                    "or use the `--project-name` parameter to set your desired name."
+                    % project_name, "Anvi'o made things up for you.")
             else:
-                raise ConfigError("Sorry, you must provide a project name for your tRNA seeds database :/ Anvi'o tried\
-                                   to make up one, but failed.")
+                raise ConfigError(
+                    "Sorry, you must provide a project name for your tRNAseq database :/ "
+                    "Anvi'o tried to make up one but failed.")
 
         self.run.info('Name', project_name, mc='green')
-        self.run.info('Description', os.path.abspath(description_file_path) if description_file_path else 'No description is given', mc='green')
-
+        self.run.info('Description',
+                      (os.path.abspath(description_file_path)
+                       if description_file_path else 'No description is given'),
+                      mc='green')
         if description_file_path:
             filesnpaths.is_file_plain_text(description_file_path)
-            description = open(os.path.abspath(description_file_path), 'rU').read()
+            description = open(os.path.abspath(description_file_path))
         else:
             description = ''
 
-        # go through the FASTA file to make sure there are no surprises with deflines and sequence lengths.
-        self.progress.new('Checking deflines and tRNA seed lengths')
+        # Make sure there are no surprises with FASTA file deflines and sequence lengths.
+        self.progress.new('Checking deflines')
         self.progress.update('tick tock ...')
-        fasta = u.SequenceSource(trnaseeds_fasta)
+        fasta = u.SequenceSource(tRNAseq_fasta)
         while next(fasta):
-            if not utils.check_trnaseed_names(fasta.id, dont_raise=True):
+            if not utils.check_tRNAseq_names(fasta.id, dont_raise=True):
                 self.progress.end()
-                raise ConfigError("At least one of the deflines in your FASTA File does not comply with the 'simple deflines'\
-                                   requirement of anvi'o. You can either use the script `anvi-script-reformat-fasta` to take\
-                                   care of this issue, or read this section in the tutorial to understand the reason behind\
-                                   this requirement (anvi'o is very upset for making you do this): %s" % \
-                                       ('http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file'))
-
-            if len(fasta.seq) > constants.longest_known_trna_length:
-                self.progress.end()
-                raise ConfigError("At least one of the tRNA seed sequences in your input FASTA '%s' is longer than the longest known tRNA.\
-                                   This is %d, and your tRNA sequence is like %d :/" % (trnaseeds_fasta, constants.longest_known_trna_length, len(fasta.seq)))
+                raise ConfigError(
+                    "At least one of the deflines in your FASTA file "
+                    "does not comply with the 'simple deflines' requirement of Anvi'o. "
+                    "You can either use the script, `anvi-script-reformat-fasta`, "
+                    "to take care of this issue, or read this section in the tutorial "
+                    "to understand the reason behind this requirement "
+                    "(Anvi'o is very upset for making you do this): %s"
+                    % 'http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file')
 
             try:
                 int(fasta.id)
                 is_int = True
             except:
                 is_int = False
-
             if is_int:
                 self.progress.end()
-                raise ConfigError("At least one of the tRNA seed sequences in your FASTA file (well, this one to be precise: '%s') looks like\
-                                   a number. For reasons we can't really justify, anvi'o does not like those numeric names, and hereby\
-                                   asks you to make sure every tRNA seed sequence name contains at least one alphanumeric character :/ Meanwhile we,\
-                                   the anvi'o developers, are both surprised by and thankful for your endless patience with such eccentric\
-                                   requests. You the real MVP." % fasta.id)
-
+                raise ConfigError(
+                    "At least one of the deflines in your FASTA file "
+                    "(well, this one to be precise: '%s') looks like a number. "
+                    "For reasons we can't really justify, "
+                    "Anvi'o does not like those numeric names, "
+                    "and hereby asks you to make sure every tRNAseq name "
+                    "contains at least one alphanumeric character :/ "
+                    "Meanwhile we, the Anvi'o developers, are both surprised by and thankful for "
+                    "your endless patience with such eccentric requests. "
+                    "You the real MVP." % fasta.id)
         fasta.close()
         self.progress.end()
 
-        all_ids_in_FASTA = utils.get_all_ids_from_fasta(trnaseeds_fasta)
-        total_number_of_trnaseeds = len(all_ids_in_FASTA)
-        if total_number_of_trnaseeds != len(set(all_ids_in_FASTA)):
-            raise ConfigError("Every tRNA seed sequence in the input FASTA file must have a unique ID. You know...")
+        all_ids_in_FASTA = utils.get_all_ids_from_fasta(tRNAseq_fasta)
+        total_num_seqs = len(all_ids_in_FASTA)
+        if total_num_seqs != len(set(all_ids_in_FASTA)):
+            raise ConfigError(
+                "Every sequence in the input FASTA file must have a unique ID. You know...")
 
-        if not os.path.exists(trnaseeds_fasta):
-            raise ConfigError("Creating a new tRNA seeds database requires a FASTA file with tRNA seed sequences to be provided.")
-
-        # create a blank trnaseeds database on disk, and set the self.db
+        # Create a blank tRNAseq database on disk and set self.db
         self.touch()
 
-        # know thyself
-        self.db.set_meta_value('db_type', 'trnaseeds')
+        # Know thyself
+        self.db.set_meta_value('db_type', 'tRNAseq')
         self.db.set_meta_value('project_name', project_name)
         self.db.set_meta_value('description', description)
 
-        # this will be the unique information that will be passed downstream whenever this db is used:
-        trnaseeds_db_hash = self.get_hash()
-        self.db.set_meta_value('trnaseeds_db_hash', trnaseeds_db_hash)
+        # Unique information passed downstream whenever this db is used:
+        tRNAseq_db_hash = self.get_hash()
+        self.db.set_meta_value('tRNAseq_db_hash', tRNAseq_db_hash)
 
-        # here we will process each item in the tRNA seeds fasta file.
-        fasta = u.SequenceSource(trnaseeds_fasta)
-        db_entries_trnaseed_sequences = []
+        tRNAseq_sequences_table_entries = []
+        tRNAseq_info_table_entries = []
+        tRNAseq_features_table_entries = []
+        tRNAseq_unconserved_table_entries = []
+        tRNAseq_unpaired_table_entries = []
 
-        trnaseeds_info_table = TableForTRNASeedsInfo()
+        num_features_through_T_loop = constants.db_formatted_tRNA_feature_names[::-1].index(
+            't_loop') + 1
 
-        recovered_split_lengths = []
+        num_tRNA_seqs = 0
+        num_tRNA_seqs_containing_anticodon = 0
+        num_mature_tRNA_seqs = 0
+        num_tRNA_seqs_with_extrapolated_fiveprime_feature = 0
 
-        self.progress.new('The Stem Loop', progress_total_items=total_number_of_trnaseeds)
+        # Process each sequence
+        fasta = u.SequenceSource(tRNAseq_fasta)
+        self.progress.new('Finding tRNA sequences', progress_total_items=total_num_seqs)
         fasta.reset()
         while next(fasta):
             self.progress.increment()
 
-            trnaseed_name = fasta.id
-            trnaseed_sequence = fasta.seq
+            tRNAseq_name = fasta.id
+            tRNAseq_sequence = fasta.seq
+            seq_length = len(fasta.seq)
 
-            self.progress.update('tRNA seed sequence "%d" ' % fasta.pos)
+            self.progress.update("tRNA-seq sequence '%d' " % fasta.pos)
 
-            trnaseed_length = trnaseeds_info_table.append(trnaseed_name, trnaseed_sequence)
+            tRNA_profile = trnaidentifier.Profile(tRNAseq_sequence)
+            if len(tRNA_profile.features) >= num_features_through_T_loop:
+                num_tRNA_seqs += 1
 
-            self.progress.append('and %d nts.' % trnaseed_length)
+                if tRNA_profile.anticodon_seq:
+                    num_tRNA_seqs_containing_anticodon += 1
+                if tRNA_profile.is_mature:
+                    num_mature_tRNA_seqs += 1
+                if tRNA_profile.num_in_extrapolated_fiveprime_feature > 0:
+                    num_tRNA_seqs_with_extrapolated_fiveprime_feature += 1
 
-            db_entries_trnaseed_sequences.append((trnaseed_name, trnaseed_sequence), )
+                profiled_seq_length = len(tRNA_profile.profiled_seq)
+
+                unconserved_info = tRNA_profile.get_unconserved_positions()
+                unpaired_info = tRNA_profile.get_unpaired_positions()
+
+                self.progress.append(
+                    "is recognized as tRNA. "
+                    "Sequence length: %d. "
+                    "Length of 3' part of sequence with profiled features: %d. "
+                    "Number of 'unconserved' nucleotides: %d. "
+                    "Number of unpaired stem positions: %d."
+                    % (seq_length, profiled_seq_length, len(unconserved_info), len(unpaired_info)))
+
+                tRNAseq_sequences_table_entries.append((fasta.id, fasta.seq))
+
+                tRNAseq_info_table_entries.append((
+                    fasta.id,
+                    tRNA_profile.is_mature,
+                    tRNA_profile.anticodon_seq,
+                    seq_length,
+                    seq_length - profiled_seq_length,
+                    tRNA_profile.num_conserved,
+                    tRNA_profile.num_unconserved,
+                    tRNA_profile.num_paired,
+                    tRNA_profile.num_unpaired,
+                    tRNA_profile.num_in_extrapolated_fiveprime_feature))
+
+                tRNAseq_features_table_entries.append(
+                    (fasta.id, )
+                    + tuple(['?' * 2 for _ in range(
+                        (len(constants.tRNA_feature_names) - len(tRNA_profile.features)))]) * 2
+                    + tuple(itertools.chain(*zip(
+                        [str(f.start_index) if hasattr(f, 'start_index')
+                         else ','.join(map(str, f.start_indices))
+                         for f in tRNA_profile.features],
+                        [str(f.stop_index) if hasattr(f, 'stop_index')
+                         else ','.join(map(str, f.stop_indices))
+                         for f in tRNA_profile.features]))))
+
+                for unconserved_tuple in unconserved_info:
+                    tRNAseq_unconserved_table_entries.append((fasta.id, ) + unconserved_tuple)
+
+                for unpaired_tuple in unpaired_info:
+                    tRNAseq_unpaired_table_entries.append((fasta.id, ) + unpaired_tuple)
+
+            else:
+                self.progress.append(
+                    "is not recognized as tRNA. "
+                    "Sequence length: %d." % seq_length)
+
+        self.db._exec_many(
+            '''INSERT INTO %s VALUES (?,?)''' % t.tRNAseq_sequences_table_name,
+            tRNAseq_sequences_table_entries)
+        self.db._exec_many(
+            '''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.tRNAseq_info_table_name,
+            tRNAseq_info_table_entries)
+        self.db._exec_many(
+            '''INSERT INTO %s VALUES (%s)''' % (
+                t.tRNAseq_features_table_name,
+                ','.join(len(tRNAseq_features_table_entries[0]) * '?')),
+            tRNAseq_features_table_entries)
+        self.db._exec_many(
+            '''INSERT INTO %s VALUES (?,?,?,?)''' % t.tRNAseq_unconserved_table_name,
+            tRNAseq_unconserved_table_entries)
+        self.db._exec_many(
+            '''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.tRNAseq_unpaired_table_name,
+            tRNAseq_unpaired_table_entries)
 
         self.progress.end()
 
-        trnaseeds_info_table.store(self.db)
+        num_seqs_processed = total_num_seqs
 
-        self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.trnaseeds_sequences_table_name, db_entries_trnaseed_sequences)
-
-        # set some useful meta values:
-        self.db.set_meta_value('num_trnaseeds', trnaseeds_info_table.total_trnaseeds)
-        self.db.set_meta_value('total_length', trnaseeds_info_table.total_nts)
+        # Informative metadata
+        self.db.set_meta_value('num_seqs_processed', num_seqs_processed)
+        self.db.set_meta_value('num_tRNA_seqs', num_tRNA_seqs)
+        self.db.set_meta_value('num_tRNA_seqs_containing_anticodon',
+                               num_tRNA_seqs_containing_anticodon)
+        self.db.set_meta_value('num_mature_tRNA_seqs',
+                               num_mature_tRNA_seqs)
+        self.db.set_meta_value('num_tRNA_seqs_with_extrapolated_fiveprime_feature',
+                               num_tRNA_seqs_with_extrapolated_fiveprime_feature)
         self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 
-        self.run.info('tRNA seeds database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
-        self.run.info('Number of tRNA seeds', trnaseeds_info_table.total_trnaseeds, quiet=self.quiet)
-        self.run.info('Total number of nucleotides', trnaseeds_info_table.total_nts, quiet=self.quiet)
+        self.run.info("Number of sequences processed", num_seqs_processed, quiet=self.quiet)
+        self.run.info("Number of tRNA sequences identified and added to db", num_tRNA_seqs, quiet=self.quiet)
+        self.run.info("Number of tRNA sequences containing anticodon", num_tRNA_seqs_containing_anticodon, quiet=self.quiet)
+        self.run.info("Number of mature tRNA sequences", num_mature_tRNA_seqs, quiet=self.quiet)
+        self.run.info("Number of tRNA sequences with extrapolated 5' feature", num_tRNA_seqs_with_extrapolated_fiveprime_feature, quiet=self.quiet)
 
+    def get_date(self):
+        return time.time()
 
     def disconnect(self):
         self.db.disconnect()
 
 
-class tRNADatabase:
-    def __init__(self, db_path, run=run, progress=progress, quiet=True, skip_init=False):
-        self.db = None
-        self.db_path = db_path
+# class TRNASeedsDatabase:
+#     """To create an empty tRNA seeds database and/or access one."""
+#     def __init__(self, db_path, run=run, progress=progress, quiet=True, skip_init=False):
+#         self.db = None
+#         self.db_path = db_path
 
-        self.run = run
-        self.progress = progress
-        self.quiet = quiet
+#         self.run = run
+#         self.progress = progress
+#         self.quiet = quiet
 
-        self.meta = {}
+#         self.meta = {}
 
-        if not skip_init:
-            self.init()
-
-    def init(self):
-        if os.path.exists(self.db_path):
-            utils.is_tRNA_db(self.db_path)
-            self.db = db.DB(self.db_path, anvio.__tRNA__version__)
-            meta_table = self.db.get_table_as_dict('self')
-            self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
-
-            try:
-                for key in []:
-                    self.meta[key] = int(self.meta[key])
-            except KeyError:
-                raise ConfigError("Oh no :( There is a tRNA database here at '%s', but it seems to be broken :( It is very"
-                                  "likely that the process that was trying to create this database failed, and left behind"
-                                  "this unfinished thingy (if you would like to picture its state you should imagine the baby"
-                                  "Voldemort at King's Cross). Well, anvi'o believes it is best if you make it go away with"
-                                  "fire, and try whatever you were trying before you got this error one more time with a"
-                                  "proper tRNA database. End of sad news. Bye now." % self.db_path)
-
-            if 'creation_date' not in self.meta:
-                raise ConfigError("The tRNA database ('%s') seems to be corrupted :/ This happens if the process that\
-                                    that generates the database ends prematurely. Most probably, you will need to generate\
-                                    the tRNA database from scratch. Sorry!" % (self.db_path))
-
-            self.run.info("tRNA database", "An existing database, %s, has been initiated." % self.db_path, quiet=self.quiet)
-            self.run.info("Sample name", self.meta['sample name'], quiet=self.quiet)
-        else:
-            self.db = None
+#         if not skip_init:
+#             self.init()
 
 
+#     def init(self):
+#         if os.path.exists(self.db_path):
+#             utils.is_trnaseeds_db(self.db_path)
+#             self.db = db.DB(self.db_path, anvio.__trnaseeds__version__)
+#             meta_table = self.db.get_table_as_dict('self')
+#             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
+#             try:
+#                 for key in ['num_trnaseeds', 'total_length', 'taxonomy_was_run']:
+#                     self.meta[key] = int(self.meta[key])
+#             except KeyError:
+#                 raise ConfigError("Oh no :( There is a tRNA seeds database here at '%s', but it seems to be broken :( It is very\
+#                                    likely that the process that was trying to create this database failed, and left behind\
+#                                    this unfinished thingy (if you would like to picture its state you should imagine the baby\
+#                                    Voldemort at King's Cross). Well, anvi'o believes it is best if you make it go away with\
+#                                    fire, and try whatever you were trying before you got this error one more time with a\
+#                                    proper tRNA seeds database. End of sad news. Bye now." % self.db_path)
+
+#             if 'creation_date' not in self.meta:
+#                 raise ConfigError("The tRNA seeds database ('%s') seems to be corrupted :/ This happens if the process \
+#                                     that generates the database ends prematurely. Most probably, you will need to generate\
+#                                     the tRNA seeds database from scratch. Sorry!" % (self.db_path))
+
+#             self.run.info('tRNA seeds database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
+#             self.run.info('Number of tRNA trnaseeds', self.meta['num_trnaseeds'], quiet=self.quiet)
+#             self.run.info('Total number of nucleotides', self.meta['total_length'], quiet=self.quiet)
+
+#         else:
+#             self.db = None
+
+
+#     def get_date(self):
+#         return time.time()
+
+
+#     def get_hash(self):
+#         return 'hash' + str('%08x' % random.randrange(16**8))
+
+
+#     def touch(self):
+#         """Creates an empty tRNA seeds database on disk, and sets `self.db` to access to it.
+
+#         At some point self.db.disconnect() must be called to complete the creation of the new db."""
+
+#         is_db_ok_to_create(self.db_path, 'trnaseeds')
+
+#         self.db = db.DB(self.db_path, anvio.__trnaseeds__version__, new_database=True)
+
+#         # creating empty default tables
+#         self.db.create_table(t.trnaseeds_taxonomy_table_name, t.trnaseeds_taxonomy_table_structure, t.trnaseeds_taxonomy_table_types)
+#         self.db.create_table(t.taxon_names_table_name, t.taxon_names_table_structure, t.taxon_names_table_types)
+#         self.db.create_table(t.trnaseeds_sequences_table_name, t.trnaseeds_sequences_table_structure, t.trnaseeds_sequences_table_types)
+#         self.db.create_table(t.trnaseeds_info_table_name, t.trnaseeds_info_table_structure, t.trnaseeds_info_table_types)
+
+#         return self.db
+
+
+#     def create(self, args):
+#         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+#         trnaseeds_fasta = A('trnaseeds_fasta')
+#         project_name = A('project_name')
+#         description_file_path = A('description')
+
+#         filesnpaths.is_file_fasta_formatted(trnaseeds_fasta)
+#         trnaseeds_fasta = os.path.abspath(trnaseeds_fasta)
+
+#         # let the user see what's up
+#         self.run.info('Input FASTA file', trnaseeds_fasta)
+
+#         if not project_name:
+#             project_name = '.'.join(os.path.basename(os.path.abspath(trnaseeds_fasta)).split('.')[:-1])
+
+#             if project_name:
+#                 self.run.warning("You are generating a new anvi'o tRNA seeds database, but you are not specifying a\
+#                                   project name for it. FINE. Anvi'o, in desperation, will use the input file name\
+#                                   to set the project name for this tRNA seeds database (which is '%s'). If you are not\
+#                                   happy with that, feel free to kill and restart this process. If you are not happy\
+#                                   with this name, but you don't like killing things either, maybe next time you\
+#                                   should either name your FASTA files better, or use the `--project-name` parameter\
+#                                   to set your desired name." % project_name, "Anvi'o made things up for you")
+#             else:
+#                 raise ConfigError("Sorry, you must provide a project name for your tRNA seeds database :/ Anvi'o tried\
+#                                    to make up one, but failed.")
+
+#         self.run.info('Name', project_name, mc='green')
+#         self.run.info('Description', os.path.abspath(description_file_path) if description_file_path else 'No description is given', mc='green')
+
+#         if description_file_path:
+#             filesnpaths.is_file_plain_text(description_file_path)
+#             description = open(os.path.abspath(description_file_path), 'rU').read()
+#         else:
+#             description = ''
+
+#         # go through the FASTA file to make sure there are no surprises with deflines and sequence lengths.
+#         self.progress.new('Checking deflines and tRNA seed lengths')
+#         self.progress.update('tick tock ...')
+#         fasta = u.SequenceSource(trnaseeds_fasta)
+#         while next(fasta):
+#             if not utils.check_tRNAseq_reads(fasta.id, dont_raise=True):
+#                 self.progress.end()
+#                 raise ConfigError("At least one of the deflines in your FASTA File does not comply with the 'simple deflines'\
+#                                    requirement of anvi'o. You can either use the script `anvi-script-reformat-fasta` to take\
+#                                    care of this issue, or read this section in the tutorial to understand the reason behind\
+#                                    this requirement (anvi'o is very upset for making you do this): %s" % \
+#                                        ('http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file'))
+
+#             if len(fasta.seq) > constants.longest_known_trna_length:
+#                 self.progress.end()
+#                 raise ConfigError("At least one of the tRNA seed sequences in your input FASTA '%s' is longer than the longest known tRNA.\
+#                                    This is %d, and your tRNA sequence is like %d :/" % (trnaseeds_fasta, constants.longest_known_trna_length, len(fasta.seq)))
+
+#             try:
+#                 int(fasta.id)
+#                 is_int = True
+#             except:
+#                 is_int = False
+
+#             if is_int:
+#                 self.progress.end()
+#                 raise ConfigError("At least one of the tRNA seed sequences in your FASTA file (well, this one to be precise: '%s') looks like\
+#                                    a number. For reasons we can't really justify, anvi'o does not like those numeric names, and hereby\
+#                                    asks you to make sure every tRNA seed sequence name contains at least one alphanumeric character :/ Meanwhile we,\
+#                                    the anvi'o developers, are both surprised by and thankful for your endless patience with such eccentric\
+#                                    requests. You the real MVP." % fasta.id)
+
+#         fasta.close()
+#         self.progress.end()
+
+#         all_ids_in_FASTA = utils.get_all_ids_from_fasta(trnaseeds_fasta)
+#         total_number_of_trnaseeds = len(all_ids_in_FASTA)
+#         if total_number_of_trnaseeds != len(set(all_ids_in_FASTA)):
+#             raise ConfigError("Every tRNA seed sequence in the input FASTA file must have a unique ID. You know...")
+
+#         if not os.path.exists(trnaseeds_fasta):
+#             raise ConfigError("Creating a new tRNA seeds database requires a FASTA file with tRNA seed sequences to be provided.")
+
+#         # create a blank trnaseeds database on disk, and set the self.db
+#         self.touch()
+
+#         # know thyself
+#         self.db.set_meta_value('db_type', 'trnaseeds')
+#         self.db.set_meta_value('project_name', project_name)
+#         self.db.set_meta_value('description', description)
+
+#         # this will be the unique information that will be passed downstream whenever this db is used:
+#         trnaseeds_db_hash = self.get_hash()
+#         self.db.set_meta_value('trnaseeds_db_hash', trnaseeds_db_hash)
+
+#         # here we will process each item in the tRNA seeds fasta file.
+#         fasta = u.SequenceSource(trnaseeds_fasta)
+#         db_entries_trnaseed_sequences = []
+
+#         trnaseeds_info_table = TableForTRNASeedsInfo()
+
+#         recovered_split_lengths = []
+
+#         self.progress.new('The Stem Loop', progress_total_items=total_number_of_trnaseeds)
+#         fasta.reset()
+#         while next(fasta):
+#             self.progress.increment()
+
+#             trnaseed_name = fasta.id
+#             trnaseed_sequence = fasta.seq
+
+#             self.progress.update('tRNA seed sequence "%d" ' % fasta.pos)
+
+#             trnaseed_length = trnaseeds_info_table.append(trnaseed_name, trnaseed_sequence)
+
+#             self.progress.append('and %d nts.' % trnaseed_length)
+
+#             db_entries_trnaseed_sequences.append((trnaseed_name, trnaseed_sequence), )
+
+#         self.progress.end()
+
+#         trnaseeds_info_table.store(self.db)
+
+#         self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.trnaseeds_sequences_table_name, db_entries_trnaseed_sequences)
+
+#         # set some useful meta values:
+#         self.db.set_meta_value('num_trnaseeds', trnaseeds_info_table.total_trnaseeds)
+#         self.db.set_meta_value('total_length', trnaseeds_info_table.total_nts)
+#         self.db.set_meta_value('creation_date', self.get_date())
+#         self.disconnect()
+
+#         self.run.info('tRNA seeds database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+#         self.run.info('Number of tRNA seeds', trnaseeds_info_table.total_trnaseeds, quiet=self.quiet)
+#         self.run.info('Total number of nucleotides', trnaseeds_info_table.total_nts, quiet=self.quiet)
+
+
+#     def disconnect(self):
+#         self.db.disconnect()
 
 
 class ContigsDatabase:
