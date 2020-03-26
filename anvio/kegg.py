@@ -1782,6 +1782,7 @@ class KeggModulesDatabase(KeggContext):
         all_paths = [[]]
         def_lines = self.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
         for d in def_lines:
+            d = d.strip()
             def_line_paths = self.recursive_definition_unroller(d)
             new_paths_list = []
             # for each path we got back, make a new copy of each path so far and extend()
