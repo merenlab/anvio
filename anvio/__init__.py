@@ -631,7 +631,7 @@ D = {
             {'default': None,
              'type': str,
              'metavar': 'PATH',
-             'help': "The path for the PDB database to be stored "
+             'help': "The path for the PDB database to be stored. "
                      "If you leave it as is without specifying anything, anvi'o will set up everything in "
                      "a pre-defined default directory. The advantage of using "
                      "the default directory at the time of set up is that every user of anvi'o on a computer "
