@@ -1426,7 +1426,9 @@ class PDBDatabase(object):
                     structures = []
 
             except KeyboardInterrupt:
-                self.run.info_single("Anvi'o received SIGINT, terminating all processes...", nl_before=2)
+                self.run.warning("", header="!!! DON'T TOUCH ANYTHING !!!", nl_before=2, nl_after=0, lc='yellow')
+                self.run.info_single("Ending upon user request. Please wait patiently for anvi'o to "
+                                     "die gracefully, or else risk a corrupted DB", nl_before=0)
                 break
 
         for proc in processes:
