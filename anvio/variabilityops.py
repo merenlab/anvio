@@ -2580,13 +2580,14 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
 
 
 class VariabilityFixationIndex():
-    """ Calculates a fixation index matrix
+    """Calculates a fixation index matrix
 
     Metric adapted from 'Genomic variation landscape of the human gut microbiome'
     (https://media.nature.com/original/nature-assets/nature/journal/v493/n7430/extref/nature11711-s1.pdf)
     which extends the traditional metric to allow for multiple alleles in one site. We further
     extend to allow for codon and amino acid alleles.
     """
+
     def __init__(self, args={}, p=progress, r=run):
         self.progress = p
         self.run = r
@@ -2599,6 +2600,11 @@ class VariabilityFixationIndex():
         self.contigs_db_path = A('contigs_db', null)
         self.variability_table_path = A('variability_profile', null)
         self.keep_negatives = A('keep_negatives', null)
+        self.min_coverage_in_each_sample = A('min_coverage_in_each_sample', null)
+
+        if self.min_coverage_in_each_sample:
+            # potentially modifies self.args
+            self.args = self.sanitize_min_coverage_in_each_sample(self.args)
 
         args_for_variability_class = self.args
         if self.variability_table_path:
@@ -2625,6 +2631,33 @@ class VariabilityFixationIndex():
             'reference',
             'unique_pos_identifier',
         ]
+
+
+    def sanitize_min_coverage_in_each_sample(self, args):
+        if self.variability_table_path:
+            self.run.warning("You provided an already produced variability table, which anvi'o "
+                             "credits you for. However, you also provided "
+                             "--min-coverage-in-each-sample, which requires information about the "
+                             "coverage information at each position in each sample, even if that "
+                             "position did not vary in the sample. The only way your externally "
+                             "provided table contains this information is if you produced it with the "
+                             "--quince-mode flag. If you didn't provide this flag, your options are "
+                             "(1) re-run anvi-gen-variability-profile with --quince-mode (slow but "
+                             "recommended), (2) remove the --min-coverage-in-each-sample parameter "
+                             "(great option if you can live without it), (3) instead of providing a "
+                             "variability table to this program, provide a profile and contigs "
+                             "database and the required table will be created (--quince-mode will "
+                             "automatically be activated), or (4) ignore this warning and proceed "
+                             "with caution (in this case please don't cite us).")
+        else:
+            args.quince_mode = True
+            self.run.warning("You provided --min-coverage-in-each-sample, which requires information "
+                             "about the coverage information at each position in each sample, even if that position "
+                             "did not vary in the sample. The way anvi'o gets this information is a long and slow "
+                             "process. Keep in mind, if you can live without this parameter this program may run up to "
+                             "10 times faster.")
+
+        return args
 
 
     def fill_missing_entries(self, pairwise_data, sample_1, sample_2):
@@ -2678,6 +2711,9 @@ class VariabilityFixationIndex():
             self.v.load_variability_data()
             self.v.apply_preliminary_filters()
             self.v.set_unique_pos_identification_numbers()
+            if self.min_coverage_in_each_sample:
+                self.v.recover_base_frequencies_for_all_samples()
+                self.v.filter_data(function=self.v.filter_by_minimum_coverage_in_each_sample)
             self.v.data = self.v.data[self.columns_of_interest]
             self.v.convert_counts_to_frequencies()
             self.compute_FST_matrix()
