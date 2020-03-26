@@ -3,7 +3,7 @@
 ## A script to read in functional annotation data and perform the
 ## functional enrichment analysis
 
-## Amy Willis, September 2019
+## Amy Willis, March 2020
 
 ## Usage:
 #         anvi-get-enriched-functions-per-pan-group --input input.txt --output output.txt
@@ -132,13 +132,20 @@ w_models <- df_in %>%
   nest %>%
   mutate(model = map(data, run_test_no_spread))
 
-# get the p-values, enrichment_scores, q-values;
-# then format the data and save
-enrichment_output <- w_models %>%
+# get the p-values & enrichment_scores
+pvalues_df <- w_models %>%
   transmute(function_accession,
             "unadjusted_p_value" = map_dbl(model, get_unadjusted_p_value),
-            "enrichment_score" = map_dbl(model, get_enrichment_score)) %>%
-  mutate("adjusted_q_value" = qvalue::qvalue(unadjusted_p_value)$qvalues) %>%
+            "enrichment_score" = map_dbl(model, get_enrichment_score))
+
+# find the maximum lambda for qvalue
+# reasons for this change documented at https://github.com/merenlab/anvio/issues/1383
+max_lambda <- min(0.95, max(pvalues_df$unadjusted_p_value, na.rm=T))
+
+# get the q-values, then format the data and save
+enrichment_output <- pvalues_df %>%
+  mutate("adjusted_q_value" = qvalue::qvalue(unadjusted_p_value,
+                                             lambda = seq(0.05, max_lambda, 0.05))$qvalues) %>%
   left_join(df_in, by = "function_accession") %>%
   select(names(df_in)[1],  # e.g. COG_FUNCTION
          enrichment_score,
