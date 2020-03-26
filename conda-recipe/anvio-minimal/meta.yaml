@@ -11,24 +11,25 @@ source:
 
 build:
   number: 0
-  script: python -m pip install --no-deps --ignore-installed .
+  script: python -m pip install --no-deps --ignore-installed -vv .
 
 requirements:
   host:
+    #This pins to an old snakeMake that predated 3.7
     - python ==3.6
-    - numpy ==1.17.1
-    - setuptools ==41.2.0
+    - numpy ==1.17.2
+    - setuptools ==41.4.0
     - wheel ==0.33.6
-    - pip ==19.2.3
+    - pip ==20.0.2
   run:
     - python ==3.6
     - numpy ==1.17.1
     - bottle ==0.12.13
     - pysam ==0.15.2
     - ete3 ==3.1.1
-    - scipy ==1.3.1
-    - scikit-learn ==0.21.2
-    - django ==2.0.8
+    - scipy >=0.13.1
+    - scikit-learn ==0.22.1
+    - django ==2.2.5
     - cherrypy ==8.0.0
     - requests ==2.20.0
     - psutil ==5.4.3
@@ -36,18 +37,17 @@ requirements:
     - six ==1.11.0
     - pandas ==0.25.1
     - matplotlib ==2.2.3
-    - pyani ==0.2.9
+    - pyani ==0.2.10
     - statsmodels ==0.9.0
-    - snakemake-minimal ==5.2.4
+    - snakemake ==5.10.0
     - colored ==1.3.93
-    - illumina-utils ==2.6
+    - illumina-utils ==2.7
     - tabulate ==0.8.3
     - numba ==0.48.0
 test:
   commands:
-    - anvi-pan-genome --help
-    - anvi-script-reformat-fasta --help
-    - anvi-profile --version
+    - anvi-self-test --version
+    - anvi-self-test --help
 
 about:
   home: http://merenlab.org/software/anvio/index.html

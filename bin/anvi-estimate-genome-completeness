@@ -101,7 +101,6 @@ def print_improper(args, collection, completeness, run, progress):
 
 def print_for_external_genomes(external_genomes_file_path):
     run = terminal.Run(verbose=False if args.concise else True)
-    progress = terminal.Progress(verbose=False if args.concise else True)
 
     g = genomedescriptions.GenomeDescriptions(args, run=terminal.Run(verbose=False))
     g.load_genomes_descriptions()

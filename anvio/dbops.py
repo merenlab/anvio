@@ -2404,7 +2404,7 @@ class ProfileSuperclass(object):
         if super() and 'layers_additional_data_dict' in dir(self) and 'layers_additional_data_keys' in dir(self):
             pass
         else:
-            self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all()
+            self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args, p=self.progress).get_all()
 
         self.auxiliary_profile_data_available = None
         self.auxiliary_data_path = None
@@ -2415,8 +2415,6 @@ class ProfileSuperclass(object):
         self.item_orders = {}
         self.views = {}
         self.collection_profile = {}
-
-
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
@@ -2518,6 +2516,8 @@ class ProfileSuperclass(object):
                               "flaw, but THANKS for reminding anyway... The best way to address this is to make sure all anvi'o "
                               "profile and pan databases maintain a table with all item names they are supposed to be working with.")
 
+        self.progress.end()
+
         # learn the number of mapped reads and set it in a nice variable VERY CAREFULLY (blank profiles don't have it,
         # and some ancient anvi'o databases may be lacking it).
         if self.p_meta['blank']:
@@ -2531,7 +2531,7 @@ class ProfileSuperclass(object):
                     self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: total_reads_mapped[i] for i in range(0, len(self.p_meta['samples']))}
             else:
                 sample_name = self.p_meta['samples'][0]
-                keys, data = TableForLayerAdditionalData(self.args).get()
+                keys, data = TableForLayerAdditionalData(self.args, p=self.progress).get()
                 if 'total_reads_mapped' not in data[sample_name]:
                     self.num_mapped_reads_per_sample = None
                 else:
@@ -2544,6 +2544,7 @@ class ProfileSuperclass(object):
         if not self.item_orders:
             self.p_meta['default_item_order'] = None
 
+        self.progress.new('Initializing the profile database superclass')
         self.progress.update('Accessing the auxiliary data file')
         self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
         if not os.path.exists(self.auxiliary_data_path):

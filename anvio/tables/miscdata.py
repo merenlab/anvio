@@ -579,6 +579,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                               "is as frustrated as you are right now :(" %\
                                     (self.target_table, self.target_data_group, ', '.join(['"%s"' % d for d in self.available_group_names])))
 
+
     def get_available_data_keys(self):
         """Will only return the additional data keys so the client can do some controls."""
 
@@ -675,7 +676,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             value = entry['data_value']
 
             if entry['data_type'] == 'int':
-                # our predictor predicts 'int' if all values are int-ish floats. Ex: [37.0, 36.0, 1.0, ...] 
+                # our predictor predicts 'int' if all values are int-ish floats. Ex: [37.0, 36.0, 1.0, ...]
                 # but python int() function fails to parse strings like '1.0' while float() can parse them correctly.
                 # so here we first parse them with float() and then pass them to int(). Which should not affect anything in theory.
                 d[additional_data_item_name][key] = int(float(value or self.nulls_per_type[entry['data_type']]))
@@ -737,7 +738,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
         # we be responsible here.
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        all_keys_for_group = database.get_single_column_from_table(self.table_name, 
+        all_keys_for_group = database.get_single_column_from_table(self.table_name,
             'data_key', unique=True, where_clause="""data_group='%s'""" % self.target_data_group)
         database.disconnect()
 
@@ -850,7 +851,7 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
                               "case you want to see a random item that is only in your data, here is one: %s. Stuff "
                               "in your db looks like this: %s." \
                                     % (len(items_in_data_but_not_in_db), len(items_in_data), self.db_type, \
-                                       items_in_data_but_not_in_db.pop(), 
+                                       items_in_data_but_not_in_db.pop(),
                                        items_in_db.pop() if items_in_db else "No entries found in databse"))
 
         items_in_db_but_not_in_data = items_in_db.difference(items_in_data)
