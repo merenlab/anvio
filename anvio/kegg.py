@@ -1836,7 +1836,27 @@ class KeggModulesDatabase(KeggContext):
                 paths_list = new_paths_list
 
         #    complex case: could have alternatives so call a function to return those?
+            elif len(s) > 6 and s[6] == "+" or s[6] == "-":
+                # find out location of opening parentheses, if it has one
+                parens_loc = s.find('(')
+                if parens_loc == -1: # otherwise just extend with the whole complex as one element of a list
+                    for p in paths_list:
+                        p.extend([s])
+                else: # if so, take out the parentheses section and send to split_path to get back alternatives list
+                    prefix = s[:parens_loc]
+                    alts = self.split_path(s[parens_loc:])
+                    new_paths_list = []
+                    # for each alternative, make a new copy of each path and extend() with the alternative
+                    for a in alts:
+                        extended_complex = prefix + a[0]
+                        for p in paths_list:
+                            p_copy = copy.copy(p)
+                            p_copy.extend(extended_complex)
+                            new_paths_list.append(p_copy)
+                    paths_list = new_paths_list
+
             else:
+                ### TODO FIXME
                 print("don't know what to do with this step of length %d: %s" % (len(s),s))
 
         # return list of list where each list is a path
@@ -1863,7 +1883,6 @@ class KeggModulesDatabase(KeggContext):
                 # stick all paths from this substep into final list for returning
                 alt_path_list.append(a)
         return alt_path_list
-
 
 
 class KeggModulesTable:
