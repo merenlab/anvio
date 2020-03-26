@@ -1051,7 +1051,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
         if self.engine == 'NT':
             self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name,
-                                                             table_structure=self.table_structure,
+                                                             columns_of_interest=self.table_structure,
                                                              where_clause=sqlite_where_clause)
 
         elif self.engine == 'CDN' or self.engine == 'AA':
