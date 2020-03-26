@@ -8,6 +8,7 @@ import shutil
 import requests
 import glob
 import re
+import copy
 
 import anvio
 import anvio.db as db
@@ -1778,36 +1779,91 @@ class KeggModulesDatabase(KeggContext):
     def unroll_module_definition(self, mnum):
         """This function accesses the DEFINITION line of a KEGG Module, unrolls it into all possible paths through the module, and returns the list of all paths."""
 
-        all_paths = []
-        # call recursive function here
+        all_paths = [[]]
+        def_lines = self.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
+        for d in def_lines:
+            def_line_paths = self.recursive_definition_unroller(d)
+            new_paths_list = []
+            # for each path we got back, make a new copy of each path so far and extend()
+            for a in def_line_paths:
+                for p in all_paths:
+                    p_copy = copy.copy(p)
+                    p_copy.extend(a)
+                    new_paths_list.append(p_copy)
+            all_paths = new_paths_list
 
         return all_paths
+
+    def split_by_delim_not_within_parens(self, d, delim):
+        """Takes a string, and splits it on the given delimter as long as the delimeter is not within parentheses. Returns the list of strings."""
+        parens_level = 0
+        last_split_index = 0
+        splits = []
+        for i in range(len(d)):
+            # only split if not within parentheses
+            if d[i] == delim and parens_level == 0:
+                splits.append(d[last_split_index:i])
+                last_split_index = i + 1 # we add 1 here to skip the space
+            elif d[i] == "(":
+                parens_level += 1
+            elif d[i] == ")":
+                parens_level -= 1
+        splits.append(d[last_split_index:len(d)])
+        return splits
 
     def recursive_definition_unroller(self, step):
         """This function recursively splits a module definition into its components."""
 
         # first, split definition into steps by spaces outside parentheses
-        # establish a list to save the path
-        # for each step,
-        #    base case: step is a ko, mnum, etc, so we extend the list with it
+        split_steps = self.split_by_delim_not_within_parens(step, " ")
+        # establish a list to save all paths in, with an initial empty list to extend from
+        paths_list = [[]]
+        for s in split_steps:
+        #    base case: step is a ko, mnum, non-essential step, etc, so we extend each list with it
+            if (len(s) == 6 and s[0] == "K") or (len(s) == 6 and s[0] == "M") or (s == "--") or (len(s) == 7 and s[0] == "-"):
+                for p in paths_list:
+                    p.extend([s])
         #    parentheses case: step has alternative paths, so we call the split path function which will return the alternatives
-                # for each alternative, make a new copy of the path and extend() with the alternative 
+            elif s[0] == "(":
+                alts = self.split_path(s)
+                new_paths_list = []
+                # for each alternative, make a new copy of each path and extend() with the alternative
+                for a in alts:
+                    for p in paths_list:
+                        p_copy = copy.copy(p)
+                        p_copy.extend(a)
+                        new_paths_list.append(p_copy)
+                paths_list = new_paths_list
+
         #    complex case: could have alternatives so call a function to return those?
+            else:
+                print("don't know what to do with this step of length %d: %s" % (len(s),s))
 
-        # split_path function: takes a step as input
+        # return list of list where each list is a path
+        return paths_list
+
+    def split_path(self, step):
+        """This function handles steps that should be split into multiple alternative paths.
+
+        It first splits the input step into substeps, and then since each substep could be its own mini-definition,
+        we recursively call the definition unrolling function to parse it.
+        """
         # first, get rid of surrounding parentheses
-        # second, split by comma into substeps
-        # for each substep:
-            # make a copy of the path so far to append to
+        step = step[1:-1]
+        # second, split by comma into substeps (not commas in parentheses)
+        substeps = self.split_by_delim_not_within_parens(step, ",")
+        # make a final list for returning
+        alt_path_list = []
+        for s in substeps:
             # call recursive_definition_unroller to extend() to the path from this step
-        # return all path lists
+            alt_paths_from_substep = self.recursive_definition_unroller(s)
+            # this will pass back a list of lists where each list is an alternative path
+            # for each alternative, make copy of path and extend with alternative
+            for a in alt_paths_from_substep:
+                # stick all paths from this substep into final list for returning
+                alt_path_list.append(a)
+        return alt_path_list
 
-        # base case: step is a KO, module number, --, or -K0000, just return it
-        if (len(step) == 6 and step[0] == "K") or (len(step) == 6 and step[0] == "M") or (step == "--") or (len(step) == 7 and step[0] == "-"):
-            return step
-
-
-        # anyway we need to extend() each path list with the recursive return value
 
 
 class KeggModulesTable:
