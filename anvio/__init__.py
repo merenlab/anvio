@@ -620,7 +620,7 @@ D = {
              'action': 'store_true',
              'help': "Remove all the previously stored files and start over. If something is feels wrong "
                      "for some reason and if you believe re-downloading files and setting them up could "
-                     "address the issue, this is the flag that will tell anvi'o to act like a real comptuer "
+                     "address the issue, this is the flag that will tell anvi'o to act like a real computer "
                      "scientist challenged with a computational problem."}
                 ),
     'redo-databases': (
@@ -643,6 +643,19 @@ D = {
              'type': str,
              'help': "The directory path for your Pfam setup. Anvi'o will try to use the default path "
                      "if you do not specify anything."}
+                ),
+    'pdb-database-path': (
+            ['--pdb-database-path'],
+            {'default': None,
+             'type': str,
+             'metavar': 'PATH',
+             'help': "The path for the PDB database to be stored. "
+                     "If you leave it as is without specifying anything, anvi'o will set up everything in "
+                     "a pre-defined default directory. The advantage of using "
+                     "the default directory at the time of set up is that every user of anvi'o on a computer "
+                     "system will be using a single data directory, but then you may need to run the setup "
+                     "program with superuser privileges. If you don't have superuser privileges, then you can "
+                     "use this parameter to tell anvi'o the location you wish to use to setup your database."}
                 ),
     'hide-outlier-SNVs': (
             ['--hide-outlier-SNVs'],
@@ -2066,9 +2079,8 @@ D = {
                      "%(default)d, whereas a job with 4 threads would have a write buffer size of 4*%(default)d. "
                      "The larger the buffer size, the less frequent the program will access to the disk, yet the more memory "
                      "will be consumed since the processed items will be cleared off the memory only after they are written "
-                     "to the disk. The default buffer size will likely work for most cases, but if you have very large "
-                     "contigs, you may need to decrease this value. Please keep an eye on the memory usage output to make sure "
-                     "the memory use never exceeds the size of the physical memory."}
+                     "to the disk. The default buffer size will likely work for most cases. Please keep an eye on the memory "
+                     "usage output to make sure the memory use never exceeds the size of the physical memory."}
                 ),
     'export-gff3': (
         ['--export-gff3'],

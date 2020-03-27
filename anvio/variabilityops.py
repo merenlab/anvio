@@ -41,6 +41,7 @@ __email__ = "a.murat.eren@gmail.com"
 
 pd.options.display.max_columns=100
 pd.options.display.max_rows=100
+
 pp = terminal.pretty_print
 progress = terminal.Progress()
 run = terminal.Run(width=62)
@@ -1050,7 +1051,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
         if self.engine == 'NT':
             self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name,
-                                                             table_structure=self.table_structure,
+                                                             columns_of_interest=self.table_structure,
                                                              where_clause=sqlite_where_clause)
 
         elif self.engine == 'CDN' or self.engine == 'AA':
@@ -1081,7 +1082,8 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def load_structure_data(self):
-        """ Loads structure residue info from structure db as self.structure_residue_info """
+        """Loads structure residue info from structure db as self.structure_residue_info"""
+
         if not self.append_structure_residue_info:
             return
 
@@ -1089,7 +1091,8 @@ class VariabilitySuper(VariabilityFilter, object):
         self.progress.new('Loading structure information')
         self.progress.update('Reading the structure database ...')
         structure_db = structureops.StructureDatabase(self.structure_db_path)
-        self.structure_residue_info = structure_db.db.get_table_as_dataframe(t.structure_residue_info_table_name)
+
+        self.structure_residue_info = structure_db.get_residue_info_for_all()
 
         self.genes_with_structure = set(self.structure_residue_info["corresponding_gene_call"].unique())
         # genes_included = genes_of_interest, unless genes_of_interest weren't specified. then
@@ -1734,20 +1737,19 @@ class VariabilitySuper(VariabilityFilter, object):
 
         # add all known residue info sources to columns_to_report
         C = {'text': str, 'real': float, 'integer': int}
+
+        # append columns that are not redundant
         redundant_columns = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'aa', 'amino_acid', 'codon', 'codon_number']
-
-        # append mandatory columns
-        self.columns_to_report['structural'].extend([(x, C[y]) for x, y in zip(t.structure_residue_info_table_structure, t.structure_residue_info_table_types) if x not in redundant_columns])
-
-        # append non-mandatory columns
-        for source in t.residue_info_sources:
-            self.columns_to_report['structural'].extend([(x, C[y]) for x, y in zip(t.residue_info_sources[source]["structure"], t.residue_info_sources[source]["types"]) if x not in redundant_columns])
+        self.columns_to_report['structural'].extend([(x, C[y])
+                                                     for x, y in zip(t.residue_info_table_structure, t.residue_info_table_types)
+                                                     if x not in redundant_columns
+                                                     and x in self.structure_residue_info.columns])
 
         self.progress.end()
 
 
     def compute_gene_coverage_fields(self):
-        """ Adds _gene_ coverage, not position coverage, to self.data.
+        """Adds _gene_ coverage, not position coverage, to self.data.
 
         Notes
         =====

@@ -10,6 +10,7 @@ import math
 import numpy
 import pandas as pd
 import sqlite3
+import warnings
 
 import anvio
 import anvio.tables as tables
@@ -31,6 +32,7 @@ __status__ = "Development"
 # Converts numpy numbers into storable python types that sqlite3 is expecting
 sqlite3.register_adapter(numpy.int64, int)
 sqlite3.register_adapter(numpy.float64, float)
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 def get_list_in_chunks(input_list, num_items_in_each_chunk=5000):
@@ -250,7 +252,7 @@ class DB:
             return self._exec_many(query, entries)
 
 
-    def insert_rows_from_dataframe(self, table_name, dataframe, raise_if_no_columns = True, key = None):
+    def insert_rows_from_dataframe(self, table_name, dataframe, raise_if_no_columns=True, key=None):
         """Insert rows from a dataframe
 
         Parameters
@@ -308,6 +310,7 @@ class DB:
 
             return next_available_id
         """
+
         if table_name not in self.get_table_names():
             raise ConfigError("insert_rows_from_dataframe :: A table with the name {} does "
                               "not exist in the database you requested. {} are the tables "
@@ -544,49 +547,50 @@ class DB:
         return results_dict
 
 
-    def get_table_as_dataframe(self, table_name, table_structure  = None, columns_of_interest = None, keys_of_interest = None, omit_parent_column  = False, error_if_no_data = True, where_clause = None):
-        """get_table_as_dict() uses the first column as the key in the resulting
-           dictionary. For pandas DataFrames there are two reasonable design
-           approaches. The first mimics this approach and uses the first column as
-           the index of the DataFrame. The approach I take instead is to keep the
-           first column as a column in the DataFrame (it is afterall, a column)
-           and use numerical indices for the DataFrame."""
+    def get_table_as_dataframe(self, table_name, where_clause=None, columns_of_interest=None, drop_if_null=False, error_if_no_data=True):
+        """Get the table as a pandas DataFrame object
 
-        if not table_structure:
-            table_structure = self.get_table_structure(table_name)
+        Parameters
+        ==========
+        table_name : str
 
-        columns_to_return = table_structure
+        where_clause : str, None
+            SQL WHERE clause. If None, everything is fetched.
 
-        if omit_parent_column:
-            if '__parent__' in table_structure:
-                columns_to_return.remove('__parent__')
-                table_structure.remove('__parent__')
+        columns_of_interest : list, None
+            Which columns do you want to return? If None, all are returned. Applied after where_clause.
 
-        if columns_of_interest:
-            for col in table_structure[1:]:
-                if col not in columns_of_interest:
-                    columns_to_return.remove(col)
+        drop_if_null : bool, False
+            Drop columns if they contain all NULL values, i.e. np.nan, or ''
 
-        if len(columns_to_return) == 1:
-            if error_if_no_data:
-                raise ConfigError("get_table_as_dataframe :: after removing a column that was not mentioned in the columns "
-                                   "of interest by the client, nothing was left to return...")
-            else:
-                return {}
+        error_if_no_data : bool, True
+            Raise an error if the dataframe has 0 rows. Checked after where_clause.
+        """
 
-        if keys_of_interest:
-            keys_of_interest = set(keys_of_interest)
+        table_structure = self.get_table_structure(table_name)
+
+        if not columns_of_interest:
+            columns_of_interest = table_structure
 
         if where_clause:
             results_df = pd.read_sql('''SELECT * FROM "%s" WHERE %s''' % (table_name, where_clause), self.conn, columns=table_structure)
         else:
             results_df = pd.read_sql('''SELECT * FROM "%s"''' % table_name, self.conn, columns=table_structure)
 
-        if keys_of_interest:
-            results_df = results_df.loc[results_df.index.isin(keys_of_interest)]
-        results_df = results_df.loc[:, columns_to_return]
+        if results_df.empty and error_if_no_data:
+            raise ConfigError("DB.get_table_as_dataframe :: The dataframe requested is empty")
 
-        return results_df
+        if drop_if_null:
+            for col in columns_of_interest.copy():
+                if results_df[col].isna().all():
+                    # Column contains only entries that equate to pandas NA
+                    columns_of_interest.remove(col)
+
+                elif (results_df[col] == '').all():
+                    # Column contains all empty strings
+                    columns_of_interest.remove(col)
+
+        return results_df[columns_of_interest]
 
 
     def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False):
