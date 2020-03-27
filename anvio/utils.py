@@ -3321,6 +3321,7 @@ def download_protein_structure(protein_code, output_path=None, chain=None, raise
     """
 
     output_dir = os.path.dirname(output_path)
+    if output_dir == '': output_dir = '.'
 
     pdb_list = PDB.PDBList()
 
@@ -3342,8 +3343,9 @@ def download_protein_structure(protein_code, output_path=None, chain=None, raise
 
     if chain is not None:
         class ChainSelect(PDB.Select):
-            def accept_chain(self, chain_in_struct):
-                return 1 if chain_in_struct._id == chain else 0
+            def accept_chain(self, chain_obj):
+                x = 1 if chain_obj.get_id() == chain else 0
+                return 1 if chain_obj.get_id() == chain else 0
 
         p = PDB.PDBParser()
         try:

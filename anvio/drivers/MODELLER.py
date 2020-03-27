@@ -233,7 +233,7 @@ class MODELLER:
                 # We try and download the protein from the RCSB PDB server. If downloading fails,
                 # path is None
                 path = utils.download_protein_structure(code, chain=chain, output_path=requested_path, raise_if_fail=False)
-                source = 'RSCB PDB Server'
+                source = 'RCSB PDB Server'
 
             else:
                 # Internet access is not assumed, and the chain wasn't in the external database
@@ -296,6 +296,11 @@ class MODELLER:
         id_of_max_pident = tuple(search_df.loc[search_df["proper_pident"].idxmax(), ["code", "chain"]].values)
         search_df = search_df[search_df["proper_pident"] >= self.percent_identical_cutoff]
 
+        search_df = search_df.sort_values("proper_pident", ascending=False)
+
+        # If more than 1 template in 1 PDB id, just choose 1
+        search_df = search_df.drop_duplicates('code', keep='first')
+
         # Order them and take the first self.modeller.max_number_templates.
         matches_after_filter = len(search_df)
         if not matches_after_filter:
@@ -309,8 +314,7 @@ class MODELLER:
                                      max_pident_found))
             raise self.EndModeller
 
-        # of those filtered, get up to self.modeller.max_number_templates of those with the highest proper_ident scores.
-        search_df = search_df.sort_values("proper_pident", ascending=False)
+        # get up to self.modeller.max_number_templates of those with the highest proper_ident scores.
         search_df = search_df.iloc[:min([len(search_df), self.max_number_templates])]
 
         # Get their chain and 4-letter ids
