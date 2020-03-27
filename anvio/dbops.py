@@ -2982,6 +2982,16 @@ class ProfileSuperclass(object):
         return output
 
 
+    def get_blank_variability_dict(self):
+        """Returns an empty variability dictionary to be filled elsewhere"""
+        d = {}
+
+        for sample_name in self.p_meta['samples']:
+            d[sample_name] = {'variability': {0: {}, 1: {}, 2: {}, 3: {}}, 'competing_nucleotides': {}}
+
+        return d
+
+
     def get_variability_information_for_split(self, split_name, skip_outlier_SNVs=False, return_raw_results=False):
         if not split_name in self.split_names:
             raise ConfigError("get_variability_information_for_split: The split name '%s' does not seem to be "
@@ -2999,10 +3009,7 @@ class ProfileSuperclass(object):
             return split_variability_information
 
         # they want pretty stuff...
-        d = {}
-
-        for sample_name in self.p_meta['samples']:
-            d[sample_name] = {'variability': {0: {}, 1: {}, 2: {}, 3: {}}, 'competing_nucleotides': {}}
+        d = self.get_blank_variability_dict()
 
         for e in split_variability_information:
             frequencies = utils.get_variabile_item_frequencies(e, engine='NT')
