@@ -1156,7 +1156,12 @@ class ContactMap(object):
         contact_map = np.zeros((len(structure), len(structure)))
         for i, residue1 in enumerate(structure):
             for j, residue2 in enumerate(structure):
-                contact_map[i, j] = self.distances_methods_dict[distance_method](residue1, residue2)
+                if i == j:
+                    contact_map[i, j] = 0
+                elif i < j:
+                    contact_map[i, j] = contact_map[j, i]
+                else:
+                    contact_map[i, j] = self.distances_methods_dict[distance_method](residue1, residue2)
 
         return contact_map
 
@@ -1241,8 +1246,7 @@ class ContactMap(object):
     def calc_CA_dist(self, residue1, residue2):
         """Returns the C-alpha distance between two residues"""
 
-        diff_vector = residue1["CA"].coord - residue2["CA"].coord
-        return np.sqrt(np.sum(diff_vector**2))
+        return residue1["CA"] - residue2["CA"]
 
 
 class PDBDatabase(object):
