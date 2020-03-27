@@ -1777,7 +1777,11 @@ class KeggModulesDatabase(KeggContext):
 
 
     def unroll_module_definition(self, mnum):
-        """This function accesses the DEFINITION line of a KEGG Module, unrolls it into all possible paths through the module, and returns the list of all paths."""
+        """This function accesses the DEFINITION line of a KEGG Module, unrolls it into all possible paths through the module, and
+        returns the list of all paths.
+
+        This is a driver for the recursive functions that do the actual unrolling of each definition line.
+        """
 
         all_paths = [[]]
         def_lines = self.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
@@ -1785,7 +1789,6 @@ class KeggModulesDatabase(KeggContext):
             d = d.strip()
             def_line_paths = self.recursive_definition_unroller(d)
             new_paths_list = []
-            # for each path we got back, make a new copy of each path so far and extend()
             for a in def_line_paths:
                 for p in all_paths:
                     p_copy = copy.copy(p)
@@ -1795,9 +1798,22 @@ class KeggModulesDatabase(KeggContext):
 
         return all_paths
 
+
     def split_by_delim_not_within_parens(self, d, delims, return_delims=False):
-        """Takes a string, and splits it on the given delimeter(s) as long as the delimeter is not within parentheses. Returns the list of strings."""
-       #print("splitting on delimiters: ", delims)
+        """Takes a string, and splits it on the given delimiter(s) as long as the delimeter is not within parentheses.
+
+        PARAMETERS
+        ==========
+        d               string
+        delims          a single delimiter, or a list of delimiters
+        return_delims   boolean, if this is true then the list of delimiters found at between each split is also returned
+
+        RETURNS
+        =======
+        splits      list of strings that were split from d
+        delim_list  list of delimiters that were ofund between each split
+        """
+
         parens_level = 0
         last_split_index = 0
         splits = []
@@ -1813,59 +1829,61 @@ class KeggModulesDatabase(KeggContext):
             elif d[i] == ")":
                 parens_level -= 1
 
-            # we should catch the case when the parentheses are unbalanced, because this means we shouldn't have removed the outer set of parens
-            # this happens in cases like (K00963 (K00693+K00750,K16150,K16153,K13679,K20812)),(K00975 (K00703,K13679,K20812))
-            # where both sides of the comma have balanced parentheses but there is no () around the whole thing
+            # if parentheses become unbalanced, return False to indicate this
             if parens_level < 0:
-               #print("found unbalanced parentheses at position %d in definition %s" % (i,d))
                 return False
         splits.append(d[last_split_index:len(d)])
+
         if return_delims:
             return splits, delim_list
         return splits
 
-    def recursive_definition_unroller(self, step):
-        """This function recursively splits a module definition into its components."""
 
-        # first, split definition into steps by spaces outside parentheses
+    def recursive_definition_unroller(self, step):
+        """This function recursively splits a module definition into its components.
+
+        First, the definition is split into its component steps (separated by spaces).
+        Each step is either an atomic step (a single KO, module number '--', or nonessential KO starting with '-'),
+        a protein complex, or a compound step.
+
+        Atomic steps are used to extend each path that has been found so far. Protein complexes are split into
+        their respective components, which may be split further by the split_paths() function to find all possible
+        alternative complexes, before being used to extend each path. Compound steps are split and recursively processed
+        by the split_paths() function before the resulting downstream paths are used to extend each path.
+        """
+
         split_steps = self.split_by_delim_not_within_parens(step, " ")
-       #print("split definition into steps: ", split_steps)
-        # establish a list to save all paths in, with an initial empty list to extend from
-        paths_list = [[]]
+        paths_list = [[]]  # list to save all paths, with initial empty path list to extend from
         for s in split_steps:
-        #    base case: step is a ko, mnum, non-essential step, etc, so we extend each list with it
+            # base case: step is a ko, mnum, non-essential step, or '--'
             if (len(s) == 6 and s[0] == "K") or (len(s) == 6 and s[0] == "M") or (s == "--") or (len(s) == 7 and s[0] == "-"):
                 for p in paths_list:
                     p.extend([s])
-               #print("found base case: ", s)
             else:
-                # try splitting to see if there are commas or spaces outside parentheses
+                # here we try splitting to see if there are commas or spaces outside parentheses
                 # (the only way to figure this out is to try it because regex cannot handle nested parentheses)
                 comma_substeps = self.split_by_delim_not_within_parens(s[1:-1], ",")
                 if not comma_substeps: # if it doesn't work, try without removing surrounding parentheses
                     comma_substeps = self.split_by_delim_not_within_parens(s, ",")
                 space_substeps = self.split_by_delim_not_within_parens(s[1:-1], " ")
-                if not space_substeps: # if it doesn't work, try without removing surrounding parentheses
+                if not space_substeps:
                     space_substeps = self.split_by_delim_not_within_parens(s, " ")
 
-                # complex case: no commas OR spaces outside parentheses so we are still at an atomic definition, but its a protein complex rather than a base case step
-                # complex cases taken care of by this block: A+B+C  ;  A+(B,C)+D  ;  A+B+C+(D,E)  ; (A,B+C)+D+E
+                # complex case: no commas OR spaces outside parentheses so this is a protein complex rather than a compound step
                 if len(comma_substeps) == 1 and len(space_substeps) == 1:
-                    # split on + or -
                     complex_components, delimiters = self.split_by_delim_not_within_parens(s, ["+","-"], return_delims=True)
-                   #print("split complex into components: ", complex_components)
-                    # for each component we need to reconstruct the complex (or alternate possible complexes) while keeping the +/- structure the same
                     complex_strs = [""]
+
+                    # reconstruct the complex (and any alternate possible complexes) while keeping the +/- structure the same
                     for i in range(len(complex_components)):
                         c = complex_components[i]
                         if c[0] == '(':
                             alts = self.split_path(c)
-                           #print("alts in complex are: ", alts)
                             new_complex_strs = []
-                            # for each alternative (should just be one in each list), make a new copy of the complex and extend with the alternative
                             for a in alts:
                                 if len(a) > 1:
-                                    raise ConfigError("Uh oh. We found a protein complex with more than one KO per alternative option here: %s" % s)
+                                    raise ConfigError("Uh oh. recursive_definition_unroller() speaking. We found a protein complex with more "
+                                    "than one KO per alternative option here: %s" % s)
                                 for cs in complex_strs:
                                     extended_complex = cs + a[0]
                                     new_complex_strs.append(extended_complex)
@@ -1878,57 +1896,45 @@ class KeggModulesDatabase(KeggContext):
                             for j in range(len(complex_strs)):
                                 complex_strs[j] += delimiters[i]
 
-                    # add all possible complexes to end of each path
-                   #print("all possible complexes: ", complex_strs)
                     new_paths_list = []
-                    # for each alternative, make a new copy of each path and extend() with the alternative
                     for cs in complex_strs:
                         for p in paths_list:
                             p_copy = copy.copy(p)
                             p_copy.extend([cs])
                             new_paths_list.append(p_copy)
                     paths_list = new_paths_list
-                   #print("after processing complex case, paths_list is now: ", paths_list)
 
-
-            #    alternatives case: step has alternative paths, so we call the split path function which will return the alternatives
+                # compound step case:
                 else:
                     alts = self.split_path(s)
                     new_paths_list = []
-                    # for each alternative, make a new copy of each path and extend() with the alternative
                     for a in alts:
                         for p in paths_list:
                             p_copy = copy.copy(p)
                             p_copy.extend(a)
                             new_paths_list.append(p_copy)
                     paths_list = new_paths_list
-                    #print("after processing parentheses case, paths_list is now: ", paths_list)
 
-        # return list of list where each list is a path
         return paths_list
 
     def split_path(self, step):
-        """This function handles steps that should be split into multiple alternative paths.
+        """This function handles compound steps that should be split into multiple alternative paths.
 
         It first splits the input step into substeps, and then since each substep could be its own mini-definition,
-        we recursively call the definition unrolling function to parse it.
+        it recursively calls the definition unrolling function to parse it. The list of all alternative paths
+        that can be made from this step is returned.
         """
-        # first, try to split after getting rid of surrounding parentheses
+
         substeps = self.split_by_delim_not_within_parens(step[1:-1], ",")
         if not substeps: # if it doesn't work, try without removing surrounding parentheses
             substeps = self.split_by_delim_not_within_parens(step, ",")
-       #print("split path %s into substeps: %s" % (step, substeps))
-        # make a final list for returning
+
         alt_path_list = []
         for s in substeps:
-            # call recursive_definition_unroller to extend() to the path from this step
             alt_paths_from_substep = self.recursive_definition_unroller(s)
-            # this will pass back a list of lists where each list is an alternative path
-            # for each alternative, make copy of path and extend with alternative
             for a in alt_paths_from_substep:
-                # stick all paths from this substep into final list for returning
                 alt_path_list.append(a)
-        #print("alt_path_list: ", alt_path_list)
+
         return alt_path_list
 
 
