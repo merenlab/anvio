@@ -12,6 +12,7 @@ import socket
 import shutil
 import smtplib
 import hashlib
+import Bio.PDB as PDB
 import textwrap
 import linecache
 import webbrowser
@@ -1083,7 +1084,7 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
         return non_outliers
 
 
-def get_gene_caller_ids_from_args(gene_caller_ids, delimiter):
+def get_gene_caller_ids_from_args(gene_caller_ids, delimiter=','):
     gene_caller_ids_set = set([])
     if gene_caller_ids:
         if os.path.exists(gene_caller_ids):
@@ -1637,8 +1638,8 @@ def convert_SSM_to_single_accession(matrix_data):
     return new_data
 
 
-def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
-    """ Returns True if gene sequence is clean (amino acid or nucleotide), otherwise raises ConfigError
+def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False, must_start_with_met=True):
+    """Returns True if gene sequence is clean (amino acid or nucleotide), otherwise raises ConfigError
 
     Parameters
     ==========
@@ -1649,6 +1650,8 @@ def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
     can_end_with_stop : bool, False
         If True, the sequence can, but does not have to, end with * if amino_acid=True, or one of
         <TAG, TGA, TAA> if amino_acid=False.
+    must_start_with_met : bool, True
+        If True, the sequence must start with ATG if amino_acid=False or Met if amino_acid=True
 
     Returns
     =======
@@ -1682,7 +1685,7 @@ def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
 
         seq = new_seq
 
-    if not seq[0] == start_char:
+    if not seq[0] == start_char and must_start_with_met:
         raise ConfigError(error_msg_template % "Should start with methionine but instead starts with %s" % seq[0])
 
     for i, element in enumerate(seq[:-1]):
@@ -3283,7 +3286,7 @@ def get_remote_file_content(url, gzipped=False):
     remote_file = requests.get(url)
 
     if remote_file.status_code == 404:
-        raise ConfigError("Bad news. The remove file at '%s' was not found :(" % url)
+        raise ConfigError("Bad news. The remote file at '%s' was not found :(" % url)
 
     if gzipped:
         buf = BytesIO(remote_file.content)
@@ -3293,35 +3296,75 @@ def get_remote_file_content(url, gzipped=False):
     return remote_file.content.decode('utf-8')
 
 
-def download_protein_structures(protein_code_list, output_dir):
-    """
-    Downloads protein structures using Biopython. protein_code_list is a list
-    of 4-letter protein codes. Returns list of successful downloads
-    """
-    import Bio.PDB as PDB
+def download_protein_structure(protein_code, output_path=None, chain=None, raise_if_fail=True):
+    """Downloads protein structures using Biopython.
 
-    progress.new("Downloading proteins from PDB")
+    Parameters
+    ==========
+    protein_code : str
+        Each element is a 4-letter protein code
 
-    filesnpaths.gen_output_directory(output_dir)
+    output_path : str
+        Path where structure is written to. Temporary directory is chosen if None
+
+    chain : str, None
+        If None, all chains remain in the PDB file. If specified, only the chain with the chain ID
+        `chain` will be saved.
+
+    raise_if_fail : bool, True
+        If the file does not download, raise an error
+
+    Returns
+    =======
+    output : output_path
+        Returns the filepath of the written file. Returns None if download failed
+    """
+
+    output_dir = os.path.dirname(output_path)
+    if output_dir == '': output_dir = '.'
 
     pdb_list = PDB.PDBList()
 
-    # this rule may one day change
-    get_protein_path = lambda x: os.path.join(output_dir, "pdb" + x + ".ent")
+    try:
+        with SuppressAllOutput():
+            # We suppress output that looks like this:
+            # >>> WARNING: The default download format has changed from PDB to PDBx/mmCif
+            # >>> Downloading PDB structure '5w6y'...
+            temp_output_path = pdb_list.retrieve_pdb_file(protein_code, file_format='pdb', pdir=output_dir, overwrite=True)
+    except:
+        pass
 
-    for protein_code in protein_code_list:
-        progress.update("Downloading protein structure: {}".format(protein_code))
+    if not filesnpaths.is_file_exists(temp_output_path, dont_raise=True):
+        # The file wasn't downloaded
+        if raise_if_fail:
+            raise ConfigError("The protein %s could not be downloaded. Are you connected to internet?" % protein_code)
+        else:
+            return None
 
-        with SuppressAllOutput(): # FIXME SuppressAllOutput gives error
-            pdb_list.retrieve_pdb_file(protein_code, file_format="pdb", pdir=output_dir, overwrite=True)
+    if chain is not None:
+        class ChainSelect(PDB.Select):
+            def accept_chain(self, chain_obj):
+                x = 1 if chain_obj.get_id() == chain else 0
+                return 1 if chain_obj.get_id() == chain else 0
 
-        # raise warning if structure was not downloaded
-        if not filesnpaths.is_file_exists(get_protein_path(protein_code), dont_raise=True):
-            run.warning("The protein {} could not be downloaded. Are you connected to internet?".format(protein_code))
-            protein_code_list.remove(protein_code)
+        p = PDB.PDBParser()
+        try:
+            structure = p.get_structure(None, temp_output_path)
+        except:
+            # FIXME Something very rare happened on Biopython's end. We silently return the whole
+            # file instead of only the chain. Here is one such reason for failure we stumbled upon:
+            # https://github.com/biopython/biopython/issues/2819
+            shutil.move(temp_output_path, output_path)
+            return output_path
 
-    progress.end()
-    return protein_code_list
+        # Overwrite file with chain-only structure
+        io = PDB.PDBIO()
+        io.set_structure(structure)
+        io.save(temp_output_path, ChainSelect())
+
+    shutil.move(temp_output_path, output_path)
+
+    return output_path
 
 
 def get_hash_for_list(l):

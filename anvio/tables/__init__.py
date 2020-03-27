@@ -31,6 +31,7 @@ versions_for_db_types = {'contigs': contigs_db_version,
                          'auxiliary data for coverages': auxiliary_data_version,
                          'config': workflow_config_version}
 
+
 ####################################################################################################
 #
 #     TABLE DESCRIPTIONS SPECIFIC FOR THE PAN DATABASE (THE REST COMES FROM THE PROFILE DATABASE)
@@ -224,27 +225,21 @@ genome_gene_function_calls_table_types     = [    'str'    , ] + gene_function_c
 #
 ####################################################################################################
 
-structure_pdb_data_table_name       = 'structures'
-structure_pdb_data_table_structure  = ['corresponding_gene_call', 'pdb_content']
-structure_pdb_data_table_types      = [         'integer'       ,    'blob'    ]
+pdb_data_table_name       = 'structures'
+pdb_data_table_structure  = ['corresponding_gene_call', 'pdb_content']
+pdb_data_table_types      = [         'integer'       ,    'blob'    ]
 
-structure_templates_table_name       = 'templates'
-structure_templates_table_structure  = ['entry_id' , 'corresponding_gene_call' , 'pdb_id' , 'chain_id' , 'ppi']
-structure_templates_table_types      = ['integer'  , 'integer'                 , 'text'   , 'text'     , 'real']
+templates_table_name       = 'templates'
+templates_table_structure  = ['entry_id' , 'corresponding_gene_call' , 'pdb_id' , 'chain_id' , 'ppi']
+templates_table_types      = ['integer'  , 'integer'                 , 'text'   , 'text'     , 'real']
 
-structure_models_table_name       = 'models'
-structure_models_table_structure  = ['entry_id' , 'corresponding_gene_call' , 'molpdf' , 'GA341_score' , 'DOPE_score' , 'picked_as_best']
-structure_models_table_types      = ['integer'  , 'integer'                 , 'real'   , 'real'        , 'real'       , 'integer']
+models_table_name       = 'models'
+models_table_structure  = ['entry_id' , 'corresponding_gene_call' , 'molpdf' , 'GA341_score' , 'DOPE_score' , 'picked_as_best']
+models_table_types      = ['integer'  , 'integer'                 , 'real'   , 'real'        , 'real'       , 'integer']
 
-# The FULL table structure is defined in the StructureDatabase class based on what annotation
-# sources are found and/or requested.
-structure_residue_info_table_name       = 'residue_info'
-structure_residue_info_table_structure  = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'contact_numbers', 'codon', 'amino_acid', 'codon_number']
-structure_residue_info_table_types      = ['integer',         'integer'        ,        'integer'     ,   'text'          , 'text',  'text',       'integer']
-
-residue_info_sources = {"DSSP":        {"structure": ['codon_order_in_gene' , 'aa'   , 'sec_struct' , 'rel_solvent_acc' , 'phi'  , 'psi'  , 'NH_O_1_index' , 'NH_O_1_energy' , 'O_NH_1_index' , 'O_NH_1_energy' , 'NH_O_2_index' , 'NH_O_2_energy' , 'O_NH_2_index' , 'O_NH_2_energy'],
-                                        "types":     ['integer'             , 'text' , 'text'       , 'real'            , 'real' , 'real' , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real']},
-                       }
+residue_info_table_name       = 'residue_info'
+residue_info_table_structure  = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'contact_numbers', 'codon', 'amino_acid', 'codon_number', 'sec_struct' , 'rel_solvent_acc' , 'phi'  , 'psi'  , 'NH_O_1_index' , 'NH_O_1_energy' , 'O_NH_1_index' , 'O_NH_1_energy' , 'NH_O_2_index' , 'NH_O_2_energy' , 'O_NH_2_index' , 'O_NH_2_energy']
+residue_info_table_types      = ['integer',         'integer'        ,        'integer'     ,   'text'          , 'text',  'text',       'integer',      'text'       , 'real'            , 'real' , 'real' , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real']
 
 ####################################################################################################
 #

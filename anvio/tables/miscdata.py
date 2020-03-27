@@ -358,22 +358,22 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
     def get(self, additional_data_keys=None, additional_data_dict=None, native_form=False):
         """Will return the layer order data dict.
 
-           If `additional_data_keys` and `additional_data_dict` variables are provided, it will return an order dict
-           with additioanl orders generated from data found in those. An example:
+        If `additional_data_keys` and `additional_data_dict` variables are provided, it will return an order dict
+        with additioanl orders generated from data found in those. An example:
 
-                >>> layers_additional_data_table = TableForLayerAdditionalData(args)
-                >>> layer_orders_table = TableForLayerOrders(args)
-                >>> layer_additional_data_keys, layer_additional_data_dict = layers_additional_data_table.get()
-                >>> layer_orders_data_dict = layer_orders_table.get(layer_additional_data_keys, layer_additional_data_dict
+             >>> layers_additional_data_table = TableForLayerAdditionalData(args)
+             >>> layer_orders_table = TableForLayerOrders(args)
+             >>> layer_additional_data_keys, layer_additional_data_dict = layers_additional_data_table.get()
+             >>> layer_orders_data_dict = layer_orders_table.get(layer_additional_data_keys, layer_additional_data_dict)
 
-           The `native_form` is tricky. Normaly in this function we turn the data read from the table into
-           the legacy data structure anvi'o has been using before all these were implemented. So, by default,
-           we return the data in that legacy format so everyting else would continue working. But if the
-           programmer is interested in exporting the order data as an output file, we don't want to follow that
-           silly legacy format. So the parameter `native_form` simply returns the data in native form. Export
-           functions use the native form. At some point the rest of the anvi'o codebase should be fixed to
-           work only with the native form, and there is no need to this tyranny. Here is a FIXME for that
-           in case one day someone wants to address that.
+        The `native_form` is tricky. Normaly in this function we turn the data read from the table into
+        the legacy data structure anvi'o has been using before all these were implemented. So, by default,
+        we return the data in that legacy format so everyting else would continue working. But if the
+        programmer is interested in exporting the order data as an output file, we don't want to follow that
+        silly legacy format. So the parameter `native_form` simply returns the data in native form. Export
+        functions use the native form. At some point the rest of the anvi'o codebase should be fixed to
+        work only with the native form, and there is no need to this tyranny. Here is a FIXME for that
+        in case one day someone wants to address that.
         """
 
         self.progress.new('Recovering layer order data')
@@ -601,7 +601,18 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
 
     def get(self, additional_data_keys_requested=[]):
-        """Will return the additional data keys as well as the data dict."""
+        """Get the additional data
+
+        Parameters
+        ==========
+        additional_data_keys_requested : list, []
+            Which keys are requested? If [], all are assumed. Read as "data_keys_requested", they
+            "additional" because they are fetched from additional layers data table
+
+        Returns
+        =======
+        output : (additional_data_keys, additional_data_dict)
+        """
 
         if not self.target_data_group:
             raise ConfigError("It seems the target data group is not set, which makes zero sense and should never happen "
