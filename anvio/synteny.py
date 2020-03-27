@@ -120,6 +120,10 @@ class NGram(object):
             contigs_db_path = self.external_genomes[contigs_db_name]["contigs_db_path"]
             contigs_db = dbops.ContigsDatabase(contigs_db_path)
 
+            # FIXME
+            # need to add sanity check to confirm that the contigs_db_path extracted from the self.external_genomes
+            # is actually a contigsDB object
+
             genes_in_contigs = contigs_db.db.get_table_as_dataframe('genes_in_contigs')
 
             self.num_contigs_in_external_genomes_with_genes += genes_in_contigs['contig'].nunique()
@@ -140,10 +144,6 @@ class NGram(object):
 
         This populates the self.ngram_attributes_list, where each element looks like:
         (ngram, count, contigs_db_name, contig_name, n)
-
-        ngram is a tuple
-        count
-        .... FIXME
 
         """
 
