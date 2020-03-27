@@ -155,11 +155,6 @@ anvi-export-locus -c $output_dir/CONTIGS.db \
                   -s NusB,rpoz \
                   --overwrite-output-destinations
 
-INFO "Running anvi-analyze-synteny"
-# make a external-genomesfile. echo -e "name\tcontigs_db_path\n... etc"" > external-genomes-file.txt
-# run anvi-analyze-synteny
-
-
 INFO "Export only Pfam annotations"
 anvi-export-functions -c $output_dir/CONTIGS.db \
                       -o $output_dir/exported_functions_from_source_Pfam.txt \
@@ -659,6 +654,24 @@ anvi-dereplicate-genomes --ani-dir $output_dir/GENOME_SIMILARITY_OUTPUT \
                          --similarity 0.99 \
                          --program pyANI
 SHOW_FILE $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS/CLUSTER_REPORT.txt
+
+INFO "Testing anvi-analyze-synteny ignoring genes with no annotation"
+
+# make a external-genomesfile
+echo -e "name\tcontigs_db_path\ng01\t$output_dir/01.db\ng02\t$output_dir/02.db\ng03\t$output_dir/03.db" > $output_dir/external-genomes-file.txt
+
+# run anvi-analyze-synteny
+anvi-analyze-synteny -e $output_dir/external-genomes-file.txt \
+          --annotation-source COG_FUNCTION \
+          --window-range 2:3 \
+          -o $output_dir/synteny_output_no_unknowns.tsv
+
+INFO "Testing anvi-analyze-synteny now including unannotated genes"
+anvi-analyze-synteny -e $output_dir/external-genomes-file.txt \
+          --annotation-source COG_FUNCTION \
+          --window-range 2:3 \
+          -o $output_dir/synteny_output_no_unknowns.tsv \
+          --analyze-unknown-functions
 
 INFO 'A dry run with an items order file for the merged profile without any clustering'
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
