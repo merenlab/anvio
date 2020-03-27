@@ -2025,7 +2025,7 @@ D = {
              'metavar': 'WINDOW_RANGE',
              'type': str,
              'required': False,
-             'help': "The range of window sizes of ngrams to analyze for synteny patterns."
+             'help': "The range of window sizes of Ngrams to analyze for synteny patterns."
                      "Please format the window-range as x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)"}
                 ),
     'write-buffer-size': (
