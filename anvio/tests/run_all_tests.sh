@@ -662,16 +662,16 @@ echo -e "name\tcontigs_db_path\ng01\t$output_dir/01.db\ng02\t$output_dir/02.db\n
 
 # run anvi-analyze-synteny
 anvi-analyze-synteny -e $output_dir/external-genomes-file.txt \
-          --annotation-source COG_FUNCTION \
-          --window-range 2:3 \
-          -o $output_dir/synteny_output_no_unknowns.tsv
+                     --annotation-source COG_FUNCTION \
+                     --ngram-window-range 2:3 \
+                     -o $output_dir/synteny_output_no_unknowns.tsv
 
 INFO "Testing anvi-analyze-synteny now including unannotated genes"
 anvi-analyze-synteny -e $output_dir/external-genomes-file.txt \
-          --annotation-source COG_FUNCTION \
-          --window-range 2:3 \
-          -o $output_dir/synteny_output_with_unknowns.tsv \
-          --analyze-unknown-functions
+                     --annotation-source COG_FUNCTION \
+                     --ngram-window-range 2:3 \
+                     -o $output_dir/synteny_output_with_unknowns.tsv \
+                     --analyze-unknown-functions
 
 INFO 'A dry run with an items order file for the merged profile without any clustering'
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
