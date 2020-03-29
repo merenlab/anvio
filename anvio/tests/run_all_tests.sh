@@ -657,9 +657,6 @@ SHOW_FILE $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS/CLUSTER_REPORT.txt
 
 INFO "Testing anvi-analyze-synteny ignoring genes with no annotation"
 
-# make a external-genomesfile
-# echo -e "name\tcontigs_db_path\ng01\t$output_dir/01.db\ng02\t$output_dir/02.db\ng03\t$output_dir/03.db" > $output_dir/external-genomes-file.txt
-
 # run anvi-analyze-synteny
 anvi-analyze-synteny -e $output_dir/external-genomes.txt \
                      --annotation-source COG_FUNCTION \
