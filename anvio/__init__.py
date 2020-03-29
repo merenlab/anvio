@@ -2022,7 +2022,7 @@ D = {
     'ngram-window-range': (
             ['--ngram-window-range'],
             {'default': 500,
-             'metavar': 'WINDOW_RANGE',
+             'metavar': "NGRAM_WINDOW_RANGE",
              'type': str,
              'required': False,
              'help': "The range of window sizes of Ngrams to analyze for synteny patterns."
