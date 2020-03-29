@@ -63,7 +63,7 @@ class NGram(object):
         # Parse arguments
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.annotation_source = A('annotation_source')
-        self.window_range = A('ngram_window_range')
+        self.window_range = A('ngram_window_range') or "2:3"
         self.in_in_unknowns_mode = A('analyze_unknown_functions')
         self.output_file = A('output_file')
         self.genomes = genomedescriptions.GenomeDescriptions(self.args)
@@ -89,22 +89,27 @@ class NGram(object):
 
         # checking if the annotation source is common accross all contigs databases
         if self.annotation_source not in self.genomes.function_annotation_sources:
-            raise ConfigError("The annotation source you requested does not appear to be in the "
-                              "contigs database :/ "
-                              "Please confirm you are only providing one annotation source :)")
+            raise ConfigError("The annotation source you requested does not appear to be in all of "
+                              "the contigs databases from the external-genomes file. "
+                              "Please confirm your annotation-source and that all contigs databases have it :)")
 
         if not self.args.output_file:
             raise ConfigError("You should provide an output file name.")
 
         # checking window-range input
         if ":" not in self.window_range:
-            raise ConfigError("anvi'o would love to slice and dice your loci, but... the "
+            raise ConfigError("anvi'o would love to slice and dice your loci, but the "
                               "Format of window_range must be x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
 
-        self.window_range = [int(n) for n in self.window_range.split(":")]
+        try:
+            self.window_range = [int(n) for n in self.window_range.split(":")]
+        except:
+            raise ConfigError("anvi'o would love to slice and dice your loci, but the "
+                              "window-ranges need to be integers :)")
+
         if self.window_range[0] > self.window_range[1]:
-            raise ConfigError("anvi'o would love to slice and dice your loci, but... the "
-                              "window-range needs to be from small to big")
+            raise ConfigError("anvi'o would love to slice and dice your loci, but the "
+                              "window-range needs to be from small to big :)")
 
         # Must contain 2 integers for window
         if len(self.window_range) > 2 or not isinstance(self.window_range[0], int) or not isinstance(self.window_range[1], int):
@@ -208,6 +213,8 @@ class NGram(object):
         self.populate_genes()
         df = self.convert_to_df()
         df.to_csv(self.output_file, sep = '\t', index=False)
+        self.run.info_single("Ngrams successfully calculated!", nl_after=1, mc="green")
+        self.run.info("Ngram table", self.output_file)
 
 
     def get_genes_and_functions_from_contigs_db(self, contigs_db_path):
@@ -280,7 +287,7 @@ class NGram(object):
         give back a dictionary with contig {contig_name: {ngram:count}}
         """
 
-        NGramFreq_dict = Counter({})
+        ngram_frequencies_dict = Counter({})
         for i in range(0, len(function_list) - n + 1):
             # window = sorted(function_list[i:i + n])
             # extract window
@@ -300,7 +307,7 @@ class NGram(object):
                 continue
             else:
                 # if ngram is not in dictionary add it, if it is add + 1
-                NGramFreq_dict[ngram] +=  1
+                ngram_frequencies_dict[ngram] +=  1
 
-        return NGramFreq_dict
+        return ngram_frequencies_dict
 
