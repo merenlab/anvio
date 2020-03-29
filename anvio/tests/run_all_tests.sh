@@ -658,16 +658,16 @@ SHOW_FILE $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS/CLUSTER_REPORT.txt
 INFO "Testing anvi-analyze-synteny ignoring genes with no annotation"
 
 # make a external-genomesfile
-echo -e "name\tcontigs_db_path\ng01\t$output_dir/01.db\ng02\t$output_dir/02.db\ng03\t$output_dir/03.db" > $output_dir/external-genomes-file.txt
+# echo -e "name\tcontigs_db_path\ng01\t$output_dir/01.db\ng02\t$output_dir/02.db\ng03\t$output_dir/03.db" > $output_dir/external-genomes-file.txt
 
 # run anvi-analyze-synteny
-anvi-analyze-synteny -e $output_dir/external-genomes-file.txt \
+anvi-analyze-synteny -e $output_dir/external-genomes.txt \
                      --annotation-source COG_FUNCTION \
                      --ngram-window-range 2:3 \
                      -o $output_dir/synteny_output_no_unknowns.tsv
 
 INFO "Testing anvi-analyze-synteny now including unannotated genes"
-anvi-analyze-synteny -e $output_dir/external-genomes-file.txt \
+anvi-analyze-synteny -e $output_dir/external-genomes.txt \
                      --annotation-source COG_FUNCTION \
                      --ngram-window-range 2:3 \
                      -o $output_dir/synteny_output_with_unknowns.tsv \
