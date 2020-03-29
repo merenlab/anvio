@@ -2019,8 +2019,8 @@ D = {
                      "class based on the number of threads. If you have *any* hesitation about whether you know what you are doing, "
                      "you should not change this value."}
                 ),
-    'window-range': (
-            ['--window-range'],
+    'ngram-window-range': (
+            ['--ngram-window-range'],
             {'default': 500,
              'metavar': 'WINDOW_RANGE',
              'type': str,
