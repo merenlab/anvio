@@ -2021,7 +2021,7 @@ D = {
                 ),
     'ngram-window-range': (
             ['--ngram-window-range'],
-            {'default': 500,
+            {'default': "2:3",
              'metavar': "NGRAM_WINDOW_RANGE",
              'type': str,
              'required': False,
