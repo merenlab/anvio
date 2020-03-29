@@ -62,12 +62,12 @@ class NGram(object):
 
         # Parse arguments
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.external_genomes = A('external_genomes')
         self.annotation_source = A('annotation_source')
-        self.window_range = A('window_range')
+        self.window_range = A('ngram_window_range')
         self.in_in_unknowns_mode = A('analyze_unknown_functions')
-        self.external_genomes = utils.get_TAB_delimited_file_as_dictionary(self.external_genomes)
         self.output_file = A('output_file')
+        self.genomes = genomedescriptions.GenomeDescriptions(self.args)
+        self.genomes.load_genomes_descriptions(init=False)
 
         # This houses the ngrams' data
         self.ngram_attributes_list = []
@@ -88,10 +88,7 @@ class NGram(object):
         """Sanity_check will confirm input for NGram class"""
 
         # checking if the annotation source is common accross all contigs databases
-        g = genomedescriptions.GenomeDescriptions(self.args)
-        g.load_genomes_descriptions(init=False)
-
-        if self.annotation_source not in g.function_annotation_sources:
+        if self.annotation_source not in self.genomes.function_annotation_sources:
             raise ConfigError("The annotation source you requested does not appear to be in the "
                               "contigs database :/ "
                               "Please confirm you are only providing one annotation source :)")
@@ -114,18 +111,25 @@ class NGram(object):
             raise ConfigError("anvi'o would love to slice and dice your loci, but... the "
                               "window_range must only contain 2 integers and be formated as x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
 
-        # Loop through each contigs db, test that each contig contains at least as many genes as max window size.
+        # Loop through each contigs db, test that each contig contains at least as many genes as max window size and confirm every contig has annotations
         # Set the self.num_contigs_in_external_genomes_with_genes variable
-        for contigs_db_name in self.external_genomes:
-            contigs_db_path = self.external_genomes[contigs_db_name]["contigs_db_path"]
+        for contigs_db_name in self.genomes.external_genomes_dict:
+            # extract contigsDB path
+            contigs_db_path = self.genomes.external_genomes_dict[contigs_db_name]["contigs_db_path"]
+
+            # Get list of genes and functions
+            genes_and_functions_list = self.get_genes_and_functions_from_contigs_db(contigs_db_path)
+            num_genes = len(genes_and_functions_list)
+
+            if self.window_range[1] > num_genes:
+                raise ConfigError("The largest window size you requested (%d) is larger than the number of genes found on this contig: %s" % \
+                    (self.window_range[1], self.genomes.external_genomes_dict[contigs_db_name]["name"]))
+
             contigs_db = dbops.ContigsDatabase(contigs_db_path)
 
-            # FIXME
-            # need to add sanity check to confirm that the contigs_db_path extracted from the self.external_genomes
-            # is actually a contigsDB object
-
+            # extract number of genes on the contig
             genes_in_contigs = contigs_db.db.get_table_as_dataframe('genes_in_contigs')
-
+            print(genes_in_contigs)
             self.num_contigs_in_external_genomes_with_genes += genes_in_contigs['contig'].nunique()
 
             all_contigs_in_db = contigs_db.db.get_table_as_dataframe('contigs_basic_info')['contig']
@@ -148,9 +152,9 @@ class NGram(object):
         """
 
         genes_and_functions_list = []
-        for contigs_db_name in self.external_genomes:
+        for contigs_db_name in self.genomes.external_genomes_dict:
             # Extract file path
-            contigs_db_path = self.external_genomes[contigs_db_name]["contigs_db_path"]
+            contigs_db_path = self.genomes.external_genomes_dict[contigs_db_name]["contigs_db_path"]
 
             # Get list of genes and functions
             genes_and_functions_list = self.get_genes_and_functions_from_contigs_db(contigs_db_path)
