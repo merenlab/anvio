@@ -117,7 +117,7 @@ class NGram(object):
             # extract contigsDB path
             contigs_db_path = self.genomes.external_genomes_dict[contigs_db_name]["contigs_db_path"]
 
-            # Get list of genes and functions
+            # Confirm appropriate window size
             genes_and_functions_list = self.get_genes_and_functions_from_contigs_db(contigs_db_path)
             num_genes = len(genes_and_functions_list)
 
@@ -125,14 +125,13 @@ class NGram(object):
                 raise ConfigError("The largest window size you requested (%d) is larger than the number of genes found on this contig: %s" % \
                     (self.window_range[1], self.genomes.external_genomes_dict[contigs_db_name]["name"]))
 
+            # Confirm all contigs have annotations
             contigs_db = dbops.ContigsDatabase(contigs_db_path)
-
-            # extract number of genes on the contig
             genes_in_contigs = contigs_db.db.get_table_as_dataframe('genes_in_contigs')
-            print(genes_in_contigs)
+            all_contigs_in_db = contigs_db.db.get_table_as_dataframe('contigs_basic_info')['contig']
+
             self.num_contigs_in_external_genomes_with_genes += genes_in_contigs['contig'].nunique()
 
-            all_contigs_in_db = contigs_db.db.get_table_as_dataframe('contigs_basic_info')['contig']
             contigs_without_genes = []
             for contig in all_contigs_in_db:
                 if contig not in set(genes_in_contigs['contig'].unique()):
@@ -165,9 +164,12 @@ class NGram(object):
             for contig_name in contigs_set:
                 contig_function_list = []
 
-                for gci, accession, contigname in genes_and_functions_list:
-                    if contig_name == contigname:
-                        contig_function_list.append([gci,accession])
+                # Extract gene_callers_id and gene_function_accession from genes_and_functions_list using contig_name
+                # genes_and_functions_list has multiple contigs gene info in it, so we filter one contig at a time
+                # (contig_ID = name of contig in genes_and_functions_list)
+                for gene_callers_id, gene_function_accession, contig_ID in genes_and_functions_list:
+                    if contig_name == contig_ID:
+                        contig_function_list.append([gene_callers_id,gene_function_accession])
 
                 # Iterate over range of window sizes and run synteny algorithm to count occurrences of ngrams in a contig
                 for n in range(self.window_range[0],self.window_range[1]):
@@ -186,10 +188,10 @@ class NGram(object):
 
         for ngram_attribute in self.ngram_attributes_list:
             ngram = "::".join(map(str, list(ngram_attribute[0])))
-            df = pd.DataFrame(columns=['ngram', 'count', 'contigDB','contig_name','N','number_of_loci'])
+            df = pd.DataFrame(columns=['ngram', 'count', 'contig_db_name','contig_name','N','number_of_loci'])
             df = df.append({'ngram': ngram,
                             'count': ngram_attribute[1],
-                            'contigDB': ngram_attribute[2],
+                            'contig_db_name': ngram_attribute[2],
                             'contig_name':ngram_attribute[3],
                             'N':ngram_attribute[4],
                             'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
@@ -205,7 +207,7 @@ class NGram(object):
 
         self.populate_genes()
         df = self.convert_to_df()
-        df.to_csv(self.output_file, sep = '\t',index=False)
+        df.to_csv(self.output_file, sep = '\t', index=False)
 
 
     def get_genes_and_functions_from_contigs_db(self, contigs_db_path):
@@ -228,19 +230,19 @@ class NGram(object):
         annotations_dict = utils.get_filtered_dict(annotations_dict, 'source', set([self.annotation_source]))
 
         # Make dict with gene-caller-id:accession
-        gci_to_accession_dict = {entry['gene_callers_id']: entry['accession'] for entry in annotations_dict.values()}
+        gene_callers_id_to_accession_dict = {entry['gene_callers_id']: entry['accession'] for entry in annotations_dict.values()}
 
         # Make list of lists containing gene attributes. If there is not annotation add one in!
         genes_and_functions_list = [] # List of lists [gene-caller-id, accessions, contig-name]
         counter = 0
-        for gci in genes_in_contigs: # gci = gene-caller-id
+        for gene_callers_id in genes_in_contigs: 
             list_of_gene_attributes = []
 
-            if gci in gci_to_accession_dict:
-                accession = gci_to_accession_dict[gci]
+            if gene_callers_id in gene_callers_id_to_accession_dict:
+                accession = gene_callers_id_to_accession_dict[gene_callers_id]
                 accession = accession.replace(" ","")
-                contig_name = genes_in_contigs[gci]['contig']
-                list_of_gene_attributes.extend((gci, accession, contig_name))
+                contig_name = genes_in_contigs[gene_callers_id]['contig']
+                list_of_gene_attributes.extend((gene_callers_id, accession, contig_name))
                 genes_and_functions_list.append(list_of_gene_attributes)
             else:
                 # adding in "unknown annotation" if there is none
@@ -278,7 +280,7 @@ class NGram(object):
         give back a dictionary with contig {contig_name: {ngram:count}}
         """
 
-        NGramFreq_dict = {}
+        NGramFreq_dict = Counter({})
         for i in range(0, len(function_list) - n + 1):
             # window = sorted(function_list[i:i + n])
             # extract window
@@ -298,10 +300,7 @@ class NGram(object):
                 continue
             else:
                 # if ngram is not in dictionary add it, if it is add + 1
-                if ngram in NGramFreq_dict:
-                    NGramFreq_dict[ngram] +=  1
-                else:
-                    NGramFreq_dict[ngram] = 1
+                NGramFreq_dict[ngram] +=  1
 
         return NGramFreq_dict
 
