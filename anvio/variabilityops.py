@@ -2598,7 +2598,7 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
             self.load_structure_data()
 
 
-class VariabilityFixationIndex():
+class VariabilityFixationIndex(object):
     """Calculates a fixation index matrix
 
     Metric adapted from 'Genomic variation landscape of the human gut microbiome'
@@ -2682,8 +2682,8 @@ class VariabilityFixationIndex():
     def fill_missing_entries(self, pairwise_data, sample_1, sample_2):
         missing_data = {column: [] for column in pairwise_data.columns}
 
-        data_sample_1 = pairwise_data[pairwise_data['sample_id'] == sample_1].set_index('unique_pos_identifier', drop = True)
-        data_sample_2 = pairwise_data[pairwise_data['sample_id'] == sample_2].set_index('unique_pos_identifier', drop = True)
+        data_sample_1 = pairwise_data[pairwise_data['sample_id'] == sample_1].set_index('unique_pos_identifier', drop=True)
+        data_sample_2 = pairwise_data[pairwise_data['sample_id'] == sample_2].set_index('unique_pos_identifier', drop=True)
 
         positions_sample_1 = set(data_sample_1.index)
         positions_sample_2 = set(data_sample_2.index)
@@ -2734,7 +2734,7 @@ class VariabilityFixationIndex():
                 self.v.filter_data(function=self.v.filter_by_minimum_coverage_in_each_sample)
 
             self.v.data = self.v.data[self.columns_of_interest]
-            self.v.convert_counts_to_frequencies()
+            self.v.convert_counts_to_frequencies(remove_zero_cov_entries=True)
             self.compute_FST_matrix()
         else:
             self.v.init_commons()
@@ -2742,11 +2742,13 @@ class VariabilityFixationIndex():
             self.v.load_variability_data()
             self.v.apply_preliminary_filters()
             self.v.set_unique_pos_identification_numbers()
+
             if self.min_coverage_in_each_sample:
                 self.v.recover_base_frequencies_for_all_samples()
                 self.v.filter_data(function=self.v.filter_by_minimum_coverage_in_each_sample)
+
             self.v.data = self.v.data[self.columns_of_interest]
-            self.v.convert_counts_to_frequencies()
+            self.v.convert_counts_to_frequencies(remove_zero_cov_entries=True)
             self.compute_FST_matrix()
 
 
