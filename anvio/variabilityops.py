@@ -754,7 +754,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
         Assumes items were normalized with self.convert_counts_to_frequencies(retain_counts=False)
         """
-        self.data[self.items] = self.data[self.items].multiply(self.data['coverage'], axis = 0).astype(int)
+        self.data[self.items] = self.data[self.items].multiply(self.data['coverage'], axis=0).astype(int)
 
 
     def get_sample_ids_of_interest(self, sample_ids_of_interest_path=""):
@@ -2778,13 +2778,22 @@ class VariabilityFixationIndex():
             intra2)/2 / inter, since anvio also calculates an unnormalized inter-sample diversity,
             so that the 1/genome_length factors cancel out.
         """
+
         sample_data = self.v.data[self.v.data['sample_id'] == sample]
         coverages = sample_data['coverage'].values
         matrix = sample_data[self.v.items].values
 
         outer_product = matrix[:,:,None] * matrix[:,None,:]
         diagonals = outer_product * np.broadcast_to(np.identity(outer_product.shape[1])[None, ...], outer_product.shape)
-        intra_sample_diversity = np.sum((outer_product - diagonals) * (coverages / (coverages - 1))[:,None,None], axis=(0,1,2))
+
+        # The sum at each position is multiplied by the factor coverage/(coverage-1). If
+        # coverage==1, there is no diversity so the contribution should be 0, but the equation
+        # yields undefined. So we artificially enforce a dividend of 1 in this case so contribution
+        # ends up being 1
+        dividend = coverages - 1
+        dividend[dividend == 0] = 1
+
+        intra_sample_diversity = np.sum((outer_product - diagonals) * (coverages / dividend)[:,None,None], axis=(0,1,2))
 
         return intra_sample_diversity
 
@@ -2796,6 +2805,7 @@ class VariabilityFixationIndex():
         ==========
         sample_1 : str
             A sample id
+
         sample_2 : str
             A sample id
 
@@ -2807,6 +2817,7 @@ class VariabilityFixationIndex():
             intra2)/2 / inter, since anvio also calculates an unnormalized intra-sample diversity,
             so that the 1/genome_length factors cancel out.
         """
+
         pairwise_data, tensor_shape = self.get_pairwise_data_and_shape(sample_1, sample_2)
 
         # V/\
@@ -2834,11 +2845,11 @@ class VariabilityFixationIndex():
                 else:
                     self.progress.increment()
                     self.fst_matrix[i, j] = self.get_FST(sample_1, sample_2)
+                    count += 1
 
                 if count % 10 == 0:
                     self.progress.update('%d/%d pairwise comparisons; %s elapsed' % (count, indices_to_calculate, self.progress.t.time_elapsed()))
 
-                count += 1
 
         if not self.keep_negatives:
             self.fst_matrix[self.fst_matrix < 0] = 0
