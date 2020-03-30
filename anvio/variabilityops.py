@@ -2519,7 +2519,7 @@ class VariabilityNetwork:
 
 
 class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
-    def __init__(self, args={}, p=progress, r=run, dont_process=False, skip_init_commons=False):
+    def __init__(self, args={}, p=progress, r=run, dont_process=False, skip_init_commons=False, skip_sanity=True):
         self.progress = p
         self.run = r
 
@@ -2527,6 +2527,7 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         self.columns_to_load = A('columns_to_load', list)
         self.variability_table_path = A('variability_profile', str)
+        self.skip_superclass_sanity = skip_sanity
         self.engine = A('engine', str)
 
         self.dont_process = dont_process
@@ -2573,7 +2574,7 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
         # init the appropriate engine
         self.args.data = self.data
         self.args.engine = self.engine
-        self.args.skip_sanity_check = True
+        self.args.skip_sanity_check = self.skip_superclass_sanity
         variability_engines[self.engine].__init__(self, self.args, p=self.progress, r=self.run)
 
         # load residue info data
@@ -2617,7 +2618,7 @@ class VariabilityFixationIndex():
                 self.run.warning('You supplied a variability table, but also a profile database. '
                                  'Any variability data used by anvi\'o will be drawn from the variability '
                                  'table, and not from this database.')
-            self.v = VariabilityData(args_for_variability_class, p=self.progress, r=self.run)
+            self.v = VariabilityData(args_for_variability_class, p=self.progress, r=self.run, skip_sanity=False)
         else:
             self.v = variability_engines[self.engine](args_for_variability_class, p=self.progress, r=self.run)
 
@@ -2704,6 +2705,15 @@ class VariabilityFixationIndex():
     def process(self):
         if self.v.table_provided:
             self.v.items = self.items_dict[self.engine]
+
+            self.v.filter_data(criterion = "sample_id",
+                               subset_filter = self.v.sample_ids_of_interest,
+                               subset_condition = self.v.sample_ids_of_interest and self.v.load_all_samples)
+
+            self.v.filter_data(criterion = "corresponding_gene_call",
+                               subset_filter = self.v.genes_of_interest,
+                               subset_condition = self.v.genes_of_interest and self.v.load_all_genes)
+
             self.v.data = self.v.data[self.columns_of_interest]
             self.v.convert_counts_to_frequencies()
             self.compute_FST_matrix()
