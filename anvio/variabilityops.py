@@ -741,7 +741,23 @@ class VariabilitySuper(VariabilityFilter, object):
                                   "ids anvi'o would use. There is something wrong here :(")
 
 
-    def convert_counts_to_frequencies(self, retain_counts = False):
+    def convert_counts_to_frequencies(self, retain_counts=False, remove_zero_cov_entries=False):
+        """Convert counts (e.g. the A, C, T, G, N columns for NTs) to frequencies
+
+        Parameters
+        ==========
+        retain_counts : bool, False
+            If True, A, C, T, G, N are preserved and 5 new corresponding columns are made suffixed
+            by '_freq', e.g. 'A_freq'.
+
+        remove_zero_cov_entries : bool, False
+            Frequencies are undefined if coverage is 0, so entries became nan for coverage == 0. If
+            this flag is True, zero coverage entries are removed
+        """
+
+        if remove_zero_cov_entries:
+            self.data = self.data[self.data['coverage'] > 0]
+
         if retain_counts:
             freq_columns = [x + '_freq' for x in self.items]
             self.data[freq_columns] = self.data[self.items].divide(self.data['coverage'], axis = 0)
