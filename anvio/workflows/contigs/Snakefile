@@ -380,6 +380,23 @@ rule anvi_run_scg_taxonomy:
                                         {params.scg_taxonomy_data_dir} >> {log} 2>&1""")
 
 
+rule anvi_run_trna_scan:
+    version: anvio.__contigs__version__
+    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_trna_scan.log"
+    input:
+        # make sure HMMs were done before running this rule
+        hmms_done = ancient(dirs_dict["CONTIGS_DIR"] + "/anvi_run_hmms-{group}.done"),
+        contigs = ancient(M.get_contigs_db_path())
+    output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_trna_scan-{group}.done")
+    params:
+        scg_taxonomy_data_dir = M.get_rule_param('anvi_run_trna_scan', '--scgs-taxonomy-data-dir'),
+    threads: M.T('anvi_run_trna_scan')
+    resources: nodes = M.T('anvi_run_scg_taxonomy'),
+    shell: w.r("""anvi-run-scg-taxonomy -c {input.contigs} \
+                                        -T {threads} \
+                                        {params.scg_taxonomy_data_dir} >> {log} 2>&1""")
+
+
 rule anvi_get_sequences_for_gene_calls:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_get_sequences_for_gene_calls.log"

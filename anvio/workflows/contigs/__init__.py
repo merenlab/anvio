@@ -42,7 +42,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.rules.extend(['gen_external_genome_file',
                            'anvi_script_reformat_fasta',
                            'anvi_gen_contigs_database', 'export_gene_calls_for_centrifuge', 'centrifuge',
-                           'anvi_import_taxonomy_for_genes', 'anvi_run_scg_taxonomy', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
+                           'anvi_import_taxonomy_for_genes', 'anvi_run_scg_taxonomy', 'anvi_run_trna_scan', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
                            'annotate_contigs_database', 'anvi_get_sequences_for_gene_calls', 'emapper',
                            'anvi_script_run_eggnog_mapper', 'gunzip_fasta', 'reformat_external_gene_calls_table',
                            'reformat_external_functions', 'import_external_functions', 'anvi_run_pfams'])
@@ -58,6 +58,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                     "anvi_run_hmms": {"run": True, "threads": 5},
                                     "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
                                     "anvi_run_scg_taxonomy": {"run": True, "threads": 6},
+                                    'anvi_run_trna_scan': {"run": '', "threads": 6},
                                     "anvi_script_reformat_fasta": {"run": True, "--prefix": "{group}", "--simplify-names": True},
                                     "emapper": {"--database": "bact", "--usemem": True, "--override": True},
                                     "anvi_script_run_eggnog_mapper": {"--use-version": "0.12.6"}})
@@ -65,6 +66,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.rule_acceptable_params_dict['anvi_run_ncbi_cogs'] = ['run', '--cog-data-dir', '--sensitive', '--temporary-dir-path', '--search-with']
 
         self.rule_acceptable_params_dict['anvi_run_scg_taxonomy'] = ['run', '--scgs-taxonomy-data-dir']
+
+        self.rule_acceptable_params_dict['anvi_run_trna_scan'] = ['run', '--trna-hits-file', '--trna-cutoff-score']
 
         self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir', '--also-scan-trnas']
 
