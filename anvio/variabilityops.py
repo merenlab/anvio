@@ -2621,9 +2621,8 @@ class VariabilityFixationIndex(object):
         self.keep_negatives = A('keep_negatives', null)
         self.min_coverage_in_each_sample = A('min_coverage_in_each_sample', null)
 
-        if self.min_coverage_in_each_sample:
-            # potentially modifies self.args
-            self.args = self.sanitize_min_coverage_in_each_sample(self.args)
+        # potentially modifies self.args
+        self.args = self.sanitize_min_coverage_in_each_sample(self.args)
 
         args_for_variability_class = self.args
         if self.variability_table_path:
@@ -2653,6 +2652,15 @@ class VariabilityFixationIndex(object):
 
 
     def sanitize_min_coverage_in_each_sample(self, args):
+        if not self.min_coverage_in_each_sample:
+            self.run.warning("It is highly recommended that you use --min-coverage-in-each-sample "
+                             "so that only positions that maintain a threshold coverage across each "
+                             "sample are included. Otherwise, positions that have 0 coverage (for "
+                             "example) will be assumed invariant, which is a bad assumption because "
+                             "you don't know if the position is actually invariant or if the coverage "
+                             "was just too low to _detect_ variation.")
+            return args
+
         if self.variability_table_path:
             self.run.warning("You provided an already produced variability table, which anvi'o "
                              "credits you for. However, you also provided "
@@ -2662,12 +2670,11 @@ class VariabilityFixationIndex(object):
                              "provided table contains this information is if you produced it with the "
                              "--quince-mode flag. If you didn't provide this flag, your options are "
                              "(1) re-run anvi-gen-variability-profile with --quince-mode (slow but "
-                             "recommended), (2) remove the --min-coverage-in-each-sample parameter "
-                             "(great option if you can live without it), (3) instead of providing a "
-                             "variability table to this program, provide a profile and contigs "
-                             "database and the required table will be created (--quince-mode will "
-                             "automatically be activated), or (4) ignore this warning and proceed "
-                             "with caution (in this case please don't cite us).")
+                             "recommended), (2) instead of providing a variability table to this "
+                             "program, provide a profile and contigs database and the required "
+                             "table will be created (--quince-mode will automatically be activated),"
+                             " or (3) ignore this warning and proceed with caution (in this case "
+                             "please don't cite us).")
         else:
             args.quince_mode = True
             self.run.warning("You provided --min-coverage-in-each-sample, which requires information "
