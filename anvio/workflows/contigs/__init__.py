@@ -67,7 +67,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.rule_acceptable_params_dict['anvi_run_scg_taxonomy'] = ['run', '--scgs-taxonomy-data-dir']
 
-        self.rule_acceptable_params_dict['anvi_run_trna_scan'] = ['run', '--trna-hits-file', '--trna-cutoff-score']
+        self.rule_acceptable_params_dict['anvi_run_trna_scan'] = ['run', '--trna-cutoff-score']
 
         self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir', '--also-scan-trnas']
 
@@ -154,6 +154,10 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                  'anvi_run_hmms. Continue at your own risk. If your contigs databases '
                                  'don\'t have HMM hits stored already then anvi_run_scg_taxonomy will fail.')
             optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "anvi_run_scg_taxonomy-{group}.done"))
+
+        run_anvi_run_trna_scan = self.get_param_value_from_config(["anvi_run_trna_scan", "run"]) == True
+        if run_anvi_run_trna_scan:
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "anvi_run_trna_scan-{group}.done"))
 
         if self.get_param_value_from_config(["anvi_script_run_eggnog_mapper", "run"]) == True:
             optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-anvi_script_run_eggnog_mapper.done"))
