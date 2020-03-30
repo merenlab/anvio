@@ -213,7 +213,6 @@ class NGram(object):
         self.populate_genes()
         df = self.convert_to_df()
         df.to_csv(self.output_file, sep = '\t', index=False)
-        self.run.info_single("Ngrams successfully calculated!", nl_after=1, mc="green")
         self.run.info("Ngram table", self.output_file)
 
 
