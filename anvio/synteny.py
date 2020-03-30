@@ -103,7 +103,7 @@ class NGram(object):
 
         try:
             self.window_range = [int(n) for n in self.window_range.split(":")]
-        except:
+        except ValueError:
             raise ConfigError("anvi'o would love to slice and dice your loci, but the "
                               "window-ranges need to be integers :)")
 
