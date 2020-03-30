@@ -101,6 +101,7 @@ ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'summary': {'name': 'STATIC SUMMARY', 'type': 'SUMMARY', 'internal': False},
                'split-bins': {'name': 'SPLIT BINS', 'type': 'CONCEPT', 'internal': False},
                'state': {'name': 'INTERACTIVE STATE', 'type': 'CONCEPT', 'internal': True},
+               'ngram': {'name': 'NGRAM', 'type': 'CONCEPT', 'internal': True},
                'state-json': {'name': 'INTERACTIVE STATE', 'type': 'JSON', 'internal': False}}
 
 ANVIO_CONCEPTS = {'functions': {'goes_in': ['contigs_db', 'genomes-storage-db'],
