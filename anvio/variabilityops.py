@@ -2813,14 +2813,19 @@ class VariabilityFixationIndex():
         indices_to_calculate = (dimension * (dimension + 1)) / 2
         self.progress.new('Fixation index', progress_total_items=indices_to_calculate)
 
+        count = 0
         for i, sample_1 in enumerate(sample_ids):
             for j, sample_2 in enumerate(sample_ids):
                 if i > j:
                     self.fst_matrix[i, j] = self.fst_matrix[j, i]
                 else:
                     self.progress.increment()
-                    self.progress.update('{} with {}; Time elapsed: {}'.format(sample_1, sample_2, self.progress.t.time_elapsed()))
                     self.fst_matrix[i, j] = self.get_FST(sample_1, sample_2)
+
+                if count % 10 == 0:
+                    self.progress.update('%d/%d pairwise comparisons; %s elapsed' % (count, indices_to_calculate, self.progress.t.time_elapsed()))
+
+                count += 1
 
         if not self.keep_negatives:
             self.fst_matrix[self.fst_matrix < 0] = 0
