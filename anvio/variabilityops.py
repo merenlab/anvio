@@ -2714,6 +2714,9 @@ class VariabilityFixationIndex():
                                subset_filter = self.v.genes_of_interest,
                                subset_condition = self.v.genes_of_interest and self.v.load_all_genes)
 
+            if self.min_coverage_in_each_sample:
+                self.v.filter_data(function=self.v.filter_by_minimum_coverage_in_each_sample)
+
             self.v.data = self.v.data[self.columns_of_interest]
             self.v.convert_counts_to_frequencies()
             self.compute_FST_matrix()
