@@ -114,8 +114,8 @@ class KeggContext(object):
         K23749 - - - - 1 1 2266 2266 0.39 0.592 spectinabilin polyketide synthase system NorC [EC:2.3.1.290]
 
         Returns:
-        skip_list  list of strings, each string is a KO number
-        no_threshold_list   list of strings, each string is a KO number
+        skip_list  list of strings, each string is a KO number that has no associated data (ie, RNAs)
+        no_threshold_list   list of strings, each string is a KO number that has no scoring threshold
         """
 
         col_names_to_check = ["threshold","score_type","profile_type","F-measure","nseq","nseq_used","alen","mlen","eff_nseq","re/pos"]
@@ -428,7 +428,9 @@ class KeggSetup(KeggContext):
 
 
     def setup_profiles(self):
-        """This is a driver function which executes the KEGG setup process by downloading, decompressing, and hmmpressing the profiles."""
+        """This is a driver function which executes the KEGG setup process by downloading, decompressing, and hmmpressing the KOfam profiles.
+        It also downloads and processes the KEGG Module files into the MODULES.db.
+        """
 
         self.download_profiles()
         self.decompress_files()
