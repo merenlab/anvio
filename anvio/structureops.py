@@ -429,7 +429,7 @@ class StructureSuperclass(object):
 
         # Check and populate modeller databases if required
         self.progress.new("MODELLER")
-        self.progress.update("Populating MODELLER databases")
+        self.progress.update("Populating databases")
         MODELLER.MODELLER(self.args, filesnpaths.get_temp_file_path(), check_db_only=True)
         self.progress.end()
 
@@ -1347,6 +1347,7 @@ class PDBDatabase(object):
         modeller_database_dir = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
         pir_db = J(modeller_database_dir, 'pdb_95.pir')
         bin_db = J(modeller_database_dir, 'pdb_95.bin')
+        dmnd_db = J(modeller_database_dir, 'pdb_95.dmnd')
 
         if self.skip_modeller_update or not filesnpaths.is_output_file_writable(pir_db):
             return
@@ -1359,6 +1360,9 @@ class PDBDatabase(object):
 
         if filesnpaths.is_file_exists(bin_db, dont_raise=True):
             os.remove(bin_db)
+
+        if filesnpaths.is_file_exists(dmnd_db, dont_raise=True):
+            os.remove(dmnd_db)
 
         db_download_path = os.path.join(modeller_database_dir, "pdb_95.pir.gz")
         utils.download_file("https://salilab.org/modeller/downloads/pdb_95.pir.gz", db_download_path)

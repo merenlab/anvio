@@ -98,6 +98,7 @@ class Diamond:
         self.progress.new('DIAMOND')
         self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
 
+        # NOTE Question from Evan. Why is the query_fasta the input to the database?
         cmd_line = ['diamond',
                     'makedb',
                     '--in', self.query_fasta,
