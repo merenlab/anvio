@@ -549,7 +549,7 @@ class KeggRunHMMs(KeggContext):
 
             # FIXME? some KOs are not associated with modules. Should we report this?
             if mods:
-                mod_annotation = "\n".join(mods)
+                mod_annotation = "!!!".join(mods)
                 mod_class_annotation = "!!!".join(classes) # why do we split by '!!!'? Because that is how it is done in COGs. So so sorry. :'(
                 mod_name_annotation = ""
 
