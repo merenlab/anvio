@@ -1064,15 +1064,99 @@ class KeggMetabolismEstimator(KeggContext):
             if anvio.DEBUG:
                 self.run.warning("No KOs present for module %s. Parsing for completeness is still being done to obtain module steps." % mnum)
 
-        # Now I have decided that we need to have all possible paths through a module unrolled during KEGG setup.
-        # That way it is done once for all modules, and we can just load the path list into memory during an init.
-        # Then, here in this function, we can just access the path list quickly for the purposes of computing completeness.
+        # stuff to put in the module's dictionary
+        module_nonessential_kos = [] # KOs that are present but unnecessary for module completeness
 
-        # these are just here to remind myself what I need to be returning later
+        # stuff that will be returned
         over_complete_threshold = False
         has_nonessential_step = False
         has_no_ko_step = False
         defined_by_modules = False
+
+        # unroll the module definition to get all possible paths
+        meta_dict_for_bin[mnum]["paths"] = self.kegg_modules_db.unroll_module_definition(mnum)
+        meta_dict_for_bin[mnum]["pathway_completeness"] = []
+
+        for p in meta_dict_for_bin[mnum]["paths"]:
+            num_complete_steps_in_path = 0
+            num_nonessential_steps_in_path = 0 # so that we don't count nonessential steps when computing completeness
+            for atomic_step in p:
+                # there are 5 types of atomic steps to take care of
+                # 1) regular old single KOs, ie Kxxxxx
+                if atomic_step[0] == "K" and len(atomic_step) == 6:
+                    if atomic_step in present_list_for_mnum:
+                        num_complete_steps_in_path += 1
+                # 2) protein complexes, ie Kxxxxx+Kyyyyy-Kzzzzz (2 types of complex components - essential and nonessential)
+                elif atomic_step[0] == "K" and (atomic_step[6] == "+" or atomic_step[6] == "-"):
+                    idx = 6
+                    essential_components = [atomic_step[0:idx]]
+                    while idx < len(atomic_step):
+                        component_ko = atomic_step[idx+1:idx+7]
+                        if atomic_step[idx] == "+":
+                            essential_components.append(component_ko)
+                        else:
+                            has_nonessential_step = True
+                            if component_ko not in module_nonessential_kos:
+                                module_nonessential_kos.append(component_ko)
+                        idx += 7
+
+                    num_present_components = 0
+                    for c in essential_components:
+                        if c in present_list_for_mnum:
+                            num_present_components += 1
+                    component_completeness = num_present_components / len(essential_components)
+                    num_complete_steps_in_path += component_completeness
+                # 3) non-essential KOs, ie -Kxxxxx
+                elif atomic_step[0:2] == "-K" and len(atomic_step) == 7:
+                    """
+                    OKAY, SO HERE WE HAVE SOME POOPINESS THAT MAY NEED TO BE FIXED EVENTUALLY.
+                    Basically, some DEFINITION lines have KOs that seem to be marked non-essential;
+                    ie, "-K11024" in "K11023 -K11024 K11025 K11026 K11027".
+                    It was difficult to decide whether we should consider only K11024, or K11024 and all following KOs, to be non-essential.
+                    For instance, the module M00778 is a complex case that gave us pause - see Fiesta issue 955.
+                    But for now, we have decided to just track only the one KO as a 'non-essential step', and to not include such steps in
+                    the module completeness estimate.
+                    """
+                    if atomic_step[1:] not in module_nonessential_kos:
+                        module_nonessential_kos.append(atomic_step[1:])
+                    num_nonessential_steps_in_path += 1
+                    has_nonessential_step = True
+                # 4) steps without associated KOs, ie --
+                elif atomic_step == "--":
+                    # when '--' in a DEFINITION line happens, it signifies a reaction step that has no associated KO.
+                    # we assume that such steps are not complete,  because we really can't know if it is from the KOfam hits alone
+                    has_no_ko_step = True
+                # 5) Module numbers, ie Mxxxxx
+                elif atomic_step[0] == "M" and len(atomic_step) == 6:
+                    """
+                    This happens when a module is defined by other modules. For example, photosynthesis module M00611 is defined as
+                    (M00161,M00163) M00165 === (photosystem II or photosystem I) and calvin cycle
+
+                    We need all the modules to have been evaluated before we can determine completeness of steps with module numbers.
+                    So what we will do here is to use a flag variable to keep track of the modules that have this sort of definition
+                    in a list so we can go back and evaluate completeness of steps with module numbers later.
+                    """
+                    defined_by_modules = True
+                else:
+                    raise ConfigError("Well. While estimating completeness for module %m, we found an atomic step in the pathway that we "
+                                        "are not quite sure what to do with. Here it is: %s" % (mnum, atomic_step))
+
+
+                path_completeness = num_complete_steps_in_path / (len(p) - num_nonessential_steps_in_path)
+                meta_dict_for_bin[mnum]["pathway_completeness"].append(path_completeness)
+
+        # once all paths have been evaluated, we find the path(s) of maximum completeness and set that as the overall module completeness
+        # this is not very efficient as it takes two passes over the list but okay
+        meta_dict_for_bin[mnum]["percent_complete"] = max(meta_dict_for_bin[mnum]["pathway_completeness"])
+        meta_dict_for_bin[mnum]["most_complete_paths"] = [meta_dict_for_bin[mnum]["paths"][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["percent_complete"]]
+
+        # I am just printing this for now to see how often this happens
+        if len(meta_dict_for_bin[mnum]["most_complete_paths"]) > 1:
+            print("Found multiple complete paths for module %s. Here they are: %s" % (mnum, meta_dict_for_bin[mnum]["most_complete_paths"]))
+        over_complete_threshold = True if meta_dict_for_bin[mnum]["percent_complete"] >= self.completeness_threshold else False
+        meta_dict_for_bin[mnum]["complete"] = over_complete_threshold
+        meta_dict_for_bin[mnum]["present_nonessential_kos"] = module_nonessential_kos
+
         return over_complete_threshold, has_nonessential_step, has_no_ko_step, defined_by_modules
 
 
