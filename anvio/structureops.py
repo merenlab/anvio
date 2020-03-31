@@ -427,6 +427,12 @@ class StructureSuperclass(object):
         self.modeller_executable = self.args.modeller_executable
         self.run.info_single("Anvi'o found the MODELLER executable %s, so will use it" % self.modeller_executable, nl_after=1, mc='green')
 
+        # Check and populate modeller databases if required
+        self.progress.new("MODELLER")
+        self.progress.update("Populating MODELLER databases")
+        MODELLER.MODELLER(self.args, filesnpaths.get_temp_file_path(), check_db_only=True)
+        self.progress.end()
+
 
     def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None, raise_if_none=False):
         """Nabs the genes of interest based on genes_of_interest_path and gene_caller_ids
