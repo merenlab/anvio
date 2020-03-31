@@ -2,7 +2,7 @@
 # pylint: disable=line-too-long
 """ Table schemas for databases."""
 
-from anvio.constants import codons, nucleotides, essential_genome_info, alphanumeric_tRNA_feature_names
+from anvio.constants import codons, nucleotides, essential_genome_info, db_formatted_tRNA_feature_names
 
 import itertools
 
@@ -268,16 +268,16 @@ residue_info_sources = {"DSSP":        {"structure": ['codon_order_in_gene' , 'a
 ####################################################################################################
 
 tRNAseq_sequences_table_name            = 'tRNA_sequences'
-tRNAseq_sequences_table_structure       = ['name', 'sequence']
-tRNAseq_sequences_table_types           = ['str' , 'str']
+tRNAseq_sequences_table_structure       = ['name', 'replicate_names', 'replicate_count', 'sequence']
+tRNAseq_sequences_table_types           = ['str' , 'str'            , 'numeric'        , 'str']
 
 tRNAseq_info_table_name                 = 'tRNA_basic_info'
-tRNAseq_info_table_structure            = ['name', 'is_mature', 'anticodon_sequence', 'sequence_length', 'profiled_features_start', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature']
-tRNAseq_info_table_types                = ['str' , 'bool'     , 'str'               , 'numeric'        , 'numeric'                , 'numeric'      , 'numeric'        , 'numeric'   , 'numeric'     , 'numeric']
+tRNAseq_info_table_structure            = ['name', 'is_mature', 'anticodon_sequence', 'amino acid', 'sequence_length', 'profiled_features_start', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature']
+tRNAseq_info_table_types                = ['str' , 'bool'     , 'str'               , 'str'       , 'numeric'        , 'numeric'                , 'numeric'      , 'numeric'        , 'numeric'   , 'numeric'     , 'numeric']
 
 tRNAseq_features_table_name             = 'tRNA_features'
-tRNAseq_features_table_structure        = ['name'] + list(itertools.chain(*zip([f + '_start' for f in alphanumeric_tRNA_feature_names], [f + '_stop' for f in alphanumeric_tRNA_feature_names])))
-tRNAseq_features_table_types            = ['str']  + ['str'] * len(alphanumeric_tRNA_feature_names) * 2
+tRNAseq_features_table_structure        = ['name'] + list(itertools.chain(*zip([f + '_start' for f in db_formatted_tRNA_feature_names], [f + '_stop' for f in db_formatted_tRNA_feature_names])))
+tRNAseq_features_table_types            = ['str']  + ['str'] * len(db_formatted_tRNA_feature_names) * 2
 
 tRNAseq_unconserved_table_name          = 'tRNA_unconserved_nucleotides'
 tRNAseq_unconserved_table_structure     = ['name', 'pos'    , 'observed_nucleotide', 'expected_nucleotides']

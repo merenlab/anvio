@@ -39,17 +39,18 @@ if __name__ == '__main__':
     groupB.add_argument(
         *anvio.A('output-db-path'), **anvio.K('output-db-path', {'default': 'TRNASEQ.db'}))
     groupB.add_argument(*anvio.A('description'), **anvio.K('description'))
+    groupB.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
     args = anvio.get_args(parser)
 
-    # args = parser.parse_args(
-    #     ['-f', '/Users/sammiller/Documents/work/trnaseqdb/TP-CK-TP1-11_S11.test.newdeflines.fasta',
-    #      '-n', 'TP-CK-TP1-11_S11.test',
-    #      '-o', '/Users/sammiller/Documents/work/trnaseqdb/TRNASEQ.db'])
-
     try:
         a = dbops.tRNASeqDatabase(
-            args.output_db_path, run, progress, quiet=False, skip_init=True)
+            args.output_db_path,
+            num_threads=args.num_threads,
+            run=run,
+            progress=progress,
+            quiet=False,
+            skip_init=True)
         a.create(args)
     except ConfigError as e:
         print(e)

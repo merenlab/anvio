@@ -32,6 +32,8 @@ class MMseqs2:
         Level of MMseqs2 reporting: 0=nothing, 1: +errors, 2: +warnings, 3: +info
     top_output_dir: str, anvio.filesnpaths.get_temp_directory_path()
         Top directory of MMseqs2 output, containing subdirectories for databases
+    tmp_dir: str, None
+        Path to temp file directory, by default, <top_output_dir>/MMSEQS_TMP
     """
     def __init__(
         self,
@@ -39,6 +41,7 @@ class MMseqs2:
         num_threads=cpu_count(),
         verbosity_level=3,
         top_output_dir=filesnpaths.get_temp_directory_path(),
+        tmp_dir=None,
         log_file=None,
         quiet_anvio=False,
         run=None,
@@ -51,6 +54,10 @@ class MMseqs2:
         self.num_threads = num_threads
         self.verbosity_level = verbosity_level
         self.top_output_dir = top_output_dir
+        self.tmp_dir = os.path.join(
+            self.top_output_dir, "MMSEQS_TMP") if not tmp_dir else tmp_dir
+        if not os.path.exists(self.tmp_dir):
+            os.mkdir(self.tmp_dir)
         self.log_file_path = os.path.join(
             self.top_output_dir, '00_log') if not log_file else log_file
 
@@ -97,13 +104,61 @@ class MMseqs2:
         filesnpaths.is_output_file_writable(self.log_file_path)
 
 
+    def dereplicate(self, fasta_file_paths, output_name=None, tmp_dir=None):
+        """ Wrapper for dereplication using easy-linclust
+
+        Parameters
+        ==========
+        fasta_file_paths: str or list of str
+            All sequences in one or more input files will be clustered
+        output_name: str, None
+            Filename prefix of output files, by default, first FASTA file prefix + "_DEREP"
+
+        Returns
+        =======
+        fasta_all_seqs_path: str
+            Path to FASTA file of all sequences from each cluster
+            with a header line for the representative sequence
+        tsv_cluster: str
+            Path to TSV file of cluster membership
+        fasta_rep_seq_path: str
+            Path to FASTA file of representative sequence from each cluster
+        """
+
+        if type(fasta_file_paths) == str:
+            fasta_file_paths = [fasta_file_paths]
+
+        if output_name is None:
+            output_name = os.path.basename(os.path.splitext(fasta_file_paths[0])[0]) + "_DEREP"
+        output_path_prefix = os.path.join(self.top_output_dir, output_name)
+
+        cmd_line = [self.program_name,
+                    'easy-linclust',
+                    *fasta_file_paths,
+                    output_path_prefix,
+                    os.path.join(self.tmp_dir, 'TMP-' + output_name),
+                    '-c', '1',
+                    '--cov-mode', '0',
+                    '--min-seq-id', '1']
+
+        self.progress.new('Processing')
+        self.progress.update('Dereplicating sequences...')
+        self.check_return_value(
+            utils.run_command(cmd_line, self.log_file_path, remove_log_file_if_exists=False))
+        self.progress.end()
+
+        return (output_path_prefix + "_all_seqs.fasta",
+                output_path_prefix + "_cluster.tsv",
+                output_path_prefix + "_rep_seq.fasta")
+
+
     def run_cluster_pipeline(self, fasta_file_paths, cov_thresh=0.8, min_seq_id=0.98):
         """ Procedure for clustering and recovery of seed sequences and alignment information
 
         Parameters
         ==========
         fasta_file_paths: str or list of str
-            All sequences in the one or more input files will be clustered
+            All sequences in one or more input files will be clustered
         cov_thresh: float, 0.8
             Minimum proportion of aligned residues needed for clustering
         min_seq_id: float, 0.98
