@@ -780,8 +780,7 @@ class KeggMetabolismEstimator(KeggContext):
         # initialize all modules with empty lists and dicts for kos, gene calls
         modules = self.kegg_modules_db.get_all_modules_as_list()
         for mnum in modules:
-            bin_level_module_dict[mnum] = {"present_kos" : [],   # TODO: get rid of this key eventually
-                                           "gene_caller_ids" : set(),
+            bin_level_module_dict[mnum] = {"gene_caller_ids" : set(),
                                            "kofam_hits" : {},
                                            "genes_to_contigs" : {},
                                            "contigs_to_genes" : {}
@@ -793,7 +792,6 @@ class KeggMetabolismEstimator(KeggContext):
             if not present_in_mods:
                 kos_not_in_modules.append(ko)
             for m in present_in_mods:
-                bin_level_module_dict[m]["present_kos"].append(ko)  # TODO: get rid of this eventually
                 bin_level_module_dict[m]["gene_caller_ids"].add(gene_call_id)
                 if ko in bin_level_module_dict[m]["kofam_hits"]:
                     bin_level_module_dict[m]["kofam_hits"][ko].append(gene_call_id)
