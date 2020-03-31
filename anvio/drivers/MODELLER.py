@@ -66,7 +66,8 @@ class MODELLER:
       self.run_align_to_templates. Please see that method if you want to add your own script.
     """
 
-    def __init__(self, args, target_fasta_path, directory=None, run=terminal.Run(), lazy_init=False, skip_warnings=False):
+    def __init__(self, args, target_fasta_path, directory=None, run=terminal.Run(),
+                 diamond_search=True, lazy_init=False, skip_warnings=False, check_db_only=False):
 
         self.args = args
         self.run = run
@@ -109,6 +110,13 @@ class MODELLER:
         self.logs = {}
         self.scripts = {}
 
+        # All MODELLER databases are housed in self.database_dir
+        self.database_dir = constants.default_modeller_database_dir
+
+        if check_db_only:
+            self.check_database()
+            return
+
         self.sanity_check()
         self.corresponding_gene_call = self.get_corresponding_gene_call_from_target_fasta_path()
 
@@ -126,9 +134,6 @@ class MODELLER:
             "deviation"                : self.deviation,
             "directory"                : self.directory,
         }
-
-        # All MODELLER databases are housed in self.database_dir
-        self.database_dir = constants.default_modeller_database_dir
 
         # copy fasta into the working directory
         try:
