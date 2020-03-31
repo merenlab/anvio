@@ -1,7 +1,7 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 """
-    Classes to create, access, and/or populate contigs and profile databases.
+    Classes to create, access, and/or populate contigs, tRNASeq, and profile databases.
 """
 
 import os
@@ -19,6 +19,7 @@ import scipy.signal
 
 from io import StringIO
 from collections import Counter
+from multiprocessing import cpu_count
 
 import anvio
 import anvio.db as db
@@ -34,6 +35,7 @@ import anvio.genomestorage as genomestorage
 import anvio.auxiliarydataops as auxiliarydataops
 import anvio.homogeneityindex as homogeneityindex
 import anvio.trnaidentifier as trnaidentifier
+import anvio.drivers.mmseqs2 as mmseqs2
 
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
@@ -70,7 +72,7 @@ class DBClassFactory:
     def __init__(self):
         self.DB_CLASSES = {'profile': ProfileDatabase,
                            'contigs': ContigsDatabase,
-                           'trna': TRNASeedsDatabase,
+                           'trna': tRNASeqDatabase,
                            'pan': PanDatabase,
                            'genes': GenesDatabase}
 
@@ -3286,9 +3288,12 @@ class PanDatabase:
 
 
 class tRNASeqDatabase:
-    def __init__(self, db_path, run=run, progress=progress, quiet=True, skip_init=False):
+    def __init__(self, db_path, num_threads=1, run=run, progress=progress, quiet=True, skip_init=False):
+
         self.db = None
         self.db_path = db_path
+        self.output_dir = os.path.dirname(db_path)
+        self.num_threads = num_threads
 
         self.run = run
         self.progress = progress
@@ -3431,6 +3436,21 @@ class tRNASeqDatabase:
             raise ConfigError(
                 "Every sequence in the input FASTA file must have a unique ID. You know...")
 
+        # Dereplicate the input sequences
+        mmseqs_log_dir = os.path.join(self.output_dir, "MMSEQS_LOG")
+        if not os.path.exists(mmseqs_log_dir):
+            os.mkdir(mmseqs_log_dir)
+        mmseqs_output_basename_prefix = os.path.basename(os.path.splitext(tRNAseq_fasta)[0])
+        mmseqs_log_path = os.path.join(mmseqs_log_dir, mmseqs_output_basename_prefix + "-LOG.txt")
+
+        mmseqs = mmseqs2.MMseqs2(
+            top_output_dir=self.output_dir,
+            log_file=mmseqs_log_path,
+            num_threads=self.num_threads)
+        (all_seqs_fasta,
+         cluster_tsv,
+         rep_seq_fasta) = mmseqs.dereplicate(tRNAseq_fasta)
+
         # Create a blank tRNAseq database on disk and set self.db
         self.touch()
 
@@ -3453,12 +3473,15 @@ class tRNASeqDatabase:
             't_loop') + 1
 
         num_tRNA_seqs = 0
+        num_unique_tRNA_seqs = 0
         num_tRNA_seqs_containing_anticodon = 0
         num_mature_tRNA_seqs = 0
         num_tRNA_seqs_with_extrapolated_fiveprime_feature = 0
 
         # Process each sequence
-        fasta = u.SequenceSource(tRNAseq_fasta)
+        fasta = u.SequenceSource(rep_seq_fasta)
+        cluster_file = open(cluster_tsv)
+        rep_seq_name, member_seq_name = cluster_file.readline().rstrip().split('\t')
         self.progress.new('Finding tRNA sequences', progress_total_items=total_num_seqs)
         fasta.reset()
         while next(fasta):
@@ -3468,38 +3491,62 @@ class tRNASeqDatabase:
             tRNAseq_sequence = fasta.seq
             seq_length = len(fasta.seq)
 
-            self.progress.update("tRNA-seq sequence '%d' " % fasta.pos)
+            self.progress.update("tRNA-seq representative sequence '%d' " % fasta.pos)
 
             tRNA_profile = trnaidentifier.Profile(tRNAseq_sequence)
             if len(tRNA_profile.features) >= num_features_through_T_loop:
-                num_tRNA_seqs += 1
+                num_unique_tRNA_seqs += 1
 
-                if tRNA_profile.anticodon_seq:
-                    num_tRNA_seqs_containing_anticodon += 1
-                if tRNA_profile.is_mature:
-                    num_mature_tRNA_seqs += 1
-                if tRNA_profile.num_in_extrapolated_fiveprime_feature > 0:
-                    num_tRNA_seqs_with_extrapolated_fiveprime_feature += 1
+                member_names = [tRNAseq_name]
+                # Find the sequence's cluster.
+                if tRNAseq_name != rep_seq_name:
+                    for line in cluster_file:
+                        rep_seq_name, member_seq_name = line.rstrip().split('\t')
+                        if tRNAseq_name == rep_seq_name:
+                            break
+                # Loop through the cluster's member sequences.
+                for line in cluster_file:
+                    rep_seq_name, member_seq_name = line.rstrip().split('\t')
+                    if tRNAseq_name != rep_seq_name:
+                        break
+                    else:
+                        member_names.append(member_seq_name)
+                num_members = len(member_names)
+                num_tRNA_seqs += num_members
 
                 profiled_seq_length = len(tRNA_profile.profiled_seq)
 
                 unconserved_info = tRNA_profile.get_unconserved_positions()
                 unpaired_info = tRNA_profile.get_unpaired_positions()
 
+                if tRNA_profile.anticodon_seq:
+                    num_tRNA_seqs_containing_anticodon += num_members
+                if tRNA_profile.is_mature:
+                    num_mature_tRNA_seqs += num_members
+                if tRNA_profile.num_in_extrapolated_fiveprime_feature > 0:
+                    num_tRNA_seqs_with_extrapolated_fiveprime_feature += num_members
+
                 self.progress.append(
                     "is recognized as tRNA. "
+                    "Number of replicate sequences: %d. "
                     "Sequence length: %d. "
                     "Length of 3' part of sequence with profiled features: %d. "
                     "Number of 'unconserved' nucleotides: %d. "
                     "Number of unpaired stem positions: %d."
-                    % (seq_length, profiled_seq_length, len(unconserved_info), len(unpaired_info)))
+                    % (num_members,
+                       seq_length,
+                       profiled_seq_length,
+                       len(unconserved_info),
+                       len(unpaired_info)))
 
-                tRNAseq_sequences_table_entries.append((fasta.id, fasta.seq))
+                tRNAseq_sequences_table_entries.append(
+                    (tRNAseq_name, ','.join(member_names), num_members, tRNAseq_sequence))
 
                 tRNAseq_info_table_entries.append((
-                    fasta.id,
+                    tRNAseq_name,
                     tRNA_profile.is_mature,
                     tRNA_profile.anticodon_seq,
+                    tRNA_profile.anticodon_aa,
                     seq_length,
                     seq_length - profiled_seq_length,
                     tRNA_profile.num_conserved,
@@ -3509,7 +3556,7 @@ class tRNASeqDatabase:
                     tRNA_profile.num_in_extrapolated_fiveprime_feature))
 
                 tRNAseq_features_table_entries.append(
-                    (fasta.id, )
+                    (tRNAseq_name, )
                     + tuple(['?' * 2 for _ in range(
                         (len(constants.tRNA_feature_names) - len(tRNA_profile.features)))]) * 2
                     + tuple(itertools.chain(*zip(
@@ -3521,10 +3568,10 @@ class tRNASeqDatabase:
                          for f in tRNA_profile.features]))))
 
                 for unconserved_tuple in unconserved_info:
-                    tRNAseq_unconserved_table_entries.append((fasta.id, ) + unconserved_tuple)
+                    tRNAseq_unconserved_table_entries.append((tRNAseq_name, ) + unconserved_tuple)
 
                 for unpaired_tuple in unpaired_info:
-                    tRNAseq_unpaired_table_entries.append((fasta.id, ) + unpaired_tuple)
+                    tRNAseq_unpaired_table_entries.append((tRNAseq_name, ) + unpaired_tuple)
 
             else:
                 self.progress.append(
@@ -3532,10 +3579,10 @@ class tRNASeqDatabase:
                     "Sequence length: %d." % seq_length)
 
         self.db._exec_many(
-            '''INSERT INTO %s VALUES (?,?)''' % t.tRNAseq_sequences_table_name,
+            '''INSERT INTO %s VALUES (?,?,?,?)''' % t.tRNAseq_sequences_table_name,
             tRNAseq_sequences_table_entries)
         self.db._exec_many(
-            '''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.tRNAseq_info_table_name,
+            '''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?)''' % t.tRNAseq_info_table_name,
             tRNAseq_info_table_entries)
         self.db._exec_many(
             '''INSERT INTO %s VALUES (%s)''' % (
@@ -3556,6 +3603,7 @@ class tRNASeqDatabase:
         # Informative metadata
         self.db.set_meta_value('num_seqs_processed', num_seqs_processed)
         self.db.set_meta_value('num_tRNA_seqs', num_tRNA_seqs)
+        self.db.set_meta_value('num_unique_tRNA_seqs', num_unique_tRNA_seqs)
         self.db.set_meta_value('num_tRNA_seqs_containing_anticodon',
                                num_tRNA_seqs_containing_anticodon)
         self.db.set_meta_value('num_mature_tRNA_seqs',
@@ -3566,7 +3614,8 @@ class tRNASeqDatabase:
         self.disconnect()
 
         self.run.info("Number of sequences processed", num_seqs_processed, quiet=self.quiet)
-        self.run.info("Number of tRNA sequences identified and added to db", num_tRNA_seqs, quiet=self.quiet)
+        self.run.info("Number of tRNA sequences identified", num_tRNA_seqs, quiet=self.quiet)
+        self.run.info("Number of unique tRNA sequences identified and added to the database", num_unique_tRNA_seqs, quiet=self.quiet)
         self.run.info("Number of tRNA sequences containing anticodon", num_tRNA_seqs_containing_anticodon, quiet=self.quiet)
         self.run.info("Number of mature tRNA sequences", num_mature_tRNA_seqs, quiet=self.quiet)
         self.run.info("Number of tRNA sequences with extrapolated 5' feature", num_tRNA_seqs_with_extrapolated_fiveprime_feature, quiet=self.quiet)

@@ -964,12 +964,15 @@ class Profile:
         self.feature_names = [f.name for f in self.features]
         if self.features:
             if self.anticodon_loop_index < len(self.features):
-                self.anticodon_seq = self.features[
-                    -self.anticodon_loop_index - 1].anticodon.string
+                anticodon = self.features[-self.anticodon_loop_index - 1].anticodon
+                self.anticodon_seq = anticodon.string
+                self.anticodon_aa = anticodon.aa_string
             else:
                 self.anticodon_seq = ''
+                self.anticodon_aa = ''
         else:
             self.anticodon_seq = ''
+            self.anticodon_aa = ''
         self.is_fully_profiled = (self.read == self.profiled_seq)
 
 
