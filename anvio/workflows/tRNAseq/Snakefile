@@ -30,17 +30,13 @@ progress = terminal.Progress()
 slave_mode = False if 'workflows/tRNAseq' in workflow.included[0] else True
 
 if not slave_mode:
-    # it is important that this comes before the include statement since
-    # M is defined here and will also be used in the contigs workflow
     M = tRNASeqWorkflow(argparse.Namespace(config=config))
     M.init()
     dirs_dict = M.dirs_dict
 
 
 rule tRNAseq_workflow_target_rule:
-    '''
-        The target rule for the workflow.
-    '''
+    ''' The target rule for the workflow '''
     input: M.target_files
 
 
@@ -52,7 +48,7 @@ rule make_iu_input:
     # the input file is marked as 'ancient' so snakemake wouldn't run it
     # just because a new samples_txt file was created
     input: ancient(M.get_param_value_from_config(['samples_txt']))
-    output: expand("{DIR}/iu_samples_input.txt", DIR=dirs_dict['QC_DIR'])
+    output: os.path.join(dirs_dict['QC_DIR'], "iu_samples_input.txt")
     threads: M.T('make_iu_input')
     resources: nodes = M.T('make_iu_input')
     run:
@@ -71,82 +67,112 @@ rule iu_gen_configs:
     log: os.path.join(dirs_dict['LOGS_DIR'], "iu_gen_configs.log")
     # the input file is marked as 'ancient' so snakemake wouldn't run it
     # just because a new path-to-raw-fastq-files.txt file was created.
-    input: ancient(expand("{DIR}/iu_samples_input.txt", DIR=dirs_dict['QC_DIR']))
-    output: expand("{DIR}/{sample}_{split}.ini", DIR=dirs_dict['QC_DIR'], sample=M.sample_names, split=M.valid_splits)
+    input: ancient(os.path.join(dirs_dict["QC_DIR"], "iu_samples_input.txt"))
+    output: expand(os.path.join(dirs_dict["QC_DIR"], "{sample}_{split}.ini"), sample=M.sample_names, split=M.valid_splits)
     params:
-        dir=dirs_dict['QC_DIR'],
+        DIR = dirs_dict['QC_DIR'],
         r1_prefix = M.get_rule_param('iu_gen_configs', '--r1-prefix'),
         r2_prefix = M.get_rule_param('iu_gen_configs', '--r2-prefix')
     threads: M.T('iu_gen_configs')
     resources: nodes = M.T('iu_gen_configs')
-    shell: "iu-gen-configs {input} -o {params.dir} {params.r1_prefix} {params.r2_prefix} >> {log} 2>&1"
+    shell: "iu-gen-configs {input} -o {params.DIR} {params.r1_prefix} {params.r2_prefix} >> {log} 2>&1"
 
 
-def get_raw_fastq(sample, split):
-    ''' return a dict with the path to the raw fastq files'''
-    df = M.samples_information
-    r1 = df[df['sample'] == sample][df['split'] == split]['r1'].iat[0]
-    r2 = df[df['sample'] == sample][df['split'] == split]['r2'].iat[0]
-    return {'r1': r1, 'r2': r2}
+# def get_raw_fastq(sample, split):
+#     ''' return a dict with the path to the raw fastq files'''
+#     df = M.samples_information
+#     r1 = df[df['sample'] == sample][df['split'] == split]['r1'].iat[0]
+#     r2 = df[df['sample'] == sample][df['split'] == split]['r2'].iat[0]
+#     return {'r1': r1, 'r2': r2}
 
 
-def get_qc_input(sample, split):
-    ''' return a dict with input for qc rule'''
-    d = {'ini': ancient(os.path.join(dirs_dict['QC_DIR'], "%s_%s.ini" % (sample, split)))}
-    d.update(get_raw_fastq(sample, split))
-    return d
+# def get_qc_input(sample, split):
+#     ''' return a dict with input for qc rule'''
+#     d = {'ini': ancient(os.path.join(dirs_dict['QC_DIR'], "%s_%s.ini" % (sample, split)))}
+#     d.update(get_raw_fastq(sample, split))
+#     return d
 
 
 rule iu_merge_pairs:
     ''' Run QC using iu-merge-pairs. '''
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-iu_merge_pairs.log")
-    # marking the config file as "ancient" so QC wouldn't run just because a new config file was produced.
-    input: unpack(lambda wildcards: get_qc_input(wildcards.sample, wildcards.split))
+    input: os.path.join(dirs_dict["QC_DIR"], "{sample}_{split}.ini")
     output:
-        qc_output_merged = os.path.join(dirs_dict['QC_DIR'], "{sample}_{split}_MERGED"),
-        stats = os.path.join(dirs_dict['QC_DIR'], "{sample}_{split}_STATS")
+        qc_output_merged = os.path.join(dirs_dict["QC_DIR"], "{sample}_{split}_MERGED"),
+        stats = os.path.join(dirs_dict["QC_DIR"], "{sample}_{split}_STATS")
     params:
         marker_gene_stringent = M.get_rule_param('iu_merge_pairs', '--marker-gene-stringent'),
-        max_num_mismatches = M.get_rule_param('iu_merge_pairs', '--max-num-mismatches'),
-        trim_suffix = M.get_rule_param('iu_merge_pairs', '--trim-suffix'),
-        report_r1_prefixes = M.get_rule_param('iu_merge_pairs', '--report-r1-prefixes'),
-        report_r2_prefixes = M.get_rule_param('iu_merge_pairs', '--report-r2-prefixes')
+        max_num_mismatches = M.get_rule_param('iu_merge_pairs', '--max-num-mismatches')
     threads: M.T('iu_merge_pairs')
     resources: nodes = M.T('iu_merge_pairs')
-    shell:
-        """
-        iu-merge-pairs {input.ini} {params.marker_gene_stringent} {params.max_num_mismatches} {params.trim_suffix} {params.report_r1_prefixes} {params.report_r2_prefixes} >> {log} 2>&1
-        """
+    shell: """ iu-merge-pairs {input} {params.marker_gene_stringent} {params.max_num_mismatches} --num-threads {threads} >> {log} 2>&1 """
 
 
-def uncompress_fastqs_if_needed(r1, r2):
-    # Checking if any of the input files are compressed
-    # this should only happen if QC is not performed in this snakemake session
-    # because if QC is performed in this session then the output of iu-filter-quality
-    # is not compressed and snakemake will schedule fq2fa rule before gzip rule
-    files_that_end_with_gz = [f for f in [r1, r2] if f.endswith('.gz')]
-    if len(files_that_end_with_gz) == 1:
-        raise ConfigError("Something seems very bad: "
-                          "one of the pair fastq files is compressed and the other one is not. "
-                          "This is the compressed one: %s" % files_that_end_with_gz[0])
-    elif len(files_that_end_with_gz) == 2:
-        run.warning("The following fastq files are compressed "
-                    "and will now be uncompressed using gunzip: "
-                    "%s." % files_that_end_with_gz)
-        return True
-    return False
+# def uncompress_fastqs_if_needed(r1, r2):
+#     # Checking if any of the input files are compressed
+#     # this should only happen if QC is not performed in this snakemake session
+#     # because if QC is performed in this session then the output of iu-filter-quality
+#     # is not compressed and snakemake will schedule fq2fa rule before gzip rule
+#     files_that_end_with_gz = [f for f in [r1, r2] if f.endswith('.gz')]
+#     if len(files_that_end_with_gz) == 1:
+#         raise ConfigError("Something seems very bad: "
+#                           "one of the pair fastq files is compressed and the other one is not. "
+#                           "This is the compressed one: %s" % files_that_end_with_gz[0])
+#     elif len(files_that_end_with_gz) == 2:
+#         run.warning("The following fastq files are compressed "
+#                     "and will now be uncompressed using gunzip: "
+#                     "%s." % files_that_end_with_gz)
+#         return True
+#     return False
 
 
-def uncompress_fastqs_if_needed(r1, r2, log):
-    if uncompress_fastqs_if_needed(r1, r2):
-        r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
-        r2_unzipped = r2.replace('.fastq.gz', '_temp.fastq')
-        shell("gunzip < %s > %s 2>> %s" % (r1, r1_unzipped, log))
-        shell("gunzip < %s > %s 2>> %s" % (r2, r2_unzipped, log))
-        r1 = r1_unzipped
-        r2 = r2_unzipped
-    return r1, r2
+# def uncompress_fastqs_if_needed(r1, r2, log):
+#     if uncompress_fastqs_if_needed(r1, r2):
+#         r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
+#         r2_unzipped = r2.replace('.fastq.gz', '_temp.fastq')
+#         shell("gunzip < %s > %s 2>> %s" % (r1, r1_unzipped, log))
+#         shell("gunzip < %s > %s 2>> %s" % (r2, r2_unzipped, log))
+#         r1 = r1_unzipped
+#         r2 = r2_unzipped
+#     return r1, r2
+
+
+rule convert_fastq_to_fasta:
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-convert_fastq_to_fasta.log")
+    input: rules.iu_merge_pairs.output.qc_output_merged
+    output: os.path.join(dirs_dict["QC_DIR"], "{sample}_{split}_MERGED.fasta")
+    threads: M.T('convert_fastq_to_fasta')
+    resources: nodes = M.T('convert_fastq_to_fasta')
+    run:
+        with open(input[0]) as fin, open(output[0], 'w') as fout:
+            i = 0
+            for line in fin:
+                if i == 0:
+                    fout.write('>' + line[1:])
+                    i += 1
+                elif i == 1:
+                    fout.write(line.upper())
+                    i += 1
+                elif i == 2:
+                    i += 1
+                else:
+                    i = 0
+
+
+rule anvi_reformat_fasta:
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-reformat_fasta.log")
+    input: rules.convert_fastq_to_fasta.output
+    output:
+        fasta = os.path.join(dirs_dict['QC_DIR'], "{sample}_{split}.fasta"),
+        report = os.path.join(dirs_dict['QC_DIR'], "{sample}_{split}_REFORMAT_REPORT.txt")
+    threads: M.T('anvi_reformat_fasta')
+    resources: nodes = M.T('anvi_reformat_fasta')
+    params:
+        simplify_names = M.get_rule_param('anvi_reformat_fasta', '--simplify-names')
+    shell: "anvi-script-reformat-fasta -o {output.fasta} {params.simplify_names} --report-file {output.report} {input} >> {log} 2>&1"
 
 
 rule gen_qc_report:
@@ -182,6 +208,16 @@ rule gen_qc_report:
                                       "These files, for example, have a difference between their headers: "
                                       "%s and %s" % (input[i], input[i - 1]))
         u.store_dict_as_TAB_delimited_file(report_dict, output[0], headers=['sample + split'] + headers)
+
+
+rule anvi_gen_tRNAseq_database:
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-anvi_gen_tRNAseq_database")
+    input: rules.anvi_reformat_fasta.output.fasta
+    output: os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_TRNASEQ.db")
+    threads: M.T('anvi_gen_tRNAseq_database')
+    resources: nodes = M.T('anvi_gen_tRNAseq_database')
+    shell: "anvi-gen-trnaseq-database -f {input} -o {output} -T {threads}"
 
 
 if 'workflows/tRNAseq' in workflow.included[0]:
