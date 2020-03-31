@@ -52,9 +52,6 @@ class MODELLER:
     directory: str, None
         Path to directory that MODELLER will be run in. If None, temp dir will be created
 
-    diamond_search: bool, True
-        Use DIAMOND instead of MODELLER to search for homologs
-
     lazy_init : bool, False
         If True, check_MODELLER will not be called
 
@@ -70,14 +67,13 @@ class MODELLER:
     """
 
     def __init__(self, args, target_fasta_path, directory=None, run=terminal.Run(),
-                 diamond_search=True, lazy_init=False, skip_warnings=False, check_db_only=False):
+                 lazy_init=False, skip_warnings=False, check_db_only=False):
 
         self.args = args
         self.run = run
         if skip_warnings and not anvio.DEBUG:
             self.run.verbose = False
         self.lazy_init = lazy_init
-        self.diamond_search = diamond_search
 
         self.target_fasta_path = target_fasta_path
         self.directory = directory if directory else filesnpaths.get_temp_directory_path()
@@ -102,7 +98,6 @@ class MODELLER:
         self.alignment_pap_path = None
         self.alignment_pir_path = None
         self.get_template_path = None
-        self.search_results_path = None
         self.target_pir_path = None
         self.template_family_matrix_path = None
         self.template_info_path = None
@@ -191,9 +186,7 @@ class MODELLER:
 
             self.check_database()
 
-            self.run_search()
-
-            self.parse_search_results()
+            self.run_search_and_parse_results()
 
             self.get_structures()
 
@@ -267,84 +260,6 @@ class MODELLER:
             raise self.EndModeller
 
         self.run.info("Structures obtained for", ", ".join([code[0]+code[1] for code in self.list_of_template_code_and_chain_ids]))
-
-
-    def parse_search_results(self):
-        """
-        Parses search results and filters for best homologs to use as structure templates.
-
-        parameters used :: self.percent_identical_cutoff, self.max_number_templates
-        """
-        if not self.percent_identical_cutoff or not self.max_number_templates:
-            raise ConfigError("parse_search_results::You initiated this class without providing values for percent_identical_cutoff "
-                              "and max_number_templates, which is required for this function.")
-
-        # put names to the columns
-        column_names = (      "idx"      ,  "code_and_chain"  ,       "type"     ,  "iteration_num"  ,
-                            "seq_len"    , "start_pos_target" , "end_pos_target" , "start_pos_dbseq" ,
-                        "send_pos_dbseq" ,   "align_length"   ,   "seq_identity" ,      "evalue"      )
-
-        # load the table as a dataframe
-        search_df = pd.read_csv(self.search_results_path, sep="\s+", comment="#", names=column_names, index_col=False)
-
-        # matches found (-1 because target is included)
-        matches_found = len(search_df) - 1
-
-        if not matches_found:
-            self.run.warning("No proteins with homologous sequence were found for {}. No structure will be modelled".format(self.corresponding_gene_call))
-            raise self.EndModeller
-
-        # add some useful columns
-        search_df["proper_pident"] = search_df["seq_identity"] * search_df["align_length"] / \
-                                     search_df.iloc[0, search_df.columns.get_loc("seq_len")]
-        search_df["code"] = search_df["code_and_chain"].str[:-1]
-        search_df["chain"] = search_df["code_and_chain"].str[-1]
-
-        # filter results by self.percent_identical_cutoff.
-        max_pident_found = search_df["proper_pident"].max()
-        id_of_max_pident = tuple(search_df.loc[search_df["proper_pident"].idxmax(), ["code", "chain"]].values)
-        search_df = search_df[search_df["proper_pident"] >= self.percent_identical_cutoff]
-
-        search_df = search_df.sort_values("proper_pident", ascending=False)
-
-        # If more than 1 template in 1 PDB id, just choose 1
-        search_df = search_df.drop_duplicates('code', keep='first')
-
-        # Order them and take the first self.modeller.max_number_templates.
-        matches_after_filter = len(search_df)
-        if not matches_after_filter:
-            self.run.warning("Gene {} did not have a search result with proper percent identicalness above or equal "
-                             "to {}%. The best match was chain {} of https://www.rcsb.org/structure/{}, which had a "
-                             "proper percent identicalness of {:.2f}%. No structure will be modelled.".\
-                              format(self.corresponding_gene_call,
-                                     self.percent_identical_cutoff,
-                                     id_of_max_pident[1],
-                                     id_of_max_pident[0],
-                                     max_pident_found))
-            raise self.EndModeller
-
-        # get up to self.modeller.max_number_templates of those with the highest proper_ident scores.
-        search_df = search_df.iloc[:min([len(search_df), self.max_number_templates])]
-
-        # Get their chain and 4-letter ids
-        self.list_of_template_code_and_chain_ids = list(zip(search_df["code"], search_df["chain"]))
-
-        self.run.info("Max number of templates allowed", self.max_number_templates)
-        self.run.info("Number of candidate templates", matches_found)
-        self.run.info("After >{}% identical filter".format(self.percent_identical_cutoff), matches_after_filter)
-        self.run.info("Number accepted as templates", len(self.list_of_template_code_and_chain_ids))
-
-        # update user on which templates are used, and write the templates to self.out
-        for i in range(len(self.list_of_template_code_and_chain_ids)):
-            pdb_id, chain_id = self.list_of_template_code_and_chain_ids[i]
-            ppi = search_df["proper_pident"].iloc[i]
-
-            self.out["templates"]["pdb_id"].append(pdb_id)
-            self.out["templates"]["chain_id"].append(chain_id)
-            self.out["templates"]["ppi"].append(ppi)
-
-            self.run.info("Template {}".format(i+1),
-                          "Protein ID: {}, Chain {} ({:.1f}% identical)".format(pdb_id, chain_id, ppi))
 
 
     def sanity_check(self, skip_warnings=False):
@@ -571,28 +486,90 @@ class MODELLER:
                                                                   os.path.basename(self.alignment_pap_path)]))
 
 
-    def run_search(self):
+    def run_search_and_parse_results(self):
         """Align the protein against the database based on only sequence"""
 
-        script_name = "search.py"
+        if not self.percent_identical_cutoff or not self.max_number_templates:
+            raise ConfigError("run_search_and_parse_results :: You initiated this class without providing values for percent_identical_cutoff "
+                              "and max_number_templates, which is required for this function.")
 
-        # check script exists, then copy the script into the working directory
-        self.copy_script_to_directory(script_name)
+        # Change to MODELLER working directory
+        os.chdir(self.directory)
 
-        # name pir file by the corresponding_gene_call (i.e. defline of the fasta)
-        self.search_results_path = J(self.directory, "gene_{}_SearchResults.prf".format(self.corresponding_gene_call))
+        driver = diamond.Diamond(
+            query_fasta=self.target_fasta_path,
+            target_fasta=J(self.database_dir, 'pdb_95.dmnd'),
+            run=terminal.Run(verbose=False),
+            progress=terminal.Progress(verbose=False),
+        )
+        driver.blastp()
 
-        command = [self.executable,
-                   script_name,
-                   self.target_pir_path,
-                   self.database_path,
-                   self.search_results_path]
+        # Change back to user directory
+        os.chdir(self.start_dir)
 
-        self.run_command(command,
-                         script_name = script_name,
-                         check_output = [self.search_results_path])
+        search_df = driver.view_as_dataframe(J(self.directory, driver.tabular_output_path))
 
-        self.run.info("Search results for similar AA sequences", os.path.basename(self.search_results_path))
+        matches_found = search_df.shape[0]
+
+        if not matches_found:
+            self.run.warning("No proteins with homologous sequence were found for {}. No structure will be modelled".format(self.corresponding_gene_call))
+            raise self.EndModeller
+
+        # We need the gene length for proper_pident
+        target_fasta = u.SequenceSource(self.target_fasta_path, lazy_init=False)
+        while next(target_fasta):
+            gene_length = len(target_fasta.seq)
+
+        # add some useful columns
+        search_df["proper_pident"] = search_df["pident"] * search_df["length"] / gene_length
+        search_df["code"] = search_df["sseqid"].str[:-1]
+        search_df["chain"] = search_df["sseqid"].str[-1]
+
+        # filter results by self.percent_identical_cutoff.
+        max_pident_found = search_df["proper_pident"].max()
+        id_of_max_pident = tuple(search_df.loc[search_df["proper_pident"].idxmax(), ["code", "chain"]].values)
+        search_df = search_df[search_df["proper_pident"] >= self.percent_identical_cutoff]
+
+        search_df = search_df.sort_values("proper_pident", ascending=False)
+
+        # If more than 1 template in 1 PDB id, just choose 1
+        search_df = search_df.drop_duplicates('code', keep='first')
+
+        # Order them and take the first self.modeller.max_number_templates.
+        matches_after_filter = len(search_df)
+        if not matches_after_filter:
+            self.run.warning("Gene {} did not have a search result with proper percent identicalness above or equal "
+                             "to {}%. The best match was chain {} of https://www.rcsb.org/structure/{}, which had a "
+                             "proper percent identicalness of {:.2f}%. No structure will be modelled.".\
+                              format(self.corresponding_gene_call,
+                                     self.percent_identical_cutoff,
+                                     id_of_max_pident[1],
+                                     id_of_max_pident[0],
+                                     max_pident_found))
+            raise self.EndModeller
+
+        # get up to self.modeller.max_number_templates of those with the highest proper_ident scores.
+        search_df = search_df.iloc[:min([len(search_df), self.max_number_templates])]
+
+        # Get their chain and 4-letter ids
+        self.list_of_template_code_and_chain_ids = list(zip(search_df["code"], search_df["chain"]))
+
+        self.run.info("Max number of templates allowed", self.max_number_templates)
+        self.run.info("Number of candidate templates", matches_found)
+        self.run.info("After >{}% identical filter".format(self.percent_identical_cutoff), matches_after_filter)
+        self.run.info("Number accepted as templates", len(self.list_of_template_code_and_chain_ids))
+
+        # update user on which templates are used, and write the templates to self.out
+        for i in range(len(self.list_of_template_code_and_chain_ids)):
+            pdb_id, chain_id = self.list_of_template_code_and_chain_ids[i]
+            ppi = search_df["proper_pident"].iloc[i]
+
+            self.out["templates"]["pdb_id"].append(pdb_id)
+            self.out["templates"]["chain_id"].append(chain_id)
+            self.out["templates"]["ppi"].append(ppi)
+
+            self.run.info("Template {}".format(i+1),
+                          "Protein ID: {}, Chain {} ({:.1f}% identical)".format(pdb_id, chain_id, ppi))
 
 
     def check_database(self):
@@ -638,7 +615,7 @@ class MODELLER:
 
         dmnd_db_path = J(self.database_dir, 'pdb_95.dmnd')
 
-        if not self.diamond_search or os.path.exists(dmnd_db_path):
+        if os.path.exists(dmnd_db_path):
             return
 
         self.run.warning("Your diamond database does not exist. It will be created.")
@@ -671,7 +648,11 @@ class MODELLER:
         fasta.close()
         temp.close()
 
-        driver = diamond.Diamond(query_fasta=fasta_path)
+        driver = diamond.Diamond(
+            query_fasta=fasta_path,
+            run=terminal.Run(verbose=False),
+            progress=terminal.Progress(verbose=False),
+        )
         driver.makedb(output_file_path=dmnd_path)
 
         os.remove(fasta_path)
