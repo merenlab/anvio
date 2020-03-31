@@ -17,8 +17,8 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
+from anvio.drivers import diamond
 from anvio.errors import ConfigError, ModellerError, ModellerScriptError
-
 
 __author__ = "Evan Kiefl"
 __copyright__ = "Copyright 2016, The anvio Project"
@@ -52,6 +52,9 @@ class MODELLER:
     directory: str, None
         Path to directory that MODELLER will be run in. If None, temp dir will be created
 
+    diamond_search: bool, True
+        Use DIAMOND instead of MODELLER to search for homologs
+
     lazy_init : bool, False
         If True, check_MODELLER will not be called
 
@@ -74,6 +77,7 @@ class MODELLER:
         if skip_warnings and not anvio.DEBUG:
             self.run.verbose = False
         self.lazy_init = lazy_init
+        self.diamond_search = diamond_search
 
         self.target_fasta_path = target_fasta_path
         self.directory = directory if directory else filesnpaths.get_temp_directory_path()
@@ -113,6 +117,10 @@ class MODELLER:
         # All MODELLER databases are housed in self.database_dir
         self.database_dir = constants.default_modeller_database_dir
 
+        # store the original directory so we can cd back and forth between
+        # self.directory and self.start_dir
+        self.start_dir = os.getcwd()
+
         if check_db_only:
             self.check_database()
             return
@@ -141,10 +149,6 @@ class MODELLER:
             self.target_fasta_path = J(self.directory, self.target_fasta_path)
         except shutil.SameFileError:
             pass
-
-        # store the original directory so we can cd back and forth between
-        # self.directory and self.start_dir
-        self.start_dir = os.getcwd()
 
 
     def get_corresponding_gene_call_from_target_fasta_path(self):
@@ -594,42 +598,83 @@ class MODELLER:
     def check_database(self):
         """Setup the database files
 
-        Checks for the .bin version of database. Binarizes if only .pir version found. Sets the db filepath.
+        Downloads the .pir file if it is missing
+        Binarizes .pir file if .bin is missing
+        Creates the .dmnd file if it is missing
         """
 
         extensionless, extension = os.path.splitext(self.modeller_database)
         if extension not in [".bin",".pir",""]:
             raise ConfigError("MODELLER :: The only possible database extensions are .bin and .pir")
 
-        bin_db_path = J(self.database_dir, extensionless+".bin")
-        pir_db_path = J(self.database_dir, extensionless+".pir")
+        bin_db_path = J(self.database_dir, extensionless + ".bin")
+        pir_db_path = J(self.database_dir, extensionless + ".pir")
         bin_exists = utils.filesnpaths.is_file_exists(bin_db_path, dont_raise=True)
         pir_exists = utils.filesnpaths.is_file_exists(pir_db_path, dont_raise=True)
 
         self.database_path = bin_db_path
 
-        if bin_exists:
-            return
+        if bin_exists and pir_exists:
+            # We good
+            pass
+        else:
+            if not pir_exists:
+                # Download .pir
+                self.run.warning("Anvi'o looked in {} for a database with the name {} and with an extension "
+                                 "of either .bin or .pir, but didn't find anything matching that "
+                                 "criteria. Anvi'o will try and download the best database it knows of from "
+                                 "https://salilab.org/modeller/downloads/pdb_95.pir.gz and use that. "
+                                 "You can checkout https://salilab.org/modeller/ for more info about the pdb_95 "
+                                 "database".format(self.database_dir, self.modeller_database))
 
-        if not pir_exists and not bin_exists:
-            self.run.warning("Anvi'o looked in {} for a database with the name {} and with an extension "
-                             "of either .bin or .pir, but didn't find anything matching that "
-                             "criteria. Anvi'o will try and download the best database it knows of from "
-                             "https://salilab.org/modeller/downloads/pdb_95.pir.gz and use that. "
-                             "You can checkout https://salilab.org/modeller/ for more info about the pdb_95 "
-                             "database".format(self.database_dir, self.modeller_database))
+                db_download_path = os.path.join(self.database_dir, "pdb_95.pir.gz")
+                utils.download_file("https://salilab.org/modeller/downloads/pdb_95.pir.gz", db_download_path)
+                utils.run_command(['gzip', '-d', db_download_path], log_file_path=filesnpaths.get_temp_file_path())
 
-            db_download_path = os.path.join(self.database_dir, "pdb_95.pir.gz")
-            utils.download_file("https://salilab.org/modeller/downloads/pdb_95.pir.gz", db_download_path)
-            utils.run_command(['gzip', '-d', db_download_path], log_file_path=filesnpaths.get_temp_file_path())
-
-            pir_exists = utils.filesnpaths.is_file_exists(pir_db_path, dont_raise=True)
-
-        if pir_exists and not bin_exists:
+            # Binarize .pir (make .bin)
             self.run.warning("Your database is not in binary format. That means accessing its contents is slower "
                              "than it could be. Anvi'o is going to make a binary format. Just FYI")
             self.run_binarize_database(pir_db_path, bin_db_path)
+
+        dmnd_db_path = J(self.database_dir, 'pdb_95.dmnd')
+
+        if not self.diamond_search or os.path.exists(dmnd_db_path):
             return
+
+        self.run.warning("Your diamond database does not exist. It will be created.")
+
+        script_name = "pir_to_fasta.py"
+
+        self.copy_script_to_directory(script_name)
+
+        input_pir_path = J(self.database_dir, 'pdb_95.pir')
+        fasta_path = J(self.database_dir, 'pdb_95.fa')
+        dmnd_path = J(self.database_dir, 'pdb_95')
+
+        command = [self.executable,
+                   script_name,
+                   input_pir_path,
+                   fasta_path]
+
+        self.run_command(command,
+                         script_name=script_name,
+                         rename_log=False)
+
+        temp = u.FastaOutput(filesnpaths.get_temp_file_path())
+        fasta = u.SequenceSource(fasta_path)
+
+        while next(fasta):
+            temp.write_id(fasta.id)
+            temp.write_seq(fasta.seq.replace('-', '').replace('.', 'X'))
+
+        shutil.move(temp.output_file_path, fasta_path)
+        fasta.close()
+        temp.close()
+
+        driver = diamond.Diamond(query_fasta=fasta_path)
+        driver.makedb(output_file_path=dmnd_path)
+
+        os.remove(fasta_path)
 
 
     def run_binarize_database(self, pir_db_path, bin_db_path):
@@ -652,17 +697,15 @@ class MODELLER:
         # check script exists, then copy the script into the working directory
         self.copy_script_to_directory(script_name)
 
-        # name pir file by the corresponding_gene_call (i.e. defline of the fasta)
-        self.target_pir_path = "{}.pir".format(self.corresponding_gene_call)
-
         command = [self.executable,
                    script_name,
                    pir_db_path,
                    bin_db_path]
 
         self.run_command(command,
-                         script_name = script_name,
-                         check_output=[bin_db_path])
+                         script_name=script_name,
+                         check_output=[bin_db_path],
+                         rename_log=False)
 
         self.run.info("New database", bin_db_path)
 
@@ -731,7 +774,7 @@ class MODELLER:
         self.run.info("Target alignment file", os.path.basename(self.target_pir_path))
 
 
-    def run_command(self, command, script_name, check_output=None):
+    def run_command(self, command, script_name, check_output=None, rename_log=True):
         """Base routine for running MODELLER scripts
 
         Parameters
@@ -745,6 +788,9 @@ class MODELLER:
 
         check_output : list, None
             Verify that this list of filepaths exist after the command is ran
+
+        rename_log : bool, True
+            MODELLER outputs a log that is renamed to reflect the command and gene used
         """
 
         # first things first, we CD into MODELLER's directory
@@ -772,8 +818,11 @@ class MODELLER:
 
         # MODELLER outputs a log that we rename right here, right now
         old_log_name = os.path.splitext(script_name)[0] + ".log"
-        new_log_name = "gene_{}_{}".format(self.corresponding_gene_call, old_log_name)
-        os.rename(old_log_name, new_log_name)
+        if rename_log:
+            new_log_name = "gene_{}_{}".format(self.corresponding_gene_call, old_log_name)
+            os.rename(old_log_name, new_log_name)
+        else:
+            new_log_name = old_log_name
 
         # add to logs
         self.logs[script_name] = new_log_name
