@@ -2,6 +2,7 @@
 """Interface to Diamond."""
 
 import os
+import pandas as pd
 import tempfile
 
 import anvio
@@ -150,6 +151,7 @@ class Diamond:
 
         self.run.info('Diamond blastp results', self.expected_output)
 
+
     def blastp_stdout(self):
 
         cmd_line = ['diamond',
@@ -267,6 +269,7 @@ class Diamond:
 
         self.run.info('diamond makedb cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
 
+
     def view(self):
         self.progress.new('DIAMOND')
         self.progress.update('generating tabular output (using %d thread(s)) ...' % self.num_threads)
@@ -294,3 +297,48 @@ class Diamond:
         self.progress.end()
 
         self.run.info('Diamond %stabular output file' % ('un-uniqued' if self.names_dict else ''), self.tabular_output_path)
+
+
+    def view_as_dataframe(self, results_path):
+        """Returns a dataframe of the results path
+
+        Assumes default standard tabular output format is used:
+        http://www.metagenomics.wiki/tools/blast/blastn-output-format-6
+        """
+
+        cols = (
+            'qseqid',
+            'sseqid',
+            'pident',
+            'length',
+            'mismatch',
+            'gapopen',
+            'qstart',
+            'qend',
+            'sstart',
+            'send',
+            'evalue',
+            'bitscore',
+        )
+
+        return pd.read_csv(results_path, sep='\t', comment='#', names=cols, index_col=False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
