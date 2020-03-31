@@ -92,7 +92,7 @@ class MODELLER:
         self.offline_mode = A('offline_mode', null)
 
         # All MODELLER scripts are housed in self.script_folder
-        self.scripts_folder = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
+        self.scripts_folder = constants.default_modeller_scripts_dir
 
         self.alignment_pap_path = None
         self.alignment_pir_path = None
@@ -128,7 +128,7 @@ class MODELLER:
         }
 
         # All MODELLER databases are housed in self.database_dir
-        self.database_dir = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
+        self.database_dir = constants.default_modeller_database_dir
 
         # copy fasta into the working directory
         try:
@@ -587,7 +587,10 @@ class MODELLER:
 
 
     def check_database(self):
-        """Checks for the .bin version of database. Binarizes if only .pir version found. Sets the db filepath."""
+        """Setup the database files
+
+        Checks for the .bin version of database. Binarizes if only .pir version found. Sets the db filepath.
+        """
 
         extensionless, extension = os.path.splitext(self.modeller_database)
         if extension not in [".bin",".pir",""]:

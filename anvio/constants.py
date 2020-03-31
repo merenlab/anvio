@@ -20,6 +20,8 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 default_pdb_database_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/PDB.db')
+default_modeller_database_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
+default_modeller_scripts_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
 
 clustering_configs_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/clusterconfigs')
 clustering_configs = {}
