@@ -182,8 +182,6 @@ class Diamond:
         return(decode_out)
 
 
-
-
     def blastp_stdin(self, sequence):
         self.run.info('DIAMOND is set to be', 'Sensitive' if self.sensitive else 'Fast')
 
@@ -214,6 +212,7 @@ class Diamond:
         self.run.info('Diamond blastp results', '%d lines were returned from STDIN call' % len(output))
 
         return(output)
+
 
     def blastp_stdin_multi(self, multisequence):
         self.run.info('DIAMOND is set to be', 'Sensitive' if self.sensitive else 'Fast')
