@@ -1056,7 +1056,49 @@ class KeggMetabolismEstimator(KeggContext):
 
 
     def compute_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
-        """This calculates the completeness of the specified module within the given bin metabolism dictionary."""
+        """This function calculates the completeness of the specified module within the given bin metabolism dictionary.
+
+        To do this, it unrolls the module definition into a list of all possible paths, where each path is a list of atomic steps.
+        Atomic steps include singular KOs, protein complexes, modules, non-essential steps, and steps without associated KOs.
+        An atomic step (or parts of a protein complex) can be considered 'present' if the corresponding KO(s) has a hit in the bin.
+        For each path, the function computes the path completeness as the number of present (essential) steps divided by the number of total steps in the path.
+        The module completeness is simply the highest path completeness.
+
+        There are some special cases to consider here.
+        1) Non-essential steps. These are steps that are marked with a preceding "-" to indicate that they are not required for the module to
+           be considered complete. They often occur in pathways with multiple forks. What we do with these is save and count them separately as
+           non-essential steps, but we do not use them in our module completeness calculations. Another thing we do is continue parsing the rest
+           of the module steps as normal, even though some of them may affect steps after the non-essential one. That may eventually change.
+           See comments in the code below.
+        2) Steps without associated KOs. These are steps marked as "--". They may require an enzyme, but if so that enzyme is not in the KOfam
+           database, so we can't know whether they are complete or not from our KOfam hits. Therefore, we assume these steps are incomplete, and
+           warn the user to go back and check the module manually.
+        3) Steps defined by entire modules. These steps have module numbers instead of KOs, so they require an entire module to be complete in
+           order to be complete. We can't figure this out until after we've evaluated all modules, so we simply parse these steps without marking
+           them complete, and later will go back to adjust the completeness score once all modules have been marked complete or not.
+
+
+        PARAMETERS
+        ==========
+        mnum                    string, module number to work on
+        meta_dict_for_bin       metabolism completeness dict for the current bin, to be modified in-place
+
+        NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
+        =======
+        "paths"                         a list of all possible paths (each is a list of atomic) through the module DEFINITION
+        "pathway_completeness"          a list of the completeness of each pathway
+        "present_nonessential_kos"      a list of non-essential KOs in the module that were found to be present
+        "most_complete_paths"           a list of the paths with maximum completeness
+        "percent_complete"              the completeness of the module, which is the maximum pathway completeness
+        "complete"                      whether the module completeness falls over the completeness threshold
+
+        RETURNS
+        =======
+        over_complete_threshold         boolean, whether or not the module is considered "complete" overall based on the threshold fraction of completeness
+        has_nonessential_step           boolean, whether or not the module contains non-essential steps. Used for warning the user about these.
+        has_no_ko_step                  boolean, whether or not the module contains steps without associated KOs. Used for warning the user about these.
+        defined_by_modules              boolean, whether or not the module contains steps defined by other modules. Used for going back to adjust completeness later.
+        """
 
         present_list_for_mnum = meta_dict_for_bin[mnum]["kofam_hits"].keys()
         if not present_list_for_mnum:
