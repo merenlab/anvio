@@ -992,6 +992,7 @@ def _vectorize_read(cigartuples, query_sequence, reference_sequence, reference_s
             ref_consumed += length
 
         elif consumes_read:
+            v[count:(count + length), 0] = ref_consumed + reference_start - 1
             v[count:(count + length), 1] = query_sequence[read_consumed:(read_consumed + length)]
             v[count:(count + length), 2] = 1
 
