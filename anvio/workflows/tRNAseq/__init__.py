@@ -172,7 +172,6 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                     self.target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "%s_%s_REFORMAT_REPORT.txt" % (sample, split)))
                     self.target_files.append(os.path.join(self.dirs_dict['IDENT_DIR'], "%s_%s_TRNASEQ.db" % (sample, split)))
             self.target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "qc-report.txt"))
-            print(self.target_files)
             # self.target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "qc-report.txt"))
 
         # if self.run_identify:
