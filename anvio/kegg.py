@@ -1104,7 +1104,7 @@ class KeggMetabolismEstimator(KeggContext):
         if not present_list_for_mnum:
             # no KOs in this module are present
             if anvio.DEBUG:
-                self.run.warning("No KOs present for module %s. Parsing for completeness is still being done to obtain module steps." % mnum)
+                self.run.warning("No KOs present for module %s. Parsing for completeness is still being done to obtain module information." % mnum)
 
         # stuff to put in the module's dictionary
         module_nonessential_kos = [] # KOs that are present but unnecessary for module completeness
@@ -1190,7 +1190,10 @@ class KeggMetabolismEstimator(KeggContext):
         # once all paths have been evaluated, we find the path(s) of maximum completeness and set that as the overall module completeness
         # this is not very efficient as it takes two passes over the list but okay
         meta_dict_for_bin[mnum]["percent_complete"] = max(meta_dict_for_bin[mnum]["pathway_completeness"])
-        meta_dict_for_bin[mnum]["most_complete_paths"] = [meta_dict_for_bin[mnum]["paths"][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["percent_complete"]]
+        if meta_dict_for_bin[mnum]["percent_complete"] > 0:
+            meta_dict_for_bin[mnum]["most_complete_paths"] = [meta_dict_for_bin[mnum]["paths"][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["percent_complete"]]
+        else:
+            meta_dict_for_bin[mnum]["most_complete_paths"] = []
 
         # I am just printing this for now to see how often this happens
         if len(meta_dict_for_bin[mnum]["most_complete_paths"]) > 1:
