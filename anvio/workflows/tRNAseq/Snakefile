@@ -219,7 +219,9 @@ rule anvi_gen_tRNAseq_database:
     output: os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_TRNASEQ.db")
     threads: M.T('anvi_gen_tRNAseq_database')
     resources: nodes = M.T('anvi_gen_tRNAseq_database')
-    shell: "anvi-gen-trnaseq-database -f {input} -o {output} -T {threads}"
+    params:
+        verbose = M.get_rule_param('verbose', '--verbose')
+    shell: "anvi-gen-trnaseq-database -f {input} -o {output} -T {threads} --verbose {params.verbose}"
 
 
 if 'workflows/tRNAseq' in workflow.included[0]:
