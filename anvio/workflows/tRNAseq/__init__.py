@@ -77,7 +77,7 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                                                        'threads': 1},
                                     'anvi_reformat_fasta': {'--simplify-names': True},
                                     'anvi_gen_tRNAseq_database': {'run': True,
-                                                                  'verbose': False,
+                                                                  '--verbose': False,
                                                                   'threads': 1}})
 
 
