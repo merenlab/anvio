@@ -5,8 +5,6 @@
 import gc
 import os
 import sys
-import time
-import pysam
 import shutil
 import argparse
 import multiprocessing
