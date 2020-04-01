@@ -35,7 +35,7 @@ def print_proper(args, collection, completeness, run, progress):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     output_file_path = A('output_file')
 
-    contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+    contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress())
 
     table = []
     header=['bin name', 'domain', 'confidence', '% completion', '% redundancy', 'num_splits', 'total length']
@@ -69,7 +69,7 @@ def print_improper(args, collection, completeness, run, progress):
     run.info_single("Hi. I am the function that is called when the completion class is not initialized properly, and the best I can "
                     "do is to dump all the raw the raw C/R estimates from all domains altogether.")
 
-    contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+    contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress())
 
     table = []
     header = ['bin name', 'domain', 'source', '% completion', '% redundancy', 'num_splits', 'total length']
@@ -189,7 +189,7 @@ def print_for_a_single_contigs_db(contigs_db_path, profile_db_path=None, collect
     if collection_name:
         collection = collections.get_collection_dict(collection_name)
     else:
-        contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress())
         collection = {os.path.basename(contigs_db_path[:-3]): list(contigs_db.splits_basic_info.keys())}
 
     if collection_name:
