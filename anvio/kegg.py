@@ -1191,7 +1191,28 @@ class KeggMetabolismEstimator(KeggContext):
     def store_kegg_metabolism_superdict(self, kegg_superdict):
         """This function writes the metabolism superdict to a tab-delimited file.
 
-        The metabolism superdict is a three-level dictionary (genomes/bins, modules, and module completion information).
+        The metabolism superdict is a three-to-four-level dictionary. The first three levels are: genomes/bins, modules, and module completion information.
+        The module completion dictionary also has some dictionaries in it, and those make up the fourth level.
+        The structure of the module completion dictionary is like this example:
+        {mnum: {"gene_caller_ids": set([132, 133, 431, 6777])
+                "kofam_hits": {'K00033' : [431, 6777],
+                                'K01057' : [133],
+                                'K00036' : [132] },
+                "genes_to_contigs": {132: 0,
+                                     133: 0,
+                                     431: 2,
+                                    6777: 1 },
+                "contigs_to_genes": { 0: set([132, 133]),
+                                      1: set(6777),
+                                      2: set(431) },}
+                "paths":             [['K00033','K01057','K02222'], ['K00033','K01057','K00036'], ...]
+                "pathway_completeness":     [0.66, 0.66, ...]
+                "present_nonessential_kos":      []
+                "most_complete_paths":           [['K00033','K01057','K02222'], ['K00033','K01057','K00036'], ...]
+                "percent_complete":              0.66
+                "complete":                      False
+                                      }
+
         To distill this information into one line, we need to convert the dictionary on-the-fly to a dict of dicts,
         where each genome/bin-module pair is keyed by an arbitrary integer.
         """
