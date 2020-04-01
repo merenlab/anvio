@@ -1224,70 +1224,45 @@ class KeggMetabolismEstimator(KeggContext):
         now_complete        boolean, whether or not the module is NOW considered "complete" overall based on the threshold fraction of completeness
         """
 
-        for step in meta_dict_for_bin[mod]["step_list"]:
-            cur_index = 0  # current position in the step definition
-            parens_level = 0 # how deep we are in nested parentheses
-            step_is_present_condition_statement = ""
-            is_ko_step = False
-            while cur_index < len(step):
-                # we have found a KO so we can ignore this step; it has already been counted as complete or not
-                if step[cur_index] == "K":
-                    is_ko_step = True
-                    break
+        for p in meta_dict_for_bin[mnum]["paths"]:
+            num_essential_steps_in_path = 0  # note that the len(p) will include nonessential steps; we should count only essential ones
+            num_complete_module_steps = 0
 
-                # we have found a module so we must evaluate this steps's completeness by checking if the module is complete
-                elif step[cur_index] == "M":
-                    mnum = step[cur_index:cur_index+6]
-                    if meta_dict_for_bin[mnum]["complete"]:
-                        step_is_present_condition_statement += "True"
-                    else:
-                        step_is_present_condition_statement += "False"
-                    cur_index += 6
-
-                elif step[cur_index] == "(":
-                    parens_level += 1
-                    step_is_present_condition_statement += "("
-                    cur_index += 1
-
-                elif step[cur_index] == ")":
-                    parens_level -= 1
-                    step_is_present_condition_statement += ")"
-                    cur_index += 1
-
-                elif step[cur_index] == ",":
-                    step_is_present_condition_statement += " or "
-                    cur_index += 1
-
-                elif step[cur_index] == " ":
-                    # if we are outside of parentheses, something is wrong because this should all be just one step
-                    if parens_level == 0:
-                        raise ConfigError("Much parsing sadness. We thought we were re-evaluating the completeness of just one step in "
-                                          "module %s (step: %s), but we found a space that seems to indicate another step. HALP." % (mod, step))
-                    # otherwise, we are processing an alternative path so AND is required
-                    else:
-                        step_is_present_condition_statement += " and "
-                        cur_index += 1
-
+            for i in range(len(p)):
+                atomic_step = p[i]
+                # single KOs and protein complexes and '--' steps; were already counted as complete by previous function
+                if atomic_step[0] == "K" or atomic_step == "--"::
+                    num_essential_steps_in_path += 1
+                # non-essential KO, don't count as a step in the path
+                elif atomic_step[0:2] == "-K" and len(atomic_step) == 7:
+                    pass
+                # module step; we need to count these based on previously computed module completeness
+                elif atomic_step[0] == "M" and len(atomic_step) == 6:
+                    num_complete_module_steps += meta_dict_for_bin[atomic_step]["percent_complete"]
+                    num_essential_steps_in_path += 1
                 else:
-                    raise ConfigError("While correcting completeness for module %s, (step %s), anvi'o found the following character "
-                                        "that she didn't understand: %s. Unfortunately, this means we cannot determine the module "
-                                        "completeness. For context, here is the current index in the DEFINITION line: %s and the "
-                                        "surrounding characters: %s" % (mod, step, step[cur_index], cur_index, step[cur_index-5:cur_index+6]))
-            # once we have processed everything, we need to re-evaluate the step (provided its not a KO step that has already been evaluated)
-            if not is_ko_step:
-                step_is_present = eval(step_is_present_condition_statement)
-                if step_is_present:
-                    meta_dict_for_bin[mod]["complete_step_list"].append(step)
-                    meta_dict_for_bin[mod]["num_complete_steps"] += 1
+                    raise ConfigError("Well. While adjusting completeness estimates for module %m, we found an atomic step in the pathway that we "
+                                        "are not quite sure what to do with. Here it is: %s" % (mnum, atomic_step))
 
-        # now, we recalculate module completeness
-        meta_dict_for_bin[mod]["percent_complete"] = meta_dict_for_bin[mod]["num_complete_steps"] / meta_dict_for_bin[mod]["num_steps"]
-        now_complete = True if meta_dict_for_bin[mod]["percent_complete"] >= self.completeness_threshold else False
-        meta_dict_for_bin[mod]["complete"] = now_complete
+                # now we adjust the previous pathway completeness
+                old_complete_steps_in_path = meta_dict_for_bin[mnum]["pathway_completeness"][i] * num_essential_steps_in_path
+                adjusted_num_complete_steps_in_path = old_complete_steps_in_path + num_complete_module_steps
+                meta_dict_for_bin[mnum]["pathway_completeness"][i] = adjusted_num_complete_steps_in_path / num_essential_steps_in_path
+
+        # after adjusting for all paths, adjust overall module completeness
+        meta_dict_for_bin[mnum]["percent_complete"] = max(meta_dict_for_bin[mnum]["pathway_completeness"])
+        if meta_dict_for_bin[mnum]["percent_complete"] > 0:
+            meta_dict_for_bin[mnum]["most_complete_paths"] = [meta_dict_for_bin[mnum]["paths"][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["percent_complete"]]
+        else:
+            meta_dict_for_bin[mnum]["most_complete_paths"] = []
+
+        now_complete = True if meta_dict_for_bin[mnum]["percent_complete"] >= self.completeness_threshold else False
+        meta_dict_for_bin[mnum]["complete"] = now_complete
         if now_complete:
             meta_dict_for_bin["num_complete_modules"] += 1
 
         return now_complete
+
 
     def estimate_for_list_of_splits(self, ko_hits_in_splits, splits=None, bin_name=None):
         """This is the atomic metabolism estimator function, which builds a metabolism completeness dictionary for an arbitrary list of splits.
