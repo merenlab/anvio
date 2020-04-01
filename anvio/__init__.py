@@ -1154,11 +1154,9 @@ D = {
     'contigs-of-interest': (
             ['--contigs-of-interest'],
             {'metavar': 'FILE',
-             'help': "It is possible to analyze only a group of contigs from a given BAM file. If you provide "
-                     "a text file, in which every contig of interest is listed line by line, the profiler would "
-                     "engine only on those contigs in the BAM file and ignore the rest. This can be used for "
-                     "debugging purposes, or to engine on a particular group of contigs that were identified as "
-                     "relevant during the interactive analysis."}
+             'help': "It is possible to focus on only a set of contigs. If you would like to do that and ignore "
+                     "the rest of the contigs in your contigs database, use this parameter with a flat file "
+                     "every line of which desribes a single contig name."}
                 ),
     'samples-of-interest': (
             ['--samples-of-interest'],
