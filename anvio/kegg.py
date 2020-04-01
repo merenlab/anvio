@@ -1201,6 +1201,8 @@ class KeggMetabolismEstimator(KeggContext):
         over_complete_threshold = True if meta_dict_for_bin[mnum]["percent_complete"] >= self.completeness_threshold else False
         meta_dict_for_bin[mnum]["complete"] = over_complete_threshold
         meta_dict_for_bin[mnum]["present_nonessential_kos"] = module_nonessential_kos
+        if over_complete_threshold:
+            meta_dict_for_bin["num_complete_modules"] += 1
 
         return over_complete_threshold, has_nonessential_step, has_no_ko_step, defined_by_modules
 
