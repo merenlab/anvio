@@ -1966,13 +1966,17 @@ class KeggModulesDatabase(KeggContext):
                 for p in paths_list:
                     p.extend([s])
             else:
-                # here we try splitting to see if there are commas or spaces outside parentheses
-                # (the only way to figure this out is to try it because regex cannot handle nested parentheses)
-                comma_substeps = self.split_by_delim_not_within_parens(s[1:-1], ",")
-                if not comma_substeps: # if it doesn't work, try without removing surrounding parentheses
+                if s[0] == "(" and s[-1] == ")":
+                    # here we try splitting to see if removing the outer parentheses will make the definition become unbalanced
+                    # (the only way to figure this out is to try it because regex cannot handle nested parentheses)
+                    comma_substeps = self.split_by_delim_not_within_parens(s[1:-1], ",")
+                    if not comma_substeps: # if it doesn't work, try without removing surrounding parentheses
+                        comma_substeps = self.split_by_delim_not_within_parens(s, ",")
+                    space_substeps = self.split_by_delim_not_within_parens(s[1:-1], " ")
+                    if not space_substeps:
+                        space_substeps = self.split_by_delim_not_within_parens(s, " ")
+                else:
                     comma_substeps = self.split_by_delim_not_within_parens(s, ",")
-                space_substeps = self.split_by_delim_not_within_parens(s[1:-1], " ")
-                if not space_substeps:
                     space_substeps = self.split_by_delim_not_within_parens(s, " ")
 
                 # complex case: no commas OR spaces outside parentheses so this is a protein complex rather than a compound step
@@ -2030,9 +2034,11 @@ class KeggModulesDatabase(KeggContext):
         it recursively calls the definition unrolling function to parse it. The list of all alternative paths
         that can be made from this step is returned.
         """
-
-        substeps = self.split_by_delim_not_within_parens(step[1:-1], ",")
-        if not substeps: # if it doesn't work, try without removing surrounding parentheses
+        if step[0] == "(" and step[-1] == ")":
+            substeps = self.split_by_delim_not_within_parens(step[1:-1], ",")
+            if not substeps: # if it doesn't work, try without removing surrounding parentheses
+                substeps = self.split_by_delim_not_within_parens(step, ",")
+        else:
             substeps = self.split_by_delim_not_within_parens(step, ",")
 
         alt_path_list = []
