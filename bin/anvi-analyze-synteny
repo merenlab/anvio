@@ -1,0 +1,102 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+"""anvi-analyze-synteny ... let's extract some order from this chaos!
+
+What do we say to loci that appear to have no coherent synteny patterns...?
+
+... not today ;)
+
+The goal of this program is to analyze the synteny patterns within a group of loci. The main idea is to have a sliding window 
+that will record a sequence of genes of size N to form an Ngram (similar to a kmer profile). This program will output
+a tsv with counts for each Ngram per contig provided. The resulting Ngram count table can then be used 
+to analyze the presence and absence of groups of genes by the user.
+
+To test this code run:
+            
+            >>> cd anvio/anvio/tests
+            >>> ./run_all_tests.sh
+            >>> output_dir=sandbox/test-output
+
+            # make a external-genomesfile
+            >>> echo -e "name\tcontigs_db_path\ng01\t$output_dir/01.db\ng02\t$output_dir/02.db\ng03\t$output_dir/03.db" > $output_dir/external-genomes-file.txt
+
+            Default test that ignores ngrams with unknown functions:
+
+            >>> anvi-analyze-synteny -e $output_dir/external-genomes-file.txt \
+                                     --annotation-source COG_FUNCTION \
+                                     --window-range 2:3 \
+                                     -o $output_dir/synteny_output_no_unknowns.tsv
+
+            >>> anvi-analyze-synteny -e $output_dir/external-genomes-file.txt \
+                                     --annotation-source COG_FUNCTION \
+                                     --window-range 2:3 \
+                                     -o $output_dir/synteny_output_with_unknowns.tsv \
+                                     --analyze-unknown-functions
+
+            Unknown-function-mode test that records ngrams with unknown functions:\
+
+            >>> anvi-analyze-synteny -e $output_dir/external-genomes-cps.txt \
+                                     --annotation-source COG_FUNCTION \
+                                     --window-range 2:3 \
+                                     -o $output_dir/tsv.txt \
+                                     --analyze-unknown-functions
+"""
+
+import sys
+import argparse
+
+import anvio
+import anvio.terminal as terminal
+
+from anvio.synteny import NGram
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Matthew S. Schechter"
+__email__ = "mschechter@uchicago.edu"
+__requires__ = ['contigs-db', 'external-genomes']
+__provides__ = ['ngrams']
+__description__ = ("This program helps you extract synteny patterns from a group of similar loci or genomes. This "
+                   "is accomplished by deconstructing contigs into Ngrams (group of neighboring genes of which N is the number of genes) of gene "
+                   "functions using a sliding window method. Once completed, anvi'o will export a table with Ngrams counts "
+                   "for you to work with. By default anvi'o will ignore Ngrams that contain genes without annotations. If "
+                   "you would like to override this, you can use the --analyze-unknown-functions flag.")
+
+
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__description__)
+
+    # Essential input
+    groupA = parser.add_argument_group('Essential INPUT')
+    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {"required": True}))
+    groupA.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source', {"required": True}))
+    groupA.add_argument(*anvio.A('ngram-window-range'), **anvio.K('ngram-window-range', {"required": True}))
+    groupA.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {"required": True}))
+
+    # Additional input
+    groupB = parser.add_argument_group('Additonal INPUT')
+    groupB.add_argument('--analyze-unknown-functions',action="store_true",
+                        help="Provide this flag if you want anvi-analyze-synteny to take into account "
+                              "Ngrams that contain gene calls that have no annotation.")
+
+    args = anvio.get_args(parser)
+
+    try:
+        ngram = NGram(args)
+        ngram.report_ngrams_to_user()
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)

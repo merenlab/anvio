@@ -2056,6 +2056,15 @@ D = {
                      "class based on the number of threads. If you have *any* hesitation about whether you know what you are doing, "
                      "you should not change this value."}
                 ),
+    'ngram-window-range': (
+            ['--ngram-window-range'],
+            {'default': "2:3",
+             'metavar': "NGRAM_WINDOW_RANGE",
+             'type': str,
+             'required': False,
+             'help': "The range of window sizes of Ngrams to analyze for synteny patterns."
+                     "Please format the window-range as x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)"}
+                ),
     'write-buffer-size': (
             ['--write-buffer-size'],
             {'default': 500,
