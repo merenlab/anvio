@@ -1195,9 +1195,10 @@ class KeggMetabolismEstimator(KeggContext):
         else:
             meta_dict_for_bin[mnum]["most_complete_paths"] = []
 
-        # I am just printing this for now to see how often this happens
-        if len(meta_dict_for_bin[mnum]["most_complete_paths"]) > 1:
-            print("Found %d complete paths for module %s with completeness %s. " % (len(meta_dict_for_bin[mnum]["most_complete_paths"]), mnum, meta_dict_for_bin[mnum]["percent_complete"]))
+
+        if anvio.DEBUG and len(meta_dict_for_bin[mnum]["most_complete_paths"]) > 1:
+            self.run.warning("Found %d complete paths for module %s with completeness %s. " % (len(meta_dict_for_bin[mnum]["most_complete_paths"]), mnum, meta_dict_for_bin[mnum]["percent_complete"]),
+                            header='DEBUG OUTPUT', lc='yellow')
         over_complete_threshold = True if meta_dict_for_bin[mnum]["percent_complete"] >= self.completeness_threshold else False
         meta_dict_for_bin[mnum]["complete"] = over_complete_threshold
         meta_dict_for_bin[mnum]["present_nonessential_kos"] = module_nonessential_kos
