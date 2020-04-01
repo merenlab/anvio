@@ -1197,7 +1197,7 @@ class KeggMetabolismEstimator(KeggContext):
 
         # I am just printing this for now to see how often this happens
         if len(meta_dict_for_bin[mnum]["most_complete_paths"]) > 1:
-            print("Found multiple complete paths for module %s. Here they are: %s" % (mnum, meta_dict_for_bin[mnum]["most_complete_paths"]))
+            print("Found %d complete paths for module %s with completeness %s. " % (len(meta_dict_for_bin[mnum]["most_complete_paths"]), mnum, meta_dict_for_bin[mnum]["percent_complete"]))
         over_complete_threshold = True if meta_dict_for_bin[mnum]["percent_complete"] >= self.completeness_threshold else False
         meta_dict_for_bin[mnum]["complete"] = over_complete_threshold
         meta_dict_for_bin[mnum]["present_nonessential_kos"] = module_nonessential_kos
@@ -1224,7 +1224,7 @@ class KeggMetabolismEstimator(KeggContext):
         now_complete        boolean, whether or not the module is NOW considered "complete" overall based on the threshold fraction of completeness
         """
 
-        for p in meta_dict_for_bin[mnum]["paths"]:
+        for p in meta_dict_for_bin[mod]["paths"]:
             num_essential_steps_in_path = 0  # note that the len(p) will include nonessential steps; we should count only essential ones
             num_complete_module_steps = 0
 
@@ -1242,22 +1242,22 @@ class KeggMetabolismEstimator(KeggContext):
                     num_essential_steps_in_path += 1
                 else:
                     raise ConfigError("Well. While adjusting completeness estimates for module %s, we found an atomic step in the pathway that we "
-                                        "are not quite sure what to do with. Here it is: %s" % (mnum, atomic_step))
+                                        "are not quite sure what to do with. Here it is: %s" % (mod, atomic_step))
 
                 # now we adjust the previous pathway completeness
-                old_complete_steps_in_path = meta_dict_for_bin[mnum]["pathway_completeness"][i] * num_essential_steps_in_path
+                old_complete_steps_in_path = meta_dict_for_bin[mod]["pathway_completeness"][i] * num_essential_steps_in_path
                 adjusted_num_complete_steps_in_path = old_complete_steps_in_path + num_complete_module_steps
-                meta_dict_for_bin[mnum]["pathway_completeness"][i] = adjusted_num_complete_steps_in_path / num_essential_steps_in_path
+                meta_dict_for_bin[mod]["pathway_completeness"][i] = adjusted_num_complete_steps_in_path / num_essential_steps_in_path
 
         # after adjusting for all paths, adjust overall module completeness
-        meta_dict_for_bin[mnum]["percent_complete"] = max(meta_dict_for_bin[mnum]["pathway_completeness"])
-        if meta_dict_for_bin[mnum]["percent_complete"] > 0:
-            meta_dict_for_bin[mnum]["most_complete_paths"] = [meta_dict_for_bin[mnum]["paths"][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["percent_complete"]]
+        meta_dict_for_bin[mod]["percent_complete"] = max(meta_dict_for_bin[mod]["pathway_completeness"])
+        if meta_dict_for_bin[mod]["percent_complete"] > 0:
+            meta_dict_for_bin[mod]["most_complete_paths"] = [meta_dict_for_bin[mod]["paths"][i] for i, pc in enumerate(meta_dict_for_bin[mod]["pathway_completeness"]) if pc == meta_dict_for_bin[mod]["percent_complete"]]
         else:
-            meta_dict_for_bin[mnum]["most_complete_paths"] = []
+            meta_dict_for_bin[mod]["most_complete_paths"] = []
 
-        now_complete = True if meta_dict_for_bin[mnum]["percent_complete"] >= self.completeness_threshold else False
-        meta_dict_for_bin[mnum]["complete"] = now_complete
+        now_complete = True if meta_dict_for_bin[mod]["percent_complete"] >= self.completeness_threshold else False
+        meta_dict_for_bin[mod]["complete"] = now_complete
         if now_complete:
             meta_dict_for_bin["num_complete_modules"] += 1
 
