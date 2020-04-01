@@ -2361,6 +2361,18 @@ def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_name
             seq_names_to_export = sorted(splits_info_dict.keys())
         else:
             seq_names_to_export = sorted(contig_sequences_dict.keys())
+    else:
+        if splits_mode:
+            pass
+        else:
+            missing_names = [contig_name for contig_name in seq_names_to_export if contig_name not in contig_sequences_dict]
+            if len(missing_names):
+                if len(missing_names) == len(seq_names_to_export):
+                    raise ConfigError("None of the sequence names you have requested were found in this contigs database :/ "
+                                      "This is kind of impressive.")
+                else:
+                    raise ConfigError("The sequence names you have requested include those that are not in the contigs "
+                                      "database, which correspond to %d of %d names you've sent." % (len(missing_names), len(seq_names_to_export)))
 
     for seq_name in seq_names_to_export:
         if splits_mode:
