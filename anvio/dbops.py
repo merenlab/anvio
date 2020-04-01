@@ -3485,13 +3485,15 @@ class tRNASeqDatabase:
         self.progress.new('Finding tRNA sequences', progress_total_items=total_num_seqs)
         fasta.reset()
         while next(fasta):
-            self.progress.increment()
+            if not self.quiet:
+                self.progress.increment()
 
             tRNAseq_name = fasta.id
             tRNAseq_sequence = fasta.seq
             seq_length = len(fasta.seq)
 
-            self.progress.update("tRNA-seq representative sequence '%d' " % fasta.pos)
+            if not self.quiet:
+                self.progress.update("tRNA-seq representative sequence '%d' " % fasta.pos)
 
             tRNA_profile = trnaidentifier.Profile(tRNAseq_sequence)
             if len(tRNA_profile.features) >= num_features_through_T_loop:
@@ -3526,18 +3528,19 @@ class tRNASeqDatabase:
                 if tRNA_profile.num_in_extrapolated_fiveprime_feature > 0:
                     num_tRNA_seqs_with_extrapolated_fiveprime_feature += num_members
 
-                self.progress.append(
-                    "is recognized as tRNA. "
-                    "Number of replicate sequences: %d. "
-                    "Sequence length: %d. "
-                    "Length of 3' part of sequence with profiled features: %d. "
-                    "Number of 'unconserved' nucleotides: %d. "
-                    "Number of unpaired stem positions: %d."
-                    % (num_members,
-                       seq_length,
-                       profiled_seq_length,
-                       len(unconserved_info),
-                       len(unpaired_info)))
+                if not self.quiet:
+                    self.progress.append(
+                        "is recognized as tRNA. "
+                        "Number of replicate sequences: %d. "
+                        "Sequence length: %d. "
+                        "Length of 3' part of sequence with profiled features: %d. "
+                        "Number of 'unconserved' nucleotides: %d. "
+                        "Number of unpaired stem positions: %d."
+                        % (num_members,
+                        seq_length,
+                        profiled_seq_length,
+                        len(unconserved_info),
+                        len(unpaired_info)))
 
                 tRNAseq_sequences_table_entries.append(
                     (tRNAseq_name, ','.join(member_names), num_members, tRNAseq_sequence))
@@ -3574,9 +3577,10 @@ class tRNASeqDatabase:
                     tRNAseq_unpaired_table_entries.append((tRNAseq_name, ) + unpaired_tuple)
 
             else:
-                self.progress.append(
-                    "is not recognized as tRNA. "
-                    "Sequence length: %d." % seq_length)
+                if not self.quiet:
+                    self.progress.append(
+                        "is not recognized as tRNA. "
+                        "Sequence length: %d." % seq_length)
 
         self.db._exec_many(
             '''INSERT INTO %s VALUES (?,?,?,?)''' % t.tRNAseq_sequences_table_name,
@@ -3613,12 +3617,12 @@ class tRNASeqDatabase:
         self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 
-        self.run.info("Number of sequences processed", num_seqs_processed, quiet=self.quiet)
-        self.run.info("Number of tRNA sequences identified", num_tRNA_seqs, quiet=self.quiet)
-        self.run.info("Number of unique tRNA sequences identified and added to the database", num_unique_tRNA_seqs, quiet=self.quiet)
-        self.run.info("Number of tRNA sequences containing anticodon", num_tRNA_seqs_containing_anticodon, quiet=self.quiet)
-        self.run.info("Number of mature tRNA sequences", num_mature_tRNA_seqs, quiet=self.quiet)
-        self.run.info("Number of tRNA sequences with extrapolated 5' feature", num_tRNA_seqs_with_extrapolated_fiveprime_feature, quiet=self.quiet)
+        self.run.info("Number of sequences processed", num_seqs_processed)
+        self.run.info("Number of tRNA sequences identified", num_tRNA_seqs)
+        self.run.info("Number of unique tRNA sequences identified and added to the database", num_unique_tRNA_seqs)
+        self.run.info("Number of tRNA sequences containing anticodon", num_tRNA_seqs_containing_anticodon)
+        self.run.info("Number of mature tRNA sequences", num_mature_tRNA_seqs)
+        self.run.info("Number of tRNA sequences with extrapolated 5' feature", num_tRNA_seqs_with_extrapolated_fiveprime_feature)
 
     def get_date(self):
         return time.time()
