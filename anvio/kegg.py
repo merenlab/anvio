@@ -1225,12 +1225,12 @@ class KeggMetabolismEstimator(KeggContext):
         now_complete        boolean, whether or not the module is NOW considered "complete" overall based on the threshold fraction of completeness
         """
 
-        for p in meta_dict_for_bin[mod]["paths"]:
+        for i in range(len(meta_dict_for_bin[mod]["paths"])):
+            p = meta_dict_for_bin[mod]["paths"][i]
             num_essential_steps_in_path = 0  # note that the len(p) will include nonessential steps; we should count only essential ones
             num_complete_module_steps = 0
 
-            for i in range(len(p)):
-                atomic_step = p[i]
+            for atomic_step in p:
                 # single KOs and protein complexes and '--' steps; were already counted as complete by previous function
                 if atomic_step[0] == "K" or atomic_step == "--":
                     num_essential_steps_in_path += 1
@@ -1245,10 +1245,10 @@ class KeggMetabolismEstimator(KeggContext):
                     raise ConfigError("Well. While adjusting completeness estimates for module %s, we found an atomic step in the pathway that we "
                                         "are not quite sure what to do with. Here it is: %s" % (mod, atomic_step))
 
-                # now we adjust the previous pathway completeness
-                old_complete_steps_in_path = meta_dict_for_bin[mod]["pathway_completeness"][i] * num_essential_steps_in_path
-                adjusted_num_complete_steps_in_path = old_complete_steps_in_path + num_complete_module_steps
-                meta_dict_for_bin[mod]["pathway_completeness"][i] = adjusted_num_complete_steps_in_path / num_essential_steps_in_path
+            # now we adjust the previous pathway completeness
+            old_complete_steps_in_path = meta_dict_for_bin[mod]["pathway_completeness"][i] * num_essential_steps_in_path
+            adjusted_num_complete_steps_in_path = old_complete_steps_in_path + num_complete_module_steps
+            meta_dict_for_bin[mod]["pathway_completeness"][i] = adjusted_num_complete_steps_in_path / num_essential_steps_in_path
 
         # after adjusting for all paths, adjust overall module completeness
         meta_dict_for_bin[mod]["percent_complete"] = max(meta_dict_for_bin[mod]["pathway_completeness"])
