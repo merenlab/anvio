@@ -38,7 +38,7 @@ class MMseqs2:
     def __init__(
         self,
         program_name='mmseqs',
-        num_threads=cpu_count(),
+        num_threads=1,
         verbosity_level=3,
         top_output_dir=filesnpaths.get_temp_directory_path(),
         tmp_dir=None,
@@ -49,7 +49,7 @@ class MMseqs2:
         skip_sanity_check=False):
 
         self.program_name = program_name
-        self.tested_versions = ['11-e1a1c']
+        self.tested_versions = ['e1a1c1226ef22ac3d0da8e8f71adb8fd2388a249']
 
         self.num_threads = num_threads
         self.verbosity_level = verbosity_level
@@ -139,7 +139,8 @@ class MMseqs2:
                     os.path.join(self.tmp_dir, 'TMP-' + output_name),
                     '-c', '1',
                     '--cov-mode', '0',
-                    '--min-seq-id', '1']
+                    '--min-seq-id', '1',
+                    '--threads', self.num_threads]
 
         self.progress.new('Processing')
         self.progress.update('Dereplicating sequences...')
