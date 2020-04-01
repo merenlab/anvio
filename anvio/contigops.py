@@ -148,6 +148,7 @@ class Split:
         self.num_SCV_entries = {}
         self.SNV_profiles = {}
         self.SCV_profiles = {}
+        self.indels_profiles = {}
         self.per_position_info = {} # stores per nt info that is not coverage
 
 
@@ -166,7 +167,7 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, min_coverage=10, report_variability_full=False, profile_SCVs=False, skip_SNV_profiling=False):
+    def __init__(self, split, min_coverage=10, report_variability_full=False, profile_SCVs=False, profile_indels=False, skip_SNV_profiling=False):
 
         if anvio.DEBUG:
             self.run = terminal.Run()
@@ -176,6 +177,7 @@ class Auxiliary:
         self.min_coverage = min_coverage
         self.skip_SNV_profiling = skip_SNV_profiling
         self.profile_SCVs = profile_SCVs
+        self.profile_indels = profile_indels
         self.report_variability_full = report_variability_full
 
         # used during array processing
@@ -397,12 +399,14 @@ class Auxiliary:
 
 
     def run_SNVs(self, bam):
-        """Profile SNVs
+        """Profile SNVs (and indels if self.profile_indels)
 
         Parameters
         ==========
         bam : bamops.BAMFileObject
         """
+
+        indels_profiles = {}
 
         # make an array with as many rows as there are nucleotides in the split, and as many rows as
         # there are nucleotide types. Each nucleotide (A, C, T, G, N) gets its own row which is
@@ -417,6 +421,9 @@ class Auxiliary:
             reference_positions_in_split = reference_positions - self.split.start
 
             allele_counts_array = utils.add_to_2D_numeric_array(aligned_sequence_as_index, reference_positions_in_split, allele_counts_array)
+
+            if self.profile_indels:
+                read.vectorize()
 
             read_count += 1
 
@@ -445,6 +452,7 @@ class Auxiliary:
         nt_profile.process()
 
         self.split.SNV_profiles = nt_profile.d
+        self.split.indels_profiles = indels_profiles
 
         self.split.num_SNV_entries = len(nt_profile.d['coverage'])
         self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length

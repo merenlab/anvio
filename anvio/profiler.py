@@ -25,9 +25,10 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.tables.views import TablesForViews
-from anvio.tables.codonfrequencies import TableForCodonFrequencies
-from anvio.tables.variability import TableForVariability
+from anvio.tables.indels import TableForIndels
 from anvio.tables.miscdata import TableForLayerAdditionalData
+from anvio.tables.variability import TableForVariability
+from anvio.tables.codonfrequencies import TableForCodonFrequencies
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -68,6 +69,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.skip_SNV_profiling = A('skip_SNV_profiling')
         self.profile_SCVs = A('profile_SCVs')
+        self.profile_indels = A('profile_indels')
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
@@ -170,6 +172,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         if self.skip_SNV_profiling:
             self.profile_SCVs = False
+            self.profile_indels = False
 
         meta_values = {'db_type': 'profile',
                        'anvio': __version__,
@@ -183,6 +186,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'max_contig_length': self.max_contig_length,
                        'SNVs_profiled': not self.skip_SNV_profiling,
                        'SCVs_profiled': self.profile_SCVs,
+                       'indels_profiled': self.profile_indels,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],
@@ -208,6 +212,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.run.warning('Amino acid linkmer frequencies will not be characterized for this profile.')
         else:
             self.variable_codons_table = TableForCodonFrequencies(self.profile_db_path, progress=null_progress)
+
+        if not self.profile_indels:
+            self.run.warning('Indels (read insertion and deletions) will not be characterized for this profile.')
+        else:
+            self.indels_table = TableForIndels(self.profile_db_path, progress=null_progress)
 
 
     def _run(self):
@@ -236,6 +245,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('min_coverage_for_variability', self.min_coverage_for_variability)
         self.run.info('skip_SNV_profiling', self.skip_SNV_profiling)
         self.run.info('profile_SCVs', self.profile_SCVs)
+        self.run.info('profile_indels', self.profile_indels)
         self.run.info('report_variability_full', self.report_variability_full)
 
         self.run.warning("Your minimum contig length is set to %s base pairs. So anvi'o will not take into "
@@ -650,6 +660,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             for split in contig.splits:
                 split.auxiliary = contigops.Auxiliary(split,
                                                       profile_SCVs=self.profile_SCVs,
+                                                      profile_indels=self.profile_indels,
                                                       skip_SNV_profiling=self.skip_SNV_profiling,
                                                       min_coverage=self.min_coverage_for_variability,
                                                       report_variability_full=self.report_variability_full)
