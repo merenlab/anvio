@@ -13,6 +13,7 @@ import string
 import argparse
 
 from Bio import SeqIO
+from collections import OrderedDict
 
 import anvio
 import anvio.tables as t
@@ -190,7 +191,7 @@ class Auxiliary:
 
 
     def process(self, bam):
-        self.run_SNVs(bam)
+        self.run_SNVs_and_indels(bam)
 
         if self.profile_SCVs:
             self.run_SCVs(bam)
@@ -398,7 +399,7 @@ class Auxiliary:
         return np.zeros(allele_counts_array_shape)
 
 
-    def run_SNVs(self, bam):
+    def run_SNVs_and_indels(self, bam):
         """Profile SNVs (and indels if self.profile_indels)
 
         Parameters
@@ -406,7 +407,8 @@ class Auxiliary:
         bam : bamops.BAMFileObject
         """
 
-        indels_profiles = {}
+        if self.profile_indels:
+            indels_profiles = {}
 
         # make an array with as many rows as there are nucleotides in the split, and as many rows as
         # there are nucleotide types. Each nucleotide (A, C, T, G, N) gets its own row which is
@@ -424,8 +426,44 @@ class Auxiliary:
 
             if self.profile_indels:
                 read.vectorize()
+
                 for ins_segment in read.iterate_blocks_by_mapping_type(mapping_type=1):
-                    print(ins_segment)
+                    # Get the position and sequence of the insertion, create hash as a key for storage
+                    ins_seq = ''.join([chr(x) for x in ins_segment[:, 1]])
+                    ins_pos = ins_segment[0, 0]
+                    indel_hash = hash((ins_pos, ins_seq))
+
+                    if indel_hash in indels_profiles:
+                        indels_profiles[indel_hash]['coverage'] += 1
+                    else:
+                        indels_profiles[indel_hash] = OrderedDict([
+                            ('split_name', self.split.name),
+                            ('type', 'INS'),
+                            ('sequence', ins_seq),
+                            ('start_in_contig', int(ins_pos)),
+                            ('start_in_split', int(ins_pos - self.split.start)),
+                            ('length', len(ins_seq)),
+                            ('coverage', 1),
+                        ])
+
+                for del_segment in read.iterate_blocks_by_mapping_type(mapping_type=2):
+                    # Get the position and sequence of the deletion, create hash as a key for storage
+                    del_seq = ''
+                    del_pos = del_segment[0, 0]
+                    indel_hash = hash((del_pos, del_seq))
+
+                    if indel_hash in indels_profiles:
+                        indels_profiles[indel_hash]['coverage'] += 1
+                    else:
+                        indels_profiles[indel_hash] = OrderedDict([
+                            ('split_name', self.split.name),
+                            ('type', 'DEL'),
+                            ('sequence', ''),
+                            ('start_in_contig', int(del_pos)),
+                            ('start_in_split', int(del_pos - self.split.start)),
+                            ('length', del_segment.shape[0]),
+                            ('coverage', 1),
+                        ])
 
             read_count += 1
 
@@ -454,7 +492,8 @@ class Auxiliary:
         nt_profile.process()
 
         self.split.SNV_profiles = nt_profile.d
-        self.split.indels_profiles = indels_profiles
+        if self.profile_indels:
+            self.split.indels_profiles = indels_profiles
 
         self.split.num_SNV_entries = len(nt_profile.d['coverage'])
         self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length
