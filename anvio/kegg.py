@@ -1231,7 +1231,7 @@ class KeggMetabolismEstimator(KeggContext):
             for i in range(len(p)):
                 atomic_step = p[i]
                 # single KOs and protein complexes and '--' steps; were already counted as complete by previous function
-                if atomic_step[0] == "K" or atomic_step == "--"::
+                if atomic_step[0] == "K" or atomic_step == "--":
                     num_essential_steps_in_path += 1
                 # non-essential KO, don't count as a step in the path
                 elif atomic_step[0:2] == "-K" and len(atomic_step) == 7:
