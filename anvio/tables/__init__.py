@@ -157,7 +157,7 @@ variable_nts_table_types             = [ 'numeric',    'text'  ,    'text'   , '
 
 indels_table_name                    = 'indels'
 indels_table_structure               = ['entry_id', 'split_name', 'type', 'sequence', 'start_in_contig', 'end_in_contig', 'start_in_split', 'end_in_split', 'coverage']
-indels_table_types                   = ['numeric' , 'text   '   , 'text', 'text'    , 'numeric'        , 'numeric'      , 'numeric'       , 'numeric'     , 'numeric']
+indels_table_types                   = ['numeric' , 'text'      , 'text', 'text'    , 'numeric'        , 'numeric'      , 'numeric'       , 'numeric'     , 'numeric' ]
 
 views_table_name                     = 'views'
 views_table_structure                = ['view_id', 'target_table']

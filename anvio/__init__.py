@@ -376,6 +376,15 @@ D = {
                      "computational complexity, this feature comes 'off' by default. Using this flag you can rise against the "
                      "authority, as you always should, and make anvi'o profile codons."}
                 ),
+    'profile-indels': (
+            ['--profile-indels'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "The alignment of a read to a reference genome/sequence can be imperfect, such that the read exhibits "
+                     "insertions or deletions relative to the reference. Anvi'o normally accounts for this information "
+                     "but does not _store_ it in the profile database. If you would like this information, you could use "
+                     "this flag. It comes at significant computational cost."}
+                ),
     'drop-previous-annotations': (
             ['--drop-previous-annotations'],
             {'default': False,
