@@ -11,7 +11,7 @@
 # docker build -t meren/anvio:test-build .
 
 FROM continuumio/miniconda3:4.8.2
-ENV ANVIO_VERSION "6.2"
+ENV ANVIO_VERSION "6.2_master"
 
 RUN conda config --env --add channels bioconda
 RUN conda config --env --add channels conda-forge
