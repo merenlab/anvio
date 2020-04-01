@@ -337,6 +337,18 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.variable_nts_table.store()
 
 
+    def generate_indels_table(self):
+        if not self.profile_indels:
+            return
+
+        for contig in self.contigs:
+            for split in contig.splits:
+                for entry in split.indels_profiles.values():
+                    self.indels_table.append(entry.values())
+
+        self.indels_table.store()
+
+
     def store_split_coverages(self):
         for contig in self.contigs:
             for split in contig.splits:
@@ -895,6 +907,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.generate_variable_nts_table()
         self.generate_variable_codons_table()
+        self.generate_indels_table()
         self.store_split_coverages()
 
         # creating views in the database for atomic data we gathered during the profiling. Meren, please note
