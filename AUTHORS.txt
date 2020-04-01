@@ -4,12 +4,12 @@ Developers and contributors at the University of Chicago
 A. Murat Eren (a.murat.eren at gmail dot com)
 Özcan Esen (ozcanesen at gmail dot com)
 Evan Kiefl (kiefl.evan at gmail dot com)
-Mahmoud Yousef (mahmoudyousef at uchicago dot edu)
 Matthew Schechter (mschechter at uchicago dot edu)
+Mahmoud Yousef (mahmoudyousef at uchicago dot edu)
 Andrea Watson (andreawatson at uchicago dot edu)
+Florian Trigodet (trigodet dot florian at gmail dot com)
 Iva Veseli (iveseli at uchicago.edu)
 Emily Fogarty (efogarty at uchicago dot edu)
-Florian Trigodet (trigodet dot florian at gmail dot com)
 
 ===============================================================================
 Developers and contributors at large
@@ -25,12 +25,13 @@ Daniel Blankenberg         Genomic Medicine Institute         United States
 Gökmen Görgen              Radity, Inc                        Switzerland
 Doğan Can Kilment          Makroser, Inc.                     Turkey
 Srinidhi Varadharajan      University of Oslo                 Norway
+Amy Willis                 University of Washington           United States
 Xabier Vázquez-Campos      University of New South Wales      Australia
 John Eppley                University of Hawaiʻi at Mānoa     United States
 S. Çağlar Onur             DigitalOcean, Inc.                 United States
-Amy Willis                 University of Washington           United States
 Dan Utter                  Harvard University                 United States
 Tom Delmont                Genoscope                          France
+Isaac Fink                 University of Chicago              United States
 Finlay Maguire             Dalhousie University               Canada
 M. Fauzi Haroon            Harvard University                 United States
 Elmar Pruesse              University of Colorado Denver      United States
