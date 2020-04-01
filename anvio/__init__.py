@@ -383,7 +383,8 @@ D = {
              'help': "The alignment of a read to a reference genome/sequence can be imperfect, such that the read exhibits "
                      "insertions or deletions relative to the reference. Anvi'o normally accounts for this information "
                      "but does not _store_ it in the profile database. If you would like this information, you could use "
-                     "this flag. It comes at significant computational cost."}
+                     "this flag. It comes at significant computational cost. If --skip-SNV-profiling is set, --profile-indels "
+                     "will be unset."}
                 ),
     'drop-previous-annotations': (
             ['--drop-previous-annotations'],
