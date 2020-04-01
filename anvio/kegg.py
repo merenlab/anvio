@@ -1180,7 +1180,7 @@ class KeggMetabolismEstimator(KeggContext):
                     """
                     defined_by_modules = True
                 else:
-                    raise ConfigError("Well. While estimating completeness for module %m, we found an atomic step in the pathway that we "
+                    raise ConfigError("Well. While estimating completeness for module %s, we found an atomic step in the pathway that we "
                                         "are not quite sure what to do with. Here it is: %s" % (mnum, atomic_step))
 
 
@@ -1241,7 +1241,7 @@ class KeggMetabolismEstimator(KeggContext):
                     num_complete_module_steps += meta_dict_for_bin[atomic_step]["percent_complete"]
                     num_essential_steps_in_path += 1
                 else:
-                    raise ConfigError("Well. While adjusting completeness estimates for module %m, we found an atomic step in the pathway that we "
+                    raise ConfigError("Well. While adjusting completeness estimates for module %s, we found an atomic step in the pathway that we "
                                         "are not quite sure what to do with. Here it is: %s" % (mnum, atomic_step))
 
                 # now we adjust the previous pathway completeness
