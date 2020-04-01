@@ -240,7 +240,7 @@ class TablesForTransferRNAs:
 
             functions_dict[entry_id] = {'gene_callers_id': entry['gene_callers_id'],
                                         'source': self.source_name,
-                                        'accession': '%s_%d' % (aa_codon, entry['gene_callers_id']),
+                                        'accession': '%s_%s_%d' % (entry['amino_acid'], entry['anticodon'], entry['gene_callers_id']),
                                         'function': function_text,
                                         'e_value': 0.0}
 
