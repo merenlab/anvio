@@ -1184,8 +1184,8 @@ class KeggMetabolismEstimator(KeggContext):
                                         "are not quite sure what to do with. Here it is: %s" % (mnum, atomic_step))
 
 
-                path_completeness = num_complete_steps_in_path / (len(p) - num_nonessential_steps_in_path)
-                meta_dict_for_bin[mnum]["pathway_completeness"].append(path_completeness)
+            path_completeness = num_complete_steps_in_path / (len(p) - num_nonessential_steps_in_path)
+            meta_dict_for_bin[mnum]["pathway_completeness"].append(path_completeness)
 
         # once all paths have been evaluated, we find the path(s) of maximum completeness and set that as the overall module completeness
         # this is not very efficient as it takes two passes over the list but okay
