@@ -424,6 +424,8 @@ class Auxiliary:
 
             if self.profile_indels:
                 read.vectorize()
+                for ins_segment in read.iterate_blocks_by_mapping_type(mapping_type=1):
+                    print(ins_segment)
 
             read_count += 1
 
