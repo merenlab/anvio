@@ -50,7 +50,7 @@ if __name__ == '__main__':
             num_threads=args.num_threads,
             run=run,
             progress=progress,
-            quiet=not args.verbose,
+            quiet=(not args.verbose),
             skip_init=True)
         a.create(args)
     except ConfigError as e:
