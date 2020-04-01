@@ -6,12 +6,12 @@
 # docker rm --force $(docker ps --filter=status=exited --filter=status=created -q)
 # docker system prune --force -a
 #
-# after that, you can start the build with the following: 
+# after that, you can start the build with the following:
 #
 # docker build -t meren/anvio:test-build .
 
 FROM continuumio/miniconda3:4.8.2
-ENV ANVIO_VERSION "6.1_master"
+ENV ANVIO_VERSION "6.2"
 
 RUN conda config --env --add channels bioconda
 RUN conda config --env --add channels conda-forge

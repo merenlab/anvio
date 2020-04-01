@@ -12,7 +12,7 @@ import platform
 # unless you want to explode `bottle`:
 import pkg_resources
 
-anvio_version = '6.1-master'
+anvio_version = '6.2'
 anvio_codename = 'esther'
 
 DEBUG = '--debug' in sys.argv
