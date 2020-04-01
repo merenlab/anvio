@@ -56,7 +56,9 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                                                          '--r2-prefix']
         rule_acceptable_params_dict['iu_merge_pairs'] = ['run',
                                                          '--marker-gene-stringent',
-                                                         '--max-num-mismatches']
+                                                         '--max-num-mismatches',
+                                                         '--report-r1-prefix',
+                                                         '--report-r2-prefix']
         rule_acceptable_params_dict['anvi_reformat_fasta'] = ['--simplify-names']
         rule_acceptable_params_dict['anvi_gen_tRNAseq_database'] = ['run']
 
@@ -69,10 +71,12 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                                     'iu_merge_pairs': {'run': True,
                                                        '--marker-gene-stringent': True,
                                                        '--max-num-mismatches': 0,
-                                                       'threads': 16},
+                                                       '--report-r1-prefix': False,
+                                                       '--report-r2-prefix': False,
+                                                       'threads': 1},
                                     'anvi_reformat_fasta': {'--simplify-names': True},
                                     'anvi_gen_tRNAseq_database': {'run': True,
-                                                                  'threads': 16}})
+                                                                  'threads': 1}})
 
 
     def init(self):

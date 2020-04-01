@@ -103,10 +103,12 @@ rule iu_merge_pairs:
         stats = os.path.join(dirs_dict["QC_DIR"], "{sample}_{split}_STATS")
     params:
         marker_gene_stringent = M.get_rule_param('iu_merge_pairs', '--marker-gene-stringent'),
-        max_num_mismatches = M.get_rule_param('iu_merge_pairs', '--max-num-mismatches')
+        max_num_mismatches = M.get_rule_param('iu_merge_pairs', '--max-num-mismatches'),
+        report_r1_prefix = M.get_rule_param('iu_merge_pairs', '--report-r1-prefix'),
+        report_r2_prefix = M.get_rule_param('iu_merge_pairs', '--report-r2-prefix')
     threads: M.T('iu_merge_pairs')
     resources: nodes = M.T('iu_merge_pairs')
-    shell: """ iu-merge-pairs {input} {params.marker_gene_stringent} {params.max_num_mismatches} --num-threads {threads} >> {log} 2>&1 """
+    shell: """ iu-merge-pairs {input} {params.marker_gene_stringent} {params.max_num_mismatches} {params.report_r1_prefix} {params.report_r2_prefix} --num-threads {threads} >> {log} 2>&1 """
 
 
 # def uncompress_fastqs_if_needed(r1, r2):
