@@ -344,7 +344,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for contig in self.contigs:
             for split in contig.splits:
                 for entry in split.indels_profiles.values():
-                    self.indels_table.append(entry.values())
+                    self.indels_table.append([self.sample_id] + list(entry.values()))
 
         self.indels_table.store()
 
