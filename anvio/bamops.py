@@ -101,6 +101,7 @@ class Read:
         # attributes, all attributes of interest are redefined here
         self.cigartuples = np.array(read.cigartuples)
         self.query_sequence = np.frombuffer(read.query_sequence.encode('ascii'), np.uint8)
+        self.reference_sequence = np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)
         self.reference_start = read.reference_start
         self.reference_end = read.reference_end
 
@@ -114,6 +115,7 @@ class Read:
         self.v = _vectorize_read(
             self.cigartuples,
             self.query_sequence,
+            self.reference_sequence,
             self.reference_start,
             constants.cigar_consumption
         )
@@ -218,7 +220,7 @@ class Read:
                 read.extend(['-'] * length)
 
             if consumes_ref:
-                ref.extend(['X'] * length)
+                ref.extend([chr(x) for x in self.reference_sequence[pos_ref:(pos_ref + length)]])
                 pos_ref += length
             else:
                 ref.extend(['-'] * length)
@@ -966,12 +968,12 @@ def iterate_cigartuples(cigartuples, cigar_consumption):
 
 
 @jit(nopython=True)
-def _vectorize_read(cigartuples, query_sequence, reference_start, cigar_consumption):
+def _vectorize_read(cigartuples, query_sequence, reference_sequence, reference_start, cigar_consumption):
     # init the array
     size = 0
     for i in range(cigartuples.shape[0]):
         size += cigartuples[i, 1]
-    v = np.full((size, 3), -1, dtype=np.int32)
+    v = np.full((size, 4), -1, dtype=np.int32)
 
     count = 0
     ref_consumed = 0
@@ -983,6 +985,7 @@ def _vectorize_read(cigartuples, query_sequence, reference_start, cigar_consumpt
         if consumes_read and consumes_ref:
             v[count:(count + length), 0] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
             v[count:(count + length), 1] = query_sequence[read_consumed:(read_consumed + length)]
+            v[count:(count + length), 3] = reference_sequence[ref_consumed:(ref_consumed + length)]
             v[count:(count + length), 2] = 0
 
             read_consumed += length
@@ -996,6 +999,7 @@ def _vectorize_read(cigartuples, query_sequence, reference_start, cigar_consumpt
 
         elif consumes_ref:
             v[count:(count + length), 0] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
+            v[count:(count + length), 3] = reference_sequence[ref_consumed:(ref_consumed + length)]
             v[count:(count + length), 2] = 2
 
             ref_consumed += length
