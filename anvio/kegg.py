@@ -1438,15 +1438,15 @@ class KeggMetabolismEstimator(KeggContext):
         """
 
         d = {}
-        i = 0
+        unique_id = 0
         for bin, mod_dict in kegg_superdict.items():
             for mnum, c_dict in mod_dict.items():
                 if mnum == "num_complete_modules":
                     continue
-                d[i] = c_dict
-                d[i]["bin_name"] = bin
-                d[i]["kegg_module"] = mnum
-                i += 1
+                d[unique_id] = c_dict
+                d[unique_id]["bin_name"] = bin
+                d[unique_id]["kegg_module"] = mnum
+                unique_id += 1
 
         utils.store_dict_as_TAB_delimited_file(d, self.output_file_path, key_header="unique_id")
         self.run.info("Output file", self.output_file_path, nl_before=1)
