@@ -60,7 +60,8 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                                                          '--report-r1-prefix',
                                                          '--report-r2-prefix']
         rule_acceptable_params_dict['anvi_reformat_fasta'] = ['--simplify-names']
-        rule_acceptable_params_dict['anvi_gen_tRNAseq_database'] = ['run']
+        rule_acceptable_params_dict['anvi_gen_tRNAseq_database'] = ['run',
+                                                                    'verbose']
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -76,6 +77,7 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                                                        'threads': 1},
                                     'anvi_reformat_fasta': {'--simplify-names': True},
                                     'anvi_gen_tRNAseq_database': {'run': True,
+                                                                  'verbose': False,
                                                                   'threads': 1}})
 
 
