@@ -1224,7 +1224,12 @@ class KeggMetabolismEstimator(KeggContext):
                 if mnum == "num_complete_modules":
                     continue
                 d[unique_id] = c_dict
-                d[unique_id]["bin_name"] = bin
+                if self.profile_db_path and not self.metagenome_mode:
+                    d[unique_id]["genome_name"] = bin
+                elif not self.profile_db_path and not self.metagenome_mode:
+                    d[unique_id]["bin_name"] = bin
+                elif self.metagenome_mode:
+                    d[unique_id]["metagenome_name"] = bin
                 d[unique_id]["kegg_module"] = mnum
                 unique_id += 1
 
