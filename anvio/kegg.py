@@ -1162,6 +1162,35 @@ class KeggMetabolismEstimator(KeggContext):
         return bins_metabolism_superdict
 
 
+    def estimate_for_contigs_db_for_metagenome(self, kofam_gene_split_contig):
+        """This function handles metabolism estimation for an entire metagenome.
+
+        Similar to isolate genomes, we treat the entire metagenome as one big 'bin'. This means that there
+        will be a large amount of redundancy (repeated pathways) due to the presence of multiple populations
+        in the metagenome.
+
+        In fact, because we essentially consider the metagenome to be one big genome, this function is exactly the same
+        as estimate_for_genome(). Why is it a separate function? Well, because we may eventually want to do something
+        differently here.
+
+        PARAMETERS
+        ==========
+        kofam_gene_split_contig     list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
+
+        RETURNS
+        =======
+        metagenome_metabolism_superdict      dictionary mapping metagenome name to its metabolism completeness dictionary
+        """
+
+        metagenome_metabolism_superdict = {}
+        # since we consider all the hits in the metagenome collectively, we can take the UNIQUE splits from all the hits
+        splits_in_metagenome = list(set([tpl[2] for tpl in kofam_gene_split_contig]))
+
+        metagenome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(kofam_gene_split_contig, splits=splits_in_metagenome, bin_name=self.contigs_db_project_name)
+
+        return metagenome_metabolism_superdict
+
+
     def estimate_metabolism(self):
         """This is the driver function for estimating metabolism.
 
@@ -1178,14 +1207,8 @@ class KeggMetabolismEstimator(KeggContext):
             kegg_metabolism_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
         elif not self.profile_db_path and not self.metagenome_mode:
             kegg_metabolism_superdict = self.estimate_for_genome(kofam_hits_info)
-        elif self.profile_db_path and self.metagenome_mode:
-            raise ConfigError("This class doesn't know how to deal with that yet :/")
-            # metagenome, with profiling
-            #self.estimate_for_contigs_db_for_metagenome()
-        elif not self.profile_db_path and self.metagenome_mode:
-            raise ConfigError("This class doesn't know how to deal with that yet :/")
-            # metagenome without profiling
-            #self.estimate_for_contigs_db_for_metagenome()
+        elif self.metagenome_mode:
+            kegg_metabolism_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
         else:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
 
