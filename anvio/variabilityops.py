@@ -2580,6 +2580,7 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
 
     def load_data(self):
         """load the variability data (output of anvi-gen-variabliity-profile)"""
+
         self.data = pd.read_csv(self.variability_table_path, sep="\t", usecols=self.columns_to_load)
 
 
@@ -2621,8 +2622,37 @@ class VariabilityFixationIndex(object):
         self.keep_negatives = A('keep_negatives', null)
         self.min_coverage_in_each_sample = A('min_coverage_in_each_sample', null)
 
-        # potentially modifies self.args
-        self.args = self.sanitize_min_coverage_in_each_sample(self.args)
+        min_cov_default = 10
+
+        if not self.min_coverage_in_each_sample:
+            self.min_coverage_in_each_sample = min_cov_default
+            self.run.warning("--min-coverage-in-each-sample is a required parameter. Anvi'o has set this "
+                             "to %d on your behalf." % min_cov_default)
+
+        if self.min_coverage_in_each_sample < 1:
+            raise ConfigError("--min-coverage-in-each-sample must be greater than 0.")
+
+        if self.variability_table_path:
+            self.run.warning("You provided an already produced variability table, which anvi'o "
+                             "credits you for. However, this program requires information about the "
+                             "coverage information at each position in each sample, even if that "
+                             "position did not vary in the sample. The only way your externally "
+                             "provided table contains this information is if you produced it with the "
+                             "--quince-mode flag. If you didn't provide this flag, your options are "
+                             "(1) re-run anvi-gen-variability-profile with --quince-mode (slow but "
+                             "recommended), (2) instead of providing a variability table to this "
+                             "program, provide a profile and contigs database and the required "
+                             "table will be created (--quince-mode will automatically be activated). "
+                             "or (3) ignore this warning and proceed with caution (in this case "
+                             "please don't cite us).")
+        else:
+            self.args.quince_mode = True
+            self.run.warning("Anvi'o requires information about the coverage information at each position "
+                             "in each sample, even if that position did not vary in the sample. The way "
+                             "anvi'o gets this information is a long and slow process. Sorry :(. If you "
+                             "already have a variability table generated with anvi-gen-variability-profile "
+                             "along with the --quince-mode parameter, you can and should use that as input "
+                             "to this program.")
 
         args_for_variability_class = self.args
         if self.variability_table_path:
@@ -2649,41 +2679,6 @@ class VariabilityFixationIndex(object):
             'reference',
             'unique_pos_identifier',
         ]
-
-
-    def sanitize_min_coverage_in_each_sample(self, args):
-        if not self.min_coverage_in_each_sample:
-            self.run.warning("It is highly recommended that you use --min-coverage-in-each-sample "
-                             "so that only positions that maintain a threshold coverage across each "
-                             "sample are included. Otherwise, positions that have 0 coverage (for "
-                             "example) will be assumed invariant, which is a bad assumption because "
-                             "you don't know if the position is actually invariant or if the coverage "
-                             "was just too low to _detect_ variation.")
-            return args
-
-        if self.variability_table_path:
-            self.run.warning("You provided an already produced variability table, which anvi'o "
-                             "credits you for. However, you also provided "
-                             "--min-coverage-in-each-sample, which requires information about the "
-                             "coverage information at each position in each sample, even if that "
-                             "position did not vary in the sample. The only way your externally "
-                             "provided table contains this information is if you produced it with the "
-                             "--quince-mode flag. If you didn't provide this flag, your options are "
-                             "(1) re-run anvi-gen-variability-profile with --quince-mode (slow but "
-                             "recommended), (2) instead of providing a variability table to this "
-                             "program, provide a profile and contigs database and the required "
-                             "table will be created (--quince-mode will automatically be activated),"
-                             " or (3) ignore this warning and proceed with caution (in this case "
-                             "please don't cite us).")
-        else:
-            args.quince_mode = True
-            self.run.warning("You provided --min-coverage-in-each-sample, which requires information "
-                             "about the coverage information at each position in each sample, even if that position "
-                             "did not vary in the sample. The way anvi'o gets this information is a long and slow "
-                             "process. Keep in mind, if you can live without this parameter this program may run up to "
-                             "10 times faster.")
-
-        return args
 
 
     def fill_missing_entries(self, pairwise_data, sample_1, sample_2):
@@ -2726,37 +2721,35 @@ class VariabilityFixationIndex(object):
 
 
     def process(self):
+        self.v.items = self.items_dict[self.engine]
+
         if self.v.table_provided:
-            self.v.items = self.items_dict[self.engine]
-
-            self.v.filter_data(criterion = "sample_id",
-                               subset_filter = self.v.sample_ids_of_interest,
-                               subset_condition = self.v.sample_ids_of_interest and self.v.load_all_samples)
-
-            self.v.filter_data(criterion = "corresponding_gene_call",
-                               subset_filter = self.v.genes_of_interest,
-                               subset_condition = self.v.genes_of_interest and self.v.load_all_genes)
-
-            if self.min_coverage_in_each_sample:
+            try:
+                self.v.filter_data(criterion = "sample_id",
+                                   subset_filter = self.v.sample_ids_of_interest,
+                                   subset_condition = self.v.sample_ids_of_interest and self.v.load_all_samples)
+                self.v.filter_data(criterion = "corresponding_gene_call",
+                                   subset_filter = self.v.genes_of_interest,
+                                   subset_condition = self.v.genes_of_interest and self.v.load_all_genes)
                 self.v.filter_data(function=self.v.filter_by_minimum_coverage_in_each_sample)
-
-            self.v.data = self.v.data[self.columns_of_interest]
-            self.v.convert_counts_to_frequencies(remove_zero_cov_entries=True)
-            self.compute_FST_matrix()
+            except self.v.EndProcess:
+                raise ConfigError("After filtering, no positions remain. See the filtering summary above.")
         else:
             self.v.init_commons()
-            self.v.items = self.items_dict[self.engine]
             self.v.load_variability_data()
-            self.v.apply_preliminary_filters()
-            self.v.set_unique_pos_identification_numbers()
 
-            if self.min_coverage_in_each_sample:
+            try:
+                self.v.apply_preliminary_filters()
+                self.v.set_unique_pos_identification_numbers()
                 self.v.recover_base_frequencies_for_all_samples()
                 self.v.filter_data(function=self.v.filter_by_minimum_coverage_in_each_sample)
+            except self.v.EndProcess:
+                raise ConfigError("After filtering, no positions remain. See the filtering summary above.")
 
-            self.v.data = self.v.data[self.columns_of_interest]
-            self.v.convert_counts_to_frequencies(remove_zero_cov_entries=True)
-            self.compute_FST_matrix()
+        # We got our data. We don't care how we got it
+        self.v.data = self.v.data[self.columns_of_interest]
+        self.v.convert_counts_to_frequencies()
+        self.compute_FST_matrix()
 
 
     def get_pairwise_data_and_shape(self, sample_1, sample_2):
@@ -2777,14 +2770,19 @@ class VariabilityFixationIndex(object):
 
 
     def get_FST(self, sample_1, sample_2):
+        if sample_1 == sample_2:
+            # Samples are by definition a distance 0 from themselves
+            return 0
+
         pi_S1 = self.get_intra_sample_diversity(sample_1)
         pi_S2 = self.get_intra_sample_diversity(sample_2)
         pi_S1_S2 = self.get_inter_sample_diversity(sample_1, sample_2)
-        try:
-            return 1 - (pi_S1 + pi_S2) / 2 / pi_S1_S2
-        except ZeroDivisionError:
-            # The inter-sample diversity 0, so fixation index is undefined
-            return np.nan
+
+        if pi_S1_S2 == 0:
+            # The samples exhibit the exact same variation. It is as if sample_1 == sample_2
+            return 0
+
+        return 1 - (pi_S1 + pi_S2) / 2 / pi_S1_S2
 
 
     def get_intra_sample_diversity(self, sample):
@@ -2874,7 +2872,6 @@ class VariabilityFixationIndex(object):
 
                 if count % 10 == 0:
                     self.progress.update('%d/%d pairwise comparisons; %s elapsed' % (count, indices_to_calculate, self.progress.t.time_elapsed()))
-
 
         if not self.keep_negatives:
             self.fst_matrix[self.fst_matrix < 0] = 0
