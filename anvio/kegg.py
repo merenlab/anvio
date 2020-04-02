@@ -47,13 +47,14 @@ class KeggContext(object):
         self.kegg_data_dir = A('kegg_data_dir') or os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
         self.orphan_data_dir = os.path.join(self.kegg_data_dir, "orphan_data")
         self.module_data_dir = os.path.join(self.kegg_data_dir, "modules")
+        self.hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
         self.quiet = A('quiet') or False
         self.just_do_it = A('just_do_it')
 
         # shared variables for all KEGG subclasses
-        self.kofam_hmm_file_path = os.path.join(self.kegg_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
-        self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list")
-        self.kegg_module_file = os.path.join(self.kegg_data_dir, "ko00002.keg")
+        self.kofam_hmm_file_path = os.path.join(self.hmm_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
+        self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list.txt")
+        self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
 
 
     def setup_ko_dict(self):
@@ -163,6 +164,7 @@ class KeggSetup(KeggContext):
             self.is_database_exists()
 
         filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
+        filesnpaths.gen_output_directory(self.hmm_data_dir, delete_if_exists=args.reset)
         filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
         filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
 
@@ -170,7 +172,8 @@ class KeggSetup(KeggContext):
             # for ko list, add /ko_list.gz to end of url
             # for profiles, add /profiles.tar.gz  to end of url
         self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
-        self.files = ['ko_list.gz', 'profiles.tar.gz']
+        # dictionary mapping downloaded file name to final decompressed file name or folder location
+        self.files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
 
         # Kegg module text files
         self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
@@ -196,7 +199,7 @@ class KeggSetup(KeggContext):
 
         self.run.info("Kofam Profile Database URL", self.database_url)
 
-        for file_name in self.files:
+        for file_name in self.files.keys():
             utils.download_file(self.database_url + '/' + file_name,
                 os.path.join(self.kegg_data_dir, file_name), progress=self.progress, run=self.run)
 
@@ -302,17 +305,18 @@ class KeggSetup(KeggContext):
     def decompress_files(self):
         """This function decompresses the Kofam profiles."""
 
-        for file_name in self.files:
-            self.progress.new('Decompressing file %s' % file_name)
+        self.progress.new('Decompressing files')
+        for file_name in self.files.keys():
+            self.progress.update('Decompressing file %s' % file_name)
             full_path = os.path.join(self.kegg_data_dir, file_name)
 
             if full_path.endswith("tar.gz"):
-                utils.tar_extract_file(full_path, output_file_path = self.kegg_data_dir, keep_original=False)
+                utils.tar_extract_file(full_path, output_file_path=self.files[file_name], keep_original=False)
             else:
-                utils.gzip_decompress_file(full_path, keep_original=False)
+                utils.gzip_decompress_file(full_path, output_file_path=self.files[file_name], keep_original=False)
 
             self.progress.update("File decompressed. Yay.")
-            self.progress.end()
+        self.progress.end()
 
 
     def confirm_downloaded_profiles(self):
@@ -367,33 +371,34 @@ class KeggSetup(KeggContext):
         remove_old_files = not anvio.DEBUG # if we are running in debug mode, we will not remove the individual hmm files after concatenation
         if no_kofam_file_list:
             utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=remove_old_files)
+            self.progress.reset()
             self.run.warning("Please note that while anvi'o was building your databases, she found %d \
                             HMM profiles that did not have any matching KOfam entries. We have removed those HMM \
                             profiles from the final database. You can find them under the directory '%s'."
                             % (len(no_kofam_file_list), self.orphan_data_dir))
-            self.progress.reset()
+
 
         if no_threshold_file_list:
             utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=remove_old_files)
+            self.progress.reset()
             self.run.warning("Please note that while anvi'o was building your databases, she found %d \
                             KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM \
                             profiles from the final database. You can find them under the directory '%s'."
                             % (len(no_threshold_file_list), self.orphan_data_dir))
-            self.progress.reset()
+
         if no_data_file_list:
             utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=remove_old_files)
+            self.progress.reset()
             self.run.warning("Please note that while anvi'o was building your databases, she found %d \
                             HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. \
                             We have removed those HMM profiles from the final database. You can find them under the directory '%s'."
                             % (len(no_data_file_list), self.orphan_data_dir))
-            self.progress.reset()
 
 
     def run_hmmpress(self):
         """This function concatenates the Kofam profiles and runs hmmpress on them."""
 
         self.progress.new('Preparing Kofam HMM Profiles')
-        log_file_path = os.path.join(self.kegg_data_dir, '00_hmmpress_log.txt')
 
         self.progress.update('Verifying the Kofam directory %s contains all HMM profiles' % self.kegg_data_dir)
         self.confirm_downloaded_profiles()
@@ -411,7 +416,7 @@ class KeggSetup(KeggContext):
 
         self.progress.update('Running hmmpress...')
         cmd_line = ['hmmpress', self.kofam_hmm_file_path]
-        log_file_path = os.path.join(self.kegg_data_dir, '00_hmmpress_log.txt')
+        log_file_path = os.path.join(self.hmm_data_dir, '00_hmmpress_log.txt')
         ret_val = utils.run_command(cmd_line, log_file_path)
 
         if ret_val:
@@ -683,9 +688,9 @@ class KeggMetabolismEstimator(KeggContext):
             genes_in_splits = [tpl for tpl in genes_in_splits if tpl[0] not in gene_calls_without_kofam_hits]
             genes_in_contigs = [tpl for tpl in genes_in_contigs if tpl[0] not in gene_calls_without_kofam_hits]
             if anvio.DEBUG:
+                self.progress.reset()
                 self.run.warning("The following gene calls in your contigs DB were removed from consideration as they \
                 do not have any hits to the KOfam database: %s" % (gene_calls_without_kofam_hits))
-                self.progress.reset()
 
 
         # get rid of splits and contigs (and their associated gene calls) that are not in the profile DB
@@ -1416,11 +1421,12 @@ class KeggModulesDatabase(KeggContext):
         if not is_ok and not is_corrected:
             self.num_uncorrected_errors += 1
             if self.just_do_it:
+                self.progress.reset()
                 self.run.warning("While parsing, anvi'o found an uncorrectable issue with a KEGG Module line in module %s, but since you used the --just-do-it flag, \
                 anvi'o will quietly ignore this issue and add the line to the MODULES.db anyway. Please be warned that this may break things downstream. \
                 In case you are interested, the line causing this issue has data name %s and data value %s" % (current_module_num, current_data_name, data_vals))
                 is_ok = True # let's pretend that everything is alright so that the next function will take the original parsed values
-                self.progress.reset()
+
             else:
                 raise ConfigError("While parsing, anvi'o found an uncorrectable issue with a KEGG Module line in module %s. The current data name is %s, \
                 here is the incorrectly-formatted data value field: %s. If you think this is totally fine and want to ignore errors like this, please \
@@ -1430,9 +1436,9 @@ class KeggModulesDatabase(KeggContext):
         if is_corrected:
             self.num_corrected_errors += 1
             if anvio.DEBUG and not self.quiet:
+                self.progress.reset()
                 self.run.warning("While parsing a KEGG Module line, we found an issue with the formatting. We did our very best to parse the line \
                 correctly, but please check that it looks right to you by examining the following values.")
-                self.progress.reset()
                 self.run.info("Incorrectly parsed data value field", data_vals)
                 self.run.info("Corrected data values", corrected_vals)
                 self.run.info("Corrected data definition", corrected_def)
