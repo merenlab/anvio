@@ -371,6 +371,7 @@ class KeggSetup(KeggContext):
                             HMM profiles that did not have any matching KOfam entries. We have removed those HMM \
                             profiles from the final database. You can find them under the directory '%s'."
                             % (len(no_kofam_file_list), self.orphan_data_dir))
+            self.progress.reset()
 
         if no_threshold_file_list:
             utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=remove_old_files)
@@ -378,12 +379,14 @@ class KeggSetup(KeggContext):
                             KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM \
                             profiles from the final database. You can find them under the directory '%s'."
                             % (len(no_threshold_file_list), self.orphan_data_dir))
+            self.progress.reset()
         if no_data_file_list:
             utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=remove_old_files)
             self.run.warning("Please note that while anvi'o was building your databases, she found %d \
                             HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. \
                             We have removed those HMM profiles from the final database. You can find them under the directory '%s'."
                             % (len(no_data_file_list), self.orphan_data_dir))
+            self.progress.reset()
 
 
     def run_hmmpress(self):
@@ -682,6 +685,7 @@ class KeggMetabolismEstimator(KeggContext):
             if anvio.DEBUG:
                 self.run.warning("The following gene calls in your contigs DB were removed from consideration as they \
                 do not have any hits to the KOfam database: %s" % (gene_calls_without_kofam_hits))
+                self.progress.reset()
 
 
         # get rid of splits and contigs (and their associated gene calls) that are not in the profile DB
@@ -1393,6 +1397,7 @@ class KeggModulesDatabase(KeggContext):
                 anvi'o will quietly ignore this issue and add the line to the MODULES.db anyway. Please be warned that this may break things downstream. \
                 In case you are interested, the line causing this issue has data name %s and data value %s" % (current_module_num, current_data_name, data_vals))
                 is_ok = True # let's pretend that everything is alright so that the next function will take the original parsed values
+                self.progress.reset()
             else:
                 raise ConfigError("While parsing, anvi'o found an uncorrectable issue with a KEGG Module line in module %s. The current data name is %s, \
                 here is the incorrectly-formatted data value field: %s. If you think this is totally fine and want to ignore errors like this, please \
@@ -1404,6 +1409,7 @@ class KeggModulesDatabase(KeggContext):
             if anvio.DEBUG and not self.quiet:
                 self.run.warning("While parsing a KEGG Module line, we found an issue with the formatting. We did our very best to parse the line \
                 correctly, but please check that it looks right to you by examining the following values.")
+                self.progress.reset()
                 self.run.info("Incorrectly parsed data value field", data_vals)
                 self.run.info("Corrected data values", corrected_vals)
                 self.run.info("Corrected data definition", corrected_def)
