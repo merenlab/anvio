@@ -504,7 +504,7 @@ class ContigsSuperclass(object):
             if gene_callers_id not in self.gene_function_calls_dict:
                 self.gene_function_calls_dict[gene_callers_id] = dict([(s, None) for s in self.gene_function_call_sources])
 
-            if self.gene_function_calls_dict[gene_callers_id][source]:
+            if self.gene_function_calls_dict[gene_callers_id][source] and e_value:
                 if self.gene_function_calls_dict[gene_callers_id][source][2] < e_value:
                     # 'what we have:', self.gene_function_calls_dict[gene_callers_id][source]
                     # 'rejected    :', ('%s :: %s' % (function if function else 'unknown', accession), e_value)
