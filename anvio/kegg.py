@@ -8,6 +8,7 @@ import shutil
 import requests
 import glob
 import re
+import copy
 
 import anvio
 import anvio.db as db
@@ -46,15 +47,16 @@ class KeggContext(object):
         self.kegg_data_dir = A('kegg_data_dir') or os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
         self.orphan_data_dir = os.path.join(self.kegg_data_dir, "orphan_data")
         self.module_data_dir = os.path.join(self.kegg_data_dir, "modules")
+        self.hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
         self.pathway_data_dir = os.path.join(self.kegg_data_dir, "pathways")
         self.quiet = A('quiet') or False
         self.just_do_it = A('just_do_it')
 
         # shared variables for all KEGG subclasses
-        self.kofam_hmm_file_path = os.path.join(self.kegg_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
-        self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list")
-        self.kegg_module_file = os.path.join(self.kegg_data_dir, "ko00002.keg")
-        self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "br08901.keg")
+        self.kofam_hmm_file_path = os.path.join(self.hmm_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
+        self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list.txt")
+        self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
+        self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
 
 
     def setup_ko_dict(self):
@@ -115,8 +117,8 @@ class KeggContext(object):
         K23749 - - - - 1 1 2266 2266 0.39 0.592 spectinabilin polyketide synthase system NorC [EC:2.3.1.290]
 
         Returns:
-        skip_list  list of strings, each string is a KO number
-        no_threshold_list   list of strings, each string is a KO number
+        skip_list  list of strings, each string is a KO number that has no associated data (ie, RNAs)
+        no_threshold_list   list of strings, each string is a KO number that has no scoring threshold
         """
 
         col_names_to_check = ["threshold","score_type","profile_type","F-measure","nseq","nseq_used","alen","mlen","eff_nseq","re/pos"]
@@ -164,6 +166,7 @@ class KeggSetup(KeggContext):
             self.is_database_exists()
 
         filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
+        filesnpaths.gen_output_directory(self.hmm_data_dir, delete_if_exists=args.reset)
         filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
         filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
         filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
@@ -172,7 +175,8 @@ class KeggSetup(KeggContext):
             # for ko list, add /ko_list.gz to end of url
             # for profiles, add /profiles.tar.gz  to end of url
         self.database_url = "ftp://ftp.genome.jp/pub/db/kofam"
-        self.files = ['ko_list.gz', 'profiles.tar.gz']
+        # dictionary mapping downloaded file name to final decompressed file name or folder location
+        self.files = {'ko_list.gz': self.ko_list_file_path, 'profiles.tar.gz': self.kegg_data_dir}
 
         # Kegg module text files
         self.kegg_module_download_path = "https://www.genome.jp/kegg-bin/download_htext?htext=ko00002.keg&format=htext&filedir="
@@ -207,7 +211,7 @@ class KeggSetup(KeggContext):
 
         self.run.info("Kofam Profile Database URL", self.database_url)
 
-        for file_name in self.files:
+        for file_name in self.files.keys():
             utils.download_file(self.database_url + '/' + file_name,
                 os.path.join(self.kegg_data_dir, file_name), progress=self.progress, run=self.run)
 
@@ -414,17 +418,18 @@ class KeggSetup(KeggContext):
     def decompress_files(self):
         """This function decompresses the Kofam profiles."""
 
-        for file_name in self.files:
-            self.progress.new('Decompressing file %s' % file_name)
+        self.progress.new('Decompressing files')
+        for file_name in self.files.keys():
+            self.progress.update('Decompressing file %s' % file_name)
             full_path = os.path.join(self.kegg_data_dir, file_name)
 
             if full_path.endswith("tar.gz"):
-                utils.tar_extract_file(full_path, output_file_path = self.kegg_data_dir, keep_original=False)
+                utils.tar_extract_file(full_path, output_file_path=self.files[file_name], keep_original=False)
             else:
-                utils.gzip_decompress_file(full_path, keep_original=False)
+                utils.gzip_decompress_file(full_path, output_file_path=self.files[file_name], keep_original=False)
 
             self.progress.update("File decompressed. Yay.")
-            self.progress.end()
+        self.progress.end()
 
 
     def confirm_downloaded_profiles(self):
@@ -479,19 +484,24 @@ class KeggSetup(KeggContext):
         remove_old_files = not anvio.DEBUG # if we are running in debug mode, we will not remove the individual hmm files after concatenation
         if no_kofam_file_list:
             utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=remove_old_files)
+            self.progress.reset()
             self.run.warning("Please note that while anvi'o was building your databases, she found %d \
                             HMM profiles that did not have any matching KOfam entries. We have removed those HMM \
                             profiles from the final database. You can find them under the directory '%s'."
                             % (len(no_kofam_file_list), self.orphan_data_dir))
 
+
         if no_threshold_file_list:
             utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=remove_old_files)
+            self.progress.reset()
             self.run.warning("Please note that while anvi'o was building your databases, she found %d \
                             KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM \
                             profiles from the final database. You can find them under the directory '%s'."
                             % (len(no_threshold_file_list), self.orphan_data_dir))
+
         if no_data_file_list:
             utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=remove_old_files)
+            self.progress.reset()
             self.run.warning("Please note that while anvi'o was building your databases, she found %d \
                             HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. \
                             We have removed those HMM profiles from the final database. You can find them under the directory '%s'."
@@ -502,7 +512,6 @@ class KeggSetup(KeggContext):
         """This function concatenates the Kofam profiles and runs hmmpress on them."""
 
         self.progress.new('Preparing Kofam HMM Profiles')
-        log_file_path = os.path.join(self.kegg_data_dir, '00_hmmpress_log.txt')
 
         self.progress.update('Verifying the Kofam directory %s contains all HMM profiles' % self.kegg_data_dir)
         self.confirm_downloaded_profiles()
@@ -520,7 +529,7 @@ class KeggSetup(KeggContext):
 
         self.progress.update('Running hmmpress...')
         cmd_line = ['hmmpress', self.kofam_hmm_file_path]
-        log_file_path = os.path.join(self.kegg_data_dir, '00_hmmpress_log.txt')
+        log_file_path = os.path.join(self.hmm_data_dir, '00_hmmpress_log.txt')
         ret_val = utils.run_command(cmd_line, log_file_path)
 
         if ret_val:
@@ -540,7 +549,9 @@ class KeggSetup(KeggContext):
 
 
     def setup_profiles(self):
-        """This is a driver function which executes the KEGG setup process by downloading, decompressing, and hmmpressing the profiles."""
+        """This is a driver function which executes the KEGG setup process by downloading, decompressing, and hmmpressing the KOfam profiles.
+        It also downloads and processes the KEGG Module files into the MODULES.db.
+        """
 
         self.download_profiles()
         self.decompress_files()
@@ -659,7 +670,7 @@ class KeggRunHMMs(KeggContext):
 
             # FIXME? some KOs are not associated with modules. Should we report this?
             if mods:
-                mod_annotation = "\n".join(mods)
+                mod_annotation = "!!!".join(mods)
                 mod_class_annotation = "!!!".join(classes) # why do we split by '!!!'? Because that is how it is done in COGs. So so sorry. :'(
                 mod_name_annotation = ""
 
@@ -757,48 +768,48 @@ class KeggMetabolismEstimator(KeggContext):
         self.kegg_modules_db = KeggModulesDatabase(os.path.join(self.kegg_data_dir, "MODULES.db"), args=self.args)
 
     def init_hits_and_splits(self):
-        """This function loads splits and KOfam hits from the contigs DB.
+        """This function loads KOfam hits, gene calls, splits, and contigs from the contigs DB.
 
         We will need the hits with their KO numbers (accessions) so that we can go through the MODULES.db and determine
-        which steps are present in each module. And we will need the splits so that we can determine which hits belong
-        to which genomes/bins when we are handling multiple of these. This function gets these hits and splits (as lists
-        of tuples), and it makes sure that these lists don't include hits/splits we shouldn't be considering.
+        which steps are present in each module. And we will need the other information so that we can determine which hits belong
+        to which genomes/bins when we are handling multiple of these, and for help in computing redundancy.
+        This function gets this info as a list of tuples (one tuple per kofam hit), and it makes sure that these lists don't include
+        hits that we shouldn't be considering.
 
         RETURNS
         =======
-        kofam_hits          list of (gene_call_id, ko_num) tuples
-        genes_in_splits     list of (split, gene_call_id) tuples
+        kofam_gene_split_contig     list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
         """
 
-        self.progress.new('Loading')
-        self.progress.update('Contigs DB')
+        self.progress.new('Loading data from Contigs DB')
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
         self.contigs_db_project_name = contigs_db.meta['project_name']
-        self.progress.update('Splits')
-        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "split, gene_callers_id")
-        self.progress.update('KOfam hits')
+        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "gene_callers_id, split")
+        genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig")
         kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
                                                 where_clause="source = 'KOfam'")
         min_contig_length_in_contigs_db = contigs_db.db.get_max_value_in_column(t.contigs_info_table_name, "length", return_min_instead=True)
         contigs_db.disconnect()
 
-        # get rid of gene calls in genes_in_splits that are not associated with KOfam hits.
-        # Perhaps this is not a necessary step. But it makes me feel clean.
-        all_gene_calls_in_splits = set([tpl[1] for tpl in genes_in_splits])
+        # get rid of gene calls that are not associated with KOfam hits.
+        all_gene_calls_in_splits = set([tpl[0] for tpl in genes_in_splits])
         gene_calls_with_kofam_hits = set([tpl[0] for tpl in kofam_hits])
         gene_calls_without_kofam_hits = all_gene_calls_in_splits.difference(gene_calls_with_kofam_hits)
 
         if gene_calls_without_kofam_hits:
             self.progress.update("Removing %s gene calls without KOfam hits" % len(gene_calls_without_kofam_hits))
-            genes_in_splits = [tpl for tpl in genes_in_splits if tpl[1] not in gene_calls_without_kofam_hits]
+            genes_in_splits = [tpl for tpl in genes_in_splits if tpl[0] not in gene_calls_without_kofam_hits]
+            genes_in_contigs = [tpl for tpl in genes_in_contigs if tpl[0] not in gene_calls_without_kofam_hits]
             if anvio.DEBUG:
+                self.progress.reset()
                 self.run.warning("The following gene calls in your contigs DB were removed from consideration as they \
                 do not have any hits to the KOfam database: %s" % (gene_calls_without_kofam_hits))
 
-        # get rid of splits (and their associated gene calls) that are not in the profile DB
+
+        # get rid of splits and contigs (and their associated gene calls) that are not in the profile DB
         if self.profile_db_path:
             split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
-            split_names_in_contigs_db = set([tpl[0] for tpl in genes_in_splits])
+            split_names_in_contigs_db = set([tpl[1] for tpl in genes_in_splits])
             splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
 
             min_contig_length_in_profile_db = ProfileDatabase(self.profile_db_path).meta['min_contig_length']
@@ -819,10 +830,25 @@ class KeggMetabolismEstimator(KeggContext):
                                                                              pp(min_contig_length_in_profile_db)))
 
                 self.progress.update("Removing %s splits (and associated gene calls) that were missing from the profile db" % pp(len(splits_missing_in_profile_db)))
-                genes_in_splits = [tpl for tpl in genes_in_splits if tpl[0] not in splits_missing_in_profile_db]
-                remaining_gene_calls = [tpl[1] for tpl in genes_in_splits]
+                genes_in_splits = [tpl for tpl in genes_in_splits if tpl[1] not in splits_missing_in_profile_db]
+                remaining_gene_calls = [tpl[0] for tpl in genes_in_splits]
+                genes_in_contigs = [tpl for tpl in genes_in_contigs if tpl[0] in remaining_gene_calls]
                 kofam_hits = [tpl for tpl in kofam_hits if tpl[0] in remaining_gene_calls]
 
+        # combine the information for each gene call into neat tuples for returning
+        # each gene call is only on one split of one contig, so we can convert these lists of tuples into dictionaries for easy access
+        # but some gene calls have multiple kofam hits (and some kofams have multiple gene calls), so we must keep the tuple structure for those
+        self.progress.update("Organizing KOfam hit data")
+        gene_calls_splits_dict = {tpl[0] : tpl[1] for tpl in genes_in_splits}
+        gene_calls_contigs_dict = {tpl[0] : tpl[1] for tpl in genes_in_contigs}
+        assert len(gene_calls_splits_dict.keys()) == len(genes_in_splits)
+        assert len(gene_calls_splits_dict.keys()) == len(genes_in_contigs)
+
+        kofam_gene_split_contig = []
+        for gene_call_id, ko in kofam_hits:
+            kofam_gene_split_contig.append((ko, gene_call_id, gene_calls_splits_dict[gene_call_id], gene_calls_contigs_dict[gene_call_id]))
+
+        self.progress.update("Done")
         self.progress.end()
 
         self.run.info("Contigs DB", self.contigs_db_path, quiet=self.quiet)
@@ -836,19 +862,29 @@ class KeggMetabolismEstimator(KeggContext):
         elif self.bin_ids_file:
             self.run.info('Bin IDs file', self.bin_ids_file)
 
-        return kofam_hits, genes_in_splits
+        return kofam_gene_split_contig
 
     def mark_kos_present_for_list_of_splits(self, kofam_hits_in_splits, split_list=None, bin_name=None):
-        """This function generates a bin-level dictionary of dictionaries, which associates modules with the list of KOs
+        """This function generates a bin-level dictionary of dictionaries, which associates modules with the KOs
         that are present in the bin for each module.
 
-        The structure of the dictionary is like this:
-        {mnum: {present_kos: [knum1, knum2, ....]}}
-        Why do we need an inner dictionary with just one list? Well. This dictionary will be expanded later by other functions, not to worry.
+        The structure of the dictionary is like this example:
+        {mnum: {"gene_caller_ids" : set([132, 133, 431, 6777])
+                "kofam_hits" : {'K00033' : [431, 6777],
+                                'K01057' : [133],
+                                'K00036' : [132] },
+                "genes_to_contigs": {132: 0,
+                                     133: 0,
+                                     431: 2,
+                                    6777: 1 },
+                "contigs_to_genes": { 0: set([132, 133]),
+                                      1: set(6777),
+                                      2: set(431) },}}
+        This dictionary will be expanded later by other functions.
 
         PARAMETERS
         ==========
-        kofam_hits_in_splits        list of KO numbers that are hits in the current list of splits
+        kofam_hits_in_splits        list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
         split_list                  list of splits we are considering, this is only for debugging output
         bin_name                    name of the bin containing these splits, this is only for debugging output
 
@@ -863,19 +899,33 @@ class KeggMetabolismEstimator(KeggContext):
             self.run.info("Marking KOs present for bin", bin_name)
             self.run.info("Number of splits", len(split_list))
 
-        # initialize all modules with empty presence list
+        # initialize all modules with empty lists and dicts for kos, gene calls
         modules = self.kegg_modules_db.get_all_modules_as_list()
         for mnum in modules:
-            bin_level_module_dict[mnum] = {"present_kos" : []}
+            bin_level_module_dict[mnum] = {"gene_caller_ids" : set(),
+                                           "kofam_hits" : {},
+                                           "genes_to_contigs" : {},
+                                           "contigs_to_genes" : {}
+                                          }
 
         kos_not_in_modules = []
-        for ko in kofam_hits_in_splits:
+        for ko, gene_call_id, split, contig in kofam_hits_in_splits:
             present_in_mods = self.kegg_modules_db.get_modules_for_knum(ko)
             if not present_in_mods:
                 kos_not_in_modules.append(ko)
             for m in present_in_mods:
-                bin_level_module_dict[m]["present_kos"].append(ko)
+                bin_level_module_dict[m]["gene_caller_ids"].add(gene_call_id)
+                if ko in bin_level_module_dict[m]["kofam_hits"]:
+                    bin_level_module_dict[m]["kofam_hits"][ko].append(gene_call_id)
+                else:
+                    bin_level_module_dict[m]["kofam_hits"][ko] = [gene_call_id]
+                bin_level_module_dict[m]["genes_to_contigs"][gene_call_id] = contig
+                if contig in bin_level_module_dict[m]["contigs_to_genes"]:
+                    bin_level_module_dict[m]["contigs_to_genes"][contig].add(gene_call_id)
+                else:
+                    bin_level_module_dict[m]["contigs_to_genes"][contig] = set([gene_call_id])
 
+        # TODO: at some point I think we should save these KOs somewhere so that the user can look at them manually
         if anvio.DEBUG:
             self.run.info("KOs processed", "%d in bin" % len(kofam_hits_in_splits))
             if kos_not_in_modules:
@@ -884,29 +934,17 @@ class KeggMetabolismEstimator(KeggContext):
 
         return bin_level_module_dict
 
+
     def compute_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
-        """This function calculates the completeness of the specified module.
+        """This function calculates the completeness of the specified module within the given bin metabolism dictionary.
 
-        This requires some parsing of the module DEFINITION fields. In these fields, we have the following:
-        "Kxxxxx"    (KO numbers) indicating which enzyme contributes to a step in the module
-        "Mxxxxx"    (module numbers) indicating that the module encompasses another module. This is rare. See note below.
-        " "         (spaces) separating module steps; indicating an AND operation
-        ","         (commas) separating alternatives (which can be singular KOs or entire pathways); indicating an OR operation
-        "()"        (parentheses) enclosing comma-separated alternatives
-        "+"         (plus sign) indicating the following KO is a necessary component of a complex; indicating an AND operation
-        "-"         (minus sign) indicating the following KO is non-essential in a complex; so in other words we don't care if it is there
+        To do this, it unrolls the module definition into a list of all possible paths, where each path is a list of atomic steps.
+        Atomic steps include singular KOs, protein complexes, modules, non-essential steps, and steps without associated KOs.
+        An atomic step (or parts of a protein complex) can be considered 'present' if the corresponding KO(s) has a hit in the bin.
+        For each path, the function computes the path completeness as the number of present (essential) steps divided by the number of total steps in the path.
+        The module completeness is simply the highest path completeness.
 
-        What we will do is build a condition statement out of each step which will evaulate to True if the step can be considered present based
-        on the available KOs in the current genome/bin.
-        For example, suppose we have a step like: (K13937,((K00036,K19243) (K01057,K07404)))
-        This will be parsed into the condition statement: (K13937 OR ((K00036 OR K19243) AND (K01057 OR K07404)))
-        where the KOs will be replaced by True if they are present and False otherwise.
-
-        While we are parsing, we save the individual module steps in lists (ie, one for all steps, one for complete steps) for easy access later.
-        Afterwards we compute the completeness of the module based on the specified completion threshold.
-        Then, we return a bunch of information about the completeness of the module, which can then be placed into the module completeness dictionary.
-
-        There are 3 special cases to consider here.
+        There are some special cases to consider here.
         1) Non-essential steps. These are steps that are marked with a preceding "-" to indicate that they are not required for the module to
            be considered complete. They often occur in pathways with multiple forks. What we do with these is save and count them separately as
            non-essential steps, but we do not use them in our module completeness calculations. Another thing we do is continue parsing the rest
@@ -919,22 +957,20 @@ class KeggMetabolismEstimator(KeggContext):
            order to be complete. We can't figure this out until after we've evaluated all modules, so we simply parse these steps without marking
            them complete, and later will go back to adjust the completeness score once all modules have been marked complete or not.
 
+
         PARAMETERS
         ==========
         mnum                    string, module number to work on
         meta_dict_for_bin       metabolism completeness dict for the current bin, to be modified in-place
 
-        VARIABLES FOR UPDATING METABOLISM COMPLETENESS DICT
+        NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
         =======
-        module_step_list                list of strings, each string is an individual step in the module (may have sub-steps if there are alternate pathways)
-        module_complete_steps           list of strings, each string is a step in the module that is considered complete based on KO availability
-        module_nonessential_steps       list of strings, each string is a step in the module that doesn't count for completeness estimates
-        module_complete_nonessential_steps          list of strings, each string is a non-essential step that is considered complete based on KO availability
-        module_total_steps                  int, the total number of steps in the module
-        module_num_complete_steps           int, the number of complete steps in the module
-        module_num_nonessential_steps       int, the total number of nonessential steps in the module
-        module_num_complete_nonessential_steps      int, the number of nonessential steps in the module that were found to be complete
-        module_completeness             float, a decimal indicating the fraction of complete steps in the module
+        "paths"                         a list of all possible paths (each is a list of atomic) through the module DEFINITION
+        "pathway_completeness"          a list of the completeness of each pathway
+        "present_nonessential_kos"      a list of non-essential KOs in the module that were found to be present
+        "most_complete_paths"           a list of the paths with maximum completeness
+        "percent_complete"              the completeness of the module, which is the maximum pathway completeness
+        "complete"                      whether the module completeness falls over the completeness threshold
 
         RETURNS
         =======
@@ -944,182 +980,108 @@ class KeggMetabolismEstimator(KeggContext):
         defined_by_modules              boolean, whether or not the module contains steps defined by other modules. Used for going back to adjust completeness later.
         """
 
-        present_list_for_mnum = meta_dict_for_bin[mnum]["present_kos"]
+        present_list_for_mnum = meta_dict_for_bin[mnum]["kofam_hits"].keys()
         if not present_list_for_mnum:
             # no KOs in this module are present
             if anvio.DEBUG:
-                self.run.warning("No KOs present for module %s. Parsing for completeness is still being done to obtain module steps." % mnum)
+                self.run.warning("No KOs present for module %s. Parsing for completeness is still being done to obtain module information." % mnum)
 
-        # module information to return
-        module_step_list = [] # while we are at it, we'll remember what the (essential) steps are
-        module_complete_steps = [] # and what the complete steps are
-        module_nonessential_steps = [] # steps that aren't necessary for module completeness
-        module_complete_nonessential_steps = [] # and those nonessential steps which we find are complete
-        module_total_steps = 0
-        module_num_complete_steps = 0
-        module_num_nonessential_steps = 0
-        module_num_complete_nonessential_steps = 0
+        # stuff to put in the module's dictionary
+        module_nonessential_kos = [] # KOs that are present but unnecessary for module completeness
+
+        # stuff that will be returned
+        over_complete_threshold = False
         has_nonessential_step = False
         has_no_ko_step = False
         defined_by_modules = False
 
-        def_lines = self.kegg_modules_db.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
-        for d in def_lines:
-            d = d.strip()
-            cur_index = 0  # current position in the DEFINITION line
-            parens_level = 0 # how deep we are in nested parentheses
-            step_is_present_condition_statement = ""
-            last_step_end_index = 0
+        # unroll the module definition to get all possible paths
+        meta_dict_for_bin[mnum]["paths"] = self.kegg_modules_db.unroll_module_definition(mnum)
+        meta_dict_for_bin[mnum]["pathway_completeness"] = []
 
-            while cur_index < len(d):
-                if d[cur_index] == "K": # we have found a KO
-                    ko = d[cur_index:cur_index+6]
-                    defined_by_modules = False  # reset this flag just in case KO-defined step comes after a module-defined step
-                    if ko in present_list_for_mnum:
-                        step_is_present_condition_statement += "True"
-                    else:
-                        step_is_present_condition_statement += "False"
-                    cur_index += 6
-
-                elif d[cur_index] == "(":
-                    parens_level += 1
-                    step_is_present_condition_statement += "("
-                    cur_index += 1
-
-                elif d[cur_index] == ")":
-                    parens_level -= 1
-                    step_is_present_condition_statement += ")"
-                    cur_index += 1
-
-                elif d[cur_index] == ",":
-                    step_is_present_condition_statement += " or "
-                    cur_index += 1
-
-                elif d[cur_index] == "+":
-                    step_is_present_condition_statement += " and "
-                    cur_index += 1
-
-                elif d[cur_index] == "-":
-                    # either a singular KO or a set of KOs in parentheses can follow this character
-                    # since the following KO(s) are non-essential in the complex, we skip over them to ignore them
-                    # unless this is its own step, in which case we consider the whole step non-essential
-
-                    # singular nonessential KO
-                    if d[cur_index+1] == "K":
-                        nonessential_ko = d[cur_index+1:cur_index+7]
-                        cur_index += 7
-                        """
-                        OKAY, SO HERE WE HAVE SOME POOPINESS THAT MAY NEED TO BE FIXED EVENTUALLY.
-                        Basically, some DEFINITION lines have KOs that seem to be marked non-essential;
-                        ie, "-K11024" in "K11023 -K11024 K11025 K11026 K11027".
-                        It was difficult to decide whether we should consider only K11024, or K11024 and all following KOs, to be non-essential.
-                        For instance, the module M00778 is a complex case that gave us pause - see Fiesta issue 955.
-                        But for now, we have decided to just track only the one KO as a 'non-essential step', and to not include such steps in
-                        the module completeness estimate.
-                        """
-                        # if this is the first KO in the step and we find a space after this KO, then we have found a non-essential step
-                        if step_is_present_condition_statement == "" and (cur_index == len(d) or d[cur_index] == " "):
+        for p in meta_dict_for_bin[mnum]["paths"]:
+            num_complete_steps_in_path = 0
+            num_nonessential_steps_in_path = 0 # so that we don't count nonessential steps when computing completeness
+            for atomic_step in p:
+                # there are 5 types of atomic steps to take care of
+                # 1) regular old single KOs, ie Kxxxxx
+                if atomic_step[0] == "K" and len(atomic_step) == 6:
+                    if atomic_step in present_list_for_mnum:
+                        num_complete_steps_in_path += 1
+                # 2) protein complexes, ie Kxxxxx+Kyyyyy-Kzzzzz (2 types of complex components - essential and nonessential)
+                elif atomic_step[0] == "K" and (atomic_step[6] == "+" or atomic_step[6] == "-"):
+                    idx = 6
+                    essential_components = [atomic_step[0:idx]]
+                    while idx < len(atomic_step):
+                        component_ko = atomic_step[idx+1:idx+7]
+                        if atomic_step[idx] == "+":
+                            essential_components.append(component_ko)
+                        else:
                             has_nonessential_step = True
-                            module_nonessential_steps.append(d[last_step_end_index:cur_index])
-                            module_num_nonessential_steps += 1
+                            if component_ko not in module_nonessential_kos:
+                                module_nonessential_kos.append(component_ko)
+                        idx += 7
 
-                            if nonessential_ko in present_list_for_mnum:
-                                module_complete_nonessential_steps.append(d[last_step_end_index:cur_index])
-                                module_num_complete_nonessential_steps += 1
-
-                            # reset for next step
-                            last_step_end_index = cur_index + 1
-                            cur_index += 1
-
-                    # a whole set of nonessential KOs
-                    elif d[cur_index+1] == "(":
-                        while d[cur_index] != ")":
-                            cur_index += 1
-                        cur_index += 1 # skip over the ')'
-
-                    # the '--' (no KO) situation
-                    elif d[cur_index+1] == "-":
-                        # when '--' in a DEFINITION line happens, it signifies a reaction step that has no associated KO.
-                        # we assume that such steps are not complete,  because we really can't know if it is from the KOfam hits alone
-                        has_no_ko_step = True
-                        step_is_present_condition_statement += "False"
-                        cur_index += 2 # skip over both '-', the next character should be a space or end of DEFINITION line
-
-                        if cur_index < len(d) and d[cur_index] != " ":
-                            raise ConfigError("Serious, serious parsing sadness is happening. We just processed a '--' in "
-                                              "a DEFINITION line for module %s, but did not see a space afterwards. Instead, we found %s. "
-                                              "WHAT DO WE DO NOW?" % (mnum, d[cur_index+1]))
-                    # anything else that follows a '-'
-                    else:
-                        raise ConfigError("The following character follows a '-' in the DEFINITION line for module %s "
-                        "and we just don't know what to do: %s" % (mnum, d[cur_index+1]))
-
-                elif d[cur_index] == " ":
-                    # if we are outside of parentheses, we are done processing the current step
-                    if parens_level == 0:
-                        module_step_list.append(d[last_step_end_index:cur_index])
-                        module_total_steps += 1
-                        # we do not evaluate completeness of this step yet if it is defined by other modules
-                        if not defined_by_modules:
-                            step_is_present = eval(step_is_present_condition_statement)
-                            if step_is_present:
-                                module_complete_steps.append(d[last_step_end_index:cur_index])
-                                module_num_complete_steps += 1
-                        # reset for next step
-                        step_is_present_condition_statement = ""
-                        last_step_end_index = cur_index + 1
-                        cur_index += 1
-                    # otherwise, we are processing an alternative path so AND is required
-                    else:
-                        step_is_present_condition_statement += " and "
-                        cur_index += 1
-
-                elif d[cur_index] == "M":
+                    num_present_components = 0
+                    for c in essential_components:
+                        if c in present_list_for_mnum:
+                            num_present_components += 1
+                    component_completeness = num_present_components / len(essential_components)
+                    num_complete_steps_in_path += component_completeness
+                # 3) non-essential KOs, ie -Kxxxxx
+                elif atomic_step[0:2] == "-K" and len(atomic_step) == 7:
+                    """
+                    OKAY, SO HERE WE HAVE SOME POOPINESS THAT MAY NEED TO BE FIXED EVENTUALLY.
+                    Basically, some DEFINITION lines have KOs that seem to be marked non-essential;
+                    ie, "-K11024" in "K11023 -K11024 K11025 K11026 K11027".
+                    It was difficult to decide whether we should consider only K11024, or K11024 and all following KOs, to be non-essential.
+                    For instance, the module M00778 is a complex case that gave us pause - see Fiesta issue 955.
+                    But for now, we have decided to just track only the one KO as a 'non-essential step', and to not include such steps in
+                    the module completeness estimate.
+                    """
+                    if atomic_step[1:] not in module_nonessential_kos:
+                        module_nonessential_kos.append(atomic_step[1:])
+                    num_nonessential_steps_in_path += 1
+                    has_nonessential_step = True
+                # 4) steps without associated KOs, ie --
+                elif atomic_step == "--":
+                    # when '--' in a DEFINITION line happens, it signifies a reaction step that has no associated KO.
+                    # we assume that such steps are not complete,  because we really can't know if it is from the KOfam hits alone
+                    has_no_ko_step = True
+                # 5) Module numbers, ie Mxxxxx
+                elif atomic_step[0] == "M" and len(atomic_step) == 6:
                     """
                     This happens when a module is defined by other modules. For example, photosynthesis module M00611 is defined as
                     (M00161,M00163) M00165 === (photosystem II or photosystem I) and calvin cycle
 
                     We need all the modules to have been evaluated before we can determine completeness of steps with module numbers.
-                    So what we will do here is just add the step to the appropriate lists without evaluating completeness, and use a
-                    flag variable to keep track of the modules that have this sort of definition in a list so we can go back and
-                    evaluate completeness of steps with module numbers later.
+                    So what we will do here is to use a flag variable to keep track of the modules that have this sort of definition
+                    in a list so we can go back and evaluate completeness of steps with module numbers later.
                     """
                     defined_by_modules = True
-                    cur_index += 6
-
                 else:
-                    raise ConfigError("While parsing the DEFINITION field for module %s, (which is %s), anvi'o found the following character "
-                                        "that she didn't understand: %s. Unfortunately, this means we cannot determine the module "
-                                        "completeness. For context, here is the current index in the DEFINITION line: %s and the "
-                                        "surrounding characters: %s" % (mnum, d, d[cur_index], cur_index, d[cur_index-5:cur_index+6]))
+                    raise ConfigError("Well. While estimating completeness for module %s, we found an atomic step in the pathway that we "
+                                        "are not quite sure what to do with. Here it is: %s" % (mnum, atomic_step))
 
-            # once we have processed the whole line, we still need to eval the last step.
-            # Unless we already did (this can happen with non-essential steps), which we check by seeing if the condition statement is empty
-            # However, if this step is defined by modules, the condition statement will be empty, but we still need to save the step
-            if step_is_present_condition_statement != "" or defined_by_modules:
-                module_step_list.append(d[last_step_end_index:cur_index])
-                module_total_steps += 1
-                if not defined_by_modules:
-                    step_is_present = eval(step_is_present_condition_statement)
-                    if step_is_present:
-                        module_complete_steps.append(d[last_step_end_index:cur_index])
-                        module_num_complete_steps += 1
 
-        # once we have processed all DEFINITION lines, we can compute the overall completeness
-        module_completeness = module_num_complete_steps / module_total_steps
-        over_complete_threshold = True if module_completeness >= self.completeness_threshold else False
+            path_completeness = num_complete_steps_in_path / (len(p) - num_nonessential_steps_in_path)
+            meta_dict_for_bin[mnum]["pathway_completeness"].append(path_completeness)
 
-        # instead of returning everything, we update the metabolism completeness dictionary in place
-        meta_dict_for_bin[mnum]["step_list"] = module_step_list
-        meta_dict_for_bin[mnum]["complete_step_list"] = module_complete_steps
-        meta_dict_for_bin[mnum]["nonessential_step_list"] = module_nonessential_steps
-        meta_dict_for_bin[mnum]["complete_nonessential_step_list"]= module_complete_nonessential_steps
-        meta_dict_for_bin[mnum]["num_steps"] = module_total_steps
-        meta_dict_for_bin[mnum]["num_complete_steps"] = module_num_complete_steps
-        meta_dict_for_bin[mnum]["num_nonessential_steps"] = module_num_nonessential_steps
-        meta_dict_for_bin[mnum]["num_complete_nonessential_steps"] = module_num_complete_nonessential_steps
-        meta_dict_for_bin[mnum]["percent_complete"] = module_completeness
+        # once all paths have been evaluated, we find the path(s) of maximum completeness and set that as the overall module completeness
+        # this is not very efficient as it takes two passes over the list but okay
+        meta_dict_for_bin[mnum]["percent_complete"] = max(meta_dict_for_bin[mnum]["pathway_completeness"])
+        if meta_dict_for_bin[mnum]["percent_complete"] > 0:
+            meta_dict_for_bin[mnum]["most_complete_paths"] = [meta_dict_for_bin[mnum]["paths"][i] for i, pc in enumerate(meta_dict_for_bin[mnum]["pathway_completeness"]) if pc == meta_dict_for_bin[mnum]["percent_complete"]]
+        else:
+            meta_dict_for_bin[mnum]["most_complete_paths"] = []
+
+
+        if anvio.DEBUG and len(meta_dict_for_bin[mnum]["most_complete_paths"]) > 1:
+            self.run.warning("Found %d complete paths for module %s with completeness %s. " % (len(meta_dict_for_bin[mnum]["most_complete_paths"]), mnum, meta_dict_for_bin[mnum]["percent_complete"]),
+                            header='DEBUG OUTPUT', lc='yellow')
+        over_complete_threshold = True if meta_dict_for_bin[mnum]["percent_complete"] >= self.completeness_threshold else False
         meta_dict_for_bin[mnum]["complete"] = over_complete_threshold
+        meta_dict_for_bin[mnum]["present_nonessential_kos"] = module_nonessential_kos
         if over_complete_threshold:
             meta_dict_for_bin["num_complete_modules"] += 1
 
@@ -1143,64 +1105,38 @@ class KeggMetabolismEstimator(KeggContext):
         now_complete        boolean, whether or not the module is NOW considered "complete" overall based on the threshold fraction of completeness
         """
 
-        for step in meta_dict_for_bin[mod]["step_list"]:
-            cur_index = 0  # current position in the step definition
-            parens_level = 0 # how deep we are in nested parentheses
-            step_is_present_condition_statement = ""
-            is_ko_step = False
-            while cur_index < len(step):
-                # we have found a KO so we can ignore this step; it has already been counted as complete or not
-                if step[cur_index] == "K":
-                    is_ko_step = True
-                    break
+        for i in range(len(meta_dict_for_bin[mod]["paths"])):
+            p = meta_dict_for_bin[mod]["paths"][i]
+            num_essential_steps_in_path = 0  # note that the len(p) will include nonessential steps; we should count only essential ones
+            num_complete_module_steps = 0
 
-                # we have found a module so we must evaluate this steps's completeness by checking if the module is complete
-                elif step[cur_index] == "M":
-                    mnum = step[cur_index:cur_index+6]
-                    if meta_dict_for_bin[mnum]["complete"]:
-                        step_is_present_condition_statement += "True"
-                    else:
-                        step_is_present_condition_statement += "False"
-                    cur_index += 6
-
-                elif step[cur_index] == "(":
-                    parens_level += 1
-                    step_is_present_condition_statement += "("
-                    cur_index += 1
-
-                elif step[cur_index] == ")":
-                    parens_level -= 1
-                    step_is_present_condition_statement += ")"
-                    cur_index += 1
-
-                elif step[cur_index] == ",":
-                    step_is_present_condition_statement += " or "
-                    cur_index += 1
-
-                elif step[cur_index] == " ":
-                    # if we are outside of parentheses, something is wrong because this should all be just one step
-                    if parens_level == 0:
-                        raise ConfigError("Much parsing sadness. We thought we were re-evaluating the completeness of just one step in "
-                                          "module %s (step: %s), but we found a space that seems to indicate another step. HALP." % (mod, step))
-                    # otherwise, we are processing an alternative path so AND is required
-                    else:
-                        step_is_present_condition_statement += " and "
-                        cur_index += 1
-
+            for atomic_step in p:
+                # single KOs and protein complexes and '--' steps; were already counted as complete by previous function
+                if atomic_step[0] == "K" or atomic_step == "--":
+                    num_essential_steps_in_path += 1
+                # non-essential KO, don't count as a step in the path
+                elif atomic_step[0:2] == "-K" and len(atomic_step) == 7:
+                    pass
+                # module step; we need to count these based on previously computed module completeness
+                elif atomic_step[0] == "M" and len(atomic_step) == 6:
+                    num_complete_module_steps += meta_dict_for_bin[atomic_step]["percent_complete"]
+                    num_essential_steps_in_path += 1
                 else:
-                    raise ConfigError("While correcting completeness for module %s, (step %s), anvi'o found the following character "
-                                        "that she didn't understand: %s. Unfortunately, this means we cannot determine the module "
-                                        "completeness. For context, here is the current index in the DEFINITION line: %s and the "
-                                        "surrounding characters: %s" % (mod, step, step[cur_index], cur_index, step[cur_index-5:cur_index+6]))
-            # once we have processed everything, we need to re-evaluate the step (provided its not a KO step that has already been evaluated)
-            if not is_ko_step:
-                step_is_present = eval(step_is_present_condition_statement)
-                if step_is_present:
-                    meta_dict_for_bin[mod]["complete_step_list"].append(step)
-                    meta_dict_for_bin[mod]["num_complete_steps"] += 1
+                    raise ConfigError("Well. While adjusting completeness estimates for module %s, we found an atomic step in the pathway that we "
+                                        "are not quite sure what to do with. Here it is: %s" % (mod, atomic_step))
 
-        # now, we recalculate module completeness
-        meta_dict_for_bin[mod]["percent_complete"] = meta_dict_for_bin[mod]["num_complete_steps"] / meta_dict_for_bin[mod]["num_steps"]
+            # now we adjust the previous pathway completeness
+            old_complete_steps_in_path = meta_dict_for_bin[mod]["pathway_completeness"][i] * num_essential_steps_in_path
+            adjusted_num_complete_steps_in_path = old_complete_steps_in_path + num_complete_module_steps
+            meta_dict_for_bin[mod]["pathway_completeness"][i] = adjusted_num_complete_steps_in_path / num_essential_steps_in_path
+
+        # after adjusting for all paths, adjust overall module completeness
+        meta_dict_for_bin[mod]["percent_complete"] = max(meta_dict_for_bin[mod]["pathway_completeness"])
+        if meta_dict_for_bin[mod]["percent_complete"] > 0:
+            meta_dict_for_bin[mod]["most_complete_paths"] = [meta_dict_for_bin[mod]["paths"][i] for i, pc in enumerate(meta_dict_for_bin[mod]["pathway_completeness"]) if pc == meta_dict_for_bin[mod]["percent_complete"]]
+        else:
+            meta_dict_for_bin[mod]["most_complete_paths"] = []
+
         now_complete = True if meta_dict_for_bin[mod]["percent_complete"] >= self.completeness_threshold else False
         meta_dict_for_bin[mod]["complete"] = now_complete
         if now_complete:
@@ -1208,18 +1144,19 @@ class KeggMetabolismEstimator(KeggContext):
 
         return now_complete
 
+
     def estimate_for_list_of_splits(self, ko_hits_in_splits, splits=None, bin_name=None):
         """This is the atomic metabolism estimator function, which builds a metabolism completeness dictionary for an arbitrary list of splits.
 
-        For example, the list of splits may represent a bin or a single isolate genome.
+        For example, the list of splits may represent a bin, a single isolate genome, or an entire metagenome.
         The metabolism completeness dictionary is first initialized to contain the KOs that are present in the genome for each KEGG module.
         It is later updated with the individual steps and completion estimates for each module.
 
         PARAMETERS
         ==========
-        ko_hits_in_splits       a list of KO numbers indicating the KOfam hits that have occurred in this list of splits
+        ko_hits_in_splits       list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
         splits                  a list of splits identifiers
-        bin_name                the name of the bin that we are working with
+        bin_name                the name of the bin/genome/metagenome that we are working with
 
         RETURNS
         =======
@@ -1281,6 +1218,7 @@ class KeggMetabolismEstimator(KeggContext):
                                  "missing enzyme in some other way. Best of luck to you. Here is the list of modules to check out: %s"
                                  % (", ".join(mods_with_unassociated_ko)))
 
+        self.run.info("Bin name", bin_name)
         self.run.info("Module completion threshold", self.completeness_threshold)
         self.run.info("Number of complete modules", metabolism_dict_for_list_of_splits["num_complete_modules"])
         if complete_mods:
@@ -1289,7 +1227,7 @@ class KeggMetabolismEstimator(KeggContext):
         return metabolism_dict_for_list_of_splits
 
 
-    def estimate_for_genome(self, kofam_hits, genes_in_splits):
+    def estimate_for_genome(self, kofam_gene_split_contig):
         """This is the metabolism estimation function for a contigs DB that contains a single genome.
 
         Assuming this contigs DB contains only one genome, it sends all of the splits and their kofam hits to the atomic
@@ -1297,8 +1235,7 @@ class KeggMetabolismEstimator(KeggContext):
 
         PARAMETERS
         ==========
-        kofam_hits          list of (gene_call_id, ko_num) tuples, all belong to this single genome
-        genes_in_splits     list of (split, gene_call_id) tuples, all belong to this single genome
+        kofam_gene_split_contig     list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
 
         RETURNS
         =======
@@ -1306,16 +1243,27 @@ class KeggMetabolismEstimator(KeggContext):
         """
 
         genome_metabolism_superdict = {}
-        # get list of KOs only - since all splits belong to one genome, we can take all the hits
-        ko_in_genome = [tpl[1] for tpl in kofam_hits]
-        splits_in_genome = [tpl[0] for tpl in genes_in_splits]
+        # since all hits belong to one genome, we can take the UNIQUE splits from all the hits
+        splits_in_genome = list(set([tpl[2] for tpl in kofam_gene_split_contig]))
 
-        genome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(ko_in_genome, splits=splits_in_genome, bin_name=self.contigs_db_project_name)
+        genome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(kofam_gene_split_contig, splits=splits_in_genome, bin_name=self.contigs_db_project_name)
 
         return genome_metabolism_superdict
 
 
-    def estimate_for_bins_in_collection(self, kofam_hits, genes_in_splits):
+    def estimate_for_bins_in_collection(self, kofam_gene_split_contig):
+        """
+        This function calls metabolism estimation for every bin the user requests.
+
+        PARAMETERS
+        ==========
+        kofam_gene_split_contig     list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
+
+        RETURNS
+        =======
+        bins_metabolism_superdict      dictionary mapping bin name to its metabolism completeness dictionary
+        """
+
         bins_metabolism_superdict = {}
 
         bin_name_to_split_names_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
@@ -1326,11 +1274,39 @@ class KeggMetabolismEstimator(KeggContext):
 
         for bin_name in bin_name_to_split_names_dict:
             splits_in_bin = bin_name_to_split_names_dict[bin_name]
-            genes_in_bin = [tpl[1] for tpl in genes_in_splits if tpl[0] in splits_in_bin]
-            ko_in_bin = [tpl[1] for tpl in kofam_hits if tpl[0] in genes_in_bin]
+            ko_in_bin = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_bin]
             bins_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(ko_in_bin, splits=splits_in_bin, bin_name=bin_name)
 
         return bins_metabolism_superdict
+
+
+    def estimate_for_contigs_db_for_metagenome(self, kofam_gene_split_contig):
+        """This function handles metabolism estimation for an entire metagenome.
+
+        Similar to isolate genomes, we treat the entire metagenome as one big 'bin'. This means that there
+        will be a large amount of redundancy (repeated pathways) due to the presence of multiple populations
+        in the metagenome.
+
+        In fact, because we essentially consider the metagenome to be one big genome, this function is exactly the same
+        as estimate_for_genome(). Why is it a separate function? Well, because we may eventually want to do something
+        differently here.
+
+        PARAMETERS
+        ==========
+        kofam_gene_split_contig     list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
+
+        RETURNS
+        =======
+        metagenome_metabolism_superdict      dictionary mapping metagenome name to its metabolism completeness dictionary
+        """
+
+        metagenome_metabolism_superdict = {}
+        # since we consider all the hits in the metagenome collectively, we can take the UNIQUE splits from all the hits
+        splits_in_metagenome = list(set([tpl[2] for tpl in kofam_gene_split_contig]))
+
+        metagenome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(kofam_gene_split_contig, splits=splits_in_metagenome, bin_name=self.contigs_db_project_name)
+
+        return metagenome_metabolism_superdict
 
 
     def estimate_metabolism(self):
@@ -1338,25 +1314,19 @@ class KeggMetabolismEstimator(KeggContext):
 
         It will decide what to do based on whether the input contigs DB is a genome or metagenome.
         It returns the metabolism superdict which contains a metabolism completion dictionary for each genome/bin in the contigs db.
-        The metabolism completion dictionary is keyed by KEGG module number.
+        The metabolism completion dictionary is keyed by KEGG module number, with a few exceptions for summary data (ie, 'num_complete_modules').
         """
 
-        hits_to_consider, splits_to_consider = self.init_hits_and_splits()
+        kofam_hits_info = self.init_hits_and_splits()
 
         kegg_metabolism_superdict = {}
 
         if self.profile_db_path and not self.metagenome_mode:
-            kegg_metabolism_superdict = self.estimate_for_bins_in_collection(hits_to_consider, splits_to_consider)
+            kegg_metabolism_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
         elif not self.profile_db_path and not self.metagenome_mode:
-            kegg_metabolism_superdict = self.estimate_for_genome(hits_to_consider, splits_to_consider)
-        elif self.profile_db_path and self.metagenome_mode:
-            raise ConfigError("This class doesn't know how to deal with that yet :/")
-            # metagenome, with profiling
-            #self.estimate_for_contigs_db_for_metagenome()
-        elif not self.profile_db_path and self.metagenome_mode:
-            raise ConfigError("This class doesn't know how to deal with that yet :/")
-            # metagenome without profiling
-            #self.estimate_for_contigs_db_for_metagenome()
+            kegg_metabolism_superdict = self.estimate_for_genome(kofam_hits_info)
+        elif self.metagenome_mode:
+            kegg_metabolism_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
         else:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
 
@@ -1366,23 +1336,74 @@ class KeggMetabolismEstimator(KeggContext):
     def store_kegg_metabolism_superdict(self, kegg_superdict):
         """This function writes the metabolism superdict to a tab-delimited file.
 
-        The metabolism superdict is a three-level dictionary (genomes/bins, modules, and module completion information).
+        The metabolism superdict is a three-to-four-level dictionary. The first three levels are: genomes/bins, modules, and module completion information.
+        The module completion dictionary also has some dictionaries in it, and those make up the fourth level.
+        The structure of the module completion dictionary is like this example:
+        {mnum: {"gene_caller_ids": set([132, 133, 431, 6777])
+                "kofam_hits": {'K00033' : [431, 6777],
+                                'K01057' : [133],
+                                'K00036' : [132] },
+                "genes_to_contigs": {132: 0,
+                                     133: 0,
+                                     431: 2,
+                                    6777: 1 },
+                "contigs_to_genes": { 0: set([132, 133]),
+                                      1: set(6777),
+                                      2: set(431) },}
+                "paths":             [['K00033','K01057','K02222'], ['K00033','K01057','K00036'], ...]
+                "pathway_completeness":     [0.66, 0.66, ...]
+                "present_nonessential_kos":      []
+                "most_complete_paths":           [['K00033','K01057','K02222'], ['K00033','K01057','K00036'], ...]
+                "percent_complete":              0.66
+                "complete":                      False
+                                      }
+
         To distill this information into one line, we need to convert the dictionary on-the-fly to a dict of dicts,
-        where each genome/bin-module pair is keyed by an arbitrary integer.
+        where each bin-module-path-kofam_hit-gene_caller_id is keyed by an arbitrary integer. There will be a lot of redundant information
+        in the rows.
         """
 
+        name_header = None
+        if self.profile_db_path and not self.metagenome_mode:
+            name_header = "bin_name"
+        elif not self.profile_db_path and not self.metagenome_mode:
+            name_header = "genome_name"
+        elif self.metagenome_mode:
+            name_header = "metagenome_name"
+
+        header_list = ["unique_id", name_header, "kegg_module", "module_is_complete", "module_completeness",
+        "path_id", "path", "path_completeness", "kofam_hit_in_path", "gene_caller_id", "contig"]
+
         d = {}
-        i = 0
+        unique_id = 0
         for bin, mod_dict in kegg_superdict.items():
             for mnum, c_dict in mod_dict.items():
                 if mnum == "num_complete_modules":
                     continue
-                d[i] = c_dict
-                d[i]["bin_name"] = bin
-                d[i]["kegg_module"] = mnum
-                i += 1
 
-        utils.store_dict_as_TAB_delimited_file(d, self.output_file_path, key_header="unique_id")
+                for p_index in range(len(c_dict['paths'])):
+                    p = c_dict['paths'][p_index]
+
+                    for ko in c_dict['kofam_hits']:
+                        if ko not in p:
+                            continue
+
+                        for gc_id in c_dict["kofam_hits"][ko]:
+                            d[unique_id] = {}
+                            d[unique_id][name_header] = bin
+                            d[unique_id]["kegg_module"] = mnum
+                            d[unique_id]["module_is_complete"] = c_dict["complete"]
+                            d[unique_id]["module_completeness"] = c_dict["percent_complete"]
+                            d[unique_id]["path_id"] = p_index
+                            d[unique_id]["path"] = ",".join(p)
+                            d[unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
+                            d[unique_id]["kofam_hit_in_path"] = ko
+                            d[unique_id]["gene_caller_id"] = gc_id
+                            d[unique_id]["contig"] = c_dict["genes_to_contigs"][gc_id]
+
+                            unique_id += 1
+
+        utils.store_dict_as_TAB_delimited_file(d, self.output_file_path, key_header="unique_id", headers=header_list)
         self.run.info("Output file", self.output_file_path, nl_before=1)
 
 
@@ -1538,10 +1559,12 @@ class KeggModulesDatabase(KeggContext):
         if not is_ok and not is_corrected:
             self.num_uncorrected_errors += 1
             if self.just_do_it:
+                self.progress.reset()
                 self.run.warning("While parsing, anvi'o found an uncorrectable issue with a KEGG Module line in module %s, but since you used the --just-do-it flag, \
                 anvi'o will quietly ignore this issue and add the line to the MODULES.db anyway. Please be warned that this may break things downstream. \
                 In case you are interested, the line causing this issue has data name %s and data value %s" % (current_module_num, current_data_name, data_vals))
                 is_ok = True # let's pretend that everything is alright so that the next function will take the original parsed values
+
             else:
                 raise ConfigError("While parsing, anvi'o found an uncorrectable issue with a KEGG Module line in module %s. The current data name is %s, \
                 here is the incorrectly-formatted data value field: %s. If you think this is totally fine and want to ignore errors like this, please \
@@ -1551,6 +1574,7 @@ class KeggModulesDatabase(KeggContext):
         if is_corrected:
             self.num_corrected_errors += 1
             if anvio.DEBUG and not self.quiet:
+                self.progress.reset()
                 self.run.warning("While parsing a KEGG Module line, we found an issue with the formatting. We did our very best to parse the line \
                 correctly, but please check that it looks right to you by examining the following values.")
                 self.run.info("Incorrectly parsed data value field", data_vals)
@@ -1814,6 +1838,174 @@ class KeggModulesDatabase(KeggContext):
         # there should only be one CLASS line per module, so we extract the first list element
         class_value = self.get_data_value_entries_for_module_by_data_name(mnum, "CLASS")[0]
         return self.parse_kegg_class_value(class_value)
+
+
+    def unroll_module_definition(self, mnum):
+        """This function accesses the DEFINITION line of a KEGG Module, unrolls it into all possible paths through the module, and
+        returns the list of all paths.
+
+        This is a driver for the recursive functions that do the actual unrolling of each definition line.
+        """
+
+        all_paths = [[]]
+        def_lines = self.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
+        for d in def_lines:
+            d = d.strip()
+            def_line_paths = self.recursive_definition_unroller(d)
+            new_paths_list = []
+            for a in def_line_paths:
+                for p in all_paths:
+                    p_copy = copy.copy(p)
+                    p_copy.extend(a)
+                    new_paths_list.append(p_copy)
+            all_paths = new_paths_list
+
+        return all_paths
+
+
+    def split_by_delim_not_within_parens(self, d, delims, return_delims=False):
+        """Takes a string, and splits it on the given delimiter(s) as long as the delimeter is not within parentheses.
+
+        PARAMETERS
+        ==========
+        d               string
+        delims          a single delimiter, or a list of delimiters
+        return_delims   boolean, if this is true then the list of delimiters found at between each split is also returned
+
+        RETURNS
+        =======
+        splits      list of strings that were split from d
+        delim_list  list of delimiters that were ofund between each split
+        """
+
+        parens_level = 0
+        last_split_index = 0
+        splits = []
+        delim_list = []
+        for i in range(len(d)):
+            # only split if not within parentheses
+            if d[i] in delims and parens_level == 0:
+                splits.append(d[last_split_index:i])
+                delim_list.append(d[i])
+                last_split_index = i + 1 # we add 1 here to skip the space
+            elif d[i] == "(":
+                parens_level += 1
+            elif d[i] == ")":
+                parens_level -= 1
+
+            # if parentheses become unbalanced, return False to indicate this
+            if parens_level < 0:
+                return False
+        splits.append(d[last_split_index:len(d)])
+
+        if return_delims:
+            return splits, delim_list
+        return splits
+
+
+    def recursive_definition_unroller(self, step):
+        """This function recursively splits a module definition into its components.
+
+        First, the definition is split into its component steps (separated by spaces).
+        Each step is either an atomic step (a single KO, module number '--', or nonessential KO starting with '-'),
+        a protein complex, or a compound step.
+
+        Atomic steps are used to extend each path that has been found so far. Protein complexes are split into
+        their respective components, which may be split further by the split_paths() function to find all possible
+        alternative complexes, before being used to extend each path. Compound steps are split and recursively processed
+        by the split_paths() function before the resulting downstream paths are used to extend each path.
+        """
+
+        split_steps = self.split_by_delim_not_within_parens(step, " ")
+        paths_list = [[]]  # list to save all paths, with initial empty path list to extend from
+        for s in split_steps:
+            # base case: step is a ko, mnum, non-essential step, or '--'
+            if (len(s) == 6 and s[0] == "K") or (len(s) == 6 and s[0] == "M") or (s == "--") or (len(s) == 7 and s[0] == "-"):
+                for p in paths_list:
+                    p.extend([s])
+            else:
+                if s[0] == "(" and s[-1] == ")":
+                    # here we try splitting to see if removing the outer parentheses will make the definition become unbalanced
+                    # (the only way to figure this out is to try it because regex cannot handle nested parentheses)
+                    comma_substeps = self.split_by_delim_not_within_parens(s[1:-1], ",")
+                    if not comma_substeps: # if it doesn't work, try without removing surrounding parentheses
+                        comma_substeps = self.split_by_delim_not_within_parens(s, ",")
+                    space_substeps = self.split_by_delim_not_within_parens(s[1:-1], " ")
+                    if not space_substeps:
+                        space_substeps = self.split_by_delim_not_within_parens(s, " ")
+                else:
+                    comma_substeps = self.split_by_delim_not_within_parens(s, ",")
+                    space_substeps = self.split_by_delim_not_within_parens(s, " ")
+
+                # complex case: no commas OR spaces outside parentheses so this is a protein complex rather than a compound step
+                if len(comma_substeps) == 1 and len(space_substeps) == 1:
+                    complex_components, delimiters = self.split_by_delim_not_within_parens(s, ["+","-"], return_delims=True)
+                    complex_strs = [""]
+
+                    # reconstruct the complex (and any alternate possible complexes) while keeping the +/- structure the same
+                    for i in range(len(complex_components)):
+                        c = complex_components[i]
+                        if c[0] == '(':
+                            alts = self.split_path(c)
+                            new_complex_strs = []
+                            for a in alts:
+                                if len(a) > 1:
+                                    raise ConfigError("Uh oh. recursive_definition_unroller() speaking. We found a protein complex with more "
+                                    "than one KO per alternative option here: %s" % s)
+                                for cs in complex_strs:
+                                    extended_complex = cs + a[0]
+                                    new_complex_strs.append(extended_complex)
+                            complex_strs = new_complex_strs
+                        else:
+                            for j in range(len(complex_strs)):
+                                complex_strs[j] += c
+
+                        if i < len(delimiters):
+                            for j in range(len(complex_strs)):
+                                complex_strs[j] += delimiters[i]
+
+                    new_paths_list = []
+                    for cs in complex_strs:
+                        for p in paths_list:
+                            p_copy = copy.copy(p)
+                            p_copy.extend([cs])
+                            new_paths_list.append(p_copy)
+                    paths_list = new_paths_list
+
+                # compound step case:
+                else:
+                    alts = self.split_path(s)
+                    new_paths_list = []
+                    for a in alts:
+                        for p in paths_list:
+                            p_copy = copy.copy(p)
+                            p_copy.extend(a)
+                            new_paths_list.append(p_copy)
+                    paths_list = new_paths_list
+
+        return paths_list
+
+    def split_path(self, step):
+        """This function handles compound steps that should be split into multiple alternative paths.
+
+        It first splits the input step into substeps, and then since each substep could be its own mini-definition,
+        it recursively calls the definition unrolling function to parse it. The list of all alternative paths
+        that can be made from this step is returned.
+        """
+        if step[0] == "(" and step[-1] == ")":
+            substeps = self.split_by_delim_not_within_parens(step[1:-1], ",")
+            if not substeps: # if it doesn't work, try without removing surrounding parentheses
+                substeps = self.split_by_delim_not_within_parens(step, ",")
+        else:
+            substeps = self.split_by_delim_not_within_parens(step, ",")
+
+        alt_path_list = []
+        for s in substeps:
+            alt_paths_from_substep = self.recursive_definition_unroller(s)
+            for a in alt_paths_from_substep:
+                alt_path_list.append(a)
+
+        return alt_path_list
 
 
 class KeggModulesTable:
