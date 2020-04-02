@@ -1258,7 +1258,7 @@ class KeggMetabolismEstimator(KeggContext):
         elif self.metagenome_mode:
             name_header = "metagenome_name"
 
-        header_list = [name_header, "kegg_module", "module_is_complete", "module_completeness",
+        header_list = ["unique_id", name_header, "kegg_module", "module_is_complete", "module_completeness",
         "path_id", "path", "path_completeness", "kofam_hit_in_path", "gene_caller_id", "contig"]
 
         d = {}
