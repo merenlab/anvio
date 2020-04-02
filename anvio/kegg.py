@@ -1246,8 +1246,20 @@ class KeggMetabolismEstimator(KeggContext):
                                       }
 
         To distill this information into one line, we need to convert the dictionary on-the-fly to a dict of dicts,
-        where each genome/bin-module pair is keyed by an arbitrary integer.
+        where each bin-module-path-kofam_hit-gene_caller_id is keyed by an arbitrary integer. There will be a lot of redundant information
+        in the rows.
         """
+
+        name_header = None
+        if self.profile_db_path and not self.metagenome_mode:
+            name_header = "genome_name"
+        elif not self.profile_db_path and not self.metagenome_mode:
+            name_header = "bin_name"
+        elif self.metagenome_mode:
+            name_header = "metagenome_name"
+
+        header_list = [name_header, "kegg_module", "module_is_complete", "module_completeness",
+        "path_id", "path", "path_completeness", "kofam_hit_in_path", "gene_caller_id", "contig"]
 
         d = {}
         unique_id = 0
@@ -1255,17 +1267,30 @@ class KeggMetabolismEstimator(KeggContext):
             for mnum, c_dict in mod_dict.items():
                 if mnum == "num_complete_modules":
                     continue
-                d[unique_id] = c_dict
-                if self.profile_db_path and not self.metagenome_mode:
-                    d[unique_id]["genome_name"] = bin
-                elif not self.profile_db_path and not self.metagenome_mode:
-                    d[unique_id]["bin_name"] = bin
-                elif self.metagenome_mode:
-                    d[unique_id]["metagenome_name"] = bin
-                d[unique_id]["kegg_module"] = mnum
-                unique_id += 1
 
-        utils.store_dict_as_TAB_delimited_file(d, self.output_file_path, key_header="unique_id")
+                for p_index in range(len(c_dict['paths'])):
+                    p = c_dict['paths'][p_index]
+
+                    for ko in c_dict['kofam_hits']:
+                        if ko not in p:
+                            continue
+
+                        for gc_id in c_dict["kofam_hits"][ko]:
+                            d[unique_id] = {}
+                            d[unique_id][name_header] = bin
+                            d[unique_id]["kegg_module"] = mnum
+                            d[unique_id]["module_is_complete"] = c_dict["complete"]
+                            d[unique_id]["module_completeness"] = c_dict["percent_complete"]
+                            d[unique_id]["path_id"] = p_index
+                            d[unique_id]["path"] = ",".join(p)
+                            d[unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
+                            d[unique_id]["kofam_hit_in_path"] = ko
+                            d[unique_id]["gene_caller_id"] = gc_id
+                            d[unique_id]["contig"] = c_dict["genes_to_contigs"][gc_id]
+
+                            unique_id += 1
+
+        utils.store_dict_as_TAB_delimited_file(d, self.output_file_path, key_header="unique_id", headers=header_list)
         self.run.info("Output file", self.output_file_path, nl_before=1)
 
 
