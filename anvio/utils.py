@@ -3255,7 +3255,7 @@ def download_file(url, output_file_path, progress=progress, run=run):
     f.close()
 
     progress.end()
-    run.info('Downloaded succesfully', output_file_path)
+    run.info('Downloaded successfully', output_file_path)
 
 
 def get_remote_file_content(url, gzipped=False):
