@@ -1030,7 +1030,7 @@ class KeggMetabolismEstimator(KeggContext):
     def estimate_for_list_of_splits(self, ko_hits_in_splits, splits=None, bin_name=None):
         """This is the atomic metabolism estimator function, which builds a metabolism completeness dictionary for an arbitrary list of splits.
 
-        For example, the list of splits may represent a bin or a single isolate genome.
+        For example, the list of splits may represent a bin, a single isolate genome, or an entire metagenome.
         The metabolism completeness dictionary is first initialized to contain the KOs that are present in the genome for each KEGG module.
         It is later updated with the individual steps and completion estimates for each module.
 
@@ -1038,7 +1038,7 @@ class KeggMetabolismEstimator(KeggContext):
         ==========
         ko_hits_in_splits       list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
         splits                  a list of splits identifiers
-        bin_name                the name of the bin that we are working with
+        bin_name                the name of the bin/genome/metagenome that we are working with
 
         RETURNS
         =======
