@@ -311,12 +311,15 @@ class Coverage:
         self.detection = 0.0
         self.mean_Q2Q3 = 0.0
 
-        self.routine_dict = {
-            'accurate': self._accurate_routine,
+        self.read_iterator_dict = {
+            'fetch': self._fetch_iterator,
+            'fetch_and_trim': self._fetch_and_trim_iterator,
+            #'fetch_filter_and_trim': self._fetch_filter_and_trim_iterator,
         }
 
 
-    def run(self, bam, contig_or_split, start=None, end=None, method='accurate', max_coverage=None, skip_coverage_stats=False, **kwargs):
+    def run(self, bam, contig_or_split, start=None, end=None, read_iterator='fetch',
+            max_coverage=None, skip_coverage_stats=False, **kwargs):
         """Loop through the bam pileup and calculate coverage over a defined region of a contig or split
 
         Parameters
@@ -338,8 +341,11 @@ class Coverage:
             The index end of where coverage is calculated. Relative to the contig, even when
             `contig_or_split` is a Split object.
 
-        method : string
-            How do you want to calculate? Options: see self.routine_dict
+        read_iterator : string
+            How do you want to iterate through reads? Options: see self.read_iterator_dict. Some
+            notes: If you supply a start and end, you _must_ supply a read iterator that trims
+            reads, i.e, not 'fetch', which returns the entirety of a read, even if it only partially
+            lands in [start, end)
 
         skip_coverage_stats : bool, False
             Should the call to process_c be skipped?
@@ -347,9 +353,6 @@ class Coverage:
         **kwargs : **kwargs
             kwargs are passed to the method chosen
         """
-
-        # if there are defined start and ends we have to trim reads so their ranges fit inside self.c
-        iterator = bam.fetch if (start is None and end is None) else bam.fetch_and_trim
 
         if isinstance(contig_or_split, anvio.contigops.Split):
             contig_name = contig_or_split.parent
@@ -373,11 +376,18 @@ class Coverage:
         c = np.zeros(end - start).astype(int)
 
         try:
-            routine = self.routine_dict[method]
+            read_iterator = self.read_iterator_dict[read_iterator]
         except KeyError:
-            raise ConfigError("Coverage :: %s is not a valid method." % method)
+            raise ConfigError("Coverage :: %s is not a valid read iterator." % read_iterator)
 
-        self.c = routine(c, bam, contig_name, start, end, iterator, **kwargs)
+        for read in read_iterator(bam, contig_name, start, end, **kwargs):
+            if len(read.cigartuples) == 1:
+                c[read.reference_start:(read.reference_start + read.cigartuples[0][1])] += 1
+            else:
+                for start, end in read.get_blocks():
+                    c[start:end] += 1
+
+        self.c = c
 
         if max_coverage is not None:
             if np.max(self.c) > max_coverage:
@@ -393,31 +403,24 @@ class Coverage:
                 self.process_c(self.c)
 
 
-    def _accurate_routine(self, c, bam, contig_name, start, end, iterator):
-        """Routine that accounts for gaps in the alignment
+    def _fetch_iterator(self, bam, contig_name, start, end):
+        """Uses standard pysam fetch iterator from AlignmentFile objects, ignores unmapped reads"""
 
-        Notes
-        =====
-        - There used to be an '_approximate_routine', but its only negligibly faster
-        - Should typically not be called explicitly. Use run instead
-        - fancy indexing of reference_positions was also considered, but is much slower because it
-          uses fancy-indexing
-          https://jakevdp.github.io/PythonDataScienceHandbook/02.07-fancy-indexing.html:
-        """
-        for read in iterator(contig_name, start, end):
+        for read in bam.fetch(contig_name, start, end):
             if read.cigartuples is None:
                 # This read has no associated cigar string. This either means it did not align but
                 # is in the BAM file anyways, or the mapping software decided it did not want to
                 # include a cigar string for this read.
                 continue
 
-            if len(read.cigartuples) == 1:
-                c[read.reference_start:(read.reference_start + read.cigartuples[0][1])] += 1
-            else:
-                for start, end in read.get_blocks():
-                    c[start:end] += 1
+            yield read
 
-        return c
+
+    def _fetch_and_trim_iterator(self, bam, contig_name, start, end):
+        """Uses BAMFileObject.fetch_and_trim iterator"""
+
+        for read in bam.fetch_and_trim(contig_name, start, end):
+            yield read
 
 
     def process_c(self, c):

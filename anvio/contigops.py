@@ -104,7 +104,7 @@ class Contig:
 
     def analyze_coverage(self, bam):
 
-        self.coverage.run(bam, self, method='accurate', max_coverage=anvio.auxiliarydataops.COVERAGE_MAX_VALUE)
+        self.coverage.run(bam, self, read_iterator='fetch', max_coverage=anvio.auxiliarydataops.COVERAGE_MAX_VALUE)
 
         if len(self.splits) == 1:
             # Coverage.process_c is a potentially expensive operation (taking up ~90% of the time of
