@@ -102,9 +102,23 @@ class Contig:
         return d
 
 
-    def analyze_coverage(self, bam):
+    def analyze_coverage(self, bam, min_percent_identity):
 
-        self.coverage.run(bam, self, read_iterator='fetch', max_coverage=anvio.auxiliarydataops.COVERAGE_MAX_VALUE)
+        if min_percent_identity is None:
+            self.coverage.run(
+                bam,
+                self,
+                read_iterator='fetch',
+                max_coverage=anvio.auxiliarydataops.COVERAGE_MAX_VALUE,
+            )
+        else:
+            self.coverage.run(
+                bam,
+                self,
+                read_iterator='fetch_filter_and_trim',
+                max_coverage=anvio.auxiliarydataops.COVERAGE_MAX_VALUE,
+                percent_id_cutoff=min_percent_identity,
+            )
 
         if len(self.splits) == 1:
             # Coverage.process_c is a potentially expensive operation (taking up ~90% of the time of

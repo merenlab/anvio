@@ -70,6 +70,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_SNV_profiling = A('skip_SNV_profiling')
         self.profile_SCVs = A('profile_SCVs')
         self.profile_indels = A('profile_indels')
+        self.min_percent_identity = A('min_percent_identity')
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
@@ -659,7 +660,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         timer.make_checkpoint('Gene info for split added')
 
         # analyze coverage for each split
-        contig.analyze_coverage(bam_file)
+        contig.analyze_coverage(bam_file, self.min_percent_identity)
         timer.make_checkpoint('Coverage done')
 
         # test the mean coverage of the contig.

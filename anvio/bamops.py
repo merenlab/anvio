@@ -47,6 +47,7 @@ class BAMFileObject(pysam.AlignmentFile):
         This class inherits pysam.AlignmentFile and adds a little flair. Init such an object the
         way you would an AlignmentFile, i.e. bam = bamops.BAMFileObject(path_to_bam)
         """
+
         self.input_bam_path = args[0]
         filesnpaths.is_file_exists(self.input_bam_path)
 
@@ -67,6 +68,7 @@ class BAMFileObject(pysam.AlignmentFile):
         Like pysam.AlignmeFile.fetch(), except trims reads that overhang the start and end of the
         defined region so that they fit inside the start and stop.
         """
+
         for read in self.fetch(contig_name, start, end, *args, **kwargs):
             if read.cigartuples is None:
                 # This read has no associated cigar string. This either means it did not align but
@@ -81,6 +83,52 @@ class BAMFileObject(pysam.AlignmentFile):
 
             if read.reference_end - end > 0:
                 read.trim(trim_by=(read.reference_end - end), side='right')
+
+            yield read
+
+
+    def fetch_filter_and_trim(self, contig_name, start, end, percent_id_cutoff=0, *args, **kwargs):
+        """Returns an read iterator that trims and also filters reads based on their characteristics
+
+        Trims just as self.fetch_and_trim does. Filtering is applied before trimming.
+
+        Parameters
+        ==========
+        start : int
+            Pass None if you don't want a start position cutoff
+
+        end : int
+            Pass None if you don't want an end cutoff
+
+        percent_id_cutoff : float, 0
+            Reads with a percentage ID relative to their mapped segments of the reference genome
+            less than this amount will be excluded. I.e. if you want 95% as a cutoff, use
+            percent_id_cutoff=95.0
+        """
+
+        for read in self.fetch(contig_name, start, end, *args, **kwargs):
+            if read.cigartuples is None:
+                # This read has no associated cigar string. This either means it did not align but
+                # is in the BAM file anyways, or the mapping software decided it did not want to
+                # include a cigar string for this read.
+                continue
+
+            read = Read(read)
+
+            # The read must be vectorized before calling read.get_percent_id
+            read.vectorize()
+
+            if read.get_percent_id() < percent_id_cutoff:
+                continue
+
+            # Trimming takes place _after_ filtering based on percent ID
+
+            if start - read.reference_start > 0:
+                read.trim(trim_by=(start - read.reference_start), side='left')
+
+            if read.reference_end - end > 0:
+                read.trim(trim_by=(read.reference_end - end), side='right')
+
 
             yield read
 
@@ -110,7 +158,13 @@ class Read:
 
 
     def vectorize(self):
-        """Set the self.v attribute to provide array-like access to the read"""
+        """Set the self.v attribute to provide array-like access to the read
+
+        0th column = reference position
+        1st column = query sequence
+        2nd column = mapping type (0, 1, or 2)
+        3rd column = reference sequence
+        """
 
         self.v = _vectorize_read(
             self.cigartuples,
@@ -150,6 +204,24 @@ class Read:
         """Used to access the vectorized form of the read, self.v"""
 
         return self.v.__getitem__(key)
+
+
+    def get_percent_id(self):
+        """Get the percent id of the read to the reference
+
+        Returns
+        =======
+        output : float
+            The percent ID. E.g. 95.2
+
+        Notes
+        =====
+        - Only mapped segments (i.e. consumed by read and ref) are considered. E.g if 50% of a read
+          maps with 100% identity and the other 50% is composed of indels, this function returns 100.0
+        - Delegates to the just-in-time compiled function _get_percent_id
+        """
+
+        return _get_percent_id(self.v)
 
 
     def get_aligned_sequence_and_reference_positions(self):
@@ -314,7 +386,7 @@ class Coverage:
         self.read_iterator_dict = {
             'fetch': self._fetch_iterator,
             'fetch_and_trim': self._fetch_and_trim_iterator,
-            #'fetch_filter_and_trim': self._fetch_filter_and_trim_iterator,
+            'fetch_filter_and_trim': self._fetch_filter_and_trim_iterator,
         }
 
 
@@ -420,6 +492,13 @@ class Coverage:
         """Uses BAMFileObject.fetch_and_trim iterator"""
 
         for read in bam.fetch_and_trim(contig_name, start, end):
+            yield read
+
+
+    def _fetch_filter_and_trim_iterator(self, bam, contig_name, start, end, percent_id_cutoff):
+        """Uses BAMFileObject.fetch_and_filter iterator"""
+
+        for read in bam.fetch_filter_and_trim(contig_name, start, end, percent_id_cutoff):
             yield read
 
 
@@ -1011,6 +1090,21 @@ def _vectorize_read(cigartuples, query_sequence, reference_sequence, reference_s
         count += length
 
     return v
+
+
+@jit(nopython=True)
+def _get_percent_id(vectorized_read):
+    # Filter vectorization to only include mapped segments, i.e. mapping_type == 0
+    vectorized_read = vectorized_read[vectorized_read[:, 2] == 0]
+
+    mapped_length = vectorized_read.shape[0]
+
+    num_equal = 0
+    for i in range(mapped_length):
+        if vectorized_read[i, 1] == vectorized_read[i, 3]:
+            num_equal += 1
+
+    return 100 * num_equal / mapped_length
 
 
 @jit(nopython=True)
