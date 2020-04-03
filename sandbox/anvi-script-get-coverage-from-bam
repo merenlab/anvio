@@ -166,6 +166,7 @@ class ComputeCoverage(object):
             self.process_collection_txt()
 
         self.progress.end()
+        self.f.close()
         self.run.info_single('Output file %s has been written' % self.args.output, nl_before=1)
 
 
