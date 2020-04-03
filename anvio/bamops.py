@@ -102,7 +102,7 @@ class BAMFileObject(pysam.AlignmentFile):
 
         percent_id_cutoff : float, 0
             Reads with a percentage ID relative to their mapped segments of the reference genome
-            less than this amount will be excluded. I.e. if you want 95% as a cutoff, use
+            less than this amount will be excluded. E.g. if you want 95% as a cutoff, use
             percent_id_cutoff=95.0
         """
 
@@ -128,7 +128,6 @@ class BAMFileObject(pysam.AlignmentFile):
 
             if read.reference_end - end > 0:
                 read.trim(trim_by=(read.reference_end - end), side='right')
-
 
             yield read
 
@@ -382,6 +381,7 @@ class Coverage:
         self.median = 0.0
         self.detection = 0.0
         self.mean_Q2Q3 = 0.0
+        self.num_reads = 0
 
         self.read_iterator_dict = {
             'fetch': self._fetch_iterator,
@@ -458,6 +458,8 @@ class Coverage:
             else:
                 for start, end in read.get_blocks():
                     c[start:end] += 1
+
+            self.num_reads += 1
 
         self.c = c
 
