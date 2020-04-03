@@ -182,7 +182,8 @@ class Split:
 
 
 class Auxiliary:
-    def __init__(self, split, min_coverage=10, report_variability_full=False, profile_SCVs=False, profile_indels=False, skip_SNV_profiling=False):
+    def __init__(self, split, min_coverage=10, report_variability_full=False, profile_SCVs=False,
+                 profile_indels=False, skip_SNV_profiling=False, min_percent_identity=None):
 
         if anvio.DEBUG:
             self.run = terminal.Run()
@@ -190,6 +191,7 @@ class Auxiliary:
         self.split = split
         self.variation_density = 0.0
         self.min_coverage = min_coverage
+        self.min_percent_identity = min_percent_identity
         self.skip_SNV_profiling = skip_SNV_profiling
         self.profile_SCVs = profile_SCVs
         self.profile_indels = profile_indels
@@ -232,8 +234,16 @@ class Auxiliary:
 
         genes_with_SNVs = set(self.split.SNV_profiles['corresponding_gene_call'])
 
+        # Decide how we want to iterate through reads
+        if self.min_percent_identity:
+            read_iterator = bam.fetch_filter_and_trim
+            kwargs = {'percent_id_cutoff': self.min_percent_identity}
+        else:
+            read_iterator = bam.fetch_and_trim
+            kwargs = {}
+
         read_count = 0
-        for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
+        for read in read_iterator(self.split.parent, self.split.start, self.split.end, **kwargs):
             # This loop will be making extensive use of the vectorized form of Read, so it is well
             # worth the time to vectorize it right off the bat
             read.vectorize()
@@ -430,8 +440,16 @@ class Auxiliary:
         allele_counts_array_shape = (len(constants.nucleotides), self.split.length)
         allele_counts_array = np.zeros(allele_counts_array_shape)
 
+        # Decide how we want to iterate through reads
+        if self.min_percent_identity:
+            read_iterator = bam.fetch_filter_and_trim
+            kwargs = {'percent_id_cutoff': self.min_percent_identity}
+        else:
+            read_iterator = bam.fetch_and_trim
+            kwargs = {}
+
         read_count = 0
-        for read in bam.fetch_and_trim(self.split.parent, self.split.start, self.split.end):
+        for read in read_iterator(self.split.parent, self.split.start, self.split.end, **kwargs):
             aligned_sequence_as_ord, reference_positions = read.get_aligned_sequence_and_reference_positions()
             aligned_sequence_as_index = utils.nt_seq_to_nt_num_array(aligned_sequence_as_ord, is_ord=True)
             reference_positions_in_split = reference_positions - self.split.start
