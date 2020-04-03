@@ -188,6 +188,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'SNVs_profiled': not self.skip_SNV_profiling,
                        'SCVs_profiled': self.profile_SCVs,
                        'indels_profiled': self.profile_indels,
+                       'min_percent_identity': self.min_percent_identity or 0,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],
@@ -247,6 +248,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('skip_SNV_profiling', self.skip_SNV_profiling)
         self.run.info('profile_SCVs', self.profile_SCVs)
         self.run.info('profile_indels', self.profile_indels)
+        self.run.info('min_percent_identity', self.min_percent_identity)
         self.run.info('report_variability_full', self.report_variability_full)
 
         self.run.warning("Your minimum contig length is set to %s base pairs. So anvi'o will not take into "
