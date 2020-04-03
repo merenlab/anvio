@@ -148,9 +148,13 @@ class Read:
         # attributes, all attributes of interest are redefined here
         self.cigartuples = np.array(read.cigartuples)
         self.query_sequence = np.frombuffer(read.query_sequence.encode('ascii'), np.uint8)
-        self.reference_sequence = np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)
         self.reference_start = read.reference_start
         self.reference_end = read.reference_end
+
+        if read.has_tag('MD'):
+            self.reference_sequence = np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)
+        else:
+            self.reference_sequence = np.array([ord('N')] * (self.reference_end - self.reference_start))
 
         # See self.vectorize
         self.v = None
