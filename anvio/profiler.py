@@ -471,12 +471,18 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.contig_names = self.bam.references
         self.contig_lengths = self.bam.lengths
 
-        if self.min_percent_identity and not self.bam.reads_have_MD_tags():
-            raise ConfigError("Your BAM file has reads that do not have MD "
-                              "tags, which give essential information about the "
-                              "reference bases in alignments. Unfortunately, "
-                              "this is required to use --min-percent-identity. "
-                              "Please remove this flag or redo your mapping.")
+        if self.min_percent_identity:
+            # We will permit as many as 1% of sampled reads to be missing an MD tag, for whatever
+            # crazy mapping reason, although it is most probable that if 1 read is missing an MD
+            # tag, they all are.
+            requirement = lambda x: sum(x) / len(x) >= 0.99
+
+            if not self.bam.reads_have_MD_tags(require=requirement):
+                raise ConfigError("Your BAM file has reads that do not have MD "
+                                  "tags, which give essential information about the "
+                                  "reference bases in alignments. Unfortunately, "
+                                  "this is required to use --min-percent-identity. "
+                                  "Please remove this flag or redo your mapping.")
 
         utils.check_contig_names(self.contig_names)
 
