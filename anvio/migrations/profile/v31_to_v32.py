@@ -33,7 +33,7 @@ def migrate(db_path):
     except:
         pass
 
-    profile_db.set_meta_value('indels_profiled', 0)
+    profile_db.set_meta_value('INDELs_profiled', 0)
     profile_db.set_meta_value('min_percent_identity', 0)
 
     # set the version

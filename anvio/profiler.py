@@ -188,7 +188,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'max_contig_length': self.max_contig_length,
                        'SNVs_profiled': not self.skip_SNV_profiling,
                        'SCVs_profiled': self.profile_SCVs,
-                       'indels_profiled': self.profile_indels,
+                       'INDELs_profiled': self.profile_indels,
                        'min_percent_identity': self.min_percent_identity or 0,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,

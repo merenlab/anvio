@@ -290,7 +290,7 @@ class MultipleRuns:
                      ('report_variability_full', 'Whether to report full variability (--report-variability-full) flags'),
                      ('SCVs_profiled', 'Profile SCVs flags (--profile-SCVs)'),
                      ('SNVs_profiled', 'SNV profiling flags (--skip-SNV-profiling)'),
-                     ('indels_profiled', 'Profile indels flags (--profile-indels)')]:
+                     ('INDELs_profiled', 'Profile indels flags (--profile-indels)')]:
             v = set([r[k] for r in list(self.profile_dbs_info_dict.values())])
             if len(v) > 1:
                 if anvio.FORCE:
@@ -478,7 +478,7 @@ class MultipleRuns:
         self.report_variability_full = C('report_variability_full')
         self.SCVs_profiled = C('SCVs_profiled')
         self.SNVs_profiled = C('SNVs_profiled')
-        self.indels_profiled = int(C('indels_profiled'))
+        self.INDELs_profiled = int(C('INDELs_profiled'))
         self.total_length = C('total_length')
 
         if self.num_splits > self.max_num_splits_for_hierarchical_clustering and not self.enforce_hierarchical_clustering:
@@ -518,7 +518,7 @@ class MultipleRuns:
                        'max_contig_length': self.max_contig_length,
                        'SNVs_profiled': self.SNVs_profiled,
                        'SCVs_profiled': self.SCVs_profiled,
-                       'indels_profiled': self.indels_profiled,
+                       'INDELs_profiled': self.INDELs_profiled,
                        'num_contigs': self.num_contigs,
                        'num_splits': self.num_splits,
                        'total_length': self.total_length,
@@ -565,7 +565,7 @@ class MultipleRuns:
         else:
             self.run.warning("Codon frequencies were not profiled, hence, these tables will be empty in the merged profile database.")
 
-        if self.indels_profiled:
+        if self.INDELs_profiled:
             self.progress.new('Merging indels tables')
             self.progress.update('...')
             self.merge_indels_tables()
