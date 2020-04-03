@@ -679,7 +679,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                       profile_indels=self.profile_indels,
                                                       skip_SNV_profiling=self.skip_SNV_profiling,
                                                       min_coverage=self.min_coverage_for_variability,
-                                                      report_variability_full=self.report_variability_full)
+                                                      report_variability_full=self.report_variability_full,
+                                                      min_percent_identity=self.min_percent_identity)
 
                 split.auxiliary.process(bam_file)
 
