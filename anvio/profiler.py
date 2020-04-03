@@ -80,6 +80,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.write_buffer_size = self.write_buffer_size_per_thread * self.num_threads
         self.total_length_of_all_contigs = 0
         self.total_coverage_values_for_all_contigs = 0
+        self.total_reads_kept = 0
         self.description_file_path = A('description')
 
         # make sure early on that both the distance and linkage is OK.
@@ -258,7 +259,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         if self.max_contig_length < sys.maxsize:
             self.run.warning("Your maximum contig length is set to %s base pairs. Which means anvi'o will remove "
-           "any contigs that are longer than this value." % pp(self.max_contig_length))
+                             "any contigs that are longer than this value." % pp(self.max_contig_length))
 
         # this is kinda important. we do not run full-blown profile function if we are dealing with a summarized
         # profile...
@@ -790,6 +791,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.layer_additional_data['num_SNVs_reported'] = TableForVariability(self.profile_db_path, progress=null_progress).num_entries
             self.layer_additional_keys.append('num_SNVs_reported')
 
+        self.layer_additional_data['total_reads_kept'] = self.total_reads_kept
+        self.layer_additional_keys.append('total_reads_kept')
+
         self.check_contigs(num_contigs=received_contigs-discarded_contigs)
 
 
@@ -892,8 +896,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
             dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
 
         if not self.skip_SNV_profiling:
-            self.layer_additional_data['num_SNVs_reported'] =  TableForVariability(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_data['num_SNVs_reported'] = TableForVariability(self.profile_db_path, progress=null_progress).num_entries
             self.layer_additional_keys.append('num_SNVs_reported')
+
+        self.layer_additional_data['total_reads_kept'] = self.total_reads_kept
+        self.layer_additional_keys.append('total_reads_kept')
 
         self.check_contigs(num_contigs=received_contigs-discarded_contigs)
 
@@ -907,6 +914,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             contig.abundance = contig.coverage.mean
             for split in contig.splits:
                 split.abundance = split.coverage.mean
+
+            self.total_reads_kept += contig.coverage.num_reads
 
         self.generate_variable_nts_table()
         self.generate_variable_codons_table()
