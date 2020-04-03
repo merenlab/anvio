@@ -34,6 +34,7 @@ def migrate(db_path):
         pass
 
     profile_db.set_meta_value('indels_profiled', 0)
+    profile_db.set_meta_value('min_percent_identity', 0)
 
     # set the version
     profile_db.remove_meta_key_value_pair('version')
