@@ -132,6 +132,51 @@ class BAMFileObject(pysam.AlignmentFile):
             yield read
 
 
+    def reads_have_MD_tags(num_reads=10000, require=all):
+        """A holistic approach to testing if reads in the BAM file have MD tags
+
+        Tests the first `num_reads` in the file to see if they contain the MD tag.  The MD tag
+        provides information about the reference bases in the aligned segment and are essential for
+        some read operations, such as calculating percent ID of a read to its reference.
+
+        Parameters
+        ==========
+        num_reads : int, 10000
+            How many reads should be sampled?
+
+        require : function, all
+            function that takes list of bool values and returns single bool. E.g. built-ins all or
+            any. The default is all, which means all of the sampled reads are required to have the
+            MD tag
+
+        Returns
+        =======
+        output : bool
+            require(has_MD), where has_MD is a list of booleans (length has_MD) that are True if the
+            read has the MD tag and False otherwise
+        """
+
+        has_MD = []
+        reads_checked = 0
+
+        for contig_name in self.references:
+            for read in self.fetch(contig_name):
+                if read.cigartuples is None:
+                    # if it didn't map we forgive it for not having an MD tag
+                    continue
+
+                has_MD.append(read.has_tag('MD'))
+
+                reads_checked += 1
+                if reads_checked == num_reads:
+                    return require(has_MD)
+
+        if reads_checked == 0:
+            return True
+
+        return require(has_MD)
+
+
 class Read:
     def __init__(self, read):
         """Class for manipulating reads
