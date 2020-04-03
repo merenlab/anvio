@@ -433,7 +433,6 @@ class MultipleRuns:
         # this is not the best way to do it. a better way probably required all reads obtained from each
         # run, yet even that would wrongly assume equal eukaryotic contamination, etc. normalization is a bitch.
 
-        smallest_sample_size = min(self.total_reads_mapped_per_sample.values())
         smallest_non_zero_sample_size = min([v for v in self.total_reads_mapped_per_sample.values() if v] or [0])
 
         if smallest_non_zero_sample_size == 0 and not self.skip_hierarchical_clustering:
