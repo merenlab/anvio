@@ -36,7 +36,7 @@ class ComputeCoverage(object):
         self.sanity_check()
         self.f = self.init_output()
 
-        self.bam = pysam.Samfile(self.args.bam_file, 'rb')
+        self.bam = bamops.BAMFileObject(self.args.bam_file, 'rb')
 
         # lengths is {contig_name: contig_length} of each contig in the bam
         self.lengths = dict(zip(self.bam.references, self.bam.lengths))
@@ -123,11 +123,12 @@ class ComputeCoverage(object):
         ==========
         contig_name : str
         """
+
         self.progress.increment()
         self.progress.update('%s (%d/%d)' % (contig_name, self.progress.progress_current_item, self.progress.progress_total_items))
 
         cov = bamops.Coverage()
-        cov.run(self.bam, contig_name, skip_coverage_stats=True)
+        cov.run(self.bam, contig_name, read_iterator='fetch', skip_coverage_stats=True)
 
         return cov.c
 
