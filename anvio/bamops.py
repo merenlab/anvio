@@ -132,7 +132,7 @@ class BAMFileObject(pysam.AlignmentFile):
             yield read
 
 
-    def reads_have_MD_tags(num_reads=10000, require=all):
+    def reads_have_MD_tags(self, num_reads=10000, require=all):
         """A holistic approach to testing if reads in the BAM file have MD tags
 
         Tests the first `num_reads` in the file to see if they contain the MD tag.  The MD tag
