@@ -151,3 +151,5 @@ with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_codon_
     for rank, df in rank_codon_count_dfs.items():
         df.to_excel(writer, sheet_name=rank)
         df.to_csv(os.path.join(args.outdir, args.dataset_name + '_' + rank + '_aa_counts.tsv'), sep='\t')
+
+print("Total time elapsed: %d s" % time() - t0)
