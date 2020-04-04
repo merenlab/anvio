@@ -636,9 +636,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 # We mark these for deletion the next time garbage is collected
                 for split in contig.splits:
                     del split.coverage
-                    del split.auxiliary.split.SNV_profiles
-                    del split.auxiliary.split.SCV_profiles
-                    del split.auxiliary.split
                     del split.auxiliary
                     del split
                 del contig.splits[:]
@@ -770,9 +767,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 for c in self.contigs:
                     for split in c.splits:
                         del split.coverage
-                        del split.auxiliary.split.SNV_profiles
-                        del split.auxiliary.split.SCV_profiles
-                        del split.auxiliary.split
                         del split.auxiliary
                         del split
                     del c.splits[:]
