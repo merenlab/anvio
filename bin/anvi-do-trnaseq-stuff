@@ -62,6 +62,7 @@ codon_to_AA = deepcopy(anvio.constants.codon_to_AA)
 codon_to_AA[''] = ''
 t['amino_acid'] = t['codon'].map(codon_to_AA)
 
+
 # TOTAL READ COUNTS FOR EACH AMINO ACID
 print("Finding total read counts for each amino acid...")
 aa_count = OrderedDict()
@@ -117,12 +118,13 @@ for rank in ranks:
         for aa in anvio.constants.amino_acids:
             aa_df = aa_df_dict[aa]
             aa_count_row.append(aa_df[aa_df[rank] == taxon]['replicate_count'].sum())
-        rank_aa_count_df = pd.DataFrame(rank_aa_count_table, columns=[rank] + anvio.constants.amino_acids)
-        rank_aa_count_df.set_index(rank, inplace=True)
-        rank_aa_count_df['total'] = rank_aa_count_df.sum(1)
-        rank_aa_count_df.sort_values('total', ascending=False, inplace=True)
-        rank_aa_count_df.drop('total', axis=1, inplace=True)
-        rank_aa_count_dfs[rank] = rank_aa_count_df
+        rank_aa_count_table.append(aa_count_row)
+    rank_aa_count_df = pd.DataFrame(rank_aa_count_table, columns=[rank] + anvio.constants.amino_acids)
+    rank_aa_count_df.set_index(rank, inplace=True)
+    rank_aa_count_df['total'] = rank_aa_count_df.sum(1)
+    rank_aa_count_df.sort_values('total', ascending=False, inplace=True)
+    rank_aa_count_df.drop('total', axis=1, inplace=True)
+    rank_aa_count_dfs[rank] = rank_aa_count_df
 
 with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_aa_counts.xlsx')) as writer:
     for rank, df in rank_aa_count_dfs.items():
