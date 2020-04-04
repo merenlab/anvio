@@ -183,7 +183,7 @@ class Split:
 
 class Auxiliary:
     def __init__(self, split, min_coverage=10, report_variability_full=False, profile_SCVs=False,
-                 profile_indels=False, skip_SNV_profiling=False, min_percent_identity=None):
+                 skip_INDEL_profiling=False, skip_SNV_profiling=False, min_percent_identity=None):
 
         if anvio.DEBUG:
             self.run = terminal.Run()
@@ -194,7 +194,7 @@ class Auxiliary:
         self.min_percent_identity = min_percent_identity
         self.skip_SNV_profiling = skip_SNV_profiling
         self.profile_SCVs = profile_SCVs
-        self.profile_indels = profile_indels
+        self.skip_INDEL_profiling = skip_INDEL_profiling
         self.report_variability_full = report_variability_full
 
         # used during array processing
@@ -424,14 +424,14 @@ class Auxiliary:
 
 
     def run_SNVs_and_indels(self, bam):
-        """Profile SNVs (and indels if self.profile_indels)
+        """Profile SNVs (and indels if not self.skip_INDEL_profiling)
 
         Parameters
         ==========
         bam : bamops.BAMFileObject
         """
 
-        if self.profile_indels:
+        if not self.skip_INDEL_profiling:
             indels_profiles = {}
 
         # make an array with as many rows as there are nucleotides in the split, and as many rows as
@@ -456,7 +456,7 @@ class Auxiliary:
 
             allele_counts_array = utils.add_to_2D_numeric_array(aligned_sequence_as_index, reference_positions_in_split, allele_counts_array)
 
-            if self.profile_indels:
+            if not self.skip_INDEL_profiling:
                 read.vectorize()
 
                 for ins_segment in read.iterate_blocks_by_mapping_type(mapping_type=1):
@@ -524,7 +524,7 @@ class Auxiliary:
         nt_profile.process()
 
         self.split.SNV_profiles = nt_profile.d
-        if self.profile_indels:
+        if not self.skip_INDEL_profiling:
             self.split.indels_profiles = indels_profiles
 
         self.split.num_SNV_entries = len(nt_profile.d['coverage'])
