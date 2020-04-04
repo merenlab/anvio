@@ -272,7 +272,7 @@ tRNAseq_sequences_table_structure       = ['name', 'replicate_names', 'replicate
 tRNAseq_sequences_table_types           = ['str' , 'str'            , 'numeric'        , 'str']
 
 tRNAseq_info_table_name                 = 'tRNA_basic_info'
-tRNAseq_info_table_structure            = ['name', 'is_mature', 'anticodon_sequence', 'amino acid', 'sequence_length', 'profiled_features_start', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature']
+tRNAseq_info_table_structure            = ['name', 'is_mature', 'anticodon_sequence', 'amino_acid', 'sequence_length', 'profiled_features_start', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature']
 tRNAseq_info_table_types                = ['str' , 'bool'     , 'str'               , 'str'       , 'numeric'        , 'numeric'                , 'numeric'      , 'numeric'        , 'numeric'   , 'numeric'     , 'numeric']
 
 tRNAseq_features_table_name             = 'tRNA_features'
