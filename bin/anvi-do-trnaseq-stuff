@@ -118,8 +118,10 @@ for rank in ranks:
             aa_df = aa_df_dict[aa]
             aa_count_row.append(aa_df[aa_df[rank] == taxon]['replicate_count'].sum())
         rank_aa_count_df = pd.DataFrame(rank_aa_count_table, columns=[rank] + anvio.constants.amino_acids)
+        rank_aa_count_df.set_index(rank, inplace=True)
         rank_aa_count_df['total'] = rank_aa_count_df.sum(1)
         rank_aa_count_df.sort_values('total', ascending=False, inplace=True)
+        rank_aa_count_df.drop('total', axis=1, inplace=True)
         rank_aa_count_dfs[rank] = rank_aa_count_df
 
 with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_aa_counts.xlsx')) as writer:
@@ -143,13 +145,15 @@ for rank in ranks:
             codon_count_row.append(codon_df[codon_df[rank] == taxon]['replicate_count'].sum())
         rank_codon_count_table.append(codon_count_row)
     rank_codon_count_df = pd.DataFrame(rank_codon_count_table, columns=[rank] + anvio.constants.codons)
+    rank_codon_count_df.set_index(rank, inplace=True)
     rank_codon_count_df['total'] = rank_codon_count_df.sum(1)
     rank_codon_count_df.sort_values('total', ascending=False, inplace=True)
+    rank_codon_count_df.drop('total', axis=1, inplace=True)
     rank_codon_count_dfs[rank] = rank_codon_count_df
 
 with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_codon_counts.xlsx')) as writer:
     for rank, df in rank_codon_count_dfs.items():
         df.to_excel(writer, sheet_name=rank)
-        df.to_csv(os.path.join(args.outdir, args.dataset_name + '_' + rank + '_aa_counts.tsv'), sep='\t')
+        df.to_csv(os.path.join(args.outdir, args.dataset_name + '_' + rank + '_codon_counts.tsv'), sep='\t')
 
 print("Total time elapsed: %d s" % (time() - t0))
