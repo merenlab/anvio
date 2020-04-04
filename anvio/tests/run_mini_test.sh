@@ -33,7 +33,12 @@ sqlite3 $output_dir/CONTIGS.db '.tables'
 for f in 01 02 03
 do
     INFO "Profiling sample SAMPLE-$f"
-    anvi-profile -i $output_dir/SAMPLE-$f.bam -o $output_dir/SAMPLE-$f -c $output_dir/CONTIGS.db --cluster --profile-SCVs
+    anvi-profile -i $output_dir/SAMPLE-$f.bam \
+                 -o $output_dir/SAMPLE-$f \
+                 -c $output_dir/CONTIGS.db \
+                 --cluster \
+                 --profile-SCVs \
+                 --profile-indels
 
     INFO "Importing short-read-level taxonomy for SAMPLE-$f"
     anvi-import-taxonomy-for-layers -p $output_dir/SAMPLE-$f/PROFILE.db \

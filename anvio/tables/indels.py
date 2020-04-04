@@ -15,9 +15,8 @@ __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "A. Murat Eren"
-__email__ = "a.murat.eren@gmail.com"
-__status__ = "Development"
+__maintainer__ = "Evan Kiefl"
+__email__ = "kiefl.evan@gmail.com"
 
 
 run = terminal.Run()
@@ -25,7 +24,7 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-class TableForVariability(Table):
+class TableForIndels(Table):
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
         self.run = run
@@ -35,7 +34,7 @@ class TableForVariability(Table):
 
         self.num_entries = self.get_num_entries()
         self.db_entries = []
-        self.set_next_available_id(t.variable_nts_table_name)
+        self.set_next_available_id(t.indels_table_name)
 
         # after getting an instance, we don't want things to keep accumulating
         # in memory. the purpose of the following variable is to ensure whenever
@@ -74,7 +73,7 @@ class TableForVariability(Table):
             body of this function)
         """
 
-        db_entry = (self.next_id(t.variable_nts_table_name), *entry)
+        db_entry = (self.next_id(t.indels_table_name), *entry)
         self.db_entries.append(db_entry)
         self.num_entries += 1
 
@@ -89,10 +88,10 @@ class TableForVariability(Table):
             return
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_nts_table_name, self.db_entries)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % t.indels_table_name, self.db_entries)
         database.disconnect()
 
         if anvio.DEBUG:
-            run.info_single("SNVs: %d entries added to the nt variability table." % len(self.db_entries), mc="green")
+            run.info_single("INDELS: %d entries added to the indels table." % len(self.db_entries), mc="green")
 
         self.db_entries = []
