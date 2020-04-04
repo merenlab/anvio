@@ -358,6 +358,16 @@ D = {
                      "will instruct profiler to skip that step. Please remember that parameters and flags must be "
                      "identical between different profiles using the same contigs database for them to merge properly."}
                 ),
+    'skip-INDEL-profiling': (
+            ['--skip-INDEL-profiling'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "The alignment of a read to a reference genome/sequence can be imperfect, such that the read exhibits "
+                     "insertions or deletions relative to the reference. Anvi'o normally stores this information in the "
+                     "profile database since the time taken and extra storage do not amount to much, but if insist on not "
+                     "having this information, you can skip storing this information by providing this flag. Note: If "
+                     "--skip-SNV-profiling is provided, --skip-INDEL-profiling will automatically be enforced."}
+                ),
     'return-AA-frequencies-instead': (
             ['--return-AA-frequencies-instead'],
             {'default': False,
@@ -375,16 +385,6 @@ D = {
                      "codon frequencies opens doors to powerful evolutionary insights in downstream analyses, due to its "
                      "computational complexity, this feature comes 'off' by default. Using this flag you can rise against the "
                      "authority, as you always should, and make anvi'o profile codons."}
-                ),
-    'profile-indels': (
-            ['--profile-indels'],
-            {'default': False,
-             'action': 'store_true',
-             'help': "The alignment of a read to a reference genome/sequence can be imperfect, such that the read exhibits "
-                     "insertions or deletions relative to the reference. Anvi'o normally accounts for this information "
-                     "but does not _store_ it in the profile database. If you would like this information, you could use "
-                     "this flag. It comes at significant computational cost. If --skip-SNV-profiling is set, --profile-indels "
-                     "will be unset."}
                 ),
     'drop-previous-annotations': (
             ['--drop-previous-annotations'],
