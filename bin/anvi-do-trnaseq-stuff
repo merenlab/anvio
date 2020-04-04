@@ -17,6 +17,8 @@ from collections import OrderedDict
 from time import time
 t0 = time()
 
+anticodons = sorted(anvio.utils.rev_comp(codon) for codon in anvio.constants.codons)
+
 gast_ranks = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species', 'subspecies']
 num_gast_ranks = len(gast_ranks)
 ranks = gast_ranks[:-1]
@@ -56,11 +58,12 @@ t['species'] = t[t['species'] != '']['genus'] + ' ' + t[t['species'] != '']['spe
 t['species'].fillna('', inplace=True)
 t.drop('subspecies', axis=1, inplace=True) # GAST doesn't seem to report subspecies, but has a space for it anyways
 
-t['anticodon_sequence'] = db.get_table_as_dataframe('tRNA_basic_info')[['name', 'anticodon_sequence']].set_index('name')
-t['codon'] = t['anticodon_sequence'].apply(anvio.utils.rev_comp)
+t['anticodon'] = db.get_table_as_dataframe('tRNA_basic_info')[['name', 'anticodon_sequence']].set_index('name')
+t['anticodon_rc'] = t['anticodon_sequence'].apply(anvio.utils.rev_comp)
 codon_to_AA = deepcopy(anvio.constants.codon_to_AA)
 codon_to_AA[''] = ''
-t['amino_acid'] = t['codon'].map(codon_to_AA)
+t['amino_acid'] = t['anticodon_rc'].map(codon_to_AA)
+t.drop('anticodon_rc', axis=1, inplace=True)
 
 
 # TOTAL READ COUNTS FOR EACH AMINO ACID
@@ -74,16 +77,16 @@ with open(os.path.join(args.outdir, args.dataset_name + '_aa_total_counts.tsv'),
     for aa, count in aa_count.items():
         f.write(aa + '\t' + str(count) + '\n')
 
-# TOTAL READ COUNTS FOR EACH CODON
-print("Finding total read counts for each codon...")
-codon_count = OrderedDict()
-for codon in anvio.constants.codons:
-    codon_count[codon] = t[t['codon'] == codon]['replicate_count'].sum()
+# TOTAL READ COUNTS FOR EACH ANTICODON
+print("Finding total read counts for each anticodon...")
+anticodon_count = OrderedDict()
+for anticodon in anticodons:
+    anticodon_count[anticodon] = t[t['anticodon'] == anticodon]['replicate_count'].sum()
 
 with open(os.path.join(args.outdir, args.dataset_name + '_codon_total_counts.tsv'), 'w') as f:
-    f.write('codon\treads_identified_as_tRNA_decoding_codon\n')
-    for codon, count in codon_count.items():
-        f.write(codon + '\t' + str(count) + '\n')
+    f.write('anticodon\treads_identified_as_tRNA_decoding_anticodon\n')
+    for anticodon, count in anticodon_count.items():
+        f.write(anticodon + '\t' + str(count) + '\n')
 
 # TOTAL READ COUNTS FOR EACH TAXON FROM EACH TAXONOMIC RANK
 print("Finding total read counts for each taxon, from each taxonomic rank...")
@@ -131,31 +134,31 @@ with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_aa_cou
         df.to_excel(writer, sheet_name=rank)
         df.to_csv(os.path.join(args.outdir, args.dataset_name + '_' + rank + '_aa_counts.tsv'), sep='\t')
 
-# READ COUNTS FOR EACH CODON FOR EACH TAXON FROM EACH TAXONOMIC RANK
-print("Finding read counts for each codon, for each taxon, from each taxonomic rank...")
-codon_df_dict = {}
-for codon in anvio.constants.codons:
-    codon_df_dict[codon] = t[t['codon'] == codon]
+# READ COUNTS FOR EACH ANTICODON FOR EACH TAXON FROM EACH TAXONOMIC RANK
+print("Finding read counts for each anticodon, for each taxon, from each taxonomic rank...")
+anticodon_df_dict = {}
+for anticodon in anticodons:
+    anticodon_df_dict[anticodon] = t[t['anticodon'] == anticodon]
 
-rank_codon_count_dfs = OrderedDict().fromkeys(ranks)
+rank_anticodon_count_dfs = OrderedDict().fromkeys(ranks)
 for rank in ranks:
-    rank_codon_count_table = []
+    rank_anticodon_count_table = []
     for taxon in t[rank].unique():
-        codon_count_row = [taxon]
-        for codon in anvio.constants.codons:
-            codon_df = codon_df_dict[codon]
-            codon_count_row.append(codon_df[codon_df[rank] == taxon]['replicate_count'].sum())
-        rank_codon_count_table.append(codon_count_row)
-    rank_codon_count_df = pd.DataFrame(rank_codon_count_table, columns=[rank] + anvio.constants.codons)
-    rank_codon_count_df.set_index(rank, inplace=True)
-    rank_codon_count_df['total'] = rank_codon_count_df.sum(1)
-    rank_codon_count_df.sort_values('total', ascending=False, inplace=True)
-    rank_codon_count_df.drop('total', axis=1, inplace=True)
-    rank_codon_count_dfs[rank] = rank_codon_count_df
+        anticodon_count_row = [taxon]
+        for anticodon in anticodons:
+            anticodon_df = anticodon_df_dict[anticodon]
+            anticodon_count_row.append(anticodon_df[anticodon_df[rank] == taxon]['replicate_count'].sum())
+        rank_anticodon_count_table.append(anticodon_count_row)
+    rank_anticodon_count_df = pd.DataFrame(rank_anticodon_count_table, columns=[rank] + anticodons)
+    rank_anticodon_count_df.set_index(rank, inplace=True)
+    rank_anticodon_count_df['total'] = rank_anticodon_count_df.sum(1)
+    rank_anticodon_count_df.sort_values('total', ascending=False, inplace=True)
+    rank_anticodon_count_df.drop('total', axis=1, inplace=True)
+    rank_anticodon_count_dfs[rank] = rank_anticodon_count_df
 
-with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_codon_counts.xlsx')) as writer:
-    for rank, df in rank_codon_count_dfs.items():
+with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_anticodon_counts.xlsx')) as writer:
+    for rank, df in rank_anticodon_count_dfs.items():
         df.to_excel(writer, sheet_name=rank)
-        df.to_csv(os.path.join(args.outdir, args.dataset_name + '_' + rank + '_codon_counts.tsv'), sep='\t')
+        df.to_csv(os.path.join(args.outdir, args.dataset_name + '_' + rank + '_anticodon_counts.tsv'), sep='\t')
 
 print("Total time elapsed: %d s" % (time() - t0))
