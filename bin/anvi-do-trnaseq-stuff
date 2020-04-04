@@ -59,7 +59,7 @@ t['species'].fillna('', inplace=True)
 t.drop('subspecies', axis=1, inplace=True) # GAST doesn't seem to report subspecies, but has a space for it anyways
 
 t['anticodon'] = db.get_table_as_dataframe('tRNA_basic_info')[['name', 'anticodon_sequence']].set_index('name')
-t['anticodon_rc'] = t['anticodon_sequence'].apply(anvio.utils.rev_comp)
+t['anticodon_rc'] = t['anticodon'].apply(anvio.utils.rev_comp)
 codon_to_AA = deepcopy(anvio.constants.codon_to_AA)
 codon_to_AA[''] = ''
 t['amino_acid'] = t['anticodon_rc'].map(codon_to_AA)
