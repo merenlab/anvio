@@ -56,6 +56,7 @@ class GenomeDescriptions(object):
 
         self.input_file_for_internal_genomes = A('internal_genomes')
         self.input_file_for_external_genomes = A('external_genomes')
+        self.skip_checking_genome_hashes = A('skip_checking_genome_hashes')
         self.list_hmm_sources = A('list_hmm_sources')          # <<< these two are look out of place, but if the args requests
         self.list_available_gene_names = A('list_available_gene_names') #     for information about HMMs, this is the bets place to set them
         self.gene_caller = A('gene_caller')
@@ -361,10 +362,17 @@ class GenomeDescriptions(object):
         genome_hash = db.DB(entry['contigs_db_path'], None, ignore_version=True).get_meta_value('contigs_db_hash')
 
         if genome_hash in self.genome_hash_to_genome_name:
-            self.progress.reset()
-            raise ConfigError("While working on your external genomes, anvi'o realized that genome %s and %s seem to have the same hash. "
-                              "If you are certain these genomes represent two different genomes, please re-run the program, and if they appear "
-                              "again please let the developers know about the problem." % (self.genome_hash_to_genome_name[genome_hash], entry['name']))
+            if self.skip_checking_genome_hashes:
+                if genome_hash in self.external_genomes_with_identical_hashes:
+                    self.external_genomes_with_identical_hashes[genome_hash].add(entry['name'])
+                    self.external_genomes_with_identical_hashes[genome_hash].add(self.genome_hash_to_genome_name[genome_hash])
+                else:
+                    self.external_genomes_with_identical_hashes[genome_hash] = set([self.genome_hash_to_genome_name[genome_hash], entry['name']])
+            else:
+                self.progress.reset()
+                raise ConfigError("While working on your external genomes, anvi'o realized that genome %s and %s seem to have the same hash. "
+                                  "If you are aware of this and/or if you would like anvi'o to not chech genome hashes, please use the flag "
+                                  "`--skip-checking-genome-hashes`." % (self.genome_hash_to_genome_name[genome_hash], entry['name']))
 
         return genome_hash
 
@@ -376,16 +384,23 @@ class GenomeDescriptions(object):
         genome_hash = hashlib.sha224('_'.join([''.join(split_names_of_interest), contigs_db_hash]).encode('utf-8')).hexdigest()[0:12]
 
         if genome_hash in self.genome_hash_to_genome_name:
-            self.progress.reset()
-            genome_1, genome_2 = self.genome_hash_to_genome_name[genome_hash], entry['name']
-            raise ConfigError("According to hash values anvi'o has been generating for your internal genomes, not all genomes you have seem to be uniuqe. "
-                              "It is most likely you unintentionally listed the same information for different genome names. If you would like "
-                              "to double check, genome %s (in '%s') and genome %s (in '%s') seem to have the same hash (so they are basically the same genomes). "
-                              "If you are certain these genomes represent two different genomes, please re-run the program, and if they appear "
-                              "again please let the developers know about the problem." % (genome_1,
-                                                                                           self.genomes[genome_1]['collection_id'],
-                                                                                           genome_2,
-                                                                                           self.genomes[genome_2]['collection_id']))
+            if self.skip_checking_genome_hashes:
+                if genome_hash in self.internal_genomes_with_identical_hashes:
+                    self.internal_genomes_with_identical_hashes[genome_hash].add(entry['name'])
+                    self.internal_genomes_with_identical_hashes[genome_hash].add(self.genome_hash_to_genome_name[genome_hash])
+                else:
+                    self.internal_genomes_with_identical_hashes[genome_hash] = set([self.genome_hash_to_genome_name[genome_hash], entry['name']])
+            else:
+                self.progress.reset()
+                genome_1, genome_2 = self.genome_hash_to_genome_name[genome_hash], entry['name']
+                raise ConfigError("According to hash values anvi'o has been generating for your internal genomes, not all genomes you have seem to be uniuqe. "
+                                  "It is most likely you unintentionally listed the same information for different genome names. If you would like "
+                                  "to double check, genome %s (in '%s') and genome %s (in '%s') seem to have the same hash (so they are basically the same genomes). "
+                                  "If you are aware of this and/or if you would like anvi'o to not check genome hashes, please use the flag "
+                                  "`--skip-checking-genome-hashes`." % (genome_1,
+                                                               self.genomes[genome_1]['collection_id'],
+                                                               genome_2,
+                                                               self.genomes[genome_2]['collection_id']))
 
         return genome_hash
 
