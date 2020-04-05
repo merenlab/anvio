@@ -68,6 +68,9 @@ class GenomeDescriptions(object):
         self.contigs_dbs_found = set([])
         self.profile_dbs_found = set([])
 
+        self.external_genomes_with_identical_hashes = {}
+        self.internal_genomes_with_identical_hashes = {}
+
 
     def is_proper_db(self, db_path, db_type):
         """Check if contigs db or profile db is OK.
@@ -233,6 +236,26 @@ class GenomeDescriptions(object):
             self.genomes[genome_name]['genome_hash'] = g_hash
             self.genome_hash_to_genome_name[g_hash] = genome_name
         self.progress.end()
+
+        # if the user wanted anvi'o to not care about checking genome hashes and we ended up
+        # finding genomes with identical hashes, let them know
+        if self.skip_checking_genome_hashes and (len(self.internal_genomes_with_identical_hashes) or len(self.external_genomes_with_identical_hashes)):
+            self.run.warning("While processing internal and/or external genomes files you have provided, "
+                             "anvi'o found genomes with indentical hashes (which means they were practically "
+                             "identical to each other). But since you have instructed anvi'o to ignore that "
+                             "it is now continuing with the flow (even %d hashes for your internal genomes and %d) "
+                             "hashes for your external gneomes appeared more than once). See below the genome names "
+                             "with identical hashes:" % (len(self.internal_genomes_with_identical_hashes),
+                                                         len(self.external_genomes_with_identical_hashes)),
+                                                         overwrite_verbose=True)
+
+            for _t, _d in [('Internal', self.internal_genomes_with_identical_hashes), ('External', self.external_genomes_with_identical_hashes)]:
+                all_genome_hashes = list(_d.keys())
+                for genome_hash in all_genome_hashes:
+                    self.run.info("%s genomes with hash %s" % (_t, genome_hash), "%s" % ", ".join(_d[genome_hash]),
+                                  overwrite_verbose=True,
+                                  nl_after = 1 if genome_hash == all_genome_hashes[-1] else 0,
+                                  lc='red')
 
         # if the client is not interested in functions, skip the rest.
         if skip_functions:
