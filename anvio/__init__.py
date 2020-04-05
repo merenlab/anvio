@@ -297,6 +297,16 @@ D = {
                      "'collection_id', 'profile_db_path', 'contigs_db_path'. Each line should list a single entry, where 'name' "
                      "can be any name to describe the anvi'o bin identified as 'bin_id' that is stored in a collection."}
                 ),
+    'skip-checking-genome-hashes': (
+            ['--skip-checking-genome-hashes'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag if you would like anvi'o to skip checking genome hashes. This is only relevant if you may have "
+                     "genomes in your internal or external genomes files that have identical sequences with different names AND if "
+                     "you are OK with it. You may be OK with it, for instance, if you are using `anvi-dereplicate-genomes` program "
+                     "to dereplicate genomes desribed in multiple collections in an anvi'o profile database that may be describing "
+                     "the same genome multiple times (see https://github.com/merenlab/anvio/issues/1397 for a case)."}
+                ),
     'metagenomes': (
             ['-M', '--metagenomes'],
             {'metavar': 'FILE_PATH',
