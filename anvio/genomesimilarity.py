@@ -496,7 +496,7 @@ class Dereplicate:
                 continue
 
             similarity = float(self.similarity_matrix[genome1][genome2])
-            if similarity > self.similarity_threshold:
+            if similarity >= self.similarity_threshold:
                 self.update_clusters(genome1, genome2)
 
             counter += 1
