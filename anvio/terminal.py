@@ -283,7 +283,7 @@ class Run:
         if self.log_file_path:
             self.log(line)
 
-        if (self.verbose and not quiet) or overwrite_verbose:
+        if (self.verbose and not quiet) or (overwrite_verbose and not anvio.QUIET):
             try:
                 sys.stderr.write(line)
             except:
