@@ -25,13 +25,13 @@ requirements:
     - trimal
     - iqtree
     - fastani
-    - r
+    - r-base
     - r-stringi
     - r-tidyverse
     - r-magrittr
     - r-optparse
-    - bioconductor-qvalue
-    - trnascan-se
+    - bioconductor
+    - fasttree
 
 test:
   commands:
