@@ -236,8 +236,12 @@ class MODELLER:
 
             if self.use_pdb_db and five_letter_id in self.pdb_db.stored_structure_ids:
                 # This chain exists in the external database. Export it and get the path
-                path = self.pdb_db.export_pdb(five_letter_id, requested_path)
-                source = 'Offline DB'
+                try:
+                    path = self.pdb_db.export_pdb(five_letter_id, requested_path)
+                    source = 'Offline DB'
+                except ConfigError:
+                    # The ID is in the DB, but the PDB content is None
+                    source = 'Nowhere'
 
             elif not self.offline_mode:
                 # This chain doesn't exist in an external database, and internet access is assumed.
