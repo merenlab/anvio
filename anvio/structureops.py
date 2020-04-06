@@ -1307,7 +1307,7 @@ class PDBDatabase(object):
             self.reset_db()
 
         if (self.exists and self.update) or (not self.exists and not self.update):
-            self.load_or_create_db()
+            self.check_or_create_db()
             self.database_summary()
             self._run()
         elif self.exists and not self.update:
@@ -1317,7 +1317,7 @@ class PDBDatabase(object):
                              "Anvi'o is now in the process of displaying some stats for your "
                              "currently existing database. Afterwards, it will exit.",
                              header = "NOTHING TO DO", lc='yellow')
-            self.load_or_create_db()
+            self.check_or_create_db()
             self.database_summary()
         elif not self.exists and self.update:
             raise ConfigError("You asked to update the database, but the database was not found.")
@@ -1447,14 +1447,12 @@ class PDBDatabase(object):
             proc.terminate()
 
         self.store_buffer(structures)
-        self.db.set_meta_value('last_update', str(datetime.datetime.now()))
 
         if len(failed):
             self.run.warning("The following structures (%d in total) couldn't be downloaded for whatever reason. Anvi'o "
                              "suggests you run this again with the --update flag to see if you can download "
                              "them. If you can't don't worry. %s" % (len(failed), failed))
 
-        self.db.disconnect()
         self.progress.end()
 
 
@@ -1506,6 +1504,8 @@ class PDBDatabase(object):
 
 
     def store_buffer(self, structures):
+        pdb_db = self.load_db()
+
         # Remove any already existing entries
         new_clusters = set([])
         new_structure_ids = set([])
@@ -1515,18 +1515,21 @@ class PDBDatabase(object):
             new_structure_ids.add(structure['id'])
 
         if len(new_clusters):
-            self.db.remove_some_rows_from_table('clusters', 'cluster IN (%s)' % ','.join(['"' + x + '"' for x in new_clusters]))
+            pdb_db.remove_some_rows_from_table('clusters', 'cluster IN (%s)' % ','.join(['"' + x + '"' for x in new_clusters]))
 
         if len(new_structure_ids):
-            self.db.remove_some_rows_from_table('structures', 'representative_id IN (%s)' % ','.join(['"' + x + '"' for x in new_structure_ids]))
+            pdb_db.remove_some_rows_from_table('structures', 'representative_id IN (%s)' % ','.join(['"' + x + '"' for x in new_structure_ids]))
 
         # Add the new entries
         for structure in structures:
             # store the pdb content
-            self.db.insert('structures', (structure['id'], structure['pdb_content']))
+            pdb_db.insert('structures', (structure['id'], structure['pdb_content']))
 
             # store the cluster
-            self.db.insert_rows_from_dataframe('clusters', structure['cluster_info'])
+            pdb_db.insert_rows_from_dataframe('clusters', structure['cluster_info'])
+
+        pdb_db.set_meta_value('last_update', str(datetime.datetime.now()))
+        pdb_db.disconnect()
 
 
     def parse_clusters_file(self, path):
@@ -1582,29 +1585,41 @@ class PDBDatabase(object):
         return path.rstrip('.gz')
 
 
-    def load_or_create_db(self):
-        """Load the DB. Complain if it sucks. Create it if it doesn't exist"""
+    def load_db(self):
+        return db.DB(self.db_path, '0.1', new_database=False)
+
+
+    def check_or_create_db(self):
+        """Check the DB. Complain if it sucks. Create it if it doesn't exist"""
 
         if self.exists:
             try:
-                self.db = db.DB(self.db_path, '0.1', new_database=False)
+                pdb_db = self.load_db()
             except:
                 raise ConfigError("Anvi'o is not convinced %s was generated with anvi-setup-pdb-database" % self.db_path)
 
-            table_names = self.db.get_table_names()
+            table_names = pdb_db.get_table_names()
 
             if 'structures' not in table_names:
+                pdb_db.disconnect()
                 raise ConfigError("Anvi'o was expecting to find the table with the name 'structures' in %s" % self.db_path)
 
             if 'clusters' not in table_names:
+                pdb_db.disconnect()
                 raise ConfigError("Anvi'o was expecting to find the table with the name 'clusters' in %s" % self.db_path)
 
+
         if not self.exists:
-            self.db = db.DB(self.db_path, '0.1', new_database=True)
-            self.db.set_meta_value('last_update', str(datetime.datetime.now()))
-            self.db.set_meta_value('clustered_at', '95%')
-            self.db.create_table('structures', ['representative_id', 'pdb_content'], ['text', 'blob'])
-            self.db.create_table('clusters', ['cluster', 'id', 'representative'], ['text', 'text', 'integer'])
+            pdb_db = db.DB(self.db_path, '0.1', new_database=True)
+            pdb_db.set_meta_value('last_update', str(datetime.datetime.now()))
+            pdb_db.set_meta_value('clustered_at', '95%')
+            pdb_db.create_table('structures', ['representative_id', 'pdb_content'], ['text', 'blob'])
+            pdb_db.create_table('clusters', ['cluster', 'id', 'representative'], ['text', 'text', 'integer'])
+
+        # Create an index for `representative_id` for fast lookup. If it already exists, no harm
+        pdb_db._exec("CREATE INDEX chain_index ON structures (representative_id);")
+
+        pdb_db.disconnect()
 
 
     def reset_db(self):
@@ -1625,8 +1640,11 @@ class PDBDatabase(object):
         self.run.info('Previous database found', self.exists)
         self.run.info('Database path', self.db_path)
         self.run.info('DB size', self.size_of_database())
-        self.run.info('Last updated', self.db.get_meta_value('last_update'))
-        self.run.info('Number of structures', self.db.get_row_counts_from_table('structures'), nl_after=1)
+
+        pdb_db = self.load_db()
+        self.run.info('Last updated', pdb_db.get_meta_value('last_update'))
+        self.run.info('Number of structures', pdb_db.get_row_counts_from_table('structures'), nl_after=1)
+        pdb_db.disconnect()
 
 
     def get_representative_ids(self, clusters):
@@ -1646,16 +1664,24 @@ class PDBDatabase(object):
     def get_clusters(self):
         """Get 'clusters' table as a dataframe"""
 
-        return self.db.get_table_as_dataframe('clusters', error_if_no_data=False)
+        pdb_db = self.load_db()
+        clusters = pdb_db.get_table_as_dataframe('clusters', error_if_no_data=False)
+        pdb_db.disconnect()
+
+        return clusters
 
 
     def export_pdb(self, pdb_id, output_path=None):
         if not output_path:
             output_path = filesnpaths.get_temp_file_path()
 
-        as_bytes = self.db.get_some_rows_from_table_as_dict('structures', 'representative_id = "%s"' % pdb_id)[pdb_id]['pdb_content']
+        pdb_db = self.load_db()
+
+        as_bytes = pdb_db.get_some_rows_from_table_as_dict('structures', 'representative_id = "%s"' % pdb_id)[pdb_id]['pdb_content']
         with open(output_path, 'wb') as f:
             f.write(as_bytes)
+
+        pdb_db.disconnect()
 
         return output_path
 

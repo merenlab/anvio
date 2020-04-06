@@ -171,7 +171,7 @@ class MODELLER:
         if filesnpaths.is_file_exists(self.pdb_db_path, dont_raise=ok_if_absent):
             # The user has a database there! Try and load it
             self.pdb_db = anvio.structureops.PDBDatabase(argparse.Namespace(pdb_database_path=self.pdb_db_path))
-            self.pdb_db.load_or_create_db()
+            self.pdb_db.check_or_create_db()
             self.pdb_db.get_stored_structure_ids()
             self.use_pdb_db = True
         else:
