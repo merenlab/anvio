@@ -241,6 +241,7 @@ class MODELLER:
                     source = 'Offline DB'
                 except ConfigError:
                     # The ID is in the DB, but the PDB content is None
+                    path = None
                     source = 'Nowhere'
 
             elif not self.offline_mode:
