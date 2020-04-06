@@ -70,5 +70,5 @@ would like you to remind yourself that the order of names in this file means not
 more than a poor attempt to have an organization based on a rather neutral metric. If
 you are an anvi'o user, we believe that it would be the most appropriate and kind of
 you to assume that anvi'o wouldn't have been possible without any of these individuals
-and those who contributed to the platfrom by other means than writing code. We are
+and those who contributed to the platform by other means than writing code. We are
 thankful for all who invested their time. Since you are here, we thank you, too.
