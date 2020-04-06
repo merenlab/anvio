@@ -8,6 +8,7 @@ import time
 import numpy as np
 import shutil
 import pandas as pd
+import sqlite3
 import warnings
 import datetime
 import multiprocessing
@@ -1616,8 +1617,12 @@ class PDBDatabase(object):
             pdb_db.create_table('structures', ['representative_id', 'pdb_content'], ['text', 'blob'])
             pdb_db.create_table('clusters', ['cluster', 'id', 'representative'], ['text', 'text', 'integer'])
 
-        # Create an index for `representative_id` for fast lookup. If it already exists, no harm
-        pdb_db._exec("CREATE INDEX chain_index ON structures (representative_id);")
+        try:
+            # Create an index for `representative_id` for fast lookup
+            pdb_db._exec("CREATE INDEX chain_index ON structures (representative_id);")
+        except sqlite3.OperationalError:
+            # The index has already been set
+            pass
 
         pdb_db.disconnect()
 
