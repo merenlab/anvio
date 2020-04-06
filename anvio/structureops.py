@@ -1683,6 +1683,10 @@ class PDBDatabase(object):
         pdb_db = self.load_db()
 
         as_bytes = pdb_db.get_some_rows_from_table_as_dict('structures', 'representative_id = "%s"' % pdb_id)[pdb_id]['pdb_content']
+
+        if as_bytes is None:
+            raise ConfigError("PDB ID %s was found in the database, but its content is empty. That's weird--sorry." % pdb_db)
+
         with open(output_path, 'wb') as f:
             f.write(as_bytes)
 
