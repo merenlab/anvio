@@ -1,3 +1,13 @@
+# v6.2: a critical update for "esther" (06.04.2020) #
+We have a minor release that contains a set of bug fixes and critical performance improvements for the program `anvi-profile`. Please see the [installation](http://merenlab.org/2016/06/26/installation-v2/) page to upgrade your anvi'o.
+
+In addition, here are some blog posts that you may be interested:
+
+- [Visualizing contig coverages to better understand microbial population structures](http://merenlab.org/2019/11/25/visualizing-coverages/).
+- [To dereplicate or not to dereplicate?](http://merenlab.org/2019/12/12/dereplicate-or-not/).
+- [Visualizing the fate of contigs across metagenomic binning algorithms](http://merenlab.org/2020/01/02/visualizing-metagenomic-bins/).
+***
+
 # v6.1: a minor update for "esther" (28.10.2019) #
 This is a minor release that contains a set of bug fixes our users identified in `v6`. Please see our up-to-date [installation](http://merenlab.org/2016/06/26/installation-v2/) document to upgrade your anvi'o.
 
