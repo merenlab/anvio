@@ -735,8 +735,8 @@ class KeggMetabolismEstimator(KeggContext):
         self.bin_id = A('bin_id')
         self.bin_ids_file = A('bin_ids_file')
         self.metagenome_mode = True if A('metagenome_mode') else False
-        self.completeness_threshold = A('module-completion-threshold') or 0.75
-        self.output_file_path = A('output_file') or "kegg-metabolism.txt"
+        self.completeness_threshold = A('module_completion_threshold') or 0.75
+        self.output_file_prefix = A('output_file_prefix') or "kegg-metabolism"
         self.contigs_db_project_name = "Unknown"
 
         self.bin_ids_to_process = None
@@ -1334,7 +1334,7 @@ class KeggMetabolismEstimator(KeggContext):
 
 
     def store_kegg_metabolism_superdict(self, kegg_superdict):
-        """This function writes the metabolism superdict to a tab-delimited file.
+        """This function writes the metabolism superdict to a tab-delimited file, and also generates a file summarizing the complete modules.
 
         The metabolism superdict is a three-to-four-level dictionary. The first three levels are: genomes/bins, modules, and module completion information.
         The module completion dictionary also has some dictionaries in it, and those make up the fourth level.
@@ -1361,7 +1361,14 @@ class KeggMetabolismEstimator(KeggContext):
         To distill this information into one line, we need to convert the dictionary on-the-fly to a dict of dicts,
         where each bin-module-path-kofam_hit-gene_caller_id is keyed by an arbitrary integer. There will be a lot of redundant information
         in the rows.
+
+        The complete modules summary file includes only a portion of the information in the metabolism dictionary. Its purpose is to give the user
+        quick access to the complete modules in each bin. Every bin-module pair in this file is keyed by an arbitrary integer (with no relation to the
+        id in the other file).
         """
+
+        hits_output_path = self.output_file_prefix + "-all_kofam_hits.txt"
+        complete_module_summary_path = self.output_file_prefix + "-complete_modules.txt"
 
         name_header = None
         if self.profile_db_path and not self.metagenome_mode:
@@ -1373,13 +1380,31 @@ class KeggMetabolismEstimator(KeggContext):
 
         header_list = ["unique_id", name_header, "kegg_module", "module_is_complete", "module_completeness",
         "path_id", "path", "path_completeness", "kofam_hit_in_path", "gene_caller_id", "contig"]
+        summary_header_list = ["unique_id", name_header, "kegg_module","module_completeness", "module_name", "module_class",
+        "module_category", "module_subcategory"]
 
         d = {}
+        cm_summary = {}
         unique_id = 0
+        summary_unique_id = 0
         for bin, mod_dict in kegg_superdict.items():
             for mnum, c_dict in mod_dict.items():
                 if mnum == "num_complete_modules":
                     continue
+
+
+                if c_dict["complete"]:
+                    cm_summary[summary_unique_id] = {}
+                    cm_summary[summary_unique_id][name_header] = bin
+                    cm_summary[summary_unique_id]["kegg_module"] = mnum
+                    cm_summary[summary_unique_id]["module_completeness"] = c_dict["percent_complete"]
+                    cm_summary[summary_unique_id]["module_name"] = self.kegg_modules_db.get_module_name(mnum)
+                    mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum)
+                    cm_summary[summary_unique_id]["module_class"] = mnum_class_dict["class"]
+                    cm_summary[summary_unique_id]["module_category"] = mnum_class_dict["category"]
+                    cm_summary[summary_unique_id]["module_subcategory"] = mnum_class_dict["subcategory"]
+
+                    summary_unique_id += 1
 
                 for p_index in range(len(c_dict['paths'])):
                     p = c_dict['paths'][p_index]
@@ -1403,8 +1428,10 @@ class KeggMetabolismEstimator(KeggContext):
 
                             unique_id += 1
 
-        utils.store_dict_as_TAB_delimited_file(d, self.output_file_path, key_header="unique_id", headers=header_list)
-        self.run.info("Output file", self.output_file_path, nl_before=1)
+        utils.store_dict_as_TAB_delimited_file(d, hits_output_path, key_header="unique_id", headers=header_list)
+        self.run.info("Kofam hits output file", hits_output_path, nl_before=1)
+        utils.store_dict_as_TAB_delimited_file(cm_summary, complete_module_summary_path, key_header="unique_id", headers=summary_header_list)
+        self.run.info("Complete modules summary file", complete_module_summary_path)
 
 
 class KeggModulesDatabase(KeggContext):
