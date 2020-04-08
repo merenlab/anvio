@@ -1145,6 +1145,49 @@ class KeggMetabolismEstimator(KeggContext):
         return now_complete
 
 
+    def compute_naive_redundancy_for_path(self, num_ko_hits_in_path_dict):
+        """This function computes a naive redundancy measure for a module path, given the number of hits per KO in the path.
+
+        naive redundancy = # extra hits / len(path) where a hit is "extra" if it is not the first hit to the KO.
+        """
+        extra_hits = [num_ko_hits_in_path_dict[ko] - 1 for ko in num_ko_hits_in_path_dict if num_ko_hits_in_path_dict[ko] > 1 ]
+        print("extra hits: ", extra_hits)
+        return sum(extra_hits)/len(num_ko_hits_in_path_dict.keys())
+
+
+    def compute_module_redundancy_for_bin(self, mnum, meta_dict_for_bin):
+        """This function calculates the redundancy of the specified module within the given bin metabolism dictionary.
+
+        Each module can have multiple paths, but we only compute redundancy on the paths with the highest completeness
+        (stored under the "most_complete_paths" key). If there are no paths in this list (which only happens when there
+        are 0 KOfam hits to the module), then we do not compute redundancy.
+
+        PARAMETERS
+        ==========
+        mnum                    string, module number to work on
+        meta_dict_for_bin       metabolism completeness dict for the current bin, to be modified in-place
+
+        """
+
+        paths_of_highest_completeness = meta_dict_for_bin[mnum]["most_complete_paths"]
+        if not paths_of_highest_completeness:
+            # put zero values in dict wherever necessary
+            return
+
+        for p in paths_of_highest_completeness:
+            kofam_hits_in_path = { ko : meta_dict_for_bin[mnum]["kofam_hits"][ko] for ko in meta_dict_for_bin[mnum]["kofam_hits"].keys() if ko in p }
+            num_hits_per_kofam = { ko : len(kofam_hits_in_path[ko]) for ko in kofam_hits_in_path.keys() }
+            for ko in p:
+                if ko not in num_hits_per_kofam:
+                    num_hits_per_kofam[ko] = 0
+
+            # for now, we will try a bunch of different redundancy calculations and put them all into the dictionary until we find the ones we like
+            naive = self.compute_naive_redundancy_for_path(num_hits_per_kofam)
+            print("naive redundancy = ", naive)
+
+        return
+
+
     def estimate_for_list_of_splits(self, ko_hits_in_splits, splits=None, bin_name=None):
         """This is the atomic metabolism estimator function, which builds a metabolism completeness dictionary for an arbitrary list of splits.
 
@@ -1199,6 +1242,15 @@ class KeggMetabolismEstimator(KeggContext):
 
                 if mod_is_complete:
                     complete_mods.append(mod)
+
+
+        # estimate redundancy of each module
+        for mod in metabolism_dict_for_list_of_splits.keys():
+            if mod == "num_complete_modules":
+                continue
+
+            # redundancy estimation GOES HERE
+
 
         # notify user of the modules that gave some fishy results
         if not self.quiet:
