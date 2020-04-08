@@ -1249,7 +1249,7 @@ class KeggMetabolismEstimator(KeggContext):
             if mod == "num_complete_modules":
                 continue
 
-            # redundancy estimation GOES HERE
+            self.compute_module_redundancy_for_bin(mod, metabolism_dict_for_list_of_splits)
 
 
         # notify user of the modules that gave some fishy results
