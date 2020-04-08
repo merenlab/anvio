@@ -138,7 +138,7 @@ class MMseqs2:
                     output_path_prefix,
                     os.path.join(self.tmp_dir, 'TMP-' + output_name),
                     '-c', '1',
-                    '--cov-mode', '0',
+                    '--cov-mode', '2',
                     '--min-seq-id', '1',
                     '--threads', self.num_threads]
 
