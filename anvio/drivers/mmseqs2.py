@@ -138,7 +138,8 @@ class MMseqs2:
                     output_path_prefix,
                     os.path.join(self.tmp_dir, 'TMP-' + output_name),
                     '-c', '1',
-                    '--cov-mode', '2',
+                    '--cov-mode', '2', # Threshold based on coverage of QUERY SEQUENCE
+                    '--cluster-mode', '2', # Greedy clustering by sequence length
                     '--min-seq-id', '1',
                     '--threads', self.num_threads]
 
@@ -321,7 +322,7 @@ class MMseqs2:
                     cluster_db_path,
                     cluster_tmp_dir,
                     '--cluster-mode', 2, # Greedy clustering by sequence length
-                    '--cov-mode', 1, # Threshold based on coverage of TARGET SEQUENCE
+                    '--cov-mode', 2, # Threshold based on coverage of QUERY SEQUENCE
                     '-c', cov_thresh,
                     '--min-seq-id', min_seq_id,
                     '--threads', self.num_threads,
