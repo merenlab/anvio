@@ -133,7 +133,7 @@ class MMseqs2:
         output_path_prefix = os.path.join(self.top_output_dir, output_name)
 
         cmd_line = [self.program_name,
-                    'easy-linclust',
+                    'easy-cluster',
                     *fasta_file_paths,
                     output_path_prefix,
                     os.path.join(self.tmp_dir, 'TMP-' + output_name),
