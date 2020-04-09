@@ -1202,6 +1202,12 @@ class KeggMetabolismEstimator(KeggContext):
 
         """
 
+        meta_dict_for_bin[mnum]["naive_redundancy"] = []
+        meta_dict_for_bin[mnum]["copywise_average"] = []
+        meta_dict_for_bin[mnum]["copywise_average_completeness_distributions"] = []
+        meta_dict_for_bin[mnum]["copywise_median"] = []
+        meta_dict_for_bin[mnum]["copywise_median_completeness_distributions"] = []
+
         paths_of_highest_completeness = meta_dict_for_bin[mnum]["most_complete_paths"]
         if not paths_of_highest_completeness:
             # put zero values in dict wherever necessary
@@ -1215,8 +1221,14 @@ class KeggMetabolismEstimator(KeggContext):
                     num_hits_per_kofam[ko] = 0
 
             # for now, we will try a bunch of different redundancy calculations and put them all into the dictionary until we find the ones we like
-            naive = self.compute_naive_redundancy_for_path(num_hits_per_kofam)
-            print("naive redundancy = ", naive)
+            meta_dict_for_bin[mnum]["naive_redundancy"].append(self.compute_naive_redundancy_for_path(num_hits_per_kofam))
+            cw_avg_redundancy, copy_completeness_distribution = self.compute_copywise_redundancy_for_path(num_hits_per_kofam, aggregation_measure="average")
+            meta_dict_for_bin[mnum]["copywise_average"].append(cw_avg_redundancy)
+            meta_dict_for_bin[mnum]["copywise_average_completeness_distributions"].append(copy_completeness_distribution)
+            cw_med_redundancy, copy_completeness_distribution = self.compute_copywise_redundancy_for_path(num_hits_per_kofam, aggregation_measure="median")
+            meta_dict_for_bin[mnum]["copywise_median"].append(cw_med_redundancy)
+            meta_dict_for_bin[mnum]["copywise_median_completeness_distributions"].append(copy_completeness_distribution)
+
 
         return
 
