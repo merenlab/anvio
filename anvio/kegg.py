@@ -9,6 +9,7 @@ import requests
 import glob
 import re
 import copy
+import statistics as stats
 
 import anvio
 import anvio.db as db
