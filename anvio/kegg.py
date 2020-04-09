@@ -1151,9 +1151,41 @@ class KeggMetabolismEstimator(KeggContext):
 
         naive redundancy = # extra hits / len(path) where a hit is "extra" if it is not the first hit to the KO.
         """
+
         extra_hits = [num_ko_hits_in_path_dict[ko] - 1 for ko in num_ko_hits_in_path_dict if num_ko_hits_in_path_dict[ko] > 1 ]
-        print("extra hits: ", extra_hits)
         return sum(extra_hits)/len(num_ko_hits_in_path_dict.keys())
+
+
+    def compute_copywise_redundancy_for_path(self, num_ko_hits_in_path_dict, aggregation_measure="average"):
+        """This function computes redundancy based on the completeness of each extra copy of a path.
+
+        The 'base' redundancy score is determined by the number of extra copies with 100% completeness.
+        The completeness measurements of all other extra copies are aggregated (using the aggregation_measure) and
+        added to this 'base' redundancy to get the overall path redundancy.
+        """
+
+        extra_hits = [num_ko_hits_in_path_dict[ko] - 1 if num_ko_hits_in_path_dict[ko] > 1 else 0 for ko in num_ko_hits_in_path_dict]
+        base_redundancy = min(extra_hits) # number of extra copies of path that are 100% complete
+        extra_copy_completeness = []
+        # here we get the completeness of every extra copy of the path
+        for i in range((base_redundancy+1), max(extra_hits) + 1):
+            num_present_kos_in_copy = len([num_hits for num_hits in extra_hits if num_hits >= i])
+            extra_copy_completeness.append(num_present_kos_in_copy/len(num_ko_hits_in_path_dict.keys()))
+
+        aggregated_completeness = None
+        if not extra_copy_completeness: # this handles the case when ALL extra copies are 100% complete
+            aggregated_completeness = 0
+        else:
+            if aggregation_measure == "average":
+                aggregated_completeness = stats.mean(extra_copy_completeness)
+            elif aggregation_measure == "median":
+                aggregated_completeness = stats.median(extra_copy_completeness)
+            elif aggregation_measure == "knee":
+                raise ConfigError("aggregation measure 'knee' not implemented yet")
+            else:
+                raise ConfigError("The function compute_copywise_redundancy_for_path() doesn't know how to handle the aggregation measure '%s'", aggregation_measure)
+
+        return (base_redundancy + aggregated_completeness), extra_copy_completeness
 
 
     def compute_module_redundancy_for_bin(self, mnum, meta_dict_for_bin):
