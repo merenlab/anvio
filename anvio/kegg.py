@@ -1180,6 +1180,10 @@ class KeggMetabolismEstimator(KeggContext):
                 aggregated_completeness = stats.mean(extra_copy_completeness)
             elif aggregation_measure == "median":
                 aggregated_completeness = stats.median(extra_copy_completeness)
+            elif aggregation_measure == "weighted_sum":
+                aggregated_completeness = 0
+                for c in range(len(extra_copy_completeness)):
+                    aggregated_completeness += 1/(c+1) * extra_copy_completeness[c]
             elif aggregation_measure == "knee":
                 raise ConfigError("aggregation measure 'knee' not implemented yet")
             else:
@@ -1207,6 +1211,8 @@ class KeggMetabolismEstimator(KeggContext):
         meta_dict_for_bin[mnum]["copywise_average_completeness_distributions"] = []
         meta_dict_for_bin[mnum]["copywise_median"] = []
         meta_dict_for_bin[mnum]["copywise_median_completeness_distributions"] = []
+        meta_dict_for_bin[mnum]["copywise_weighted-sum"] = []
+        meta_dict_for_bin[mnum]["copywise_weighted-sum_completeness_distributions"] = []
 
         paths_of_highest_completeness = meta_dict_for_bin[mnum]["most_complete_paths"]
         if not paths_of_highest_completeness:
@@ -1228,6 +1234,9 @@ class KeggMetabolismEstimator(KeggContext):
             cw_med_redundancy, copy_completeness_distribution = self.compute_copywise_redundancy_for_path(num_hits_per_kofam, aggregation_measure="median")
             meta_dict_for_bin[mnum]["copywise_median"].append(cw_med_redundancy)
             meta_dict_for_bin[mnum]["copywise_median_completeness_distributions"].append(copy_completeness_distribution)
+            cw_ws_redundancy, copy_completeness_distribution = self.compute_copywise_redundancy_for_path(num_hits_per_kofam, aggregation_measure="weighted_sum")
+            meta_dict_for_bin[mnum]["copywise_weighted-sum"].append(cw_ws_redundancy)
+            meta_dict_for_bin[mnum]["copywise_weighted-sum_completeness_distributions"].append(copy_completeness_distribution)
 
 
         return
