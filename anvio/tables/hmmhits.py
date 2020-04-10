@@ -8,6 +8,7 @@ import anvio
 import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
+import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -35,9 +36,10 @@ pp = terminal.pretty_print
 
 
 class TablesForHMMHits(Table):
-    def __init__(self, db_path, num_threads_to_use=1, run=run, progress=progress, initializing_for_deletion=False):
+    def __init__(self, db_path, num_threads_to_use=1, run=run, progress=progress, initializing_for_deletion=False, just_do_it=False):
         self.num_threads_to_use = num_threads_to_use
         self.db_path = db_path
+        self.just_do_it = just_do_it
 
         utils.is_contigs_db(self.db_path)
 
@@ -49,25 +51,43 @@ class TablesForHMMHits(Table):
 
         if not len(self.gene_calls_dict):
             if self.genes_are_called:
-                self.run.warning("Tables in this contigs database that should contain gene calls are empty despite the fact that\
-                                  you didn't skip the gene calling step while generating this contigs database. This probably means\
-                                  that the gene caller did not find any genes among contigs. This is OK for now. But might explode\
-                                  later. If it does explode and you decide to let us know about that problem, please remember to mention\
-                                  this warning. By the way, this warning probably has been seen by like only 2 people on the planet. Who\
-                                  works with contigs with no gene calls? A better implementation of anvi'o will unite researchers who\
-                                  study weird stuff.")
+                self.run.warning("Tables in this contigs database that should contain gene calls are empty despite the fact that "
+                                 "you didn't skip the gene calling step while generating this contigs database. This probably means "
+                                 "that the gene caller did not find any genes among contigs. This is OK for now. But might explode "
+                                 "later. If it does explode and you decide to let us know about that problem, please remember to mention "
+                                 "this warning. By the way, this warning probably has been seen by like only 2 people on the planet. Who "
+                                 "works with contigs with no gene calls? A better implementation of anvi'o will unite researchers who "
+                                 "study weird stuff.")
             else:
-                self.run.warning("It seems you have skipped gene calling step while generating your contigs database, and you have no\
-                                  genes calls in tables that should contain gene calls. Anvi'o will let you go with this since some HMM\
-                                  sources only operate on DNA sequences, and at this point it doesn't know which HMMs you wish to run.\
-                                  If the lack of genes causes a problem, you will get another error message later probably :/")
+                self.run.warning("It seems you have skipped gene calling step while generating your contigs database, and you have no "
+                                 "genes calls in tables that should contain gene calls. Anvi'o will let you go with this since some HMM "
+                                 "sources only operate on DNA sequences, and at this point it doesn't know which HMMs you wish to run. "
+                                 "If the lack of genes causes a problem, you will get another error message later probably :/")
 
         if not initializing_for_deletion:
             self.set_next_available_id(t.hmm_hits_table_name)
             self.set_next_available_id(t.hmm_hits_splits_table_name)
 
+    def check_sources(self, sources):
+        sources_in_db = list(hmmops.SequencesForHMMHits(self.db_path).hmm_hits_info.keys())
+
+        sources_need_to_be_removed = set(sources.keys()).intersection(sources_in_db)
+
+        if len(sources_need_to_be_removed):
+            if self.just_do_it:
+                for source_name in sources_need_to_be_removed:
+                    self.remove_source(source_name)
+            else:
+                raise ConfigError("Some of the HMM sources you wish to run on this database are already in the database and anvi'o "
+                                  "refuses to overwrite them without your explicit input. You can either use `anvi-delete-hmms` "
+                                  "to remove them first, or run this program with `--just-do-it` flag so anvi'o would remove all "
+                                  "for you. Here are the list of HMM sources that need to be removed: '%s'." % (', '.join(sources_need_to_be_removed)))
+
 
     def populate_search_tables(self, sources={}):
+        # make sure the output file is OK to write.
+        filesnpaths.is_output_file_writable(self.db_path, ok_if_exists=True)
+
         # if we end up generating a temporary file for amino acid sequences:
         if not len(sources):
             import anvio.data.hmm
@@ -75,6 +95,8 @@ class TablesForHMMHits(Table):
 
         if not sources:
             return
+
+        self.check_sources(sources)
 
         target_files_dict = {}
 
@@ -86,11 +108,11 @@ class TablesForHMMHits(Table):
             alphabet, context = utils.anvio_hmm_target_term_to_alphabet_and_context(target)
 
             if not self.genes_are_called and context != "CONTIG":
-                raise ConfigError("You are in trouble. The gene calling was skipped for this contigs database, yet anvi'o asked to run an\
-                                   HMM profile that wishes to operate on %s context using the %s alphabet. It is not OK. You still could run\
-                                   HMM profiles that does not require gene calls to be present (such as the HMM profile that identifies Ribosomal\
-                                   RNAs in contigs, but for that you would have to explicitly ask for it by using the additional parameter\
-                                   '--installed-hmm-profile Ribosomal_RNAs')." % (context, alphabet))
+                raise ConfigError("You are in trouble. The gene calling was skipped for this contigs database, yet anvi'o asked to run an "
+                                  "HMM profile that wishes to operate on %s context using the %s alphabet. It is not OK. You still could run "
+                                  "HMM profiles that does not require gene calls to be present (such as the HMM profile that identifies Ribosomal "
+                                  "RNAs in contigs, but for that you would have to explicitly ask for it by using the additional parameter "
+                                  "'--installed-hmm-profile Ribosomal_RNAs')." % (context, alphabet))
 
             self.run.info('Target found', '%s:%s' % (alphabet, context))
 
@@ -107,9 +129,9 @@ class TablesForHMMHits(Table):
                                                                            report_aa_sequences=True if alphabet=='AA' else False)
             elif context == 'CONTIG':
                 if alphabet == 'AA':
-                    raise ConfigError("You are somewhere you shouldn't be. You came here because you thought it would be OK\
-                                       to ask for AA sequences in the CONTIG context. The answer to that is 'no, thanks'. If\
-                                       you think this is dumb, please let us know.")
+                    raise ConfigError("You are somewhere you shouldn't be. You came here because you thought it would be OK "
+                                      "to ask for AA sequences in the CONTIG context. The answer to that is 'no, thanks'. If "
+                                      "you think this is dumb, please let us know.")
                 else:
                     target_files_dict['%s:CONTIG' % alphabet] = os.path.join(tmp_directory_path, '%s_contig_sequences.fa' % alphabet)
                     utils.export_sequences_from_contigs_db(self.db_path,
@@ -147,7 +169,6 @@ class TablesForHMMHits(Table):
             if not len(search_results_dict):
                 run.info_single("The HMM source '%s' returned 0 hits. SAD (but it's stil OK)." % source, nl_before=1)
 
-
             if context == 'CONTIG':
                 # we are in trouble here. because our search results dictionary contains no gene calls, but contig
                 # names contain our hits. on the other hand, the rest of the code outside of this if statement
@@ -158,19 +179,19 @@ class TablesForHMMHits(Table):
                 # steps are going to be taken care of in the following function. magic.
 
                 if source != "Ribosomal_RNAs":
-                    self.run.warning("You just called an HMM profile that runs on contigs and not genes. Because this HMM\
-                                      operation is not directly working with gene calls anvi'o already knows about, the resulting\
-                                      hits will need to be added as 'new gene calls' into the contigs database. So far so good.\
-                                      But because we are in the contigs realm rater than genes realm, it is likely that\
-                                      resulting hits will not correspond to open reading frames that are supposed to be\
-                                      translated (such as ribosomal RNAs), because otherwise you would be working with genes\
-                                      instad of defining CONTIGS as your context in that HMM profile you just used unless you\
-                                      not sure what you are doing. Hence, anvi'o will not report amino acid sequences for the\
-                                      new gene calls it will recover through these HMMs. Please take a moment and you be the\
-                                      judge of whether this will influence your pangenomic analyses or other things you thought\
-                                      you would be doing with the result of this HMM search downstream. If you do not feel like\
-                                      being the judge of anything today you can move on yet remember to remember this if things\
-                                      look somewhat weird later on.",
+                    self.run.warning("You just called an HMM profile that runs on contigs and not genes. Because this HMM "
+                                     "operation is not directly working with gene calls anvi'o already knows about, the resulting "
+                                     "hits will need to be added as 'new gene calls' into the contigs database. So far so good. "
+                                     "But because we are in the contigs realm rater than genes realm, it is likely that "
+                                     "resulting hits will not correspond to open reading frames that are supposed to be "
+                                     "translated (such as ribosomal RNAs), because otherwise you would be working with genes "
+                                     "instad of defining CONTIGS as your context in that HMM profile you just used unless you "
+                                     "not sure what you are doing. Hence, anvi'o will not report amino acid sequences for the "
+                                     "new gene calls it will recover through these HMMs. Please take a moment and you be the "
+                                     "judge of whether this will influence your pangenomic analyses or other things you thought "
+                                     "you would be doing with the result of this HMM search downstream. If you do not feel like "
+                                     "being the judge of anything today you can move on yet remember to remember this if things "
+                                     "look somewhat weird later on.",
                                      header="Psst. Your fancy HMM profile '%s' speaking" % source,
                                      lc="green")
 
@@ -262,14 +283,55 @@ class TablesForHMMHits(Table):
 
 
     def remove_source(self, source):
-        self.delete_entries_for_key('source', source, [t.hmm_hits_info_table_name, t.hmm_hits_table_name, t.hmm_hits_splits_table_name])
+        """Remove an HMM source from the database."""
+
+        tables_with_source = [
+            t.hmm_hits_info_table_name,
+            t.hmm_hits_table_name,
+            t.hmm_hits_splits_table_name,
+            t.genes_in_contigs_table_name,
+            t.gene_function_calls_table_name,
+        ]
+
+        tables_with_gene_callers_id = [
+            t.gene_amino_acid_sequences_table_name,
+            t.genes_taxonomy_table_name,
+            t.genes_in_splits_table_name
+        ]
+
+        # delete entries from tables with 'source' column
+        self.delete_entries_for_key('source', source, tables_with_source)
+
+        # collect gene caller ids that were added to the db via the HMM source
+        gene_caller_ids_to_remove = set(key for key, val in self.gene_calls_dict.items() if val['source'] == source)
+
+        # if there are any, remove them from tables with 'gene_callers_id' column
+        if len(gene_caller_ids_to_remove):
+            database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+            CLAUSE = "gene_callers_id in (%s)" % (','.join([str(x) for x in gene_caller_ids_to_remove]))
+            for table in tables_with_gene_callers_id:
+                database.remove_some_rows_from_table(table, CLAUSE)
+
+            database.disconnect()
+
+            run.warning("%d gene caller ids that were added via the HMM source have been removed from \"%s\"" \
+                        % (len(gene_caller_ids_to_remove), ', '.join(tables_with_gene_callers_id)))
 
 
     def append(self, source, reference, kind_of_search, domain, all_genes, search_results_dict):
+        """Append a new HMM source in the contigs database."""
+
+        # just to make 100% sure.
+        if source in list(hmmops.SequencesForHMMHits(self.db_path).hmm_hits_info.keys()):
+            raise ConfigError("The source '%s' you're trying to append is already in the database :( "
+                              "You should have never been able to come here in the code unless you "
+                              "have passed the `check_sources` sanity check. Very good but not "
+                              "good really. Bad. Bad you." % source)
+
         # we want to define unique identifiers for each gene first. this information will be used to track genes that will
         # break into multiple pieces due to arbitrary split boundaries. while doing that, we will add the 'source' info
         # into the dictionary, so it perfectly matches to the table structure
-
         for entry_id in search_results_dict:
             hit = search_results_dict[entry_id]
 
@@ -281,8 +343,6 @@ class TablesForHMMHits(Table):
                                                                      str(gene_call['start']),
                                                                      str(gene_call['stop'])]).encode('utf-8')).hexdigest()
             hit['source'] = source
-
-        self.remove_source(source)
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 

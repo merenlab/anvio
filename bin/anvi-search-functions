@@ -90,8 +90,8 @@ class SearchResultReporter(object):
             return pan_database
 
         else:
-            raise ConfigError("You did not provide enough arguments to initialize contigs database or pan database. \
-                               To initialize pan database you need to provide both genome storage and pan database.")
+            raise ConfigError("You did not provide enough arguments to initialize contigs database or pan database. "
+                              "To initialize pan database you need to provide both genome storage and pan database.")
 
 
     def get_search_results(self):

@@ -3,18 +3,18 @@ Developers and contributors at the University of Chicago
 ===============================================================================
 A. Murat Eren (a.murat.eren at gmail dot com)
 Özcan Esen (ozcanesen at gmail dot com)
-Alon Shaiber (alon.shaiber at gmail dot com)
 Evan Kiefl (kiefl.evan at gmail dot com)
-Mahmoud Yousef (mahmoudyousef at uchicago dot edu)
 Matthew Schechter (mschechter at uchicago dot edu)
+Mahmoud Yousef (mahmoudyousef at uchicago dot edu)
 Andrea Watson (andreawatson at uchicago dot edu)
-Emily Fogarty (efogarty at uchicago dot edu)
 Florian Trigodet (trigodet dot florian at gmail dot com)
+Iva Veseli (iveseli at uchicago.edu)
+Emily Fogarty (efogarty at uchicago dot edu)
 
 ===============================================================================
 Developers and contributors at large
 ===============================================================================
-Tobias Paczian             Argonne National Laboratory        United States
+Alon Shaiber               Weill Cornell Medicine             United States
 Quentin Clayssen           University of Nantes               France
 Ryan Moore                 University of Delaware             United States
 Mike Lee                   NASA Ames Research Center          United States
@@ -25,18 +25,25 @@ Daniel Blankenberg         Genomic Medicine Institute         United States
 Gökmen Görgen              Radity, Inc                        Switzerland
 Doğan Can Kilment          Makroser, Inc.                     Turkey
 Srinidhi Varadharajan      University of Oslo                 Norway
+Amy Willis                 University of Washington           United States
 Xabier Vázquez-Campos      University of New South Wales      Australia
 John Eppley                University of Hawaiʻi at Mānoa     United States
 S. Çağlar Onur             DigitalOcean, Inc.                 United States
-Amy Willis                 University of Washington           United States
 Dan Utter                  Harvard University                 United States
 Tom Delmont                Genoscope                          France
+Isaac Fink                 University of Chicago              United States
 Finlay Maguire             Dalhousie University               Canada
 M. Fauzi Haroon            Harvard University                 United States
 Elmar Pruesse              University of Colorado Denver      United States
 C. Titus Brown             University of California Davis     United States
 Bryan Merill               Stanford University                United States
+Lucas Paoli                ETH Zurich                         Switzerland
 Ines Martinez              University of Alberta              Canada
+
+===============================================================================
+Developers and contributors no longer on GitHub
+===============================================================================
+Tobias Paczian             Argonne National Laboratory        United States
 
 --
 
@@ -45,10 +52,11 @@ to mention names who contributed to its codebase. The file divides individuals i
 two main groups: (1) those who are currently employed at the University of Chicago
 and work on anvi'o as a part of their job description (hence they are ready to
 respond to technical questions or work on feature requests), and (2) those who
-contribute (or have contributed) to the platform from elsewhere and help its progress
-on a voluntary basis. The order of names in this file follows the logic implemented
-at GitHub's contributors page at the following URL, which ranks individuals based on
-the number of commits they've made to the anvi'o master repository:
+contribute (or have contributed) to the platform and help (or have helped) its
+progress from elsewhere. The order of names in this file follows the logic
+implemented at GitHub's contributors page at the following URL, which ranks
+individuals based on the number of commits they've made to the anvi'o master
+repository:
 
     https://github.com/merenlab/anvio/graphs/contributors
 
@@ -62,5 +70,5 @@ would like you to remind yourself that the order of names in this file means not
 more than a poor attempt to have an organization based on a rather neutral metric. If
 you are an anvi'o user, we believe that it would be the most appropriate and kind of
 you to assume that anvi'o wouldn't have been possible without any of these individuals
-and those who contributed to the platfrom by other means than writing code. We are
+and those who contributed to the platform by other means than writing code. We are
 thankful for all who invested their time. Since you are here, we thank you, too.

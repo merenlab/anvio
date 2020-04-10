@@ -96,9 +96,9 @@ for a in available_assemblers:
         number_of_assemblers_in_config_file += 1
         assembly_software_in_config.append(a)
 if number_of_assemblers_in_config_file > 1:
-    raise ConfigError("This workflow supports the usage of only one assembly \
-                        software, yet all the following software are  \
-                        included in your config file: %s. Please include only one." % assembly_software_in_config)
+    raise ConfigError("This workflow supports the usage of only one assembly "
+                       "software, yet all the following software are "
+                       "included in your config file: %s. Please include only one." % assembly_software_in_config)
 
 
 # by default fastq files will be zipped after qc is done
@@ -113,13 +113,13 @@ run_megahit = M.get_param_value_from_config(['megahit', 'run']) == True
 if not M.references_mode and number_of_assemblers_in_config_file!=1 :
     # Sanity check for assembly mode
     # Make sure that user specified an assembler
-    raise ConfigError("You didn't specify any assembler for your metagenomes, and yet\
-                       your config file shows you are not using references_mode. If you\
-                       already have your assemblies or reference fasta files, then maybe\
-                       you need to add '\"references_mode\": true', and a '\"fasta_txt\": \
-                       \"name-of-your-fasta-txt-file\"' to your config file. Otherwise,\
-                       if you do mean to use assembly, please set 'run: true' for one of the,\
-                       following available assemblers: %s" % ', '.join(available_assemblers))
+    raise ConfigError("You didn't specify any assembler for your metagenomes, and yet "
+                      "your config file shows you are not using references_mode. If you "
+                      "already have your assemblies or reference fasta files, then maybe "
+                      "you need to add '\"references_mode\": true', and a '\"fasta_txt\": "
+                      "\"name-of-your-fasta-txt-file\"' to your config file. Otherwise, "
+                      "if you do mean to use assembly, please set 'run: true' for one of the "
+                      "following available assemblers: %s" % ', '.join(available_assemblers))
 
 ruleorder: import_percent_of_reads_mapped > import_krakenuniq_taxonomy
 
@@ -130,7 +130,7 @@ rule metagenomics_workflow_target_rule:
         The final product of the workflow is an anvi'o merged profile directory
         for each group
     '''
-    input: M.target_files
+    input: M.get_metagenomics_target_files()
 
 
 rule iu_gen_configs:
@@ -188,9 +188,9 @@ def get_fastq(sample, zipped=run_gzip_fastqs, post_reference_based_short_read_re
         # if no QC and no reference based short read removal is requested, use raw input
         d = get_raw_fastq(sample)
         if len(d['r1']) > 1 or len(d['r2']) > 1:
-            raise ConfigError('You are skipping QC, but some of your samples (for example %s) are composed of more than 1 pair of fastq files \
-                   this is not allowed. Please first merge all the fastq files corresponding to a single sample (or just use QC, and the \
-                   merging will be done for you).' % sample)
+            raise ConfigError('You are skipping QC, but some of your samples (for example %s) are composed of more than 1 pair of fastq files '
+                  'this is not allowed. Please first merge all the fastq files corresponding to a single sample (or just use QC, and the '
+                  'merging will be done for you).' % sample)
         d = {'r1': d['r1'][0],
              'r2': d['r2'][0]}
     return d
@@ -241,12 +241,12 @@ def need_to_uncompress_fastqs(r1, r2):
     # is not compressed and snakemake will schedule fq2fa rule before gzip rule
     files_that_end_with_gz = [f for f in [r1, r2] if f.endswith('.gz')]
     if len(files_that_end_with_gz) == 1:
-        raise ConfigError("Something seems very bad: one of the pair fastq files\
-                           is compressed and the other one is not. This is the \
-                           compressed one: %s" % files_that_end_with_gz[0])
+        raise ConfigError("Something seems very bad: one of the pair fastq files "
+                          "is compressed and the other one is not. This is the "
+                          "compressed one: %s" % files_that_end_with_gz[0])
     elif len(files_that_end_with_gz) == 2:
-        run.warning("The following fastq files are compressed and will now \
-                     be uncompressed using gunzip: %s." % files_that_end_with_gz)
+        run.warning("The following fastq files are compressed and will now "
+                    "be uncompressed using gunzip: %s." % files_that_end_with_gz)
         return True
     return False
 
@@ -498,7 +498,12 @@ if run_idba_ud == True:
         input:
             fasta = dirs_dict["QC_DIR"] + "/{group}-merged.fa"
         output:
-            contigs = temp(dirs_dict["FASTA_DIR"] + "/{group}/final.contigs.fa")
+            contigs = temp(os.path.join(dirs_dict["FASTA_DIR"], "{group}", "final.contigs.fa")),
+            # idba_ud generates both contigs.fa and scaffolds.fa
+            # the user can choose which one will be used for the rest of the analysis
+            # the other (unused) file will still be kept in it's raw form just in case the user wants it.
+            raw_contigs_or_scaffold = os.path.join(dirs_dict["FASTA_DIR"], "{group}", "contigs.fa") if M.use_scaffold_from_idba_ud \
+                                               else os.path.join(dirs_dict["FASTA_DIR"], "{group}", "scaffolds.fa")
         params:
             temp_dir = temp(dirs_dict["FASTA_DIR"] + "/{group}_TEMP"),
             mink = M.get_rule_param("idba_ud", "--mink"),
@@ -529,8 +534,21 @@ if run_idba_ud == True:
                   "{params.similar} {params.max_mismatch} {params.min_pairs} " + \
                   "{params.no_bubble} {params.no_local} {params.no_coverage} " + \
                   "{params.no_correct} {params.pre_correction} >> {log} 2>&1"
+            shell("echo Running the following command: >> {log} 2>&1")
+            shell("echo %s >> {log} 2>&1" % cmd)
             shell(cmd)
-            shell("mv {params.temp_dir}/contig.fa {output.contigs} >> {log} 2>&1")
+
+            if M.use_scaffold_from_idba_ud:
+                # we will use scaffolds for the rest of the analysis, but still keep the raw contigs output in case the user will want it later on.
+                use = "scaffold.fa"
+                keep = "contig.fa"
+            else:
+                # we will use contigs and keep the raw scaffolds output
+                use = "contig.fa"
+                keep = "scaffold.fa"
+
+            shell("mv %s %s" % (os.path.join(params.temp_dir, use), output.contigs))
+            shell("mv %s %s" % (os.path.join(params.temp_dir, keep), output.raw_contigs_or_scaffold))
             shell("rm -rf {params.temp_dir}")
 
 
@@ -659,26 +677,43 @@ if M.get_param_value_from_config(['megahit', 'run']) == True:
             shell("rm -rf {params.temp_dir}")
 
 
+def build_expected_bowtie_build_output_file(rev=False):
+    """Build string template for the expected output file of bowtie build
+
+    Returns a string such as 'some_dir/{group}/{group}-contigs.rev.{i}.bt2'
+
+    Parameters
+    ==========
+    rev : bool
+        Is it a .rev file?
+    """
+    additional_params = M.get_param_value_from_config(["bowtie_build", "additional_params"])
+    ext_suffix = 'l' if '--large-index' in additional_params else ''
+    prefix = '.rev' if rev else ''
+    return dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs" + prefix + '.{i}.bt2' + ext_suffix
+
+
 rule bowtie_build:
-    """ Run bowtie-build on the contigs fasta"""
-    # TODO: consider runnig this as a shadow rule
+    """Run bowtie-build on the contigs fasta"""
+    # TODO: consider running this as a shadow rule
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-bowtie_build.log"
     input: M.get_fasta
     # I touch this file because the files created have different suffix
     output:
-        o1 = expand(dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs" + '.{i}.bt2', i=[1,2,3,4], group="{group}"),
-        o2 = expand(dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs" + '.rev.{i}.bt2', i=[1,2], group="{group}")
+        o1 = expand(build_expected_bowtie_build_output_file(), i=[1,2,3,4], group="{group}"),
+        o2 = expand(build_expected_bowtie_build_output_file(rev=True), i=[1,2], group="{group}")
     params:
-        prefix = dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs"
+        prefix = dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs",
+        additional_params = M.get_param_value_from_config(["bowtie_build", "additional_params"])
     threads: M.T('bowtie_build')
     resources: nodes = M.T('bowtie_build'),
-    shell: "bowtie2-build {input} {params.prefix} >> {log} 2>&1"
+    shell: "bowtie2-build {input} {params.prefix} --threads {threads} {params.additional_params} >> {log} 2>&1"
 
 
 def input_for_bowtie(wildcards):
     '''Creating a dictionary containing the input files for bowtie.'''
-    d = {'build_output': dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs.1.bt2".format(group=wildcards.group)}
+    d = {'build_output': build_expected_bowtie_build_output_file().format(i=1, group=wildcards.group)}
     if wildcards.group in M.references_for_removal:
         post_reference_based_short_read_removal = False
     else:
@@ -689,7 +724,7 @@ def input_for_bowtie(wildcards):
 
 
 rule bowtie:
-    """ Run mapping with bowtie2"""
+    """Run mapping with bowtie2"""
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-bowtie.log"
     input: unpack(input_for_bowtie)
@@ -731,28 +766,29 @@ rule anvi_init_bam:
         bai = dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.bam.bai"
     threads: M.T('anvi_init_bam')
     resources: nodes = M.T('anvi_init_bam'),
-    shell: "anvi-init-bam {input} -o {output.bam} >> {log} 2>&1"
+    shell: "anvi-init-bam {input} -o {output.bam} -T {threads} >> {log} 2>&1"
 
 
-sample_name = M.get_param_value_from_config(['anvi_profile', '--sample-name'], repress_default=True)
+sample_name = M.get_param_value_from_config(['anvi_profile', '--sample-name'])
 if sample_name != M.default_config['anvi_profile']['--sample-name'] and sample_name is not None:
-    run.warning('You chose to set the "--sample-name" for your profile databases\
-                 in the config file to %s. You are welcomed to do that, but at your own\
-                 risk. Just so you know, by default the sample name would match\
-                 the name defined either in the samples_txt, by choosing to provide\
-                 a different name, it means that all your profile databases would have\
-                 the same name, unless you incloded "{sample}" in the name you provided\
-                 but even then, we did not test that option and we are not sure it would\
-                 work...' % sample_name)
+    run.warning('You chose to set the "--sample-name" for your profile databases '
+                'in the config file to %s. You are welcomed to do that, but at your own '
+                'risk. Just so you know, by default the sample name would match '
+                'the name defined either in the samples_txt, by choosing to provide '
+                'a different name, it means that all your profile databases would have '
+                'the same name, unless you incloded "{sample}" in the name you provided '
+                'but even then, we did not test that option and we are not sure it would '
+                'work...' % sample_name)
 
 
 def get_cluster_contigs_param(wildcards):
     """ helper function to sort out whether to cluster contigs for a single profile database"""
-    if M.get_param_value_from_config(['anvi_profile', '--cluster-contigs'], repress_default=True):
-        run.warning('You chose to set the value for --cluster-contigs as %s. You can do that if you\
-                     choose to, but just so you know, if you don\'t provide a value then \
-                     the workflow would automatically cluster contigs for profile databases\
-                     that are not merged (i.e. profiles that belong to groups of size 1).')
+    if M.get_param_value_from_config(['anvi_profile', '--cluster-contigs']):
+        run.warning('You chose to set the value for --cluster-contigs as %s. You can do that if you '
+                    'choose to, but just so you know, if you don\'t provide a value then '
+                    'the workflow would automatically cluster contigs for profile databases '
+                    'that are not merged (i.e. profiles that belong to groups of size 1).' \
+                    % M.get_param_value_from_config(['anvi_profile', '--cluster-contigs']))
         cluster_contigs = M.get_rule_param('anvi_profile', '--cluster-contigs')
     else:
         # if profiling to individual assembly then clustering contigs
@@ -769,7 +805,7 @@ rule anvi_profile:
     input:
         bam = dirs_dict["MAPPING_DIR"] + "/{group}/{sample}.bam",
         # marking the contigs.db as ancient in order to ignore timestamps.
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db")
+        contigs = ancient(M.get_contigs_db_path())
     output:
         profile = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db",
         AUXILIARY_DATA = dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/AUXILIARY-DATA.db",
@@ -791,10 +827,9 @@ rule anvi_profile:
         min_coverage_for_variability = M.get_rule_param("anvi_profile", "--min-coverage-for-variability"),
         contigs_of_interest = M.get_rule_param("anvi_profile", "--contigs-of-interest"),
         queue_size = M.get_rule_param("anvi_profile", "--queue-size"),
-        write_buffer_size = M.get_rule_param("anvi_profile", "--write-buffer-size"),
+        write_buffer_size_per_thread = M.get_rule_param("anvi_profile", "--write-buffer-size-per-thread"),
         max_contig_length = M.get_rule_param("anvi_profile", "--max-contig-length"),
         max_coverage_depth = M.get_rule_param("anvi_profile", "--max-coverage-depth"),
-        ignore_orphans = M.get_rule_param("anvi_profile", "--ignore-orphans")
     threads: M.T('anvi_profile')
     resources: nodes = M.T('anvi_profile'),
     shell:
@@ -808,8 +843,7 @@ rule anvi_profile:
                              {params.linkage} {params.min_mean_coverage} \
                              {params.max_coverage_depth} \
                              {params.min_coverage_for_variability} {params.contigs_of_interest} \
-                             {params.queue_size} {params.write_buffer_size} {params.max_contig_length} \
-                             {params.ignore_orphans} >> {log} 2>&1
+                             {params.queue_size} {params.write_buffer_size_per_thread} {params.max_contig_length} >> {log} 2>&1
         """
 
 
@@ -877,8 +911,8 @@ def remove_empty_profile_databases(profiles, group):
 
     if not profiles:
         # if there are no profiles to merge then notify the user
-        run.warning('It seems that all your profiles are empty for the \
-                     contigs database: %s.db. And so cannot be merged.' \
+        run.warning('It seems that all your profiles are empty for the '
+                    'contigs database: %s.db. And so cannot be merged.' \
                      % group)
 
     run.info('Number of non-empty profile databases', len(profiles))
@@ -893,7 +927,7 @@ rule gen_readme_file_for_unmerged_groups:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-gen_readme_file_for_unmerged_groups.log")
     input:
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        contigs = ancient(M.get_contigs_db_path()),
         profiles = input_for_anvi_merge,
         percent_of_reads_mapped_imported_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, 'import_percent_of_reads_mapped.done', run_import_percent_of_reads_mapped),
         kraken_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, "import_krakenuniq_taxonomy.done", M.run_krakenuniq)
@@ -925,7 +959,7 @@ rule anvi_merge:
     # The input are all profile databases that belong to the same group
     input:
         # marking the contigs.db as ancient in order to ignore timestamps.
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        contigs = ancient(M.get_contigs_db_path()),
         profiles = input_for_anvi_merge,
         percent_of_reads_mapped_imported_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, 'import_percent_of_reads_mapped.done', run_import_percent_of_reads_mapped),
         kraken_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, "import_krakenuniq_taxonomy.done", M.run_krakenuniq)
@@ -1014,7 +1048,7 @@ rule anvi_import_collection:
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_collection.log"
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        contigs = ancient(M.get_contigs_db_path()),
         collection_file = lambda wildcards: M.collections[wildcards.group]['collection_file']
     output:
         imported_collection_flag = touch(os.path.join(dirs_dict["MERGE_DIR"], \
@@ -1042,7 +1076,7 @@ rule anvi_import_default_collection:
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_default_collection.log"
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        contigs = ancient(M.get_contigs_db_path()),
     output:
         imported_collection_flag = touch(os.path.join(dirs_dict["MERGE_DIR"], \
                                               '{group}', \
@@ -1062,7 +1096,7 @@ rule anvi_summarize:
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_summarize.log")
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        contigs = ancient(M.get_contigs_db_path()),
         imported_collection_flag = lambda wildcards: M.get_collection_import_flag(str(wildcards.group))
     output:
         summary_done = temp(touch(os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-summary.touch")))
@@ -1087,7 +1121,7 @@ rule anvi_split:
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_split.log")
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
-        contigs = ancient(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"),
+        contigs = ancient(M.get_contigs_db_path()),
         imported_collection_flag = os.path.join(dirs_dict["MERGE_DIR"], \
                                                 '{group}', \
                                                 'collection-import.done')
@@ -1220,12 +1254,12 @@ rule import_percent_of_reads_mapped:
     resources: nodes = M.T('import_percent_of_reads_mapped')
     run:
         if not filesnpaths.is_file_exists(params.bowtie_log, dont_raise=True):
-            raise ConfigError('We expected to find the log file for bowtie2 here: %s\
-                         but it is not there. This means we can\'t find out what \
-                         percentage of short reads mapped to the fasta file. \
-                         If you are confused, feel free to contact us. \
-                         To avoid this error you can skip this step by setting the "run" parameter for this rule \
-                         (import_percent_of_reads_mapped) to "false" in your config file.' % params.bowtie_log)
+            raise ConfigError('We expected to find the log file for bowtie2 here: %s '
+                        'but it is not there. This means we can\'t find out what '
+                        'percentage of short reads mapped to the fasta file. '
+                        'If you are confused, feel free to contact us. '
+                        'To avoid this error you can skip this step by setting the "run" parameter for this rule '
+                        '(import_percent_of_reads_mapped) to "false" in your config file.' % params.bowtie_log)
 
         else:
             shell("""
@@ -1253,13 +1287,13 @@ rule import_percent_of_reads_mapped:
 
             additional_data = pd.read_csv(output.layers_additional_data, sep='\t', index_col=None)
             if 'total_reads_mapped' not in additional_data.columns:
-                raise ConfigError('The layers additional data for %s doesn\'t contain a column \
-                                   "total_reads_mapped". This is really weird, and we cannot \
-                                   think of why this happened (maybe you deleted it somehow?). \
-                                   Feel free to contact an anvio developer in order to troubleshoot \
-                                   this. Otherwise, if you wish to continue, you can just skip this \
-                                   step by setting the "run" parameter for the rule import_percent_of_reads_mapped \
-                                   to "false".' % input.profile)
+                raise ConfigError('The layers additional data for %s doesn\'t contain a column '
+                                  '"total_reads_mapped". This is really weird, and we cannot '
+                                  'think of why this happened (maybe you deleted it somehow?). '
+                                  'Feel free to contact an anvio developer in order to troubleshoot '
+                                  'this. Otherwise, if you wish to continue, you can just skip this '
+                                  'step by setting the "run" parameter for the rule import_percent_of_reads_mapped '
+                                  'to "false".' % input.profile)
 
             additional_data['percent_mapped'] = 100 * additional_data['total_reads_mapped'] / additional_data['total_num_reads']
             additional_data.to_csv(output.layers_additional_data_updated, sep='\t', index=False)
@@ -1271,6 +1305,29 @@ rule import_percent_of_reads_mapped:
                                           -t layers \
                                           --just-do-it >> {log} 2>&1
                   """)
+
+
+rule anvi_cluster_contigs:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-{driver}-anvi_cluster_contigs.log")
+    threads: M.T("anvi_cluster_contigs")
+    resources: nodes = M.T("anvi_cluster_contigs")
+    input:
+        contigs = ancient(M.get_contigs_db_path()),
+        profile = lambda wildcards: M.profile_databases[wildcards.group]
+    params:
+        driver = '{driver}',
+        collection_name = M.get_rule_param('anvi_cluster_contigs', '--collection-name'),
+        just_do_it = M.get_rule_param('anvi_cluster_contigs', '--just-do-it'),
+        additional_params = lambda wildcards: M.get_param_value_from_config(['anvi_cluster_contigs', M.get_param_name_for_binning_driver(wildcards.driver)])
+    output: touch(os.path.join(dirs_dict['MERGE_DIR'], '{group}' + '-' + '{driver}' + '.done'))
+    shell: w.r("""anvi-cluster-contigs -c {input.contigs} \
+                                       -p {input.profile} \
+                                       --driver {params.driver} \
+                                       {params.collection_name} \
+                                       {params.just_do_it} \
+                                       {params.additional_params} >> {log} 2>&1""")
+
 
 if 'workflows/metagenomics' in workflow.included[0]:
     # check if all program dependencies are met. for this line to be effective,

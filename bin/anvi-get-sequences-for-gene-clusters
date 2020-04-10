@@ -37,20 +37,24 @@ def main(args):
         raise ConfigError('You should either declare a single gene cluster name, or gene cluster names in a file')
 
     if (args.gene_cluster_id or args.gene_cluster_ids_file) and args.collection_name:
-        raise ConfigError('You can either declare specific list of gene clusters to work with (through `--gene-cluster-id` or `--gene-cluster-ids-file`) or\
-                           go the collection way using parameters `--collection-name` and `--bin-name`. Those are not to be\
-                           mixed. If you need to know what collections are available in the pan database, use the flag \
-                           `--list-collections`.')
+        raise ConfigError('You can either declare specific list of gene clusters to work with (through `--gene-cluster-id` or `--gene-cluster-ids-file`) or '
+                          'go the collection way using parameters `--collection-name` and `--bin-name`. Those are not to be '
+                          'mixed. If you need to know what collections are available in the pan database, use the flag '
+                          '`--list-collections`.')
 
     if not args.output_file:
         args.output_file = os.path.join(os.path.dirname(os.path.abspath(args.pan_db)), 'gene-cluster-alignments-output-with-an-ugly-name.fa')
 
     if not args.concatenate_gene_clusters and args.align_with:
-        raise ConfigError("If you are not asking for concatenated gene clusters, then you really don't need to specify an aligner.\
-                           Yes, anvi'o could ignore that flag and move on, but who would we become if we get used to ignoring those\
-                           little signs of 'I am not sure what I am doing'?")
+        raise ConfigError("If you are not asking for concatenated gene clusters, then you really don't need to specify an aligner. "
+                          "Yes, anvi'o could ignore that flag and move on, but who would we become if we get used to ignoring those "
+                          "little signs of 'I am not sure what I am doing'?")
+
+    if not args.concatenate_gene_clusters and args.partition_file:
+        raise ConfigError("Partition files are only relevant when you use the flag `--concatenate-gene-clusters`.")
 
     filesnpaths.is_output_file_writable(args.output_file)
+    filesnpaths.is_output_file_writable(args.partition_file) if args.partition_file else None
 
     gene_cluster_ids = set([])
     if args.collection_name or args.list_collections or args.list_bins:
@@ -60,18 +64,18 @@ def main(args):
         progress.end()
 
         if not args.bin_id:
-            raise ConfigError("When you use a collection name, you must also declare a bin id :/ You don't know what bin you want? Use the flag\
-                               `--list-bins`.")
+            raise ConfigError("When you use a collection name, you must also declare a bin id :/ You don't know what bin you want? Use the flag "
+                              "`--list-bins`.")
 
         pan.collections.is_bin_in_collection(collection_name=args.collection_name, bin_name=args.bin_id)
         collection_dict = pan.collections.get_collection_dict(args.collection_name)
         gene_cluster_ids = set(collection_dict[args.bin_id])
 
-        run.info('Mode', 'Reporting alignments for a gene clusters from in the collection %s and bin %s.' % (args.collection_name, args.bin_id))
+        run.info('Mode', 'Working with gene clusters in collection %s and bin %s.' % (args.collection_name, args.bin_id))
     elif (args.gene_cluster_id or args.gene_cluster_ids_file):
         if args.gene_cluster_id:
             gene_cluster_ids = set([args.gene_cluster_id])
-            run.info('Mode', 'Reporting alignments for a single gene cluster.')
+            run.info('Mode', 'Working with a single gene cluster.')
         else:
             columns = utils.get_columns_of_TAB_delim_file(args.gene_cluster_ids_file, include_first_column=True)
             if len(columns) != 1:
@@ -80,7 +84,7 @@ def main(args):
             gene_cluster_ids = set([p.strip('\n') for p in open(args.gene_cluster_ids_file, 'r').readlines()])
             run.info('Mode', 'Reporting alignments for a list of gene clusters from an input file.')
     else:
-        run.info('Mode', 'Reporting alignments for all gene clusters.')
+        run.info('Mode', 'Working with all gene clusters.')
 
     pan = dbops.PanSuperclass(args)
     pan.init_gene_clusters(gene_cluster_ids)
@@ -88,12 +92,22 @@ def main(args):
     # this will simply return pan.gene_clusters if there are no filters requested
     filtered_gene_clusters_dict = pan.filter_gene_clusters_dict(args)
 
+    num_gene_clusters = len(filtered_gene_clusters_dict)
+    num_genes = sum([len(gc.keys()) for gc in filtered_gene_clusters_dict.values()])
+    run.warning("Your filters resulted in %d gene clusters that contain a total of %d genes. "
+                "for downstream analyses. Just so you know." % (num_gene_clusters, num_genes), header="INFO", lc="green")
+
+    if args.dry_run:
+        run.info_single("Dry run, eh? Well. Your dry run is done!")
+        sys.exit(0)
+
     if args.concatenate_gene_clusters:
         pan.write_sequences_in_gene_clusters_for_phylogenomics(gene_clusters_dict=filtered_gene_clusters_dict,
                                                                output_file_path=args.output_file,
                                                                report_DNA_sequences=args.report_DNA_sequences,
                                                                align_with=args.align_with,
-                                                               separator=args.separator)
+                                                               separator=args.separator,
+                                                               partition_file_path=args.partition_file)
     else:
         pan.write_sequences_in_gene_clusters_to_file(gene_clusters_dict=filtered_gene_clusters_dict,
                                                      output_file_path=args.output_file,
@@ -141,14 +155,16 @@ if __name__ == '__main__':
     groupE.add_argument(*anvio.A('list-collections'), **anvio.K('list-collections'))
     groupE.add_argument(*anvio.A('list-bins'), **anvio.K('list-bins'))
 
-    groupF = parser.add_argument_group('CONCATENATED OUTPUT', "Concatenated output for phylogenomics.")
+    groupF = parser.add_argument_group('PHYLOGENOMICS', "Get separately aligned and concatenated sequences for phylogenomics.")
     groupF.add_argument(*anvio.A('concatenate-gene-clusters'), **anvio.K('concatenate-gene-clusters'))
+    groupF.add_argument(*anvio.A('partition-file'), **anvio.K('partition-file'))
     groupF.add_argument(*anvio.A('separator'), **anvio.K('separator'))
     groupF.add_argument(*anvio.A('align-with'), **anvio.K('align-with'))
     groupF.add_argument(*anvio.A('list-aligners'), **anvio.K('list-aligners'))
 
-    groupG = parser.add_argument_group('TOTALLY IRRELEVANT', "Just in case you need it.")
+    groupG = parser.add_argument_group('LIFE SAVERS', "Just when you need them.")
     groupG.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    groupG.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 
 
     args = anvio.get_args(parser)

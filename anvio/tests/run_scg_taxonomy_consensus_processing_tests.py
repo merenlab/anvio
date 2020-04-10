@@ -9,7 +9,7 @@ levels_of_taxonomy = ["t_domain", "t_phylum", "t_class", "t_order", "t_family", 
 
 c = scgtaxonomyops.PopulateContigsDatabaseWithSCGTaxonomy(argparse.Namespace(skip_sanity_check=True), run=terminal.Run(verbose=False))
 
-p = scgtaxonomyops.SCGTaxonomyEstimator(argparse.Namespace(skip_sanity_check=True, skip_init=True), run=terminal.Run(verbose=False))
+p = scgtaxonomyops.SCGTaxonomyEstimatorSingle(argparse.Namespace(skip_sanity_check=True, skip_init=True), run=terminal.Run(verbose=False))
 
 cX = lambda: c.get_consensus_hit(scg_raw_hits)
 cT = lambda level: cX()[level]

@@ -37,8 +37,8 @@ class Parser(object):
         self.dicts = {}
 
         if len(input_file_paths) != len(files_expected):
-            raise ConfigError("This parser (%s) requires %d file(s), but %d of them were sent. This class is now\
-                                confused :/" % (self.annotation_source, len(files_expected), len(input_file_paths)))
+            raise ConfigError("This parser (%s) requires %d file(s), but %d of them were sent. This class is now "
+                               "confused :/" % (self.annotation_source, len(files_expected), len(input_file_paths)))
 
         if sorted(files_expected.keys()) != sorted(files_structure.keys()):
             raise ConfigError("Items in files_expected and files_structure must match.")
@@ -49,8 +49,8 @@ class Parser(object):
                 missing_files.append(f)
         if missing_files:
             if sorted(missing_files) == sorted(self.files_expected.values()):
-                raise ConfigError("%s parser requires these file(s): %s. Please refer to the documentation if you\
-                                    don't know how to generate them" % (self.annotation_source,
+                raise ConfigError("%s parser requires these file(s): %s. Please refer to the documentation if you "
+                                   "don't know how to generate them" % (self.annotation_source,
                                                                         ', '.join(list(self.files_expected.values()))))
 
             raise ConfigError("%s parser requires %d files (%s). %s missing from your input: %s"\
@@ -90,14 +90,14 @@ class Parser(object):
                     else:
                         failed_lines_text = '%s' % (', '.join([str(l) for l in failed_lines]))
 
-                    run.warning("This is the base parser class --a part of the code you should never hear from. PLEASE\
-                                 READ THIS CAREFULLY. While anvi'o was trying to parse some files assocaited with the\
-                                 annotation source `%s`, it found that %d of the lines in this file were not able to\
-                                 made sense of. This part of the code does not know anything more than that. It doesn't\
-                                 even know what file it is. But in general this error occurs when the mapping function\
-                                 does not find what its looking for in a line. For instance, a value that was supposed to\
-                                 be an integer ends up being actually a piece of text or something. Well. Here are the\
-                                 line numbers if you care and can make sense of this information: %s" % \
+                    run.warning("This is the base parser class --a part of the code you should never hear from. PLEASE "
+                                "READ THIS CAREFULLY. While anvi'o was trying to parse some files assocaited with the "
+                                "annotation source `%s`, it found that %d of the lines in this file were not able to "
+                                "made sense of. This part of the code does not know anything more than that. It doesn't "
+                                "even know what file it is. But in general this error occurs when the mapping function "
+                                "does not find what its looking for in a line. For instance, a value that was supposed to "
+                                "be an integer ends up being actually a piece of text or something. Well. Here are the "
+                                "line numbers if you care and can make sense of this information: %s" % \
                                                         (self.annotation_source, len(failed_lines), failed_lines_text))
 
 

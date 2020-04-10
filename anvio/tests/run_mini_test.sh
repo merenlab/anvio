@@ -16,9 +16,6 @@ done
 INFO "Generating an EMPTY contigs database"
 anvi-gen-contigs-database -f $files/contigs.fa -o $output_dir/CONTIGS.db -L 1000 --project-name "Contigs DB for anvi'o mini self-test"
 
-INFO "Populating taxonomy for splits table in the database using 'centrifuge' parser"
-anvi-import-taxonomy-for-genes -c $output_dir/CONTIGS.db -p centrifuge -i $files/example_files_for_centrifuge_taxonomy/centrifuge_report.tsv $files/example_files_for_centrifuge_taxonomy/centrifuge_hits.tsv
-
 INFO "Populating search tables in the latest contigs database using default HMM profiles"
 anvi-run-hmms -c $output_dir/CONTIGS.db --num-threads 2
 
@@ -36,7 +33,11 @@ sqlite3 $output_dir/CONTIGS.db '.tables'
 for f in 01 02 03
 do
     INFO "Profiling sample SAMPLE-$f"
-    anvi-profile -i $output_dir/SAMPLE-$f.bam -o $output_dir/SAMPLE-$f -c $output_dir/CONTIGS.db --cluster --profile-SCVs
+    anvi-profile -i $output_dir/SAMPLE-$f.bam \
+                 -o $output_dir/SAMPLE-$f \
+                 -c $output_dir/CONTIGS.db \
+                 --cluster \
+                 --profile-SCVs
 
     INFO "Importing short-read-level taxonomy for SAMPLE-$f"
     anvi-import-taxonomy-for-layers -p $output_dir/SAMPLE-$f/PROFILE.db \
@@ -75,8 +76,7 @@ anvi-show-collections-and-bins -p $output_dir/SAMPLES-MERGED/PROFILE.db
 INFO "Firing up the interactive interface"
 # fire up the browser to show how does the merged samples look like.
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
-                 -c $output_dir/CONTIGS.db \
-                 --split-hmm-layers
+                 -c $output_dir/CONTIGS.db
 
 INFO "Summarizing CONCOCT results"
 anvi-summarize -p $output_dir/SAMPLES-MERGED/PROFILE.db -c $output_dir/CONTIGS.db -o $output_dir/SAMPLES-MERGED-SUMMARY -C 'CONCOCT' --init-gene-coverages

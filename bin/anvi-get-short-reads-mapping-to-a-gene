@@ -40,8 +40,8 @@ def main(args):
     c = ContigsSuperclass(args)
 
     if args.gene_caller_id and args.genes_of_interest:
-        raise ConfigError("You either should define a single gene caller id, or a list of\
-                           gene callers of interest. Not both")
+        raise ConfigError("You either should define a single gene caller id, or a list of "
+                          "gene callers of interest. Not both")
 
     if args.genes_of_interest:
         genes_of_interest = set([int(g) for g in utils.get_column_data_from_TAB_delim_file(args.genes_of_interest, column_indices=[0], expected_number_of_fields=1)[0] if g])
@@ -64,8 +64,9 @@ def main(args):
             raise ConfigError(msg + "Here are the list of gene caller IDs that's making anvi'o upset: %s" % \
                                     (", ".join([str(g) for g in missing_gene_caller_ids])))
         else:
-            raise ConfigError(msg + "Since this can be a long list in some cases, anvi'o\
-                              will not show you what they are. Unless you use the `--debug` flag.")
+            error_msg = msg + "Since this can be a long list in some cases, anvi'o will not show you what\
+                               they are. Unless you use the `--debug` flag."
+            raise ConfigError(error_msg)
 
     r = ReadsMappingToARange(run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
 

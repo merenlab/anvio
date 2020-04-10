@@ -790,6 +790,7 @@ Drawer.prototype.draw_internal_node = function(p) {
 
             let line = drawLine(this.tree_svg_id, p, p0, p1);   
             line.setAttribute('style', PADDING_STYLE);
+            line.classList.add('clone');
         }
         p0 = p.child.backarc;
         p1 = p.child.GetRightMostSibling().backarc;
@@ -800,6 +801,7 @@ Drawer.prototype.draw_internal_node = function(p) {
 
         let arc = drawCircleArc(this.tree_svg_id, p, p0, p1, p.radius, large_arc_flag);
         arc.setAttribute('style', PADDING_STYLE);
+        arc.classList.add('clone');
 
     }
     else
@@ -819,7 +821,7 @@ Drawer.prototype.draw_internal_node = function(p) {
 
             let line = drawLine(this.tree_svg_id, p, p0, p1);
             line.setAttribute('style', PADDING_STYLE);
-
+            line.classList.add('clone');
         }
 
         // vertical line
@@ -835,6 +837,7 @@ Drawer.prototype.draw_internal_node = function(p) {
 
         let line = drawLine(this.tree_svg_id, p, p0, p1, true);
         line.setAttribute('style', PADDING_STYLE);
+        line.classList.add('clone');
     }
 };
 

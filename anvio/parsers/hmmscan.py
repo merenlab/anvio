@@ -33,10 +33,10 @@ class HMMScan(Parser):
             col_names = ['gene_name', 'gene_hmm_id', 'contig_name', 'f', 'hmm_from', 'hmm_to', 'alignment_from', 'alignment_to', 'envelope_from', 'envelope_to', 'f', 'f', 'e_value', 'f', 'f', 'f']
             col_mapping = [str, str, str, str, str, str, int, int, int, int, str, str, float, str, str, str]
         else:
-            raise ConfigError("HMMScan driver is confused. Yor context and alphaet pair ('%s' and '%s')\
-                               does not seem to be implemented in the parser module. If you think this is\
-                               not a mistake on your part, please get in touch with the anvi'o developers\
-                               and watch them fix it like actual pros." % (self.context, self.alphabet))
+            raise ConfigError("HMMScan driver is confused. Yor context and alphaet pair ('%s' and '%s') "
+                              "does not seem to be implemented in the parser module. If you think this is "
+                              "not a mistake on your part, please get in touch with the anvi'o developers "
+                              "and watch them fix it like actual pros." % (self.context, self.alphabet))
 
         files_structure = {'hits':
                                 {'col_names': col_names,

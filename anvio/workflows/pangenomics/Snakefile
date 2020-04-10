@@ -32,7 +32,7 @@ if not slave_mode:
     include: w.get_workflow_snake_file_path('phylogenomics')
 
 rule pangenomics_target_rule:
-    input: M.target_files
+    input: M.get_pangenomics_target_files()
 
 
 # run pangenome
@@ -148,7 +148,7 @@ rule import_phylogenetic_tree_to_pangenome:
         newick = os.path.join(M.dirs_dict["PHYLO_DIR"], M.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
     output:
         layers_orders_file = temp(os.path.join(M.dirs_dict["PAN_DIR"], M.project_name + "-layers-orders.txt")),
-        phylogeny_imported = touch(M.phylogeny_imported_flag)
+        phylogeny_imported = touch(M.get_phylogeny_imported_flag())
     params:
         tree_name = M.tree_name,
         just_do_it = M.get_rule_param('import_phylogenetic_tree_to_pangenome', '--just-do-it')

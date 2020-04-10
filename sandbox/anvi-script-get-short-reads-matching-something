@@ -51,6 +51,7 @@ def main(args):
 
     utils.check_sample_id(sample_name)
     match_sequence = match_sequence.upper()
+    match_sequence_rc = utils.rev_comp(match_sequence)
     filesnpaths.gen_output_directory(output_directory_path)
 
     run.info('Input FASTQ Files', ', '.join(input_fastq_file_paths))
@@ -64,6 +65,7 @@ def main(args):
 
     read_counter = 0
     hit_counter = 0
+    hit_in_rc = 0
     sequences = []
     match_sequence_length = len(match_sequence)
     num_input_files = len(input_fastq_file_paths)
@@ -77,26 +79,40 @@ def main(args):
         while input_fastq.next(raw=True) and (hit_counter < stop_after if stop_after else True):
             read_counter += 1
 
-            if read_counter % 5000 == 0:
-                progress.update('File %d of %d / Reads: %s / Hits: %d' % (i + 1, num_input_files, pp(read_counter), hit_counter))
+            if read_counter % 10000 == 0:
+                progress.update('File %d of %d / Reads: %s / Hits: %d (in RC: %d)' % (i + 1, num_input_files, pp(read_counter), hit_counter, hit_in_rc))
 
-            for seq in [input_fastq.entry.sequence, utils.rev_comp(input_fastq.entry.sequence)]:
-                pos = seq.find(match_sequence)
+            found_in_RC = False
 
-                if pos < 0:
-                    continue
+            seq = input_fastq.entry.sequence
+            pos = seq.find(match_sequence)
 
-                if len(seq[pos + match_sequence_length:]) < min_remainder_length:
-                    continue
+            if pos < 0:
+                # it not in it. how about the the reverse complement of it?
+                if seq.find(match_sequence_rc) >= 0:
+                    # aha. the reverse complement sequence that carries our match found.
+                    # now we will reverse complement the long sequence and update the pos
+                    # and will continue as if nothing happened
+                    found_in_RC = True
+                    hit_in_rc += 1
+                    seq = utils.rev_comp(seq)
+                    pos = seq.find(match_sequence)
 
-                sequences.append((pos, seq), )
-                hit_counter += 1
+            if pos < 0:
+                continue
 
-                if anvio.DEBUG:
-                    progress.end()
-                    print("\n%s [%s] %s" % (seq[:pos], match_sequence, seq[pos+match_sequence_length:]))
-                    progress.new("Tick tock")
-                    progress.update('File %d of %d / Reads: %s / Hits: %d' % (i, num_input_files, pp(read_counter), hit_counter))
+            if len(seq[pos + match_sequence_length:]) < min_remainder_length:
+                continue
+
+            sequences.append((pos, seq), )
+
+            hit_counter += 1
+
+            if anvio.DEBUG:
+                progress.end()
+                print("\n%s| %s [%s] %s" % ('RC ' if found_in_RC else '   ', seq[:pos], match_sequence, seq[pos+match_sequence_length:]))
+                progress.new("Tick tock")
+                progress.update('File %d of %d / Reads: %s / Hits: %d (in RC: %d)' % (i, num_input_files, pp(read_counter), hit_counter, hit_in_rc))
 
     progress.end()
 
@@ -161,7 +177,7 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--min-remainder-length', metavar='INT', type=int, default=60,
                         help="Minimum lenght of the remainder of the read after the match. If your short read\
                               is XXXMMMMMMYYYYYYYYYYYYYY, where M indicates nucleotides of matchhing sequence,\
-                              min remainder length is len(Y).")
+                              min remainder length is len(Y). Default is %(default)d.")
     parser.add_argument('-s', '--sample-name', required=True, metavar='NAME',
                         help="A short sample name (use a single word without spaces or fancy chars)")
     parser.add_argument('-O', '--output-directory', metavar='PATH',

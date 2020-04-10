@@ -33,7 +33,7 @@ INFO "Running the pangenome anaysis with default parameters"
 anvi-pan-genome -g TEST-GENOMES.db -o TEST/ -n TEST --use-ncbi-blast --description example_description.md
 
 INFO "Running ANI on genomes and storing results in the PAN database"
-anvi-compute-genome-similarity -e external-genomes.txt -o ANI_TEST --log-file ANI_LOG.txt -p TEST/TEST-PAN.db
+anvi-compute-genome-similarity -e external-genomes.txt --program pyANI -o ANI_TEST --log-file ANI_LOG.txt -p TEST/TEST-PAN.db
 
 INFO "Running the pangenome analysis again utilizing previous search results"
 anvi-pan-genome -g TEST-GENOMES.db -o TEST/ -n ANOTHER_TEST --use-ncbi-blast --min-occurrence 2 --description example_description.md
@@ -64,6 +64,7 @@ anvi-import-misc-data -p TEST/TEST-PAN.db \
                       -t layers \
                       group-information.txt
 
+INFO "Estimating enriched functions per pan group"
 anvi-get-enriched-functions-per-pan-group -p TEST/TEST-PAN.db \
                                           -g TEST-GENOMES.db \
                                           --category group \
@@ -97,7 +98,7 @@ anvi-compute-gene-cluster-homogeneity -p TEST/TEST-PAN.db \
                                       -g TEST-GENOMES.db \
                                       --gene-cluster-id GC_00000001 \
                                       -o gene_cluster_homogeneity_results.txt
-column -t gene_cluster_homogeneity_results.txt
+cat -t gene_cluster_homogeneity_results.txt
 
 INFO "Computing homogeneity for a list of gene clusters"
 echo -e "GC_00000001\nGC_00000003" > gene_clusters_for_homogeneity.txt
@@ -105,7 +106,7 @@ anvi-compute-gene-cluster-homogeneity -p TEST/TEST-PAN.db \
                                       -g TEST-GENOMES.db \
                                       --gene-cluster-ids gene_clusters_for_homogeneity.txt \
                                       -o gene_cluster_homogeneity_results.txt
-column -t gene_cluster_homogeneity_results.txt
+cat -t gene_cluster_homogeneity_results.txt
 
 INFO "Computing homogeneity for gene clusters in a bin"
 anvi-compute-gene-cluster-homogeneity -p TEST/TEST-PAN.db \
@@ -114,7 +115,7 @@ anvi-compute-gene-cluster-homogeneity -p TEST/TEST-PAN.db \
                                       -b GENE_CLUSTER_BIN_2_G01_G02 \
                                       -o gene_cluster_homogeneity_results.txt \
                                       --num-threads 2
-column -t gene_cluster_homogeneity_results.txt
+cat -t gene_cluster_homogeneity_results.txt
 
 INFO "Importing the default state for pretty outputs"
 anvi-import-state -p TEST/TEST-PAN.db -s default-state.json -n default

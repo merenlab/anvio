@@ -40,15 +40,15 @@ class FastANIDriver:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.kmer_size = A('fastani_kmer_size') or 16
         self.fragment_length = A('fragment_length') or 3000
-        self.min_num_fragments = A('min_num_fragments') or 50
+        self.min_fraction = A('min_fraction') or 0.25
         self.num_threads = A('num_threads') or 1
         self.log_file_path = os.path.abspath(A('log_file') or filesnpaths.get_temp_file_path())
         self.quiet = A('quiet')
 
         self.check_programs()
 
-        self.run.warning("Anvi'o will use 'fastANI' by Jain et al. (DOI: 10.1038/s41467-018-07641-9) to compute ANI. \
-                          If you publish your findings, please do not forget to properly credit their work.", lc='green', header="CITATION")
+        self.run.warning("Anvi'o will use 'fastANI' by Jain et al. (DOI: 10.1038/s41467-018-07641-9) to compute ANI. "
+                         "If you publish your findings, please do not forget to properly credit their work.", lc='green', header="CITATION")
 
 
     def check_programs(self):
@@ -58,7 +58,7 @@ class FastANIDriver:
     def add_run_info(self):
         self.run.info('[fastANI] Kmer size', self.kmer_size)
         self.run.info('[fastANI] Fragment length', self.fragment_length)
-        self.run.info('[fastANI] Min num of fragments', self.min_num_fragments)
+        self.run.info('[fastANI] Min fraction of alignment', self.min_fraction)
         self.run.info('[fastANI] Num threads to use', self.num_threads)
         self.run.info('[fastANI] Log file path', self.log_file_path, nl_after=1)
 
@@ -129,7 +129,6 @@ class ManyToMany(FastANIDriver):
             for target in ['query', 'reference']:
                 fastANI_output[target] = fastANI_output[target].map(name_conversion_dict)
 
-
         return fastANI_output
 
 
@@ -173,7 +172,7 @@ class ManyToMany(FastANIDriver):
                    '--rl', reference_targets,
                    '-k', self.kmer_size,
                    '--fragLen', self.fragment_length,
-                   '--minFrag', self.min_num_fragments,
+                   '--minFraction', self.min_fraction,
                    '-t', self.num_threads,
                    '-o', output_path]
 
@@ -186,8 +185,8 @@ class ManyToMany(FastANIDriver):
         self.progress.end()
 
         if int(exit_code):
-            raise ConfigError("fastANI returned with non-zero exit code, there may be some errors. \
-                    please check the log file for details.")
+            raise ConfigError("fastANI returned with non-zero exit code, there may be some errors. "
+                   "please check the log file for details.")
 
         self.fastANI_output = self.load_output_as_dataframe(output_path, name_conversion_dict)
         utils.store_dataframe_as_TAB_delimited_file(self.fastANI_output, output_path)

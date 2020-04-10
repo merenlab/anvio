@@ -842,6 +842,7 @@ Bins.prototype.RedrawBins = function() {
     var bin_labels_font_size = parseFloat($('#bin_labels_font_size').val());
     var autorotate_bin_labels = $('#autorotate_bin_labels')[0].checked;
     var bin_labels_angle = $('#bin_labels_angle').val();
+    var background_starts_from_branch = $('#begins_from_branch').is(':checked');
     
     var outer_ring_size = parseFloat($('#outer-ring-height').val());
     var outer_ring_margin = parseFloat($('#outer-ring-margin').val());
@@ -849,6 +850,16 @@ Bins.prototype.RedrawBins = function() {
     for (var i=0; i < bins_to_draw.length; i++) {
         var start = drawer.tree.leaves[bins_to_draw[i][0]];
         var end = drawer.tree.leaves[bins_to_draw[i][1]];
+
+        if (background_starts_from_branch) {
+            var startAncestors = new Set(start.GetAncestors());
+            var endAncestors = new Set(end.GetAncestors());
+            var intersection = new Set([...startAncestors].filter(x => endAncestors.has(x))).values().next().value;
+            
+            if (typeof intersection === 'undefined') {
+                throw `It seems Node:${start.id} and Node:${end.id} does not have common ancestor.`;
+            }
+        }
 
         var color = document.getElementById('bin_color_' + bins_to_draw[i][2]).getAttribute('color');
 
@@ -907,7 +918,7 @@ Bins.prototype.RedrawBins = function() {
                 'bin_background_' + i,
                 start.angle - start.size / 2,
                 end.angle + end.size / 2,
-                beginning_of_layers,
+                (background_starts_from_branch) ? intersection.radius : beginning_of_layers,
                 (show_grid) ? total_radius + outer_ring_margin + outer_ring_size : total_radius,
                 (Math.abs(end.angle - start.angle) + start.size / 2 + end.size / 2 > Math.PI) ? 1 : 0,
                 color,
@@ -957,12 +968,14 @@ Bins.prototype.RedrawBins = function() {
 
             }
 
+            let backgroundStart = (background_starts_from_branch) ? intersection.xy['x'] : beginning_of_layers;
+
             var rect = drawPhylogramRectangle('bin',
                 'bin_background_' + i,
-                beginning_of_layers,
+                backgroundStart,
                 start.xy['y'] - start.size / 2 + height / 2,
                 height,
-                (show_grid) ? total_radius + outer_ring_margin + outer_ring_size - beginning_of_layers : total_radius - beginning_of_layers,
+                (show_grid) ? total_radius + outer_ring_margin + outer_ring_size - backgroundStart : total_radius - backgroundStart,
                 color,
                 (show_grid) ? 0 : 0.1,
                 false);
