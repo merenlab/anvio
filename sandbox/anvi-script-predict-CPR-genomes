@@ -49,16 +49,16 @@ def main(args):
         filesnpaths.is_output_file_writable(args.output_file)
 
     if args.output_file and ( not args.just_do_it and filesnpaths.is_file_exists(args.output_file, dont_raise=True) ):
-        raise ConfigError("The output file '%s' already exists. Please either remove it, or provide a different name.\
-                           Anvi'o does not like overwriting your stuff (well, only whenever it is convenient to do so)."\
+        raise ConfigError("The output file '%s' already exists. Please either remove it, or provide a different name. "
+                          "Anvi'o does not like overwriting your stuff (well, only whenever it is convenient to do so)."\
                                     % args.output_file)
 
     if args.profile_db and not args.collection_name:
         raise ConfigError("You can't use this program with a profile database but without a collection name. Yes. Because.")
 
     if not args.collection_name:
-        run.warning("You did not provide a collection name. Anvi'o will assume that what is in your contigs database\
-                     is a a single genome (or genome bin).")
+        run.warning("You did not provide a collection name. Anvi'o will assume that what is in your contigs database "
+                    "is a a single genome (or genome bin).")
 
     if args.collection_name and args.collection_name not in collections.collections_dict:
         raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % args.collection_name)
@@ -68,8 +68,8 @@ def main(args):
         raise ConfigError("HMM's were not run for this contigs database :/")
 
     if not 'Campbell_et_al' in completeness.sources:
-        raise ConfigError("This classifier uses Campbell et al. single-copy gene collections, and it is not among the available HMM sources in your\
-                            contigs database :/ Bad news.")
+        raise ConfigError("This classifier uses Campbell et al. single-copy gene collections, and it is not among the available HMM sources in your "
+                           "contigs database :/ Bad news.")
 
     contigs_db = ContigsSuperclass(args, r = run, p = progress)
 

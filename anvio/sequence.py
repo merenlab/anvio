@@ -1,15 +1,13 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 
-'''Primitive classes for basic DNA sequence properties.'''
-
-import numpy
-import collections
+"""Primitive classes for basic DNA sequence properties."""
 
 from itertools import permutations
 
 import anvio
 import anvio.constants as constants
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -91,7 +89,7 @@ class Codon:
 
             for end_codon in codons:
 
-                # s = number transitions 
+                # s = number transitions
                 # v = number transversions
                 s = 0; v = 0
                 for nt_pos in range(3):
@@ -136,121 +134,3 @@ class Composition:
             self.GC_content = (self.G + self.C) * 1.0 / length
 
 
-class Coverage:
-    def __init__(self):
-        self.c = [] # list of coverage values
-        self.outlier_positions = set([]) # set of positions along the sequence, coverage values of which
-                                         # are classified as outliers; see `get_indices_for_outlier_values`
-        self.min = 0
-        self.max = 0
-        self.std = 0.0
-        self.mean = 0.0
-        self.median = 0.0
-        self.detection = 0.0
-        self.mean_Q2Q3 = 0.0
-
-
-    def run(self, bam, split, ignore_orphans=False, max_coverage_depth=constants.max_depth_for_coverage):
-        coverage_profile = {}
-
-        for pileupcolumn in bam.pileup(split.parent, split.start, split.end, 
-                                       ignore_orphans=ignore_orphans, max_depth=max_coverage_depth):
-            if pileupcolumn.pos < split.start or pileupcolumn.pos >= split.end:
-                continue
-
-            coverage_profile[pileupcolumn.pos] = pileupcolumn.n
-
-        for i in range(split.start, split.end):
-            if i in coverage_profile:
-                self.c.append(coverage_profile[i])
-            else:
-                self.c.append(0)
-
-        if self.c:
-            split.explicit_length = len(self.c)
-            self.process_c(self.c)
-
-    def process_c(self, c):
-        c = numpy.asarray(c)
-        self.min = numpy.amin(c)
-        self.max = numpy.amax(c)
-        self.median = numpy.median(c)
-        self.mean = numpy.mean(c)
-        self.std = numpy.std(c)
-        self.detection = 1 - (float(collections.Counter(c)[0]) / len(c))
-
-        self.outlier_positions = get_indices_for_outlier_values(c)
-
-        if c.size < 4:
-            self.mean_Q2Q3 = self.mean
-        else:
-            sorted_c = sorted(c)
-            Q = int(c.size * 0.25)
-            Q2Q3 = sorted_c[Q:-Q]
-            self.mean_Q2Q3 = numpy.mean(Q2Q3)
-
-
-def get_indices_for_outlier_values(c):
-    is_outlier = get_list_of_outliers(c)
-    return set([p for p in range(0, c.size) if is_outlier[p]])
-
-
-def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False):
-    """
-    Returns a boolean array with True if values are outliers and False
-    otherwise.
-
-    Modified from Joe Kington's (https://stackoverflow.com/users/325565/joe-kington)
-    implementation computing absolute deviation around the median.
-
-    Parameters:
-    -----------
-        values    : An numobservations by numdimensions array of observations
-        threshold : The modified z-score to use as a thresholdold. Observations with
-                    a modified z-score (based on the median absolute deviation) greater
-                    than this value will be classified as outliers.
-
-    Returns:
-    --------
-        mask : A numobservations-length boolean array.
-
-    References:
-    ----------
-        Boris Iglewicz and David Hoaglin (1993), "Volume 16: How to Detect and
-        Handle Outliers", The ASQC Basic References in Quality Control:
-        Statistical Techniques, Edward F. Mykytka, Ph.D., Editor.
-
-        http://www.sciencedirect.com/science/article/pii/S0022103113000668
-    """
-
-    if threshold is None:
-        threshold = 1.5
-
-    if len(values.shape) == 1:
-        values = values[:, None]
-
-    median = numpy.median(values, axis=0)
-
-    diff = numpy.sum((values - median) ** 2, axis=-1)
-    diff = numpy.sqrt(diff)
-    median_absolute_deviation = numpy.median(diff)
-
-    if not median_absolute_deviation:
-       if values[0] == 0:
-            # A vector of all zeros is considered "all outliers"
-            return numpy.array([True] * values.size)
-       else:
-            # A vector of uniform non-zero values is "all non-outliers"
-            # This could be important for silly cases (like in megahit) in which there is a maximum value for coverage
-            return numpy.array([False] * values.size)
-
-    modified_z_score = 0.6745 * diff / median_absolute_deviation
-    non_outliers = modified_z_score > threshold
-
-    if not zeros_are_outliers:
-        return non_outliers
-    else:
-        zero_positions = [x for x in range(len(values)) if values[x] == 0]
-        for i in zero_positions:
-            non_outliers[i] = True
-        return non_outliers

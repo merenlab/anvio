@@ -51,7 +51,7 @@ class Dereplicate:
         self.ani_dir = A('ani_dir', null)
         self.mash_dir = A('mash_dir', null)
         # mode
-        self.program_name = A('program', null) or 'pyANI'
+        self.program_name = A('program', null)
         self.representative_method = A('representative_method', null)
         self.similarity_threshold = A('similarity_threshold', null)
         # fastANI specific
@@ -103,8 +103,6 @@ class Dereplicate:
 
 
     def is_genome_names_compatible_with_similarity_matrix(self, similarity_matrix, genome_names):
-        matrix_names = similarity_matrix.keys()
-
         missing_in_matrix = [n for n in genome_names if n not in similarity_matrix]
         missing_in_names = [n for n in similarity_matrix if n not in genome_names]
 
@@ -119,11 +117,11 @@ class Dereplicate:
                           missing_in_names[:5] if len(missing_in_names) < 6 else missing_in_names)
 
         if should_raise:
-            raise ConfigError("At least one of your %s does not appear in the %s. This could be due\
-                               to many different reasons. Probably, the imported similarity results were generated from sequence sources\
-                               that are somehow different from the ones you provided here. If you imported your results (e.g\
-                               with --ani-dir, --mash-dir, etc), we recommend re-running with standard inputs.\
-                               See `INPUT OPTIONS` within the help menu. Here are some that are missing: %s." % (*raise_info, ))
+            raise ConfigError("At least one of your %s does not appear in the %s. This could be due "
+                              "to many different reasons. Probably, the imported similarity results were generated from sequence sources "
+                              "that are somehow different from the ones you provided here. If you imported your results (e.g "
+                              "with --ani-dir, --mash-dir, etc), we recommend re-running with standard inputs. "
+                              "See `INPUT OPTIONS` within the help menu. Here are some that are missing: %s." % (*raise_info, ))
 
 
     def sanity_check(self):
@@ -134,22 +132,27 @@ class Dereplicate:
             raise ConfigError("You didn't provide a sequence source, but want to `--report-all sequences`. Hmmm.")
 
         if self.report_all and self.skip_fasta_sequences:
-            raise ConfigError("You want to report all sequences (--report-all), but you also want to skip\
-                               reporting all sequences (--skip-fasta-report). Hmmm.")
+            raise ConfigError("You want to report all sequences (--report-all), but you also want to skip "
+                              "reporting all sequences (--skip-fasta-report). Hmmm.")
+
+        if not self.program_name:
+            additional_text = ", even when you are importing results from a previous run"
+            raise ConfigError("You must provide a program name to dereplicate your genomes using the `--program` "
+                              "parameter%s. Chocies include %s." % (additional_text if self.ani_dir else '', ', '.join(list(program_class_dictionary.keys()))))
 
         if not any([self.program_name, self.ani_dir, self.mash_dir]):
-            raise ConfigError("Anvi'o could not determine how you want to dereplicate\
-                              your genomes. Please take a close look at your parameters: either --program needs to be\
-                              set, or an importable directory (e.g. --ani-dir, --mash-dir, etc) needs to be provided.")
+            raise ConfigError("Anvi'o could not determine how you want to dereplicate "
+                             "your genomes. Please take a close look at your parameters: either --program needs to be "
+                             "set, or an importable directory (e.g. --ani-dir, --mash-dir, etc) needs to be provided.")
 
-        if self.program_name not in ['pyANI', 'fastANI', 'sourmash']:
-            raise ConfigError("Anvi'o is impressed by your dedication to dereplicate your genomes through %s, but\
-                              %s is not compatible with `anvi-dereplicate-genomes`. Anvi'o can only work with pyANI\
-                              and sourmash separately." % (self.program_name, self.program_name))
+        if self.program_name not in list(program_class_dictionary.keys()):
+            raise ConfigError("Anvi'o is impressed by your dedication to dereplicate your genomes through %s, but "
+                             "%s is not compatible with `anvi-dereplicate-genomes`. Anvi'o can only work with pyANI "
+                             "and sourmash separately." % (self.program_name, self.program_name))
 
         if self.ani_dir and self.mash_dir:
-            raise ConfigError("Anvi'o cannot currently dereplicate using both ANI and mash similarity results at\
-                              the same time. Please pick one to use for dereplication")
+            raise ConfigError("Anvi'o cannot currently dereplicate using both ANI and mash similarity results at "
+                             "the same time. Please pick one to use for dereplication")
 
         if self.ani_dir or self.mash_dir:
             self.import_previous_results = True
@@ -158,43 +161,49 @@ class Dereplicate:
                 additional_msg = ''
 
                 if not self.just_do_it:
-                    raise ConfigError("You provided any of {--external-genomes, --internal-genomes, --fasta-text-file}\
-                                       *alongside* a results directory. This requires that the external, internal,\
-                                       and fasta inputs are exactly those used to generate the results directory.\
-                                       This is sketchy and anvi'o doesn't recommend it. If you insist, re-run with\
-                                       --just-do-it. Otherwise, have the results regenerated here by removing '%s'\
-                                       as an input." % (self.ani_dir or self.mash_dir))
+                    raise ConfigError("You provided any of {--external-genomes, --internal-genomes, --fasta-text-file} "
+                                      "*alongside* a results directory. This requires that the external, internal, "
+                                      "and fasta inputs are exactly those used to generate the results directory. "
+                                      "This is sketchy and anvi'o doesn't recommend it. If you insist, re-run with "
+                                      "--just-do-it. Otherwise, have the results regenerated here by removing '%s' "
+                                      "as an input." % (self.ani_dir or self.mash_dir))
             else:
-                additional_msg = (' In addition, no FASTAs will be generated since you did not provide any sequence '
-                                  'sources for anvi\'o.')
+                additional_msg = ("In addition, no FASTAs will be generated since you did not provide any sequence "
+                                  "sources for anvi'o.")
 
-            run.warning("You chose to work with an already existing results folder. Please keep in mind that you\
-                         are now burdened with the responsibility of knowing what parameters you used to generate\
-                         these results.%s" % additional_msg)
+            run.warning("You chose to work with an already existing results folder. Please keep in mind that you "
+                        "are now burdened with the responsibility of knowing what parameters you used to generate "
+                        "these results.%s" % additional_msg)
 
         if self.ani_dir and not self.program_name in ['pyANI', 'fastANI']:
-            raise ConfigError("You provided a pre-existing directory of ANI results (--ani-dir), but also provided a program\
-                               name ('%s') that was not compatible with ANI." % self.program_name)
+            raise ConfigError("You provided a pre-existing directory of ANI results (--ani-dir), but also provided a program "
+                              "name ('%s') that was not compatible with ANI." % self.program_name)
 
         if self.mash_dir and not self.program_name in ['sourmash']:
-            raise ConfigError("You provided a pre-existing directory of mash results (--mash-dir), but also provided a program\
-                               name ('%s') that was not compatible with mash." % self.program_name)
+            raise ConfigError("You provided a pre-existing directory of mash results (--mash-dir), but also provided a program "
+                              "name ('%s') that was not compatible with mash." % self.program_name)
 
         if self.min_alignment_fraction < 0 or self.min_alignment_fraction > 1:
             if self.program_name == "pyANI":
-                raise ConfigError("Alignment coverage is a value between 0 and 1. Your cutoff alignment coverage\
-                                  value of %.2f doesn't fit in these boundaries" % self.min_alignment_fraction)
+                raise ConfigError("Alignment coverage is a value between 0 and 1. Your cutoff alignment coverage "
+                                 "value of %.2f doesn't fit in these boundaries" % self.min_alignment_fraction)
 
         if self.similarity_threshold < 0 or self.similarity_threshold > 1:
-            raise ConfigError("When anvi'o collapses %s's output into a similarity matrix, all values are reported as\
-                              similaritys between 0 and 1. %.2f can't be used to determine redundant genomes"\
+            raise ConfigError("When anvi'o collapses %s's output into a similarity matrix, all values are reported as "
+                             "similaritys between 0 and 1. %.2f can't be used to determine redundant genomes"\
                               % (self.program_name, self.similarity_threshold))
 
         if self.representative_method == "Qscore" and not (self.external_genomes or self.internal_genomes):
-                self.representative_method = "similarity"
-                run.warning("Anvi'o must be provided either an external or internal genome collection (or both) to be\
-                             used with Qscore, since this is the only way for anvi'o to learn about completion and\
-                             redundancy scores. Anvi'o will switch to 'centrality'")
+                self.representative_method = "centrality"
+                run.warning("Anvi'o must be provided either an external or internal genome collection (or both) to be "
+                            "used with 'Qscore', since this is the only way for anvi'o to learn about completion and "
+                            "redundancy scores. Anvi'o will switch to 'centrality'")
+
+        if self.representative_method == "length" and not self.sequence_source_provided:
+                self.representative_method = "centrality"
+                run.warning("Anvi'o must be provided a sequence source (external genomes, internal genomes, fasta "
+                            "text file, or a combination thereof) to be used with 'length', since this is the only "
+                            "way for anvi'o to learn about genome lengths. Anvi'o will switch to 'centrality'")
 
 
     def init_genome_similarity(self):
@@ -230,7 +239,7 @@ class Dereplicate:
             # With sourmash you don't always know the metric name, you only be sure of what it
             # contains. This is because the kmer is a part of the result name. This is my fault but
             # I'm too lazy to fix the design because sourmash is not appropriate for genome
-            # comparison anyways. 
+            # comparison anyways.
             for result_name in self.similarity.results:
                 if self.program_info['metric_name'] in result_name:
                     similarity_matrix = self.similarity.results[result_name]
@@ -264,12 +273,12 @@ class Dereplicate:
                 matching_filepaths = [f for f in matching_filepaths if 'full_percentage_identity' not in f]
 
             if len(matching_filepaths) > 1:
-                raise ConfigError("Your results directory contains multiple text files for the matrix %s.\
-                                  Please clean up your directory and make sure that only one text file of this\
-                                  report exists" % report)
+                raise ConfigError("Your results directory contains multiple text files for the matrix %s. "
+                                 "Please clean up your directory and make sure that only one text file of this "
+                                 "report exists" % report)
             elif not len(matching_filepaths):
-                raise ConfigError("Your results directory does not have a text file for the report %s.\
-                                  Anvi'o cannot dereplicate genomes from prevous results without this report" % report)
+                raise ConfigError("Your results directory does not have a text file for the report %s. "
+                                 "Anvi'o cannot dereplicate genomes from prevous results without this report" % report)
 
             self.similarity.results[report] = utils.get_TAB_delimited_file_as_dictionary(J(dir_path, matching_filepaths[0]))
 
@@ -281,11 +290,11 @@ class Dereplicate:
     def clean(self):
         if self.temp_dir:
             if anvio.DEBUG:
-                run.warning("The temp directory, %s, is kept. Please don't forget to clean it up\
-                             later" % self.temp_dir, header="Debug")
+                run.warning("The temp directory, %s, is kept. Please don't forget to clean it up "
+                            "later" % self.temp_dir, header="Debug")
             else:
-                run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
-                                 like to keep it for testing purposes)', nl_before=1, nl_after=1)
+                run.info_single('Cleaning up the temp directory (you can use `--debug` if you would '
+                                'like to keep it for testing purposes)', nl_before=1, nl_after=1)
 
                 shutil.rmtree(self.temp_dir)
                 self.temp_dir = None
@@ -405,12 +414,16 @@ class Dereplicate:
                 full_dict[name]['total_length'] = sum(utils.get_read_lengths_from_fasta(fastas[name]['path']).values())
 
         if self.representative_method == 'Qscore':
+            missing_completion = False
             for genome in full_dict:
                 if not full_dict[genome].get('percent_completion') or not full_dict[genome].get('percent_redundancy'):
                     self.representative_method = 'centrality'
-                    run.warning('At least one of your genomes does not have completion and/or redundancy scores, which makes\
-                                 it impossible to use Qscore to pick best representatives from each cluster. One of these\
-                                 genomes is %s. Anvi\'o will switch you to the \'centrality\' method for picking representatives.')
+                    missing_completion = genome
+
+            if missing_completion:
+                run.warning("At least one of your genomes does not have completion and/or redundancy scores, which makes "
+                            "it impossible to use Qscore to pick best representatives from each cluster. One of these "
+                            "genomes is %s. Anvi'o switched you to the 'centrality' method for picking representatives." % (genome))
 
         self.genomes_info_dict = full_dict
 
@@ -468,19 +481,28 @@ class Dereplicate:
 
 
     def dereplicate(self):
-        progress.new('Dereplication', progress_total_items = sum(1 for _ in combinations(self.genome_names, 2)))
+        num_genome_pairs = sum(1 for _ in combinations(self.genome_names, 2))
+        progress.new('Dereplication', progress_total_items=num_genome_pairs)
 
+        counter = 0
         genome_pairs = combinations(self.genome_names, 2)
         for genome1, genome2 in genome_pairs:
-            progress.increment()
-            progress.update('Comparing %s with %s' % (genome1, genome2))
+            if counter % 10000 == 0:
+                progress.increment(increment_to=counter)
+                progress.update('%d / %d pairwise comparisons made' % (counter, num_genome_pairs))
 
             if genome1 == genome2 or self.are_redundant(genome1, genome2):
+                counter += 1
                 continue
 
             similarity = float(self.similarity_matrix[genome1][genome2])
-            if similarity > self.similarity_threshold:
+            if similarity >= self.similarity_threshold:
                 self.update_clusters(genome1, genome2)
+
+            counter += 1
+
+        progress.increment(increment_to=num_genome_pairs)
+        progress.update('All %d pairwise comparisons have been made' % num_genome_pairs)
 
         # remove empty clusters and rename so that names are sequential
         self.clusters = {cluster: genomes for cluster, genomes in self.clusters.items() if genomes}
@@ -564,17 +586,8 @@ class Dereplicate:
 
 
     def pick_representative_with_largest_genome(self, cluster):
-        max_name = cluster[0]
-        max_val = self.genomes_info_dict[max_name]['total_length']
-
-        for name in cluster[1:]:
-            val = self.genomes_info_dict[name]['total_length']
-
-            if val > max_val:
-                max_name = name
-                max_val = val
-
-        return max_name
+        lengths_dict = {name: self.genomes_info_dict[name]['total_length'] for name in cluster}
+        return max(lengths_dict, key = lambda name: lengths_dict.get(name, 0))
 
 
     def pick_representative_with_largest_centrality(self, cluster):
@@ -661,11 +674,11 @@ class GenomeSimilarity:
             except Exception as e:
                 if anvio.DEBUG:
                     print(e)
-                run.warning("Bad news :/ Something went wrong while anvi'o was processing the clustering for\
-                             '%s'. You can find the offending file if you search for the output file in\
-                             the temporary output directory '%s'. You potentially waited so long, so anvi'o\
-                             will continue as if nothing happened. If you want to diagnose this problem, rerun with\
-                             --debug" % (report_name, J(self.temp_dir, 'output')))
+                run.warning("Bad news :/ Something went wrong while anvi'o was processing the clustering for "
+                            "'%s'. You can find the offending file if you search for the output file in "
+                            "the temporary output directory '%s'. You potentially waited so long, so anvi'o "
+                            "will continue as if nothing happened. If you want to diagnose this problem, rerun with "
+                            "--debug" % (report_name, J(self.temp_dir, 'output')))
 
 
     def add_to_pan_db(self):
@@ -682,13 +695,13 @@ class GenomeSimilarity:
             found_only_in_results = self.genome_names.difference(db_genome_names)
 
             if len(found_only_in_results) > 0:
-                raise ConfigError("Some genome names found in your results do not seem to be exist in the pan database. \
-                    Here are the list of them: " + ", ".join(list(found_only_in_results)))
+                raise ConfigError("Some genome names found in your results do not seem to be exist in the pan database. "
+                   "Here are the list of them: " + ", ".join(list(found_only_in_results)))
 
             if len(found_only_in_db) > 0:
-                run.warning("Some genome names found in pan database do not seem to be exist in the similarity report. \
-                    anvi'o will add the ones that are found in the database anyway, but here is the list of missing ones: \
-                    " + ", ".join(list(found_only_in_db)))
+                run.warning("Some genome names found in pan database do not seem to be exist in the similarity report. "
+                   "anvi'o will add the ones that are found in the database anyway, but here is the list of missing ones: "
+                   "" + ", ".join(list(found_only_in_db)))
 
             run.warning(None, header="MISC DATA MAGIC FOR YOUR PAN DB", lc='green')
             for report_name in self.results:
@@ -739,9 +752,9 @@ class GenomeSimilarity:
         for source1, source2 in combinations(names, 2):
             names_in_both = [n for n in names[source1] if n in names[source2]]
             if len(names_in_both):
-                raise ConfigError("Ok, so you provided `%s` and `%s` as sequence sources, but some names from these sources are shared\
-                                   so anvi'o doesn't know how these names should be treated. Here is the list of names that are shared\
-                                   by both: [%s]" % (source1, source2, ', '.join([str(n) for n in names_in_both])))
+                raise ConfigError("Ok, so you provided `%s` and `%s` as sequence sources, but some names from these sources are shared "
+                                  "so anvi'o doesn't know how these names should be treated. Here is the list of names that are shared "
+                                  "by both: [%s]" % (source1, source2, ', '.join([str(n) for n in names_in_both])))
 
         self.genome_sources = {}
         for source, names in names.items():
@@ -777,9 +790,6 @@ class FastANI(GenomeSimilarity):
         self.method = 'fastANI'
 
         self.program = fastani.ManyToMany(args=self.args)
-
-        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
-        null = lambda x: x
 
         self.fastANI_sanity_check()
 
@@ -845,21 +855,21 @@ class ANI(GenomeSimilarity):
 
     def ANI_sanity_check(self):
         if self.min_alignment_fraction < 0 or self.min_alignment_fraction > 1:
-            raise ConfigError("The minimum alignment fraction must be a value between 0.0 and 1.0. %.2f does\
-                               not work for anvi'o :/" % self.min_alignment_fraction)
+            raise ConfigError("The minimum alignment fraction must be a value between 0.0 and 1.0. %.2f does "
+                              "not work for anvi'o :/" % self.min_alignment_fraction)
 
         if self.significant_alignment_length and self.significant_alignment_length < 0:
             raise ConfigError("You missed concept :/ Alignment length can't be smaller than 0.")
 
         if self.significant_alignment_length and not self.min_alignment_fraction:
-            raise ConfigError("Using the --significant-alignment-length parameter Without the --min-alignment-fraction\
-                               parameter does not make any sense. But how could you know that unless you read the help\
-                               menu? Yep. Anvi'o is calling the bioinformatics police on you :(")
+            raise ConfigError("Using the --significant-alignment-length parameter Without the --min-alignment-fraction "
+                              "parameter does not make any sense. But how could you know that unless you read the help "
+                              "menu? Yep. Anvi'o is calling the bioinformatics police on you :(")
 
         if len(self.genome_names) > 50:
-            run.warning("You are comparing %d genomes. That's no small task. For context, 10 Prochlorococcus genomes\
-                         using 4 threads took 2m20s on a 2016 Macbook Pro. And 50 genomes took 49m53s. Consider\
-                         instead using fastANI (--program fastANI). It's orders of magnitudes faster." % len(self.genome_names))
+            run.warning("You are comparing %d genomes. That's no small task. For context, 10 Prochlorococcus genomes "
+                        "using 4 threads took 2m20s on a 2016 Macbook Pro. And 50 genomes took 49m53s. Consider "
+                        "instead using fastANI (--program fastANI). It's orders of magnitudes faster." % len(self.genome_names))
 
 
     def restore_names_in_dict(self, input_dict):
@@ -897,10 +907,10 @@ class ANI(GenomeSimilarity):
         if self.min_full_percent_identity:
             p = self.results.get('full_percentage_identity')
             if not p:
-                raise ConfigError("You asked anvi'o to remove weak hits through the --min-full-percent-identity\
-                                   parameter, but the results dictionary does not contain any information about\
-                                   full percentage identity :/ These are the items anvi'o found instead: '%s'. Please let a\
-                                   developer know about this if this doesn't make any sense." % (', '.join(self.results.keys())))
+                raise ConfigError("You asked anvi'o to remove weak hits through the --min-full-percent-identity "
+                                  "parameter, but the results dictionary does not contain any information about "
+                                  "full percentage identity :/ These are the items anvi'o found instead: '%s'. Please let a "
+                                  "developer know about this if this doesn't make any sense." % (', '.join(self.results.keys())))
 
             for g1 in p:
                 for g2 in p:
@@ -914,31 +924,31 @@ class ANI(GenomeSimilarity):
             if len(genome_hits_to_zero):
                 g1, g2 = genome_hits_to_zero[0]
 
-                run.warning("THIS IS VERY IMPORTANT! You asked anvi'o to remove any hits between\
-                             two genomes if they had a full percent identity less than '%.2f'. Anvi'o found %d\
-                             such instances between the pairwise comparisons of your %d genomes, and is about\
-                             to set all ANI scores between these instances to 0. For instance, one of your \
-                             genomes, '%s', had a full percentage identity of %.3f relative to '%s',\
-                             another one of your genomes, which is below your threshold, and so the\
-                             ANI scores will be ignored (set to 0) for all downstream\
-                             reports you will find in anvi'o tables and visualizations. Anvi'o\
-                             kindly invites you to carefully think about potential implications of\
-                             discarding hits based on an arbitrary alignment fraction, but does not\
-                             judge you because it is not perfect either." % (self.min_full_percent_identity/100,
+                run.warning("THIS IS VERY IMPORTANT! You asked anvi'o to remove any hits between "
+                            "two genomes if they had a full percent identity less than '%.2f'. Anvi'o found %d "
+                            "such instances between the pairwise comparisons of your %d genomes, and is about "
+                            "to set all ANI scores between these instances to 0. For instance, one of your "
+                            "genomes, '%s', had a full percentage identity of %.3f relative to '%s', "
+                            "another one of your genomes, which is below your threshold, and so the "
+                            "ANI scores will be ignored (set to 0) for all downstream "
+                            "reports you will find in anvi'o tables and visualizations. Anvi'o "
+                            "kindly invites you to carefully think about potential implications of "
+                            "discarding hits based on an arbitrary alignment fraction, but does not "
+                            "judge you because it is not perfect either." % (self.min_full_percent_identity/100,
                                                                              num_anvio_will_remove_via_full_percent_identity,
                                                                              len(p), g1, float(p[g1][g2]), g2))
 
         if self.min_alignment_fraction:
             if 'alignment_coverage' not in self.results:
-                raise ConfigError("You asked anvi'o to remove weak hits through the --min-alignment-fraction\
-                                   parameter, but the results dictionary does not contain any information about\
-                                   alignment fractions :/ These are the items anvi'o found instead: '%s'. Please let a\
-                                   developer know about this if this doesn't make any sense." % (', '.join(self.results.keys())))
+                raise ConfigError("You asked anvi'o to remove weak hits through the --min-alignment-fraction "
+                                  "parameter, but the results dictionary does not contain any information about "
+                                  "alignment fractions :/ These are the items anvi'o found instead: '%s'. Please let a "
+                                  "developer know about this if this doesn't make any sense." % (', '.join(self.results.keys())))
 
             if self.significant_alignment_length is not None and 'alignment_lengths' not in self.results:
-                raise ConfigError("The pyANI results do not contain any alignment lengths data. Perhaps the method you\
-                                   used for pyANI does not produce such data. Well. That's OK. But then you can't use the\
-                                   --significant-alignment-length parameter :/")
+                raise ConfigError("The pyANI results do not contain any alignment lengths data. Perhaps the method you "
+                                  "used for pyANI does not produce such data. Well. That's OK. But then you can't use the "
+                                  "--significant-alignment-length parameter :/")
 
             d = self.results['alignment_coverage']
             l = self.results['alignment_lengths']
@@ -967,27 +977,27 @@ class ANI(GenomeSimilarity):
                 else:
                     additional_msg = ""
 
-                run.warning("THIS IS VERY IMPORTANT! You asked anvi'o to remove any hits between two genomes if the hit\
-                             was produced by a weak alignment (which you defined as alignment fraction less than '%.2f'). Anvi'o\
-                             found %d such instances between the pairwise comparisons of your %d genomes, and is about\
-                             to set all ANI scores between these instances to 0. For instance, one of your genomes, '%s',\
-                             was %.3f identical to '%s', another one of your genomes, but the aligned fraction of %s to %s was only %.3f\
-                             and was below your threshold, and so the ANI scores will be ignored (set to 0) for all downstream\
-                             reports you will find in anvi'o tables and visualizations. %sAnvi'o kindly invites you\
-                             to carefully think about potential implications of discarding hits based on an arbitrary alignment\
-                             fraction, but does not judge you because it is not perfect either." % \
+                run.warning("THIS IS VERY IMPORTANT! You asked anvi'o to remove any hits between two genomes if the hit "
+                            "was produced by a weak alignment (which you defined as alignment fraction less than '%.2f'). Anvi'o "
+                            "found %d such instances between the pairwise comparisons of your %d genomes, and is about "
+                            "to set all ANI scores between these instances to 0. For instance, one of your genomes, '%s', "
+                            "was %.3f identical to '%s', another one of your genomes, but the aligned fraction of %s to %s was only %.3f "
+                            "and was below your threshold, and so the ANI scores will be ignored (set to 0) for all downstream "
+                            "reports you will find in anvi'o tables and visualizations. %sAnvi'o kindly invites you "
+                            "to carefully think about potential implications of discarding hits based on an arbitrary alignment "
+                            "fraction, but does not judge you because it is not perfect either." % \
                                                     (self.min_alignment_fraction,
                                                      num_anvio_wants_to_remove_via_alignment_fraction,
                                                      len(d), g1, float(self.results['percentage_identity'][g1][g2]), g2, g1, g2,
                                                      float(self.results['alignment_coverage'][g1][g2]), additional_msg))
 
             elif num_saved_by_significant_length_param:
-                 run.warning("THIS IS VERY IMPORTANT! You asked anvi'o to remove any hits between two genomes if the hit\
-                              was produced by a weak alignment (which you defined as an alignment fraction less\
-                              than '%.2f'). Anvi'o found %d such instances between the pairwise\
-                              comparisons of your %d genomes, but the --significant-alignment-length parameter\
-                              saved them all, because each one of them were longer than %d nts. So your filters kinda cancelled\
-                              each other out. Just so you know." % \
+                 run.warning("THIS IS VERY IMPORTANT! You asked anvi'o to remove any hits between two genomes if the hit "
+                             "was produced by a weak alignment (which you defined as an alignment fraction less "
+                             "than '%.2f'). Anvi'o found %d such instances between the pairwise "
+                             "comparisons of your %d genomes, but the --significant-alignment-length parameter "
+                             "saved them all, because each one of them were longer than %d nts. So your filters kinda cancelled "
+                             "each other out. Just so you know." % \
                                                     (self.min_alignment_fraction,
                                                      num_anvio_wants_to_remove_via_alignment_fraction, len(d),
                                                      self.significant_alignment_length))
@@ -1019,13 +1029,12 @@ class ANI(GenomeSimilarity):
         try:
             df = lambda matrix_name: pd.DataFrame(results[matrix_name]).astype(float)
             results['full_percentage_identity'] = (df('percentage_identity') * df('alignment_coverage')).to_dict()
-        except KeyError as e:
+        except KeyError:
             # method did not produce percentage_identity score--that's okay, no full percentage
             # identity for you
             pass
 
         return results
-
 
 
 class SourMash(GenomeSimilarity):

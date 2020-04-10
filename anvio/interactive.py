@@ -102,8 +102,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
         if self.pan_db_path and self.profile_db_path:
-            raise ConfigError("You can't set both a profile database and a pan database in arguments\
-                                you send to this class. What are you doing?")
+            raise ConfigError("You can't set both a profile database and a pan database in arguments "
+                               "you send to this class. What are you doing?")
 
         if self.profile_db_path and filesnpaths.is_file_exists(self.profile_db_path, dont_raise=True):
             utils.is_profile_db(self.profile_db_path)
@@ -113,24 +113,24 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if self.gene_mode:
             if self.collection_name is None or self.bin_id is None:
-                raise ConfigError("Gene view requires a collection and a bin to be specified. To SEE all collections and bins in\
-                                   your profile databse, you can use the program `anvi-show-collections-and-bins`. If you want to\
-                                   ADD a collection to your profile database, you can either use `anvi-import-collection` or\
-                                   `anvi-cluster-contigs` if appropriate, or you can go lazy and use the program\
-                                   `anvi-script-add-default-collection`, which would add a single collection that describes all contigs\
-                                   in your contigs database (in an ideal world you should use the last one only if you are working with\
-                                   a single genome).")
+                raise ConfigError("Gene view requires a collection and a bin to be specified. To SEE all collections and bins in "
+                                  "your profile databse, you can use the program `anvi-show-collections-and-bins`. If you want to "
+                                  "ADD a collection to your profile database, you can either use `anvi-import-collection` or "
+                                  "`anvi-cluster-contigs` if appropriate, or you can go lazy and use the program "
+                                  "`anvi-script-add-default-collection`, which would add a single collection that describes all contigs "
+                                  "in your contigs database (in an ideal world you should use the last one only if you are working with "
+                                  "a single genome).")
 
         if self.collection_name and (not self.gene_mode) and (self.bin_id or self.bin_ids_file_path) and self.mode != 'refine':
-            raise ConfigError("There is something confusing here. On the one hand you provide a collection name, telling\
-                               anvi'o that you wish to run the interactive display with a collection focus. It would have\
-                               been fine if you stopped there, because then anvi'o would have fired up in 'collection\
-                               mode'. But you *also* provided a bin name. Now that's another ball game. Well, maybe you\
-                               wish to display this bin in 'gene mode'. But for that, you would need to add the flag\
-                               `--gene-mode`. Or maybe you actually want to 'refine' this bin, but in that case you \
-                               would need to run the program `anvi-refine` instead of `anvi-interactive` with the same\
-                               list of parameters and flags. Either of these would have made things much less confusing\
-                               here :(")
+            raise ConfigError("There is something confusing here. On the one hand you provide a collection name, telling "
+                              "anvi'o that you wish to run the interactive display with a collection focus. It would have "
+                              "been fine if you stopped there, because then anvi'o would have fired up in 'collection "
+                              "mode'. But you *also* provided a bin name. Now that's another ball game. Well, maybe you "
+                              "wish to display this bin in 'gene mode'. But for that, you would need to add the flag "
+                              "`--gene-mode`. Or maybe you actually want to 'refine' this bin, but in that case you "
+                              "would need to run the program `anvi-refine` instead of `anvi-interactive` with the same "
+                              "list of parameters and flags. Either of these would have made things much less confusing "
+                              "here :(")
 
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
@@ -216,8 +216,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.load_full_mode()
             self.load_inspect_mode()
         else:
-            raise ConfigError("The interactive class is called with a mode that no one knows anything \
-                               about. '%s'... What kind of a mode is that anyway :/" % self.mode)
+            raise ConfigError("The interactive class is called with a mode that no one knows anything "
+                              "about. '%s'... What kind of a mode is that anyway :/" % self.mode)
 
         if self.external_clustering:
             self.p_meta['clusterings'] = self.clusterings = self.external_clustering['clusterings']
@@ -268,10 +268,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             return
 
         if not self.p_meta['item_orders']:
-            raise ConfigError("Apologies :( The code managed to came all the way down here without any item\
-                               orders set for your project, which makes it impossible for\
-                               anvi'o intearctive interface to display anything :/ Please check warning\
-                               messages you may have on your screen.")
+            raise ConfigError("Apologies :( The code managed to came all the way down here without any item "
+                              "orders set for your project, which makes it impossible for "
+                              "anvi'o intearctive interface to display anything :/ Please check warning "
+                              "messages you may have on your screen.")
 
         # self.displayed_item_names_ordered is going to be the 'master' names list. everything else is going to
         # need to match these names:
@@ -285,8 +285,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         elif default_item_order['type'] == 'basic':
             self.displayed_item_names_ordered = default_item_order['data']
         else:
-            raise ConfigError("There is something wrong here, and anvi'o needs and adult :( Something that should\
-                               never happen happened. The default clustering does not have a basic or newick type.")
+            raise ConfigError("There is something wrong here, and anvi'o needs and adult :( Something that should "
+                              "never happen happened. The default clustering does not have a basic or newick type.")
 
 
     def check_for_clusterings(self):
@@ -295,35 +295,35 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if not self.p_meta['item_orders'] or not len([o for o in self.p_meta['item_orders'].values() if o['type'] == 'newick']):
             if self.p_meta['db_type'] == 'pan':
-                self.run.warning("This pangenome (which you gracefully named as '%s') does not seem to have any hierarchical\
-                                  clustering of gene clusters it contains. Maybe you skipped the clustering step, maybe\
-                                  anvi'o skipped it on your behalf because you had too many gene clusters or something. Anvi'o\
-                                  will do its best to recover from this situation. But you will very likely not be able to see\
-                                  a hierarchical dendrogram in the resulting display even if everything goes alright.. In some\
-                                  cases using a parameter like `--min-occurrence 2`, which would reduce the number of gene clusters by\
-                                  removing singletons that appear in only one genome can help solve this issue and make your\
-                                  pangenome great again." % (self.p_meta['project_name']))
+                self.run.warning("This pangenome (which you gracefully named as '%s') does not seem to have any hierarchical "
+                                 "clustering of gene clusters it contains. Maybe you skipped the clustering step, maybe "
+                                 "anvi'o skipped it on your behalf because you had too many gene clusters or something. Anvi'o "
+                                 "will do its best to recover from this situation. But you will very likely not be able to see "
+                                 "a hierarchical dendrogram in the resulting display even if everything goes alright.. In some "
+                                 "cases using a parameter like `--min-occurrence 2`, which would reduce the number of gene clusters by "
+                                 "removing singletons that appear in only one genome can help solve this issue and make your "
+                                 "pangenome great again." % (self.p_meta['project_name']))
             else:
                 if self.item_order_path:
-                    self.run.warning("This merged profile database does not seem to have any hierarchical clustering\
-                                      of splits that is required by the interactive interface. But it seems you did provide\
-                                      an items order file. So anvi'o will try to use that and display your data.")
+                    self.run.warning("This merged profile database does not seem to have any hierarchical clustering "
+                                     "of splits that is required by the interactive interface. But it seems you did provide "
+                                     "an items order file. So anvi'o will try to use that and display your data.")
                 else:
                     if self.p_meta['merged']:
-                        self.run.warning("This merged profile database does not seem to have any hierarchical clustering\
-                                          of splits :/ It may be the case becasue it may have been generated by anvi-merge \
-                                          with the `--skip-hierarchical-clustering` flag, or hierarchical\
-                                          clustering step may have been skipped by anvi-merge because you had too many splits\
-                                          to get the clustering in a reasonable amount of time. Basically you will not see a\
-                                          clustering dendrogram in the center of your display. Please read the help menu for\
-                                          anvi-merge, and/or refer to the tutorial: \
-                                          http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
+                        self.run.warning("This merged profile database does not seem to have any hierarchical clustering "
+                                         "of splits :/ It may be the case becasue it may have been generated by anvi-merge "
+                                         "with the `--skip-hierarchical-clustering` flag, or hierarchical "
+                                         "clustering step may have been skipped by anvi-merge because you had too many splits "
+                                         "to get the clustering in a reasonable amount of time. Basically you will not see a "
+                                         "clustering dendrogram in the center of your display. Please read the help menu for "
+                                         "anvi-merge, and/or refer to the tutorial: "
+                                         "http://merenlab.org/2015/05/01/anvio-tutorial/#clustering-during-merging")
                     else:
-                        self.run.warning("This single profile database does not seem to have any hierarchical clustering\
-                                          that is required by the interactive interface. You must use `--cluster-contigs`\
-                                          flag for single profiles if you would like to see a hierarchical clustering \
-                                          dendrogram in the center of your display. Please read the help menu for \
-                                          anvi-profile, and/or refer to the tutorial.")
+                        self.run.warning("This single profile database does not seem to have any hierarchical clustering "
+                                         "that is required by the interactive interface. You must use `--cluster-contigs` "
+                                         "flag for single profiles if you would like to see a hierarchical clustering "
+                                         "dendrogram in the center of your display. Please read the help menu for "
+                                         "anvi-profile, and/or refer to the tutorial.")
 
 
     def gen_orders_for_items_based_on_additional_layers_data(self):
@@ -383,14 +383,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             if len(items_for_which_we_put_zeros_for_missing_values):
                 self.progress.end()
-                self.run.warning("OK. While working on the layer '%s', which actually looked like a numerical layer, anvi'o realized\
-                                  that %d of your items (for instance '%s' was one of them) did not have a value for this layer. To\
-                                  make sure things will continue working in the interface, anvi'o took the liberty of adding zeros\
-                                  as values for these items. Which is not the smartest thing to do, but we unfortunately do not\
-                                  support empty values for numerical layers yet. In MetalBeard's voice: things shall continue to\
-                                  work, but ye here be warned. Back to anvi'o regular voice: Please keep this in mind while you\
-                                  are studying the interactive interface be extra careful how to interpret your analysis when\
-                                  you see zero values in the layer '%s'." % (layer,
+                self.run.warning("OK. While working on the layer '%s', which actually looked like a numerical layer, anvi'o realized "
+                                 "that %d of your items (for instance '%s' was one of them) did not have a value for this layer. To "
+                                 "make sure things will continue working in the interface, anvi'o took the liberty of adding zeros "
+                                 "as values for these items. Which is not the smartest thing to do, but we unfortunately do not "
+                                 "support empty values for numerical layers yet. In MetalBeard's voice: things shall continue to "
+                                 "work, but ye here be warned. Back to anvi'o regular voice: Please keep this in mind while you "
+                                 "are studying the interactive interface be extra careful how to interpret your analysis when "
+                                 "you see zero values in the layer '%s'." % (layer,
                                                                              len(items_for_which_we_put_zeros_for_missing_values),
                                                                              items_for_which_we_put_zeros_for_missing_values.pop(),
                                                                              layer))
@@ -413,10 +413,10 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.end()
 
         if len(skipped_additional_data_layers):
-            self.run.warning("One or more of your additional data columns were completely empty. Like, they didn't have any data at all :/\
-                              In the best case scenario you will see completely blank layers in your display. In the worst case scenario\
-                              other things will break. Since you are a curious person, anvi'o thought you would like to know. These are\
-                              the empty variables: %s." % ', '.join(['"%s"' % s for s in skipped_additional_data_layers]))
+            self.run.warning("One or more of your additional data columns were completely empty. Like, they didn't have any data at all :/ "
+                             "In the best case scenario you will see completely blank layers in your display. In the worst case scenario "
+                             "other things will break. Since you are a curious person, anvi'o thought you would like to know. These are "
+                             "the empty variables: %s." % ', '.join(['"%s"' % s for s in skipped_additional_data_layers]))
 
 
     def gen_alphabetical_orders_of_items(self):
@@ -459,15 +459,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         missing_items = [i for i in self.displayed_item_names_ordered if i not in item_order_set]
         if (missing_items):
             self.progress.end()
-            raise ConfigError("While processing your items order file, anvi'o realized that some of the items in your view data are not\
-                               in your items order file. In fact there are like %d of them missing, and one of the missing items look\
-                               like this if it makes any sense: '%s'" % (len(missing_items), missing_items.pop()))
+            raise ConfigError("While processing your items order file, anvi'o realized that some of the items in your view data are not "
+                              "in your items order file. In fact there are like %d of them missing, and one of the missing items look "
+                              "like this if it makes any sense: '%s'" % (len(missing_items), missing_items.pop()))
 
         if len(item_order) != len(self.displayed_item_names_ordered):
             self.progress.end()
-            raise ConfigError("While processing your items order file, anvi'o realized that the number of items described in your file\
-                               (%s) is not equal to the number of items you have in your view data (%s). This is totally a deal\
-                               breaker :/" % (pp(len(item_order)), pp(len(self.displayed_item_names_ordered))))
+            raise ConfigError("While processing your items order file, anvi'o realized that the number of items described in your file "
+                              "(%s) is not equal to the number of items you have in your view data (%s). This is totally a deal "
+                              "breaker :/" % (pp(len(item_order)), pp(len(self.displayed_item_names_ordered))))
 
         # because of the special case of items order, the clusterings and available_clusterings items
         # may not be initialized. check them first.
@@ -489,15 +489,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def load_manual_mode(self):
         if self.contigs_db_path:
-            raise ConfigError("When you want to use the interactive interface in manual mode, you must\
-                                not use a contigs database.")
+            raise ConfigError("When you want to use the interactive interface in manual mode, you must "
+                               "not use a contigs database.")
 
         if not self.profile_db_path:
-            raise ConfigError("Even when you want to use the interactive interface in manual mode, you need\
-                                to provide a profile database path. But you DO NOT need an already existing\
-                                profile database, since anvi'o will generate an empty one for you. The profile\
-                                database in this mode only used to read or store the 'state' of the display\
-                                for visualization purposes, or to allow you to create and store collections.")
+            raise ConfigError("Even when you want to use the interactive interface in manual mode, you need "
+                               "to provide a profile database path. But you DO NOT need an already existing "
+                               "profile database, since anvi'o will generate an empty one for you. The profile "
+                               "database in this mode only used to read or store the 'state' of the display "
+                               "for visualization purposes, or to allow you to create and store collections.")
 
         # if the user is using an existing profile database, we need to make sure that it is not associated
         # with a contigs database, since it would mean that it is a full anvi'o profile database and should
@@ -528,16 +528,16 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
         if not self.tree and not self.view_data_path and not tree_order_found_in_db:
-            raise ConfigError("You must be joking Mr. Feynman. No tree file, and no data file, and no tree order in the\
-                               database? What is it that anvi'o supposed to visualize? :(")
+            raise ConfigError("You must be joking Mr. Feynman. No tree file, and no data file, and no tree order in the "
+                              "database? What is it that anvi'o supposed to visualize? :(")
 
         if not self.tree and not tree_order_found_in_db:
-            self.run.warning("You haven't declared a tree file and there was no tree order in the database. Anvi'o will\
-                              do its best to come up with an organization of your items.")
+            self.run.warning("You haven't declared a tree file and there was no tree order in the database. Anvi'o will "
+                             "do its best to come up with an organization of your items.")
 
         if self.view:
-            raise ConfigError("You can't use '--view' parameter when you are running the interactive interface\
-                               in manual mode")
+            raise ConfigError("You can't use '--view' parameter when you are running the interactive interface "
+                              "in manual mode")
 
         if self.show_views:
             raise ConfigError("Sorry, there are no views to show in manual mode :/")
@@ -546,7 +546,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError("Sorry, there are no states to show in manual mode :/")
 
         if self.tree:
-            filesnpaths.is_file_exists(self.tree)
+            filesnpaths.is_proper_newick(self.tree)
             newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
             self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(newick_tree_text))
         elif tree_order_found_in_db:
@@ -623,9 +623,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             names_missing_in_FASTA = set(self.displayed_item_names_ordered) - set(self.split_sequences.keys())
             num_names_missing_in_FASTA = len(names_missing_in_FASTA)
             if num_names_missing_in_FASTA:
-                raise ConfigError('Some of the names in your view data does not have corresponding entries in the\
-                                    FASTA file you provided. Here is an example to one of those %d names that occur\
-                                    in your data file, but not in the FASTA file: "%s"' % (num_names_missing_in_FASTA, names_missing_in_FASTA.pop()))
+                raise ConfigError('Some of the names in your view data does not have corresponding entries in the '
+                                   'FASTA file you provided. Here is an example to one of those %d names that occur '
+                                   'in your data file, but not in the FASTA file: "%s"' % (num_names_missing_in_FASTA, names_missing_in_FASTA.pop()))
 
             # setup a mock splits_basic_info dict
             for split_id in self.displayed_item_names_ordered:
@@ -696,13 +696,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if not self.inspect_split_name or self.inspect_split_name not in self.displayed_item_names_ordered:
             if self.just_do_it:
                 self.inspect_split_name = alphabetical_order['data'][0]
-                self.run.warning("Since you have asked so kindly, anvi'o decided to start the interactive\
-                                  interface with this split: %s" % self.inspect_split_name)
+                self.run.warning("Since you have asked so kindly, anvi'o decided to start the interactive "
+                                 "interface with this split: %s" % self.inspect_split_name)
             else:
-                raise ConfigError("Either you forgot to provide a split name to `anvi-inspect` or the split name\
-                                   you have provided does not exist. If you don't care and want to start the\
-                                   interactive inteface with a random split from the profile database, please use\
-                                   the flag `--just-do-it`")
+                raise ConfigError("Either you forgot to provide a split name to `anvi-inspect` or the split name "
+                                  "you have provided does not exist. If you don't care and want to start the "
+                                  "interactive inteface with a random split from the profile database, please use "
+                                  "the flag `--just-do-it`")
 
 
     def load_refine_mode(self):
@@ -785,8 +785,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         completeness = Completeness(self.contigs_db_path)
 
         if not len(completeness.sources):
-            self.run.warning('HMMs for single-copy core genes were not run for this contigs database. So you will not\
-                              see completion / redundancy estimates in the collection mode as additional layers. SAD.')
+            self.run.warning('HMMs for single-copy core genes were not run for this contigs database. So you will not '
+                             'see completion / redundancy estimates in the collection mode as additional layers. SAD.')
             completion_redundancy_available = False
             self.hmm_access = None
         else:
@@ -903,8 +903,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def load_pan_mode(self):
         if not self.pan_db_path:
-            raise ConfigError("So you want to display a pan genome without a pan database? Anvi'o is\
-                                confused :/")
+            raise ConfigError("So you want to display a pan genome without a pan database? Anvi'o is "
+                               "confused :/")
 
         PanSuperclass.__init__(self, self.args)
 
@@ -934,12 +934,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
     def load_full_mode(self):
         if not self.contigs_db_path:
-            raise ConfigError("Anvi'o needs the contigs database to make sense of this run (or maybe you\
-                                should use the `--manual` flag if that's what your intention).")
+            raise ConfigError("Anvi'o needs the contigs database to make sense of this run (or maybe you "
+                               "should use the `--manual` flag if that's what your intention).")
 
         if not self.profile_db_path:
-            raise ConfigError("So you want to run anvi'o in full mode, but without a profile database?\
-                                Well. This does not make any sense.")
+            raise ConfigError("So you want to run anvi'o in full mode, but without a profile database? "
+                               "Well. This does not make any sense.")
 
         if not self.skip_init_functions:
             self.init_functions()
@@ -1003,8 +1003,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             additional_view_columns = utils.get_columns_of_TAB_delim_file(self.additional_view_path)
 
             if not additional_view_columns[-1] == '__parent__':
-                raise ConfigError("The last column of the additional view must be '__parent__' with the proper\
-                                    parent information for each split.")
+                raise ConfigError("The last column of the additional view must be '__parent__' with the proper "
+                                   "parent information for each split.")
 
             column_mapping = [str] + [float] * (len(additional_view_columns) - 1) + [str]
 
@@ -1015,8 +1015,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # if the user specifies a view, set it as default:
         if self.view:
             if not self.view in self.views:
-                raise ConfigError("The requested view ('%s') is not available for this run. Please see\
-                                          available views by running this program with --show-views flag." % self.view)
+                raise ConfigError("The requested view ('%s') is not available for this run. Please see "
+                                         "available views by running this program with --show-views flag." % self.view)
 
             self.default_view = self.view
 
@@ -1034,17 +1034,17 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # do we have auxiliary data available?
         if not self.auxiliary_profile_data_available:
             summary_cp_available = os.path.exists(os.path.join(os.path.dirname(self.profile_db_path), 'SUMMARY.cp'))
-            self.run.warning("Auxiliary data is not available; which means you will not be able to perform\
-                              certain operations (i.e., the inspect menu in the interactive interface will\
-                              not work, etc). %s" % ('' if not summary_cp_available else "Although, you have\
-                              a SUMMARY.cp file in your work directory, which means you are working with an\
-                              outdated anvi'o run. You can convert your SUMMARY.cp into an auxiliary data file\
-                              by using `anvi-script-generate-auxiliary-data-from-summary-cp` script."))
+            self.run.warning("Auxiliary data is not available; which means you will not be able to perform "
+                             "certain operations (i.e., the inspect menu in the interactive interface will "
+                             "not work, etc). %s" % ('' if not summary_cp_available else "Although, you have "
+                             "a SUMMARY.cp file in your work directory, which means you are working with an "
+                             "outdated anvi'o run. You can convert your SUMMARY.cp into an auxiliary data file "
+                             "by using `anvi-script-generate-auxiliary-data-from-summary-cp` script."))
 
         if self.state_autoload:
             if not self.state_autoload in self.states_table.states:
-                raise ConfigError("The requested state ('%s') is not available for this run. Please see\
-                                          available states by running this program with --show-states flag." % self.state_autoload)
+                raise ConfigError("The requested state ('%s') is not available for this run. Please see "
+                                         "available states by running this program with --show-states flag." % self.state_autoload)
 
 
     def load_gene_mode(self):
@@ -1104,15 +1104,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
                         self.views[view]['dict'][str(gene_callers_id)][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][view]
         if len(gene_caller_ids_missing_in_gene_level_cov_stats_dict):
-            self.run.warning("Anvi'o observed something weird while it was processing gene level coverage statistics.\
-                              Some of the gene calls stored in your contigs database (%d of them, precisely) did not\
-                              have any information in gene level coverage stats dictionary. It is likely they were added\
-                              to the contigs database *after* these gene level coverage stats were computed and stored.\
-                              One way to address this is to remove the database file for gene coverage stats and re-run\
-                              this step. Another way to do it is the good ol' way of ignoring these warnings as you usually\
-                              do. If you do the latter, you will probably be fine. But we wanted to keep you in the loop\
-                              just in case you are not fine and the code does not realize that yet. The sources for gene\
-                              calls that will not be included in your gene view include these ones: '%s'." % \
+            self.run.warning("Anvi'o observed something weird while it was processing gene level coverage statistics. "
+                             "Some of the gene calls stored in your contigs database (%d of them, precisely) did not "
+                             "have any information in gene level coverage stats dictionary. It is likely they were added "
+                             "to the contigs database *after* these gene level coverage stats were computed and stored. "
+                             "One way to address this is to remove the database file for gene coverage stats and re-run "
+                             "this step. Another way to do it is the good ol' way of ignoring these warnings as you usually "
+                             "do. If you do the latter, you will probably be fine. But we wanted to keep you in the loop "
+                             "just in case you are not fine and the code does not realize that yet. The sources for gene "
+                             "calls that will not be included in your gene view include these ones: '%s'." % \
                                     (len(gene_caller_ids_missing_in_gene_level_cov_stats_dict),
                                      ', '.join(gene_caller_sources_for_missing_gene_caller_ids_in_gene_level_cov_stats_dict)))
 
@@ -1221,23 +1221,23 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         splits_in_additional_view_but_not_in_tree = splits_in_additional_view - splits_in_tree if splits_in_additional_view else set([])
 
         if splits_in_additional_view_but_not_in_tree:
-            raise ConfigError("There are some split names in your additional view data file ('%s') that are missing from\
-                                split names characterized in the database. There are in fact %d of them. For instance,\
-                                here is a random split name that is in your additional view data, yet not in the database:\
-                                '%s'. This is not going to work for anvi'o :/" \
+            raise ConfigError("There are some split names in your additional view data file ('%s') that are missing from "
+                               "split names characterized in the database. There are in fact %d of them. For instance, "
+                               "here is a random split name that is in your additional view data, yet not in the database: "
+                               "'%s'. This is not going to work for anvi'o :/" \
                                     % (self.additional_view_path, len(splits_in_additional_view_but_not_in_tree), splits_in_additional_view_but_not_in_tree.pop()))
 
         if splits_in_tree_but_not_in_view_data:
             num_examples = 5 if len(splits_in_tree_but_not_in_view_data) >= 5 else len(splits_in_tree_but_not_in_view_data)
             example_splits_missing_in_view = [splits_in_tree_but_not_in_view_data.pop() for _ in range(0, num_examples)]
-            raise ConfigError('Some split names found in your tree are missing in your view data. Hard to\
-                                know what cuased this, but essentially your tree and your view does not\
-                                seem to be compatible. Here is a couple of splits that appear in the tree\
-                                but not in the view data: %s.' % ', '.join(example_splits_missing_in_view))
+            raise ConfigError('Some split names found in your tree are missing in your view data. Hard to '
+                               'know what cuased this, but essentially your tree and your view does not '
+                               'seem to be compatible. Here is a couple of splits that appear in the tree '
+                               'but not in the view data: %s.' % ', '.join(example_splits_missing_in_view))
 
         if splits_in_tree_but_not_in_database:
-            raise ConfigError('Some split names found in your tree are missing from your database. Hard to\
-                                know why is this the case, but here is a couple of them: %s'\
+            raise ConfigError('Some split names found in your tree are missing from your database. Hard to '
+                               'know why is this the case, but here is a couple of them: %s'\
                                     % ', '.join(list(splits_in_tree_but_not_in_database)[0:5]))
 
         if self.additional_layers_path:
@@ -1249,13 +1249,13 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             if len(splits_only_in_additional_layers):
                 one_example = splits_only_in_additional_layers[-1]
                 num_all = len(splits_only_in_additional_layers)
-                run.warning("Some of the contigs in your addtional view data file does not appear to be in anywhere else.\
-                             Additional layers file is not required to have data for all items (which means, there may be\
-                             items in view dictionaries that are not in the additional view data file), however, finding\
-                             items that are only in the additional layers file usually means trouble. Anvi'o will continue,\
-                             but please go back and check your files if you think there may be something wrong. Here is a\
-                             random item name that was only in your file: '%s'. And there were %d of them in total. So you\
-                             are warned!" % (one_example, num_all))
+                run.warning("Some of the contigs in your addtional view data file does not appear to be in anywhere else. "
+                            "Additional layers file is not required to have data for all items (which means, there may be "
+                            "items in view dictionaries that are not in the additional view data file), however, finding "
+                            "items that are only in the additional layers file usually means trouble. Anvi'o will continue, "
+                            "but please go back and check your files if you think there may be something wrong. Here is a "
+                            "random item name that was only in your file: '%s'. And there were %d of them in total. So you "
+                            "are warned!" % (one_example, num_all))
 
 
     def prune_view_dicts(self):
@@ -1358,8 +1358,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         bad_bin_names = [b for b in collection_dict if (b in refined_bin_data and b not in self.ids_for_already_refined_bins)]
         if len(bad_bin_names):
-            raise RefineError('%s of your bin names %s NOT unique, and already exist%s in the database. You must rename\
-                                %s to something else: %s' % (
+            raise RefineError('%s of your bin names %s NOT unique, and already exist%s in the database. You must rename '
+                               '%s to something else: %s' % (
                                                               'One' if len(bad_bin_names) == 1 else len(bad_bin_names),
                                                               'is' if len(bad_bin_names) == 1 else 'are',
                                                               's' if len(bad_bin_names) == 1 else '',
@@ -1403,7 +1403,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         pass
 
 
-class StructureInteractive(VariabilitySuper):
+class StructureInteractive(VariabilitySuper, ContigsSuperclass):
     def __init__(self, args, run=run, progress=progress):
         self.run = run
         self.progress = progress
@@ -1432,7 +1432,6 @@ class StructureInteractive(VariabilitySuper):
         self.saavs_only = A('SAAVs_only', bool)
         self.scvs_only = A('SCVs_only', bool)
         self.variability_table_path = A('variability_profile', null)
-        self.no_variability = A('no_variability', bool)
         self.min_departure_from_consensus = A('min_departure_from_consensus', float) or 0
 
         # states
@@ -1440,13 +1439,14 @@ class StructureInteractive(VariabilitySuper):
 
         # For now, only true if self.variability_table_path. Otherwise variability is computed on the fly
         self.store_full_variability_in_memory = True if self.variability_table_path else False
-        self.sample_groups_provided = True if self.profile_db_path else False
         self.full_variability = None
         self.variability_storage = {}
 
         self.num_reported_frequencies = 5
 
         self.sanity_check()
+
+        ContigsSuperclass.__init__(self, self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
         if self.store_full_variability_in_memory:
             self.profile_full_variability_data()
@@ -1457,6 +1457,8 @@ class StructureInteractive(VariabilitySuper):
         # can save significant memory if available genes is a fraction of genes in full variability
         if self.full_variability:
             self.filter_full_variability()
+            self.available_genes = self.get_available_genes() # genes can be lost during self.filter_full_variability()
+                                                              # so we re-calculate available genes :\
             self.process_full_variability()
 
         # default gene is the first gene of interest
@@ -1466,21 +1468,78 @@ class StructureInteractive(VariabilitySuper):
         self.sample_groups = self.create_sample_groups_dict()
 
 
+    def get_gene_function_info(self, gene_callers_id):
+        """Returns gene function info from the gene_function_calls_dict of ContigsSuperclass
+
+        If gene functions have not been initialized, ContigsSuperclass.init_functions is called
+
+        Notes
+        =====
+        - This initializes genes for the entire contigs database. When this becomes intolerably
+          inefficient, ContigsSuperclass.init_functions should be modified to take a genes of
+          interest flag
+        """
+
+        if not self.gene_function_calls_initiated:
+            self.init_functions()
+
+        return {'functions': self.gene_function_calls_dict.get(gene_callers_id)}
+
+
+    def get_model_info(self, gene_callers_id):
+        """Returns information about the protein model, e.g. template IDs, DOPE_score, etc"""
+
+        structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
+
+        models = structure_db.db.get_table_as_dataframe(
+            'models',
+            columns_of_interest=['GA341_score', 'DOPE_score', 'molpdf', 'picked_as_best'],
+            where_clause='corresponding_gene_call = %d' % gene_callers_id,
+        ).rename(columns={
+            'DOPE_score': 'DOPE',
+            'GA341_score': 'GA341',
+        })
+        models['Models tried'] = models.shape[0]
+        models = models.loc[models['picked_as_best'] == 1, ['DOPE', 'GA341', 'molpdf', 'Models tried']].reset_index(drop=True)
+
+        templates = structure_db.db.get_table_as_dataframe(
+            'templates',
+            columns_of_interest=['pdb_id', 'chain_id', 'ppi'],
+            where_clause='corresponding_gene_call = %d' % gene_callers_id,
+        ).rename(columns={
+            'pdb_id': 'PDB',
+            'chain_id': 'Chain',
+            'ppi': '%Identity',
+        })[['PDB', 'Chain', '%Identity']]
+
+        structure_db.disconnect()
+
+        return {
+            'models': models.to_json(orient='index'),
+            'templates': templates.to_json(orient='index'),
+        }
+
+
+    def get_search_results_for_gene_functions(self, search_terms):
+        """FIXME Currently unused"""
+        items, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=True)
+
+
     def filter_full_variability(self):
         try:
             self.full_variability.filter_data(criterion="corresponding_gene_call",
                                               subset_filter=self.available_genes)
         except self.EndProcess:
-            raise ConfigError("This is really sad. There is no overlap between the gene IDs in your\
-                               structure database and the gene IDs in your variability table.")
+            raise ConfigError("This is really sad. There is no overlap between the gene IDs in your "
+                              "structure database and the gene IDs in your variability table.")
 
         try:
             self.full_variability.filter_data(criterion="departure_from_consensus",
                                               min_filter=self.min_departure_from_consensus)
         except self.EndProcess:
-            raise ConfigError("This is really sad. There are no entries in your variability table\
-                               with a departure_from_consensus less than {}. Try setting\
-                               --min-departure-from-consensus to 0.".format(self.min_departure_from_consensus))
+            raise ConfigError("This is really sad. There are no entries in your variability table "
+                              "with a departure_from_consensus less than {}. Try setting "
+                              "--min-departure-from-consensus to 0.".format(self.min_departure_from_consensus))
 
 
     def process_full_variability(self):
@@ -1522,34 +1581,47 @@ class StructureInteractive(VariabilitySuper):
 
 
     def load_additional_layer_data(self, profile_db_path=None):
-        """I don't know how I can only get layers that are of type string, so unfortunately this
-           finds columns suitable for grouping samples (those of type string) in an adhoc manner.
-           See the following issue: https://github.com/merenlab/anvio/issues/829
+        """Get additional layer data for grouping
+
+        Notes
+        =====
+        - Only includes layers if they are string-like
         """
+
         if not profile_db_path:
             profile_db_path = self.profile_db_path
 
         x = argparse.Namespace(pan_or_profile_db=profile_db_path, target_data_table="layers")
         additional_layers_table = TableForLayerAdditionalData(args=x)
+
         layer_names, additional_layer_dict = additional_layers_table.get()
 
-        ####### ad hoc piece of garbage https://github.com/merenlab/anvio/issues/829 ########
+        # The remainder of this method filters layer_names and additional_layer_dict to only include
+        # layers that have string-like data. This is because we group based on these values, which
+        # would not make sense with integer data
+
         samples_in_layer_data = additional_layer_dict.keys()
         layers_to_remove = []
+
         for layer_name in layer_names:
+            # Assume we are removing this layer until we find evidence to keep it
             remove_column = True
+
+            # If there is a "!" it is of stacked-bar type
             if not "!" in layer_name:
                 for sample_name in samples_in_layer_data:
                     # loops through samples until it finds evidence the column is string-type
                     if isinstance(additional_layer_dict[sample_name][layer_name], str):
                         remove_column = False
                         continue
+
             if remove_column:
                 layers_to_remove.append(layer_name)
+
         for sample_name in additional_layer_dict:
             for bad_layer in layers_to_remove:
                 del additional_layer_dict[sample_name][bad_layer]
-        ####### ad hoc piece of garbage https://github.com/merenlab/anvio/issues/829 ########
+
         return layer_names, additional_layer_dict
 
 
@@ -1566,7 +1638,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'departure_from_consensus',
                 'title': 'Departure from consensus',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1576,7 +1648,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'departure_from_reference',
                 'title': 'Departure from reference',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1586,7 +1658,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'n2n1ratio',
                 'title': 'Ratio of 2nd to 1st',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1596,7 +1668,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'prevalence',
                 'title': 'Prevalence',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': False,
                 'merged_only': True,
                 'data_type': 'float',
@@ -1606,21 +1678,21 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'occurrence',
                 'title': 'occurrence',
-                'as_perspective': False,
+                'as_view': False,
                 'as_filter': False,
                 'merged_only': True,
                 'data_type': 'integer',
             },
             {
                 'name': 'contact_numbers',
-                'as_perspective': False,
+                'as_view': False,
                 'as_filter': False,
                 'data_type': 'text',
             },
             {
                 'name': 'mean_normalized_coverage',
                 'title': 'Site coverage normalized by gene average',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1630,7 +1702,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'coverage',
                 'title': 'Site coverage',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 1,
@@ -1640,7 +1712,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'synonymity',
                 'title': 'Synonymity',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1650,7 +1722,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'entropy',
                 'title': 'Entropy',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1660,7 +1732,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'rel_solvent_acc',
                 'title': 'Relative solvent accessibility',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 0.01,
@@ -1670,7 +1742,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'sec_struct',
                 'title': 'Secondary structure',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'checkbox',
                 'data_type': 'text',
                 'choices': ['C', 'S', 'G', 'H', 'T', 'I', 'E', 'B']
@@ -1678,7 +1750,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'phi',
                 'title': 'Phi',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 1,
@@ -1688,7 +1760,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'psi',
                 'title': 'Psi',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'float',
                 'step': 1,
@@ -1698,7 +1770,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'BLOSUM62',
                 'title': 'BLOSUM62',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1708,7 +1780,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'BLOSUM90',
                 'title': 'BLOSUM90',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1718,7 +1790,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'codon_order_in_gene',
                 'title': 'Codon index',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1728,7 +1800,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'codon_number',
                 'title': 'Codon number',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'slider',
                 'data_type': 'integer',
                 'step': 1,
@@ -1738,7 +1810,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': var.competing_items,
                 'title': 'Competing Amino Acids' if engine == "AA" else 'Competing Codons',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'checkbox',
                 'data_type': 'text',
                 'choices': list(var.data[var.competing_items].value_counts().sort_values(ascending=False).index)
@@ -1746,7 +1818,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'reference',
                 'title': 'Reference',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'checkbox',
                 'data_type': 'text',
                 'choices': list(var.data['reference'].value_counts().sort_values(ascending=False).index)
@@ -1754,7 +1826,7 @@ class StructureInteractive(VariabilitySuper):
             {
                 'name': 'consensus',
                 'title': 'Consensus',
-                'as_perspective': True,
+                'as_view': True,
                 'as_filter': 'checkbox',
                 'data_type': 'text',
                 'choices': list(var.data['consensus'].value_counts().sort_values(ascending=False).index)
@@ -1766,7 +1838,7 @@ class StructureInteractive(VariabilitySuper):
             info.append(
                 {
                     'name': item,
-                    'as_perspective': False,
+                    'as_view': False,
                     'as_filter': False,
                     'data_type': 'integer',
                 },
@@ -1777,21 +1849,21 @@ class StructureInteractive(VariabilitySuper):
             info.extend([
                 {
                     'name': str(x) + '_item',
-                    'as_perspective': False,
+                    'as_view': False,
                     'as_filter': False,
                     'data_type': 'text',
                     'merged_only': True,
                 },
                 {
                     'name': str(x) + '_item_AA',
-                    'as_perspective': False,
+                    'as_view': False,
                     'as_filter': False,
                     'data_type': 'text',
                     'merged_only': True,
                 },
                 {
                     'name': str(x) + '_freq',
-                    'as_perspective': False,
+                    'as_view': False,
                     'as_filter': False,
                     'data_type': 'float',
                     'merged_only': True,
@@ -1812,10 +1884,10 @@ class StructureInteractive(VariabilitySuper):
         if self.variability_table_path:
             engine = self.full_variability.engine
             if engine == 'NT':
-                self.run.warning("You passed a variabilty table of SNVs (`--engine NT`). We did not\
-                                  develop this program with the intention of displaying NT variants\
-                                  yet it very randomly works and we're pretty happy about it. So\
-                                  have fun, yet understand some features won't work.")
+                self.run.warning("You passed a variabilty table of SNVs (`--engine NT`). We did not "
+                                 "develop this program with the intention of displaying NT variants "
+                                 "yet it very randomly works and we're pretty happy about it. So "
+                                 "have fun, yet understand some features won't work.")
             return [engine]
         elif self.saavs_only:
             return ['AA']
@@ -1851,13 +1923,13 @@ class StructureInteractive(VariabilitySuper):
             unrecognized_genes = [g for g in requested_available_genes if g not in structure_db.genes_queried]
             if unrecognized_genes:
                 some_to_report = unrecognized_genes[:5] if len(unrecognized_genes) <= 5 else unrecognized_genes
-                raise ConfigError("{} of the gene caller ids you provided {} not known to the\
-                                   structure database. {}: {}. They might exist in the contigs\
-                                   database used to generate the structure database, but not all\
-                                   genes in the contigs database exist in the corresponding\
-                                   structure database :(. You can try running\
-                                   anvi-gen-structure-database again, this time with these missing\
-                                   genes included".format(len(unrecognized_genes),
+                raise ConfigError("{} of the gene caller ids you provided {} not known to the "
+                                  "structure database. {}: {}. They might exist in the contigs "
+                                  "database used to generate the structure database, but not all "
+                                  "genes in the contigs database exist in the corresponding "
+                                  "structure database :(. You can try running "
+                                  "anvi-gen-structure-database again, this time with these missing "
+                                  "genes included".format(len(unrecognized_genes),
                                                  "is" if len(unrecognized_genes) == 1 else "are",
                                                  "Here are a few of those ids" if len(some_to_report) > 1 else "Its id is",
                                                  ", ".join([str(x) for x in some_to_report])))
@@ -1867,12 +1939,12 @@ class StructureInteractive(VariabilitySuper):
             available_genes = [g for g in requested_available_genes if g not in unavailable_genes]
             if unavailable_genes:
                 some_to_report = unavailable_genes[:5] if len(unavailable_genes) <= 5 else unavailable_genes
-                run.warning("When your structure database was first generated\
-                             (anvi-gen-structure-database), anvi'o attempted--but failed--to predict\
-                             the structures for genes with the following ids: {}. Yet, these genes\
-                             are all included in your genes of interest. This is just a heads up so\
-                             that you're not surprised when these genes don't show up in your\
-                             display.".format(", ".join([str(x) for x in some_to_report])))
+                run.warning("When your structure database was first generated "
+                            "(anvi-gen-structure-database), anvi'o attempted--but failed--to predict "
+                            "the structures for genes with the following ids: {}. Yet, these genes "
+                            "are all included in your genes of interest. This is just a heads up so "
+                            "that you're not surprised when these genes don't show up in your "
+                            "display.".format(", ".join([str(x) for x in some_to_report])))
 
         else:
             available_genes = list(structure_db.genes_with_structure)
@@ -1924,12 +1996,12 @@ class StructureInteractive(VariabilitySuper):
             # check for samples that do not appear in the profile database
             unrecognized_samples = [g for g in available_samples if g not in all_sample_ids]
             if unrecognized_samples:
-                raise ConfigError("{} of the sample ids you provided are not in the variability\
-                                   table. Here they are: {}. They may exist in the profile database\
-                                   that generated the variability table\
-                                   (anvi-gen-variability-profile), but were filtered out at some\
-                                   point. Or you made a mistake, but what are the chances of\
-                                   that?".format(len(unrecognized_samples),
+                raise ConfigError("{} of the sample ids you provided are not in the variability "
+                                  "table. Here they are: {}. They may exist in the profile database "
+                                  "that generated the variability table "
+                                  "(anvi-gen-variability-profile), but were filtered out at some "
+                                  "point. Or you made a mistake, but what are the chances of "
+                                  "that?".format(len(unrecognized_samples),
                                                  ", ".join([str(x) for x in unrecognized_samples])))
 
         else:
@@ -1948,34 +2020,30 @@ class StructureInteractive(VariabilitySuper):
             raise ConfigError("Must provide a structure database.")
         utils.is_structure_db(self.structure_db_path)
 
-        if self.no_variability:
-            run.warning("Wow. Seriously? --no-variability? This is why freedom of speech needs to be\
-                         abolished.")
+        if not self.contigs_db_path:
+            raise ConfigError("Must provide a contigs database.")
+        utils.is_contigs_db(self.contigs_db_path)
 
-        elif not self.profile_db_path and not self.variability_table_path:
-            raise ConfigError("You have to provide either a variability table generated from\
-                               anvi-gen-variability-profile, or a profile and contigs database from\
-                               which sequence variability will be computed.")
+        if not self.profile_db_path and not self.variability_table_path:
+            raise ConfigError("You have to provide either a variability table generated from "
+                              "anvi-gen-variability-profile, or a profile database from "
+                              "which sequence variability will be computed.")
 
         if self.variability_table_path:
-            run.warning("You opted to work with a variability table previously generated from\
-                         anvi-gen-variability-profile. As a word of caution, keep in mind that any\
-                         filters applied when the table was generated now persist in the\
-                         following visualizations.")
+            run.warning("You opted to work with a variability table previously generated from "
+                        "anvi-gen-variability-profile. As a word of caution, keep in mind that any "
+                        "filters applied when the table was generated now persist in the "
+                        "following visualizations.")
             if not self.profile_db_path:
-                run.warning("Anvi'o offers a nice way to visualize sequence variability for\
-                             user-defined groups of samples, as opposed to individual samples.\
-                             However, these groups are defined as additional layers in the profile\
-                             database used to generate your variability table\
-                             (anvi-gen-variability-profile) which you did not provide. If you\
-                             already have these tables in your profile database, include your\
-                             profile database with the flag `-p`. If you want to create groupings,\
-                             you can read about how to create them here:\
-                             http://merenlab.org/2017/12/11/additional-data-tables/#layers-additional-data-table.")
-
-        elif self.profile_db_path and not self.contigs_db_path:
-            raise ConfigError("A contigs database must accompany your profile database. Provide one\
-                               with the flag `-c`.")
+                run.warning("Anvi'o offers a nice way to visualize sequence variability for "
+                            "user-defined groups of samples, as opposed to individual samples. "
+                            "However, these groups are defined as additional layers in the profile "
+                            "database used to generate your variability table "
+                            "(anvi-gen-variability-profile) which you did not provide. If you "
+                            "already have these tables in your profile database, include your "
+                            "profile database with the flag `-p`. If you want to create groupings, "
+                            "you can read about how to create them here: "
+                            "http://merenlab.org/2017/12/11/additional-data-tables/#layers-additional-data-table.")
 
         if self.saavs_only and self.scvs_only:
             raise ConfigError("--SAAVs-only and --SCVs-only are not compatible with one another. Pick one.")
@@ -1985,9 +2053,11 @@ class StructureInteractive(VariabilitySuper):
         """Creates self.full_variability, which houses the full variability... well, the full
            variability of all genes with structures in the structure database
         """
+        verbose, stealth = (True, False) if anvio.DEBUG else (False, True)
+
         self.progress.new("Loading full variability table"); self.progress.update("...")
-        self.full_variability = variabilityops.VariabilityData(self.args, p=terminal.Progress(verbose=False), r=terminal.Run(verbose=False))
-        self.full_variability.stealth_filtering = True
+        self.full_variability = variabilityops.VariabilityData(self.args, p=terminal.Progress(verbose=verbose), r=terminal.Run(verbose=verbose))
+        self.full_variability.stealth_filtering = stealth
         self.progress.end()
 
 
@@ -2048,11 +2118,24 @@ class StructureInteractive(VariabilitySuper):
 
 
     def get_structure(self, gene_callers_id):
-        structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
-        summary = structure_db.get_summary_for_interactive(gene_callers_id)
-        structure_db.disconnect()
+        """Calls self.profile_gene_variability_data, then returns `summary`
 
+        Returns
+        =======
+        summary : dict
+            summary has the following keys: {'pdb_content', 'residue_info', 'histograms'}
+        """
+
+        # Put the gene in self.variability_storage if it isn't already there
         self.profile_gene_variability_data(gene_callers_id)
+
+        # Build summary
+        summary = {}
+
+        structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
+        summary['pdb_content'] = structure_db.get_pdb_content(gene_callers_id)
+        summary['residue_info'] = structure_db.get_residue_info_for_gene(gene_callers_id).to_json(orient='index')
+        structure_db.disconnect()
 
         summary['histograms'] = {}
         for engine in self.available_engines:
@@ -2070,8 +2153,6 @@ class StructureInteractive(VariabilitySuper):
         self.progress.new('Filtering %s' % ('SCVs' if selected_engine == 'CDN' else 'SAAVs'), discard_previous_if_exists=True)
         output = {}
 
-        list_of_filter_functions = []
-        F = lambda f, **kwargs: (f, kwargs)
         for group in options['groups']:
             self.progress.update('Group `%s`...' % group)
             samples_in_group = options['groups'][group]
@@ -2081,26 +2162,71 @@ class StructureInteractive(VariabilitySuper):
             self.compute_merged_variability(var, column_info, samples_in_group)
             self.wrangle_merged_variability(var)
 
-            # now set all filter parameters
-            for filter_criterion, param_values in options["filter_params"].items():
-                for param_name, param_value in param_values.items():
-                    setattr(var, param_name, param_value)
-                list_of_filter_functions.append(F(var.filter_data, name='merged', criterion=filter_criterion))
-
-            # ʕ•ᴥ•ʔ
-            if options["filter_params"]:
-                # only filter when there were filter params passed
-                var.process(process_functions=list_of_filter_functions, exit_if_data_empty=False)
+            var.filter_batch_parameters(options['filter_params'], name='merged')
 
             output[group] = {
                 'data': var.merged.to_json(orient='index'),
                 'entries_after_filtering': var.merged.shape[0]
             }
 
-            list_of_filter_functions = []
-
         self.progress.end()
         return output
+
+
+    def store_variability(self, options):
+        """Store the variability currently displayed on the user's screen in a user-specified path"""
+
+        try:
+            filesnpaths.is_output_file_writable(options['path'], ok_if_exists=False)
+
+            self.progress.new('Reporting', discard_previous_if_exists=True)
+            self.progress.update('Currently viewed variants')
+
+            selected_engine = options['engine']
+            gene_callers_id = int(options['gene_callers_id'])
+
+            # prior to filtering, var starts as a copy from variability_storage
+            var = copy.deepcopy(self.variability_storage[gene_callers_id][selected_engine]['var_object'])
+            var.convert_frequencies_to_counts()
+
+            # add selected samples into the filter parameters dictionary
+            selected_samples = []
+            for group in options['groups']:
+                selected_samples.extend(options['groups'][group])
+            options["filter_params"]['sample_id'] = {'sample_ids_of_interest': set(selected_samples)}
+
+            var.filter_batch_parameters(options['filter_params'])
+
+            var.output_file_path = options['path']
+            var.report()
+
+            self.progress.end()
+
+            return {'success': 'Success! Saved to %s' % options['path']}
+
+        except Exception as e:
+            return {'failure': 'Error: %s' % e}
+
+
+    def store_structure_as_pdb(self, options):
+        """Store the structure currently displayed on the user's screen in a user-specified path"""
+
+        try:
+            filesnpaths.is_output_file_writable(options['path'], ok_if_exists=False)
+
+            self.progress.new('Storing', discard_previous_if_exists=True)
+            self.progress.update('Currently viewed structure')
+
+            gene_callers_id = int(options['gene_callers_id'])
+            structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
+            structure_db.export_pdb_content(gene_callers_id, options['path'], ok_if_exists=False)
+
+            self.progress.end()
+
+            return {'success': 'Success! Saved to %s' % options['path']}
+
+        except Exception as e:
+            return {'failure': 'Error: %s' % e}
 
 
     def get_histograms(self, var_object, column_info_list):
@@ -2119,9 +2245,10 @@ class StructureInteractive(VariabilitySuper):
 
             if column_info["as_filter"] in ["slider"]:
                 # make a number histogram
-                histogram_args = {}
-                histogram_args["range"] = (column_info["min"], column_info["max"])
-                histogram_args["bins"] = 15
+                histogram_args = {
+                    'range': (column_info["min"], column_info["max"]),
+                    'bins': 30,
+                }
                 values, bins = var_object.get_histogram(column, fix_offset=False, **histogram_args)
 
             elif column_info["as_filter"] in ["checkbox"]:
@@ -2249,8 +2376,8 @@ class ContigsInteractive():
         self.input_contig_db_paths = A('input')
 
         if not len(self.input_contig_db_paths):
-            raise ConfigError("ContigsInteractive should be inherited with an args object with a valid `input`\
-                               member. Not like the way you tried it with no input paths whatsoever :/")
+            raise ConfigError("ContigsInteractive should be inherited with an args object with a valid `input` "
+                              "member. Not like the way you tried it with no input paths whatsoever :/")
 
         for contig_db_path in self.args.input:
             self.contigs_stats[contig_db_path] = summarizer.ContigSummarizer(contig_db_path).get_summary_dict_for_assembly()
@@ -2282,6 +2409,7 @@ class ContigsInteractive():
         self.progress.update('Number of contigs ...')
         contig_lengths_for_all = [c['contig_lengths'] for c in self.contigs_stats.values()]
         X = lambda n: [len([count for count in contig_lengths_for_one if count >= n]) for contig_lengths_for_one in contig_lengths_for_all]
+        basic_stats.append(['Num Contigs > 2.5 kb'] + X(2500))
         basic_stats.append(['Num Contigs > 5 kb'] + X(5000))
         basic_stats.append(['Num Contigs > 10 kb'] + X(10000))
         basic_stats.append(['Num Contigs > 20 kb'] + X(20000))

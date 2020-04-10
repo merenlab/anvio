@@ -15,7 +15,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.migrations import migration_scripts
 
-__description__ = "Migrate an anvi\'o database to a newer version."
+__description__ = "Migrate an anvi\'o database or config file to a newer version."
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -40,18 +40,22 @@ class Migrater(object):
 
 
     def get_db_meta(self):
-        if self.db_path.split('.')[-1] not in ['db', 'h5']:
-            raise ConfigError("This program only works with files that end with `.db` extension.")
+        if not args.just_do_it and self.db_path.split('.')[-1] not in ['db', 'h5', 'json']:
+            raise ConfigError("This program only works with files that end with `.db` or `.json` extensions. "
+                              "But if you sure that, this is in fact an anvi'o database or config file "
+                              "you can use --just-do-it flag at your own risk.")
+
+        file_is_config = False
+        if args.just_do_it:
+            # check if this a config file by checking if it is a JSON formatted file
+            try:
+                filesnpaths.is_file_json_formatted(self.db_path)
+                file_is_config = True
+            except:
+                pass
 
         try:
-            if self.db_path.endswith('.db'):
-                db_conn = db.DB(self.db_path, None, ignore_version=True)
-
-                self.db_type = db_conn.get_meta_value('db_type')
-                self.db_version = int(db_conn.get_meta_value('version'))
-
-                db_conn.disconnect()
-            elif self.db_path.endswith('GENOMES.h5'):
+            if self.db_path.endswith('GENOMES.h5'):
                 utils.check_h5py_module()
                 import h5py
                 fp = h5py.File(self.db_path, 'r')
@@ -60,9 +64,21 @@ class Migrater(object):
                 self.db_version = int(fp.attrs['version'])
 
                 fp.close()
+            elif self.db_path.endswith('json') or file_is_config:
+                import anvio.workflows as w
+                self.db_type = 'config'
+                workflow_name, config_version = w.get_workflow_name_and_version_from_config(self.db_path, dont_raise=True)
+                self.db_version = int(config_version)
+            else:
+                db_conn = db.DB(self.db_path, None, ignore_version=True)
+
+                self.db_type = db_conn.get_meta_value('db_type')
+                self.db_version = int(db_conn.get_meta_value('version'))
+
+                db_conn.disconnect()
         except:
-            raise ConfigError('Are you sure "%s" is a database file? Because, you know, probably\
-                                it is not at all..' % self.db_path)
+            raise ConfigError('Are you sure "%s" is a database or config file? Because, you know, probably '
+                               'it is not at all.' % self.db_path)
 
 
     def get_target_version(self):
@@ -91,8 +107,8 @@ class Migrater(object):
             script_name = "v%s_to_v%s" % (i, i + 1)
 
             if not self.db_type in migration_scripts or not script_name in migration_scripts[self.db_type]:
-                raise ConfigError("Anvi'o can not find a migrate script required \
-                    for this operation. (DB Type: %s, Script name: %s) " % (self.db_type, script_name))
+                raise ConfigError("Anvi'o can not find a migrate script required "
+                   "for this operation. (DB Type: %s, Script name: %s) " % (self.db_type, script_name))
 
             tasks.append(script_name)
 
@@ -111,7 +127,7 @@ class Migrater(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__description__)
-    parser.add_argument('input', metavar = 'DATABASE', nargs='+', help = "Anvi'o database for migration")
+    parser.add_argument('input', metavar = 'DATABASE', nargs='+', help = "Anvi'o database or config file for migration")
     parser.add_argument('--just-do-it', default=False, action="store_true", help = "Do not bother me with warnings")
     parser.add_argument(*anvio.A('target-version'), **anvio.K('target-version'))
     args, unknown = parser.parse_known_args()

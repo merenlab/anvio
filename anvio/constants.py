@@ -4,6 +4,7 @@
 import os
 import sys
 import glob
+import numpy
 import string
 
 from collections import Counter
@@ -18,6 +19,9 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
+default_pdb_database_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/PDB.db')
+default_modeller_database_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
+default_modeller_scripts_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
 
 clustering_configs_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/clusterconfigs')
 clustering_configs = {}
@@ -69,12 +73,51 @@ max_depth_for_coverage = 60000
 distance_metric_default = 'euclidean'
 linkage_method_default = 'ward'
 
+
+# Whether a cigarstring operation consumes the read, reference, or both
+#
+#Here are the possible bam operations.
+#
+#    M       BAM_CMATCH      0
+#    I       BAM_CINS        1
+#    D       BAM_CDEL        2
+#    N       BAM_CREF_SKIP   3
+#    S       BAM_CSOFT_CLIP  4
+#    H       BAM_CHARD_CLIP  5
+#    P       BAM_CPAD        6
+#    =       BAM_CEQUAL      7
+#    X       BAM_CDIFF       8
+#
+#Notes
+#=====
+#- A description of what possible cigar operations are possible, see
+#  https://imgur.com/a/fiQZXNg, which comes from here:
+#  https://samtools.github.io/hts-specs/SAMv1.pdf
+cigar_consumption = numpy.array([
+    (1, 1),
+    (1, 0),
+    (0, 1),
+    (0, 1),
+    (1, 0),
+    (0, 0),
+    (0, 0),
+    (1, 1),
+    (1, 1),
+])
+
 # this is to have a common language across multiple modules when genomes (whether they are MAGs,
 # SAGs, or isolate genomes):
 essential_genome_info = ['gc_content', 'num_contigs', 'num_splits', 'total_length', 'num_genes', 'percent_completion', 'percent_redundancy',
                          'genes_are_called', 'avg_gene_length', 'num_genes_per_kb', ]
 
 levels_of_taxonomy = ["t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+levels_of_taxonomy_unknown = {"t_domain": 'Unknown_domains',
+                              "t_phylum": 'Unknown_phyla',
+                              "t_class": 'Unknown_classes',
+                              "t_order": 'Unknown_orders',
+                              "t_family": 'Unknown_families',
+                              "t_genus": 'Unknown_genera',
+                              "t_species": 'Unknown_species'}
 
 for run_type_and_default_config_tuples in [('single', single_default), ('merged', merged_default), ('blank', blank_default)]:
     run_type, default_config = run_type_and_default_config_tuples
@@ -95,7 +138,8 @@ allowed_chars = string.ascii_letters + string.digits + '_' + '-' + '.'
 digits = string.digits
 complements = str.maketrans('acgtrymkbdhvACGTRYMKBDHV', 'tgcayrkmvhdbTGCAYRKMVHDB')
 
-nucleotides = sorted(list('ATCG')) + ['N']
+unambiguous_nucleotides = set(list('ATCG'))
+nucleotides = sorted(list(unambiguous_nucleotides)) + ['N']
 
 WC_base_pairs = {
     'A': ('T',),
@@ -312,17 +356,20 @@ db_formatted_tRNA_feature_names = [
     'acceptor'
 ]
 
+conserved_amino_acid_groups['N'] = conserved_amino_acid_groups['Neutral Amines'] + ['B']
+conserved_amino_acid_groups['D'] = conserved_amino_acid_groups['Acids'] + ['B']
+conserved_amino_acid_groups['Q'] = conserved_amino_acid_groups['Neutral Amines'] + ['Z']
+conserved_amino_acid_groups['E'] = conserved_amino_acid_groups['Acids'] + ['Z']
+conserved_amino_acid_groups['LI'] = conserved_amino_acid_groups['Nonpolar'] + ['J']
+
+
 amino_acid_property_group = {}
-for key in ['A','I','L','V','M','C']:
+for key in ['A','V','M','C']:
     amino_acid_property_group[key] = 'Nonpolar'
 for key in ['F','W']:
     amino_acid_property_group[key] = 'Aromatic'
 for key in ['K','R']:
     amino_acid_property_group[key] = 'Bases'
-for key in ['Q', 'N']:
-    amino_acid_property_group[key] = 'Neutral Amines'
-for key in ['D','E']:
-    amino_acid_property_group[key] = 'Acids'
 for key in ['H','Y']:
     amino_acid_property_group[key] = 'Polar and Nonpolar'
 for key in ['S','T']:
@@ -332,6 +379,12 @@ for key in ['G','P','X']:
 amino_acid_property_group['B'] = 'B'
 amino_acid_property_group['Z'] = 'Z'
 amino_acid_property_group['J'] = 'J'
+amino_acid_property_group['N'] = 'N'
+amino_acid_property_group['D'] = 'D'
+amino_acid_property_group['Q'] = 'Q'
+amino_acid_property_group['E'] = 'E'
+amino_acid_property_group['L'] = 'LI'
+amino_acid_property_group['I'] = 'LI'
 
 codons = sorted(list(set(codon_to_AA.keys())))
 coding_codons = [x for x in codons if codon_to_AA[x] != "STP"]
@@ -352,3 +405,41 @@ def get_pretty_name(key):
         return pretty_names[key]
     else:
         return key
+
+
+def get_nt_to_num_lookup(d):
+    D = {order: ord(nt) for nt, order in d.items()}
+    lookup = 5 * numpy.ones(max(D.values()) + 1, dtype=numpy.uint8)
+
+    for order, num in D.items():
+        lookup[num] = order
+
+    return lookup
+
+
+def get_codon_to_num_lookup(reverse_complement=False):
+    nts = sorted(list(unambiguous_nucleotides))
+    as_ints = [ord(nt) for nt in nts]
+
+    size = max(as_ints) + 1
+    lookup = 64 * numpy.ones((size, size, size), dtype=numpy.uint8)
+
+    num_to_codon = dict(enumerate(codons))
+    if reverse_complement:
+        num_to_codon = {k: codon_to_codon_RC[codon] for k, codon in num_to_codon.items()}
+
+    D = {tuple([ord(nt) for nt in codon]): k for k, codon in num_to_codon.items()}
+
+    for a in as_ints:
+        for b in as_ints:
+            for c in as_ints:
+                lookup[a, b, c] = D[(a, b, c)]
+
+    return lookup
+
+
+# See utils.nt_seq_to_codon_num_array etc. for utilization of these lookup arrays
+nt_to_num_lookup = get_nt_to_num_lookup({'A': 0, 'C': 1, 'G': 2, 'T': 3, 'N': 4})
+nt_to_RC_num_lookup = get_nt_to_num_lookup({'A': 3, 'C': 2, 'G': 1, 'T': 0, 'N': 4})
+codon_to_num_lookup = get_codon_to_num_lookup(reverse_complement=False)
+codon_to_RC_num_lookup = get_codon_to_num_lookup(reverse_complement=True)

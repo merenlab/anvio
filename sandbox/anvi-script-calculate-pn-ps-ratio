@@ -41,7 +41,7 @@ progress = terminal.Progress()
 run = terminal.Run()
 
 
-def load_variability(args):
+def load_variability(args, contigs_db):
     progress.new("Loading variability")
     var_dict = {}
     columns_to_keep = ['corresponding_gene_call', 'sample_id', 'engine']
@@ -72,7 +72,19 @@ def load_variability(args):
     # concat the two engine-specific dataframes into a master dataframe
     df = pd.concat([var_dict['CDN'].data, var_dict['AA'].data], ignore_index=True)
 
+    # identify gene calls that are partial
+    gene_caller_ids_for_partial_gene_calls = [g for g in df['corresponding_gene_call'].unique() if contigs_db.genes_in_contigs_dict[g]['partial']]
+
+
+    if gene_caller_ids_for_partial_gene_calls:
+        df.drop(df[df['corresponding_gene_call'].isin(gene_caller_ids_for_partial_gene_calls)].index, inplace=True)
+
+        progress.reset()
+        run.warning("%d of your gene calls were 'partial', and were removed from downstream analyses. Here is the complete list of "
+                    "gene calls that were removed: '%s'." % (len(gene_caller_ids_for_partial_gene_calls), ', '.join([str(g) for g in gene_caller_ids_for_partial_gene_calls])))
+
     progress.end()
+
     return df
 
 
@@ -101,10 +113,10 @@ def calculate_pN_pS_ratio(args):
 
     # load contigs db and variability tables
     contigs_db = load_contigs_db(args)
-    var_dataframe = load_variability(args)
+    var_dataframe = load_variability(args, contigs_db)
 
     # only genes and samples that are have at least one SCV / SAAV are known to the program
-    genes = var_dataframe['corresponding_gene_call'].unique()
+    gene_caller_ids = var_dataframe['corresponding_gene_call'].unique()
     samples = var_dataframe['sample_id'].unique()
 
     # creation of SAAV count table, sSCV count table, and SAAV_to_sSCV ratio table
@@ -113,8 +125,8 @@ def calculate_pN_pS_ratio(args):
     sSCV = {sample: [] for sample in samples}
     SAAV_to_sSCV = {sample: [] for sample in samples}
     progress.new("Calculating SAAV and sSCV counts")
-    for gene in genes:
-        temp = var_dataframe[var_dataframe['corresponding_gene_call'] == gene]
+    for gene_callers_id in gene_caller_ids:
+        temp = var_dataframe[var_dataframe['corresponding_gene_call'] == gene_callers_id]
         for sample in samples:
             counts = temp.loc[temp['sample_id'] == sample, 'engine'].value_counts()
 
@@ -127,22 +139,34 @@ def calculate_pN_pS_ratio(args):
                     SAAV_to_sSCV[sample].append(counts.get('AA', 0) / (counts['CDN'] - counts.get('AA', 0)))
 
         if i % 100 == 0:
-            progress.update('Processed {} of {} genes.'.format(i, len(genes)))
+            progress.update('Processed {} of {} genes.'.format(i, len(gene_caller_ids)))
         i += 1
     progress.end()
 
     # make tables dataframes
-    sSCV = pd.DataFrame(sSCV); sSCV.index = genes
-    SAAV = pd.DataFrame(SAAV); SAAV.index = genes
-    SAAV_to_sSCV = pd.DataFrame(SAAV_to_sSCV); SAAV_to_sSCV.index = genes
+    sSCV = pd.DataFrame(sSCV); sSCV.index = gene_caller_ids
+    SAAV = pd.DataFrame(SAAV); SAAV.index = gene_caller_ids
+    SAAV_to_sSCV = pd.DataFrame(SAAV_to_sSCV); SAAV_to_sSCV.index = gene_caller_ids
 
     # calc potential synonymity for each gene
-    potential_synonymity_ratio = np.zeros(len(genes))
-    for i, gene in enumerate(genes):
-        gene_call = contigs_db.genes_in_contigs_dict[gene]
+    potential_synonymity_ratio = np.zeros(len(gene_caller_ids))
+    total_ambiguous_codons = 0
+    for i, gene_callers_id in enumerate(gene_caller_ids):
+        gene_call = contigs_db.genes_in_contigs_dict[gene_callers_id]
+
         codon_list_for_gene = utils.get_list_of_codons_for_gene_call(gene_call, contigs_db.contig_sequences)
-        syn_potential, non_syn_potential = utils.get_synonymous_and_non_synonymous_potential(codon_list_for_gene)
+        syn_potential, non_syn_potential, num_ambiguous_codons = utils.get_synonymous_and_non_synonymous_potential(codon_list_for_gene)
+
+        # we are adding the number of codons in this gene that were not included
+        # in the calculations above as they included ambiguous nucleotides
+        total_ambiguous_codons += num_ambiguous_codons
+
         potential_synonymity_ratio[i] = syn_potential / non_syn_potential
+
+    if total_ambiguous_codons:
+        run.warning("Please note that %d codons among your %d genes included nucleotides "
+                    "that were not unambiguous (i.e., 'N's or any other bases than A, T, "
+                    "C, or G) and were excluded from synonymity calculations." % (total_ambiguous_codons, len(gene_caller_ids)))
 
     # normalize the SAAV_to_sSCV ratio by the potential synonymity ratio to make pN/pS
     pNpS = SAAV_to_sSCV.multiply(potential_synonymity_ratio, axis=0)

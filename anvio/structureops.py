@@ -5,18 +5,21 @@
 
 import os
 import time
-import shutil
 import numpy as np
+import shutil
 import pandas as pd
+import sqlite3
+import warnings
+import datetime
+import multiprocessing
 
-from Bio.PDB import DSSP
-from Bio.PDB import PDBParser
+from Bio.PDB import DSSP, PDBParser
 
 import anvio
 import anvio.db as db
-import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
+import anvio.tables as t
 import anvio.fastalib as u
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -26,27 +29,22 @@ import anvio.drivers.MODELLER as MODELLER
 from anvio.errors import ConfigError
 from anvio.dbops import ContigsSuperclass
 
+J = lambda x, y: os.path.join(x, y)
+
+from Bio.PDB.PDBExceptions import PDBConstructionWarning
+warnings.simplefilter(action='ignore', category=PDBConstructionWarning)
 
 class StructureDatabase(object):
-    def __init__(self,
-                 file_path,
-                 db_hash=None,
-                 residue_info_structure_extras=[],
-                 residue_info_types_extras=[],
-                 create_new=False,
-                 ignore_hash=False,
-                 run=terminal.Run(),
-                 progress=terminal.Progress(),
-                 quiet=False):
+    """Structure database operations"""
 
-        self.db_type     = 'structure'
-        self.db_hash     = str(db_hash)
-        self.version     = anvio.__structure__version__
-        self.file_path   = file_path
-        self.quiet       = quiet
-        self.run         = run
-        self.progress    = progress
-        self.table_names = None
+    def __init__(self, file_path, db_hash=None, create_new=False, ignore_hash=False, run=terminal.Run(), progress=terminal.Progress(), quiet=False):
+        self.db_type = 'structure'
+        self.db_hash = str(db_hash)
+        self.version = anvio.__structure__version__
+        self.file_path = file_path
+        self.quiet = quiet
+        self.run = run
+        self.progress = progress
         self.create_new = create_new
 
         if not db_hash and create_new:
@@ -55,20 +53,20 @@ class StructureDatabase(object):
         self.db = db.DB(self.file_path, self.version, new_database = create_new)
 
         if create_new:
-            # structure of the residue info table depend on residue annotation sources used
-            self.residue_info_structure, self.residue_info_types = self.get_residue_info_table_structure(residue_info_structure_extras, residue_info_types_extras)
-            self.table_names = self.create_tables()
+            self.create_tables()
+            self.genes_with_structure = set([])
+            self.genes_without_structure = set([])
+            self.genes_queried = set([])
         else:
             self.db_hash = str(self.db.get_meta_value('contigs_db_hash'))
-
-            self.genes_with_structure = [int(x) for x in self.db.get_meta_value('genes_with_structure', try_as_type_int=False).split(',') if not x == '']
-            self.genes_without_structure = [int(x) for x in self.db.get_meta_value('genes_without_structure', try_as_type_int=False).split(',') if not x == '']
-            self.genes_queried = self.genes_with_structure + self.genes_without_structure
+            self.genes_with_structure = self.get_genes_with_structure()
+            self.genes_without_structure = self.get_genes_without_structure()
+            self.genes_queried = self.get_genes_queried()
 
             if not len(self.genes_queried):
-                raise ConfigError("Interesting...  this structure database has no gene caller ids. I'm\
-                                   not sure how you managed that. please send a report to the\
-                                   developers. Thank you.")
+                raise ConfigError("Interesting... This structure database has no gene caller ids. Anvi'o is"
+                                  "not sure how you managed that. please send a report to the "
+                                  "developers. Thank you.")
 
         if not ignore_hash:
             self.check_hash()
@@ -76,29 +74,62 @@ class StructureDatabase(object):
         # entries initialized as empty list are added with insert_many()
         # entries initialized as empty DataFrame are added with insert_rows_from_dataframe()
         self.entries = {
-            t.structure_pdb_data_table_name     : [],
-            t.structure_residue_info_table_name : pd.DataFrame({}),
-            t.structure_templates_table_name    : pd.DataFrame({}),
-            t.structure_models_table_name       : pd.DataFrame({}),
-            }
+            t.pdb_data_table_name : [],
+            t.residue_info_table_name : pd.DataFrame({}),
+            t.templates_table_name : pd.DataFrame({}),
+            t.models_table_name : pd.DataFrame({}),
+        }
 
 
-    def get_residue_info_table_structure(self, residue_info_structure_extras, residue_info_types_extras):
+    def get_run_params_dict(self):
+        """Return dictionary containing all pertinent run parameters that were used during the creation of this DB"""
+
+        run_params_dict = {}
+
+        run_params_dict['modeller_database'] = self.db.get_meta_value('modeller_database', try_as_type_int=False)
+        run_params_dict['scoring_method'] = self.db.get_meta_value('scoring_method', try_as_type_int=False)
+        run_params_dict['percent_identical_cutoff'] = float(self.db.get_meta_value('percent_identical_cutoff', try_as_type_int=False))
+        run_params_dict['very_fast'] = bool(self.db.get_meta_value('very_fast', try_as_type_int=True))
+        run_params_dict['deviation'] = float(self.db.get_meta_value('deviation', try_as_type_int=False))
+        run_params_dict['max_number_templates'] = self.db.get_meta_value('max_number_templates', try_as_type_int=True)
+        run_params_dict['num_models'] = self.db.get_meta_value('num_models', try_as_type_int=True)
+        run_params_dict['skip_DSSP'] = bool(self.db.get_meta_value('skip_DSSP', try_as_type_int=True))
+
+        return run_params_dict
+
+
+    def get_genes_with_structure(self):
+        """Returns set of gene caller ids that have a structure in the DB, queried from self table"""
+
+        return set([int(x) for x in self.db.get_meta_value('genes_with_structure', try_as_type_int=False).split(',') if not x == ''])
+
+
+    def get_genes_without_structure(self):
+        """Returns set of gene caller ids that failed to generate a structure, queried from self table"""
+
+        return set([int(x) for x in self.db.get_meta_value('genes_without_structure', try_as_type_int=False).split(',') if not x == ''])
+
+
+    def get_genes_queried(self):
+        """Returns set of all gene caller ids that structures were attempted for, regardless of success or failure
+
+        Queried from self table
+
+        Notes
+        =====
+        - FIXME This inefficiency could pose problems in 2030 when we have structure dbs with
+          millions of structures
         """
-        The structure (i.e. column numbers and labels) of the residue_info table depend on
-        residue annotation sources used, and are taken from residue_info_structure_extras.
-        """
-        # If residue_info_structure_extras was sloppily passed to this class, it may have
-        # some items already in t.structure_residue_info_table_name. So we delete them if they exist
-        indices_to_del = [residue_info_structure_extras.index(x) for x in residue_info_structure_extras \
-                                                                     if x in t.structure_residue_info_table_structure]
-        for index in indices_to_del:
-            del residue_info_structure_extras[index]
-            del residue_info_types_extras[index]
 
-        residue_info_structure = t.structure_residue_info_table_structure + residue_info_structure_extras
-        residue_info_types = t.structure_residue_info_table_types + residue_info_types_extras
-        return residue_info_structure, residue_info_types
+        return self.get_genes_with_structure() | self.get_genes_without_structure()
+
+
+    def update_genes_with_and_without_structure(self):
+        """Writes genes_queried, genes_with_structure, and genes_without_structure entries in self table"""
+
+        self.db.set_meta_value('genes_queried', ",".join(str(g) for g in self.genes_queried))
+        self.db.set_meta_value('genes_with_structure', ",".join(str(g) for g in self.genes_with_structure))
+        self.db.set_meta_value('genes_without_structure', ",".join(str(g) for g in self.genes_without_structure))
 
 
     def create_tables(self):
@@ -106,17 +137,32 @@ class StructureDatabase(object):
         self.db.set_meta_value('contigs_db_hash', self.db_hash)
         self.db.set_meta_value('creation_date', time.time())
 
-        self.db.create_table(t.structure_pdb_data_table_name, t.structure_pdb_data_table_structure, t.structure_pdb_data_table_types)
-        self.db.create_table(t.structure_templates_table_name, t.structure_templates_table_structure, t.structure_templates_table_types)
-        self.db.create_table(t.structure_models_table_name, t.structure_models_table_structure, t.structure_models_table_types)
-        self.db.create_table(t.structure_residue_info_table_name, self.residue_info_structure, self.residue_info_types)
+        self.db.create_table(t.pdb_data_table_name, t.pdb_data_table_structure, t.pdb_data_table_types)
+        self.db.create_table(t.templates_table_name, t.templates_table_structure, t.templates_table_types)
+        self.db.create_table(t.models_table_name, t.models_table_structure, t.models_table_types)
+        self.db.create_table(t.residue_info_table_name, t.residue_info_table_structure, t.residue_info_table_types)
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
 
-        table_names = [t.structure_pdb_data_table_name,
-                       t.structure_templates_table_name,
-                       t.structure_models_table_name,
-                       t.structure_residue_info_table_name]
-        return table_names
+
+    def store_modeller_params(self, modeller_params):
+        """Store all run parameters in the self table
+
+        Parameters
+        ==========
+        modeller_params : dict
+            For e.g. {
+                'modeller_database': 'pdb_95',
+                'scoring_method': 'DOPE_score',
+                'max_number_templates': 5,
+                'percent_identical_cutoff': 30,
+                'num_models': 1,
+                'deviation': 4.0,
+                'very_fast': True
+            }
+        """
+
+        for param, value in modeller_params.items():
+            self.db.set_meta_value(param, value)
 
 
     def check_hash(self):
@@ -127,6 +173,8 @@ class StructureDatabase(object):
 
 
     def store(self, table_name, key=None):
+        """Stores entries placed in self.entries[table_name], then empties self.entries[table_name]"""
+
         rows_data = self.entries[table_name]
 
         if type(rows_data) == list:
@@ -141,244 +189,276 @@ class StructureDatabase(object):
             raise ConfigError("store :: rows_data must be either a list of tuples or a pandas dataframe.")
 
 
+    def remove_gene(self, corresponding_gene_call, remove_from_self=True):
+        """Remove a gene from the structure database"""
+
+        # Remove from tables
+        self.db.remove_some_rows_from_table(
+            t.residue_info_table_name,
+            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+        )
+        self.db.remove_some_rows_from_table(
+            t.templates_table_name,
+            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+        )
+        self.db.remove_some_rows_from_table(
+            t.models_table_name,
+            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+        )
+
+        if remove_from_self:
+            # Remove from self entries
+            self.genes_queried.remove(corresponding_gene_call)
+            self.genes_with_structure.remove(corresponding_gene_call)
+            self.update_genes_with_and_without_structure()
+
+
     def get_pdb_content(self, corresponding_gene_call):
+        """Returns the file content (as a string) of a pdb for a given gene"""
+
         if not corresponding_gene_call in self.genes_with_structure:
             raise ConfigError('The gene caller id {} was not found in the structure database :('.format(corresponding_gene_call))
 
-        return self.db.get_single_column_from_table(t.structure_pdb_data_table_name,
-            'pdb_content', where_clause="corresponding_gene_call = %d" % corresponding_gene_call)[0].decode('utf-8')
+        return self.db.get_single_column_from_table(
+            t.pdb_data_table_name,
+            'pdb_content',
+            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+        )[0].decode('utf-8')
 
 
     def export_pdb_content(self, corresponding_gene_call, filepath, ok_if_exists=False):
+        """Export the pdb of a gene to a filepath"""
+
         if filesnpaths.is_output_file_writable(filepath, ok_if_exists=ok_if_exists):
             pdb_content = self.get_pdb_content(corresponding_gene_call)
             with open(filepath, 'w') as f:
                 f.write(pdb_content)
 
 
-    def get_summary_for_interactive(self, corresponding_gene_call):
-        summary = {}
-        summary['pdb_content'] = self.get_pdb_content(corresponding_gene_call)
-        summary['residue_info'] = self.db.get_table_as_dataframe(t.structure_residue_info_table_name,
-            where_clause = "corresponding_gene_call = %d" % corresponding_gene_call).to_json(orient='index')
+    def export_pdbs(self, genes_of_interest, output_dir, ok_if_exists=False):
+        """Exports the pdbs of a collection of genes to an output dir (calls self.export_pdb_content)"""
 
-        return summary
+        filesnpaths.check_output_directory(output_dir, ok_if_exists=ok_if_exists)
+        filesnpaths.gen_output_directory(output_dir)
+
+        for i, gene in enumerate(genes_of_interest):
+            file_path = os.path.join(output_dir, 'gene_{}.pdb'.format(gene))
+            self.export_pdb_content(gene, file_path, ok_if_exists=ok_if_exists)
+
+        self.run.info('PDB file output', output_dir)
+
+
+    def get_residue_info_for_gene(self, corresponding_gene_call, drop_null=True):
+        """Get residue info for gene as a dataframe
+
+        Parameters
+        ==========
+        drop_null : bool, True
+            Drop columns that have all null values.
+        """
+
+        return self.db.get_table_as_dataframe(
+            table_name=t.residue_info_table_name,
+            where_clause="corresponding_gene_call = %d" % corresponding_gene_call,
+            drop_if_null=drop_null,
+        )
+
+
+    def get_residue_info_for_all(self, drop_null=True):
+        """Get the full residue info table as a dataframe
+
+        Parameters
+        ==========
+        drop_null : bool, True
+            Drop columns that have all null values.
+        """
+
+        return self.db.get_table_as_dataframe(
+            table_name=t.residue_info_table_name,
+            drop_if_null=drop_null,
+        )
 
 
     def disconnect(self):
         self.db.disconnect()
 
 
-class Structure(object):
+class StructureSuperclass(object):
+    """Structure operations
 
-    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+    Parameters
+    ==========
+    args : argparse.Namespace
+
+    create : bool, False
+        Whether or not the structure DB is going to be made or not. If False, it should already
+        exist
+    """
+
+    def __init__(self, args, create=False, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
+        self.create = create
         self.run = run
         self.progress = progress
 
-        # initialize self.arg parameters
-        A                             = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
-        null                          = lambda x: x
-        self.contigs_db_path          = A('contigs_db', null)
-        self.genes_of_interest_path   = A('genes_of_interest', null)
-        self.splits_of_interest_path  = A('splits_of_interest', null)
-        self.bin_id                   = A('bin_id', null)
-        self.collection_name          = A('collection_name', null)
-        self.gene_caller_ids          = A('gene_caller_ids', null)
-        self.output_db_path           = A('output_db_path', null)
-        self.full_modeller_output     = A('dump_dir', null)
-        self.skip_DSSP                = A('skip_DSSP', bool)
-        self.modeller_executable      = A('modeller_executable', null)
-        self.DSSP_executable          = None
+        A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
+        null = lambda x: x
+
+        self.contigs_db_path = A('contigs_db', null)
+        self.structure_db_path = A('structure_db', null)
+        self.modeller_executable = A('modeller_executable', null)
+        self.list_modeller_params = A('list_modeller_params', null)
+        self.full_modeller_output = A('dump_dir', null)
+
+        self.num_threads = A('num_threads', int)
+        self.queue_size = self.num_threads * 2
+        self.write_buffer_size = self.num_threads * A('write_buffer_size_per_thread', int)
+
+        self.genes_of_interest_path = A('genes_of_interest', null)
+        self.gene_caller_ids = A('gene_caller_ids', null)
+        self.rerun_genes = A('rerun_genes', null)
+        self.splits_of_interest_path = A('splits_of_interest', null)
+        self.bin_id = A('bin_id', null)
+        self.collection_name = A('collection_name', null)
 
         utils.is_contigs_db(self.contigs_db_path)
-        self.contigs_db                = dbops.ContigsDatabase(self.contigs_db_path)
-        self.contigs_db_hash           = self.contigs_db.meta['contigs_db_hash']
+        self.contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
+        self.contigs_db_hash = self.contigs_db.meta['contigs_db_hash']
 
-        # MODELLER params
-        self.modeller_database        = A('modeller_database', null)
-        self.scoring_method           = A('scoring_method', null)
-        self.max_number_templates     = A('max_number_templates', null)
-        self.percent_identical_cutoff = A('percent_identical_cutoff', null)
-        self.num_models               = A('num_models', null)
-        self.deviation                = A('deviation', null)
-        self.very_fast                = A('very_fast', bool)
+        # init ContigsSuperClass
+        self.contigs_super = ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
-        # check database output
-        if not self.output_db_path:
-            self.output_db_path = "STRUCTURE.db"
-        if not self.output_db_path.endswith('.db'):
-            raise ConfigError("The structure database output file (`-o / --output`) must end with '.db'")
-        filesnpaths.is_output_file_writable(self.output_db_path)
+        if self.create:
+            # check database output
+            if not self.structure_db_path:
+                self.structure_db_path = "STRUCTURE.db"
+            if not self.structure_db_path.endswith('.db'):
+                raise ConfigError("The structure database output file (`-o / --output`) must end with '.db'")
+            if filesnpaths.is_file_exists(self.structure_db_path, dont_raise=True):
+                raise ConfigError("This structure DB already exists. Anvi'o will not overwrite")
 
-        # check modeller output
-        if self.full_modeller_output:
-            self.full_modeller_output = filesnpaths.check_output_directory(self.full_modeller_output, ok_if_exists=False)
+            filesnpaths.is_output_file_writable(self.structure_db_path)
 
-        # identify which genes user wants to model structures for
-        self.genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
+        # init StructureDatabase
+        self.structure_db = StructureDatabase(self.structure_db_path, self.contigs_db_hash, create_new=create)
 
-        # residue annotation
-        self.residue_annotation_sources_info = self.get_residue_annotation_sources_info()
-        self.residue_info_table_structure, self.residue_info_table_types = self.get_residue_info_table_structure()
-        self.residue_annotation_df = pd.DataFrame({})
+        if self.list_modeller_params:
+            params_dict = self.structure_db.get_run_params_dict()
+            for param, value in params_dict.items():
+                self.run.info(param, value)
+            import sys; sys.exit()
+
+        # Determine the modeller parameters and store in db
+        # NOTE self.skip_DSSP is down here because get_modeller_params has the potential to
+        # overwrite self.args.skip_DSSP if create=False
+        self.modeller_params = self.get_modeller_params()
+        self.skip_DSSP = A('skip_DSSP', bool)
+
+        if self.create:
+            self.structure_db.store_modeller_params(self.modeller_params)
+            self.structure_db.db.set_meta_value('skip_DSSP', self.skip_DSSP)
+
+        # init annotation sources
+        self.contactmap = ContactMap()
+        self.dssp = DSSPClass(skip_sanity_check=self.skip_DSSP) # If we skip DSSP, skip sanity_check
 
         self.sanity_check()
 
-        # initialize StructureDatabase
-        self.structure_db = StructureDatabase(self.output_db_path,
-                                              self.contigs_db_hash,
-                                              residue_info_structure_extras = self.residue_info_table_structure,
-                                              residue_info_types_extras = self.residue_info_table_types,
-                                              create_new=True)
 
-        # init ContigsSuperClass
-        self.contigs_super = ContigsSuperclass(self.args)
+    def get_modeller_params(self):
+        """Parses self.args to return dictionary of modeller parameters
 
+        Returns
+        =======
+        output : dict
 
-    def get_residue_info_table_structure(self):
+        Notes
+        =====
+        - If self.create=False, parameters in self.args accessed by this function are first set via
+          self.set_prior_modeller_params
         """
-        Table structure is dependent on which residue annotation sources are available or of interest.
-        That's why it is defined on the fly when db is created. To generate on the fly, the columns
-        from each source are added, but only if skip=False for the residue annotation source.  codon_order_in_gene
-        is ignored Since it is common to each residue annotation source and is already present in
-        t.structure_residue_info_table_structure.
-        """
-        structure = []
-        types = []
 
-        for source, info in self.residue_annotation_sources_info.items():
-            if not info["skip"] and info.get("structure"):
-                d = {k: v for k, v in info["structure"].items() if k != "codon_order_in_gene"}
-                structure.extend([x for x in d.keys()])
-                types.extend([d[y] for y in d.keys()])
-        return structure, types
+        if not self.create:
+            # Populates attributes of self.args based on metavalues in database
+            self.set_prior_modeller_params()
+
+        A = lambda x, t: t(self.args.__dict__[x]) if x in self.args.__dict__ else None
+        null = lambda x: x
+
+        return {
+            'modeller_database': A('modeller_database', null),
+            'scoring_method': A('scoring_method', null),
+            'max_number_templates': A('max_number_templates', null),
+            'percent_identical_cutoff': A('percent_identical_cutoff', null),
+            'num_models': A('num_models', null),
+            'deviation': A('deviation', null),
+            'very_fast': A('very_fast', bool),
+        }
 
 
-    def get_residue_annotation_sources_info(self):
+    def set_prior_modeller_params(self):
+        """Add the previous run parameters used during database creation into self.args
+
+        If the class is initiated with create=False, it means that the user is going to modify the
+        currently existing database, probably by running modeller. To ensure consistency between
+        parameters used during creation and during modification, the previously used run parameters
+        are determined from the structure database here and then set as arguments to self.args.
         """
-        The residue_annotation_sources_info is a dictionary spelling out all column names relevant to each
-        annotation source, the method which returns the annotation dataframe, and the boolean
-        stating whether or not the annotation source will be called. Those without a `structure` key
-        are necessarily run and the columns they produce are statically present in
-        t.structure_residue_info_table_structure
-        """
-        residue_annotation_sources_info = {
-            "DSSP": {
-                "method"    : self.run_DSSP,
-                "skip"      : self.skip_DSSP,
-                "structure" : dict(zip(t.residue_info_sources["DSSP"]["structure"],
-                                       t.residue_info_sources["DSSP"]["types"]))
-                },
-            "contact_map": {
-                "method"    : self.run_contact_map,
-                "skip"      : False,
-                },
-            "residue_identities": {
-                "method"    : self.run_residue_identity_annotation,
-                "skip"      : False,
-                },
-            }
-        return residue_annotation_sources_info
+
+        run_params_dict = self.structure_db.get_run_params_dict()
+        for param, value in run_params_dict.items():
+            setattr(self.args, param, value)
 
 
     def sanity_check(self):
-
-        # check for genes that do not appear in the contigs database
-        bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.genes_in_contigs_database]
-        if bad_gene_caller_ids:
-            raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else \
-                               "These gene caller ids you provided are") + " not known to this contigs database: {}.\
-                               You have only 2 lives left. 2 more mistakes, and anvi'o will automatically uninstall \
-                               itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
-
-        # Finally, raise warning if number of genes is greater than 20
-        if len(self.genes_of_interest) > 20:
-            self.run.warning("Modelling protein structures is no joke. The number of genes you want protein structures for is \
-                              {}, which is a lot (of time!). If its taking too long, consider using the --very-fast flag. \
-                              CTRL + C to cancel.".format(len(self.genes_of_interest)))
-
         # if self.percent_identical_cutoff is < 25, you should be careful about accuracy of models
-        if self.percent_identical_cutoff < 25:
-            self.run.warning("You selected a percent identical cutoff of {}%. Below 25%, you should pay close attention \
-                              to the quality of the proteins...".format(self.percent_identical_cutoff))
+        if self.modeller_params['percent_identical_cutoff'] < 25:
+            self.run.warning("You selected a percent identical cutoff of {}%. Below 25%, you should pay close attention "
+                             "to the quality of the proteins... Keep in mind random sequence are expected to share "
+                             "around 10% identity.".format(self.modeller_params['percent_identical_cutoff']))
 
-        # check that DSSP exists and works
         if self.skip_DSSP:
-            self.run.warning("You requested to skip amino acid residue annotation with DSSP. A bold move only an expert could justify... \
-                              Anvi'o's respect for you increases slightly.")
+            self.run.warning("It was requested that amino acid residue annotation with DSSP be skipped. A bold move only "
+                             "an expert could justify... Anvi'o's respect for you increases slightly.")
 
-        else:
-            if utils.is_program_exists("mkdssp", dont_raise=True): # mkdssp is newer and preferred
-                self.DSSP_executable = "mkdssp"
+        # Perform a rather extensive check on whether the MODELLER executable is going to work. We
+        # do this here so we can initiate MODELLER.MODELLER with lazy_init so it does not do this
+        # check every time
+        self.args.modeller_executable = MODELLER.check_MODELLER(self.modeller_executable)
+        self.modeller_executable = self.args.modeller_executable
+        self.run.info_single("Anvi'o found the MODELLER executable %s, so will use it" % self.modeller_executable, nl_after=1, mc='green')
 
-            if not self.DSSP_executable:
-                if utils.is_program_exists("dssp", dont_raise=True):
-                    self.DSSP_executable = "dssp"
-                else:
-                    raise ConfigError("An anvi'o function needs 'mkdssp' or 'dssp' to be installed on your system, but\
-                                       neither seem to appear in your path :/ If you are certain you have either on your\
-                                       system (for instance you can run either by typing 'mkdssp' or 'dssp' in your terminal\
-                                       window), you may want to send a detailed bug report. If you want to install DSSP,\
-                                       check out http://merenlab.org/2016/06/18/installing-third-party-software/#dssp.\
-                                       If you want to skip secondary structure and solvent accessibility annotation,\
-                                       provide the flag --skip-DSSP.")
-
-            self.run.info_single("Anvi'o found the DSSP executable `%s`, and will use it."\
-                                  % self.DSSP_executable, nl_before=1, nl_after=1)
-            self.is_executable_a_working_DSSP_program()
+        # Check and populate modeller databases if required
+        self.progress.new("MODELLER")
+        self.progress.update("Populating databases")
+        MODELLER.MODELLER(self.args, filesnpaths.get_temp_file_path(), check_db_only=True)
+        self.progress.end()
 
 
-    def is_executable_a_working_DSSP_program(self):
-        test_input = os.path.join(os.path.dirname(anvio.__file__), 'tests/sandbox/mock_data_for_structure/STRUCTURES/0.pdb')
+    def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None, raise_if_none=False):
+        """Nabs the genes of interest based on genes_of_interest_path and gene_caller_ids
 
-        p = PDBParser()
-        test_structure = p.get_structure('test', test_input)
-        test_model = test_structure[0] # pdb files can have multiple models. DSSP assumes the first.
+        If no genes of interest are provided through either genes_of_interest_path or
+        gene_caller_ids, all will be assumed
 
-        # run DSSP
-        try:
-            test_residue_annotation = DSSP(test_model, test_input, dssp = self.DSSP_executable, acc_array = "Wilke")
-        except Exception as e:
-            raise ConfigError('Your executable of DSSP, `{}`, doesn\'t appear to be working. For information on how to test\
-                               that your version is working correctly, please visit\
-                               http://merenlab.org/2016/06/18/installing-third-party-software/#dssp'\
-                               .format(self.DSSP_executable))
-
-        if not len(test_residue_annotation.keys()):
-            raise ConfigError("Your executable of DSSP, `{}`, exists but didn't return any meaningful output. This\
-                               is a known issue with certain distributions of DSSP. For information on how to test\
-                               that your version is working correctly, please visit\
-                               http://merenlab.org/2016/06/18/installing-third-party-software/#dssp"\
-                               .format(self.DSSP_executable))
-
-        try:
-            self.convert_DSSP_output_from_biopython_to_dataframe(test_residue_annotation)
-        except:
-            import pickle
-            with open('troubleshoot_DDSP_output.pickle', 'wb') as output:
-                pickle.dump(test_residue_annotation, output, pickle.HIGHEST_PROTOCOL)
-            raise ConfigError('Your executable of DSSP ran and produced an output, but anvi\'o wasn\'t able to correctly parse it.\
-                               This is probably our fault. In your working directory should exist a file named "troubleshoot_DDSP_output.pickle".\
-                               Please send this to an anvio developer so that we can help identify what went wrong.')
-
-
-    def get_genes_of_interest(self, genes_of_interest_path=None, gene_caller_ids=None):
+        Parameters
+        ==========
+        raise_if_none : bool, False
+            If True, an error will be raised if genes_of_interest_path and gene_caller_ids are both None
         """
-        nabs the genes of interest based on user arguments (self.args)
-        """
+
         genes_of_interest = None
 
         # identify the gene caller ids of all genes available
-        self.genes_in_contigs_database = set(dbops.ContigsSuperclass(self.args).genes_in_splits.keys())
+        genes_in_contigs_database = set(self.contigs_super.genes_in_contigs_dict.keys())
 
-        if not self.genes_in_contigs_database:
+        if not genes_in_contigs_database:
             raise ConfigError("This contigs database does not contain any identified genes...")
 
         # settling genes of interest
         if genes_of_interest_path and gene_caller_ids:
-            raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids\
-                               as a file at the same time, obviously.")
+            raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids "
+                              "as a file at the same time, obviously.")
 
         if gene_caller_ids:
             gene_caller_ids = set([x.strip() for x in gene_caller_ids.split(',')])
@@ -398,126 +478,321 @@ class Structure(object):
             try:
                 genes_of_interest = set([int(s.strip()) for s in open(genes_of_interest_path).readlines()])
             except ValueError:
-                raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... those gene IDs did not\
-                                   look like anvi'o gene caller ids :/ Anvi'o is now sad.")
+                raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... those gene IDs did not "
+                                  "look like anvi'o gene caller ids :/ Anvi'o is now sad.")
 
         if not genes_of_interest:
+            if raise_if_none:
+                raise ConfigError("You gotta supply some genes of interest.")
+
             # no genes of interest are specified. Assuming all, which could be innumerable--raise warning
-            genes_of_interest = self.genes_in_contigs_database
+            genes_of_interest = genes_in_contigs_database
             self.run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
+
+        # Check for genes that do not appear in the contigs database
+        bad_gene_caller_ids = [g for g in genes_of_interest if g not in genes_in_contigs_database]
+        if bad_gene_caller_ids:
+            raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else \
+                               "These gene caller ids you provided are") + " not known to this contigs database: {}.\
+                               You have only 2 lives left. 2 more mistakes, and anvi'o will automatically uninstall \
+                               itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
+
+        # Finally, raise warning if number of genes is greater than 20 FIXME determine average time
+        # per gene and describe here
+        if len(genes_of_interest) > 20:
+            self.run.warning("Modelling protein structures is no joke. The number of genes you want protein structures for is "
+                             "{}, which is a lot (of time!). If its taking too long, consider using the --very-fast flag. "
+                             "CTRL + C to cancel.".format(len(genes_of_interest)))
 
         return genes_of_interest
 
 
-    def skip_gene_if_not_clean(self, corresponding_gene_call, fasta_path):
-        """ Do not try modelling gene if it is not clean """
-        fasta = u.SequenceSource(fasta_path); next(fasta)
-        try:
-            utils.is_gene_sequence_clean(fasta.seq, amino_acid=True, can_end_with_stop=False)
-            return False
-        except ConfigError as error:
-            self.run.warning("You wanted to model a structure for gene ID %d, but it is not what anvi'o \
-                              considers a 'clean gene'. Anvi'o will move onto the next gene. Here is the \
-                              error that was raised: \"%s\"" % (corresponding_gene_call, error.e))
-            return True
+    @staticmethod
+    def worker(self, available_index_queue, output_queue):
+        while True:
+            corresponding_gene_call = available_index_queue.get(True)
+            structure_info = self.process_gene(corresponding_gene_call)
+            output_queue.put(structure_info)
+
+        # Code never reaches here because worker is terminated by main thread
+        return
 
 
-    def process(self):
-        """
-        """
-        # will be empty if all sources in self.residue_annotation_sources_info have "skip": True
-        residue_annotation_methods = [info["method"] for _, info in self.residue_annotation_sources_info.items() if not info["skip"]]
+    def _run(self):
+        """Calls either run_multi_thread or run_single_thread"""
 
-        # which genes had structures and which did not. this information is added to the structure database self table
-        has_structure = {True: [], False: []}
+        self.run.warning('', header='General info', nl_after=0, lc='green')
+        self.run.info('contigs_db', self.contigs_db_path)
+        self.run.info('contigs_db_hash', self.contigs_db_hash)
+        self.run.info('structure_db_path', self.structure_db_path)
+        self.run.info('num_threads', self.num_threads)
+        self.run.info('write_buffer_size', self.write_buffer_size)
+        self.run.info('genes_of_interest', self.genes_of_interest_path)
+        self.run.info('gene_caller_ids', self.gene_caller_ids)
+        self.run.info('skip_DSSP', self.skip_DSSP)
 
-        num_genes_tried = 0
-        num_genes_to_try = len(self.genes_of_interest)
+        self.run.warning('', header='Modeller parameters', nl_after=0, lc='green')
+        self.run.info('modeller_executable', self.modeller_executable)
+        for param, value in self.modeller_params.items():
+            self.run.info(param, value)
+        self.run.info('dump_dir', self.full_modeller_output, nl_after=1)
 
-        for corresponding_gene_call in self.genes_of_interest:
-            # MODELLER outputs a lot of stuff into its working directory. A temporary directory is
-            # made for each instance of MODELLER (i.e. each protein), And bits and pieces of this
-            # directory are used in the creation of the structure database. If self.full_modeller_output is
-            # provided, these directories and their contents are moved into self.full_modeller_output.
-            self.args.directory = filesnpaths.get_temp_directory_path()
-            self.args.target_fasta_path = filesnpaths.get_temp_file_path()
+        if not anvio.DEBUG:
+            self.run.warning("Do you want live info about how the modelling procedure is going for "
+                             "each gene? Then restart this process with the --debug flag", lc='yellow')
 
-            # Export sequence
-            dbops.export_aa_sequences_from_contigs_db(self.contigs_db_path,
-                                                      self.args.target_fasta_path,
-                                                      set([corresponding_gene_call]),
-                                                      quiet = True)
+        if not self.full_modeller_output:
+            self.run.warning("When this finishes, do you want a potentially massive folder that "
+                             "contains a murder of unorganized data in volumes that far exceed what "
+                             "you could possibly want? Perfect, then restart this process and "
+                             "provide a --dump-dir", lc='yellow')
 
-            if self.skip_gene_if_not_clean(corresponding_gene_call, self.args.target_fasta_path):
-                continue
+        # Are we creating a new database, or updating an old one?
+        update_db = True if not self.create else False
 
-            # Model structure
-            progress_title = 'Modelling gene ID %d; (%d of %d processed)' % (corresponding_gene_call, num_genes_tried, num_genes_to_try)
-            modeller_out = self.run_modeller(corresponding_gene_call, progress_title)
-            if modeller_out["structure_exists"]:
-                self.run.info_single("Gene successfully modelled!", nl_after=1, mc="green")
+        if not update_db:
+            # If creating new db, its simple. Just define the genes of interest
+            genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
+        else:
+            # If updating a db, we a bit more to do
+            genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids, raise_if_none=True)
 
-            has_structure[modeller_out["structure_exists"]].append(str(corresponding_gene_call))
+            if self.rerun_genes:
+                self.run.warning("You've requested to re-run structural modelling if your genes of interest are already "
+                                 "present in the database. Just so you know.")
+            else:
+                genes_already_in_db = []
+                for gene in genes_of_interest:
+                    if gene in self.structure_db.genes_with_structure:
+                        genes_already_in_db.append(gene)
 
-            # Annotate residues
-            residue_info_dataframe = None
-            if modeller_out["structure_exists"]:
-                residue_info_dataframe = self.run_residue_annotation_for_gene(residue_annotation_methods,
-                                                                              corresponding_gene_call,
-                                                                              modeller_out["best_model_path"])
-            # Append info to tables
-            self.append_gene_info_to_tables(modeller_out, residue_info_dataframe)
+                if len(genes_already_in_db):
+                    raise ConfigError("Of your %d genes of interest, %d already exist in the DB. If you want to rerun "
+                                      "modelling for these genes, use the flag --rerun. Here are the first 5 such gene "
+                                      "IDs that are in your DB already: %s." % (len(genes_of_interest),
+                                                                                len(genes_already_in_db),
+                                                                                genes_already_in_db[:5]))
 
-            # Append metadata to self
-            self.update_structure_database_meta_table(has_structure)
+        self.run_multi_thread(genes_of_interest) if self.num_threads > 1 else self.run_single_thread(genes_of_interest)
 
-            if self.full_modeller_output:
-                self.dump_results_to_full_output()
 
-            num_genes_tried += 1
+    def run_multi_thread(self, genes_of_interest):
+        structure_infos = []
 
-        if not has_structure[True]:
+        manager = multiprocessing.Manager()
+        available_index_queue = manager.Queue()
+        output_queue = manager.Queue(self.queue_size)
+
+        # Get the genes of interest
+        num_genes = len(genes_of_interest)
+
+        # put contig indices into the queue to be read from within the worker
+        for g in genes_of_interest:
+            available_index_queue.put(g)
+
+        processes = []
+        for _ in range(self.num_threads):
+            processes.append(multiprocessing.Process(target=StructureSuperclass.worker, args=(self, available_index_queue, output_queue)))
+
+        for proc in processes:
+            proc.start()
+
+        mem_tracker = terminal.TrackMemory(at_most_every=0.1)
+        mem_usage, mem_diff = mem_tracker.start()
+
+        num_with_structure = 0
+        num_without_structure = 0
+        num_tried = 0
+
+        self.progress.new('Using %d threads' % self.num_threads, progress_total_items=num_genes)
+        msg = self.msg() % (num_tried, num_genes, num_with_structure, mem_usage, mem_diff)
+        self.progress.update(msg)
+
+        while num_tried < num_genes:
+            try:
+                structure_info = output_queue.get()
+
+                corresponding_gene_call = structure_info['corresponding_gene_call']
+
+                # Add it to the storage buffer
+                structure_infos.append(structure_info)
+
+                num_tried += 1
+                self.structure_db.genes_queried.add(corresponding_gene_call)
+
+                if structure_info['has_structure']:
+                    num_with_structure += 1
+                    self.structure_db.genes_with_structure.add(corresponding_gene_call)
+                else:
+                    num_without_structure += 1
+                    self.structure_db.genes_without_structure.add(corresponding_gene_call)
+
+                if mem_tracker.measure():
+                    mem_usage = mem_tracker.get_last()
+                    mem_diff = mem_tracker.get_last_diff()
+
+                self.progress.increment(num_tried)
+                msg = self.msg() % (num_tried, num_genes, num_with_structure, mem_usage, mem_diff)
+                self.progress.update(msg)
+
+                if self.write_buffer_size > 0 and num_with_structure % self.write_buffer_size == 0:
+                    self.progress.update('%d/%d GENES PROCESSED | WRITING TO DB 💾 ...' % (num_tried, num_genes))
+
+                    # Store tables
+                    self.store_genes(structure_infos)
+
+                    # Empty storage buffer
+                    structure_infos = []
+
+                    # Update self table
+                    self.structure_db.update_genes_with_and_without_structure()
+
+                    self.progress.update(msg)
+
+            except KeyboardInterrupt:
+                self.run.info_single("Anvi'o received SIGINT, terminating all processes...", nl_before=2)
+                break
+
+        for proc in processes:
+            proc.terminate()
+
+        self.progress.update('%d/%d GENES PROCESSED | WRITING TO DB 💾 ...' % (num_tried, num_genes))
+
+        # Store tables
+        self.store_genes(structure_infos)
+
+        # Empty storage buffer
+        structure_infos = []
+
+        # Update self table
+        self.structure_db.update_genes_with_and_without_structure()
+
+        self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
+
+        if not num_with_structure:
             raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
 
         self.structure_db.disconnect()
-        self.run.info("Structure database", self.output_db_path)
+
+        self.run.info("Structure database", self.structure_db_path)
 
 
-    def update_structure_database_meta_table(self, has_structure):
-        if self.structure_db.create_new:
-            self.structure_db.db.set_meta_value('genes_queried', ",".join([str(g) for g in self.genes_of_interest]))
-            self.structure_db.db.set_meta_value('genes_with_structure', ",".join(has_structure[True]))
-            self.structure_db.db.set_meta_value('genes_without_structure', ",".join(has_structure[False]))
-            self.structure_db.db.set_meta_value('modeller_database', self.modeller.modeller_database)
-            self.structure_db.db.set_meta_value('scoring_method', self.scoring_method)
-            self.structure_db.db.set_meta_value('percent_identical_cutoff', str(self.percent_identical_cutoff))
-            self.structure_db.db.set_meta_value('very_fast', str(int(self.very_fast)))
-            self.structure_db.db.set_meta_value('deviation', self.deviation)
-            self.structure_db.db.set_meta_value('max_number_templates', self.max_number_templates)
-            self.structure_db.db.set_meta_value('num_models', self.num_models)
-            for key, val in self.residue_annotation_sources_info.items():
-                self.structure_db.db.set_meta_value("skip_" + key, str(int(val["skip"])))
+    def run_single_thread(self, genes_of_interest):
+        num_genes = len(genes_of_interest)
 
-        else:
-            new_genes_queried = list(self.structure_db.genes_queried) + list(self.genes_of_interest)
-            new_genes_with_structure = list(self.structure_db.genes_with_structure) + has_structure[True]
-            new_genes_without_structure = list(self.structure_db.genes_without_structure) + has_structure[False]
+        mem_tracker = terminal.TrackMemory(at_most_every=0.1)
+        mem_usage, mem_diff = mem_tracker.start()
 
-            self.structure_db.db.update_meta_value('genes_queried', ",".join([str(x) for x in new_genes_queried]))
-            self.structure_db.db.update_meta_value('genes_with_structure', ",".join([str(x) for x in new_genes_with_structure]))
-            self.structure_db.db.update_meta_value('genes_without_structure', ",".join([str(x) for x in new_genes_without_structure]))
+        num_with_structure = 0
+        num_without_structure = 0
+        num_tried = 0
+
+        self.progress.new('Using 1 thread', progress_total_items=num_genes)
+        msg = self.msg() % (num_tried, num_genes, num_with_structure, mem_usage, mem_diff)
+        self.progress.update(msg)
+
+        try:
+            for corresponding_gene_call in genes_of_interest:
+                structure_info = self.process_gene(corresponding_gene_call)
+                num_tried += 1
+
+                self.progress.increment(num_tried)
+                msg = self.msg() % (num_tried, num_genes, num_with_structure, mem_usage, mem_diff)
+                self.progress.update(msg)
+
+                if mem_tracker.measure():
+                    mem_usage = mem_tracker.get_last()
+                    mem_diff = mem_tracker.get_last_diff()
+
+                self.store_gene(structure_info)
+
+                self.dump_raw_results(structure_info)
+
+                self.structure_db.genes_queried.add(corresponding_gene_call)
+
+                if structure_info['has_structure']:
+                    num_with_structure += 1
+                    self.structure_db.genes_with_structure.add(corresponding_gene_call)
+                else:
+                    num_without_structure += 1
+                    self.structure_db.genes_without_structure.add(corresponding_gene_call)
+
+                # We update self.table every gene because there is no GIL cost with single thread and it
+                # allows user to CTRL+C and still have a valid DB
+                self.structure_db.update_genes_with_and_without_structure()
+        except KeyboardInterrupt:
+            self.run.info_single("Anvi'o received SIGINT, terminating all processes...", nl_before=2)
+
+        self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
+
+        if not num_with_structure:
+            raise ConfigError("Well this is really sad. No structures were modelled, so there is nothing to do. Bye :'(")
+
+        self.structure_db.disconnect()
+
+        self.run.info("Structure database", self.structure_db_path)
 
 
-    def run_residue_annotation_for_gene(self, residue_annotation_methods, corresponding_gene_call, pdb_filepath):
-        # residue_annotation_for_gene is a dataframe that stores residue annotations made by all residue
-        # annotation methods (e.g.  DSSP) for the current corresponding_gene_call. Each time a
-        # resideu annotation source is ran, its results are appended as columns to
-        # residue_annotation_for_gene.  All annotation sources must have the index called
-        # "codon_order_in_gene" whose values are anvi'o-indexed, i.e. the methionine has index 0.
-        # Each annotation source does NOT have to annotate each residue in the gene.
-        residue_annotation_for_gene = pd.DataFrame({})
-        for method in residue_annotation_methods:
-            residue_annotation_for_gene = pd.concat([residue_annotation_for_gene, method(corresponding_gene_call, pdb_filepath)], axis=1, sort=True)
+    def msg(self):
+        return '│ PROCESSED: %d/%d │ STRUCTURES: %d │ MEMORY: 🧠  %s (%s) │'
+
+
+    def process_gene(self, corresponding_gene_call):
+        structure_info = {
+            'corresponding_gene_call': corresponding_gene_call,
+            'has_structure': False,
+        }
+
+        directory = filesnpaths.get_temp_directory_path()
+
+        # Export sequence
+        target_fasta_path = filesnpaths.get_temp_file_path()
+        dbops.export_aa_sequences_from_contigs_db(
+            self.contigs_db_path,
+            target_fasta_path,
+            set([corresponding_gene_call]),
+            quiet=True
+        )
+
+        if self.skip_gene_if_not_clean(corresponding_gene_call, target_fasta_path):
+            return structure_info
+
+        # Model structure
+        structure_info['modeller'] = self.run_modeller(target_fasta_path, directory)
+
+        # Annotate residues
+        if structure_info['modeller']['structure_exists']:
+            structure_info['has_structure'] = True
+
+            structure_info['residue_info'] = self.get_gene_contribution_to_residue_info_table(
+                corresponding_gene_call=corresponding_gene_call,
+                pdb_filepath=structure_info['modeller']['best_model_path'],
+            )
+
+        return structure_info
+
+
+    def skip_gene_if_not_clean(self, corresponding_gene_call, fasta_path):
+        """Do not try modelling gene if it is not clean"""
+
+        fasta = u.SequenceSource(fasta_path); next(fasta)
+        try:
+            utils.is_gene_sequence_clean(fasta.seq, amino_acid=True, can_end_with_stop=False, must_start_with_met=False)
+            return False
+        except ConfigError as error:
+            self.run.warning("You wanted to model a structure for gene ID %d, but it is not what anvi'o "
+                             "considers a 'clean gene'. Anvi'o will move onto the next gene. Here is the "
+                             "error that was raised: \"%s\"" % (corresponding_gene_call, error.e))
+            return True
+
+
+    def get_gene_contribution_to_residue_info_table(self, corresponding_gene_call, pdb_filepath):
+        results = [
+            self.dssp.run(pdb_filepath, dont_run=self.skip_DSSP, drop=['aa']),
+            self.run_contact_map_annotation(pdb_filepath),
+            self.run_residue_identity_annotation(corresponding_gene_call, pdb_filepath),
+        ]
+        residue_annotation_for_gene = pd.concat(results, axis=1, sort=True)
 
         # add corresponding_gene_call and codon_order_in_gene as 0th and 1st columns
         residue_annotation_for_gene.insert(0, "entry_id", list(range(residue_annotation_for_gene.shape[0])))
@@ -527,20 +802,10 @@ class Structure(object):
         return residue_annotation_for_gene
 
 
-    def dump_results_to_full_output(self):
-        """
-        if self.full_modeller_output, all files from MODELLERs temp directory are recursively moved into
-        output_gene_dir. Otherwise, the list of files we care about are defined in this function
-        and moved into output_gene_dir.
-        """
-        output_gene_dir = os.path.join(self.full_modeller_output, self.modeller.corresponding_gene_call)
-        filesnpaths.check_output_directory(output_gene_dir)
-        shutil.move(self.modeller.directory, output_gene_dir)
-
-
     def run_residue_identity_annotation(self, corresponding_gene_call, pdb_filepath):
-        nt_sequence = self.contigs_super.get_sequences_for_gene_callers_ids([corresponding_gene_call],
-                                                                             reverse_complement_if_necessary=True)
+        """A small routine to return a data frame containing codon numbers, codons, and amino acids"""
+
+        nt_sequence = self.contigs_super.get_sequences_for_gene_callers_ids([corresponding_gene_call])
         nt_sequence = nt_sequence[1][corresponding_gene_call]['sequence']
 
         seq_dict = {"codon_order_in_gene": [],
@@ -549,7 +814,7 @@ class Structure(object):
                     "amino_acid":          []}
 
         gene_length_in_codons = len(nt_sequence)//3 - 1 # subtract 1 because it's the stop codon
-        for codon_order_in_gene in range(0, gene_length_in_codons):
+        for codon_order_in_gene in range(gene_length_in_codons):
             seq_dict["codon_order_in_gene"].append(codon_order_in_gene)
             seq_dict["codon_number"].append(codon_order_in_gene+1)
             seq_dict["codon"].append(nt_sequence[3*codon_order_in_gene:3*(codon_order_in_gene + 1)])
@@ -558,40 +823,239 @@ class Structure(object):
         return pd.DataFrame(seq_dict).set_index("codon_order_in_gene")
 
 
-    def run_contact_map(self, corresponding_gene_call, pdb_filepath):
-        contact_map_matrix = ContactMap(pdb_filepath).compute_contact_map()
+    def run_contact_map_annotation(self, pdb_path):
+        """Returns the contact map in compressed form with index 'codon_order_in_gene' and column 'contact_numbers'"""
 
-        contacts_dict = {"codon_order_in_gene": [],
-                         "contact_numbers":     []}
-        for codon_order_in_gene in range(contact_map_matrix.shape[0]):
-            contacts = np.add(np.where(contact_map_matrix[codon_order_in_gene, :] == 1)[0], 1).astype(str)
+        # Run ContactMap class
+        contact_map = self.contactmap.get_boolean_contact_map(pdb_path)
+        compressed_rep = self.contactmap.get_compressed_representation(contact_map, c='number')
 
-            contacts_dict["codon_order_in_gene"].append(codon_order_in_gene)
-            contacts_dict["contact_numbers"].append(",".join(contacts))
+        # Customize for this class and return
+        column_rename = {
+            'codon_number': 'codon_order_in_gene',
+            'contacts': 'contact_numbers',
+        }
 
-        return pd.DataFrame(contacts_dict).set_index("codon_order_in_gene")
+        compressed_rep['codon_number'] -= 1
+
+        return compressed_rep.rename(columns=column_rename).set_index('codon_order_in_gene')
 
 
-    def run_DSSP(self, corresponding_gene_call, pdb_filepath):
+    def run_modeller(self, target_fasta_path, directory):
+        """Calls and returns results of MODELLER.MODELLER driver"""
+
+        return MODELLER.MODELLER(self.args, target_fasta_path, directory=directory, lazy_init=True, skip_warnings=True).process()
+
+
+    def dump_raw_results(self, structure_info):
+        """Dump all raw modeller output into output_gene_dir if self.full_modeller_output"""
+
+        if not self.full_modeller_output:
+            return
+
+        output_gene_dir = os.path.join(self.full_modeller_output, structure_info['modeller']['corresponding_gene_call'])
+        shutil.move(structure_info['modeller']['directory'], output_gene_dir)
+
+
+    def store_gene(self, structure_info):
+        """Store a gene's info into the structure database"""
+
+        if 'modeller' not in structure_info:
+            # There is nothing to store
+            return
+
+        corresponding_gene_call = structure_info["corresponding_gene_call"]
+        modeller_out = structure_info['modeller']
+
+        # If the gene is present in the database, remove it first
+        if corresponding_gene_call in self.structure_db.genes_with_structure:
+            # We do not remove the gene from self because that is handled in _run
+            self.structure_db.remove_gene(corresponding_gene_call, remove_from_self=False)
+
+        # templates is always added, even when structure was not modelled
+        templates = pd.DataFrame(modeller_out['templates'])
+        templates.insert(0, 'corresponding_gene_call', corresponding_gene_call)
+        templates = templates.reset_index().rename(columns={'index': 'entry_id'})
+        self.structure_db.entries[t.templates_table_name] = \
+            self.structure_db.entries[t.templates_table_name].append(templates)
+        self.structure_db.store(t.templates_table_name, key='entry_id')
+
+        # entries that are only added if a structure was modelled
+        if modeller_out['structure_exists']:
+
+            # models
+            models = pd.DataFrame(modeller_out['models'])
+            models.insert(0, 'corresponding_gene_call', corresponding_gene_call)
+            models = models.reset_index().rename(columns={'index': 'entry_id'})
+            self.structure_db.entries[t.models_table_name] = \
+                self.structure_db.entries[t.models_table_name].append(models)
+            self.structure_db.store(t.models_table_name, key="entry_id")
+
+            # pdb file data
+            pdb_file = open(modeller_out['best_model_path'], 'rb')
+            pdb_contents = pdb_file.read()
+            pdb_file.close()
+            pdb_table_entry = (corresponding_gene_call, pdb_contents)
+            self.structure_db.entries[t.pdb_data_table_name].append(pdb_table_entry)
+            self.structure_db.store(t.pdb_data_table_name)
+
+            # residue_info
+            self.structure_db.entries[t.residue_info_table_name] = \
+                self.structure_db.entries[t.residue_info_table_name].append(structure_info['residue_info'])
+            self.structure_db.store(t.residue_info_table_name, key='entry_id')
+
+
+
+    def store_genes(self, structure_infos):
+        """Store info for a list of structure_infos. Calls self.store_gene"""
+
+        for structure_info in structure_infos:
+            self.store_gene(structure_info)
+            self.dump_raw_results(structure_info)
+
+
+class DSSPClass(object):
+    def __init__(self, executable=None, skip_sanity_check=False):
+        self.executable = executable
+        self.skip_sanity_check = skip_sanity_check
+
+        self.fields = [
+            'codon_order_in_gene',
+            'aa',
+            'sec_struct',
+            'rel_solvent_acc',
+            'phi',
+            'psi',
+            'NH_O_1_index',
+            'NH_O_1_energy',
+            'O_NH_1_index',
+            'O_NH_1_energy',
+            'NH_O_2_index',
+            'NH_O_2_energy',
+            'O_NH_2_index',
+            'O_NH_2_energy',
+        ]
+
+        if not self.skip_sanity_check:
+            self.set_executable()
+            utils.is_program_exists(self.executable)
+            self.is_executable_a_working_DSSP_program()
+
+
+    def run(self, pdb_filepath, drop=[], dont_run=False):
+        """Run DSSP through Biopython. Return a dataframe
+
+        Parameters
+        ==========
+        pdb_filepath : str
+            Path to the pdb file you wish to run on. Assumes first model in file
+
+        drop : list, []
+            Which of self.fields do you want to removed from the dataframe?
+
+        dont_run : bool, False
+            If True, DSSP is not actually run. Instead, an empty dataframe is populated
         """
-        DSSP is ran using the API developed in Biopython. That means we don't work directly from the
-        text output of DSSP, but rather a Biopython object.
-        """
+
+        if dont_run:
+            # We don't actually run DSSP, we just make a dataframe populated with null values
+            return self.get_null_dataframe(pdb_filepath, drop=drop)
+
         # Determine the model name by loading the structure file
         p = PDBParser()
-        structure = p.get_structure(corresponding_gene_call, pdb_filepath)
+        structure = p.get_structure(None, pdb_filepath)
         model = structure[0] # pdb files can have multiple models. DSSP assumes the first.
 
         # run DSSP
-        residue_annotation = DSSP(model, pdb_filepath, dssp = self.DSSP_executable, acc_array = "Wilke")
+        residue_annotation = DSSP(model, pdb_filepath, dssp=self.executable, acc_array='Wilke')
 
         # convert to a digestible format
-        return self.convert_DSSP_output_from_biopython_to_dataframe(residue_annotation)
+        return self.convert_DSSP_output_from_biopython_to_dataframe(residue_annotation, drop=drop)
 
 
-    def convert_DSSP_output_from_biopython_to_dataframe(self, dssp_biopython_object):
-        """
+    def get_null_dataframe(self, pdb_filepath, drop=[]):
+        """Return a correctly sized dataframe with all null values, and codon_order_in_gene as the index"""
+
+        # Get number of residues from PDB file
+        num_residues = len(PDBParser().get_structure(None, pdb_filepath)[0].child_list[0])
+
+        # Fields that take on null values
+        fields = [field for field in self.fields if field not in drop and field != 'codon_order_in_gene']
+
+        # Dict to define which column gets which null value
+        fields_to_null_value_dict = {
+            field: {'integer': np.nan, 'text': '', 'real': np.nan}[typ]
+            for field, typ in zip(t.residue_info_table_structure, t.residue_info_table_types)
+            if field in fields
+        }
+
+        d = {field: [fields_to_null_value_dict[field]] * num_residues for field in fields}
+
+        return pd.DataFrame(d)
+
+
+    def set_executable(self):
+        """Determine which DSSP executables exist and should be used. Set to self.executable"""
+
+        if self.executable:
+            utils.is_program_exists(self.executable, dont_raise=True)
+            return
+
+        # Determine what DSSP program should be used. Tries mkdssp and then dssp, and raises
+        # error if neither are found. mkdssp is newer and preferred
+        if utils.is_program_exists("mkdssp", dont_raise=True):
+            self.executable = "mkdssp"
+        elif utils.is_program_exists("dssp", dont_raise=True):
+            self.executable = "dssp"
+        else:
+            raise ConfigError("'mkdssp' or 'dssp' must be installed on your system, but "
+                              "neither seem to appear in your path :/ If you are certain you have either on your "
+                              "system (for instance you can run either by typing 'mkdssp' or 'dssp' in your terminal "
+                              "window), you may want to send a detailed bug report. If you want to install DSSP, "
+                              "check out http://merenlab.org/2016/06/18/installing-third-party-software/#dssp. "
+                              "If you want to skip secondary structure and solvent accessibility annotation, "
+                              "provide the flag --skip-DSSP.")
+
+
+    def is_executable_a_working_DSSP_program(self):
+        test_input = os.path.join(os.path.dirname(anvio.__file__), 'tests/sandbox/mock_data_for_structure/STRUCTURES/0.pdb')
+
+        p = PDBParser()
+        test_structure = p.get_structure('test', test_input)
+        test_model = test_structure[0] # pdb files can have multiple models. DSSP assumes the first.
+
+        # run DSSP
+        try:
+            test_residue_annotation = DSSP(test_model, test_input, dssp = self.executable, acc_array = "Wilke")
+        except Exception as e:
+            raise ConfigError('Your executable of DSSP, `{}`, doesn\'t appear to be working. For information on how to test '
+                              'that your version is working correctly, please visit '
+                              'http://merenlab.org/2016/06/18/installing-third-party-software/#dssp'\
+                               .format(self.executable))
+
+        if not len(test_residue_annotation.keys()):
+            raise ConfigError("Your executable of DSSP, `{}`, exists but didn't return any meaningful output. This "
+                              "is a known issue with certain distributions of DSSP. For information on how to test "
+                              "that your version is working correctly, please visit "
+                              "http://merenlab.org/2016/06/18/installing-third-party-software/#dssp"\
+                               .format(self.executable))
+
+        try:
+            self.convert_DSSP_output_from_biopython_to_dataframe(test_residue_annotation)
+        except:
+            import pickle
+            with open('troubleshoot_DDSP_output.pickle', 'wb') as output:
+                pickle.dump(test_residue_annotation, output, pickle.HIGHEST_PROTOCOL)
+            raise ConfigError('Your executable of DSSP ran and produced an output, but anvi\'o wasn\'t able to correctly parse it. '
+                              'This is probably our fault. In your working directory should exist a file named "troubleshoot_DDSP_output.pickle". '
+                              'Please send this to an anvio developer so that we can help identify what went wrong.')
+
+
+    def convert_DSSP_output_from_biopython_to_dataframe(self, dssp_biopython_object, drop=[]):
+        """Convert the output of the DSSP module in Biopython to a dataframe
+
         From the DSSP module in Biopython:
+
             ============ ==================== ================
             Tuple Index  Biopython            Anvi'o
             ============ ==================== ================
@@ -617,424 +1081,621 @@ class Structure(object):
             - ss type "-" is converted to coil (C)
             - relative indicies for h-bonds replaced with absolute residue indices
               (e.g. if relative index = -1 for residue 4, the absolute residue index is 3)
+
+        Parameters
+        ==========
+        dssp_biopython_object : output of Bio.PDB.DSSP
+
+        drop : list, []
+            drop these columns (i.e. ['sec_struct', 'psi'])
+
+        Returns
+        =======
+        output : pandas DataFrame
         """
+
         one_to_three = {v: k for k, v in constants.AA_to_single_letter_code.items()}
-        columns = list(self.residue_annotation_sources_info["DSSP"]["structure"].keys())
 
         # convert biopython object to dictionary d
         d = {}
         for key in dssp_biopython_object.keys():
             d[key] = list(dssp_biopython_object[key])
-            d[key][columns.index("codon_order_in_gene")] = utils.convert_sequence_indexing(d[key][columns.index("codon_order_in_gene")], source="M1", destination="M0")
-            d[key][columns.index("aa")] = one_to_three[d[key][columns.index("aa")]]
+            d[key][self.fields.index('codon_order_in_gene')] = utils.convert_sequence_indexing(d[key][self.fields.index('codon_order_in_gene')], source='M1', destination='M0')
+            d[key][self.fields.index('aa')] = one_to_three[d[key][self.fields.index('aa')]]
 
-            if d[key][columns.index("sec_struct")] == "-":
-                d[key][columns.index("sec_struct")] = "C"
+            if d[key][self.fields.index('sec_struct')] == '-':
+                d[key][self.fields.index('sec_struct')] = 'C'
 
-            for hbond in ["NH_O_1", "O_NH_1", "NH_O_2", "O_NH_2"]:
-                res_index = d[key][columns.index("codon_order_in_gene")]
-                rel_index = d[key][columns.index(hbond+"_index")]
+            for hbond in ['NH_O_1', 'O_NH_1', 'NH_O_2', 'O_NH_2']:
+                res_index = d[key][self.fields.index('codon_order_in_gene')]
+                rel_index = d[key][self.fields.index(hbond + '_index')]
 
                 if rel_index == 0:
-                    d[key][columns.index(hbond+"_index")] = np.nan
-                    d[key][columns.index(hbond+"_energy")] = np.nan
+                    d[key][self.fields.index(hbond + '_index')] = np.nan
+                    d[key][self.fields.index(hbond + '_energy')] = np.nan
 
                 else:
-                    d[key][columns.index(hbond+"_index")] = res_index + rel_index
+                    d[key][self.fields.index(hbond + '_index')] = res_index + rel_index
 
         # convert dictionary d to dataframe df
-        return pd.DataFrame(d, index=columns).T.set_index("codon_order_in_gene")
+        return pd.DataFrame(d, index=self.fields).T.set_index('codon_order_in_gene').drop(drop, axis=1)
 
 
-    def run_modeller(self, corresponding_gene_call, progress_title):
-        self.modeller = MODELLER.MODELLER(self.args, run=self.run, progress=self.progress, progress_title=progress_title)
-        modeller_out = self.modeller.process()
+class ContactMap(object):
+    def __init__(self, p=terminal.Progress(), r=terminal.Run()):
+        self.distances_methods_dict = {
+            'CA': self.calc_CA_dist,
+        }
 
-        return modeller_out
+
+    def load_pdb_file(self, pdb_path, name_id='structure', chain='A'):
+        p = PDBParser()
+        model = p.get_structure(name_id, pdb_path)[0] # [0] = first model
+        structure = model[chain]
+
+        return structure
 
 
-    def append_gene_info_to_tables(self, modeller_out, residue_info_dataframe):
+    def get_contact_map(self, pdb_path, distance_method='CA'):
+        """Returns a contact map (pairwise distances in Angstroms)
+
+        Parameters
+        ==========
+        pdb_path : str
+            The PDB file (takes first chain)
+
+        distance_method : str, 'CA'
+            Which distance method? 'CA' is for alpha carbon distances. See
+            self.distances_methods_dict for options
+
+        Returns
+        =======
+        output: NxN 2-dim array
+            Where N is the # of AAs
+
+        Notes
+        =====
+        - See also `get_boolean_contact_map`
         """
-        Modeller and residue annotation sources have been called, now it is time to wrangle these
-        data into formats that can be appended to their respective structure database tables.
-        """
-        corresponding_gene_call = modeller_out["corresponding_gene_call"]
 
-        # templates is always added, even when structure was not modelled
-        templates = pd.DataFrame(modeller_out["templates"])
-        templates.insert(0, "corresponding_gene_call", corresponding_gene_call)
-        templates = templates.reset_index().rename(columns={"index": "entry_id"})
-        self.structure_db.entries[t.structure_templates_table_name] = \
-            self.structure_db.entries[t.structure_templates_table_name].append(templates)
-        self.structure_db.store(t.structure_templates_table_name, key="entry_id")
+        structure = self.load_pdb_file(pdb_path)
 
-
-        # entries that are only added if a structure was modelled
-        if modeller_out["structure_exists"]:
-
-            # models
-            models = pd.DataFrame(modeller_out["models"])
-            models.insert(0, "corresponding_gene_call", corresponding_gene_call)
-            models = models.reset_index().rename(columns={"index": "entry_id"})
-            self.structure_db.entries[t.structure_models_table_name] = \
-                self.structure_db.entries[t.structure_models_table_name].append(models)
-            self.structure_db.store(t.structure_models_table_name, key="entry_id")
-
-            # pdb file data
-            pdb_file = open(modeller_out["best_model_path"], 'rb')
-            pdb_contents = pdb_file.read()
-            pdb_file.close()
-            pdb_table_entry = (corresponding_gene_call, pdb_contents)
-            self.structure_db.entries[t.structure_pdb_data_table_name].append(pdb_table_entry)
-            self.structure_db.store(t.structure_pdb_data_table_name)
-
-            # residue_info
-            self.structure_db.entries[t.structure_residue_info_table_name] = \
-                self.structure_db.entries[t.structure_residue_info_table_name].append(residue_info_dataframe)
-            self.structure_db.store(t.structure_residue_info_table_name, key="entry_id")
-
-
-class StructureUpdate(Structure):
-    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
-        self.args = args
-        self.run = run
-        self.progress = progress
-
-        # initialize self.arg parameters
-        A                                  = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
-        null                               = lambda x: x
-        self.contigs_db_path               = A('contigs_db', null)
-        self.structure_db_path             = A('structure_db', null)
-        self.genes_to_remove               = A('genes_to_remove', null)
-        self.genes_to_remove_path          = A('genes_to_remove_file', null)
-        self.genes_to_add                  = A('genes_to_add', null)
-        self.genes_to_add_path             = A('genes_to_add_file', null)
-        self.full_modeller_output          = A('dump_dir', null)
-        self.modeller_executable           = A('modeller_executable', null)
-        self.skip_genes_if_already_present = A('skip_genes_if_already_present', bool)
-        self.DSSP_executable               = None
-
-        utils.is_contigs_db(self.contigs_db_path)
-        self.contigs_db      = dbops.ContigsDatabase(self.contigs_db_path)
-        self.contigs_db_hash = self.contigs_db.meta['contigs_db_hash']
-
-        # init ContigsSuperClass
-        self.contigs_super = ContigsSuperclass(self.args)
-
-        if not any([self.genes_to_remove, self.genes_to_remove_path, self.genes_to_add, self.genes_to_add_path]):
-            raise ConfigError("Please specify some genes to add or remove to your database.")
-
-        if self.genes_to_remove and self.genes_to_remove_path:
-            raise ConfigError("Provide either --genes-to-remove or --genes-to-remove-path. You provided both.")
-
-        if self.genes_to_add and self.genes_to_add_path:
-            raise ConfigError("Provide either --genes-to-add or --genes-to-add-path. You provided both.")
-
-        if self.genes_to_remove or self.genes_to_remove_path:
-            self.run.warning("Removing genes...", header="Updating %s" % self.structure_db_path, lc='green')
-            self.load_structure_db()
-            remove = self.parse_genes(self.genes_to_remove, self.genes_to_remove_path)
-            self.remove_genes(remove)
-            self.structure_db.disconnect()
-
-        if self.genes_to_add or self.genes_to_add_path:
-            self.run.warning("Adding genes...", header="Updating %s" % self.structure_db_path, lc='green')
-            self.load_structure_db()
-            self.add_genes()
-
-
-    def load_structure_db(self):
-        utils.is_structure_db(self.structure_db_path)
-        self.structure_db = StructureDatabase(self.structure_db_path,
-                                              self.contigs_db_hash,
-                                              create_new=False)
-
-    def add_genes(self):
-        # identify which genes user wants to model structures for
-        self.genes_of_interest = self.get_genes_of_interest(self.genes_to_add_path, self.genes_to_add)
-
-        if self.skip_genes_if_already_present:
-            redundant_gene_caller_ids = [g for g in self.genes_of_interest if g in self.structure_db.genes_queried]
-            if redundant_gene_caller_ids:
-                self.run.info("Redundant gene caller ids that will be skipped", ",".join([str(x) for x in redundant_gene_caller_ids]))
-                self.genes_of_interest = [g for g in self.genes_of_interest if g not in redundant_gene_caller_ids]
-                if not self.genes_of_interest:
-                    raise ConfigError("Every gene you wanted to add is already in the database. Since you provided\
-                                       the --skip-genes-if-already-present flag, there is nothing to do :)")
-
-        self.run.info("Gene caller ids to be added", ",".join([str(x) for x in self.genes_of_interest]))
-
-        self.get_MODELLER_params_used_when_db_was_created()
-
-        self.sanity_check_for_adding_genes()
-
-        # residue annotation
-        self.residue_annotation_sources_info = self.get_residue_annotation_sources_info()
-        self.residue_annotation_df = pd.DataFrame({})
-
-        if self.full_modeller_output:
-            self.full_modeller_output = filesnpaths.check_output_directory(self.full_modeller_output, ok_if_exists=True)
-
-        self.process()
-        self.run.info_single("Anvi'o attempted to add the requested genes. The above log can inform you which were successful.", nl_after=1, nl_before=1)
-
-
-    def remove_genes(self, remove):
-        self.progress.new("Removing genes from structure database")
-
-        bad_ids = [x for x in remove if x not in self.structure_db.genes_queried]
-        if len(bad_ids):
-            if len(bad_ids) == len(remove):
-                self.run.warning("All of the gene caller IDs you asked to remove are missing from\
-                                  the structure database, so there's no genes to remove. Here they\
-                                  are: [{}]. Anvi'o's trust in you decreases significantly."\
-                                      .format(",".join([str(x) for x in bad_ids])))
-                self.progress.end()
-                return
-
-            self.run.warning("Some of the gene caller ids you asked to remove aren't in the\
-                              structure database. Here they are: [{}].".format(",".join([str(x) for x in bad_ids])))
-
-        remove = set([x for x in remove if x not in bad_ids])
-
-        if remove == set(self.structure_db.genes_queried):
-            raise ConfigError("You want to remove every gene in your structure database. No.")
-
-        self.run.info("Gene caller ids to be removed", ",".join([str(x) for x in remove]))
-
-        # remove ids from the three meta-keys in which they can appear
-        new_genes_queried = [x for x in self.structure_db.genes_queried if x not in remove]
-        self.structure_db.db.update_meta_value('genes_queried', ",".join([str(x) for x in new_genes_queried]))
-
-        new_genes_with_structure = [x for x in self.structure_db.genes_with_structure if x not in remove]
-        self.structure_db.db.update_meta_value('genes_with_structure', ",".join([str(x) for x in new_genes_with_structure]))
-
-        new_genes_without_structure = [x for x in self.structure_db.genes_without_structure if x not in remove]
-        self.structure_db.db.update_meta_value('genes_without_structure', ",".join([str(x) for x in new_genes_without_structure]))
-
-        # remove all rows of tables in which corrresponding_gene_call matches the ids to remove
-        where_clause = 'corresponding_gene_call IN (%s)' % ','.join(['{}'.format(x) for x in remove])
-        for table_name in self.structure_db.db.get_table_names():
-            if 'corresponding_gene_call' in self.structure_db.db.get_table_structure(table_name):
-                self.structure_db.db.remove_some_rows_from_table(table_name, where_clause)
-
-        self.run.info_single("The requested genes have been successfully removed.", nl_after=1)
-        self.progress.end()
-
-
-    def parse_genes(self, comma_delimited_genes=None, genes_filepath=None):
-
-        if comma_delimited_genes:
-            gene_caller_ids = set([x.strip() for x in comma_delimited_genes.split(',')])
-            genes = []
-            for gene in gene_caller_ids:
-                try:
-                    genes.append(int(gene))
-                except:
-                    raise ConfigError("Anvi'o does not like your gene caller id '%s'..." % str(gene))
-
-        elif genes_filepath:
-            filesnpaths.is_file_tab_delimited(genes_filepath, expected_number_of_fields=1)
-
-            try:
-                genes = set([int(s.strip()) for s in open(genes_filepath).readlines()])
-            except ValueError:
-                raise ConfigError("Well. Anvi'o was working on your genes in `%s` ... and ... those gene IDs did not\
-                                   look like anvi'o gene caller ids :/ Anvi'o is now sad." % genes_filepath)
-
-        return set(genes)
-
-
-    def get_MODELLER_params_used_when_db_was_created(self):
-        self.progress.new("Determining parameters used during structure database creation")
-
-        meta_table_dict = self.structure_db.db.get_table_as_dict("self")
-        modeller_params = [
-            ('modeller_database', str),
-            ('scoring_method', str),
-            ('percent_identical_cutoff', float),
-            ('very_fast', lambda x: bool(int(x))),
-            ('deviation', float),
-            ('max_number_templates', int),
-            ('num_models', int),
-            ('skip_DSSP', lambda x: bool(int(x))),
-        ]
-
-        self.run.info_single("Previous parameters used for creating the structure database", nl_before=1)
-        for param, cast_type in modeller_params:
-            setattr(self, param, cast_type(meta_table_dict[param]["value"])) # set to self
-            setattr(self.args, param, cast_type(meta_table_dict[param]["value"])) # set to self.args (passed to MODELLER)
-            self.run.info(param, getattr(self, param))
-
-        self.progress.end()
-
-
-    def sanity_check_for_adding_genes(self):
-
-        # check for genes that do not appear in the contigs database
-        bad_gene_caller_ids = [g for g in self.genes_of_interest if g not in self.genes_in_contigs_database]
-        if bad_gene_caller_ids:
-            raise ConfigError(("This gene caller id you" if len(bad_gene_caller_ids) == 1 else \
-                               "These gene caller ids you") + " want to add to the structure database\
-                               are not known to the contigs database: {}. You have only 2 lives\
-                               left. 2 more mistakes, and anvi'o will automatically uninstall\
-                               itself. Yes, seriously :(".format(",".join([str(x) for x in bad_gene_caller_ids])))
-
-        # check for genes that do already appear in the structure database
-        redundant_gene_caller_ids = [g for g in self.genes_of_interest if g in self.structure_db.genes_queried]
-        if redundant_gene_caller_ids and not self.skip_genes_if_already_present:
-            raise ConfigError(("This gene caller id you" if len(redundant_gene_caller_ids) == 1 else \
-                               "These gene caller ids you") + " want to add to the structure database\
-                               is already in the structure database: {}. If you want to re-do the\
-                               modelling, then first remove it with --genes-to-remove or\
-                               --genes-to-remove-file (you can do it in the same\
-                               anvi-update-genes-in-structure-database command).".\
-                                   format(",".join([str(x) for x in redundant_gene_caller_ids])))
-
-        # raise warning if number of genes is greater than 20
-        if len(self.genes_of_interest) > 20:
-            self.run.warning("Modelling protein structures is no joke. The number of genes you want\
-                              to append to the structure database is {}, which is a lot (of time!).\
-                              CTRL + C to cancel.".format(len(self.genes_of_interest)))
-
-        if not self.skip_DSSP:
-            if utils.is_program_exists("mkdssp", dont_raise=True): # mkdssp is newer and preferred
-                self.DSSP_executable = "mkdssp"
-
-            if not self.DSSP_executable:
-                if utils.is_program_exists("dssp", dont_raise=True):
-                    self.DSSP_executable = "dssp"
+        contact_map = np.zeros((len(structure), len(structure)))
+        for i, residue1 in enumerate(structure):
+            for j, residue2 in enumerate(structure):
+                if i < j:
+                    contact_map[i, j] = contact_map[j, i]
                 else:
-                    raise ConfigError("An anvi'o function needs 'mkdssp' or 'dssp' to be installed on your system, but\
-                                       neither seem to appear in your path :/ If you are certain you have either on your\
-                                       system (for instance you can run either by typing 'mkdssp' or 'dssp' in your terminal\
-                                       window), you may want to send a detailed bug report. If you want to install DSSP,\
-                                       check out http://merenlab.org/2016/06/18/installing-third-party-software/#dssp.\
-                                       If you want to skip secondary structure and solvent accessibility annotation,\
-                                       provide the flag --skip-DSSP.")
+                    contact_map[i, j] = self.distances_methods_dict[distance_method](residue1, residue2)
 
-            self.run.info_single("Anvi'o found the DSSP executable `%s`, and will use it."\
-                                  % self.DSSP_executable, nl_before=1, nl_after=1)
+        return contact_map
 
 
-class StructureExport():
-    def __init__(self, args, genes_of_interest=None, run=terminal.Run(), progress=terminal.Progress()):
+    def get_boolean_contact_map(self, pdb_path, distance_method='CA', threshold=6):
+        """Returns a boolean contact map (1 for touching, 0 for not)
+
+        Parameters
+        ==========
+        pdb_path : str
+            The PDB file (takes first chain)
+
+        distance_method : str, 'CA'
+            Which distance method? 'CA' is for alpha carbon distances. See
+            self.distances_methods_dict for options
+
+        threshold : int or float, 6
+            Residues are considered touching if their distances are less than or equal to this
+            amount. Units are in Angstroms
+
+        Returns
+        =======
+        output: NxN 2-dim array
+            Where N is the # of AAs
+
+        Notes
+        =====
+        - See also `get_contact_map`
+        """
+
+        contact_map = self.get_contact_map(pdb_path, distance_method=distance_method)
+
+        contact_map[contact_map <= threshold] = 1
+        contact_map[contact_map >  threshold] = 0
+
+        return contact_map
+
+
+    def get_compressed_representation(self, contact_map, c='order'):
+        """Converts contact map into condensed representation
+
+        Parameters
+        ==========
+        c : str, 'order'
+            Determines whether contacts are defined according to codon_order_in_gene (i.e. 1st Met
+            is 0) or codon_number (i.e. 1st Met is 1). Choose 'order' for codon_order_in_gene and
+            'number' for codon_number
+
+        Returns
+        =======
+        output : pandas DataFrame
+            A dataframe with 2 columns, 'codon_order_in_gene'/'codon_number' (see Parameters for
+            which it will be), and 'contacts'
+        """
+
+        col_name = 'codon_order_in_gene' if c == 'order' else 'codon_number'
+
+        contacts_dict = {
+            col_name: [],
+            'contacts': [],
+        }
+
+        for codon_order_in_gene in range(contact_map.shape[0]):
+            contacts = np.add(np.where(contact_map[codon_order_in_gene, :] == 1)[0], 1)
+
+            # logic that handles if user wants in terms of codon_order_in_gene or codon_number
+            if c == 'order':
+                contacts = utils.convert_sequence_indexing(contacts, source='M1', destination='M0')
+                index = codon_order_in_gene
+            else:
+                index = utils.convert_sequence_indexing(codon_order_in_gene, source='M0', destination='M1')
+
+            # residues are not contacts with themselves
+            contacts = contacts[contacts != index]
+
+            contacts_dict[col_name].append(index)
+            contacts_dict['contacts'].append(",".join([str(x) for x in contacts]))
+
+        return pd.DataFrame(contacts_dict)
+
+
+    def calc_CA_dist(self, residue1, residue2):
+        """Returns the C-alpha distance between two residues"""
+
+        return residue1["CA"] - residue2["CA"]
+
+
+class PDBDatabase(object):
+    """This class manages the PDB database generated and managed by anvi-setup-pdb-database
+
+    This class does not model structures, and does not create 'structure databases'. It generates
+    and manages an exhaustive repository of available PDB structures. The database therefore allows
+    offline access to the entire 'globe' of available structures.
+
+    The collection of structures this database is a moving target as more structures become solved,
+    but our friends at the Sali lab continually update this collection. For more information, see
+    https://salilab.org/modeller/supplemental.html and for the list of PDB codes in the current
+    version as well as when it was last updated please see
+    https://salilab.org/modeller/downloads/pdb_95.cod.gz
+
+    Parameters
+    ==========
+    pdb_database_path : str, None
+        If None, the default data/misc/PDB.db filepath is used
+
+    reset : bool, False
+        If True, the DB is totally wiped and recreated from scratch
+
+    update : bool, True
+        Check to see if the DB is up to date. If it is not, store the latest additions. This can
+        also be used if the previous run was cancelled prematurely.
+    """
+
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
         self.progress = progress
 
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
-        self.structure_db_path = A('structure_db', null)
-        self.output_dir = A('output_dir', null)
-        self.genes_of_interest_path = A('genes_of_interest', null)
-        self.gene_caller_ids = A('gene_caller_ids', null)
-        self.genes_of_interest = genes_of_interest
 
-        self.output_dir = filesnpaths.check_output_directory(self.output_dir, ok_if_exists=False)
-        filesnpaths.gen_output_directory(self.output_dir)
-        self.load_structure_db()
-        self.genes_of_interest = self.get_genes_of_interest(self.genes_of_interest_path, self.gene_caller_ids)
+        self.reset = A('reset', null)
+        self.update = A('update', null)
+        self.db_path = A('pdb_database_path', null) or constants.default_pdb_database_path
+        self.skip_modeller_update = A('skip_modeller_update', null)
+
+        self.num_threads = A('num_threads', int) or 1
+        self.queue_size = self.num_threads * 5
+        self.buffer_size = self.num_threads * 10
+
+        self.exists = os.path.exists(self.db_path)
+        self.clusters = pd.DataFrame({})
 
 
-    def export_pdbs(self):
-        self.progress.new('Exporting structure files')
-        for i, gene in enumerate(self.genes_of_interest):
-            self.progress.update('Processed {} of {}'.format(i, len(self.genes_of_interest)))
-            file_path = os.path.join(self.output_dir, 'gene_{}.pdb'.format(gene))
-            self.structure_db.export_pdb_content(gene, file_path, ok_if_exists=True)
+    def process(self):
+        """Main method"""
+
+        if self.reset:
+            self.reset_db()
+
+        if (self.exists and self.update) or (not self.exists and not self.update):
+            self.check_or_create_db()
+            self.database_summary()
+            self._run()
+        elif self.exists and not self.update:
+            self.run.warning("Your database already exists, so anvi'o doesn't know what you "
+                             "want to do. If you want to update your already existing database "
+                             "use --update. If you want to delete it and start fresh use --reset. "
+                             "Anvi'o is now in the process of displaying some stats for your "
+                             "currently existing database. Afterwards, it will exit.",
+                             header = "NOTHING TO DO", lc='yellow')
+            self.check_or_create_db()
+            self.database_summary()
+        elif not self.exists and self.update:
+            raise ConfigError("You asked to update the database, but the database was not found.")
+        else:
+            raise ConfigError("HOW?!")
+
+
+    def get_clusters_dataframe(self):
+        self.progress.new('Downloading')
+        self.progress.update('95% clusters')
+
+        clusters_path = self.download_clusters()
+        clusters = self.parse_clusters_file(clusters_path)
+
+        self.progress.end()
+
+        self.run.warning("", header="DOWNLOADED CLUSTERS INFO", lc='green')
+        self.run.info('Total structures', clusters.shape[0])
+        self.run.info('Number of clusters', clusters['cluster'].nunique(), nl_after=1)
+
+        return clusters
+
+
+    def update_modeller_database(self):
+        """Update the search database used by MODELLER so it shares the same proteins as this database"""
+
+        modeller_database_dir = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
+        pir_db = J(modeller_database_dir, 'pdb_95.pir')
+        bin_db = J(modeller_database_dir, 'pdb_95.bin')
+        dmnd_db = J(modeller_database_dir, 'pdb_95.dmnd')
+
+        if self.skip_modeller_update or not filesnpaths.is_output_file_writable(pir_db):
+            return
+
+        self.progress.new('Updating')
+        self.progress.update('MODELLER\'s search DB')
+
+        if filesnpaths.is_file_exists(pir_db, dont_raise=True):
+            os.remove(pir_db)
+
+        if filesnpaths.is_file_exists(bin_db, dont_raise=True):
+            os.remove(bin_db)
+
+        if filesnpaths.is_file_exists(dmnd_db, dont_raise=True):
+            os.remove(dmnd_db)
+
+        db_download_path = os.path.join(modeller_database_dir, "pdb_95.pir.gz")
+        utils.download_file("https://salilab.org/modeller/downloads/pdb_95.pir.gz", db_download_path)
+        utils.run_command(['gzip', '-d', db_download_path], log_file_path=filesnpaths.get_temp_file_path())
+
+        self.progress.end()
+
+        self.run.info('MODELLER search DB updated', db_download_path.rstrip('.gz'), nl_after=1)
+
+
+    def _run(self):
+        self.clusters = self.get_clusters_dataframe()
+        self.update_modeller_database()
+
+        self.run.info_single("Anvi'o will now download structures from the RSCB PDB server. Press CTRL+C once to cancel.", nl_after=1)
+
+        self.progress.new('Setup')
+        self.progress.update('setting up threads')
+
+        failed = []
+        structures = []
+
+        manager = multiprocessing.Manager()
+        available_index_queue = manager.Queue()
+        output_queue = manager.Queue(self.queue_size)
+
+        self.progress.update('Determining the set of pdb ids')
+        # Consider only PDB ids that aren't already stored
+        # NOTE We store as list so order is retained when debugging
+        pdb_ids = self.get_representative_ids(self.clusters)
+        already_stored = self.get_stored_structure_ids()
+        pdb_ids = [pdb_id for pdb_id in pdb_ids if pdb_id not in already_stored]
+
+        num_structures = len(pdb_ids)
+
+        if num_structures == 0:
+            raise self.run.warning("The database is up to date :)")
+
+        # put contig indices into the queue to be read from within the worker
+        for p in pdb_ids:
+            available_index_queue.put(p)
+
+        processes = []
+        for _ in range(self.num_threads):
+            processes.append(multiprocessing.Process(target=PDBDatabase.get_structure, args=(self, available_index_queue, output_queue)))
+
+        for proc in processes:
+            proc.start()
+
+        done = 0
+        db_size = self.size_of_database()
+
+        self.progress.end()
+        self.progress.new('Using %d threads' % self.num_threads, progress_total_items=num_structures)
+        self.progress.update('%d / %d processed | total DB size %s' % (done, num_structures, db_size))
+
+        while done < num_structures:
+            try:
+                structure = output_queue.get()
+                structures.append(structure)
+
+                if structure['failed']:
+                    failed.append(structure['id'])
+
+                done += 1
+
+                self.progress.increment(done)
+                self.progress.update('%d / %d processed | total DB size %s' % (done, num_structures, db_size))
+
+                if len(structures) > self.buffer_size:
+                    self.store_buffer(structures)
+                    db_size = self.size_of_database()
+                    structures = []
+
+            except KeyboardInterrupt:
+                self.run.warning("", header="!!! DON'T TOUCH ANYTHING !!!", nl_before=2, nl_after=0, lc='yellow')
+                self.run.info_single("Ending upon user request. Please wait patiently for anvi'o to "
+                                     "die gracefully, or else risk a corrupted DB", nl_before=0)
+                break
+
+        for proc in processes:
+            proc.terminate()
+
+        self.store_buffer(structures)
+
+        if len(failed):
+            self.run.warning("The following structures (%d in total) couldn't be downloaded for whatever reason. Anvi'o "
+                             "suggests you run this again with the --update flag to see if you can download "
+                             "them. If you can't don't worry. %s" % (len(failed), failed))
+
         self.progress.end()
 
 
-    def get_genes_of_interest(self, genes_of_interest_path, gene_caller_ids):
-        if self.genes_of_interest:
-            genes_of_interest = self.genes_of_interest
+    @staticmethod
+    def get_structure(self, available_index_queue, output_queue):
+        while True:
+            pdb_id = available_index_queue.get(True)
+
+            structure = {}
+            structure['id'] = pdb_id
+            structure['pdb_content'] = self.download_and_return_pdb_content(pdb_id)
+            structure['failed'] = False if structure['pdb_content'] else True
+            structure['cluster_info'] = self.get_cluster_info(pdb_id)
+
+            output_queue.put(structure)
+
+        # Never reaches here because process is killed by main thread
+        return
+
+
+    def get_cluster_info(self, representative_id):
+        cluster_id = self.clusters.loc[self.clusters['id'] == representative_id, 'cluster'].iloc[0]
+
+        return self.clusters.loc[self.clusters['cluster'] == cluster_id, :]
+
+
+    def download_and_return_pdb_content(self, pdb_id):
+        """Download and return binary pdb content. pdb_id is a 5-letter code (PDB code + chain ID)"""
+
+        temp_path = filesnpaths.get_temp_file_path()
+
+        four_letter_code = pdb_id[:4]
+        chain_id = pdb_id[-1]
+
+        path = utils.download_protein_structure(four_letter_code, output_path=temp_path, chain=chain_id, raise_if_fail=False)
+
+        if path:
+            with open(path, 'rb') as f:
+                pdb_content = f.read()
         else:
-            genes_of_interest = None
+            # The structure could not be downloaded. Interesting :\
+            self.run.warning("%s, chain %s was not downloaded :\\" % (pdb_id[:4], pdb_id[-1]))
+            pdb_content = None
 
-            if genes_of_interest_path and gene_caller_ids:
-                raise ConfigError("You can't provide a gene caller id from the command line, and a list of gene caller ids\
-                                   as a file at the same time, obviously.")
+        if filesnpaths.is_file_exists(temp_path, dont_raise=True):
+            os.remove(temp_path)
 
-            if gene_caller_ids:
-                gene_caller_ids = set([x.strip() for x in gene_caller_ids.split(',')])
-
-                genes_of_interest = []
-                for gene in gene_caller_ids:
-                    try:
-                        genes_of_interest.append(int(gene))
-                    except:
-                        raise ConfigError("Anvi'o does not like your gene caller id '%s'..." % str(gene))
-
-                genes_of_interest = set(genes_of_interest)
-
-            elif genes_of_interest_path:
-                filesnpaths.is_file_tab_delimited(genes_of_interest_path, expected_number_of_fields=1)
-
-                try:
-                    genes_of_interest = set([int(s.strip()) for s in open(genes_of_interest_path).readlines()])
-                except ValueError:
-                    raise ConfigError("Well. Anvi'o was working on your genes of interest ... and ... those gene IDs did not\
-                                       look like anvi'o gene caller ids :/ Anvi'o is now sad.")
-
-            if not genes_of_interest:
-                genes_of_interest = self.structure_db.genes_with_structure
-                self.run.warning("You did not specify any genes of interest, so anvi'o will assume all of them are of interest.")
-
-        genes_missing_from_structure_db = [gene for gene in genes_of_interest if gene not in self.structure_db.genes_with_structure]
-        if genes_missing_from_structure_db:
-            show_a_few = genes_missing_from_structure_db if len(genes_missing_from_structure_db) <= 10 else genes_missing_from_structure_db[:10]
-            raise ConfigError("{} gene(s) were specified by you but don't exist in the structure database. Here are some of their IDs: {}".
-                format(len(genes_missing_from_structure_db), ', '.join([str(x) for x in show_a_few])))
-
-        return genes_of_interest
+        return pdb_content
 
 
-    def load_structure_db(self):
-        utils.is_structure_db(self.structure_db_path)
-        self.structure_db = StructureDatabase(self.structure_db_path,
-                                              ignore_hash=True,
-                                              create_new=False)
+    def store_buffer(self, structures):
+        pdb_db = self.load_db()
+
+        # Remove any already existing entries
+        new_clusters = set([])
+        new_structure_ids = set([])
+
+        for structure in structures:
+            new_clusters.add(structure['cluster_info']['cluster'].iloc[0])
+            new_structure_ids.add(structure['id'])
+
+        if len(new_clusters):
+            pdb_db.remove_some_rows_from_table('clusters', 'cluster IN (%s)' % ','.join(['"' + x + '"' for x in new_clusters]))
+
+        if len(new_structure_ids):
+            pdb_db.remove_some_rows_from_table('structures', 'representative_id IN (%s)' % ','.join(['"' + x + '"' for x in new_structure_ids]))
+
+        # Add the new entries
+        for structure in structures:
+            # store the pdb content
+            pdb_db.insert('structures', (structure['id'], structure['pdb_content']))
+
+            # store the cluster
+            pdb_db.insert_rows_from_dataframe('clusters', structure['cluster_info'])
+
+        pdb_db.set_meta_value('last_update', str(datetime.datetime.now()))
+        pdb_db.disconnect()
 
 
+    def parse_clusters_file(self, path):
+        """Parse a clusters file and return a clusters dataframe
 
-class ContactMap(object):
-    def __init__(self, pdb_path, distance_method='CA', threshold=6, p=terminal.Progress(), r=terminal.Run()):
-        self.pdb_path = pdb_path
-        self.contact_map = None
-        self.distance_method = distance_method
-        self.threshold = threshold
+        Returns
+        =======
+        output : pandas DataFrame
+            output has columns Index(['cluster', 'id', 'representative'])
+        """
 
-        self.distances_methods_dict = {
-            "CA": self.calc_CA_dist,
-        }
+        d = {'cluster': [], 'id': [], 'representative': []}
 
+        with open(path, 'r') as f:
+            for cluster, line in enumerate(f.readlines()):
+                line = line.strip()
+                rep_id, ids = line.split(':')
+                rep_id = rep_id.strip()
+                ids = ids.strip().split(' ')
 
-    def load_pdb_file(self, name_id = 'structure'):
-        p = PDBParser()
-        model = p.get_structure(name_id, self.pdb_path)[0] # [0] = first model
-        structure = model['A'] # ['A'] = get first chain in model
-        return structure
+                for pdb_id in ids:
+                    d['cluster'].append('cluster_%06d' % cluster)
+                    d['id'].append(pdb_id)
+                    d['representative'].append(1 if pdb_id == rep_id else 0)
 
-
-    def compute_contact_map(self):
-        structure = self.load_pdb_file()
-
-        contact_map = np.zeros((len(structure), len(structure)))
-        for i, residue1 in enumerate(structure):
-            for j, residue2 in enumerate(structure):
-                contact_map[i, j] = self.distances_methods_dict[self.distance_method](residue1, residue2)
-
-        if self.threshold is not None:
-            contact_map[contact_map <= self.threshold] = 1
-            contact_map[contact_map >  self.threshold] = 0
-
-        return contact_map
+        return pd.DataFrame(d)
 
 
-    def calc_CA_dist(self, residue1, residue2):
-        """Returns the C-alpha distance between two residues"""
-        diff_vector = residue1["CA"].coord - residue2["CA"].coord
-        return np.sqrt(np.sum(diff_vector**2))
+    def download_clusters(self, directory=None):
+        """Downloads the current 95% cluster groups
+
+        Downloads https://salilab.org/modeller/downloads/pdb_95.grp.gz and then decompresses the
+        file with `gzip -d`
+
+        Parameters
+        ==========
+        directory : str
+            Directory that the file will be placed in. Temporary directory assumed if None
+
+        Returns
+        =======
+        output : str
+            The path of the downloaded and decompressed file.
+        """
+
+        if not directory:
+            directory = filesnpaths.get_temp_directory_path()
+
+        path = os.path.join(directory, "pdb_95.grp.gz")
+        utils.download_file("https://salilab.org/modeller/downloads/pdb_95.grp.gz", path)
+        utils.run_command(['gzip', '-d', path], log_file_path=filesnpaths.get_temp_file_path())
+
+        return path.rstrip('.gz')
+
+
+    def load_db(self):
+        return db.DB(self.db_path, '0.1', new_database=False)
+
+
+    def check_or_create_db(self):
+        """Check the DB. Complain if it sucks. Create it if it doesn't exist"""
+
+        if self.exists:
+            try:
+                pdb_db = self.load_db()
+            except:
+                raise ConfigError("Anvi'o is not convinced %s was generated with anvi-setup-pdb-database" % self.db_path)
+
+            table_names = pdb_db.get_table_names()
+
+            if 'structures' not in table_names:
+                pdb_db.disconnect()
+                raise ConfigError("Anvi'o was expecting to find the table with the name 'structures' in %s" % self.db_path)
+
+            if 'clusters' not in table_names:
+                pdb_db.disconnect()
+                raise ConfigError("Anvi'o was expecting to find the table with the name 'clusters' in %s" % self.db_path)
+
+
+        if not self.exists:
+            pdb_db = db.DB(self.db_path, '0.1', new_database=True)
+            pdb_db.set_meta_value('last_update', str(datetime.datetime.now()))
+            pdb_db.set_meta_value('clustered_at', '95%')
+            pdb_db.create_table('structures', ['representative_id', 'pdb_content'], ['text', 'blob'])
+            pdb_db.create_table('clusters', ['cluster', 'id', 'representative'], ['text', 'text', 'integer'])
+
+        try:
+            # Create an index for `representative_id` for fast lookup
+            pdb_db._exec("CREATE INDEX chain_index ON structures (representative_id);")
+        except sqlite3.OperationalError:
+            # The index has already been set
+            pass
+
+        pdb_db.disconnect()
+
+
+    def reset_db(self):
+        if not self.exists:
+            raise ConfigError("You asked to --reset the database, but the database doesn't exist")
+
+        self.run.warning("You want to --reset the database (size %s), which seems potentially rash. "
+                         "Anvi'o is putting you in time out for 20 seconds before deleting. Press "
+                         "CTRL+C at any time during your time out to cancel the deletion." \
+                            % self.size_of_database())
+        time.sleep(20)
+        os.remove(self.db_path)
+        self.exists = False
+
+
+    def database_summary(self):
+        self.run.warning("", header="DATABASE INFO", lc='green')
+        self.run.info('Previous database found', self.exists)
+        self.run.info('Database path', self.db_path)
+        self.run.info('DB size', self.size_of_database())
+
+        pdb_db = self.load_db()
+        self.run.info('Last updated', pdb_db.get_meta_value('last_update'))
+        self.run.info('Number of structures', pdb_db.get_row_counts_from_table('structures'), nl_after=1)
+        pdb_db.disconnect()
+
+
+    def get_representative_ids(self, clusters):
+        """Get representative IDs from a clusters dataframe"""
+
+        return clusters.loc[clusters['representative'] == 1, 'id'].tolist()
+
+
+    def get_stored_structure_ids(self):
+        """Get structure IDs of those stored in DB"""
+
+        self.stored_structure_ids = self.get_representative_ids(self.get_clusters())
+
+        return self.stored_structure_ids
+
+
+    def get_clusters(self):
+        """Get 'clusters' table as a dataframe"""
+
+        pdb_db = self.load_db()
+        clusters = pdb_db.get_table_as_dataframe('clusters', error_if_no_data=False)
+        pdb_db.disconnect()
+
+        return clusters
+
+
+    def export_pdb(self, pdb_id, output_path=None):
+        if not output_path:
+            output_path = filesnpaths.get_temp_file_path()
+
+        pdb_db = self.load_db()
+
+        as_bytes = pdb_db.get_some_rows_from_table_as_dict('structures', 'representative_id = "%s"' % pdb_id)[pdb_id]['pdb_content']
+
+        if as_bytes is None:
+            raise ConfigError("PDB ID %s was found in the database, but its content is empty. That's weird--sorry." % pdb_db)
+
+        with open(output_path, 'wb') as f:
+            f.write(as_bytes)
+
+        pdb_db.disconnect()
+
+        return output_path
+
+
+    def size_of_database(self):
+        return utils.human_readable_file_size(os.path.getsize(self.db_path))
 
 

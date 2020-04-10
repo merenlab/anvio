@@ -35,7 +35,6 @@ def migrate(db_path):
         profile_db.set_meta_value('items_ordered', profile_db.get_meta_value('contigs_ordered'))
         profile_db.remove_meta_key_value_pair('contigs_ordered')
 
-
     # set the version
     profile_db.remove_meta_key_value_pair('version')
     profile_db.set_version(next_version)
@@ -47,8 +46,8 @@ def migrate(db_path):
     if is_full_profile:
         run.info_single("Your profile db is now %s (WRONG .. anvi'o never takes breaks)." % next_version, nl_after=1, nl_before=1, mc='green')
     else:
-        run.info_single("Your profile db is now version %s. But essentially nothing really happened to your\
-                         database since it was a blank profile (which is OK, move along)." \
+        run.info_single("Your profile db is now version %s. But essentially nothing really happened to your "
+                        "database since it was a blank profile (which is OK, move along)." \
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
 
 if __name__ == '__main__':

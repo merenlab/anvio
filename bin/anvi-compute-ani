@@ -2,30 +2,20 @@
 # -*- coding: utf-8
 
 import sys
-import anvio
-import argparse
 
 from anvio.errors import ConfigError
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
-__credits__ = []
-__license__ = "GPL 3.0"
-__version__ = anvio.__version__
-__maintainer__ = "Ozcan Esen"
-__email__ = "ozcanesen@gmail.com"
+
+
 __description__ = ("This program has been superseded by the beefier `anvi-compute-genome-similarity`")
 
 
-def main(args):
+def main():
     raise ConfigError(__description__)
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description=__description__)
-    args = anvio.get_args(parser)
-
     try:
-        main(args)
+        main()
     except ConfigError as e:
         print(e)
         sys.exit(-1)

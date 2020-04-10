@@ -84,7 +84,7 @@ class KrakenUniq(Parser):
         self.progress.update('Processing the input data ...')
 
         for entry in kraken_output.values():
-            tax_string_list = [f for f in entry['taxonomy'].split('|') if not f.startswith('k__Fungi')]
+            tax_string_list = [f for f in entry['taxonomy'].split('|') if not f.startswith('k__')]
             count = entry['count']
 
             num_levels_tax_entry = len(tax_string_list)

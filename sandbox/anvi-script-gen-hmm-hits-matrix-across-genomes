@@ -39,13 +39,13 @@ def main(args):
 
     HMM_sources_common_to_all = s.get_HMM_sources_common_to_all_genomes()
     if not len(HMM_sources_common_to_all):
-        raise ConfigError("There is not a single HMM source that is common to all\
-                           contigs databases you have :/")
+        raise ConfigError("There is not a single HMM source that is common to all "
+                          "contigs databases you have :/")
 
     if hmm_source not in HMM_sources_common_to_all:
-        raise ConfigError('The HMM source "%s" is not common to all of your contigs\
-                           databases you want to work with :/ Here is a list of those\
-                           that are common: %s' % (hmm_source, ', '.join(HMM_sources_common_to_all)))
+        raise ConfigError('The HMM source "%s" is not common to all of your contigs '
+                          'databases you want to work with :/ Here is a list of those '
+                          'that are common: %s' % (hmm_source, ', '.join(HMM_sources_common_to_all)))
 
     if not output_file_path:
         raise ConfigError("This will not work without an output file path.")

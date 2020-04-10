@@ -1,9 +1,26 @@
-FROM continuumio/miniconda3:4.7.10
-ENV ANVIO_VERSION "6.1_master"
+# To start a build in an absolutely pristine Docker environment you can use the following
+# to clean up your docker (although please note that it will remove all existing containers
+# and cached states):
+#
+# docker rmi --force $(docker images -a --filter=dangling=true -q)
+# docker rm --force $(docker ps --filter=status=exited --filter=status=created -q)
+# docker system prune --force -a
+#
+# after that, you can start the build with the following:
+#
+# docker build -t meren/anvio:test-build .
 
-RUN conda config --env --add channels conda-forge
+FROM continuumio/miniconda3:4.8.2
+ENV ANVIO_VERSION "6.2_master"
+
 RUN conda config --env --add channels bioconda
+RUN conda config --env --add channels conda-forge
+
 RUN conda create -n anvioenv python=3.6
+
+# Install nano early on so the container has
+# something to edit files if debug is necessary
+RUN conda install -y nano
 
 # Activate environment
 ENV PATH /opt/conda/envs/anvioenv/bin:$PATH
@@ -16,18 +33,27 @@ SHELL ["/bin/bash", "-c"]
 RUN conda install -y conda-build
 
 COPY conda-recipe /tmp/conda-recipe
-RUN conda-build /tmp/conda-recipe/anvio-minimal && conda-build /tmp/conda-recipe/anvio
 
-# Install Anvi'o
+# build and install anvio-minimal
+RUN conda-build /tmp/conda-recipe/anvio-minimal
 RUN conda index /opt/conda/envs/anvioenv/conda-bld/
 RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio-minimal=$ANVIO_VERSION
+RUN conda build purge-all
+
+# build and install anvio meta package. please note that the next line is quite a memory
+# intensive step. if your docker build command is getting killed abruptly, you may want
+# to increase the memory docker allowed to use (from the docker preferences or otherwise).
+RUN conda-build /tmp/conda-recipe/anvio
+RUN conda index /opt/conda/envs/anvioenv/conda-bld/
 RUN conda install -c file:///opt/conda/envs/anvioenv/conda-bld/ anvio=$ANVIO_VERSION
+RUN conda build purge-all
 
 # Install METABAT and DAS_TOOL
 RUN conda install metabat2 das_tool
 
 # Install CONCOCT
 RUN apt-get update && apt-get install -qq build-essential libgsl0-dev bedtools mummer samtools perl libssl-dev
+RUN conda install cython
 RUN pip install https://github.com/BinPro/CONCOCT/archive/1.1.0.tar.gz
 
 # Install BINSANITY
@@ -48,7 +74,10 @@ RUN echo 'export PATH=/opt/MaxBin-2.2.7:$PATH' >> ~/.bashrc
 RUN pip install virtualenv
 RUN apt-get install vim util-linux -yy
 
-# Setup the environment
+# this one is too painful to install through Conda
+RUN Rscript -e 'install.packages(c("optparse"), repos="https://cran.rstudio.com")'
+
+# Cutify the environment
 RUN echo "export PS1=\"\[\e[0m\e[47m\e[1;30m\] :: anvi'o v$ANVIO_VERSION :: \[\e[0m\e[0m \[\e[1;34m\]\]\w\[\e[m\] \[\e[1;32m\]>>>\[\e[m\] \[\e[0m\]\"" >> /root/.bashrc
 
 CMD /bin/bash -l

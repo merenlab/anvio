@@ -41,7 +41,7 @@ if __name__ == '__main__':
                                                        (-V) from the program anvi-gen-variability-profile. If you \
                                                        don't want to visualize variants, this is the wrong tool for \
                                                        the job. Instead, export the PDB files with \
-                                                       anvi-export-pdb-from-structure-database, and open with a \
+                                                       anvi-export-structures, and open with a \
                                                        more comprehensive protein viewing software.")
     groupR = parser.add_argument_group("REFINING PARAMETERS", "Which samples, genes, and contigs etc. are you \
                                                                interested in? Define that stuff here.")

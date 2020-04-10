@@ -7,7 +7,9 @@ import re
 import sys
 import time
 import fcntl
+import numpy as np
 import struct
+import pandas as pd
 import termios
 import datetime
 import textwrap
@@ -15,8 +17,9 @@ import textwrap
 from colored import fore, back, style
 from collections import OrderedDict
 
-import anvio.constants as constants
+import anvio
 import anvio.dictio as dictio
+import anvio.constants as constants
 
 from anvio.errors import TerminalError
 from anvio.ttycolors import color_text as c
@@ -79,6 +82,9 @@ class Progress:
 
         self.LEN = lambda s: len(s.encode('utf-16-le')) // 2
 
+        if anvio.NO_PROGRESS or anvio.QUIET:
+            self.verbose = False
+
 
     def get_terminal_width(self):
         # FIXME Program flow here is not clear. When does try fail?
@@ -109,7 +115,7 @@ class Progress:
 
     def update_pid(self, pid):
         self.pid = '%s %s' % (get_date(), pid)
-        
+
 
     def increment(self, increment_to=None):
         if increment_to:
@@ -213,7 +219,7 @@ class Progress:
         self.step = None
 
 
-    def update(self, msg):
+    def update(self, msg, increment=False):
         self.msg = msg
 
         if not self.verbose:
@@ -222,11 +228,26 @@ class Progress:
         if not self.pid:
             raise TerminalError('Progress with null pid will not update for msg "%s"' % msg)
 
+        if increment:
+            self.increment()
+
         self.clear()
         self.write('\r[%s] %s' % (self.pid, msg))
 
 
-    def end(self):
+    def end(self, timing_filepath=None):
+        """End the current progress
+
+        Parameters
+        ==========
+        timing_filepath : str, None
+            Store the timings of this progress to the filepath `timing_filepath`. File will only be
+            made if a progress_total_items parameter was made during self.new()
+        """
+
+        if timing_filepath and self.progress_total_items is not None:
+            self.t.gen_file_report(timing_filepath)
+
         self.pid = None
         if not self.verbose:
             return
@@ -245,11 +266,14 @@ class Run:
                                      2: '    - ',
                                      3: '        > '}
 
+        if anvio.QUIET:
+            self.verbose = False
+
 
     def log(self, line):
         if not self.log_file_path:
-            self.warning("The run object got a logging request, but it was not inherited with\
-                          a log file path :(")
+            self.warning("The run object got a logging request, but it was not inherited with "
+                         "a log file path :(")
             return
 
         with open(self.log_file_path, "a") as log_file: log_file.write('[%s] %s\n' % (get_date(), CLEAR(line)))
@@ -259,14 +283,14 @@ class Run:
         if self.log_file_path:
             self.log(line)
 
-        if (self.verbose and not quiet) or overwrite_verbose:
+        if (self.verbose and not quiet) or (overwrite_verbose and not anvio.QUIET):
             try:
                 sys.stderr.write(line)
             except:
                 sys.stderr.write(line.encode('utf-8'))
 
 
-    def info(self, key, value, quiet=False, display_only=False, nl_before=0, nl_after=0, lc='cyan', mc='yellow', progress=None):
+    def info(self, key, value, quiet=False, display_only=False, overwrite_verbose=False, nl_before=0, nl_after=0, lc='cyan', mc='yellow', progress=None):
         if not display_only:
             self.info_dict[key] = value
 
@@ -285,14 +309,13 @@ class Run:
 
         if progress:
             progress.clear()
-            self.write(info_line, quiet=quiet)
+            self.write(info_line, overwrite_verbose=False, quiet=quiet)
             progress.update(progress.msg)
-
         else:
-            self.write(info_line, quiet=quiet)
+            self.write(info_line, quiet=quiet, overwrite_verbose=overwrite_verbose)
 
 
-    def info_single(self, message, mc='yellow', nl_before=0, nl_after=0, cut_after=80, level=1, progress=None):
+    def info_single(self, message, overwrite_verbose=False, mc='yellow', nl_before=0, nl_after=0, cut_after=80, level=1, progress=None):
         if isinstance(message, str):
             message = remove_spaces(message)
 
@@ -308,11 +331,10 @@ class Run:
 
         if progress:
             progress.clear()
-            self.write(message_line)
+            self.write(message_line, overwrite_verbose=False)
             progress.update(progress.msg)
-
         else:
-            self.write(message_line)
+            self.write(message_line, overwrite_verbose=False)
 
 
     def warning(self, message, header='WARNING', lc='red', raw=False, overwrite_verbose=False, nl_before=0, nl_after=0):
@@ -346,56 +368,56 @@ class Run:
 
 
 class Timer:
-    """
-    The premise of the class is to build an ordered dictionary, where each key is a checkpoint
-    name and value is a timestamp.
+    """Manages an ordered dictionary, where each key is a checkpoint name and value is a timestamp.
 
     Examples
     ========
 
-        from anvio.terminal import Timer
-        import time
-        t = Timer(); time.sleep(1)
-        t.make_checkpoint('checkpoint_name'); time.sleep(1)
-        timedelta = t.timedelta_to_checkpoint(timestamp=t.timestamp(), checkpoint_key='checkpoint_name')
-        print(t.format_time(timedelta, fmt = '{days} days, {hours} hours, {seconds} seconds', zero_padding=0))
-        print(t.time_elapsed())
+    >>> from anvio.terminal import Timer
+    >>> import time
+    >>> t = Timer(); time.sleep(1)
+    >>> t.make_checkpoint('checkpoint_name'); time.sleep(1)
+    >>> timedelta = t.timedelta_to_checkpoint(timestamp=t.timestamp(), checkpoint_key='checkpoint_name')
+    >>> print(t.format_time(timedelta, fmt = '{days} days, {hours} hours, {seconds} seconds', zero_padding=0))
+    >>> print(t.time_elapsed())
+    0 days, 0 hours, 1 seconds
+    00:00:02
 
-        >>> 0 days, 0 hours, 1 seconds
-        >>> 00:00:02
-
-        t = Timer(3) # 3 checkpoints expected until completion
-        for _ in range(3):
-            time.sleep(1); t.make_checkpoint()
-            print('complete: %s' % t.complete)
-            print(t.eta(fmt='ETA: {seconds} seconds'))
-
-        >>> complete: False
-        >>> ETA: 02 seconds
-        >>> complete: False
-        >>> ETA: 01 seconds
-        >>> complete: True
-        >>> ETA: 00 seconds
+    >>> t = Timer(3) # 3 checkpoints expected until completion
+    >>> for _ in range(3):
+    >>>     time.sleep(1); t.make_checkpoint()
+    >>>     print('complete: %s' % t.complete)
+    >>>     print(t.eta(fmt='ETA: {seconds} seconds'))
+    complete: False
+    ETA: 02 seconds
+    complete: False
+    ETA: 01 seconds
+    complete: True
+    ETA: 00 seconds
     """
-    def __init__(self, required_completion_score = None):
+    def __init__(self, required_completion_score=None, initial_checkpoint_key=0, score=0):
         self.timer_start = self.timestamp()
-        self.last_checkpoint_key = 0
-        self.checkpoints = OrderedDict([(self.last_checkpoint_key, self.timer_start)])
+        self.initial_checkpoint_key = initial_checkpoint_key
+        self.last_checkpoint_key = self.initial_checkpoint_key
+        self.checkpoints = OrderedDict([(initial_checkpoint_key, self.timer_start)])
         self.num_checkpoints = 0
 
         self.required_completion_score = required_completion_score
-        self.completion_score = 0
+        self.score = score
         self.complete = False
 
         self.last_eta = None
         self.last_eta_timestamp = self.timer_start
+
+        self.scores = {self.initial_checkpoint_key: self.score}
 
 
     def timestamp(self):
         return datetime.datetime.fromtimestamp(time.time())
 
 
-    def timedelta_to_checkpoint(self, timestamp, checkpoint_key=0):
+    def timedelta_to_checkpoint(self, timestamp, checkpoint_key=None):
+        if not checkpoint_key: checkpoint_key = self.initial_checkpoint_key
         timedelta = timestamp - self.checkpoints[checkpoint_key]
         return timedelta
 
@@ -405,8 +427,8 @@ class Timer:
             checkpoint_key = self.num_checkpoints + 1
 
         if checkpoint_key in self.checkpoints:
-            raise TerminalError('Timer.make_checkpoint :: %s already exists as a checkpoint key.\
-                                 All keys must be unique' % (str(checkpoint_key)))
+            raise TerminalError('Timer.make_checkpoint :: %s already exists as a checkpoint key. '
+                                'All keys must be unique' % (str(checkpoint_key)))
 
         checkpoint = self.timestamp()
 
@@ -416,14 +438,49 @@ class Timer:
         self.num_checkpoints += 1
 
         if increment_to:
-            self.completion_score = increment_to
+            self.score = increment_to
         else:
-            self.completion_score += 1
+            self.score += 1
 
-        if self.required_completion_score and self.completion_score >= self.required_completion_score:
+        self.scores[checkpoint_key] = self.score
+
+        if self.required_completion_score and self.score >= self.required_completion_score:
             self.complete = True
 
         return checkpoint
+
+
+    def gen_report(self, title='Time Report', run=Run()):
+        checkpoint_last = self.initial_checkpoint_key
+
+        run.warning('', header=title, lc='yellow', nl_before=1, nl_after=0)
+
+        for checkpoint_key, checkpoint in self.checkpoints.items():
+            if checkpoint_key == self.initial_checkpoint_key:
+                continue
+
+            run.info(str(checkpoint_key), '+%s' % self.timedelta_to_checkpoint(checkpoint, checkpoint_key=checkpoint_last))
+            checkpoint_last = checkpoint_key
+
+        run.info('Total elapsed', '=%s' % self.timedelta_to_checkpoint(checkpoint, checkpoint_key=self.initial_checkpoint_key))
+
+
+    def gen_dataframe_report(self):
+        """Returns a dataframe"""
+
+        d = {'key': [], 'time': [], 'score': []}
+        for checkpoint_key, checkpoint in self.checkpoints.items():
+            d['key'].append(checkpoint_key)
+            d['time'].append(checkpoint)
+            d['score'].append(self.scores[checkpoint_key])
+
+        return pd.DataFrame(d)
+
+
+    def gen_file_report(self, filepath):
+        """Writes to filepath, will overwrite"""
+
+        self.gen_dataframe_report().to_csv(filepath, sep='\t', index=False)
 
 
     def calculate_time_remaining(self, infinite_default = '∞:∞:∞'):
@@ -431,11 +488,11 @@ class Timer:
             return datetime.timedelta(seconds = 0)
         if not self.required_completion_score:
             return None
-        if not self.completion_score:
+        if not self.score:
             return infinite_default
 
         time_elapsed = self.checkpoints[self.last_checkpoint_key] - self.checkpoints[0]
-        fraction_completed = self.completion_score / self.required_completion_score
+        fraction_completed = self.score / self.required_completion_score
         time_remaining_estimate = time_elapsed / fraction_completed - time_elapsed
 
         return time_remaining_estimate
@@ -463,14 +520,16 @@ class Timer:
 
 
     def format_time(self, timedelta, fmt = '{hours}:{minutes}:{seconds}', zero_padding = 2):
-        """
-            Examples of `fmt`. Suppose the timedelta is seconds = 1, minutes = 1, hours = 1.
+        """Formats time
+
+        Examples of `fmt`. Suppose the timedelta is seconds = 1, minutes = 1, hours = 1.
 
             {hours}h {minutes}m {seconds}s  --> 01h 01m 01s
             {seconds} seconds               --> 3661 seconds
             {weeks} weeks {minutes} minutes --> 0 weeks 61 minutes
             {hours}h {seconds}s             --> 1h 61s
         """
+
         unit_hierarchy = ['seconds', 'minutes', 'hours', 'days', 'weeks']
         unit_denominations = {'weeks': 7, 'days': 24, 'hours': 60, 'minutes': 60, 'seconds': 1}
 
@@ -548,9 +607,8 @@ class Timer:
 
 
     def _test_format_time(self):
-        """
-        Run this and visually inspect its working
-        """
+        """Run this and visually inspect its working"""
+
         run = Run()
         for exponent in range(1, 7):
             seconds = 10 ** exponent
@@ -583,56 +641,53 @@ class Timer:
 
 
 class TimeCode(object):
-    """
+    """Time a block of code.
+
     This context manager times blocks of code, and calls run.info afterwards to report
     the time (unless quiet = True). See also time_program()
 
-    PARAMS
-    ======
-        sc: 'green'
-            run info color with no runtime error
-        success_msg: None
-            If None, it is set to 'Code ran succesfully in'
-        fc: 'green'
-            run info color with runtime error
-        failure_msg: None
-            If None, it is set to 'Code failed within'
-        run: Run()
-            Provide a pre-existing Run instance if you want
-        quiet: False,
-            If True, run.info is not called and datetime object is stored
-            as `time` (see examples)
-        suppress_first: 0,
-            Supress output if code finishes within this many seconds.
+    Parameters
+    ==========
+    sc: 'green'
+        run info color with no runtime error
+    success_msg: None
+        If None, it is set to 'Code ran succesfully in'
+    fc: 'green'
+        run info color with runtime error
+    failure_msg: None
+        If None, it is set to 'Code failed within'
+    run: Run()
+        Provide a pre-existing Run instance if you want
+    quiet: False,
+        If True, run.info is not called and datetime object is stored
+        as `time` (see examples)
+    suppress_first: 0,
+        Supress output if code finishes within this many seconds.
 
-    EXAMPLES
+    Examples
     ========
 
-        import time
-        import anvio.terminal as terminal
+    >>> import time
+    >>> import anvio.terminal as terminal
+    >>> # EXAMPLE 1
+    >>> with terminal.TimeCode() as t:
+    >>>     time.sleep(5)
+    ✓ Code finished successfully after 05s
 
-        # EXAMPLE 1
-        with terminal.TimeCode() as t:
-            time.sleep(5)
+    >>> # EXAMPLE 2
+    >>> with terminal.TimeCode() as t:
+    >>>     time.sleep(5)
+    >>>     print(asdf) # undefined variable
+    ✖ Code encountered error after 05s
 
-        >>> ✓ Code finished successfully after 05s
-
-
-        # EXAMPLE 2
-        with terminal.TimeCode() as t:
-            time.sleep(5)
-            print(asdf) # undefined variable
-
-        >>> ✖ Code encountered error after 05s
-
-        # EXAMPLE 3
-        with terminal.TimeCode(quiet=True) as t:
-            time.sleep(5)
-        print(t.time)
-
-        >>> 0:00:05.000477
+    >>> # EXAMPLE 3
+    >>> with terminal.TimeCode(quiet=True) as t:
+    >>>     time.sleep(5)
+    >>> print(t.time)
+    0:00:05.000477
     """
-    def __init__(self, sc='green', success_msg = None, fc='red', failure_msg = None, run = Run(), quiet = False, suppress_first = 0):
+
+    def __init__(self, success_msg=None, sc='green', fc='red', failure_msg=None, run=Run(), quiet=False, suppress_first=0):
         self.run = run
         self.run.single_line_prefixes = {0: '✓ ', 1: '✖ '}
 
@@ -663,23 +718,22 @@ class TimeCode(object):
 
 
 def time_program(program_method):
-    """
-    A decorator used to time anvio programs. See below for example.
+    """A decorator used to time anvio programs.
+
     For a concrete example, see `bin/anvi-profile`.
 
-    EXAMPLE
-    =======
+    Examples
+    ========
 
-    import anvio.terminal as terminal
-
-    @terminal.time_program
-    def main(args):
-        <do stuff>
-
-    if __name__ == '__main__':
-        <do stuff>
-        main(args)
+    >>> import anvio.terminal as terminal
+    >>> @terminal.time_program
+    >>> def main(args):
+    >>>     <do stuff>
+    >>> if __name__ == '__main__':
+    >>>     <do stuff>
+    >>>     main(args)
     """
+
     import inspect
     program_name = os.path.basename(inspect.getfile(program_method))
 
@@ -693,6 +747,87 @@ def time_program(program_method):
         with TimeCode(**TimeCode_params):
             program_method(*args, **kwargs)
     return wrapper
+
+
+class TrackMemory(object):
+    """Track the total memory over time
+
+    Parameters
+    ==========
+    at_most_every : int or float, 5
+        Memory is only calculated at most every 5 seconds, despite how many times self.measure is
+        called
+    """
+
+    def __init__(self, at_most_every=5):
+        self.t = None
+        self.at_most_every = at_most_every
+
+
+    def start(self):
+        self.t = Timer(score=self._get_mem())
+        return self.get_last(), self.get_last_diff()
+
+
+    def measure(self):
+        if self.t is None:
+            raise TerminalError("TrackMemory :: You must start the tracker with self.start()")
+
+        if self.t.timedelta_to_checkpoint(self.t.timestamp(), self.t.last_checkpoint_key) < datetime.timedelta(seconds = self.at_most_every):
+            return False
+
+        self.t.make_checkpoint(increment_to=self._get_mem())
+        return True
+
+
+    def gen_report(self):
+        df = self.t.gen_dataframe_report().rename(columns={'score': 'bytes'}).set_index('key', drop=True)
+        df['memory'] = df['bytes'].apply(self._format)
+        return df
+
+
+    def get_last(self):
+        """Get the memory of the last measurement"""
+        return self._format(self.t.scores[self.t.last_checkpoint_key])
+
+
+    def get_last_diff(self):
+        """Get the memory difference between the two latest measurements"""
+        last_key = self.t.last_checkpoint_key
+
+        if last_key == 0:
+            return '+??'
+
+        return self._format_diff(self._diff(last_key, last_key - 1))
+
+
+    def _diff(self, key2, key1):
+        return self.t.scores[key2] - self.t.scores[key1]
+
+
+    def _format(self, mem):
+        if np.isnan(mem):
+            return '??'
+
+        formatted = anvio.utils.human_readable_file_size(abs(mem))
+        return ('-' if mem < 0 else '') + formatted
+
+
+    def _format_diff(self, mem):
+        if np.isnan(mem):
+            return '+??'
+
+        formatted = anvio.utils.human_readable_file_size(abs(mem))
+        return ('-' if mem < 0 else '+') + formatted
+
+
+    def _get_mem(self):
+        mem = anvio.utils.get_total_memory_usage(keep_raw=True)
+
+        if mem is None:
+            return np.nan
+
+        return mem
 
 
 def pretty_print(n):

@@ -72,10 +72,10 @@ class RF:
             datum = []
             for feature in self.features:
                 if feature not in data_dict[sample]:
-                    raise ConfigError("RF prediction run into an issue. All features described in the classifier should be present\
-                                        for all observations in the data. However, that is not the case. For instance, feature\
-                                        '%s' is in the classifier, but the entry '%s' in the input data does not have an observation\
-                                        for it :/ Not good." % (feature, sample))
+                    raise ConfigError("RF prediction run into an issue. All features described in the classifier should be present "
+                                       "for all observations in the data. However, that is not the case. For instance, feature "
+                                       "'%s' is in the classifier, but the entry '%s' in the input data does not have an observation "
+                                       "for it :/ Not good." % (feature, sample))
                 datum.append(data_dict[sample][feature])
             data.append(datum)
 
@@ -102,16 +102,16 @@ class RF:
                 with terminal.SuppressAllOutput():
                     classifier_obj = pickle.load(open(self.classifier_object_path, 'rb'))
         except UnicodeDecodeError:
-            raise ConfigError("Your classifier object is broken. Probably because you generated is using a different verison\
-                               of anvi'o. Please create a new one from scratch, and you will probably be golden.")
+            raise ConfigError("Your classifier object is broken. Probably because you generated is using a different verison "
+                              "of anvi'o. Please create a new one from scratch, and you will probably be golden.")
 
         try:
             self.features = classifier_obj['features']
             self.classes = classifier_obj['classes']
             self.classifier = classifier_obj['classifier']
         except:
-            raise ConfigError("RF class does not like the classifier object it was sent for processing :/ Are you sure you\
-                                generated it the way you were supposed to?")
+            raise ConfigError("RF class does not like the classifier object it was sent for processing :/ Are you sure you "
+                               "generated it the way you were supposed to?")
 
         self.classifier_initialized = True
 

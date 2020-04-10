@@ -33,23 +33,23 @@ progress = terminal.Progress()
 
 def get_functions_dict(args):
     if args.parser not in parser_modules['functions']:
-        raise ConfigError("Anvi'o does not know what to do with '%s'. You must use one of the available parsers\
-                            to make sense of genes (well, open reading frames) found in your contigs (please see\
-                            the documentation for a more detailed explanation): %s"\
+        raise ConfigError("Anvi'o does not know what to do with '%s'. You must use one of the available parsers "
+                           "to make sense of genes (well, open reading frames) found in your contigs (please see "
+                           "the documentation for a more detailed explanation): %s"\
                                                  % (args.parser, ', '.join(parser_modules['functions'])))
     if not args.input_files:
-        raise ConfigError("You need to use '--input-files' parameter to list file(s) that is/are required the\
-                            parser you chose. Please see the documentation for details.")
+        raise ConfigError("You need to use '--input-files' parameter to list file(s) that is/are required the "
+                           "parser you chose. Please see the documentation for details.")
 
 
     parser = parser_modules['functions'][args.parser](args.input_files)
     genes_dict = parser.get_dict()
 
     if not len(genes_dict):
-        raise ConfigError("Your parser (%s) returned an empty dictionary for your input file. Something must have gone wrong.\
-                            Maybe you selected a wrong parser, or the input file format has changed between when this\
-                            parser was implemented and now. Either ways, if you have exhausted your ideas for troubleshooting\
-                            you should send an e-mail to anvio developers! Sorry for this!" % (args.parser))
+        raise ConfigError("Your parser (%s) returned an empty dictionary for your input file. Something must have gone wrong. "
+                           "Maybe you selected a wrong parser, or the input file format has changed between when this "
+                           "parser was implemented and now. Either ways, if you have exhausted your ideas for troubleshooting "
+                           "you should send an e-mail to anvio developers! Sorry for this!" % (args.parser))
 
     return genes_dict
 
@@ -61,8 +61,8 @@ def main(args):
         functions_dict = get_functions_dict(args)
     else:
         if len(args.input_files) != 1:
-            raise ConfigError("When you are using a simple gene calls matrix file to import functions, you can't use more than\
-                                one file as an input.")
+            raise ConfigError("When you are using a simple gene calls matrix file to import functions, you can't use more than "
+                               "one file as an input.")
 
         input_matrix = args.input_files[0]
         functions_dict = utils.get_TAB_delimited_file_as_dictionary(input_matrix,

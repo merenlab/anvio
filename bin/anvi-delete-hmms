@@ -36,23 +36,23 @@ def main(args):
         hmmops.SequencesForHMMHits(args.contigs_db).list_available_hmm_sources()
 
     if not args.hmm_source and not args.just_do_it:
-        raise ConfigError("But you should give this program an HMM souce to remove from the database :/ If you\
-                           want everything to be removed, you can simply add the flag `--just-do-it`. In that\
-                           case anvi'o will remove every HMM source from your database without asking anything.")
+        raise ConfigError("But you should give this program an HMM souce to remove from the database :/ If you "
+                          "want everything to be removed, you can simply add the flag `--just-do-it`. In that "
+                          "case anvi'o will remove every HMM source from your database without asking anything.")
 
     if args.hmm_source and args.just_do_it:
-        raise ConfigError("You are both asking anvi'o to remove every HMM source (with `--just-do-it`), and\
-                           specifying a paticular HMM source to be removed (with `--hmm-source`). Since anvi'o\
-                           has this suspicion that you may have no idea what you are doing, she chooses to not\
-                           do anything at all (anvi'o the pacifist). Choose either, and let's pretend this never\
-                           happened.")
+        raise ConfigError("You are both asking anvi'o to remove every HMM source (with `--just-do-it`), and "
+                          "specifying a paticular HMM source to be removed (with `--hmm-source`). Since anvi'o "
+                          "has this suspicion that you may have no idea what you are doing, she chooses to not "
+                          "do anything at all (anvi'o the pacifist). Choose either, and let's pretend this never "
+                          "happened.")
 
     hmm_tables = TablesForHMMHits(args.contigs_db, initializing_for_deletion=True)
     if args.hmm_source:
         if args.hmm_source not in info_table:
-            run.warning("Nice try, and anvi'o is proud of you. But it doesn't change the fact that the HMM source\
-                         '%s' was not in your contigs database. That's OK. Now anvi'o will pretend as if nothing\
-                         happened, and quit without a fuss." % args.hmm_source)
+            run.warning("Nice try, and anvi'o is proud of you. But it doesn't change the fact that the HMM source "
+                        "'%s' was not in your contigs database. That's OK. Now anvi'o will pretend as if nothing "
+                        "happened, and quit without a fuss." % args.hmm_source)
             sys.exit(0)
 
         hmm_tables.remove_source(args.hmm_source)
@@ -60,8 +60,8 @@ def main(args):
         for source in info_table:
             hmm_tables.remove_source(source)
     else:
-        raise ConfigError("Anvi'o does not know how the hell did you end this part of its code. Please find a\
-                           developer, explain how you ended up here, and collect your prize.")
+        raise ConfigError("Anvi'o does not know how the hell you ended up in this part of its code. Please find a "
+                          "developer, explain how you ended up here, and collect your prize.")
 
 
 if __name__ == '__main__':

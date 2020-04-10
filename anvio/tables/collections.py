@@ -74,9 +74,9 @@ class TablesForCollections(Table):
 
         if bins_info_dict:
             if set(collection_dict.keys()) - set(bins_info_dict.keys()):
-                raise ConfigError('Bins in the collection dict do not match to the ones in the bins info dict.\
-                                    They do not have to be identical, but for each bin id, there must be a unique\
-                                    entry in the bins informaiton dict. There is something wrong with your input :/')
+                raise ConfigError('Bins in the collection dict do not match to the ones in the bins info dict. '
+                                   'They do not have to be identical, but for each bin id, there must be a unique '
+                                   'entry in the bins informaiton dict. There is something wrong with your input :/')
 
         if drop_collection:
             # remove any pre-existing information for 'collection_name'
@@ -85,9 +85,9 @@ class TablesForCollections(Table):
         num_splits_in_collection_dict = sum([len(splits) for splits in list(collection_dict.values())])
         splits_in_collection_dict = set(list(chain.from_iterable(list(collection_dict.values()))))
         if len(splits_in_collection_dict) != num_splits_in_collection_dict:
-            raise ConfigError("TablesForCollections::append: %d of the split or contig IDs appear more than once in\
-                                your collections input. It is unclear to anvi'o how did you manage to do this, but we\
-                                cannot go anywhere with this :/" % (num_splits_in_collection_dict - len(splits_in_collection_dict)))
+            raise ConfigError("TablesForCollections::append: %d of the split or contig IDs appear more than once in "
+                               "your collections input. It is unclear to anvi'o how did you manage to do this, but we "
+                               "cannot go anywhere with this :/" % (num_splits_in_collection_dict - len(splits_in_collection_dict)))
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
@@ -133,8 +133,8 @@ class TablesForCollections(Table):
                                                 % (len(splits_only_in_collection_dict), len(splits_in_collection_dict), collection_name))
 
             if len(splits_only_in_db):
-                self.run.warning('%d of %d splits found in the database were missing from the "%s" results. If this\
-                                          does not make any sense, please make sure you know why before going any further.'\
+                self.run.warning('%d of %d splits found in the database were missing from the "%s" results. If this '
+                                         'does not make any sense, please make sure you know why before going any further.'\
                                                 % (len(splits_only_in_db), len(self.splits_info), collection_name))
 
             # then populate contigs table.

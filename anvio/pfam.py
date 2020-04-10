@@ -197,8 +197,8 @@ class Pfam(object):
             if ok_if_missing_from_catalog:
                 return "Unkown function with PFAM accession %s" % accession
             else:
-                raise ConfigError("It seems hmmscan found an accession id that does not exists\
-                                   in Pfam catalog: %s" % accession)
+                raise ConfigError("It seems hmmscan found an accession id that does not exists "
+                                  "in Pfam catalog: %s" % accession)
 
         return self.function_catalog[accession]['function'] # maybe merge other columns too?
 
@@ -228,9 +228,9 @@ class Pfam(object):
         hmm_hits_file = hmmer.run_hmmscan('Pfam', 'AA', 'GENE', None, None, len(self.function_catalog), hmm_file, None, '--cut_ga')
 
         if not hmm_hits_file:
-            run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But\
-                             now anvi'o will add PFAMs as a functional source with no hits, clean the temporary directories\
-                             and gracefully quit.", nl_before=1, nl_after=1)
+            run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But "
+                            "now anvi'o will add PFAMs as a functional source with no hits, clean the temporary directories "
+                            "and gracefully quit.", nl_before=1, nl_after=1)
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
             gene_function_calls_table.add_empty_sources_to_functional_sources({'Pfam'})
@@ -257,15 +257,15 @@ class Pfam(object):
         if functions_dict:
             gene_function_calls_table.create(functions_dict)
         else:
-            self.run.warning("Pfam class has no hits to process. Returning empty handed, but still adding Pfam as \
-                              a functional source.")
+            self.run.warning("Pfam class has no hits to process. Returning empty handed, but still adding Pfam as "
+                             "a functional source.")
             gene_function_calls_table.add_empty_sources_to_functional_sources({'Pfam'})
 
         if anvio.DEBUG:
-            run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up\
-                         later" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
+            run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up "
+                        "later" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
         else:
-            run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
-                             like to keep it for testing purposes)', nl_before=1, nl_after=1)
+            run.info_single('Cleaning up the temp directory (you can use `--debug` if you would '
+                            'like to keep it for testing purposes)', nl_before=1, nl_after=1)
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()

@@ -76,8 +76,8 @@ class PanSplitter(summarizer.PanSummarizer):
             raise ConfigError("You must provide a genomes storage database for this operation.")
 
         if not self.pan_db_path:
-            raise ConfigError("You came all the way here without a pan database. Congratulations! But we\
-                               kinda need it at this stage really :/ GOOD DAY.")
+            raise ConfigError("You came all the way here without a pan database. Congratulations! But we "
+                              "kinda need it at this stage really :/ GOOD DAY.")
 
         utils.is_pan_db(self.pan_db_path)
 
@@ -86,10 +86,10 @@ class PanSplitter(summarizer.PanSummarizer):
             sys.exit(0)
 
         if not self.collection_name:
-            raise ConfigError("You must provide a collection name for this to work. If you want to know about\
-                               all the collections in your pan database you can use the program\
-                               `anvi-show-collections-and-bins` or run the same command with the flag\
-                               `--list-collections`.")
+            raise ConfigError("You must provide a collection name for this to work. If you want to know about "
+                              "all the collections in your pan database you can use the program "
+                              "`anvi-show-collections-and-bins` or run the same command with the flag "
+                              "`--list-collections`.")
 
         # if this is not set false, the summarizer class attemts to remove the main output directory
         # upon initialization. not doing that is useful in this context since this allows multiple
@@ -114,10 +114,10 @@ class PanSplitter(summarizer.PanSummarizer):
 
         filesnpaths.gen_output_directory(self.output_directory)
 
-        self.run.warning("Anvi'o is about to start splitting your bins into individual, self-contained anvi'o profiles. This\
-                          is quite a tricky operation, and even if it finishes successfully, you must double check everyting\
-                          in the resulting profiles to make sure things worked as expected. Although we are doing our best to\
-                          test all these, variation between projects make it impossible to be 100% sure.")
+        self.run.warning("Anvi'o is about to start splitting your bins into individual, self-contained anvi'o profiles. This "
+                         "is quite a tricky operation, and even if it finishes successfully, you must double check everyting "
+                         "in the resulting profiles to make sure things worked as expected. Although we are doing our best to "
+                         "test all these, variation between projects make it impossible to be 100% sure.")
 
         for bin_name in self.bin_names_of_interest:
             b = PanBinSplitter(bin_name, self.summary, self.args, run=self.run, progress=self.progress)
@@ -160,8 +160,8 @@ class ProfileSplitter:
 
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
         if profile_db.meta['db_type'] != 'profile':
-            raise ConfigError("Anvi'o was trying to split this profile, but it just realized that it is not a profile\
-                               database. There is something wrong here.")
+            raise ConfigError("Anvi'o was trying to split this profile, but it just realized that it is not a profile "
+                              "database. There is something wrong here.")
         profile_db.disconnect()
 
         # if this is not set false, the summarizer class attemts to remove the main output directory
@@ -186,10 +186,10 @@ class ProfileSplitter:
 
         filesnpaths.gen_output_directory(self.output_directory)
 
-        self.run.warning("Anvi'o is about to start splitting your bins into individual, self-contained anvi'o profiles. This\
-                          is quite a tricky operation, and even if it finishes successfully, you must double check everyting\
-                          in the resulting profiles to make sure things worked as expected. Although we are doing our best to\
-                          test all these, variation between projects make it impossible to be 100% sure.")
+        self.run.warning("Anvi'o is about to start splitting your bins into individual, self-contained anvi'o profiles. This "
+                         "is quite a tricky operation, and even if it finishes successfully, you must double check everyting "
+                         "in the resulting profiles to make sure things worked as expected. Although we are doing our best to "
+                         "test all these, variation between projects make it impossible to be 100% sure.")
 
         if self.skip_variability_tables:
             self.run.warning("Since you asked so nicely, anvi'o will not migrate variability table data into split profiles.")
@@ -199,9 +199,9 @@ class ProfileSplitter:
             b.do_contigs_db()
 
             if self.summary.p_meta['blank']:
-                self.run.warning("It seems your profile database is a blank one. That's fine. Anvi'o assumes that your actual\
-                                  intention is to split your contigs database only. This warning message is here to make sure\
-                                  you will not be upset when you realize your split profile missing a profile database :(")
+                self.run.warning("It seems your profile database is a blank one. That's fine. Anvi'o assumes that your actual "
+                                 "intention is to split your contigs database only. This warning message is here to make sure "
+                                 "you will not be upset when you realize your split profile missing a profile database :(")
             else:
                 b.do_profile_db()
 
@@ -222,19 +222,19 @@ class XSplitter(object):
         skip_hierarchical_clustering = self.skip_hierarchical_clustering
 
         if self.num_splits > self.max_num_splits_for_hierarchical_clustering and not self.enforce_hierarchical_clustering:
-            self.run.warning("It seems you have more than %s splits in this particular bin. This is the\
-                              soft limit for anvi'o to attempt to create a hierarchical clustering of your splits\
-                              (which becomes the center tree in all anvi'o displays). If you want a hierarchical\
-                              clustering to be done anyway, you can re-run the splitting process only for this bin\
-                              by adding these parameters to your run: '--bin-id %s --enforce-hierarchical-clustering'.\
-                              If you feel like you are lost, don't hesitate to get in touch with anvi'o developers." \
+            self.run.warning("It seems you have more than %s splits in this particular bin. This is the "
+                             "soft limit for anvi'o to attempt to create a hierarchical clustering of your splits "
+                             "(which becomes the center tree in all anvi'o displays). If you want a hierarchical "
+                             "clustering to be done anyway, you can re-run the splitting process only for this bin "
+                             "by adding these parameters to your run: '--bin-id %s --enforce-hierarchical-clustering'. "
+                             "If you feel like you are lost, don't hesitate to get in touch with anvi'o developers." \
                                                         % (pp(self.max_num_splits_for_hierarchical_clustering), self.bin_id))
             skip_hierarchical_clustering = True
 
         if self.num_splits > self.max_num_splits_for_hierarchical_clustering and self.enforce_hierarchical_clustering:
-            self.run.warning("Becasue you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt\
-                              to create a hierarchical clustering of your %s splits for this bin. It may take a bit of\
-                              time, and it is not even anvi'o's fault, you know  :/" \
+            self.run.warning("Becasue you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt "
+                             "to create a hierarchical clustering of your %s splits for this bin. It may take a bit of "
+                             "time, and it is not even anvi'o's fault, you know  :/" \
                                                         % pp(self.max_num_splits_for_hierarchical_clustering))
 
         return skip_hierarchical_clustering
@@ -254,9 +254,9 @@ class XSplitter(object):
 
             diff = source_tables.difference(target_tables)
 
-            raise ConfigError("Something went wrong during subsetting :/ Table names in the parent db (%s) and the child\
-                               db (%s) does not seem to be identical. The following tables are found in the source, but\
-                               missing in the target database: '%s'" % (source_db_path, target_db_path, ', '.join(diff)))
+            raise ConfigError("Something went wrong during subsetting :/ Table names in the parent db (%s) and the child "
+                              "db (%s) does not seem to be identical. The following tables are found in the source, but "
+                              "missing in the target database: '%s'" % (source_db_path, target_db_path, ', '.join(diff)))
 
         source_db.disconnect()
         target_db.disconnect()
@@ -324,8 +324,8 @@ class PanBinSplitter(summarizer.PanBin, XSplitter):
 
 
         if self.enforce_hierarchical_clustering and self.skip_hierarchical_clustering:
-            raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering\
-                               while also asking it to enforce it.")
+            raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering "
+                              "while also asking it to enforce it.")
 
         # set the output directory, and output file paths
         self.bin_output_directory = os.path.join(self.output_directory, bin_name)
@@ -417,10 +417,10 @@ class DBSplitter:
         elif A('genomes_storage'):
             self.mode = 'pan'
         else:
-            raise ConfigError("Well. You are trying to initiate the anvi'o database splitter, but anvi'o has\
-                               no idea what exactly you are trying to do becasue you haven't declared enough\
-                               databases. You should either use a contigs database or a genomes storage among\
-                               your arguments to initiate this class properly.")
+            raise ConfigError("Well. You are trying to initiate the anvi'o database splitter, but anvi'o has "
+                              "no idea what exactly you are trying to do becasue you haven't declared enough "
+                              "databases. You should either use a contigs database or a genomes storage among "
+                              "your arguments to initiate this class properly.")
 
 
     def get(self):
@@ -459,8 +459,8 @@ class BinSplitter(summarizer.Bin, XSplitter):
         self.database_paths = {'CONTIGS.db': os.path.abspath(self.contigs_db_path)}
 
         if self.enforce_hierarchical_clustering and self.skip_hierarchical_clustering:
-            raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering\
-                               while also asking it to enforce it.")
+            raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering "
+                              "while also asking it to enforce it.")
 
         # set the output directory, and output file paths
         self.bin_output_directory = os.path.join(self.output_directory, bin_name)
@@ -726,16 +726,16 @@ class LocusSplitter:
                                you must also specify a --search-term.")
 
         if self.is_in_flank_mode and self.use_hmm:
-            raise ConfigError("Anvi'o currently cannot use hmm search terms in flank-mode. If this \
-                functionality is needed for your analysis, please make a issue on the github \
-                repository page and we will address it.")
+            raise ConfigError("Anvi'o currently cannot use hmm search terms in flank-mode. If this "
+               "functionality is needed for your analysis, please make a issue on the github "
+               "repository page and we will address it.")
 
         if self.gene_caller_ids and self.is_in_flank_mode:
             num_genes = len(utils.get_gene_caller_ids_from_args(self.gene_caller_ids, delimiter=self.delimiter))
             if num_genes != 2:
-                raise ConfigError("You're in flank mode and opted to use gene caller ids to identify the \
-                                   flanking genes. But you provided anvi'o %d gene caller id, and anvi'o \
-                                   needs exactly 2." % num_genes)
+                raise ConfigError("You're in flank mode and opted to use gene caller ids to identify the "
+                                  "flanking genes. But you provided anvi'o %d gene caller id, and anvi'o "
+                                  "needs exactly 2." % num_genes)
 
         if self.search_term:
             self.search_term = self.search_term.split(self.delimiter)
@@ -753,10 +753,10 @@ class LocusSplitter:
         if self.num_genes:
             self.num_genes_list = [int(x) for x in self.num_genes.split(self.delimiter)]
             if len(self.num_genes_list) > 2:
-                raise ConfigError("The block size you provided, \"%s\", is not valid.\
-                                    The gene block size is defined by only one or two integers for either \
-                                    a block following the search match or a block preceding and following \
-                                    the search match respectively (e.g., 3,2)." % self.num_genes)
+                raise ConfigError("The block size you provided, \"%s\", is not valid. "
+                                   "The gene block size is defined by only one or two integers for either "
+                                   "a block following the search match or a block preceding and following "
+                                   "the search match respectively (e.g., 3,2)." % self.num_genes)
 
             if len(self.num_genes_list) == 1:
                 self.num_genes_list = [0, self.num_genes_list[0]]
@@ -840,11 +840,11 @@ class LocusSplitter:
             self.init()
 
         if not len(self.gene_caller_ids_of_interest):
-            self.run.warning("There aren't any gene calls that match to the criteria you provided to anvi'o\
-                              export locus magic. Is this yet another case of you did everything right\
-                              yet anvi'o failed you? If that's the case, let us know :( This class will quietly\
-                              kill this process without reporting any error since a lack of hit may be the\
-                              expected outcome of some weird processes somewhere.")
+            self.run.warning("There aren't any gene calls that match to the criteria you provided to anvi'o "
+                             "export locus magic. Is this yet another case of you did everything right "
+                             "yet anvi'o failed you? If that's the case, let us know :( This class will quietly "
+                             "kill this process without reporting any error since a lack of hit may be the "
+                             "expected outcome of some weird processes somewhere.")
             return
 
         self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
@@ -949,21 +949,21 @@ class LocusSplitter:
                 raise ConfigError("Both gene-caller_ids inputs must be integers!")
 
             if len(gene_caller_ids_flank_pair) == 1:
-                raise ConfigError("You are in flank-mode, and anvi'o only found %d gene-caller-id. \
-                                   Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's \
-                                   to cut out a locus (i.e., only a pair of flanking genes)! This most likely occured because 1 of your \
-                                   search-terms was not found the functions of the CONTIGS.db. Please try again with another \
-                                   search-term :)" % (len(self.gene_caller_ids_of_interest)))
+                raise ConfigError("You are in flank-mode, and anvi'o only found %d gene-caller-id. "
+                                  "Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's "
+                                  "to cut out a locus (i.e., only a pair of flanking genes)! This most likely occured because 1 of your "
+                                  "search-terms was not found the functions of the CONTIGS.db. Please try again with another "
+                                  "search-term :)" % (len(self.gene_caller_ids_of_interest)))
             elif len(gene_caller_ids_flank_pair) > 2:
-                raise ConfigError("You are in flank-mode, and anvi'o found %d total gene-caller-id's from the search-terms provided. \
-                                   Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's \
-                                   to cut out a locus (i.e., only a pair of flanking genes)! Here are the gene-caller-ids anvi'o found \
-                                   from the search-terms %s: %s and %s: %s. Please use `anvi-export-functions` on your CONTIGS.db, locate \
-                                   these gene-caller-id's, then confirm the correct flanking gene-caller-ids. Anvi'o recommends you \
-                                   use the --gene-caller-ids flag to specify the specific pair gene-caller-ids you need to cut out the locus \
-                                   so there are no more mix ups. On the other hand, if you are trying to extract multiple loci from a genome \
-                                   using the same flanking genes, anvi'o cannot currently handle this in --flank-mode. If this functionality \
-                                   is necessary for your analysis, please make an issue on github and we will address it." % (len(self.gene_caller_ids_of_interest),
+                raise ConfigError("You are in flank-mode, and anvi'o found %d total gene-caller-id's from the search-terms provided. "
+                                  "Anvi'o cannot handle this because flank-mode needs a pair of gene-caller-id's "
+                                  "to cut out a locus (i.e., only a pair of flanking genes)! Here are the gene-caller-ids anvi'o found "
+                                  "from the search-terms %s: %s and %s: %s. Please use `anvi-export-functions` on your CONTIGS.db, locate "
+                                  "these gene-caller-id's, then confirm the correct flanking gene-caller-ids. Anvi'o recommends you "
+                                  "use the --gene-caller-ids flag to specify the specific pair gene-caller-ids you need to cut out the locus "
+                                  "so there are no more mix ups. On the other hand, if you are trying to extract multiple loci from a genome "
+                                  "using the same flanking genes, anvi'o cannot currently handle this in --flank-mode. If this functionality "
+                                  "is necessary for your analysis, please make an issue on github and we will address it." % (len(self.gene_caller_ids_of_interest),
                                                                        str(self.search_term[0]),
                                                                        str(self.search_term_to_gene_id_hits_dict[self.search_term[0]]),
                                                                        str(self.search_term[1]),
@@ -1107,9 +1107,9 @@ class LocusSplitter:
             if self.overwrite_output_destinations:
                 filesnpaths.shutil.rmtree(profile_output_dir)
             else:
-                raise ConfigError("The directory %s exists, which kinda messes things up here. Either remove\
-                                   it manually, or use the flag  --overwrite-output-destinations so anvi'o can\
-                                   do it for you." % profile_output_dir)
+                raise ConfigError("The directory %s exists, which kinda messes things up here. Either remove "
+                                  "it manually, or use the flag  --overwrite-output-destinations so anvi'o can "
+                                  "do it for you." % profile_output_dir)
 
         # sort out the contigs database output path
         if filesnpaths.is_file_exists(locus_output_db_path, dont_raise=True):

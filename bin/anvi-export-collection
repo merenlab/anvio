@@ -42,8 +42,8 @@ def main(args):
         sys.exit()
 
     if not args.collection_name:
-        raise ConfigError("You must declare a colection name. Use --list-collections flag\
-                            to list available ones.")
+        raise ConfigError("You must declare a colection name. Use --list-collections flag "
+                           "to list available ones.")
 
     if args.collection_name not in c.collections_dict:
         raise ConfigError("Are you sure collection name '%s' stored in this database? You know,\

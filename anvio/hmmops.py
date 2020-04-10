@@ -61,14 +61,14 @@ class SequencesForHMMHits:
         """
 
         utils.is_contigs_db(contigs_db_path)
-        contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
+        contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__, run=self.run, progress=self.progress)
         self.hmm_hits_info = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
 
         missing_sources = [s for s in self.sources if s not in self.hmm_hits_info]
         if len(missing_sources):
             contigs_db.disconnect()
-            raise ConfigError("Bad news, Houston :/ The contigs database '%s' is missing one or more HMM sources\
-                               that you wished it didn't: '%s'." % (contigs_db_path, ', '.join(missing_sources)))
+            raise ConfigError("Bad news, Houston :/ The contigs database '%s' is missing one or more HMM sources "
+                              "that you wished it didn't: '%s'." % (contigs_db_path, ', '.join(missing_sources)))
 
         if not self.sources:
             self.sources = set(list(self.hmm_hits_info.keys()))
@@ -155,16 +155,24 @@ class SequencesForHMMHits:
 
     def check_init(self):
         if not self.initialized:
-            raise ConfigError("This SequencesForHMMHits instance cannot do what its asked for\
-                               because it is not yet initialized :/ The programmer could call\
-                               `init_dicts` first, but clearly they didn't care.")
+            raise ConfigError("This SequencesForHMMHits instance cannot do what its asked for "
+                              "because it is not yet initialized :/ The programmer could call "
+                              "`init_dicts` first, but clearly they didn't care.")
 
     def list_available_hmm_sources(self, dont_quit=False):
         self.check_init()
 
-        for source in self.hmm_hits_info:
-            t = self.hmm_hits_info[source]
-            run.info_single('%s [type: %s] [num genes: %d]' % (source, t['search_type'], len(t['genes'].split(','))))
+        self.run.warning(None, header="AVAILABLE HMM SOURCES", lc="green")
+
+        hmm_sources_found = list(self.hmm_hits_info.keys())
+
+        if not len(hmm_sources_found):
+            self.run.info_single("This contigs db does not have HMMs :/")
+        else:
+            for source in self.hmm_hits_info:
+                h = self.hmm_hits_info[source]
+                self.run.info_single("'%s' (type: %s; num genes: %d)" % (source, h['search_type'], len(h['genes'].split(','))),
+                                     nl_after = 1 if source == hmm_sources_found[-1] else 0)
 
         if dont_quit:
             return
@@ -181,8 +189,8 @@ class SequencesForHMMHits:
 
             missing_sources = [s for s in sources if s not in self.hmm_hits_info]
             if len(missing_sources):
-                raise ConfigError("Some of the HMM sources you are looking for are not known\
-                                   to this database: %s." % (', '.join(['"%s"' % s for s in missing_sources])))
+                raise ConfigError("Some of the HMM sources you are looking for are not known "
+                                  "to this database: %s." % (', '.join(['"%s"' % s for s in missing_sources])))
             hmm_sources = sources
         else:
             hmm_sources = self.sources
@@ -222,9 +230,9 @@ class SequencesForHMMHits:
             missing_sources = [source for source in sources if source not in self.hmm_hits_info]
             if len(missing_sources):
                 self.progress.end()
-                raise ConfigError("Anvi'o was trying to generate information regarding all the hits per HMM source stored\
-                                   in its databases, but some of the sources you requested do not seem to be found anywhere :/\
-                                   Here is the list of those that failed you: '%s'." % (','.join(sources)))
+                raise ConfigError("Anvi'o was trying to generate information regarding all the hits per HMM source stored "
+                                  "in its databases, but some of the sources you requested do not seem to be found anywhere :/ "
+                                  "Here is the list of those that failed you: '%s'." % (','.join(sources)))
 
         gene_hit_counts = {}
         for source in sources:
@@ -471,8 +479,8 @@ class SequencesForHMMHits:
            be present. It removes all the genes that do not fit into that criterion."""
 
         if not isinstance(min_num_bins_gene_occurs, int):
-            raise ConfigError("Funny. Someone called the function to filter gene names from HMM sequences dictionary if they occur in less than\
-                               a certain amount. But they didn't sen an integer for that amount :/")
+            raise ConfigError("Funny. Someone called the function to filter gene names from HMM sequences dictionary if they occur in less than "
+                              "a certain amount. But they didn't sen an integer for that amount :/")
 
         if min_num_bins_gene_occurs < 0:
             raise ConfigError("But the minimum number of bins a gene is expected to be found can't be a negative value now. Right? :/")
@@ -483,10 +491,10 @@ class SequencesForHMMHits:
             all_bins.add(entry['bin_id'])
 
         if min_num_bins_gene_occurs > len(all_bins):
-            raise ConfigError("You are asking anvi'o to remove any gene that occurs in less than %d genomes (or bins), however, it seems you have only\
-                               %s genomes. Either you set a parameter that exceeds the number of genomes you actually have, or the previous filters\
-                               applied to your set of genes have removed all genes from some or all of your genomes :/ Anvi'o cannot know here what might\
-                               have gone wrong, but it kinda believes that it is all on your at this point :/" % (min_num_bins_gene_occurs, len(all_bins)))
+            raise ConfigError("You are asking anvi'o to remove any gene that occurs in less than %d genomes (or bins), however, it seems you have only "
+                              "%s genomes. Either you set a parameter that exceeds the number of genomes you actually have, or the previous filters "
+                              "applied to your set of genes have removed all genes from some or all of your genomes :/ Anvi'o cannot know here what might "
+                              "have gone wrong, but it kinda believes that it is all on your at this point :/" % (min_num_bins_gene_occurs, len(all_bins)))
 
         gene_occurrences_accross_bins = self.get_gene_num_occurrences_across_bins(hmm_sequences_dict_for_splits)
 
@@ -498,10 +506,10 @@ class SequencesForHMMHits:
 
         genes_to_keep = all_genes.difference(genes_to_remove)
 
-        self.run.info_single("Hi! The anvi'o function that was supposed to remove genes that were occurring in\
-                              less than X number of bins due to the use of `--min-num-bins-gene-occurs` is \
-                              speaking. What follows is a report of what happened after anvi'o tried to remove\
-                              genes that were occurring in at least %d of the %d bins you had at this point." \
+        self.run.info_single("Hi! The anvi'o function that was supposed to remove genes that were occurring in "
+                             "less than X number of bins due to the use of `--min-num-bins-gene-occurs` is "
+                             "speaking. What follows is a report of what happened after anvi'o tried to remove "
+                             "genes that were occurring in at least %d of the %d bins you had at this point." \
                                     % (min_num_bins_gene_occurs, len(all_bins)), nl_before=1, nl_after=1)
 
         self.run.info('All genes (%d)' % len(all_genes), ', '.join(all_genes), nl_after=1)
@@ -530,10 +538,10 @@ class SequencesForHMMHits:
 
         bins_to_keep = all_bins.difference(bins_to_remove)
 
-        self.run.info_single("Hi there! The anvi'o function that kills bins is speaking (we are here because you used\
-                              the --max-num-genes-missing-from-bin parameter to remove bins that are not good enough for\
-                              your analysis becasue they are missing lots of genes. What follows is a report of what \
-                              happened.", nl_before=1, nl_after=1)
+        self.run.info_single("Hi there! The anvi'o function that kills bins is speaking (we are here because you used "
+                             "the --max-num-genes-missing-from-bin parameter to remove bins that are not good enough for "
+                             "your analysis becasue they are missing lots of genes. What follows is a report of what "
+                             "happened.", nl_before=1, nl_after=1)
 
         self.run.info('All bins (%d)' % len(all_bins), ', '.join(all_bins), nl_after=1)
         self.run.info('Bins that missed at most %d of %d genes (%d)' % (max_num_genes_missing, len(gene_names), len(bins_to_keep)), ', '.join(bins_to_keep), nl_after=1, mc='green')
@@ -561,7 +569,7 @@ class SequencesForHMMHits:
         return Aligners().select(align_with)
 
 
-    def __store_concatenated_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator = 'XXX', genes_order=None, align_with=None, just_do_it=False):
+    def __store_concatenated_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, partition_file_path=None, wrap=120, separator = 'XXX', genes_order=None, align_with=None, just_do_it=False):
         """Generates concatenated sequences from `hmm_sequences_dict_for_splits` dict.
 
            Please do NOT directly access to this function, and use `store_hmm_sequences_into_FASTA`
@@ -570,17 +578,17 @@ class SequencesForHMMHits:
 
         if len(self.sources) != 1:
             if just_do_it:
-                self.run.warning("You have asked anvi'o to not pay attention to the fact that you are asking for genes to be concatenated\
-                                  that are coming from different HMM collections. Fingers crossed. Please check the deflines of the\
-                                  resulting FASTA file carefully.")
+                self.run.warning("You have asked anvi'o to not pay attention to the fact that you are asking for genes to be concatenated "
+                                 "that are coming from different HMM collections. Fingers crossed. Please check the deflines of the "
+                                 "resulting FASTA file carefully.")
             else:
-                raise ConfigError("In theory you should be requesting a single HMM source if you want your genes to be concatenated.\
-                                   But in practice everyone has different needs, so we don't know. If this is not due to an error on\
-                                   your part, and if you think you know what you are doing, you can ask anvi'o to let you concatenate\
-                                   genes from multiple HMM sources by using the flag `--just-do-it`. In that case you will not see this\
-                                   error, but you must be extremely careful to make sure the resulting file looks like it should, and\
-                                   the information it contains makes sense. Since this not the common practice, you may run into other\
-                                   errors downstream, for which we apologize in advance.")
+                raise ConfigError("In theory you should be requesting a single HMM source if you want your genes to be concatenated. "
+                                  "But in practice everyone has different needs, so we don't know. If this is not due to an error on "
+                                  "your part, and if you think you know what you are doing, you can ask anvi'o to let you concatenate "
+                                  "genes from multiple HMM sources by using the flag `--just-do-it`. In that case you will not see this "
+                                  "error, but you must be extremely careful to make sure the resulting file looks like it should, and "
+                                  "the information it contains makes sense. Since this not the common practice, you may run into other "
+                                  "errors downstream, for which we apologize in advance.")
 
         # if the user did not define a single HMM source, then it will recover all genes in all HMM sources.
         gene_names_in_source = []
@@ -602,14 +610,15 @@ class SequencesForHMMHits:
         if genes_order:
             genes_in_genes_order_but_missing_in_hmm_source = [g for g in genes_order if g not in gene_names_in_source]
             if len(genes_in_genes_order_but_missing_in_hmm_source):
-                raise ConfigError("One or more gene names in the genes order list does seem to appear among the genes described\
-                                   by the HMM source %s (which translates to 'terrible news'). Here are the genes that cause this\
-                                   issue if you want to fix this: '%s'" \
-                                              % (hmm_source, ', '.join(genes_in_genes_order_but_missing_in_hmm_source)))
+                raise ConfigError("One or more gene names in the genes order list does seem to appear among the genes described "
+                                  "by the HMM sources (which translates to 'terrible news'). Here are the genes that cause this "
+                                  "issue if you want to fix this: '%s' (and here are the HMM sources you have been using for this "
+                                  "operation in case it helps: '%s')." \
+                                              % (', '.join(genes_in_genes_order_but_missing_in_hmm_source), ', '.join(self.sources)))
             gene_names = genes_order
         else:
-            self.run.warning("You did not define any gene names. Bold move. Now anvi'o will attempt to report a file with all\
-                              genes defined in all HMM sources. This will likely be quite ugly, so please brace yourself.")
+            self.run.warning("You did not define any gene names. Bold move. Now anvi'o will attempt to report a file with all "
+                             "genes defined in your HMM source(s). This will likely be quite ugly, so please brace yourself.")
 
             gene_names = gene_names_in_dict
 
@@ -671,16 +680,19 @@ class SequencesForHMMHits:
             f.write('%s\n' % sequence)
 
         if len(gene_names_missing_from_everywhere):
-            run.warning("You asked for some genes that were missing from all bins this class had in the\
-            HMM hits dictionary (here is a list of them: '%s'). Not knowing what to do with this werid\
-            situation, anvi'o put gap characters for all of them and retained your order. Here are those\
-            genes that missed the party: '%s'" % \
+            run.warning("You asked for some genes that were missing from all bins this class had in the "
+           "HMM hits dictionary (here is a list of them: '%s'). Not knowing what to do with this werid "
+           "situation, anvi'o put gap characters for all of them and retained your order. Here are those "
+           "genes that missed the party: '%s'" % \
                 (', '.join(bin_names_in_dict), ', '.join(set(gene_names_missing_from_everywhere))))
 
         f.close()
 
+        if partition_file_path:
+            utils.gen_NEXUS_format_partition_file_for_phylogenomics(partition_file_path, [(g, gene_lengths[g]) for g in gene_names], separator, run=self.run, progress=self.progress)
 
-    def __store_individual_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator = 'XXX', genes_order=None, align_with=None):
+
+    def __store_individual_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, separator = 'XXX', genes_order=None, align_with=None):
         """Stores every sequence in hmm_sequences_dict_for_splits into the `output_file_path`.
 
            Please do NOT directly access to this function, and use `store_hmm_sequences_into_FASTA`
@@ -690,11 +702,11 @@ class SequencesForHMMHits:
         # if the user wants alignment, lets update the input dictionary with aligned sequences
         if align_with:
             self.run.info('Sequence aligner', align_with)
-            self.run.warning("Anvi'o will align your sequences since you explicitly asked for an aligner. However, you are not\
-                              concatenating your genes. If you are working with multiple gene names, your multiple sequence alignment\
-                              may contain genes that are evolutionarily very distant from each other, and the resulting multiple\
-                              sequence alignment may be irrelevant to answer any biologically relevant questions. So here anvi'o will\
-                              do what you want, assuming that you know what you are doing.")
+            self.run.warning("Anvi'o will align your sequences since you explicitly asked for an aligner. However, you are not "
+                             "concatenating your genes. If you are working with multiple gene names, your multiple sequence alignment "
+                             "may contain genes that are evolutionarily very distant from each other, and the resulting multiple "
+                             "sequence alignment may be irrelevant to answer any biologically relevant questions. So here anvi'o will "
+                             "do what you want, assuming that you know what you are doing.")
 
             aligner = self.get_aligner(align_with)
             genes_list = [(gene_id, hmm_sequences_dict_for_splits[gene_id]['sequence']) for gene_id in hmm_sequences_dict_for_splits]
@@ -721,10 +733,11 @@ class SequencesForHMMHits:
         f.close()
 
 
-    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, separator=None, genes_order=None, align_with=None, just_do_it=False):
+    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, partition_file_path=None, separator=None, genes_order=None, align_with=None, just_do_it=False):
         """Stores HMM sequences into a FASTA file."""
 
         filesnpaths.is_output_file_writable(output_file_path)
+        filesnpaths.is_output_file_writable(partition_file_path) if partition_file_path else None
 
         if wrap and not isinstance(wrap, int):
             raise ConfigError('"wrap" has to be an integer instance')
@@ -734,16 +747,16 @@ class SequencesForHMMHits:
             non_unique_genes = [g for g in gene_frequencies if gene_frequencies[g] > 1]
             if len(non_unique_genes):
                 if just_do_it:
-                    self.run.warning("Anvi'o found that some gene names occur multiple times (i.e., %s), but is letting this get away\
-                                      since the user invoked the grumpy flag." % (', '.join(non_unique_genes)), nl_before=1)
+                    self.run.warning("Anvi'o found that some gene names occur multiple times (i.e., %s), but is letting this get away "
+                                     "since the user invoked the grumpy flag." % (', '.join(non_unique_genes)), nl_before=1)
                 else:
-                    raise ConfigError("The list of gene names you wish to concatenate contains those that occur more than once.\
-                                       Here is the list: '%s'. While anvi'o believes it is a silly idea to have the same gene\
-                                       names multiple times, it will not care about it and will let you get away with it if you\
-                                       really want that. In which case you can use the flag `--just-do-it`, and move on with your\
-                                       very unconventional and cool analysis." % (', '.join(non_unique_genes)))
+                    raise ConfigError("The list of gene names you wish to concatenate contains those that occur more than once. "
+                                      "Here is the list: '%s'. While anvi'o believes it is a silly idea to have the same gene "
+                                      "names multiple times, it will not care about it and will let you get away with it if you "
+                                      "really want that. In which case you can use the flag `--just-do-it`, and move on with your "
+                                      "very unconventional and cool analysis." % (', '.join(non_unique_genes)))
 
         if concatenate_genes:
-            self.__store_concatenated_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order, align_with, just_do_it)
+            self.__store_concatenated_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, partition_file_path, wrap, separator, genes_order, align_with, just_do_it)
         else:
-            self.__store_individual_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, concatenate_genes, separator, genes_order, align_with)
+            self.__store_individual_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, separator, genes_order, align_with)

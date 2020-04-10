@@ -8,7 +8,8 @@
         "--min-num-bins-gene-occurs": 5
     },
     "anvi_run_ncbi_cogs": {
-        "run": false
+        "run": false,
+        "threads": 5
     },
     "trimal": {
         "-gt": 0.5,
@@ -21,6 +22,7 @@
         "-bb": 1000,
         "additional_params": ""
     },
+    "workflow_name": "phylogenomics",
     "project_name": "TEST",
     "internal_genomes": "",
     "external_genomes": "external-genomes.txt",
@@ -28,5 +30,33 @@
     "output_dirs": {
         "PHYLO_DIR": "01_PHYLOGENOMICS",
         "LOGS_DIR": "00_LOGS"
+    },
+    "config_version": "1",
+    "anvi_gen_contigs_database": {
+        "--project-name": "{group}"
+    },
+    "centrifuge": {
+        "threads": 2
+    },
+    "anvi_run_hmms": {
+        "run": true,
+        "threads": 5
+    },
+    "anvi_run_scg_taxonomy": {
+        "run": true,
+        "threads": 6
+    },
+    "anvi_script_reformat_fasta": {
+        "run": true,
+        "--prefix": "{group}",
+        "--simplify-names": true
+    },
+    "emapper": {
+        "--database": "bact",
+        "--usemem": true,
+        "--override": true
+    },
+    "anvi_script_run_eggnog_mapper": {
+        "--use-version": "0.12.6"
     }
 }

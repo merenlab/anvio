@@ -29,8 +29,8 @@ def read_serialized_object(input_file_path):
         with gzip.open(input_file_path, 'rb') as input_file:
             data = input_file.read()
     except IOError:
-        raise DictIOError("anvio is having very hard time reading '%s' as a dictionary. Maybe you\
-                            have an idea why?" % input_file_path)
+        raise DictIOError("anvio is having very hard time reading '%s' as a dictionary. Maybe you "
+                           "have an idea why?" % input_file_path)
 
     try:
         return pickle.loads(data)

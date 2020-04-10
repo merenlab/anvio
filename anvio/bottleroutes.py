@@ -101,7 +101,7 @@ class BottleApplication(Bottle):
         # if there is a contigs database, and scg taxonomy was run on it get an instance
         # of the SCG Taxonomy class early on:
         if A('contigs_db') and dbops.ContigsDatabase(A('contigs_db')).meta['scg_taxonomy_was_run']:
-            self.scg_taxonomy = scgtaxonomyops.SCGTaxonomyEstimator(argparse.Namespace(contigs_db=self.interactive.contigs_db_path))
+            self.scg_taxonomy = scgtaxonomyops.SCGTaxonomyEstimatorSingle(argparse.Namespace(contigs_db=self.interactive.contigs_db_path))
         else:
             self.scg_taxonomy = None
 
@@ -167,6 +167,10 @@ class BottleApplication(Bottle):
         self.route('/data/get_column_info',                    callback=self.get_column_info, method='POST')
         self.route('/data/get_structure/<gene_callers_id:int>',callback=self.get_structure)
         self.route('/data/get_variability',                    callback=self.get_variability, method='POST')
+        self.route('/data/store_variability',                  callback=self.store_variability, method='POST')
+        self.route('/data/store_structure_as_pdb',             callback=self.store_structure_as_pdb, method='POST')
+        self.route('/data/get_gene_function_info/<gene_callers_id:int>',             callback=self.get_gene_function_info)
+        self.route('/data/get_model_info/<gene_callers_id:int>',             callback=self.get_model_info)
         self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
@@ -203,7 +207,12 @@ class BottleApplication(Bottle):
                                           browser_path=self.browser_path,
                                           run=run)
 
-            run.info_single('The server is now listening the port number "%d". When you are finished, press CTRL+C to terminate the server.' % port, 'green', nl_before = 1, nl_after=1)
+                run.info_single("The server is now listening the port number '%d'. When you are finished, press CTRL+C to "
+                                "terminate the server. If you are using OSX and if the server terminates prematurely before "
+                                "you can see anything in your browser, try to run the same command by putting 'sudo ' at the "
+                                "beginning of it (you will be likely prompted to enter your password as this command will require "
+                                "super user rights to run)" % port, 'green', nl_before = 1, nl_after=1)
+
             server_process.join()
         except KeyboardInterrupt:
             run.warning('The server is being terminated.', header='Please wait...')
@@ -212,7 +221,7 @@ class BottleApplication(Bottle):
 
 
     def redirect_to_app(self):
-        homepage = 'index.html' 
+        homepage = 'index.html'
         if self.interactive.mode == 'contigs':
             homepage = 'contigs.html'
         elif self.interactive.mode == 'structure':
@@ -890,8 +899,8 @@ class BottleApplication(Bottle):
                 run.info_single('Lousy attempt from the user to store their collection under "%s" :/' % source)
                 return json.dumps("Well, '%s' is a read-only collection, so you need to come up with a different name... Sorry!" % source)
 
-        run.info_single('A request to store %d bins that describe %d splits under the collection id "%s"\
-                         has been made.' % (len(data), num_splits, source), cut_after=None)
+        run.info_single('A request to store %d bins that describe %d splits under the collection id "%s" '
+                        'has been made.' % (len(data), num_splits, source), cut_after=None)
 
         bins_info_dict = {}
         for bin_name in data:
@@ -1286,6 +1295,24 @@ class BottleApplication(Bottle):
     def get_variability(self):
         options = json.loads(request.forms.get('options'))
         return self.interactive.get_variability(options)
+
+
+    def store_variability(self):
+        options = json.loads(request.forms.get('options'))
+        return self.interactive.store_variability(options)
+
+        
+    def store_structure_as_pdb(self):
+        options = json.loads(request.forms.get('options'))
+        return self.interactive.store_structure_as_pdb(options)
+
+
+    def get_gene_function_info(self, gene_callers_id):
+        return json.dumps(self.interactive.get_gene_function_info(gene_callers_id))
+
+
+    def get_model_info(self, gene_callers_id):
+        return json.dumps(self.interactive.get_model_info(gene_callers_id))
 
 
     def filter_gene_clusters(self):
