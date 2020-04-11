@@ -273,8 +273,8 @@ tRNAseq_sequences_table_structure       = ['name', 'replicate_names', 'replicate
 tRNAseq_sequences_table_types           = ['str' , 'str'            , 'numeric'        , 'str']
 
 tRNAseq_info_table_name                 = 'tRNA_basic_info'
-tRNAseq_info_table_structure            = ['name', 'is_mature', 'anticodon_sequence', 'amino_acid', 'sequence_length', 'profiled_features_start', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature']
-tRNAseq_info_table_types                = ['str' , 'bool'     , 'str'               , 'str'       , 'numeric'        , 'numeric'                , 'numeric'      , 'numeric'        , 'numeric'   , 'numeric'     , 'numeric']
+tRNAseq_info_table_structure            = ['name', 'is_mature', 'is_long_read', 'anticodon_sequence', 'amino_acid', 'sequence_length', 'profiled_features_start', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature']
+tRNAseq_info_table_types                = ['str' , 'bool'     , 'bool'        , 'str'               , 'str'       , 'numeric'        , 'numeric'                , 'numeric'      , 'numeric'        , 'numeric'   , 'numeric'     , 'numeric']
 
 tRNAseq_features_table_name             = 'tRNA_features'
 tRNAseq_features_table_structure        = ['name'] + list(itertools.chain(*zip([f + '_start' for f in db_formatted_tRNA_feature_names], [f + '_stop' for f in db_formatted_tRNA_feature_names])))
