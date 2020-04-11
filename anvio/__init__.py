@@ -443,6 +443,16 @@ D = {
                       "tRNA-seq chemistry works from the 3'-CCA sequence of tRNA molecules, "
                       "extending in the 5' direction.")}
                 ),
+    'charging-recorded': (
+            ['-c', '--charging-recorded'],
+            {'default': False,
+             'action': 'store_true',
+             'help': ("Look for tRNA sequences ending in \"CC\" as well as \"CCA\" "
+                      "as an indicator of amino acid charging state. "
+                      "tRNA-seq reads ending in \"CC\" were aminoacylated, "
+                      "while those ending in the normal \"CCA\" were not."
+                )}
+    ),
 #     'trnaseeds-fasta': (
 #             ['-f', '--trnaseeds-fasta'],
 #             {'metavar': 'FASTA',

@@ -910,7 +910,8 @@ class Acceptor(_Sequence):
     canonical_positions = ((74, 75, 76), )
     allowed_input_lengths = ((3, ), )
     summed_input_lengths = (3, )
-    conserved_nucleotides=({0: 'C', 1: 'C', 2: 'A'}, )
+    conserved_nucleotides = ({0: 'C', 1: 'C', 2: 'A'}, )
+    charging_recorded = False
 
     def __init__(
         self,
@@ -927,16 +928,27 @@ class Acceptor(_Sequence):
             stop_index=stop_index,
             cautious=cautious)
 
-
-def _get_max_profile_lengths(feature_classes):
-    fiveprime_max_lengths = [Acceptor.summed_input_lengths[-1]]
-    for feature_class in feature_classes[1:]:
-        if hasattr(feature_class, 'summed_input_lengths'):
-            if fiveprime_max_lengths:
-                fiveprime_max_lengths.append(
-                    fiveprime_max_lengths[-1] + feature_class.summed_input_lengths[-1])
+        if self.charging_recorded:
+            # The following class attributes must be set when tRNA-seq measures charging state:
+            # allowed_input_lengths = ((2, ), (3, ))
+            # summed_input_lengths = (2, 3)
+            # conserved_nucleotides = ({0: 'C', 1: 'C'}, {0: 'C', 1: 'C', 2: 'A'})
+            if self.string == 'CC':
+                self.charged = True
+            else:
+                self.charged = False
         else:
-            fiveprime_max_lengths.append(fiveprime_max_lengths[-1])
+            self.charged = None
+
+
+def _get_max_fiveprime_lengths(threeprime_to_fiveprime_feature_classes):
+    fiveprime_max_lengths = [threeprime_to_fiveprime_feature_classes[-1].summed_input_lengths[-1]]
+    for feature_class in threeprime_to_fiveprime_feature_classes[::-1][1:]:
+        if hasattr(feature_class, 'summed_input_lengths'):
+            fiveprime_max_lengths.insert(
+                0, feature_class.summed_input_lengths[-1] + fiveprime_max_lengths[0])
+        else:
+            fiveprime_max_lengths.insert(0, fiveprime_max_lengths[0])
     return fiveprime_max_lengths
 
 
@@ -962,7 +974,8 @@ class Profile:
         VLoop,
         ThreeprimeAnticodonStemSeq,
         ThreeprimeDStemSeq]
-    fiveprime_max_lengths = _get_max_profile_lengths(fiveprime_to_threeprime_feature_classes)
+    fiveprime_max_lengths = _get_max_fiveprime_lengths(threeprime_to_fiveprime_feature_classes)
+    long_read_unprofiled_thresh = 5
 
 
     def __init__(self, read):
@@ -988,9 +1001,13 @@ class Profile:
             else:
                 self.anticodon_seq = ''
                 self.anticodon_aa = ''
+
+            self.charged = self.features[-1].charged # charge state of the acceptor
         else:
             self.anticodon_seq = ''
             self.anticodon_aa = ''
+
+            self.charged = None
 
         self.is_fully_profiled = (self.read == self.profiled_seq)
 
@@ -1008,8 +1025,8 @@ class Profile:
         is_mature=False):
 
         if feature_index == len(self.threeprime_to_fiveprime_feature_classes):
-            # All tRNA features were profiled.
-            if unprofiled_read:
+            # All tRNA features were profiled, including the tRNA-His 5' G.
+            if len(unprofiled_read) > self.long_read_unprofiled_thresh:
                 is_long_read = True # read is longer than full-length tRNA
             else:
                 is_long_read = False
@@ -1058,6 +1075,10 @@ class Profile:
                 # tRNA-His uniquely has an extra nucleotide (G) at the 5' end.
                 if CODON_TO_AA_RC[
                     features[-self.anticodon_loop_index - 1].anticodon.string] != 'His':
+                    if len(unprofiled_read) > self.long_read_unprofiled_thresh:
+                        is_long_read = True # read is longer than full-length tRNA
+                    else:
+                        is_long_read = False
                     return (
                         profiled_read,
                         features, # listed in the 5' to 3' direction
@@ -1067,7 +1088,7 @@ class Profile:
                         num_unpaired,
                         0, # number of nucleotides in extrapolated 5' feature
                         is_mature,
-                        True) # read is longer than full-length tRNA
+                        is_long_read)
 
 
         # The list stores the result of a recursive function call finding subsequent 5' features.
@@ -1223,7 +1244,8 @@ class Profile:
 
 
         if not incremental_profile_candidates: # the feature didn't pass muster
-            if len(unprofiled_read) > self.fiveprime_max_lengths[feature_index]:
+            if len(unprofiled_read) > (
+                self.fiveprime_max_lengths[feature_index] + self.long_read_unprofiled_thresh):
                 is_long_read = True
             else:
                 is_long_read = False
@@ -1282,10 +1304,6 @@ class Profile:
             else: # 5' feature was extrapolated from unprofiled read
                 # Extrapolated features are grounded
                 # in conserved nucleotides and/or paired nucleotides in stems.
-                if len(unprofiled_read) > self.fiveprime_max_lengths[feature_index]:
-                    is_long_read = True
-                else:
-                    is_long_read = False
                 profile_candidates.append((
                     p[0] + profiled_read,
                     p[1] + features,
@@ -1295,7 +1313,7 @@ class Profile:
                     p[5] + num_unpaired,
                     p[6], # number of nucleotides in extrapolated 5' feature
                     False, # not a full-length mature tRNA
-                    is_long_read))
+                    False)) # read is not longer than full-length tRNA
         # Do not add 5' features to profiled 3' features if the additional features
         # have no grounding in conserved nucleotides or paired nucleotides in stems.
         profile_candidates = [
@@ -1304,7 +1322,8 @@ class Profile:
             profile_candidates.sort(key=lambda p: (-len(p[1]), p[3] + p[5], p[6]))
             return profile_candidates[0]
         else:
-            if len(unprofiled_read) > self.fiveprime_max_lengths[feature_index]:
+            if len(unprofiled_read) > (
+                self.fiveprime_max_lengths[feature_index] + self.long_read_unprofiled_thresh):
                 is_long_read = True
             else:
                 is_long_read = False
