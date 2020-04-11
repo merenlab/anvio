@@ -950,9 +950,12 @@ class Profile:
         VLoop,
         ThreeprimeAnticodonStemSeq,
         ThreeprimeDStemSeq]
+    fiveprime_max_lengths = _get_max_profile_lengths(fiveprime_to_threeprime_feature_classes)
+
 
     def __init__(self, read):
         self.read = read
+
         (self.profiled_seq,
         self.features,
         self.num_conserved,
@@ -960,8 +963,11 @@ class Profile:
         self.num_paired,
         self.num_unpaired,
         self.num_in_extrapolated_fiveprime_feature,
-        self.is_mature) = self.get_profile(read[::-1], '', [])
+        self.is_mature,
+        self.is_long_read) = self.get_profile(read[::-1], '', [])
+
         self.feature_names = [f.name for f in self.features]
+
         if self.features:
             if self.anticodon_loop_index < len(self.features):
                 anticodon = self.features[-self.anticodon_loop_index - 1].anticodon
@@ -973,7 +979,21 @@ class Profile:
         else:
             self.anticodon_seq = ''
             self.anticodon_aa = ''
+
         self.is_fully_profiled = (self.read == self.profiled_seq)
+
+
+    @staticmethod
+    def _get_max_profile_lengths(feature_classes):
+        fiveprime_max_lengths = [Acceptor.summed_input_lengths[-1]]
+        for feature_class in threeprime_to_fiveprime_feature_classes[1:]:
+            if hasattr(feature_class, 'summed_input_lengths'):
+                if fiveprime_max_lengths:
+                    fiveprime_max_lengths.append(
+                        fiveprime_max_lengths[-1] + feature_class.summed_input_lengths[-1])
+            else:
+                fiveprime_max_lengths.append(fiveprime_max_lengths[-1])
+        return fiveprime_max_lengths
 
 
     def get_profile(
@@ -989,6 +1009,11 @@ class Profile:
         is_mature=False):
 
         if feature_index == len(self.threeprime_to_fiveprime_feature_classes):
+            # All tRNA features were profiled.
+            if unprofiled_read:
+                is_long_read = True # read is longer than full-length tRNA
+            else:
+                is_long_read = False
             return (
                 profiled_read, # string in 5' to 3' direction
                 features, # listed in the 5' to 3' direction
@@ -997,8 +1022,10 @@ class Profile:
                 num_paired,
                 num_unpaired,
                 0, # number of nucleotides in extrapolated 5' feature
-                is_mature)
+                is_mature,
+                is_long_read)
         if not unprofiled_read:
+            # The full length of the read was profiled.
             return (
                 profiled_read,
                 features, # listed in the 5' to 3' direction
@@ -1007,15 +1034,18 @@ class Profile:
                 num_paired,
                 num_unpaired,
                 0, # number of nucleotides in extrapolated 5' feature
-                is_mature)
+                is_mature,
+                False) # read is not longer than full-length tRNA
 
 
         feature_class = self.threeprime_to_fiveprime_feature_classes[feature_index]
         if feature_class in self.stem_formation_triggers: # 3' stem seq triggers stem formation
+            # Prepare to form a stem as well as the 3' sequence.
             make_stem = True
             stem_class = feature_class.stem_class
             threeprime_stem_seq = features[-self.threeprime_stem_seq_indices[stem_class] - 1]
             if stem_class in self.arm_formation_triggers:
+                # Prepare to form an arm (stem + loop) as well as the stem.
                 make_arm = True
                 arm_class = stem_class.arm_class
                 loop = features[-self.loop_indices[arm_class] - 1]
@@ -1025,6 +1055,8 @@ class Profile:
             make_stem = False
             make_arm = False
             if feature_class == tRNAHisPositionZero:
+                # Check for tRNA-His based on the anticodon sequence.
+                # tRNA-His uniquely has an extra nucleotide (G) at the 5' end.
                 if CODON_TO_AA_RC[
                     features[-self.anticodon_loop_index - 1].anticodon.string] != 'His':
                     return (
@@ -1035,14 +1067,16 @@ class Profile:
                         num_paired,
                         num_unpaired,
                         0, # number of nucleotides in extrapolated 5' feature
-                        is_mature)
+                        is_mature,
+                        True) # read is longer than full-length tRNA
 
 
         # The list stores the result of a recursive function call finding subsequent 5' features.
         incremental_profile_candidates = []
 
         # Each primary sequence feature takes (sub)sequence inputs, which can be of varying length.
-        # Consider each possible combination of input lengths for the feature.
+        # Consider each possible combination of input lengths for the feature,
+        # e.g., the D loop contains alpha and beta subsequences of variable length.
         min_summed_input_length = feature_class.summed_input_lengths[0]
         for input_lengths, summed_input_length in zip(
             feature_class.allowed_input_lengths, feature_class.summed_input_lengths):
@@ -1081,7 +1115,7 @@ class Profile:
                             threeprime_to_fiveprime_string += unprofiled_read[num_processed_bases]
                         num_processed_bases += 1
                     string_components.insert(0, threeprime_to_fiveprime_string[::-1]) # 5' to 3'
-                # With the N padding, the start index of the feature in the read is negative.
+                # WITH THE N PADDING, THE START INDEX OF THE FEATURE IN THE READ IS NEGATIVE.
                 feature = feature_class(
                     *string_components,
                     start_index=len(self.read) - len(profiled_read) - num_processed_bases,
@@ -1189,7 +1223,11 @@ class Profile:
                         continue
 
 
-        if not incremental_profile_candidates: # The feature didn't pass muster.
+        if not incremental_profile_candidates: # the feature didn't pass muster
+            if len(unprofiled_read) > self.fiveprime_max_lengths[feature_index]:
+                is_long_read = True
+            else:
+                is_long_read = False
             return (
                 profiled_read,
                 features,
@@ -1198,15 +1236,16 @@ class Profile:
                 num_paired,
                 num_unpaired,
                 0, # number of nucleotides in extrapolated 5' feature
-                is_mature)
+                is_mature,
+                is_long_read)
 
 
         # Sort candidates by
-        # 1. number of features (at most, sequence + stem + arm) identified (descending),
+        # 1. number of features identified (at most, sequence + stem + arm) (descending),
         # 2. number of unconserved + unpaired nucleotides (ascending),
         # 3. incompleteness of the last (most 5') feature (ascending).
-        # This sort also happens later for full profiles,
-        # but this first sort is useful for seeking out and returning mature, "flawless" tRNA.
+        # This sort also happens later for full sequence profiles,
+        # but this first sort is useful for seeking out and returning "flawless" mature tRNA.
         incremental_profile_candidates.sort(key=lambda p: (-len(p[1]), p[3] + p[5], p[6]))
         # Continue finding features in reads that have not been fully profiled --
         # do not recurse profile candidates in which the final feature was extrapolated.
@@ -1244,6 +1283,10 @@ class Profile:
             else: # 5' feature was extrapolated from unprofiled read
                 # Extrapolated features are grounded
                 # in conserved nucleotides and/or paired nucleotides in stems.
+                if len(unprofiled_read) > self.fiveprime_max_lengths[feature_index]:
+                    is_long_read = True
+                else:
+                    is_long_read = False
                 profile_candidates.append((
                     p[0] + profiled_read,
                     p[1] + features,
@@ -1252,7 +1295,8 @@ class Profile:
                     p[4] + num_paired,
                     p[5] + num_unpaired,
                     p[6], # number of nucleotides in extrapolated 5' feature
-                    False)) # not a full-length mature tRNA
+                    False, # not a full-length mature tRNA
+                    is_long_read))
         # Do not add 5' features to profiled 3' features if the additional features
         # have no grounding in conserved nucleotides or paired nucleotides in stems.
         profile_candidates = [
@@ -1261,6 +1305,10 @@ class Profile:
             profile_candidates.sort(key=lambda p: (-len(p[1]), p[3] + p[5], p[6]))
             return profile_candidates[0]
         else:
+            if len(unprofiled_read) > self.fiveprime_max_lengths[feature_index]:
+                is_long_read = True
+            else:
+                is_long_read = False
             return (
                 profiled_read,
                 features,
@@ -1269,7 +1317,8 @@ class Profile:
                 num_paired,
                 num_unpaired,
                 0, # number of nucleotides in extrapolated 5' feature
-                is_mature)
+                is_mature,
+                is_long_read)
 
 
     def get_unconserved_positions(self):
