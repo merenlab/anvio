@@ -950,7 +950,8 @@ class Profile:
         VLoop,
         ThreeprimeAnticodonStemSeq,
         ThreeprimeDStemSeq]
-    fiveprime_max_lengths = _get_max_profile_lengths(fiveprime_to_threeprime_feature_classes)
+    fiveprime_max_lengths = Profile._get_max_profile_lengths(
+        fiveprime_to_threeprime_feature_classes)
 
 
     def __init__(self, read):
