@@ -928,6 +928,18 @@ class Acceptor(_Sequence):
             cautious=cautious)
 
 
+def _get_max_profile_lengths(feature_classes):
+    fiveprime_max_lengths = [Acceptor.summed_input_lengths[-1]]
+    for feature_class in feature_classes[1:]:
+        if hasattr(feature_class, 'summed_input_lengths'):
+            if fiveprime_max_lengths:
+                fiveprime_max_lengths.append(
+                    fiveprime_max_lengths[-1] + feature_class.summed_input_lengths[-1])
+        else:
+            fiveprime_max_lengths.append(fiveprime_max_lengths[-1])
+    return fiveprime_max_lengths
+
+
 class Profile:
     fiveprime_to_threeprime_feature_classes = _tRNAFeature.list_all_tRNA_features()
     threeprime_to_fiveprime_feature_classes = fiveprime_to_threeprime_feature_classes[::-1]
@@ -950,8 +962,7 @@ class Profile:
         VLoop,
         ThreeprimeAnticodonStemSeq,
         ThreeprimeDStemSeq]
-    fiveprime_max_lengths = Profile._get_max_profile_lengths(
-        fiveprime_to_threeprime_feature_classes)
+    fiveprime_max_lengths = _get_max_profile_lengths(fiveprime_to_threeprime_feature_classes)
 
 
     def __init__(self, read):
@@ -982,19 +993,6 @@ class Profile:
             self.anticodon_aa = ''
 
         self.is_fully_profiled = (self.read == self.profiled_seq)
-
-
-    @staticmethod
-    def _get_max_profile_lengths(feature_classes):
-        fiveprime_max_lengths = [Acceptor.summed_input_lengths[-1]]
-        for feature_class in threeprime_to_fiveprime_feature_classes[1:]:
-            if hasattr(feature_class, 'summed_input_lengths'):
-                if fiveprime_max_lengths:
-                    fiveprime_max_lengths.append(
-                        fiveprime_max_lengths[-1] + feature_class.summed_input_lengths[-1])
-            else:
-                fiveprime_max_lengths.append(fiveprime_max_lengths[-1])
-        return fiveprime_max_lengths
 
 
     def get_profile(
