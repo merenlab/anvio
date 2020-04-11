@@ -3504,11 +3504,19 @@ class PanDatabase:
 
 
 class tRNASeqDatabase:
-    def __init__(self, db_path, num_threads=1, run=run, progress=progress, quiet=True, skip_init=False):
+    def __init__(self, db_path, charging_recorded=False, num_threads=1, run=run, progress=progress, quiet=True, skip_init=False):
 
         self.db = None
         self.db_path = db_path
         self.output_dir = os.path.dirname(db_path)
+
+        if charging_recorded:
+            trnaidentifier.Acceptor.charging_recorded = True
+            trnaidentifier.Acceptor.allowed_input_lengths = ((2, ), (3, ))
+            trnaidentifier.Acceptor.summed_input_lengths = (2, 3)
+            trnaidentifier.Acceptor.conserved_nucleotides = ({0: 'C', 1: 'C'}, {0: 'C', 1: 'C', 2: 'A'})
+        self.charging_recorded = charging_recorded
+
         self.num_threads = num_threads
 
         self.run = run
@@ -3663,7 +3671,7 @@ class tRNASeqDatabase:
             '--minseqlength', '1', # 32 by default, which is longer than many tRNA-seq fragments
             '--fasta_width', '0', # sequence strings are not split between lines
             '--threads', str(self.num_threads)]
-        self.progress.new("Dereplicating with vsearch")
+        self.progress.new("Dereplicating with VSEARCH...")
         process = subprocess.Popen(vsearch_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = process.communicate()
 
@@ -3672,9 +3680,6 @@ class tRNASeqDatabase:
             stderr = "\n" + "\n".join(stderr.split('\n'))
             print(terminal.c(stderr, color='red'))
             raise ConfigError("The VSEARCH command \"%s\" raised the error message above." % " ".join(vsearch_command))
-
-        stdout = stdout.decode().strip()
-        self.progress.update(stdout)
         self.progress.end()
 
         # Create a blank tRNAseq database on disk and set self.db
@@ -3704,6 +3709,9 @@ class tRNASeqDatabase:
         num_mature_tRNA_seqs = 0
         num_long_tRNA_reads = 0
         num_tRNA_seqs_with_extrapolated_fiveprime_feature = 0
+        if self.charging_recorded:
+            num_charged_tRNA_seqs = 0
+            num_uncharged_tRNA_seqs = 0
 
         # Process each sequence
         fasta = u.SequenceSource(rep_seq_fasta)
@@ -3736,8 +3744,9 @@ class tRNASeqDatabase:
                                 break
                 # Loop through the cluster's member sequences.
                 for line in cluster_file:
-                    rep_seq_name, member_seq_name = line.rstrip().split('\t')[8: 10]
+                    member_seq_name, rep_seq_name = line.rstrip().split('\t')[8: 10]
                     if tRNAseq_name != rep_seq_name:
+                        rep_seq_name = member_seq_name # look at UC file format to see why
                         break
                     else:
                         member_names.append(member_seq_name)
@@ -3758,19 +3767,11 @@ class tRNASeqDatabase:
                 if tRNA_profile.num_in_extrapolated_fiveprime_feature > 0:
                     num_tRNA_seqs_with_extrapolated_fiveprime_feature += num_members
 
-                if not self.quiet:
-                    self.progress.append(
-                        "is recognized as tRNA. "
-                        "Number of replicate sequences: %d. "
-                        "Sequence length: %d. "
-                        "Length of 3' part of sequence with profiled features: %d. "
-                        "Number of 'unconserved' nucleotides: %d. "
-                        "Number of unpaired stem positions: %d."
-                        % (num_members,
-                        seq_length,
-                        profiled_seq_length,
-                        len(unconserved_info),
-                        len(unpaired_info)))
+                if self.charging_recorded:
+                    if tRNA_profile.charged:
+                        num_charged_tRNA_seqs += num_members
+                    else:
+                        num_uncharged_tRNA_seqs += num_members
 
                 tRNAseq_sequences_table_entries.append(
                     (tRNAseq_name, ','.join(member_names), num_members, tRNAseq_sequence))
@@ -3779,6 +3780,7 @@ class tRNASeqDatabase:
                     tRNAseq_name,
                     tRNA_profile.is_mature,
                     tRNA_profile.is_long_read,
+                    tRNA_profile.charged,
                     tRNA_profile.anticodon_seq,
                     tRNA_profile.anticodon_aa,
                     seq_length,
@@ -3807,17 +3809,11 @@ class tRNASeqDatabase:
                 for unpaired_tuple in unpaired_info:
                     tRNAseq_unpaired_table_entries.append((tRNAseq_name, ) + unpaired_tuple)
 
-            else:
-                if not self.quiet:
-                    self.progress.append(
-                        "is not recognized as tRNA. "
-                        "Sequence length: %d." % seq_length)
-
         self.db._exec_many(
             '''INSERT INTO %s VALUES (?,?,?,?)''' % t.tRNAseq_sequences_table_name,
             tRNAseq_sequences_table_entries)
         self.db._exec_many(
-            '''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?)''' % t.tRNAseq_info_table_name,
+            '''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.tRNAseq_info_table_name,
             tRNAseq_info_table_entries)
         self.db._exec_many(
             '''INSERT INTO %s VALUES (%s)''' % (
@@ -3853,7 +3849,9 @@ class tRNASeqDatabase:
         self.run.info("Number of unique tRNA sequences identified and added to the database", num_unique_tRNA_seqs)
         self.run.info("Number of tRNA sequences containing anticodon", num_tRNA_seqs_containing_anticodon)
         self.run.info("Number of mature tRNA sequences", num_mature_tRNA_seqs)
-        self.run.info("Number of reads containing tRNA features but longer than full-length tRNA", num_long_tRNA_reads)
+        if self.charging_recorded:
+            self.run.info("Number of charged tRNA sequences", num_charged_tRNA_seqs)
+        self.run.info("Number of reads resembling tRNA but significantly longer than full-length tRNA", num_long_tRNA_reads)
         self.run.info("Number of tRNA sequences with extrapolated 5' feature", num_tRNA_seqs_with_extrapolated_fiveprime_feature)
 
     def get_date(self):
