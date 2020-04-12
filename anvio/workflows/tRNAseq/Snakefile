@@ -281,7 +281,7 @@ rule prefix_derep_tRNA_fasta:
 rule map_tRNA:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-map_tRNA.log")
-    input: rules.prefix_derep_tRNA_fasta.fasta
+    input: rules.prefix_derep_tRNA_fasta.output.fasta
     output:
         bam = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}.bam"),
         bam_index = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}.bam.bai")
@@ -301,7 +301,7 @@ rule map_tRNA:
 rule anvi_condense_clusters:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-anvi_condense_clusters.log")
-    input: rules.map_tRNA.bam
+    input: rules.map_tRNA.output.bam
     output:
         bam = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_CONDENSED.bam"),
         bam_index = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_CONDENSED.bam.bai")
