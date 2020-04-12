@@ -44,15 +44,7 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('trust-fasta'), **anvio.K('trust-fasta'))
     groupB.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
 
-    # args = anvio.get_args(parser)
-
-    args = parser.parse_args([
-        '-f', '/Users/sammiller/Documents/test2/s10_untreated_TEST.fasta',
-        '-o', '/Users/sammiller/Documents/test2/s10_untreated_TEST_TRNASEQ.db',
-        '-c',
-        '--trust-fasta',
-        '-T', '16',
-        '--verbose'])
+    args = anvio.get_args(parser)
 
     try:
         a = dbops.tRNASeqDatabase(
