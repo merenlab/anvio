@@ -2,6 +2,7 @@
 
 import anvio
 import anvio.terminal as terminal
+import anvio.db
 
 
 __author__ = "Samuel Miller"
@@ -17,7 +18,7 @@ import argparse
 import anvio.workflows as w
 import anvio.terminal as terminal
 import anvio.utils as u
-import os.path
+import os
 import pandas as pd
 
 from anvio.workflows.tRNAseq import tRNASeqWorkflow
@@ -224,6 +225,89 @@ rule anvi_gen_tRNAseq_database:
         trust_fasta = M.get_rule_param('trust_fasta', '--trust-fasta')
         verbose = M.get_rule_param('anvi_gen_tRNAseq_database', '--verbose')
     shell: "anvi-gen-trnaseq-database -f {input} -o {output} {params.charging_recorded} {params.trust_fasta} -T {threads} {params.verbose}"
+
+
+rule get_unique_tRNA_fasta:
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-get_unique_tRNA_fasta.log")
+    input: rules.anvi_gen_tRNAseq_database.output
+    output: os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_UNIQUE_TRNA.fasta")
+    threads: M.T('get_unique_tRNA_fasta')
+    resources: nodes = M.T('get_unique_tRNA_fasta')
+    run:
+        db = anvio.db.DB(input[0], '1')
+        table = db.get_table_as_dataframe('tRNA_basic_info')[['name', 'is_long_read']]
+        rep_tRNA_names = table['name'][table['is_long_read'] == 0].tolist()
+        del(table)
+        rows = [
+            (r[0], r[3]) for r
+            in db.get_some_rows_from_table(
+                'tRNA_sequences',
+                'name IN (%s)' % ','.join('"' + n + '"' for n in rep_tRNA_names))]
+        with open(output[0], 'w') as outf:
+            if rules.anvi_gen_tRNAseq_database.params.charging_recorded:
+                # Add the "A" to the 3' end of the sequence if it was removed due to charging
+                for r in rows:
+                    outf.write(">%s\n" % r[0])
+                    if r[1][-1] == 'C':
+                        outf.write("%s\n" % (r[1] + 'A'))
+                    else:
+                        outf.write("%s\n" % r[1])
+            else:
+                for r in rows:
+                    outf.write(">%s\n" % r[0])
+                    outf.write("%s\n" % r[1])
+
+
+rule prefix_derep_tRNA_fasta:
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-prefix_derep_tRNA_seeds.log")
+    input: rules.get_tRNA_seed_fasta.output
+    output:
+        fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_PREFIX_DEREP_TRNA.fasta"),
+        uc = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_UC_PREFIX_DEREP_TRNA.tsv")
+    threads: M.T('prefix_derep_tRNA_fasta')
+    resources: nodes = M.T('prefix_derep_tRNA_fasta')
+    run:
+        revcomp_filepath = os.path.join(dirs_dict['IDENT'], "%s_%s_REVCOMP.fasta" % (wildcards.sample, wildcards.split))
+        shell("vsearch --fastx_revcomp %s --fastaout %s --fasta_width 0 >> %s 2>&1" % (input[0], revcomp_filepath, log[0]))
+        revcomp_prefix_derep_filepath = os.path.join(dirs_dict['IDENT'], "%s_%s_REVCOMP_PREFIX_DEREP.fasta" % (wildcards.sample, wildcards.split))
+        shell("vsearch --derep_prefix %s --output %s --uc %s --minseqlength 1 --fasta_width 0 --threads %d >> %s 2>&1" % (revcomp_filepath, revcomp_prefix_derep_filepath, output.uc[0], threads[0], log[0]))
+        os.remove(revcomp_filepath)
+        shell("vsearch --fastx_revcomp %s --fastaout %s --fasta_width 0 >> %s 2>&1" % (revcomp_prefix_derep_filepath, output.fasta[0], log[0]))
+        os.remove(revcomp_prefix_derep_filepath)
+
+
+rule map_tRNA:
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-map_tRNA.log")
+    input: rules.prefix_derep_tRNA_fasta.fasta
+    output:
+        bam = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}.bam"),
+        bam_index = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}.bam.bai")
+    threads: M.T('map_tRNA')
+    resources: nodes = M.T('map_tRNA')
+    run:
+        shell("bowtie2-build -f %s %s >> %s 2>&1" % (input[0], os.path.splitext(output.bam[0])[0], log[0]))
+        sam_filepath = os.path.join(dirs_dict['IDENT_DIR'], "%s_%s.sam" % (wildcards.sample, wildcards.split))
+        shell("bowtie2 -x %s -f %s -S %s --very-sensitive -N 1 -k 2 --rdg 100,3 --rfg 100,3 -p %d >> %s 2>&1" % (os.path.splitext(output.bam[0])[0], input[0], sam_filepath, threads[0], log[0]))
+        raw_bam_filepath = os.path.splitext(output.bam[0])[0] + "_RAW.bam"
+        shell("samtools view -bS %s -o %s -F 4 >> %s 2>&1" % (sam_filepath, raw_bam_filepath, log[0]))
+        os.remove(sam_filepath)
+        shell("anvi-init-bam %s -o %s -T %d >> %s 2>&1" % (raw_bam_filepath, output.bam[0], threads[0], log[0]))
+        os.remove(raw_bam_filepath)
+
+
+rule anvi_condense_clusters:
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-anvi_condense_clusters.log")
+    input: rules.map_tRNA.bam
+    output:
+        bam = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_CONDENSED.bam"),
+        bam_index = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_CONDENSED.bam.bai")
+    threads: M.T('anvi-condense-clusters')
+    resources: nodes = M.T('anvi_condense_clusters')
+    shell: "anvi-condense-clusters {input} {output.bam} >> {log} 2>&1"
 
 
 if 'workflows/tRNAseq' in workflow.included[0]:

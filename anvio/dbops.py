@@ -3950,7 +3950,7 @@ class tRNASeqDatabase:
         self.run.info("Number of mature tRNA sequences", num_mature_tRNA_seqs)
         if self.charging_recorded:
             self.run.info("Number of charged tRNA sequences", num_charged_tRNA_seqs)
-        self.run.info("Number of reads with tRNA features at the 3' end but significantly longer than full-length tRNA", num_long_tRNA_reads)
+        self.run.info("Number of reads with tRNA features but significantly longer than full-length tRNA", num_long_tRNA_reads)
         self.run.info("Number of tRNA sequences with extrapolated 5' feature", num_tRNA_seqs_with_extrapolated_fiveprime_feature)
 
     def get_date(self):

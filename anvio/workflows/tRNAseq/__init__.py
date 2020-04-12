@@ -45,7 +45,11 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                            'gen_qc_report',
                            'convert_fastq_to_fasta',
                            'anvi_reformat_fasta',
-                           'anvi_gen_tRNAseq_database'])
+                           'anvi_gen_tRNAseq_database',
+                           'get_unique_tRNA_fasta',
+                           'prefix_derep_tRNA_fasta',
+                           'map_tRNA',
+                           'anvi_condense_clusters'])
 
         self.general_params.extend(['samples_txt'])
 

@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import pysam
+import argparse
+import os
+
+from copy import deepcopy
+
+
+def remap_queries(ref_name, orig_ref_name=None, mismatch_info=None, encountered_refs=None, written_refs=None, recursion_count=0, ref_position_offset=0):
+    if recursion_count == 0:
+        encountered_refs = [ref_name]
+        written_refs = []
+        orig_ref_name = ref_name
+        mismatch_info = []
+
+    aligned_segments = bamfile.fetch(ref_name)
+    for aligned_segment in aligned_segments:
+        query_name = aligned_segment.query_name
+        if query_name not in encountered_refs:
+            encountered_refs.append(query_name)
+
+            if recursion_count > 0:
+                for mismatch_list in mismatch_info:
+                    mismatch_list[0] -= aligned_segment.pos
+
+            mismatch_info_string = aligned_segment.get_tag('MD')
+            alignment_start_length_string = ''
+            mismatched_ref_nucleotide = ''
+            alignment_end_length_string = ''
+            for i, char in enumerate(mismatch_info_string):
+                try:
+                    int(char)
+                except ValueError:
+                    mismatched_ref_nucleotide = char
+                    alignment_end_length_string += mismatch_info_string[i + 1: ]
+                    break
+                alignment_start_length_string += char
+            mismatch_info.append([int(alignment_start_length_string), mismatched_ref_nucleotide, int(alignment_end_length_string)])
+
+            remap_queries(query_name, orig_ref_name=orig_ref_name, mismatch_info=deepcopy(mismatch_info), encountered_refs=encountered_refs, written_refs=written_refs, recursion_count=recursion_count + 1, ref_position_offset=ref_position_offset + aligned_segment.pos)
+
+            aligned_segment.reference_name = orig_ref_name
+            aligned_segment.pos = aligned_segment.pos + ref_position_offset
+            aligned_segment.set_tag('NM', aligned_segment.get_tag('NM') + recursion_count)
+            aligned_segment.set_tag('XM', aligned_segment.get_tag('XM') + recursion_count)
+
+            # Different sequences in the cluster can contribute mismatches at the same position.
+            # The relevant reference nucleotide is from the first record that occurs for the position,
+            # as this is the nucleotide from the "original" seed sequence.
+            # This record occurs in `mismatch_info` before other records at the same position.
+            if len(mismatch_info) == 1:
+                md_tag = str(mismatch_info[0][0]) + mismatch_info[0][1] + str(mismatch_info[0][2])
+            else:
+                mismatch_positions = []
+                unique_mismatch_info = []
+                for mismatch_list in mismatch_info:
+                    if mismatch_list[0] not in mismatch_positions:
+                        unique_mismatch_info.append(mismatch_list)
+                        mismatch_positions.append(mismatch_list[0])
+
+                # Create the MD tag for the optional alignment section.
+                # Mismatches must be considered in order of occurrence in the alignment.
+                unique_mismatch_info.sort(key=lambda mismatch_list: mismatch_list[0])
+                md_tag = ''
+                preceding_match_pos = 0
+                for mismatch_list in unique_mismatch_info:
+                    num_preceding_matches = mismatch_list[0] - preceding_match_pos
+                    if num_preceding_matches == 0:
+                        md_tag += mismatch_list[1]
+                    else:
+                        md_tag += str(num_preceding_matches) + mismatch_list[1]
+                    preceding_match_pos = mismatch_list[0] + 1
+                md_tag += str(unique_mismatch_info[-1][2])
+
+            aligned_segment.set_tag('MD', md_tag)
+
+            raw_outbamfile.write(aligned_segment)
+            written_refs.append(query_name)
+
+    if recursion_count == 0:
+        return written_refs
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('bamfile')
+    parser.add_argument('outbamfile')
+    args = parser.parse_args()
+
+    bamfile = pysam.AlignmentFile(args.bamfile, 'rb')
+    raw_outbam_filepath = os.path.splitext(args.outbamfile)[0] + "_RAW.bam"
+    raw_outbamfile = pysam.AlignmentFile(raw_outbam_filepath, 'wb', header=bamfile.header.as_dict())
+
+    refs_with_multiple_mappings = [] # Multiple query sequences, including the sequence itself, mapped to this sequence.
+    for ref_name in bamfile.references:
+        if bamfile.count(ref_name) > 1:
+            refs_with_multiple_mappings.append(ref_name)
+
+    # TODO: SORT BY REPLICATE COUNT FROM tRNAseq_sequences_table_name
+    written_refs = []
+    for ref_name in refs_with_multiple_mappings:
+        if ref_name not in written_refs:
+            written_refs.extend(remap_queries(ref_name))
+
+    raw_outbamfile.close()
+
+    pysam.sort('-o', args.outbamfile, args.raw_outbamfile)
+    pysam.index(args.outbamfile)
+    os.remove(raw_outbam_filepath)
