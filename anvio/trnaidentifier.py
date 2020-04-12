@@ -2,6 +2,8 @@
 # pylint: disable=line-too-long
 """tRNA identification from tRNA-seq reads"""
 
+import anvio.constants as constants
+
 from anvio.constants import WC_plus_wobble_base_pairs as WC_PLUS_WOBBLE_BASE_PAIRS
 from anvio.constants import codon_to_AA_RC as CODON_TO_AA_RC
 from anvio.errors import ConfigError
@@ -952,6 +954,40 @@ def _get_max_fiveprime_lengths(threeprime_to_fiveprime_feature_classes):
     return fiveprime_max_lengths
 
 
+def profile_wrapper(available_record_queue, output_queue, cluster_filepath):
+
+    num_features_through_T_loop = constants.db_formatted_tRNA_feature_names[::-1].index(
+        't_loop') + 1
+
+    cluster_file = open(cluster_filepath)
+    rep_seq_name = cluster_file.readline().split('\t')[8]
+
+    while True:
+        record = available_record_queue.get(True)
+        tRNA_profile = Profile(record)
+
+        tRNAseq_name = tRNA_profile.name
+        member_names = [tRNAseq_name]
+        if len(tRNA_profile.features) >= num_features_through_T_loop:
+            # Find the sequence's cluster.
+            if tRNAseq_name != rep_seq_name:
+                for line in cluster_file:
+                    if line[0] == 'S':
+                        rep_seq_name = line.split('\t')[8]
+                        if tRNAseq_name == rep_seq_name:
+                            break
+            # Loop through the cluster's member sequences.
+            for line in cluster_file:
+                member_seq_name, rep_seq_name = line.rstrip().split('\t')[8: 10]
+                if tRNAseq_name != rep_seq_name:
+                    rep_seq_name = member_seq_name # look at UC file format to see why
+                    break
+                else:
+                    member_names.append(member_seq_name)
+
+        output_queue.put((tRNA_profile, member_names))
+
+
 class Profile:
     fiveprime_to_threeprime_feature_classes = _tRNAFeature.list_all_tRNA_features()
     threeprime_to_fiveprime_feature_classes = fiveprime_to_threeprime_feature_classes[::-1]
@@ -978,8 +1014,11 @@ class Profile:
     long_read_unprofiled_thresh = 5
 
 
-    def __init__(self, read):
-        self.read = read
+    def __init__(self, record):
+        self.name = record[0]
+        self.read = record[1]
+    # def __init__(self, read):
+    #     self.read = read
 
         (self.profiled_seq,
         self.features,
@@ -989,7 +1028,7 @@ class Profile:
         self.num_unpaired,
         self.num_in_extrapolated_fiveprime_feature,
         self.is_mature,
-        self.is_long_read) = self.get_profile(read[::-1], '', [])
+        self.is_long_read) = self.get_profile(self.read[::-1], '', [])
 
         self.feature_names = [f.name for f in self.features]
 

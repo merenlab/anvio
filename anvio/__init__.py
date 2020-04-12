@@ -450,9 +450,15 @@ D = {
              'help': ("Look for tRNA sequences ending in \"CC\" as well as \"CCA\" "
                       "as an indicator of amino acid charging state. "
                       "tRNA-seq reads ending in \"CC\" were aminoacylated, "
-                      "while those ending in the normal \"CCA\" were not."
-                )}
-    ),
+                      "while those ending in the normal \"CCA\" were not.")}
+                ),
+    'trust-fasta': (
+            ['--trust-fasta'],
+            {'default': False,
+             'action': 'store_true',
+             'help': ("Don't bother checking the input FASTA file "
+                      "for such things as proper defline formatting.")}
+                ),
 #     'trnaseeds-fasta': (
 #             ['-f', '--trnaseeds-fasta'],
 #             {'metavar': 'FASTA',
