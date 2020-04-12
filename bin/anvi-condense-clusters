@@ -45,7 +45,8 @@ def remap_queries(ref_name, orig_ref_name=None, mismatch_info=None, encountered_
                 print(alignment_start_length_string)
                 print(mismatched_ref_nucleotide)
                 print(alignment_end_length_string)
-                raise Exception
+                print()
+                break
             remap_queries(query_name, orig_ref_name=orig_ref_name, mismatch_info=deepcopy(mismatch_info), encountered_refs=encountered_refs, written_refs=written_refs, recursion_count=recursion_count + 1, ref_position_offset=ref_position_offset + aligned_segment.pos)
 
             aligned_segment.reference_name = orig_ref_name
