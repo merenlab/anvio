@@ -262,7 +262,7 @@ rule get_unique_tRNA_fasta:
 rule prefix_derep_tRNA_fasta:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-prefix_derep_tRNA_seeds.log")
-    input: rules.get_tRNA_seed_fasta.output
+    input: rules.get_unique_tRNA_fasta.output
     output:
         fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_PREFIX_DEREP_TRNA.fasta"),
         uc = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_UC_PREFIX_DEREP_TRNA.tsv")
