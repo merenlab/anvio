@@ -3504,7 +3504,7 @@ class PanDatabase:
 
 
 class tRNASeqDatabase:
-    def __init__(self, db_path, charging_recorded=False, num_threads=1, run=run, progress=progress, quiet=True, skip_init=False):
+    def __init__(self, db_path, charging_recorded=False, trust_fasta=False, num_threads=1, run=run, progress=progress, quiet=True, skip_init=False):
 
         self.db = None
         self.db_path = db_path
@@ -3517,8 +3517,8 @@ class tRNASeqDatabase:
             trnaidentifier.Acceptor.conserved_nucleotides = ({0: 'C', 1: 'C'}, {0: 'C', 1: 'C', 2: 'A'})
         self.charging_recorded = charging_recorded
 
+        self.trust_fasta = trust_fasta
         self.num_threads = num_threads
-
         self.run = run
         self.progress = progress
         self.quiet = quiet
@@ -3618,41 +3618,42 @@ class tRNASeqDatabase:
         else:
             description = ''
 
-        # Make sure there are no surprises with FASTA file deflines and sequence lengths.
-        self.progress.new('Checking deflines')
-        self.progress.update('tick tock ...')
-        fasta = u.SequenceSource(tRNAseq_fasta)
-        while next(fasta):
-            if not utils.check_tRNAseq_names(fasta.id, dont_raise=True):
-                self.progress.end()
-                raise ConfigError(
-                    "At least one of the deflines in your FASTA file "
-                    "does not comply with the 'simple deflines' requirement of Anvi'o. "
-                    "You can either use the script, `anvi-script-reformat-fasta`, "
-                    "to take care of this issue, or read this section in the tutorial "
-                    "to understand the reason behind this requirement "
-                    "(Anvi'o is very upset for making you do this): %s"
-                    % 'http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file')
+        if not self.trust_fasta:
+            # Make sure there are no surprises with FASTA file deflines and sequence lengths.
+            self.progress.new('Checking deflines')
+            self.progress.update('tick tock ...')
+            fasta = u.SequenceSource(tRNAseq_fasta)
+            while next(fasta):
+                if not utils.check_tRNAseq_names(fasta.id, dont_raise=True):
+                    self.progress.end()
+                    raise ConfigError(
+                        "At least one of the deflines in your FASTA file "
+                        "does not comply with the 'simple deflines' requirement of Anvi'o. "
+                        "You can either use the script, `anvi-script-reformat-fasta`, "
+                        "to take care of this issue, or read this section in the tutorial "
+                        "to understand the reason behind this requirement "
+                        "(Anvi'o is very upset for making you do this): %s"
+                        % 'http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file')
 
-            try:
-                int(fasta.id)
-                is_int = True
-            except:
-                is_int = False
-            if is_int:
-                self.progress.end()
-                raise ConfigError(
-                    "At least one of the deflines in your FASTA file "
-                    "(well, this one to be precise: '%s') looks like a number. "
-                    "For reasons we can't really justify, "
-                    "Anvi'o does not like those numeric names, "
-                    "and hereby asks you to make sure every tRNAseq name "
-                    "contains at least one alphanumeric character :/ "
-                    "Meanwhile we, the Anvi'o developers, are both surprised by and thankful for "
-                    "your endless patience with such eccentric requests. "
-                    "You the real MVP." % fasta.id)
-        fasta.close()
-        self.progress.end()
+                try:
+                    int(fasta.id)
+                    is_int = True
+                except:
+                    is_int = False
+                if is_int:
+                    self.progress.end()
+                    raise ConfigError(
+                        "At least one of the deflines in your FASTA file "
+                        "(well, this one to be precise: '%s') looks like a number. "
+                        "For reasons we can't really justify, "
+                        "Anvi'o does not like those numeric names, "
+                        "and hereby asks you to make sure every tRNAseq name "
+                        "contains at least one alphanumeric character :/ "
+                        "Meanwhile we, the Anvi'o developers, are both surprised by and thankful for "
+                        "your endless patience with such eccentric requests. "
+                        "You the real MVP." % fasta.id)
+            fasta.close()
+            self.progress.end()
 
         all_ids_in_FASTA = utils.get_all_ids_from_fasta(tRNAseq_fasta)
         total_num_seqs = len(all_ids_in_FASTA)
@@ -3675,12 +3676,15 @@ class tRNASeqDatabase:
         process = subprocess.Popen(vsearch_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = process.communicate()
 
+        total_num_rep_seqs = len(utils.get_all_ids_from_fasta(rep_seq_fasta))
+
         if process.returncode:
             stderr = stderr.decode().strip()
             stderr = "\n" + "\n".join(stderr.split('\n'))
             print(terminal.c(stderr, color='red'))
             raise ConfigError("The VSEARCH command \"%s\" raised the error message above." % " ".join(vsearch_command))
         self.progress.end()
+
 
         # Create a blank tRNAseq database on disk and set self.db
         self.touch()
@@ -3703,6 +3707,7 @@ class tRNASeqDatabase:
         num_features_through_T_loop = constants.db_formatted_tRNA_feature_names[::-1].index(
             't_loop') + 1
 
+        num_profiled_rep_seqs = 0
         num_tRNA_seqs = 0
         num_unique_tRNA_seqs = 0
         num_tRNA_seqs_containing_anticodon = 0
@@ -3713,43 +3718,36 @@ class tRNASeqDatabase:
             num_charged_tRNA_seqs = 0
             num_uncharged_tRNA_seqs = 0
 
-        # Process each sequence
+
+
+
+        manager = multiprocessing.Manager()
+        available_record_queue = manager.Queue()
+        output_queue = manager.Queue(100)
+
         fasta = u.SequenceSource(rep_seq_fasta)
-        cluster_file = open(cluster_filepath)
-        rep_seq_name = cluster_file.readline().split('\t')[8]
-        self.progress.new('Finding tRNA sequences', progress_total_items=total_num_seqs)
-        fasta.reset()
         while next(fasta):
-            if not self.quiet:
-                self.progress.increment()
+            available_record_queue.put((fasta.id, fasta.seq))
+        fasta.reset()
 
-            tRNAseq_name = fasta.id
-            tRNAseq_sequence = fasta.seq
-            seq_length = len(fasta.seq)
+        processes = []
+        for i in range(0, self.num_threads):
+            processes.append(multiprocessing.Process(target=trnaidentifier.profile_wrapper, args=(available_record_queue, output_queue, cluster_filepath)))
 
-            if not self.quiet:
-                self.progress.update("tRNA-seq representative sequence '%d' " % fasta.pos)
+        for proc in processes:
+            proc.start()
 
-            tRNA_profile = trnaidentifier.Profile(tRNAseq_sequence)
+        self.progress.new('Finding tRNA sequences', progress_total_items=total_num_rep_seqs)
+        while num_profiled_rep_seqs < total_num_rep_seqs:
+            tRNA_profile, member_names = output_queue.get()
+            num_profiled_rep_seqs += 1
+
             if len(tRNA_profile.features) >= num_features_through_T_loop:
                 num_unique_tRNA_seqs += 1
+                tRNAseq_name = tRNA_profile.name
+                tRNAseq_sequence = tRNA_profile.read
+                seq_length = len(tRNAseq_sequence)
 
-                member_names = [tRNAseq_name]
-                # Find the sequence's cluster.
-                if tRNAseq_name != rep_seq_name:
-                    for line in cluster_file:
-                        if line[0] == 'S':
-                            rep_seq_name = line.split('\t')[8]
-                            if tRNAseq_name == rep_seq_name:
-                                break
-                # Loop through the cluster's member sequences.
-                for line in cluster_file:
-                    member_seq_name, rep_seq_name = line.rstrip().split('\t')[8: 10]
-                    if tRNAseq_name != rep_seq_name:
-                        rep_seq_name = member_seq_name # look at UC file format to see why
-                        break
-                    else:
-                        member_names.append(member_seq_name)
                 num_members = len(member_names)
                 num_tRNA_seqs += num_members
 
@@ -3809,6 +3807,107 @@ class tRNASeqDatabase:
                 for unpaired_tuple in unpaired_info:
                     tRNAseq_unpaired_table_entries.append((tRNAseq_name, ) + unpaired_tuple)
 
+        for proc in processes:
+            proc.terminate()
+
+
+
+        # # Process each sequence
+        # fasta = u.SequenceSource(rep_seq_fasta)
+        # cluster_file = open(cluster_filepath)
+        # rep_seq_name = cluster_file.readline().split('\t')[8]
+        # self.progress.new('Finding tRNA sequences', progress_total_items=total_num_seqs)
+        # fasta.reset()
+        # while next(fasta):
+        #     if not self.quiet:
+        #         self.progress.increment()
+
+        #     tRNAseq_name = fasta.id
+        #     tRNAseq_sequence = fasta.seq
+        #     seq_length = len(fasta.seq)
+
+        #     if not self.quiet:
+        #         self.progress.update("tRNA-seq representative sequence '%d' " % fasta.pos)
+
+        #     tRNA_profile = trnaidentifier.Profile(tRNAseq_sequence)
+        #     if len(tRNA_profile.features) >= num_features_through_T_loop:
+        #         num_unique_tRNA_seqs += 1
+
+        #         member_names = [tRNAseq_name]
+        #         # Find the sequence's cluster.
+        #         if tRNAseq_name != rep_seq_name:
+        #             for line in cluster_file:
+        #                 if line[0] == 'S':
+        #                     rep_seq_name = line.split('\t')[8]
+        #                     if tRNAseq_name == rep_seq_name:
+        #                         break
+        #         # Loop through the cluster's member sequences.
+        #         for line in cluster_file:
+        #             member_seq_name, rep_seq_name = line.rstrip().split('\t')[8: 10]
+        #             if tRNAseq_name != rep_seq_name:
+        #                 rep_seq_name = member_seq_name # look at UC file format to see why
+        #                 break
+        #             else:
+        #                 member_names.append(member_seq_name)
+        #         num_members = len(member_names)
+        #         num_tRNA_seqs += num_members
+
+        #         profiled_seq_length = len(tRNA_profile.profiled_seq)
+
+        #         unconserved_info = tRNA_profile.get_unconserved_positions()
+        #         unpaired_info = tRNA_profile.get_unpaired_positions()
+
+        #         if tRNA_profile.anticodon_seq:
+        #             num_tRNA_seqs_containing_anticodon += num_members
+        #         if tRNA_profile.is_mature:
+        #             num_mature_tRNA_seqs += num_members
+        #         if tRNA_profile.is_long_read:
+        #             num_long_tRNA_reads += num_members
+        #         if tRNA_profile.num_in_extrapolated_fiveprime_feature > 0:
+        #             num_tRNA_seqs_with_extrapolated_fiveprime_feature += num_members
+
+        #         if self.charging_recorded:
+        #             if tRNA_profile.charged:
+        #                 num_charged_tRNA_seqs += num_members
+        #             else:
+        #                 num_uncharged_tRNA_seqs += num_members
+
+        #         tRNAseq_sequences_table_entries.append(
+        #             (tRNAseq_name, ','.join(member_names), num_members, tRNAseq_sequence))
+
+        #         tRNAseq_info_table_entries.append((
+        #             tRNAseq_name,
+        #             tRNA_profile.is_mature,
+        #             tRNA_profile.is_long_read,
+        #             tRNA_profile.charged,
+        #             tRNA_profile.anticodon_seq,
+        #             tRNA_profile.anticodon_aa,
+        #             seq_length,
+        #             seq_length - profiled_seq_length,
+        #             tRNA_profile.num_conserved,
+        #             tRNA_profile.num_unconserved,
+        #             tRNA_profile.num_paired,
+        #             tRNA_profile.num_unpaired,
+        #             tRNA_profile.num_in_extrapolated_fiveprime_feature))
+
+        #         tRNAseq_features_table_entries.append(
+        #             (tRNAseq_name, )
+        #             + tuple(['?' * 2 for _ in range(
+        #                 (len(constants.tRNA_feature_names) - len(tRNA_profile.features)))]) * 2
+        #             + tuple(itertools.chain(*zip(
+        #                 [str(f.start_index) if hasattr(f, 'start_index')
+        #                  else ','.join(map(str, f.start_indices))
+        #                  for f in tRNA_profile.features],
+        #                 [str(f.stop_index) if hasattr(f, 'stop_index')
+        #                  else ','.join(map(str, f.stop_indices))
+        #                  for f in tRNA_profile.features]))))
+
+        #         for unconserved_tuple in unconserved_info:
+        #             tRNAseq_unconserved_table_entries.append((tRNAseq_name, ) + unconserved_tuple)
+
+        #         for unpaired_tuple in unpaired_info:
+        #             tRNAseq_unpaired_table_entries.append((tRNAseq_name, ) + unpaired_tuple)
+
         self.db._exec_many(
             '''INSERT INTO %s VALUES (?,?,?,?)''' % t.tRNAseq_sequences_table_name,
             tRNAseq_sequences_table_entries)
@@ -3851,7 +3950,7 @@ class tRNASeqDatabase:
         self.run.info("Number of mature tRNA sequences", num_mature_tRNA_seqs)
         if self.charging_recorded:
             self.run.info("Number of charged tRNA sequences", num_charged_tRNA_seqs)
-        self.run.info("Number of reads resembling tRNA but significantly longer than full-length tRNA", num_long_tRNA_reads)
+        self.run.info("Number of reads with tRNA features at the 3' end but significantly longer than full-length tRNA", num_long_tRNA_reads)
         self.run.info("Number of tRNA sequences with extrapolated 5' feature", num_tRNA_seqs_with_extrapolated_fiveprime_feature)
 
     def get_date(self):
