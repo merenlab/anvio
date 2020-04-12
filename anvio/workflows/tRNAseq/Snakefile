@@ -222,7 +222,7 @@ rule anvi_gen_tRNAseq_database:
     resources: nodes = M.T('anvi_gen_tRNAseq_database')
     params:
         charging_recorded = M.get_rule_param('anvi_gen_tRNAseq_database', '--charging-recorded'),
-        trust_fasta = M.get_rule_param('trust_fasta', '--trust-fasta')
+        trust_fasta = M.get_rule_param('trust_fasta', '--trust-fasta'),
         verbose = M.get_rule_param('anvi_gen_tRNAseq_database', '--verbose')
     shell: "anvi-gen-trnaseq-database -f {input} -o {output} {params.charging_recorded} {params.trust_fasta} -T {threads} {params.verbose}"
 
