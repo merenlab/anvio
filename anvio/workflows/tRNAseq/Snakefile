@@ -269,9 +269,9 @@ rule prefix_derep_tRNA_fasta:
     threads: M.T('prefix_derep_tRNA_fasta')
     resources: nodes = M.T('prefix_derep_tRNA_fasta')
     run:
-        revcomp_filepath = os.path.join(dirs_dict['IDENT'], "%s_%s_REVCOMP.fasta" % (wildcards.sample, wildcards.split))
+        revcomp_filepath = os.path.join(dirs_dict['IDENT_DIR'], "%s_%s_REVCOMP.fasta" % (wildcards.sample, wildcards.split))
         shell("vsearch --fastx_revcomp %s --fastaout %s --fasta_width 0 >> %s 2>&1" % (input[0], revcomp_filepath, log[0]))
-        revcomp_prefix_derep_filepath = os.path.join(dirs_dict['IDENT'], "%s_%s_REVCOMP_PREFIX_DEREP.fasta" % (wildcards.sample, wildcards.split))
+        revcomp_prefix_derep_filepath = os.path.join(dirs_dict['IDENT_DIR'], "%s_%s_REVCOMP_PREFIX_DEREP.fasta" % (wildcards.sample, wildcards.split))
         shell("vsearch --derep_prefix %s --output %s --uc %s --minseqlength 1 --fasta_width 0 --threads %d >> %s 2>&1" % (revcomp_filepath, revcomp_prefix_derep_filepath, output.uc[0], threads[0], log[0]))
         os.remove(revcomp_filepath)
         shell("vsearch --fastx_revcomp %s --fastaout %s --fasta_width 0 >> %s 2>&1" % (revcomp_prefix_derep_filepath, output.fasta[0], log[0]))
