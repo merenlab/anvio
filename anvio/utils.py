@@ -2367,30 +2367,26 @@ def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_name
         missing_names = [name for name in seq_names_to_export if name not in contig_names and name not in split_names]
 
         if splits_mode:
-           if len(contig_names) or len(missing_names):
-                if just_do_it:
-                    run.warning("You are in splits mode, but not all the names you requested are splits in this CONTIGS.db. %d names are splits, "
-                                "%d are contigs, and %d are neither (of the %d total names that you gave). BUT you're in just-do-it mode and we know you're in charge, so we'll "
-                                "proceed using any recognizable split names." % (len(split_names), len(contig_names), len(missing_names),len(seq_names_to_export)))
-                    seq_names_to_export = split_names
-                else:
-                    raise ConfigError("You are in splits mode, but not all the names you requested are splits in this CONTIGS.db. %d names are splits, "
-                                  "%d are contigs, and %d are neither (of the %d total names that you gave). If you want to live on the edge and try to "
-                                  "proceed using any recognizable split names, try out the `--just-do-it` flag." % (len(split_names), len(contig_names), len(missing_names),\
-                                  len(seq_names_to_export)))
+          mode = "splits"
+          appropriate_seq_names = split_names
 
-        elif len(split_names) or len(missing_names):
-                 if just_do_it:
-                     run.warning("Not all the names you requested are contigs in this CONTIGS.db. %d names are contigs, "
-                                 "%d are splits, and %d are neither (of the %d total names that you gave). BUT you're in just-do-it mode and we know you're in charge, so we'll "
-                                 "proceed using any recognizable split names." % (len(contig_names), len(split_names), len(missing_names),len(seq_names_to_export)))
-                     seq_names_to_export = contig_names     
-                 else:
-                     raise ConfigError("Not all the names you requested are contigs in this CONTIGS.db. %d names are contigs, "
-                                  "%d are splits, and %d are neither (of the %d total names that you gave). If you want to live on the edge and try to "
-                                  "proceed using any recognizable split names, try out the `--just-do-it` flag." % (len(contig_names), len(split_names), len(missing_names),\
-                                  len(seq_names_to_export)))
+        else: 
+          mode = "contigs"
+          appropriate_seq_names = contig_names
 
+        if len(appropriate_seq_names) < len(seq_names_to_export):
+          if just_do_it:
+              run.warning("Not all the sequences you requested are %s in this CONTIGS.db. %d names are contigs, "
+                          "%d are splits, and %d are neither. BUT you're in just-do-it mode and we know you're in charge, so we'll "
+                          "proceed using any appropriate names." % \
+                          (mode, len(contig_names), len(split_names), len(missing_names),))
+              seq_names_to_export = appropriate_seq_names 
+          else:
+              raise ConfigError("Not all the sequences you requested are %s in this CONTIGS.db. %d names are contigs, "
+                                "%d are splits, and %d are neither. If you want to live on the edge and try to "
+                                "proceed using any appropriate names, try out the `--just-do-it` flag." % \
+                                (mode, len(contig_names), len(split_names), len(missing_names)))
+        
     for seq_name in seq_names_to_export:
         if splits_mode:
             s = splits_info_dict[seq_name]
