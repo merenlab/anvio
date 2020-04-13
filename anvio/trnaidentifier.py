@@ -58,7 +58,13 @@ class _tRNAFeature:
             substring_statuses = []
             conserved_status.append(substring_statuses)
             for pos, expected_nucleotides in nuc_dict.items():
-                observed_nucleotide = substring[pos]
+                try:
+                    observed_nucleotide = substring[pos]
+                except IndexError:
+                    # This occurs when charging status is measured.
+                    # When the acceptor is charged, the acceptor is changed to 'CC' in the read.
+                    # The acceptor's conserved nucleotides include the 3' A, which must be ignored.
+                    break
                 if observed_nucleotide in expected_nucleotides:
                     num_conserved += 1
                     substring_statuses.append(
@@ -934,7 +940,6 @@ class Acceptor(_Sequence):
             # The following class attributes must be set when tRNA-seq measures charging state:
             # allowed_input_lengths = ((2, ), (3, ))
             # summed_input_lengths = (2, 3)
-            # conserved_nucleotides = ({0: 'C', 1: 'C'}, {0: 'C', 1: 'C', 2: 'A'})
             if self.string == 'CC':
                 self.charged = True
             else:
