@@ -25,7 +25,7 @@ def remap_queries(ref_name, outf, orig_ref_name=None, mismatch_info=None, encoun
 
         if query_name == ref_name:
             for replicate_name in replicate_name_dict[query_name][1:]:
-                aligned_segment.reference_name = replicate_name
+                aligned_segment.query_name = replicate_name
                 outf.write(aligned_segment)
 
         if query_name not in encountered_refs:
@@ -65,6 +65,7 @@ def remap_queries(ref_name, outf, orig_ref_name=None, mismatch_info=None, encoun
                 break
             remap_queries(query_name, outf, orig_ref_name=orig_ref_name, mismatch_info=deepcopy(mismatch_info), encountered_refs=encountered_refs, written_refs=written_refs, recursion_count=recursion_count + 1, ref_position_offset=ref_position_offset + aligned_segment.pos)
 
+            aligned_segment.reference_name = orig_ref_name
             aligned_segment.pos = aligned_segment.pos + ref_position_offset
             aligned_segment.set_tag('NM', num_mismatched_nucleotides + recursion_count)
             aligned_segment.set_tag('XM', num_mismatched_nucleotides + recursion_count)
@@ -100,7 +101,7 @@ def remap_queries(ref_name, outf, orig_ref_name=None, mismatch_info=None, encoun
             aligned_segment.set_tag('MD', md_tag)
 
             for replicate_name in replicate_name_dict[query_name]:
-                aligned_segment.reference_name = replicate_name
+                aligned_segment.query_name = replicate_name
                 outf.write(aligned_segment)
             written_refs.append(query_name)
 
