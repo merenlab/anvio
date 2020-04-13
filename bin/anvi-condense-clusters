@@ -8,12 +8,14 @@ import os
 from copy import deepcopy
 
 
-def remap_queries(ref_name, orig_ref_name=None, mismatch_info=None, encountered_refs=None, written_refs=None, recursion_count=0, ref_position_offset=0):
+def remap_queries(ref_name, outf, orig_ref_name=None, mismatch_info=None, encountered_refs=None, written_refs=None, recursion_count=0, ref_position_offset=0):
     if recursion_count == 0:
-        encountered_refs = [ref_name]
-        written_refs = []
         orig_ref_name = ref_name
         mismatch_info = []
+    if encountered_refs is None:
+        encountered_refs = [ref_name]
+    if written_refs is None:
+        written_refs = []
 
     aligned_segments = bamfile.fetch(ref_name)
     for aligned_segment in aligned_segments:
@@ -21,9 +23,14 @@ def remap_queries(ref_name, orig_ref_name=None, mismatch_info=None, encountered_
         if query_name not in encountered_refs:
             encountered_refs.append(query_name)
 
+            num_mismatched_nucleotides = aligned_segment.get_tag('NM')
+            if num_mismatched_nucleotides > 1:
+                remap_queries(query_name, raw_outbamfile2, encountered_refs=encountered_refs, written_refs=written_refs)
+                continue
+
             if recursion_count > 0:
                 for mismatch_list in mismatch_info:
-                    mismatch_list[0] -= aligned_segment.pos
+                    mismatch_list[0] += aligned_segment.pos
 
             mismatch_info_string = aligned_segment.get_tag('MD')
             alignment_start_length_string = ''
@@ -47,12 +54,12 @@ def remap_queries(ref_name, orig_ref_name=None, mismatch_info=None, encountered_
                 print(alignment_end_length_string)
                 print()
                 break
-            remap_queries(query_name, orig_ref_name=orig_ref_name, mismatch_info=deepcopy(mismatch_info), encountered_refs=encountered_refs, written_refs=written_refs, recursion_count=recursion_count + 1, ref_position_offset=ref_position_offset + aligned_segment.pos)
+            remap_queries(query_name, outf, orig_ref_name=orig_ref_name, mismatch_info=deepcopy(mismatch_info), encountered_refs=encountered_refs, written_refs=written_refs, recursion_count=recursion_count + 1, ref_position_offset=ref_position_offset + aligned_segment.pos)
 
             aligned_segment.reference_name = orig_ref_name
             aligned_segment.pos = aligned_segment.pos + ref_position_offset
-            aligned_segment.set_tag('NM', aligned_segment.get_tag('NM') + recursion_count)
-            aligned_segment.set_tag('XM', aligned_segment.get_tag('XM') + recursion_count)
+            aligned_segment.set_tag('NM', num_mismatched_nucleotides + recursion_count)
+            aligned_segment.set_tag('XM', num_mismatched_nucleotides + recursion_count)
 
             # Different sequences in the cluster can contribute mismatches at the same position.
             # The relevant reference nucleotide is from the first record that occurs for the position,
@@ -84,7 +91,7 @@ def remap_queries(ref_name, orig_ref_name=None, mismatch_info=None, encountered_
 
             aligned_segment.set_tag('MD', md_tag)
 
-            raw_outbamfile.write(aligned_segment)
+            outf.write(aligned_segment)
             written_refs.append(query_name)
 
     if recursion_count == 0:
@@ -96,23 +103,40 @@ if __name__ == '__main__':
     parser.add_argument('outbamfile')
     args = parser.parse_args()
 
+    # args = parser.parse_args([
+    #     '/Users/sammiller/Documents/test3/s10_demethylase.bam',
+    #     '/Users/sammiller/Documents/test3/s10_demethylase_CONDENSED.bam'])
+
     bamfile = pysam.AlignmentFile(args.bamfile, 'rb')
     raw_outbam_filepath = os.path.splitext(args.outbamfile)[0] + "_RAW.bam"
-    raw_outbamfile = pysam.AlignmentFile(raw_outbam_filepath, 'wb', header=bamfile.header.as_dict())
+    raw_outbam2_filepath = os.path.splitext(args.outbamfile)[0] + "_2_RAW.bam"
 
     refs_with_multiple_mappings = [] # Multiple query sequences, including the sequence itself, mapped to this sequence.
     for ref_name in bamfile.references:
         if bamfile.count(ref_name) > 1:
             refs_with_multiple_mappings.append(ref_name)
 
-    # TODO: SORT BY REPLICATE COUNT FROM tRNAseq_sequences_table_name
+    if os.path.exists(raw_outbam_filepath):
+        os.remove(raw_outbam_filepath)
+    raw_outbamfile = pysam.AlignmentFile(raw_outbam_filepath, 'wb', header=bamfile.header.as_dict())
+    if os.path.exists(raw_outbam2_filepath):
+        os.remove(raw_outbam2_filepath)
+    raw_outbamfile2 = pysam.AlignmentFile(raw_outbam2_filepath, 'wb', header=bamfile.header.as_dict())
+
+    # TODO: SORT BY REPLICATE COUNT FROM tRNAseq_sequences_table_name???
     written_refs = []
     for ref_name in refs_with_multiple_mappings:
         if ref_name not in written_refs:
-            written_refs.extend(remap_queries(ref_name))
+            written_refs.extend(remap_queries(ref_name, raw_outbamfile))
 
     raw_outbamfile.close()
+    raw_outbamfile2.close()
 
-    pysam.sort('-o', args.outbamfile, args.raw_outbamfile)
+    pysam.sort('-o', args.outbamfile, raw_outbam_filepath)
     pysam.index(args.outbamfile)
     os.remove(raw_outbam_filepath)
+
+    outbam2_filepath = os.path.splitext(args.outbamfile)[0] + '_2_CONDENSED.bam'
+    pysam.sort('-o', outbam2_filepath, raw_outbam2_filepath)
+    pysam.index(outbam2_filepath)
+    os.remove(raw_outbam2_filepath)
