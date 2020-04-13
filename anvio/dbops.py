@@ -3514,7 +3514,6 @@ class tRNASeqDatabase:
             trnaidentifier.Acceptor.charging_recorded = True
             trnaidentifier.Acceptor.allowed_input_lengths = ((2, ), (3, ))
             trnaidentifier.Acceptor.summed_input_lengths = (2, 3)
-            trnaidentifier.Acceptor.conserved_nucleotides = ({0: 'C', 1: 'C'}, {0: 'C', 1: 'C', 2: 'A'})
         self.charging_recorded = charging_recorded
 
         self.trust_fasta = trust_fasta
