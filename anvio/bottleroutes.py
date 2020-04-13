@@ -7,6 +7,8 @@
     anvi-interactive, or anvi-refine.
 """
 
+
+
 import os
 import re
 import io
@@ -277,7 +279,7 @@ class BottleApplication(Bottle):
     def get_news(self):
         ret = []
         try:
-            news_markdown = requests.get('https://raw.githubusercontent.com/merenlab/anvio/master/NEWS.md')
+            news_markdown = requests.get('https://raw.githubusercontent.com/isaacfink21/anvio/master/NEWS.md')
             news_items = news_markdown.text.split("***")
 
             """ FORMAT
