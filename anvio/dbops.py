@@ -106,8 +106,6 @@ class ContigsSuperclass(object):
         self.split_name_to_genes_in_splits_entry_ids = {} # for fast access to all self.genes_in_splits entries for a given split
         self.gene_callers_id_to_split_name_dict = {} # for fast access to a split name that contains a given gene callers id
 
-        self.nt_positions_info = None
-
         self.gene_function_call_sources = []
         self.gene_function_calls_dict = {}
         self.gene_function_calls_initiated = False
