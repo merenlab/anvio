@@ -275,12 +275,14 @@ D = {
     'external-gene-calls': (
             ['--external-gene-calls'],
             {'metavar': 'GENE-CALLS',
-             'help': "A TAB-delimited file to utilize external gene calls. The file must have these columns: 'gene_callers_id' "
+             'help': "A TAB-delimited file to define external gene calls. The file must have these columns: 'gene_callers_id' "
                      "(a unique integer number for each gene call, start from 1), 'contig' (the contig name the gene call is found), "
                      "'start' (start position, integer), 'stop' (stop position, integer), 'direction' (the direction of the gene open reading "
                      "frame; can be 'f' or 'r'), 'partial' (whether it is a complete gene call, or a partial one; must be 1 for partial "
                      "calls, and 0 for complete calls), 'source' (the gene caller), and 'version' (the version of the gene caller, i.e., "
-                     "v2.6.7 or v1.0). An example file can be found via the URL https://bit.ly/2qEEHuQ"}
+                     "v2.6.7 or v1.0). An additional 'optional' column is 'aa_sequence' to explicitly define the amino acid seqeuence of "
+                     "a gene call so anvi'o does not attempt to translate the DNA sequence itself. An EXAMPLE FILE (with the non-mandatory "
+                     "'aa_sequence' column (so feel free to take it out for your own case)) can be found at the URL https://bit.ly/2qEEHuQ"}
                 ),
     'external-genomes': (
             ['-e', '--external-genomes'],

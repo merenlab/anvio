@@ -3674,25 +3674,29 @@ class ContigsDatabase:
         split_length = A('split_length')
         kmer_size = A('kmer_size')
         skip_gene_calling = A('skip_gene_calling')
-        external_gene_calls = A('external_gene_calls')
+        external_gene_calls_file_path = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
         ignore_internal_stop_codons = A('ignore_internal_stop_codons')
         prodigal_translation_table = A('prodigal_translation_table')
 
-        if external_gene_calls:
-            filesnpaths.is_file_exists(external_gene_calls)
+        if external_gene_calls_file_path:
+            filesnpaths.is_file_tab_delimited(external_gene_calls_file_path)
 
-        if external_gene_calls and skip_gene_calling:
+        if external_gene_calls_file_path and skip_gene_calling:
             raise ConfigError("You provided a file for external gene calls, and used requested gene calling to be "
                                "skipped. Please make up your mind.")
 
-        if (external_gene_calls or skip_gene_calling) and prodigal_translation_table:
+        if (external_gene_calls_file_path or skip_gene_calling) and prodigal_translation_table:
             raise ConfigError("You asked anvi'o to %s, yet you set a specific translation table for prodigal. These "
                               "parameters do not make much sense and anvi'o is kindly asking you to make up your "
                               "mind." % ('skip gene calling' if skip_gene_calling else 'use external gene calls'))
 
         filesnpaths.is_file_fasta_formatted(contigs_fasta)
         contigs_fasta = os.path.abspath(contigs_fasta)
+
+        # let's see if the user has provided extenral gene calls file with amino
+        # acid sequences:
+        external_gene_calls_include_amino_acid_sequences = external_gene_calls_file_path and 'aa_sequence' in utils.get_columns_of_TAB_delim_file(external_gene_calls_file_path)
 
         # let the user see what's up
         self.run.info('Input FASTA file', contigs_fasta)
@@ -3811,13 +3815,6 @@ class ContigsDatabase:
         # set split length variable in the meta table
         self.db.set_meta_value('split_length', split_length)
 
-        self.run.info('Split Length', pp(split_length))
-        self.run.info('K-mer size', kmer_size)
-        self.run.info('Skip gene calling?', skip_gene_calling)
-        self.run.info('External gene calls provided?', external_gene_calls)
-        self.run.info('Ignoring internal stop codons?', ignore_internal_stop_codons)
-        self.run.info('Splitting pays attention to gene calls?', (not skip_mindful_splitting))
-
         # first things first: do the gene calling on contigs. this part is important. we are doing the
         # gene calling first. so we understand wher genes start and end. this information will guide the
         # arrangement of the breakpoint of splits
@@ -3830,9 +3827,9 @@ class ContigsDatabase:
             gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, args=args, run=self.run, progress=self.progress, debug=anvio.DEBUG)
 
             # if the user provided a file for external gene calls, use it. otherwise do the gene calling yourself.
-            if external_gene_calls:
+            if external_gene_calls_file_path:
                 gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(
-                    input_file_path=external_gene_calls,
+                    input_file_path=external_gene_calls_file_path,
                     ignore_internal_stop_codons=ignore_internal_stop_codons,
                 )
             else:
@@ -3850,6 +3847,17 @@ class ContigsDatabase:
 
                 contig_name_to_gene_start_stops[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
 
+        # print some information for the user
+        self.run.info('Split Length', pp(split_length))
+        self.run.info('K-mer size', kmer_size)
+        self.run.info('Skip gene calling?', skip_gene_calling)
+        self.run.info('External gene calls provided?', True if external_gene_calls_file_path else False, mc='green')
+
+        if external_gene_calls_file_path:
+            self.run.info('External gene calls file have AA sequences?', external_gene_calls_include_amino_acid_sequences, mc='green')
+
+        self.run.info('Ignoring internal stop codons?', ignore_internal_stop_codons)
+        self.run.info('Splitting pays attention to gene calls?', (not skip_mindful_splitting))
 
         # here we will process each item in the contigs fasta file.
         fasta = u.SequenceSource(contigs_fasta)
@@ -3927,6 +3935,13 @@ class ContigsDatabase:
         self.db.set_meta_value('gene_level_taxonomy_source', None)
         self.db.set_meta_value('gene_function_sources', None)
         self.db.set_meta_value('genes_are_called', (not skip_gene_calling))
+
+        # FIXME: these need to be included in the self table at some point (and of course
+        # after that we should increase the contigs db version, and include these variables
+        # in ContigsDatabase::init):
+        #self.db.set_meta_value('user_provided_external_gene_calls', True if external_gene_calls_file_path else False)
+        #self.db.set_meta_value('user_provided_external_gene_amino_acid_seqs', external_gene_calls_include_amino_acid_sequences)
+
         self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))
         self.db.set_meta_value('scg_taxonomy_was_run', False)
         self.db.set_meta_value('creation_date', self.get_date())
