@@ -10,10 +10,11 @@ import os
 from copy import deepcopy
 
 
-def remap_queries(ref_name, outf, fasta, orig_ref_name=None, mismatch_info=None, encountered_refs=None, written_refs=None, recursion_count=0, ref_position_offset=0):
+def remap_queries(ref_name, outf, fasta, orig_ref_name=None, mismatch_info=None, mismatches_in_ref_frame=None, encountered_refs=None, written_refs=None, recursion_count=0, ref_position_offset=0):
     if recursion_count == 0:
         orig_ref_name = ref_name
         mismatch_info = []
+        mismatches_in_ref_frame = {}
     if encountered_refs is None:
         encountered_refs = [ref_name]
     if written_refs is None:
@@ -26,7 +27,7 @@ def remap_queries(ref_name, outf, fasta, orig_ref_name=None, mismatch_info=None,
         if query_name == ref_name:
             fasta.write(">%s\n" % query_name)
             fasta.write("%s\n" % aligned_segment.query_sequence)
-            for replicate_name in replicate_name_dict[query_name][1:]:
+            for replicate_name in replicate_name_dict[query_name][1:]: # evade ref seq
                 aligned_segment.query_name = replicate_name
                 outf.write(aligned_segment)
 
@@ -55,36 +56,43 @@ def remap_queries(ref_name, outf, fasta, orig_ref_name=None, mismatch_info=None,
                     break
                 alignment_start_length_string += char
             try:
-                mismatch_info.append([int(alignment_start_length_string), mismatched_ref_nucleotide, int(alignment_end_length_string)])
+                alignment_start_length = int(alignment_start_length_string)
+                if (alignment_start_length + ref_position_offset) in mismatches_in_ref_frame:
+                    mismatch_info.append([alignment_start_length, mismatches_in_ref_frame[alignment_start_length + ref_position_offset], int(alignment_end_length_string)])
+                else:
+                    mismatch_info.append([alignment_start_length, mismatched_ref_nucleotide, int(alignment_end_length_string)])
+                    mismatches_in_ref_frame[alignment_start_length + ref_position_offset] = mismatched_ref_nucleotide
             except ValueError:
                 print(query_name)
+                print(ref_name)
+                print(orig_ref_name)
                 print(mismatch_info)
                 print(mismatch_info_string)
                 print(alignment_start_length_string)
                 print(mismatched_ref_nucleotide)
                 print(alignment_end_length_string)
                 print()
+                # THE ONE I HAVE INVESTIGATED ENDED IN CCA AND ALIGNED IN THE MIDDLE OF A LONGER READ
+                # ** WITHOUT ANY MISMATCHES **
+                # THIS COULD BE A FRAGMENTARY TRNA READ FROM THE MIDDLE OF A MOLECULE
                 break
-            remap_queries(query_name, outf, fasta, orig_ref_name=orig_ref_name, mismatch_info=deepcopy(mismatch_info), encountered_refs=encountered_refs, written_refs=written_refs, recursion_count=recursion_count + 1, ref_position_offset=ref_position_offset + aligned_segment.pos)
+            remap_queries(query_name, outf, fasta, orig_ref_name=orig_ref_name, mismatch_info=deepcopy(mismatch_info), mismatches_in_ref_frame=mismatches_in_ref_frame, encountered_refs=encountered_refs, written_refs=written_refs, recursion_count=recursion_count + 1, ref_position_offset=ref_position_offset + aligned_segment.pos)
 
             aligned_segment.reference_name = orig_ref_name
             aligned_segment.pos = aligned_segment.pos + ref_position_offset
             aligned_segment.set_tag('NM', num_mismatched_nucleotides + recursion_count)
             aligned_segment.set_tag('XM', num_mismatched_nucleotides + recursion_count)
 
-            # Different sequences in the cluster can contribute mismatches at the same position.
-            # The relevant reference nucleotide is from the first record that occurs for the position,
-            # as this is the nucleotide from the "original" seed sequence.
-            # This record occurs in `mismatch_info` before other records at the same position.
             if len(mismatch_info) == 1:
                 md_tag = str(mismatch_info[0][0]) + mismatch_info[0][1] + str(mismatch_info[0][2])
             else:
-                mismatch_positions = []
                 unique_mismatch_info = []
+                mismatch_positions_in_ref_frame = []
                 for mismatch_list in mismatch_info:
-                    if mismatch_list[0] not in mismatch_positions:
+                    mismatch_position_in_ref_frame = mismatch_list[0] + ref_position_offset
+                    if mismatch_position_in_ref_frame not in mismatch_positions_in_ref_frame:
                         unique_mismatch_info.append(mismatch_list)
-                        mismatch_positions.append(mismatch_list[0])
+                        mismatch_positions_in_ref_frame.append(mismatch_position_in_ref_frame)
 
                 # Create the MD tag for the optional alignment section.
                 # Mismatches must be considered in order of occurrence in the alignment.
@@ -117,7 +125,11 @@ if __name__ == '__main__':
     parser.add_argument('bamfile')
     parser.add_argument('outbamfile')
     parser.add_argument('tRNAseqdb')
-    args = parser.parse_args()
+    # args = parser.parse_args()
+
+    args = parser.parse_args(['/Users/sammiller/Documents/test4/s10_demethylase.bam',
+                              '/Users/sammiller/Documents/test4/s10_demethylase_new.bam',
+                              '/Users/sammiller/Documents/test4/s10_demethylase_TRNASEQ.db'])
 
     bamfile = pysam.AlignmentFile(args.bamfile, 'rb')
     raw_outbam_filepath = os.path.splitext(args.outbamfile)[0] + "_RAW.bam"
