@@ -141,7 +141,7 @@ if __name__ == '__main__':
 
     condensed_seqs_filepath = os.path.splitext(args.outbamfile)[0] + '.fasta'
     condensed_seqs_fasta = open(condensed_seqs_filepath, 'w')
-    condensed_seqs_filepath2 = os.path.splitext(args.outbamfile)[0] + '.fasta'
+    condensed_seqs_filepath2 = os.path.splitext(args.outbamfile)[0] + '_2.fasta'
     condensed_seqs_fasta2 = open(condensed_seqs_filepath2, 'w')
 
     # TODO: SORT BY REPLICATE COUNT FROM tRNAseq_sequences_table_name???
