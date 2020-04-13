@@ -3722,7 +3722,7 @@ class tRNASeqDatabase:
 
         manager = multiprocessing.Manager()
         available_record_queue = manager.Queue()
-        output_queue = manager.Queue(100)
+        output_queue = manager.Queue()
 
         fasta = u.SequenceSource(rep_seq_fasta)
         while next(fasta):
