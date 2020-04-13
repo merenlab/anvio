@@ -215,7 +215,7 @@ rule gen_qc_report:
 
 rule anvi_gen_tRNAseq_database:
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-anvi_gen_tRNAseq_database")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-anvi_gen_tRNAseq_database.log")
     input: rules.anvi_reformat_fasta.output.fasta
     output: os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_TRNASEQ.db")
     threads: M.T('anvi_gen_tRNAseq_database')
