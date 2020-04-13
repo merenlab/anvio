@@ -171,7 +171,7 @@ class MODELLER:
         if filesnpaths.is_file_exists(self.pdb_db_path, dont_raise=ok_if_absent):
             # The user has a database there! Try and load it
             self.pdb_db = anvio.structureops.PDBDatabase(argparse.Namespace(pdb_database_path=self.pdb_db_path))
-            self.pdb_db.load_or_create_db()
+            self.pdb_db.check_or_create_db()
             self.pdb_db.get_stored_structure_ids()
             self.use_pdb_db = True
         else:
@@ -179,26 +179,34 @@ class MODELLER:
 
 
     def process(self):
+        timer = terminal.Timer()
+
         try:
             self.load_pdb_db()
+            timer.make_checkpoint('PDB DB loaded')
 
             self.run_fasta_to_pir()
+            timer.make_checkpoint('Converted gene FASTA to PIR')
 
             self.check_database()
+            timer.make_checkpoint('Checked databases')
 
             self.run_search_and_parse_results()
+            timer.make_checkpoint('Ran DIAMOND search and parsed hits')
 
             self.get_structures()
+            timer.make_checkpoint('Obtained template structures')
 
             self.run_align_to_templates(self.list_of_template_code_and_chain_ids)
+            timer.make_checkpoint('Sequence aligned to templates')
 
             self.run_get_model(self.num_models, self.deviation, self.very_fast)
+            timer.make_checkpoint('Ran structure predictions')
 
             self.tidyup()
-
             self.pick_best_model()
-
             self.run_add_chain_identifiers_to_best_model()
+            timer.make_checkpoint('Picked best model and tidied up')
 
             self.out["structure_exists"] = True
 
@@ -209,6 +217,7 @@ class MODELLER:
             print(e)
 
         finally:
+            timer.gen_report(title='ID %s Time Report' % str(self.corresponding_gene_call), run=self.run)
             self.abort()
 
         return self.out
@@ -227,8 +236,13 @@ class MODELLER:
 
             if self.use_pdb_db and five_letter_id in self.pdb_db.stored_structure_ids:
                 # This chain exists in the external database. Export it and get the path
-                path = self.pdb_db.export_pdb(five_letter_id, requested_path)
-                source = 'Offline DB'
+                try:
+                    path = self.pdb_db.export_pdb(five_letter_id, requested_path)
+                    source = 'Offline DB'
+                except ConfigError:
+                    # The ID is in the DB, but the PDB content is None
+                    path = None
+                    source = 'Nowhere'
 
             elif not self.offline_mode:
                 # This chain doesn't exist in an external database, and internet access is assumed.

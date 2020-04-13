@@ -450,9 +450,11 @@ class Timer:
         return checkpoint
 
 
-    def gen_report(self):
-        run = Run()
+    def gen_report(self, title='Time Report', run=Run()):
         checkpoint_last = self.initial_checkpoint_key
+
+        run.warning('', header=title, lc='yellow', nl_before=1, nl_after=0)
+
         for checkpoint_key, checkpoint in self.checkpoints.items():
             if checkpoint_key == self.initial_checkpoint_key:
                 continue

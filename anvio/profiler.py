@@ -658,7 +658,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         contig.min_coverage_for_variability = self.min_coverage_for_variability
         contig.skip_SNV_profiling = self.skip_SNV_profiling
         contig.report_variability_full = self.report_variability_full
-        timer.make_checkpoint('%s initialization done' % contig_name)
+        timer.make_checkpoint('Initialization done')
 
         # populate contig with empty split objects
         for split_name in self.contig_name_to_splits[contig_name]:
@@ -679,7 +679,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # test the mean coverage of the contig.
         if contig.coverage.mean < self.min_mean_coverage:
             if anvio.DEBUG:
-                timer.gen_report()
+                timer.gen_report('%s Time Report' % contig.name)
             return None
 
         if not self.skip_SNV_profiling:
@@ -715,7 +715,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             del split.per_position_info
 
         if anvio.DEBUG:
-            timer.gen_report()
+            timer.gen_report('%s Time Report' % contig.name)
 
         return contig
 
