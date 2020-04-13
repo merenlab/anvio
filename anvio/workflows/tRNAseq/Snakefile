@@ -301,13 +301,15 @@ rule map_tRNA:
 rule anvi_condense_clusters:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-anvi_condense_clusters.log")
-    input: rules.map_tRNA.output.bam
+    input:
+        bam = rules.map_tRNA.output.bam,
+        trnaseqdb = rules.anvi_gen_tRNAseq_database.output
     output:
         bam = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_CONDENSED.bam"),
         bam_index = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_CONDENSED.bam.bai")
     threads: M.T('anvi-condense-clusters')
     resources: nodes = M.T('anvi_condense_clusters')
-    shell: "anvi-condense-clusters {input} {output.bam} >> {log} 2>&1"
+    shell: "anvi-condense-clusters {input.bam} {output.bam} {input.trnaseqdb} >> {log} 2>&1"
 
 
 if 'workflows/tRNAseq' in workflow.included[0]:
