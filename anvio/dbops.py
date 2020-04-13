@@ -827,10 +827,6 @@ class ContigsSuperclass(object):
         # 'in_complete_gene_call', and 'base_pos_in_codon'. This is done straightforwardly by
         # accessing self.nt_positions_info
 
-        if not self.nt_positions_info:
-            raise ConfigError("get_gene_info_for_each_position :: I am asked to return stuff, but "
-                              "self.nt_position_info is None!")
-
         if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
             # In these cases everything gets 0
             pass
