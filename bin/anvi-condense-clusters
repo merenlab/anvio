@@ -10,7 +10,7 @@ import os
 from copy import deepcopy
 
 
-def remap_queries(ref_name, outf, orig_ref_name=None, mismatch_info=None, encountered_refs=None, written_refs=None, recursion_count=0, ref_position_offset=0):
+def remap_queries(ref_name, outf, fasta, orig_ref_name=None, mismatch_info=None, encountered_refs=None, written_refs=None, recursion_count=0, ref_position_offset=0):
     if recursion_count == 0:
         orig_ref_name = ref_name
         mismatch_info = []
@@ -24,6 +24,8 @@ def remap_queries(ref_name, outf, orig_ref_name=None, mismatch_info=None, encoun
         query_name = aligned_segment.query_name
 
         if query_name == ref_name:
+            fasta.write(">%s\n" % query_name)
+            fasta.write("%s\n" % aligned_segment.query_sequence)
             for replicate_name in replicate_name_dict[query_name][1:]:
                 aligned_segment.query_name = replicate_name
                 outf.write(aligned_segment)
@@ -33,7 +35,7 @@ def remap_queries(ref_name, outf, orig_ref_name=None, mismatch_info=None, encoun
 
             num_mismatched_nucleotides = aligned_segment.get_tag('NM')
             if num_mismatched_nucleotides > 1:
-                remap_queries(query_name, raw_outbamfile2, encountered_refs=encountered_refs, written_refs=written_refs)
+                remap_queries(query_name, raw_outbamfile2, condensed_seqs_fasta2, encountered_refs=encountered_refs, written_refs=written_refs)
                 continue
 
             if recursion_count > 0:
@@ -63,7 +65,7 @@ def remap_queries(ref_name, outf, orig_ref_name=None, mismatch_info=None, encoun
                 print(alignment_end_length_string)
                 print()
                 break
-            remap_queries(query_name, outf, orig_ref_name=orig_ref_name, mismatch_info=deepcopy(mismatch_info), encountered_refs=encountered_refs, written_refs=written_refs, recursion_count=recursion_count + 1, ref_position_offset=ref_position_offset + aligned_segment.pos)
+            remap_queries(query_name, outf, fasta, orig_ref_name=orig_ref_name, mismatch_info=deepcopy(mismatch_info), encountered_refs=encountered_refs, written_refs=written_refs, recursion_count=recursion_count + 1, ref_position_offset=ref_position_offset + aligned_segment.pos)
 
             aligned_segment.reference_name = orig_ref_name
             aligned_segment.pos = aligned_segment.pos + ref_position_offset
@@ -100,6 +102,8 @@ def remap_queries(ref_name, outf, orig_ref_name=None, mismatch_info=None, encoun
 
             aligned_segment.set_tag('MD', md_tag)
 
+            fasta.write(">%s\n" % query_name)
+            fasta.write("%s\n" % aligned_segment.query_sequence)
             for replicate_name in replicate_name_dict[query_name]:
                 aligned_segment.query_name = replicate_name
                 outf.write(aligned_segment)
@@ -114,10 +118,6 @@ if __name__ == '__main__':
     parser.add_argument('outbamfile')
     parser.add_argument('tRNAseqdb')
     args = parser.parse_args()
-
-    # args = parser.parse_args([
-    #     '/Users/sammiller/Documents/test3/s10_demethylase.bam',
-    #     '/Users/sammiller/Documents/test3/s10_demethylase_CONDENSED.bam'])
 
     bamfile = pysam.AlignmentFile(args.bamfile, 'rb')
     raw_outbam_filepath = os.path.splitext(args.outbamfile)[0] + "_RAW.bam"
@@ -139,20 +139,28 @@ if __name__ == '__main__':
         os.remove(raw_outbam2_filepath)
     raw_outbamfile2 = pysam.AlignmentFile(raw_outbam2_filepath, 'wb', header=bamfile.header.as_dict())
 
+    condensed_seqs_filepath = os.path.splitext(args.outbamfile)[0] + '.fasta'
+    condensed_seqs_fasta = open(condensed_seqs_filepath, 'w')
+    condensed_seqs_filepath2 = os.path.splitext(args.outbamfile)[0] + '.fasta'
+    condensed_seqs_fasta2 = open(condensed_seqs_filepath2, 'w')
+
     # TODO: SORT BY REPLICATE COUNT FROM tRNAseq_sequences_table_name???
     written_refs = []
     for ref_name in refs_with_multiple_mappings:
         if ref_name not in written_refs:
-            written_refs.extend(remap_queries(ref_name, raw_outbamfile))
+            written_refs.extend(remap_queries(ref_name, raw_outbamfile, condensed_seqs_fasta))
 
     raw_outbamfile.close()
     raw_outbamfile2.close()
+
+    condensed_seqs_fasta.close()
+    condensed_seqs_fasta2.close()
 
     pysam.sort('-o', args.outbamfile, raw_outbam_filepath)
     pysam.index(args.outbamfile)
     os.remove(raw_outbam_filepath)
 
-    outbam2_filepath = os.path.splitext(args.outbamfile)[0] + '_2_CONDENSED.bam'
+    outbam2_filepath = os.path.splitext(args.outbamfile)[0] + '_2.bam'
     pysam.sort('-o', outbam2_filepath, raw_outbam2_filepath)
     pysam.index(outbam2_filepath)
     os.remove(raw_outbam2_filepath)
