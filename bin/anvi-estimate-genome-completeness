@@ -4,8 +4,6 @@
 import os
 import sys
 
-from tabulate import tabulate
-
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -47,7 +45,7 @@ def print_proper(args, collection, completeness, run, progress):
 
         table.append([bin_id, '%s' % domain.upper(), '%.1f' % domain_confidence, '%.2f' % p_completion, '%.2f' % p_redundancy, num_splits, total_length])
 
-    print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+    anvio.TABULATE(table, header)
 
     run.info_single("The 'domain' shown in this table is the domain anvi'o predicted for your contigs in a given bin with the "
                     "amount of confidence for that call in the 'domain' column. If the domain is 'mixed', it means it is very "
@@ -92,7 +90,7 @@ def print_improper(args, collection, completeness, run, progress):
                 table.append([bin_id, '%s' % domain.upper(), '%s' % scg_collection_for_domain, '%.2f' % D['percent_completion'], '%.2f' % D['percent_redundancy'], num_splits, total_length])
                 bin_table.append(['%s' % domain.upper(), '%s' % scg_collection_for_domain, '%.2f' % D['percent_completion'], '%.2f' % D['percent_redundancy']])
 
-        print(tabulate(bin_table, headers=bin_header, tablefmt="fancy_grid", numalign="right"))
+        anvio.TABULATE(bin_table, bin_header)
 
     if output_file_path:
         utils.store_array_as_TAB_delimited_file(table, output_file_path, header=header)
@@ -144,7 +142,7 @@ def print_for_external_genomes(external_genomes_file_path):
 
         table.append([genome['name'], '%s' % domain.upper(), '%.1f' % domain_confidence, '%.2f' % p_completion, '%.2f' % p_redundancy, num_splits, total_length])
 
-    print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+    anvio.TABULATE(table, header)
 
     run.info_single("The 'domain' shown in this table is the domain anvi'o predicted for your contigs in a given bin with the "
                     "amount of confidence for that call in the 'domain' column. If the domain is 'mixed', it means it is very "

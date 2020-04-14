@@ -17,7 +17,6 @@ import pandas as pd
 import multiprocessing
 import scipy.sparse as sps
 
-from tabulate import tabulate
 from collections import OrderedDict, Counter
 
 import anvio
@@ -1256,7 +1255,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck):
 
                 table.append([hit['gene_name'], str(hit['gene_callers_id']), str(hit['percent_identity']), taxon_text])
 
-            print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+            anvio.TABULATE(table, header)
         else:
             self.run.info_single("No hits :/")
 
@@ -1537,7 +1536,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck):
         if not self.metagenome_mode:
             table = sorted(table, key=lambda x: (int(x[1]), int(x[2])), reverse=True)
 
-        print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+        anvio.TABULATE(table, header)
 
 
     def store_scg_taxonomy_super_dict(self, scg_taxonomy_super_dict):
@@ -2236,7 +2235,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
             for hit in hits:
                 table.append([str(hit['percent_identity']), str(hit['bitscore']), hit['accession'], ' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy])])
 
-            print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+            anvio.TABULATE(table, header)
         else:
             self.run.info_single("No hits :/")
 
