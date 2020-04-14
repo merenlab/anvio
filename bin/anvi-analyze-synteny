@@ -6,13 +6,13 @@ What do we say to loci that appear to have no coherent synteny patterns...?
 
 ... not today ;)
 
-The goal of this program is to analyze the synteny patterns within a group of loci. The main idea is to have a sliding window 
+The goal of this program is to analyze the synteny patterns within a group of loci. The main idea is to have a sliding window
 that will record a sequence of genes of size N to form an Ngram (similar to a kmer profile). This program will output
-a tsv with counts for each Ngram per contig provided. The resulting Ngram count table can then be used 
+a tsv with counts for each Ngram per contig provided. The resulting Ngram count table can then be used
 to analyze the presence and absence of groups of genes by the user.
 
 To test this code run:
-            
+
             >>> cd anvio/anvio/tests
             >>> ./run_all_tests.sh
             >>> output_dir=sandbox/test-output
