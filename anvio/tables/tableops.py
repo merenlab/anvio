@@ -26,10 +26,6 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
-
 
 ####################################################################################################
 #
@@ -47,7 +43,7 @@ class Table(object):
       contigs db calls
     """
 
-    def __init__(self, db_path, version, run=run, progress=progress, quiet=False, simple=False):
+    def __init__(self, db_path, version, run=terminal.Run(), progress=terminal.Progress(), quiet=False, simple=False):
         if not db_path:
             raise ConfigError("Table superclass is being initiated without a db path, and it is very "
                                "very concerning :( Anvi'o needs an adult.")
@@ -106,14 +102,18 @@ class Table(object):
 
 
     def export_sequences_table_in_db_into_FASTA_file(self, table=t.contig_sequences_table_name, output_file_path=None, item_names=set([])):
-        '''Exports a sequence table from the contigs database.
+        """Exports a sequence table from the contigs database as FASTA file
 
-            - t.contig_sequences_table_name: contig sequences (where item_names are contig names)
-            - t.gene_amino_acid_sequences_table_name: amino acid sequences for gene calls (item_names are gene caller ids)
+        Parameters
+        ==========
+        table : str, t.contig_sequences_table_name
+            Choose t.contig_sequences_table_name for contig sequences (items_names are contig names)
+            and t.gene_amino_acid_sequences_table_name for amino acid sequences for gene calls
+            (item_names are gene caller ids)
 
-
-          If `item_names` are specified, only those sequences with matching ids to something in this set will be reported.
-          '''
+        item_names : set, set([])
+            If specified, only sequences with these matching ids will be reported
+        """
 
         if self.db_type != 'contigs':
             return None
@@ -187,8 +187,9 @@ class Table(object):
                             "anvi'o can seamlessly work with multiple gene callers (which we are looking forward to "
                             "implement in the future)." % len(blank_seq_ids_not_reported))
 
-        self.run.info('Sequences', '%d sequences reported.' % (len(sequences_table) - len(blank_seq_ids_not_reported)))
-        self.run.info('FASTA', output_file_path)
+        if not self.quiet:
+            self.run.info('Sequences', '%d sequences reported.' % (len(sequences_table) - len(blank_seq_ids_not_reported)))
+            self.run.info('FASTA', output_file_path)
 
         return output_file_path
 

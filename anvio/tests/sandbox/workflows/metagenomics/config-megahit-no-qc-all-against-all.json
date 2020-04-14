@@ -11,7 +11,7 @@
     "samples_txt": "samples.txt",
     "megahit": {
         "--min-contig-len": 1000,
-        "--memory": 0.4,
+        "--memory": 1e6,
         "threads": 11,
         "run": true,
         "--min-count": "",

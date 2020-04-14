@@ -22,7 +22,7 @@ __resources__ = [("A conceptual tutorial on the structural biology capabilities 
                   "http://merenlab.org/2018/09/04/structural-biology-with-anvio/"),
                  ("A practical tutorial section in the infant gut tutorial",
                   "http://merenlab.org/tutorials/infant-gut/#chapter-vii-linking-genomic-heterogeneity-to-protein-structures")]
-__requires__ = ['contigs-db']
+__requires__ = ['contigs-db', 'pdb-db']
 __provides__ = ['structure-db']
 __description__ = ("Identifies genes in your contigs database that encode proteins that are "
                    "homologous to proteins with solved structures. If sufficiently similar "
@@ -31,14 +31,10 @@ __description__ = ("Identifies genes in your contigs database that encode protei
                    "http://merenlab.org/2018/09/04/structural-biology-with-anvio/")
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-
-
+@terminal.time_program
 def main(args):
-
-    structure = structops.Structure(args)
-    structure.process()
+    args.structure_db = args.output_db_path
+    structops.StructureSuperclass(args, create=True)._run()
 
 
 if __name__ == '__main__':
@@ -51,12 +47,19 @@ if __name__ == '__main__':
     groupE = parser.add_argument_group('EXTRA', 'Everything else.')
 
     groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupD.add_argument("--pdb-db", type=str, default=None, help = \
+                        """By default, this program accesses the structure files it needs from an
+                        internal anvi'o database that can be set up with anvi-setup-pdb-database. If
+                        a required structure is not in this database, it will instead be
+                        downloaded from the RCSB PDB server. This parameter exists only if a) you
+                        created a database and b) it exists in a custom location. In this case,
+                        please provide that path here. Otherwise we vibing.""")
     groupG.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
     groupG.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
     groupO.add_argument(*anvio.A('output-db-path'), **anvio.K('output-db-path'))
     groupO.add_argument(*anvio.A('dump-dir'), **anvio.K('dump-dir'))
 
-    groupM.add_argument("--num-models", "-N", type=int, default=3, help = \
+    groupM.add_argument("--num-models", "-N", type=int, default=1, help = \
                         """This parameter determines the number of predicted structures that are
                         solved for a given protein.  The original atomic positions for each model
                         are perturbed by an amount defined by --deviation, which leads to
@@ -65,7 +68,7 @@ if __name__ == '__main__':
                         --num-models is high, since more of the solution space is searched. It
                         should be kept in mind that the largest determinant of a model's accuracy is
                         determined by the protein templates used, so no need to go overboard with an
-                        excessively large --num-models. The default is 3.""")
+                        excessively large --num-models. The default is 1.""")
 
     groupM.add_argument("--deviation", "-d", type=float, default=4.0, help = \
                         """Deviation (angstroms)""")
@@ -104,7 +107,7 @@ if __name__ == '__main__':
                         the proper percent identical is 50%%. (This helps us avoid the inflation of
                         identity scores due to only partially good matches). The default is 30.""")
 
-    groupM.add_argument("--max-number-templates", "-T", type=int, default=5, help = \
+    groupM.add_argument("--max-number-templates", "-t", type=int, default=5, help = \
                         """Generally speaking it is best to use as many templates as possible given
                         that they have high proper percent identity to the gene of interest. Taken
                         from https://salilab.org/modeller/methenz/andras/node4.html: 'The use of
@@ -129,9 +132,27 @@ if __name__ == '__main__':
                         some reason you don't want this, provide this flag.""")
 
     groupE.add_argument("--modeller-executable", type=str, help = \
-                        """ The MODELLER program to use. For example, `mod9.19`. The default is `mod9.22`""")
+                        """The MODELLER program to use. For example, `mod9.19`. Anvi'o will try and find
+                        it if not provided""")
 
-    args = parser.parse_args()
+    groupE.add_argument("--offline-mode", action = "store_true", help = \
+                        """Anvi'o first tries to obtain template structures from a database (see
+                        --pdb-db for details). If the requested template does not exist in the
+                        database, its structure will be downloaded from the RCSB PDB server.
+                        However, if you don't have access to internet, or hate the RCSB PDB,
+                        provide this flag so that all operations of this program remain offline. If
+                        the template structure is not in the database, then no template structure
+                        for you.""")
+
+    groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    params = {
+        'default': 25,
+        'help': anvio.K('write-buffer-size-per-thread')['help'] + \
+                ' If --num-threads is 1, this parameter is ignored because the DB is written to after each gene'
+    }
+    groupE.add_argument(*anvio.A('write-buffer-size-per-thread'), **anvio.K('write-buffer-size-per-thread', params))
+
+    args = anvio.get_args(parser)
 
     try:
         main(args)

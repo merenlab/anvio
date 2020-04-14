@@ -64,7 +64,6 @@ if __name__ == '__main__':
     groupG = parser.add_argument_group('FILTERS', 'Parameters that will help you to do a very precise analysis.\
                                                   If you declare nothing from this bunch, you will get "everything"\
                                                   to play with, which is not necessarily a good thing...')
-    groupG.add_argument(*anvio.A('min-occurrence-of-variable-positions'), **anvio.K('min-occurrence-of-variable-positions'))
     groupG.add_argument(*anvio.A('min-coverage-in-each-sample'), **anvio.K('min-coverage-in-each-sample'))
 
     groupH = parser.add_argument_group('OUTPUT', 'Output file and style')

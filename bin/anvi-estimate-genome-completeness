@@ -4,8 +4,6 @@
 import os
 import sys
 
-from tabulate import tabulate
-
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
@@ -35,7 +33,7 @@ def print_proper(args, collection, completeness, run, progress):
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     output_file_path = A('output_file')
 
-    contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+    contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress())
 
     table = []
     header=['bin name', 'domain', 'confidence', '% completion', '% redundancy', 'num_splits', 'total length']
@@ -47,7 +45,7 @@ def print_proper(args, collection, completeness, run, progress):
 
         table.append([bin_id, '%s' % domain.upper(), '%.1f' % domain_confidence, '%.2f' % p_completion, '%.2f' % p_redundancy, num_splits, total_length])
 
-    print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+    anvio.TABULATE(table, header)
 
     run.info_single("The 'domain' shown in this table is the domain anvi'o predicted for your contigs in a given bin with the "
                     "amount of confidence for that call in the 'domain' column. If the domain is 'mixed', it means it is very "
@@ -69,7 +67,7 @@ def print_improper(args, collection, completeness, run, progress):
     run.info_single("Hi. I am the function that is called when the completion class is not initialized properly, and the best I can "
                     "do is to dump all the raw the raw C/R estimates from all domains altogether.")
 
-    contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+    contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress())
 
     table = []
     header = ['bin name', 'domain', 'source', '% completion', '% redundancy', 'num_splits', 'total length']
@@ -92,7 +90,7 @@ def print_improper(args, collection, completeness, run, progress):
                 table.append([bin_id, '%s' % domain.upper(), '%s' % scg_collection_for_domain, '%.2f' % D['percent_completion'], '%.2f' % D['percent_redundancy'], num_splits, total_length])
                 bin_table.append(['%s' % domain.upper(), '%s' % scg_collection_for_domain, '%.2f' % D['percent_completion'], '%.2f' % D['percent_redundancy']])
 
-        print(tabulate(bin_table, headers=bin_header, tablefmt="fancy_grid", numalign="right"))
+        anvio.TABULATE(bin_table, bin_header)
 
     if output_file_path:
         utils.store_array_as_TAB_delimited_file(table, output_file_path, header=header)
@@ -101,7 +99,6 @@ def print_improper(args, collection, completeness, run, progress):
 
 def print_for_external_genomes(external_genomes_file_path):
     run = terminal.Run(verbose=False if args.concise else True)
-    progress = terminal.Progress(verbose=False if args.concise else True)
 
     g = genomedescriptions.GenomeDescriptions(args, run=terminal.Run(verbose=False))
     g.load_genomes_descriptions()
@@ -145,7 +142,7 @@ def print_for_external_genomes(external_genomes_file_path):
 
         table.append([genome['name'], '%s' % domain.upper(), '%.1f' % domain_confidence, '%.2f' % p_completion, '%.2f' % p_redundancy, num_splits, total_length])
 
-    print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+    anvio.TABULATE(table, header)
 
     run.info_single("The 'domain' shown in this table is the domain anvi'o predicted for your contigs in a given bin with the "
                     "amount of confidence for that call in the 'domain' column. If the domain is 'mixed', it means it is very "
@@ -190,7 +187,7 @@ def print_for_a_single_contigs_db(contigs_db_path, profile_db_path=None, collect
     if collection_name:
         collection = collections.get_collection_dict(collection_name)
     else:
-        contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        contigs_db = ContigsSuperclass(args, r=terminal.Run(verbose=False), p=terminal.Progress())
         collection = {os.path.basename(contigs_db_path[:-3]): list(contigs_db.splits_basic_info.keys())}
 
     if collection_name:

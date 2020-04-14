@@ -319,14 +319,14 @@ rule anvi_run_hmms:
     params:
         installed_hmm_profile = M.get_rule_param("anvi_run_hmms", "--installed-hmm-profile"),
         hmm_profile_dir = M.get_rule_param("anvi_run_hmms", "--hmm-profile-dir"),
-	skip_scanning_trnas = M.get_rule_param("anvi_run_hmms", "--skip-scanning-trnas"),
+	    also_scan_trnas = M.get_rule_param("anvi_run_hmms", "--also-scan-trnas"),
     threads: M.T('anvi_run_hmms')
     resources: nodes = M.T('anvi_run_hmms'),
     shell: w.r("anvi-run-hmms -c {input} \
                               -T {threads} \
                               {params.hmm_profile_dir} \
                               {params.installed_hmm_profile} \
-			      {params.skip_scanning_trnas} >> {log} 2>&1")
+			      {params.also_scan_trnas} >> {log} 2>&1")
 
 
 rule anvi_run_pfams:
@@ -378,6 +378,23 @@ rule anvi_run_scg_taxonomy:
     shell: w.r("""anvi-run-scg-taxonomy -c {input.contigs} \
                                         -T {threads} \
                                         {params.scg_taxonomy_data_dir} >> {log} 2>&1""")
+
+
+rule anvi_run_trna_scan:
+    version: anvio.__contigs__version__
+    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_trna_scan.log"
+    input:
+        contigs = ancient(M.get_contigs_db_path())
+    output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_trna_scan-{group}.done")
+    params:
+        # FIXME not sure how to handle optional --trna-hits-file parameter
+        #trna_scan_hits_file = M.get_rule_param('anvi_run_trna_scan', '--trna-hits-file'),
+        trna_cutoff_score = M.get_rule_param('anvi_run_trna_scan', '--trna-cutoff-score'),
+    threads: M.T('anvi_run_trna_scan')
+    resources: nodes = M.T('anvi_run_trna_scan'),
+    shell: w.r("""anvi-scan-trnas -c {input.contigs} \
+                                  -T {threads} \
+                                  {params.trna_cutoff_score} >> {log} 2>&1""")
 
 
 rule anvi_get_sequences_for_gene_calls:
