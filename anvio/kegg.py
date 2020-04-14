@@ -625,7 +625,7 @@ class KeggRunHMMs(KeggContext):
                                                                    report_aa_sequences=True)
 
         # run hmmscan
-        hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads)
+        hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use="hmmsearch")
         hmm_hits_file = hmmer.run_hmmscan('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, None)
 
         # get an instance of gene functions table
