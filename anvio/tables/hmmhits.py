@@ -3,6 +3,8 @@
 
 import os
 import hashlib
+import gzip
+import shutil
 
 import anvio
 import anvio.db as db
@@ -83,6 +85,39 @@ class TablesForHMMHits(Table):
                                   "to remove them first, or run this program with `--just-do-it` flag so anvi'o would remove all "
                                   "for you. Here are the list of HMM sources that need to be removed: '%s'." % (', '.join(sources_need_to_be_removed)))
 
+    def hmmpress_sources(self, sources, tmp_dir, in_place=False):
+        """This function checks if the hmm files have been hmmpressed, and if not, it runs hmmpress.
+
+        If in_place is False, we assume that the model should be unpacked and compressed in the temp directory.
+        Otherwise, we do it in the directory where the model is stored so that it only has to be done once.
+
+        Returns the locations of each hmmpressed file path in a dictionary keyed by the source.
+        """
+        hmmpressed_file_paths = {}
+        for source in sources:
+            model_file = sources[source]['model']
+            hmm_file_path = None
+
+            if in_place:
+                pass
+                #hmm_file_path = model_file
+                # check here if already hmmpressed and if so return
+            else:
+                hmm_file_path = os.path.join(tmp_dir, source + '.hmm')
+                hmm_file = open(hmm_file_path, 'wb')
+                hmm_file.write(gzip.open(model_file, 'rb').read())
+                hmm_file.close()
+
+            log_file_path = log_file_path = os.path.join(tmp_dir, 'hmmpress.log')
+            cmd_line = ['hmmpress', hmm_file_path]
+            ret_val = utils.run_command(cmd_line, log_file_path)
+
+            hmmpressed_file_paths[source] = hmm_file_path
+
+            if ret_val:
+                raise ConfigError("Sadly, anvi'o failed while attempting to compress the HMM model for source %s. You can check out the log file (%s) for "
+                                  "more detailed information on why this happened." % (source, log_file_path))
+        return hmmpressed_file_paths
 
     def populate_search_tables(self, sources={}):
         # make sure the output file is OK to write.
@@ -101,6 +136,8 @@ class TablesForHMMHits(Table):
         target_files_dict = {}
 
         tmp_directory_path = filesnpaths.get_temp_directory_path()
+
+        hmmpressed_files = self.hmmpress_sources(sources, tmp_directory_path)
 
         # here we will go through targets and populate target_files_dict based on what we find among them.
         targets = set([s['target'] for s in list(sources.values())])
@@ -146,7 +183,7 @@ class TablesForHMMHits(Table):
             kind_of_search = sources[source]['kind']
             domain = sources[source]['domain']
             all_genes_searched_against = sources[source]['genes']
-            hmm_model = sources[source]['model']
+            hmm_model = hmmpressed_files[source]
             reference = sources[source]['ref']
             noise_cutoff_terms = sources[source]['noise_cutoff_terms']
 
@@ -208,6 +245,7 @@ class TablesForHMMHits(Table):
 
             self.append(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)
 
+
         # FIXME: I have no clue why importing the anvio module is necessary at this point,
         #        but without this, mini test fails becasue "`anvio.DEBUG` is being used
         #        before initialization". nonsense.
@@ -216,6 +254,8 @@ class TablesForHMMHits(Table):
             commander.clean_tmp_dirs()
             for v in list(target_files_dict.values()):
                 os.remove(v)
+
+            shutil.rmtree(tmp_directory_path)
 
 
     def add_new_gene_calls_to_contigs_db_and_update_serach_results_dict(self, source, search_results_dict, skip_amino_acid_sequences=False):
@@ -410,4 +450,3 @@ class TablesForHMMHits(Table):
                         db_entries_for_splits.append(db_entry)
 
         return db_entries_for_splits
-
