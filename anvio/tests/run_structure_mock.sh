@@ -8,6 +8,8 @@ make_structure_db() {
                                 --dump-dir test-output/RAW_MODELLER_OUTPUT \
                                 --output-db-path test-output/STRUCTURE.db \
                                 --very-fast \
+                                --debug \
+                                --num-threads 2 \
                                 --num-models 1
 }
 gen_var_profile1() {
@@ -137,9 +139,16 @@ then
 
     rm -rf test-output/STRUCTURE.db
     rm -rf test-output/RAW_MODELLER_OUTPUT
+    rm -rf test-output/exported_pdbs
 
     INFO "anvi-gen-structure-database with DSSP"
     make_structure_db
+
+    INFO "anvi-update-structure-database"
+    anvi-update-structure-database -c test-output/one_contig_five_genes.db -s test-output/STRUCTURE.db --gene-caller-ids 2 --rerun
+
+    INFO "anvi-export-structures"
+    anvi-export-structures -o test-output/exported_pdbs -s test-output/STRUCTURE.db
 
     INFO "anvi-gen-variability-profile --engine AA"
     gen_var_profile1

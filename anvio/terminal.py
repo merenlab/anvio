@@ -219,7 +219,7 @@ class Progress:
         self.step = None
 
 
-    def update(self, msg):
+    def update(self, msg, increment=False):
         self.msg = msg
 
         if not self.verbose:
@@ -227,6 +227,9 @@ class Progress:
 
         if not self.pid:
             raise TerminalError('Progress with null pid will not update for msg "%s"' % msg)
+
+        if increment:
+            self.increment()
 
         self.clear()
         self.write('\r[%s] %s' % (self.pid, msg))
@@ -280,14 +283,14 @@ class Run:
         if self.log_file_path:
             self.log(line)
 
-        if (self.verbose and not quiet) or overwrite_verbose:
+        if (self.verbose and not quiet) or (overwrite_verbose and not anvio.QUIET):
             try:
                 sys.stderr.write(line)
             except:
                 sys.stderr.write(line.encode('utf-8'))
 
 
-    def info(self, key, value, quiet=False, display_only=False, nl_before=0, nl_after=0, lc='cyan', mc='yellow', progress=None):
+    def info(self, key, value, quiet=False, display_only=False, overwrite_verbose=False, nl_before=0, nl_after=0, lc='cyan', mc='yellow', progress=None):
         if not display_only:
             self.info_dict[key] = value
 
@@ -306,14 +309,13 @@ class Run:
 
         if progress:
             progress.clear()
-            self.write(info_line, quiet=quiet)
+            self.write(info_line, overwrite_verbose=False, quiet=quiet)
             progress.update(progress.msg)
-
         else:
-            self.write(info_line, quiet=quiet)
+            self.write(info_line, quiet=quiet, overwrite_verbose=overwrite_verbose)
 
 
-    def info_single(self, message, mc='yellow', nl_before=0, nl_after=0, cut_after=80, level=1, progress=None):
+    def info_single(self, message, overwrite_verbose=False, mc='yellow', nl_before=0, nl_after=0, cut_after=80, level=1, progress=None):
         if isinstance(message, str):
             message = remove_spaces(message)
 
@@ -329,11 +331,10 @@ class Run:
 
         if progress:
             progress.clear()
-            self.write(message_line)
+            self.write(message_line, overwrite_verbose=False)
             progress.update(progress.msg)
-
         else:
-            self.write(message_line)
+            self.write(message_line, overwrite_verbose=False)
 
 
     def warning(self, message, header='WARNING', lc='red', raw=False, overwrite_verbose=False, nl_before=0, nl_after=0):
@@ -449,9 +450,11 @@ class Timer:
         return checkpoint
 
 
-    def gen_report(self):
-        run = Run()
+    def gen_report(self, title='Time Report', run=Run()):
         checkpoint_last = self.initial_checkpoint_key
+
+        run.warning('', header=title, lc='yellow', nl_before=1, nl_after=0)
+
         for checkpoint_key, checkpoint in self.checkpoints.items():
             if checkpoint_key == self.initial_checkpoint_key:
                 continue
@@ -768,7 +771,7 @@ class TrackMemory(object):
 
     def measure(self):
         if self.t is None:
-            raise ConfigError("TrackMemory :: You must start the tracker with self.start()")
+            raise TerminalError("TrackMemory :: You must start the tracker with self.start()")
 
         if self.t.timedelta_to_checkpoint(self.t.timestamp(), self.t.last_checkpoint_key) < datetime.timedelta(seconds = self.at_most_every):
             return False

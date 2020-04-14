@@ -546,7 +546,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError("Sorry, there are no states to show in manual mode :/")
 
         if self.tree:
-            filesnpaths.is_file_exists(self.tree)
+            filesnpaths.is_proper_newick(self.tree)
             newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
             self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(newick_tree_text))
         elif tree_order_found_in_db:
@@ -1581,34 +1581,47 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
 
     def load_additional_layer_data(self, profile_db_path=None):
-        """I don't know how I can only get layers that are of type string, so unfortunately this
-           finds columns suitable for grouping samples (those of type string) in an adhoc manner.
-           See the following issue: https://github.com/merenlab/anvio/issues/829
+        """Get additional layer data for grouping
+
+        Notes
+        =====
+        - Only includes layers if they are string-like
         """
+
         if not profile_db_path:
             profile_db_path = self.profile_db_path
 
         x = argparse.Namespace(pan_or_profile_db=profile_db_path, target_data_table="layers")
         additional_layers_table = TableForLayerAdditionalData(args=x)
+
         layer_names, additional_layer_dict = additional_layers_table.get()
 
-        ####### ad hoc piece of garbage https://github.com/merenlab/anvio/issues/829 ########
+        # The remainder of this method filters layer_names and additional_layer_dict to only include
+        # layers that have string-like data. This is because we group based on these values, which
+        # would not make sense with integer data
+
         samples_in_layer_data = additional_layer_dict.keys()
         layers_to_remove = []
+
         for layer_name in layer_names:
+            # Assume we are removing this layer until we find evidence to keep it
             remove_column = True
+
+            # If there is a "!" it is of stacked-bar type
             if not "!" in layer_name:
                 for sample_name in samples_in_layer_data:
                     # loops through samples until it finds evidence the column is string-type
                     if isinstance(additional_layer_dict[sample_name][layer_name], str):
                         remove_column = False
                         continue
+
             if remove_column:
                 layers_to_remove.append(layer_name)
+
         for sample_name in additional_layer_dict:
             for bad_layer in layers_to_remove:
                 del additional_layer_dict[sample_name][bad_layer]
-        ####### ad hoc piece of garbage https://github.com/merenlab/anvio/issues/829 ########
+
         return layer_names, additional_layer_dict
 
 
@@ -2105,11 +2118,24 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
 
     def get_structure(self, gene_callers_id):
-        structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
-        summary = structure_db.get_summary_for_interactive(gene_callers_id)
-        structure_db.disconnect()
+        """Calls self.profile_gene_variability_data, then returns `summary`
 
+        Returns
+        =======
+        summary : dict
+            summary has the following keys: {'pdb_content', 'residue_info', 'histograms'}
+        """
+
+        # Put the gene in self.variability_storage if it isn't already there
         self.profile_gene_variability_data(gene_callers_id)
+
+        # Build summary
+        summary = {}
+
+        structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
+        summary['pdb_content'] = structure_db.get_pdb_content(gene_callers_id)
+        summary['residue_info'] = structure_db.get_residue_info_for_gene(gene_callers_id).to_json(orient='index')
+        structure_db.disconnect()
 
         summary['histograms'] = {}
         for engine in self.available_engines:
@@ -2383,6 +2409,7 @@ class ContigsInteractive():
         self.progress.update('Number of contigs ...')
         contig_lengths_for_all = [c['contig_lengths'] for c in self.contigs_stats.values()]
         X = lambda n: [len([count for count in contig_lengths_for_one if count >= n]) for contig_lengths_for_one in contig_lengths_for_all]
+        basic_stats.append(['Num Contigs > 2.5 kb'] + X(2500))
         basic_stats.append(['Num Contigs > 5 kb'] + X(5000))
         basic_stats.append(['Num Contigs > 10 kb'] + X(10000))
         basic_stats.append(['Num Contigs > 20 kb'] + X(20000))

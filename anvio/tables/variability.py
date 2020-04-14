@@ -65,7 +65,7 @@ class TableForVariability(Table):
 
 
     def append(self, entry):
-        """Append a single entry based on a dictionary
+        """Append a single entry based on a sequence
 
         Parameters
         ==========

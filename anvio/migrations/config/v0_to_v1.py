@@ -5,6 +5,7 @@ import sys
 import json
 import argparse
 
+import anvio
 import anvio.workflows as w
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths

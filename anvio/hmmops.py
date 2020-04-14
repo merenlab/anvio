@@ -61,7 +61,7 @@ class SequencesForHMMHits:
         """
 
         utils.is_contigs_db(contigs_db_path)
-        contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
+        contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__, run=self.run, progress=self.progress)
         self.hmm_hits_info = contigs_db.get_table_as_dict(t.hmm_hits_info_table_name)
 
         missing_sources = [s for s in self.sources if s not in self.hmm_hits_info]

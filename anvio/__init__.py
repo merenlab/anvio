@@ -8,11 +8,13 @@ import json
 import copy
 import platform
 
+from tabulate import tabulate
+
 # yes, this library is imported but never used, but don't remove it
 # unless you want to explode `bottle`:
 import pkg_resources
 
-anvio_version = '6.1-master'
+anvio_version = '6.2-master'
 anvio_codename = 'esther'
 
 DEBUG = '--debug' in sys.argv
@@ -28,6 +30,13 @@ def P(d, dont_exit=False):
 
     if not dont_exit:
         sys.exit()
+
+
+def TABULATE(table, header):
+    """Encoding-safe `tabulate`"""
+
+    tablefmt = "fancy_grid" if sys.stdout.encoding == "UTF-8" else "grid"
+    print(tabulate(table, headers=header, tablefmt=tablefmt, numalign="right"))
 
 
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
@@ -63,7 +72,6 @@ def get_args(parser):
     return args
 
 
-import anvio.tables as tables
 import anvio.constants as constants
 
 
@@ -201,7 +209,7 @@ D = {
                      "freedom to the user to adjust the resolution of their display when necessary. The default value is "
                      "(%(default)d). If you are planning to use your contigs database for metagenomic binning, we advise you "
                      "to not go below 10,000 (since the lower the split size is, the more items to show in the display, and "
-                     "decrasing the split size does not really help much to binning). But if you are thinking about using this "
+                     "decreasing the split size does not really help much to binning). But if you are thinking about using this "
                      "parameter for ad hoc investigations other than binning, you should ignore our advice, and set the split "
                      "size as low as you want. If you do not want your contigs to be split, you can set the split size to '0' "
                      "or any other negative integer (lots of unnecessary freedom here, enjoy!)."}
@@ -276,12 +284,14 @@ D = {
     'external-gene-calls': (
             ['--external-gene-calls'],
             {'metavar': 'GENE-CALLS',
-             'help': "A TAB-delimited file to utilize external gene calls. The file must have these columns: 'gene_callers_id' "
+             'help': "A TAB-delimited file to define external gene calls. The file must have these columns: 'gene_callers_id' "
                      "(a unique integer number for each gene call, start from 1), 'contig' (the contig name the gene call is found), "
                      "'start' (start position, integer), 'stop' (stop position, integer), 'direction' (the direction of the gene open reading "
                      "frame; can be 'f' or 'r'), 'partial' (whether it is a complete gene call, or a partial one; must be 1 for partial "
                      "calls, and 0 for complete calls), 'source' (the gene caller), and 'version' (the version of the gene caller, i.e., "
-                     "v2.6.7 or v1.0). An example file can be found via the URL https://bit.ly/2qEEHuQ"}
+                     "v2.6.7 or v1.0). An additional 'optional' column is 'aa_sequence' to explicitly define the amino acid seqeuence of "
+                     "a gene call so anvi'o does not attempt to translate the DNA sequence itself. An EXAMPLE FILE (with the non-mandatory "
+                     "'aa_sequence' column (so feel free to take it out for your own case)) can be found at the URL https://bit.ly/2qEEHuQ"}
                 ),
     'external-genomes': (
             ['-e', '--external-genomes'],
@@ -294,9 +304,28 @@ D = {
     'internal-genomes': (
             ['-i', '--internal-genomes'],
             {'metavar': 'FILE_PATH',
-             'help': "A five-column TAB-delimited flat text file. The header line must contain thse columns: 'name', 'bin_id', "
+             'help': "A five-column TAB-delimited flat text file. The header line must contain these columns: 'name', 'bin_id', "
                      "'collection_id', 'profile_db_path', 'contigs_db_path'. Each line should list a single entry, where 'name' "
                      "can be any name to describe the anvi'o bin identified as 'bin_id' that is stored in a collection."}
+                ),
+    'skip-checking-genome-hashes': (
+            ['--skip-checking-genome-hashes'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag if you would like anvi'o to skip checking genome hashes. This is only relevant if you may have "
+                     "genomes in your internal or external genomes files that have identical sequences with different names AND if "
+                     "you are OK with it. You may be OK with it, for instance, if you are using `anvi-dereplicate-genomes` program "
+                     "to dereplicate genomes desribed in multiple collections in an anvi'o profile database that may be describing "
+                     "the same genome multiple times (see https://github.com/merenlab/anvio/issues/1397 for a case)."}
+                ),
+    'metagenomes': (
+            ['-M', '--metagenomes'],
+            {'metavar': 'FILE_PATH',
+             'help': "A two-column TAB-delimited flat text file. The header line must contain these columns: 'name', "
+                     "'contigs_db_path', and 'profile_db_path'. Each line should list a single entry, where 'name' "
+                     "can be any name to describe the metagenome stored in the anvi'o contigs database. In this "
+                     "context, the anvi'o profiles associated with contigs database must be SINGLE PROFILES, as in "
+                     "generated by the program `anvi-profile` and not `anvi-merge`."}
                 ),
     'gene-caller': (
             ['--gene-caller'],
@@ -349,6 +378,16 @@ D = {
              'help': "By default, anvi'o characterizes single-nucleotide variation in each sample. The use of this flag "
                      "will instruct profiler to skip that step. Please remember that parameters and flags must be "
                      "identical between different profiles using the same contigs database for them to merge properly."}
+                ),
+    'skip-INDEL-profiling': (
+            ['--skip-INDEL-profiling'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "The alignment of a read to a reference genome/sequence can be imperfect, such that the read exhibits "
+                     "insertions or deletions relative to the reference. Anvi'o normally stores this information in the "
+                     "profile database since the time taken and extra storage do not amount to much, but if insist on not "
+                     "having this information, you can skip storing this information by providing this flag. Note: If "
+                     "--skip-SNV-profiling is provided, --skip-INDEL-profiling will automatically be enforced."}
                 ),
     'return-AA-frequencies-instead': (
             ['--return-AA-frequencies-instead'],
@@ -433,7 +472,7 @@ D = {
              'help': "Data group to focus. Anvi'o misc data tables support associating a set of data keys "
                      "with a data group. If you have no idea what this is, then probably you don't need it, "
                      "and anvi'o will take care of you. Note: this flag is IRRELEVANT if you are working with "
-                     "additioanl order data tables."}
+                     "additional order data tables."}
                 ),
     'target-data-table': (
             ['-t', '--target-data-table'],
@@ -478,7 +517,7 @@ D = {
     'fields': (
             ['-f', '--fields'],
             {'metavar': 'FIELD(S)',
-             'help': "Fields to report. USe --list-tables parameter with a table name to see available "
+             'help': "Fields to report. Use --list-tables parameter with a table name to see available "
                      "fields  You can list fields using this notation: --fields 'field_1, field_2, ... field_N'."}
                 ),
     'list': (
@@ -508,9 +547,10 @@ D = {
             ['--taxonomic-level'],
             {'default': 't_genus',
              'type': str,
-             'choices': tables.taxon_names_table_structure[1:],
-             'help': "The taxonomic level to use. The default is '%(default)s'. Only relevant if the "
-                     "anvi'o ontigs database contains taxonomic annotations."}
+             'choices': constants.levels_of_taxonomy,
+             'help': "The taxonomic level to use whenever relevant and/or available. The default taxonomic level "
+                     "is %(default)s, but if you choose something specific, anvi'o will focus on that whenever "
+                     "possible."}
                 ),
     'taxonomy-file': (
             ['-t', '--taxonomy-file'],
@@ -534,6 +574,15 @@ D = {
                      "core gene to estimate the taxonomic composition within a contigs database. If you have a "
                      "different preference you can use this parameter to communicate that."}
                 ),
+    'report-scg-frequencies': (
+            ['--report-scg-frequencies'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FILE_PATH',
+             'help': "Report SCG frequencies in a TAB-delimited file and quit. This is a great way to decide which "
+                     "SCG name to use in metagenome mode (we often wish to use the most frequent SCG to increase the "
+                     "detection of taxa)."}
+                ),
     'simplify-taxonomy-information': (
             ['--simplify-taxonomy-information'],
             {'default': False,
@@ -556,7 +605,7 @@ D = {
              'action': 'store_true',
              'help': "When anvi'o knows all both taxonomic affiliations and coverages across samples for single-copy "
                      "core genes, it can, in theory add this information to the profile database. With this flag you "
-                     "can isntruct anvi'o to do that and find information on taxonomy in the `layers` tab of your "
+                     "can instruct anvi'o to do that and find information on taxonomy in the `layers` tab of your "
                      "interactive interface."}
                 ),
     'taxonomy-database': (
@@ -566,7 +615,8 @@ D = {
              'metavar': 'PATH',
              'help': "Path to the directory that contains the BLAST databases for single-copy core "
                      "genes. You will almost never need to use this parameter unless you are "
-                     "trying something very fancy. Anvi'o will know where its database files are."}
+                     "trying something very fancy. But when you do, you can tell anvi'o where "
+                     "to look for database files through this parameter."}
                 ),
     'scgs-taxonomy-data-dir': (
             ['--scgs-taxonomy-data-dir'],
@@ -580,7 +630,7 @@ D = {
                      "system will be using a single data directory, but then you may need to run the setup "
                      "program with superuser privileges. If you don't have superuser privileges, then you can "
                      "use this parameter to tell anvi'o the location you wish to use to setup your databases. "
-                     "If you are using a program (such as `anvi-run-scg-taxonomy` or `anvi-estimate-genome-taxonomy`) "
+                     "If you are using a program (such as `anvi-run-scg-taxonomy` or `anvi-estimate-scg-taxonomy`) "
                      "you will have to use this parameter to tell those programs where your data are."}
                 ),
     'scgs-taxonomy-remote-database-url': (
@@ -602,7 +652,7 @@ D = {
              'action': 'store_true',
              'help': "Remove all the previously stored files and start over. If something is feels wrong "
                      "for some reason and if you believe re-downloading files and setting them up could "
-                     "address the issue, this is the flag that will tell anvi'o to act like a real comptuer "
+                     "address the issue, this is the flag that will tell anvi'o to act like a real computer "
                      "scientist challenged with a computational problem."}
                 ),
     'redo-databases': (
@@ -625,6 +675,19 @@ D = {
              'type': str,
              'help': "The directory path for your Pfam setup. Anvi'o will try to use the default path "
                      "if you do not specify anything."}
+                ),
+    'pdb-database-path': (
+            ['--pdb-database-path'],
+            {'default': None,
+             'type': str,
+             'metavar': 'PATH',
+             'help': "The path for the PDB database to be stored. "
+                     "If you leave it as is without specifying anything, anvi'o will set up everything in "
+                     "a pre-defined default directory. The advantage of using "
+                     "the default directory at the time of set up is that every user of anvi'o on a computer "
+                     "system will be using a single data directory, but then you may need to run the setup "
+                     "program with superuser privileges. If you don't have superuser privileges, then you can "
+                     "use this parameter to tell anvi'o the location you wish to use to setup your database."}
                 ),
     'kegg-data-dir': (
             ['--kegg-data-dir'],
@@ -907,7 +970,7 @@ D = {
             {'metavar': 'FILE_PATH',
              'default': None,
              'type': str,
-             'help': "Some commonly used software for phylogenetic analyeses (e.g., IQ-TREE, RAxML, etc) allow users to "
+             'help': "Some commonly used software for phylogenetic analyses (e.g., IQ-TREE, RAxML, etc) allow users to "
              "specify/test different substitution models for each gene of a concatenated multiple sequence alignments. For "
              "this, they use a special file format called a 'partition file', which indicates the site for each gene in the "
              "alignment. You can use this parameter to declare an output path for anvi'o to report a NEXUS format partition "
@@ -960,7 +1023,7 @@ D = {
              'help': "If in --flank-mode, anvi-export-locus will extract a locus based on the coordinates "
                     "of flanking genes. You MUST provide 2 flanking genes in the form of TWO "
                     "--search-term, --gene-caller-ids, or --hmm-sources. The --flank-mode option is "
-                    "appropriate for extracting loci of variable gene number lengths, but are consistantly "
+                    "appropriate for extracting loci of variable gene number lengths, but are consistently "
                     "located between the same flanking genes in the genome(s) of interest."}
               ),
     'num-genes': (
@@ -971,17 +1034,17 @@ D = {
                      "a block of genes will be saved. The block could include either genes only in the forward direction of the gene (defined "
                      "according to the direction of transcription of the gene) or reverse or both. "
                      "If you wish to get both direction use a comma (no spaces) to define the block "
-                     "For example, \"-n 4,5\" will give you four genes before and five genes after. "
-                     "Whereas, \"-n 5\" will give you five genes after (in addition to the gene that matched). "
-                     "To get only genes preceeding the match use \"-n 5,0\". "
-                     "If the number of genes requested exceeds the length of the contig, then the output "
-                     "will include the sequence until the end of the contig."}
+                     "For example, '-n 4,5' will give you four genes before and five genes after. "
+                     "Whereas, '-n 5' will give you five genes after (in addition to the gene that matched). "
+                     "To get only genes preceding the match use '-n 5,0'. If the number of genes requested "
+                     "exceeds the length of the contig, then the output will include the sequence until the end "
+                     "of the contig."}
               ),
     'gene-mode': (
             ['--gene-mode'],
             {'default': False,
              'action': 'store_true',
-             'help': "Initiate the interactive interface in \"gene mode\". In this mode, the items are genes (instead of "
+             'help': "Initiate the interactive interface in 'gene mode'. In this mode, the items are genes (instead of "
                      "splits of contigs). The following views are available: detection (the detection value of each gene "
                      "in each sample). The mean_coverage (the mean coverage of genes). The non_outlier_mean_coverage "
                      "(the mean coverage of the non-outlier nucleotide positions of each gene in each sample (median absolute "
@@ -989,15 +1052,15 @@ D = {
                      "of the coverage of non-outlier positions of genes in samples). You can also choose to order items "
                      "and layers according to each one of the aforementioned views. In addition, all layer ordering "
                      "that are available in the regular mode (i.e. the full mode where you have contigs/splits) are also "
-                     "available in \"gene mode\", so that, for example, you can choose to order the layers according to \"detection\", and that "
-                     "would be the order according to the detection values of splits, whereas if you choose \"genes_detections\" "
+                     "available in 'gene mode', so that, for example, you can choose to order the layers according to 'detection', and that "
+                     "would be the order according to the detection values of splits, whereas if you choose 'genes_detections' "
                      "then the order of layers would be according to the detection values of genes. Inspection and sequence "
                      "functionality are available (through the right-click menu), except now sequences are of the specific gene. "
-                     "Inspection has now two options available: \"Inspect Context\", which brings you to the inspection page of the split "
-                     "to which the gene belongs where the inspected gene will be highlighted in yellow in the bottom, and \"Inspect Gene\", "
+                     "Inspection has now two options available: 'Inspect Context', which brings you to the inspection page of the split "
+                     "to which the gene belongs where the inspected gene will be highlighted in yellow in the bottom, and 'Inspect Gene', "
                      "which opens the inspection page only for the gene and 100 nts around each side of it (the purpose of this option "
                      "is to make the inspection page load faster if you only want to look at the nucleotide coverage of a specific gene). "
-                     "NOTICE: You can't store states or collections in \"gene mode\". However, you still can make fake selections, and create "
+                     "NOTICE: You can't store states or collections in 'gene mode'. However, you still can make fake selections, and create "
                      "fake bins for your viewing convenience only (smiley). Search options are available, and you can even search for functions "
                      "if you have them in your contigs database. ANOTHER NOTICE: loading this mode might take a while if your bin "
                      "has many genes, and your profile database has many samples, this is because the gene coverages stats are "
@@ -1130,11 +1193,9 @@ D = {
     'contigs-of-interest': (
             ['--contigs-of-interest'],
             {'metavar': 'FILE',
-             'help': "It is possible to analyze only a group of contigs from a given BAM file. If you provide "
-                     "a text file, in which every contig of interest is listed line by line, the profiler would "
-                     "engine only on those contigs in the BAM file and ignore the rest. This can be used for "
-                     "debugging purposes, or to engine on a particular group of contigs that were identified as "
-                     "relevant during the interactive analysis."}
+             'help': "It is possible to focus on only a set of contigs. If you would like to do that and ignore "
+                     "the rest of the contigs in your contigs database, use this parameter with a flat file "
+                     "every line of which desribes a single contig name."}
                 ),
     'samples-of-interest': (
             ['--samples-of-interest'],
@@ -1300,7 +1361,7 @@ D = {
              'default': 0,
              'type': float,
              'help': "Takes a value between 0 and 1, where 1 is maximum divergence from the consensus for a given position. The "
-                     "default is %(default)f. The consensus is the most frequent observation at a given positon."}
+                     "default is %(default)f. The consensus is the most frequent observation at a given position."}
                 ),
     'max-departure-from-consensus': (
             ['-a', '--max-departure-from-consensus'],
@@ -1353,7 +1414,7 @@ D = {
             {'default': 'NT',
              'metavar': 'ENGINE',
              'type': str,
-             'help': "Varaibility engine. The default is '%(default)s'."}
+             'help': "Variability engine. The default is '%(default)s'."}
                 ),
     'driver': (
             ['--driver'],
@@ -1463,11 +1524,11 @@ D = {
              'help': "Minimum score to assume a hit comes from a proper tRNA gene (passed to the tRNAScan-SE). "
                      "The default is %(default)d. It can get any value between 0-100."}
                 ),
-    'skip-scanning-trnas': (
-            ['--skip-scanning-trnas'],
+    'also-scan-trnas': (
+            ['--also-scan-trnas'],
             {'default': False,
              'action': 'store_true',
-             'help': "Don't scan tRNAs. Leave them be."}
+             'help': "Also scan tRNAs while you're at it."}
                 ),
     'output-db-path': (
             ['-o', '--output-db-path'],
@@ -1489,6 +1550,25 @@ D = {
              'type': str,
              'help': "A prefix to be used while naming the output files (no file type "
                      "extensions please; just a prefix)."}
+                ),
+    'long-format': (
+            ['--long-format'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Report the output file as a long-format TAB-delmited file instead of a TAB-delimited "
+                     "sparse matrix."}
+                ),
+    'matrix-format': (
+            ['--matrix-format'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Report the output as TAB-delmited sparse matrix files."}
+                ),
+    'raw-output': (
+            ['--raw-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Just store the raw output without any processing of the primary data structure."}
                 ),
     'dry-run': (
             ['--dry-run'],
@@ -1769,7 +1849,7 @@ D = {
              'help': "Single profiles are rarely used for genome binning or visualization, and since "
                      "clustering step increases the profiling runtime for no good reason, the default "
                      "behavior is to not cluster contigs for individual runs. However, if you are "
-                     "planning to do binning on one sample, you must use this flag to tell anvio to "
+                     "planning to do binning on one sample, you must use this flag to tell anvi'o to "
                      "run cluster configurations for single runs on your sample."}
                 ),
     'num-clusters-requested': (
@@ -1799,7 +1879,7 @@ D = {
                      "nucleotide positions. Usually it does not report every variable position, since "
                      "not every variable position is genuine variation. Say, if you have 1,000 coverage, "
                      "and all nucleotides at that position are Ts and only one of them is a C, the "
-                     "confidence of that C being a real variation is quite low. anvio has a simple "
+                     "confidence of that C being a real variation is quite low. anvi'o has a simple "
                      "algorithm in place to reduce the impact of noise. However, using this flag "
                      "you can disable it and ask profiler to report every single variation (which "
                      "may result in very large output files and millions of reports, but you are the "
@@ -1871,7 +1951,7 @@ D = {
             {'metavar': 'INT',
              'default': 10,
              'type': int,
-             'help': "Minimum coverage of a nucleotide position to be subjected to SNV profiling. By default, anvio will "
+             'help': "Minimum coverage of a nucleotide position to be subjected to SNV profiling. By default, anvi'o will "
                      "not attempt to make sense of variation in a given nucleotide position if it is covered less than "
                      "%(default)dX. You can change that minimum using this parameter."}
                 ),
@@ -2014,6 +2094,15 @@ D = {
                      "class based on the number of threads. If you have *any* hesitation about whether you know what you are doing, "
                      "you should not change this value."}
                 ),
+    'ngram-window-range': (
+            ['--ngram-window-range'],
+            {'default': "2:3",
+             'metavar': "NGRAM_WINDOW_RANGE",
+             'type': str,
+             'required': False,
+             'help': "The range of window sizes of Ngrams to analyze for synteny patterns."
+                     "Please format the window-range as x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)"}
+                ),
     'write-buffer-size': (
             ['--write-buffer-size'],
             {'default': 500,
@@ -2037,9 +2126,8 @@ D = {
                      "%(default)d, whereas a job with 4 threads would have a write buffer size of 4*%(default)d. "
                      "The larger the buffer size, the less frequent the program will access to the disk, yet the more memory "
                      "will be consumed since the processed items will be cleared off the memory only after they are written "
-                     "to the disk. The default buffer size will likely work for most cases, but if you have very large "
-                     "contigs, you may need to decrease this value. Please keep an eye on the memory usage output to make sure "
-                     "the memory use never exceeds the size of the physical memory."}
+                     "to the disk. The default buffer size will likely work for most cases. Please keep an eye on the memory "
+                     "usage output to make sure the memory use never exceeds the size of the physical memory."}
                 ),
     'export-gff3': (
         ['--export-gff3'],
@@ -2080,7 +2168,7 @@ D = {
     'dump-dir': (
             ['--dump-dir'],
             {'required': False,
-             'help': "Modelling and annotating structures requires a lot of moving parts, each which have "
+             'help': "Modeling and annotating structures requires a lot of moving parts, each which have "
                      "their own outputs. The output of this program is a structure database containing the "
                      "pertinent results of this computation, however a lot of stuff doesn't make the cut. "
                      "By providing a directory for this parameter you will get, in addition to the structure "
@@ -2142,7 +2230,7 @@ D = {
                      "Any parameter that is accepted by snakemake should be fair game here, but it is your "
                      "responsibility to make sure that whatever you added makes sense. To see what parameters are "
                      "available please refer to the snakemake documentation. For example, you could use this to set "
-                     "up cluster submission using --additional-params --cluster \"YOUR-CLUSTER-SUBMISSION-CMD\""}
+                     "up cluster submission using --additional-params --cluster 'YOUR-CLUSTER-SUBMISSION-CMD'."}
                 ),
     'self-key': (
             ['--self-key'],
@@ -2160,7 +2248,7 @@ D = {
             ['--no-variability'],
             {'required': False,
              'action': 'store_true',
-             'help': "If provided, no measures of sequence heterogeneity (from short read data) will be overlayed "
+             'help': "If provided, no measures of sequence heterogeneity (from short read data) will be overlaid "
                      "on structures."}
                 ),
     'compute-gene-coverage-stats': (

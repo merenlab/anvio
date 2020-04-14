@@ -40,7 +40,7 @@ class FastANIDriver:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.kmer_size = A('fastani_kmer_size') or 16
         self.fragment_length = A('fragment_length') or 3000
-        self.min_num_fragments = A('min_num_fragments') or 50
+        self.min_fraction = A('min_fraction') or 0.25
         self.num_threads = A('num_threads') or 1
         self.log_file_path = os.path.abspath(A('log_file') or filesnpaths.get_temp_file_path())
         self.quiet = A('quiet')
@@ -58,7 +58,7 @@ class FastANIDriver:
     def add_run_info(self):
         self.run.info('[fastANI] Kmer size', self.kmer_size)
         self.run.info('[fastANI] Fragment length', self.fragment_length)
-        self.run.info('[fastANI] Min num of fragments', self.min_num_fragments)
+        self.run.info('[fastANI] Min fraction of alignment', self.min_fraction)
         self.run.info('[fastANI] Num threads to use', self.num_threads)
         self.run.info('[fastANI] Log file path', self.log_file_path, nl_after=1)
 
@@ -172,7 +172,7 @@ class ManyToMany(FastANIDriver):
                    '--rl', reference_targets,
                    '-k', self.kmer_size,
                    '--fragLen', self.fragment_length,
-                   '--minFrag', self.min_num_fragments,
+                   '--minFraction', self.min_fraction,
                    '-t', self.num_threads,
                    '-o', output_path]
 
