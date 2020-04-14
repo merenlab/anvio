@@ -140,11 +140,11 @@ if __name__ == '__main__':
     parser.add_argument('bamfile')
     parser.add_argument('outbamfile')
     parser.add_argument('tRNAseqdb')
-    # args = parser.parse_args()
+    args = parser.parse_args()
 
-    args = parser.parse_args(['/Users/sammiller/Documents/test4/s10_demethylase.bam',
-                              '/Users/sammiller/Documents/test4/s10_demethylase_new.bam',
-                              '/Users/sammiller/Documents/test4/s10_demethylase_TRNASEQ.db'])
+    # args = parser.parse_args(['/Users/sammiller/Documents/test4/s10_demethylase.bam',
+    #                           '/Users/sammiller/Documents/test4/s10_demethylase_new.bam',
+    #                           '/Users/sammiller/Documents/test4/s10_demethylase_TRNASEQ.db'])
 
     bamfile = pysam.AlignmentFile(args.bamfile, 'rb')
     raw_outbam_filepath = os.path.splitext(args.outbamfile)[0] + "_RAW.bam"
