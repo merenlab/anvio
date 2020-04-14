@@ -8,6 +8,8 @@ import json
 import copy
 import platform
 
+from tabulate import tabulate
+
 # yes, this library is imported but never used, but don't remove it
 # unless you want to explode `bottle`:
 import pkg_resources
@@ -28,6 +30,13 @@ def P(d, dont_exit=False):
 
     if not dont_exit:
         sys.exit()
+
+
+def TABULATE(table, header):
+    """Encoding-safe `tabulate`"""
+
+    tablefmt = "fancy_grid" if sys.stdout.encoding == "UTF-8" else "grid"
+    print(tabulate(table, headers=header, tablefmt=tablefmt, numalign="right"))
 
 
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
