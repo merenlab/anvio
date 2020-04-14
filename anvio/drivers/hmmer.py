@@ -31,14 +31,20 @@ pp = terminal.pretty_print
 
 
 class HMMer:
-    def __init__(self, target_files_dict, num_threads_to_use=1, progress=progress, run=run):
+    def __init__(self, target_files_dict, num_threads_to_use=1, program_to_use="hmmscan", progress=progress, run=run):
         """A class to streamline HMM runs."""
         self.num_threads_to_use = num_threads_to_use
+        self.program_to_use = program_to_use
         self.progress = progress
         self.run = run
 
         self.tmp_dirs = []
         self.target_files_dict = {}
+
+        acceptable_programs = ["hmmscan", "hmmsearch"]
+        if self.program_to_use not in acceptable_programs:
+            raise ConfigError("HMMer class here. You are attemptimg to use the program %s to run HMMs, but we don't recognize it. The currently"
+                                " supported programs are: %s" % (self.program_to_use, ", ".join(acceptable_programs)))
 
         for source in target_files_dict:
             tmp_dir = filesnpaths.get_temp_directory_path()
@@ -96,6 +102,7 @@ class HMMer:
         self.run.info('Number of genes in HMM model', num_genes_in_model)
         self.run.info('Noise cutoff term(s)', noise_cutoff_terms)
         self.run.info('Number of CPUs will be used for search', self.num_threads_to_use)
+        self.run.info('HMMer program used for search', self.program_to_use)
 
         tmp_dir = os.path.dirname(self.target_files_dict[target][0])
         log_file_path = os.path.join(tmp_dir, '*_log')
@@ -129,13 +136,13 @@ class HMMer:
             shitty_file = part_file + '_shitty'
 
             if noise_cutoff_terms:
-                cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else 'hmmscan',
+                cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                             '-o', output_file, *noise_cutoff_terms.split(),
                             '--cpu', cores_per_process,
                             '--tblout', shitty_file,
                             hmm, part_file]
             else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
-                cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else 'hmmscan',
+                cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                             '-o', output_file,
                             '--cpu', cores_per_process,
                             '--tblout', shitty_file,
