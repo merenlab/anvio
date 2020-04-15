@@ -221,11 +221,12 @@ class BottleApplication(Bottle):
 
                 utils.open_url_in_browser(url=url, browser_path=self.browser_path, run=run)
 
-                run.info_single("The server is running. If you are using OSX and if the server terminates prematurely before "
-                                "you can see anything in your browser, try to run the same command by putting 'sudo ' at the "
-                                "beginning of it (you will be likely prompted to enter your password as this command will require "
-                                "super user rights to run). If your browser does not show up, try visiting the following URL "
-                                "shown below manually.", mc='green', nl_before = 1)
+                run.info_single("The server is up and running 🎉", mc='green', nl_before = 1)
+
+                run.warning("If you are using OSX and if the server terminates prematurely before you can see anything in your browser, "
+                            "try running the same command by putting 'sudo ' at the beginning of it (you will be prompted to enter your "
+                            "password if sudo requires super user credentials on your system). If your browser does not show up, try "
+                            "manually entering the URL shown below into the address bar of your favorite browser. *cough* CHROME *cough*.")
 
             run.info('Server address', url, mc="green", nl_before=1, nl_after=1)
 
