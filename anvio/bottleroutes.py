@@ -21,6 +21,8 @@ import getpass
 import argparse
 import requests
 import datetime
+import importlib
+
 from hashlib import md5
 from multiprocessing import Process
 from ete3 import Tree
@@ -64,6 +66,9 @@ class BottleApplication(Bottle):
     def __init__(self, interactive, mock_request=None, mock_response=None):
         super(BottleApplication, self).__init__()
         self.interactive = interactive
+
+        # WSGI for bottle to use
+        self._wsgi_for_bottle = "paste"
 
         if self.interactive:
             self.args = self.interactive.args
@@ -182,8 +187,9 @@ class BottleApplication(Bottle):
 
     def run_application(self, ip, port):
         try:
-            server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': 'cherrypy'})
-            server_process.start()
+            with terminal.SuppressAllOutput():
+                server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': self._wsgi_for_bottle})
+                server_process.start()
 
             url = "http://%s:%d" % (ip, port)
 
