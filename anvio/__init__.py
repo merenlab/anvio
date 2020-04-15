@@ -709,6 +709,12 @@ D = {
                      "up using this flag) (plus, there may or may not be some historical data on this here: "
                      "https://github.com/meren/anvio/issues/309)."}
                 ),
+    'hmmer-program': (
+            ['--hmmer-program'],
+            {'type': str,
+            'required': False,
+             'help': "Which of the HMMER programs to use to run HMMs (ie, hmmscan, hmmsearch)"}
+                ),
     'hmm-source': (
             ['--hmm-source'],
             {'metavar': 'SOURCE NAME',

@@ -575,12 +575,13 @@ class KeggRunHMMs(KeggContext):
         self.progress = progress
         self.contigs_db_path = args.contigs_db
         self.num_threads = args.num_threads
+        self.hmm_program = args.hmmer_program or 'hmmsearch'
         self.ko_dict = None # should be set up by setup_ko_dict()
 
         # init the base class
         KeggContext.__init__(self, self.args)
 
-        filesnpaths.is_program_exists('hmmscan')
+        filesnpaths.is_program_exists(self.hmm_program)
 
         # verify that Kofam HMM profiles have been set up
         if not os.path.exists(self.kofam_hmm_file_path):
@@ -606,8 +607,8 @@ class KeggRunHMMs(KeggContext):
             if ok_if_missing_from_dict:
                 return "Unknown function with KO num %s" % knum
             else:
-                raise ConfigError("It seems hmmscan found a KO number that does not exist\
-                                   in the KOfam ko_list file: %s" % knum)
+                raise ConfigError("It seems %s found a KO number that does not exist\
+                                   in the KOfam ko_list file: %s" % (self.hmm_program, knum))
 
         return self.ko_dict[knum]['definition']
 
@@ -625,7 +626,7 @@ class KeggRunHMMs(KeggContext):
                                                                    report_aa_sequences=True)
 
         # run hmmscan
-        hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use="hmmsearch")
+        hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
         hmm_hits_file = hmmer.run_hmmscan('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, None)
 
         # get an instance of gene functions table
@@ -646,7 +647,7 @@ class KeggRunHMMs(KeggContext):
             return
 
         # parse hmmscan output
-        parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE')
+        parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
         search_results_dict = parser.get_search_results(ko_list_dict=self.ko_dict)
 
         # add functions and KEGG modules info to database
