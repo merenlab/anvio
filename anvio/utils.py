@@ -12,7 +12,6 @@ import socket
 import shutil
 import smtplib
 import hashlib
-import Bio.PDB as PDB
 import textwrap
 import linecache
 import webbrowser
@@ -23,6 +22,7 @@ import urllib.request, urllib.error, urllib.parse
 
 import numpy as np
 import pandas as pd
+import Bio.PDB as PDB
 
 from numba import jit
 from collections import Counter
