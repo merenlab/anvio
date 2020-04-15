@@ -185,9 +185,11 @@ class BottleApplication(Bottle):
             server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': 'cherrypy'})
             server_process.start()
 
+            url = "http://%s:%d" % (ip, port)
+
             if self.export_svg:
                 try:
-                    utils.run_selenium_and_export_svg("http://%s:%d/app/index.html" % (ip, port),
+                    utils.run_selenium_and_export_svg("/".join([url, "app/index.html"]),
                                                       self.args.export_svg,
                                                       browser_path=self.browser_path,
                                                       run=run)
@@ -203,9 +205,7 @@ class BottleApplication(Bottle):
                 # I have added sleep below to delay web browser little bit.
                 time.sleep(1.5)
 
-                utils.open_url_in_browser(url="http://%s:%d" % (ip, port),
-                                          browser_path=self.browser_path,
-                                          run=run)
+                utils.open_url_in_browser(url=url, browser_path=self.browser_path, run=run)
 
                 run.info_single("The server is running. If you are using OSX and if the server terminates prematurely before "
                                 "you can see anything in your browser, try to run the same command by putting 'sudo ' at the "
