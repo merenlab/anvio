@@ -207,15 +207,19 @@ class BottleApplication(Bottle):
                                           browser_path=self.browser_path,
                                           run=run)
 
-                run.info_single("The server is now listening the port number '%d'. When you are finished, press CTRL+C to "
-                                "terminate the server. If you are using OSX and if the server terminates prematurely before "
+                run.info_single("The server is running. If you are using OSX and if the server terminates prematurely before "
                                 "you can see anything in your browser, try to run the same command by putting 'sudo ' at the "
                                 "beginning of it (you will be likely prompted to enter your password as this command will require "
-                                "super user rights to run)" % port, 'green', nl_before = 1, nl_after=1)
+                                "super user rights to run). If your browser does not show up, try visiting the following URL "
+                                "shown below manually.", mc='green', nl_before = 1)
+
+            run.info('Server address', url, mc="green", nl_before=1, nl_after=1)
+
+            run.info_single("When you are ready, press CTRL+C once to terminate the server and go back to the command line.", nl_after=1)
 
             server_process.join()
         except KeyboardInterrupt:
-            run.warning('The server is being terminated.', header='Please wait...')
+            run.info_single("The server is being terminated...", mc="red", nl_before=1)
             server_process.terminate()
             sys.exit(0)
 
