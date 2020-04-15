@@ -246,10 +246,10 @@ class BottleApplication(Bottle):
             index = 0
             for result in re.finditer(pattern, ret.body.read()):
                 pos = result.end(3)
-                suffix = b'?rand=' + self.random_hash(32).encode() 
+                suffix = b'?rand=' + self.random_hash(32).encode()
 
-                # read chunk from original file and write to buffer, 
-                # then store pos to index, next iteration we are going 
+                # read chunk from original file and write to buffer,
+                # then store pos to index, next iteration we are going
                 # to read from that position
                 ret.body.seek(index)
                 buff.write(ret.body.read(pos - index))
@@ -520,13 +520,13 @@ class BottleApplication(Bottle):
         if self.interactive.mode == 'inspect':
             if self.interactive.state_autoload:
                 state = json.loads(self.interactive.states_table.states[self.interactive.state_autoload]['content'])
-                layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]    
+                layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]
             else:
                 layers = [layer for layer in sorted(self.interactive.p_meta['samples'])]
 
                 # anvi-inspect is called so there is no state stored in localstorage written by main anvio plot
                 # and there is no default state in the database, we are going to generate a mock state.
-                # only the keys we need is enough. 
+                # only the keys we need is enough.
                 state['layer-order'] = layers
                 state['layers'] = {}
                 for layer in layers:
@@ -1048,7 +1048,7 @@ class BottleApplication(Bottle):
             return json.dumps({'error': "You are in 'collection' mode, but your collection is empty. You are killing me."})
 
         if self.interactive.hmm_access is None:
-            return json.dumps({'error': "HMMs for single-copy core genes were not run for this contigs database. "})            
+            return json.dumps({'error': "HMMs for single-copy core genes were not run for this contigs database. "})
 
         hmm_sequences_dict = self.interactive.hmm_access.get_sequences_dict_for_hmm_hits_in_splits({bin_name: set(self.interactive.collection[bin_name])})
         gene_sequences = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set([gene_name]))
@@ -1301,7 +1301,7 @@ class BottleApplication(Bottle):
         options = json.loads(request.forms.get('options'))
         return self.interactive.store_variability(options)
 
-        
+
     def store_structure_as_pdb(self):
         options = json.loads(request.forms.get('options'))
         return self.interactive.store_structure_as_pdb(options)
