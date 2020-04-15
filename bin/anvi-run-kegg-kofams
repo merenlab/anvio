@@ -36,6 +36,7 @@ if __name__ == '__main__':
     groupR.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     groupO.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
     groupO.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupO.add_argument(*anvio.A('hmmer-program'), **anvio.K('hmmer-program'))
 
     args = anvio.get_args(parser)
 
