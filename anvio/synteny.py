@@ -176,14 +176,17 @@ class NGram(object):
                     if contig_name == contig_ID:
                         contig_function_list.append([gene_callers_id,gene_function_accession])
 
+                gene_caller_ids_list = [entry[0] for entry in contig_function_list]
+                gene_caller_id_to_function_dict = dict(contig_function_list)
+
                 # Iterate over range of window sizes and run synteny algorithm to count occurrences of ngrams in a contig
-                for n in range(self.window_range[0],self.window_range[1]):
-                    function_list = [entry[1] for entry in contig_function_list]
-                    ngram_counts_dict = self.count_synteny(function_list, n)
+                for n in range(self.window_range[0], self.window_range[1]):
+                    ngram_counts_dict = self.count_synteny(gene_caller_ids_list, n)
 
                     # add results of this window size, contig pairing to ngram attributes
                     for ngram, count in ngram_counts_dict.items():
-                        self.ngram_attributes_list.append([ngram, count, contigs_db_name, contig_name, n])
+                        ngram_annotation = tuple([gene_caller_id_to_function_dict[g] for g in ngram])
+                        self.ngram_attributes_list.append([ngram, ngram_annotation, count, contigs_db_name, contig_name, n])
 
 
     def convert_to_df(self):
@@ -193,12 +196,14 @@ class NGram(object):
 
         for ngram_attribute in self.ngram_attributes_list:
             ngram = "::".join(map(str, list(ngram_attribute[0])))
-            df = pd.DataFrame(columns=['ngram', 'count', 'contig_db_name','contig_name','N','number_of_loci'])
+            ngram_function = "::".join(map(str, list(ngram_attribute[1])))
+            df = pd.DataFrame(columns=['ngram', 'ngram_functions', 'count', 'contig_db_name','contig_name','N','number_of_loci'])
             df = df.append({'ngram': ngram,
-                            'count': ngram_attribute[1],
-                            'contig_db_name': ngram_attribute[2],
-                            'contig_name':ngram_attribute[3],
-                            'N':ngram_attribute[4],
+                            'ngram_functions': ngram_function,
+                            'count': ngram_attribute[2],
+                            'contig_db_name': ngram_attribute[3],
+                            'contig_name':ngram_attribute[4],
+                            'N':ngram_attribute[5],
                             'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
             ngram_count_df_list.append(df)
 

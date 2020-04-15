@@ -830,7 +830,7 @@ class FastANI(GenomeSimilarity):
 
 
 class ANI(GenomeSimilarity):
-    """ This class handles specifically pyANI. See FastANI class for fastani handle """
+    """This class handles specifically pyANI. See FastANI class for fastani handle"""
 
     def __init__(self, args):
         self.args = args
