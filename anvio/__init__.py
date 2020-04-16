@@ -2212,8 +2212,9 @@ D = {
                 ),
     'estimate-from-json': (
             ['--estimate-from-json'],
-            {'default': False,
-            'action': 'store_true',
+            {'default': None,
+            'metavar': 'FILE_PATH',
+            'type': str,
             'help': "If you have a JSON file containing KOfam hits and gene call information from your contigs database "
                     "(such as a file produced using the --get-raw-data-as-json flag), you can provide that file to this flag "
                     "and KEGG metabolism estimates will be computed from the information within instead of from a contigs database."}
