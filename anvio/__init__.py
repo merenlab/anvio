@@ -2197,9 +2197,12 @@ D = {
     'get-raw-data-as-json': (
             ['--get-raw-data-as-json'],
             {'default': None,
-            'metavar': 'FILE_PATH',
+            'metavar': 'FILENAME_PREFIX',
             'type': str,
-            'help': "If you want the raw metabolism estimation data dictionary in JSON-format, provide a file path to this argument."}
+            'help': "If you want the raw metabolism estimation data dictionary in JSON-format, provide a filename prefix to this argument."
+                    "The program will then output one or more files with the .json extension containing this data. "
+                    "P.S. The only time you will see multiple output JSON files is when you run this program on multiple bins using --store-json-before-estimation"
+                    ", in which case the bin names will become part of each file name."}
                 ),
     'store-json-before-estimation': (
             ['--store-json-before-estimation'],
