@@ -54,6 +54,8 @@ if __name__ == '__main__':
 
     groupD = parser.add_argument_group('DEBUG', "Parameters to use if you think something fishy is going on or otherwise want to exert more control. Go for it.")
     groupD.add_argument(*anvio.A('get-raw-data-as-json'), **anvio.K('get-raw-data-as-json'))
+    groupD.add_argument(*anvio.A('store-json-before-estimation'), **anvio.K('store-json-before-estimation'))
+    groupD.add_argument(*anvio.A('estimate-from-json'), **anvio.K('estimate-from-json'))
 
     args = anvio.get_args(parser)
 

@@ -742,6 +742,8 @@ class KeggMetabolismEstimator(KeggContext):
         self.contigs_db_project_name = "Unknown"
         self.write_dict_to_json = True if A('get_raw_data_as_json') else False
         self.json_output_file_path = A('get_raw_data_as_json')
+        self.store_json_before_estimation = True if A('store_json_before_estimation') else False
+        self.estimate_from_json = True if A('estimate_from_json') else False
 
         self.bin_ids_to_process = None
         if self.bin_id and self.bin_ids_file:

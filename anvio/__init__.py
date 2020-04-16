@@ -2201,6 +2201,23 @@ D = {
             'type': str,
             'help': "If you want the raw metabolism estimation data dictionary in JSON-format, provide a file path to this argument."}
                 ),
+    'store-json-before-estimation': (
+            ['--store-json-before-estimation'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "This flag is used to control when the metabolism data dictionary is stored. When provided alongside the "
+                    "--get-raw-data-as-json flag, the JSON file will be created before metabolism estimation is run, and "
+                    "that file will consequently include only information about KOfam hits and gene calls. The idea is that you can "
+                    "then modify this file as you like and re-run this program using the flag --estimate-from-json."}
+                ),
+    'estimate-from-json': (
+            ['--estimate-from-json'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "If you have a JSON file containing KOfam hits and gene call information from your contigs database "
+                    "(such as a file produced using the --get-raw-data-as-json flag), you can provide that file to this flag "
+                    "and KEGG metabolism estimates will be computed from the information within instead of from a contigs database."}
+                ),
 }
 
 # two functions that works with the dictionary above.
