@@ -79,6 +79,7 @@ if __name__ == '__main__':
     # Essential input
     groupA = parser.add_argument_group('Essential INPUT')
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {"required": True}))
+    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {"required": True}))
     groupA.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source', {"required": True}))
     groupA.add_argument(*anvio.A('ngram-window-range'), **anvio.K('ngram-window-range', {"required": True}))
     groupA.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {"required": True}))

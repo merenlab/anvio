@@ -20,7 +20,9 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.genomedescriptions as genomedescriptions
 
+from anvio.dbops import PanDatabase
 from anvio.errors import ConfigError
+
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -68,6 +70,9 @@ class NGram(object):
         self.output_file = A('output_file')
         self.genomes = genomedescriptions.GenomeDescriptions(self.args)
         self.genomes.load_genomes_descriptions(init=False)
+        self.panDB = A('pan_db')
+
+        self.pan_db = PanDatabase(self.panDB)
 
         # This houses the ngrams' data
         self.ngram_attributes_list = []
@@ -154,28 +159,21 @@ class NGram(object):
         (ngram, count, contigs_db_name, contig_name, n)
 
         """
-        ###
-        pan_db_path = "/Users/mschechter/github/2018_Schmid_Shaiber_et_al_CPS/data/CONTIGSDB/CPA_Pan/CPA_Pan-PAN.db"
-
-        from anvio.dbops import PanDatabase
-        pan_db = PanDatabase(pan_db_path)
-
+        # Get gene cluster info from panDB
         gene_cluster_frequencies_dataframe = pd.DataFrame.from_dict(
-                                                    pan_db.db.get_table_as_dict('gene_clusters'),
+                                                    self.pan_db.db.get_table_as_dict('gene_clusters'),
                                                     orient='index')
 
-        # print(gene_cluster_frequencies_dataframe)
-
-        ####
         genes_and_functions_list = []
         for contigs_db_name in self.genomes.external_genomes_dict:
             # Extract file path
             contigs_db_path = self.genomes.external_genomes_dict[contigs_db_name]["contigs_db_path"]
 
+            # Filter for gene-clusters from specific contigDB
+            gene_cluster_frequencies_dataframe_filtered = gene_cluster_frequencies_dataframe[gene_cluster_frequencies_dataframe['genome_name']==contigs_db_name]
+
             # Make gene-callers-id to gene-cluster-id dict
-            test = gene_cluster_frequencies_dataframe[gene_cluster_frequencies_dataframe['genome_name']==contigs_db_name]
-            gene_callers_id_to_gene_cluster_id_dict = test[['gene_caller_id', 'gene_cluster_id']].set_index('gene_caller_id')['gene_cluster_id'].to_dict()
-            # print(gene_callers_id_to_gene_cluster_id_dict)
+            gene_callers_id_to_gene_cluster_id_dict = gene_cluster_frequencies_dataframe_filtered[['gene_caller_id', 'gene_cluster_id']].set_index('gene_caller_id')['gene_cluster_id'].to_dict()
 
             # Get list of genes and functions
             genes_and_functions_list = self.get_genes_and_functions_from_contigs_db(contigs_db_path)
@@ -185,20 +183,22 @@ class NGram(object):
 
             for contig_name in contigs_set:
                 contig_function_list = []
+                contig_gene_cluster_list = []
 
                 # Extract gene_callers_id and gene_function_accession from genes_and_functions_list using contig_name
                 # genes_and_functions_list has multiple contigs gene info in it, so we filter one contig at a time
                 # (contig_ID = name of contig in genes_and_functions_list)
                 for gene_callers_id, gene_function_accession, contig_ID in genes_and_functions_list:
+                    # grab gene-cluster-id
                     gene_cluster_id = gene_callers_id_to_gene_cluster_id_dict[gene_callers_id]
                     if contig_name == contig_ID:
-                        contig_function_list.append([gene_callers_id,gene_function_accession,gene_cluster_id])
+                        contig_function_list.append([gene_callers_id,gene_function_accession])
+                        contig_gene_cluster_list.append([gene_callers_id,gene_cluster_id])
 
-                print(contig_function_list)
-                print("asdf")
-                gene_caller_ids_list = [entry[2] for entry in contig_function_list]
-                print(gene_caller_ids_list)
+                gene_caller_ids_list = [entry[0] for entry in contig_gene_cluster_list]
+
                 gene_caller_id_to_function_dict = dict(contig_function_list)
+                gene_caller_id_to_gene_cluster_dict = dict(contig_gene_cluster_list)
 
                 # Iterate over range of window sizes and run synteny algorithm to count occurrences of ngrams in a contig
                 for n in range(self.window_range[0], self.window_range[1]):
@@ -207,7 +207,8 @@ class NGram(object):
                     # add results of this window size, contig pairing to ngram attributes
                     for ngram, count in ngram_counts_dict.items():
                         ngram_annotation = tuple([gene_caller_id_to_function_dict[g] for g in ngram])
-                        self.ngram_attributes_list.append([ngram, ngram_annotation, count, contigs_db_name, contig_name, n])
+                        ngram_gene_clusters = tuple([gene_caller_id_to_gene_cluster_dict[g] for g in ngram])
+                        self.ngram_attributes_list.append([ngram, ngram_annotation, ngram_gene_clusters, count, contigs_db_name, contig_name, n])
 
 
     def convert_to_df(self):
@@ -218,13 +219,15 @@ class NGram(object):
         for ngram_attribute in self.ngram_attributes_list:
             ngram = "::".join(map(str, list(ngram_attribute[0])))
             ngram_function = "::".join(map(str, list(ngram_attribute[1])))
-            df = pd.DataFrame(columns=['ngram', 'ngram_functions', 'count', 'contig_db_name','contig_name','N','number_of_loci'])
+            ngram_gene_clusters = "::".join(map(str, list(ngram_attribute[2])))
+            df = pd.DataFrame(columns=['ngram', 'ngram_functions', 'ngram_gene_clusters', 'count', 'contig_db_name','contig_name','N','number_of_loci'])
             df = df.append({'ngram': ngram,
                             'ngram_functions': ngram_function,
-                            'count': ngram_attribute[2],
-                            'contig_db_name': ngram_attribute[3],
-                            'contig_name':ngram_attribute[4],
-                            'N':ngram_attribute[5],
+                            'ngram_gene_clusters': ngram_gene_clusters,
+                            'count': ngram_attribute[3],
+                            'contig_db_name': ngram_attribute[4],
+                            'contig_name':ngram_attribute[5],
+                            'N':ngram_attribute[6],
                             'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
             ngram_count_df_list.append(df)
 
