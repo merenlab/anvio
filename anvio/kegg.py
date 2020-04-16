@@ -742,7 +742,7 @@ class KeggMetabolismEstimator(KeggContext):
         self.contigs_db_project_name = "Unknown"
         self.write_dict_to_json = True if A('get_raw_data_as_json') else False
         self.json_output_file_path = A('get_raw_data_as_json')
-        self.store_json_before_estimation = True if A('store_json_before_estimation') else False
+        self.store_json_without_estimation = True if A('store_json_without_estimation') else False
         self.estimate_from_json = A('estimate_from_json') or None
 
         self.bin_ids_to_process = None
@@ -762,7 +762,7 @@ class KeggMetabolismEstimator(KeggContext):
         if self.profile_db_path and not self.collection_name:
             raise ConfigError("If you provide a profiles DB, you should also provide a collection name.")
 
-        if self.store_json_before_estimation and not self.json_output_file_path:
+        if self.store_json_without_estimation and not self.json_output_file_path:
             raise ConfigError("Whoops. You seem to want to store the metabolism dictionary in a JSON file, but you haven't provided the name of that file. "
                                 "Please use the --get-raw-data-as-json flag to do so.")
 
@@ -1275,9 +1275,8 @@ class KeggMetabolismEstimator(KeggContext):
         metabolism_dict_for_list_of_splits = self.mark_kos_present_for_list_of_splits(ko_hits_in_splits, split_list=splits,
                                                                                                     bin_name=bin_name)
 
-        if self.store_json_before_estimation:
-            bin_level_metabolism_dict_for_json = { bin_name: metabolism_dict_for_list_of_splits }
-            self.store_metabolism_superdict_as_json(bin_level_metabolism_dict_for_json, self.json_output_file_path + "_" + bin_name + ".json")
+        if self.store_json_without_estimation:
+            return metabolism_dict_for_list_of_splits
 
         metabolism_dict_for_list_of_splits["num_complete_modules"] = 0
 
@@ -1450,8 +1449,9 @@ class KeggMetabolismEstimator(KeggContext):
         else:
             raise ConfigError("This class doesn't know how to deal with that yet :/")
 
-        self.store_kegg_metabolism_superdict(kegg_metabolism_superdict)
-        if self.write_dict_to_json and not self.store_json_before_estimation:
+        if not self.store_json_without_estimation:
+            self.store_kegg_metabolism_superdict(kegg_metabolism_superdict)
+        if self.write_dict_to_json:
             self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json")
 
 
