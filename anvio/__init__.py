@@ -2194,6 +2194,13 @@ D = {
                      "'present' in a given genome or bin. It is the fraction of steps that must be complete in "
                      " in order for the entire module to be marked complete. The default is %(default)g."}
                 ),
+    'get-raw-data-as-json': (
+            ['--get-raw-data-as-json'],
+            {'default': None,
+            'metavar': 'FILE_PATH',
+            'type': str,
+            'help': "If you want the raw metabolism estimation data dictionary in JSON-format, provide a file path to this argument."}
+                ),
 }
 
 # two functions that works with the dictionary above.

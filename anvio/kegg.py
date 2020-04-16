@@ -10,6 +10,7 @@ import glob
 import re
 import copy
 import statistics as stats
+import json
 
 import anvio
 import anvio.db as db
@@ -739,6 +740,8 @@ class KeggMetabolismEstimator(KeggContext):
         self.completeness_threshold = A('module_completion_threshold') or 0.75
         self.output_file_prefix = A('output_file_prefix') or "kegg-metabolism"
         self.contigs_db_project_name = "Unknown"
+        self.write_dict_to_json = True if A('get_raw_data_as_json') else False
+        self.json_output_file_path = A('get_raw_data_as_json')
 
         self.bin_ids_to_process = None
         if self.bin_id and self.bin_ids_file:
@@ -1433,6 +1436,8 @@ class KeggMetabolismEstimator(KeggContext):
             raise ConfigError("This class doesn't know how to deal with that yet :/")
 
         self.store_kegg_metabolism_superdict(kegg_metabolism_superdict)
+        if self.write_dict_to_json:
+            self.store_metabolism_superdict_as_json(kegg_metabolism_superdict)
 
 
     def store_kegg_metabolism_superdict(self, kegg_superdict):
@@ -1534,6 +1539,18 @@ class KeggMetabolismEstimator(KeggContext):
         self.run.info("Kofam hits output file", hits_output_path, nl_before=1)
         utils.store_dict_as_TAB_delimited_file(cm_summary, complete_module_summary_path, key_header="unique_id", headers=summary_header_list)
         self.run.info("Complete modules summary file", complete_module_summary_path)
+
+
+    def store_metabolism_superdict_as_json(self, kegg_superdict):
+        """This function writes the metabolism superdict into one json file."""
+
+        def set_to_list(obj):
+            if isinstance(obj, set):
+                return list(obj)
+
+        filesnpaths.is_output_file_writable(self.json_output_file_path)
+        open(self.json_output_file_path, 'w').write(json.dumps(kegg_superdict, indent=4, default=set_to_list))
+        self.run.info("JSON Output", self.json_output_file_path)
 
 
 class KeggModulesDatabase(KeggContext):
