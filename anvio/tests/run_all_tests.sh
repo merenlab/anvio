@@ -609,6 +609,8 @@ INFO "Generating mock external genome data"
 cp $files/mock_data_for_pangenomics/{01,02,03}.fa $output_dir/
 cp $files/mock_data_for_pangenomics/external-genomes.txt $output_dir/
 cp $files/mock_data_for_pangenomics/functions/*-functions.txt $output_dir/
+cp $files/example_description.md $output_dir/
+
 for g in 01 02 03
 do
     echo -n "$g .. "
@@ -642,16 +644,24 @@ anvi-dereplicate-genomes --ani-dir $output_dir/GENOME_SIMILARITY_OUTPUT \
                          --program pyANI
 SHOW_FILE $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS/CLUSTER_REPORT.txt
 
+INFO "Generating an anvi'o genomes storage"
+anvi-gen-genomes-storage -e $output_dir/external-genomes.txt -o $output_dir/TEST-GENOMES.db
+
+INFO "Running the pangenome anaysis with default parameters"
+anvi-pan-genome -g $output_dir/TEST-GENOMES.db -o $output_dir/TEST/ -n TEST --use-ncbi-blast --description $output_dir/example_description.md
+
 INFO "Testing anvi-analyze-synteny ignoring genes with no annotation"
 
 # run anvi-analyze-synteny
 anvi-analyze-synteny -e $output_dir/external-genomes.txt \
+                     -p $output_dir/TEST/TEST-PAN.db \
                      --annotation-source COG_FUNCTION \
                      --ngram-window-range 2:3 \
                      -o $output_dir/synteny_output_no_unknowns.tsv
 
 INFO "Testing anvi-analyze-synteny now including unannotated genes"
 anvi-analyze-synteny -e $output_dir/external-genomes.txt \
+                     -p $output_dir/TEST/TEST-PAN.db \
                      --annotation-source COG_FUNCTION \
                      --ngram-window-range 2:3 \
                      -o $output_dir/synteny_output_with_unknowns.tsv \
