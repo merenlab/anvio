@@ -14,8 +14,8 @@ colored
 illumina-utils
 tabulate
 numba
+paste
 pyani==0.2.10
-cherrypy==8.0.0
 psutil==5.4.3
 pandas==0.25.1
 snakemake==5.10.0
