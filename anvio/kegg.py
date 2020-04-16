@@ -1274,6 +1274,11 @@ class KeggMetabolismEstimator(KeggContext):
 
         metabolism_dict_for_list_of_splits = self.mark_kos_present_for_list_of_splits(ko_hits_in_splits, split_list=splits,
                                                                                                     bin_name=bin_name)
+
+        if self.store_json_before_estimation:
+            bin_level_metabolism_dict_for_json = { bin_name: metabolism_dict_for_list_of_splits }
+            self.store_metabolism_superdict_as_json(bin_level_metabolism_dict_for_json, self.json_output_file_path + "_" + bin_name + ".json")
+
         metabolism_dict_for_list_of_splits["num_complete_modules"] = 0
 
         complete_mods = []
