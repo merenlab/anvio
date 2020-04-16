@@ -745,6 +745,10 @@ class KeggMetabolismEstimator(KeggContext):
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
         self.estimate_from_json = A('estimate_from_json') or None
 
+        if not self.estimate_from_json and not self.contigs_db_path:
+            raise ConfigError("NO INPUT PROVIDED. You must provide (at least) a contigs database to this program, unless you are using the --estimate-from-json "
+                                "flag, in which case you must provide a JSON-formatted file.")
+
         self.bin_ids_to_process = None
         if self.bin_id and self.bin_ids_file:
             raise ConfigError("You have provided anvi'o with both the individual bin id %s and a file with bin ids (%s). \
@@ -765,12 +769,16 @@ class KeggMetabolismEstimator(KeggContext):
         if self.store_json_without_estimation and not self.json_output_file_path:
             raise ConfigError("Whoops. You seem to want to store the metabolism dictionary in a JSON file, but you haven't provided the name of that file. "
                                 "Please use the --get-raw-data-as-json flag to do so.")
+        if self.store_json_without_estimation and self.estimate_from_json:
+            raise ConfigError("It is impossible to both estimate metabolism from JSON data and produce a JSON file without estimation at the same time... "
+                            "anvi'o is judging you SO hard right now.")
 
 
         # init the base class
         KeggContext.__init__(self, self.args)
 
-        utils.is_contigs_db(self.contigs_db_path)
+        if not self.estimate_from_json:
+            utils.is_contigs_db(self.contigs_db_path)
 
         # load existing kegg modules db
         if not os.path.exists(os.path.join(self.kegg_data_dir, "MODULES.db")):
