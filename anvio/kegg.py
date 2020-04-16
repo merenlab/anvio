@@ -1436,6 +1436,12 @@ class KeggMetabolismEstimator(KeggContext):
         return metagenome_metabolism_superdict
 
 
+    def estimate_metabolism_from_json_data(self):
+        """This function runs the estimation functions on data obtained from a provided JSON file"""
+
+        self.run.info("JSON input file", self.estimate_from_json)
+
+
     def estimate_metabolism(self):
         """This is the driver function for estimating metabolism.
 
@@ -1444,18 +1450,22 @@ class KeggMetabolismEstimator(KeggContext):
         The metabolism completion dictionary is keyed by KEGG module number, with a few exceptions for summary data (ie, 'num_complete_modules').
         """
 
-        kofam_hits_info = self.init_hits_and_splits()
-
         kegg_metabolism_superdict = {}
 
-        if self.profile_db_path and not self.metagenome_mode:
-            kegg_metabolism_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
-        elif not self.profile_db_path and not self.metagenome_mode:
-            kegg_metabolism_superdict = self.estimate_for_genome(kofam_hits_info)
-        elif self.metagenome_mode:
-            kegg_metabolism_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
+        if self.estimate_from_json:
+            self.estimate_metabolism_from_json_data()
         else:
-            raise ConfigError("This class doesn't know how to deal with that yet :/")
+
+            kofam_hits_info = self.init_hits_and_splits()
+
+            if self.profile_db_path and not self.metagenome_mode:
+                kegg_metabolism_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
+            elif not self.profile_db_path and not self.metagenome_mode:
+                kegg_metabolism_superdict = self.estimate_for_genome(kofam_hits_info)
+            elif self.metagenome_mode:
+                kegg_metabolism_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
+            else:
+                raise ConfigError("This class doesn't know how to deal with that yet :/")
 
         if not self.store_json_without_estimation:
             self.store_kegg_metabolism_superdict(kegg_metabolism_superdict)
