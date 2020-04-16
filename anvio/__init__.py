@@ -2200,16 +2200,14 @@ D = {
             'metavar': 'FILENAME_PREFIX',
             'type': str,
             'help': "If you want the raw metabolism estimation data dictionary in JSON-format, provide a filename prefix to this argument."
-                    "The program will then output one or more files with the .json extension containing this data. "
-                    "P.S. The only time you will see multiple output JSON files is when you run this program on multiple bins using --store-json-before-estimation"
-                    ", in which case the bin names will become part of each file name."}
+                    "The program will then output a file with the .json extension containing this data."}
                 ),
-    'store-json-before-estimation': (
-            ['--store-json-before-estimation'],
+    'store-json-without-estimation': (
+            ['--store-json-without-estimation'],
             {'default': False,
             'action': 'store_true',
-            'help': "This flag is used to control when the metabolism data dictionary is stored. When provided alongside the "
-                    "--get-raw-data-as-json flag, the JSON file will be created before metabolism estimation is run, and "
+            'help': "This flag is used to control what is stored in the JSON-formatted metabolism data dictionary. When this flag is provided alongside the "
+                    "--get-raw-data-as-json flag, the JSON file will be created without running metabolism estimation, and "
                     "that file will consequently include only information about KOfam hits and gene calls. The idea is that you can "
                     "then modify this file as you like and re-run this program using the flag --estimate-from-json."}
                 ),
