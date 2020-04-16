@@ -743,7 +743,7 @@ class KeggMetabolismEstimator(KeggContext):
         self.write_dict_to_json = True if A('get_raw_data_as_json') else False
         self.json_output_file_path = A('get_raw_data_as_json')
         self.store_json_before_estimation = True if A('store_json_before_estimation') else False
-        self.estimate_from_json = True if A('estimate_from_json') else False
+        self.estimate_from_json = A('estimate_from_json') or None
 
         self.bin_ids_to_process = None
         if self.bin_id and self.bin_ids_file:
@@ -757,6 +757,10 @@ class KeggMetabolismEstimator(KeggContext):
 
         if self.profile_db_path and not self.collection_name:
             raise ConfigError("If you provide a profiles DB, you should also provide a collection name.")
+
+        if self.store_json_before_estimation and not self.json_output_file_path:
+            raise ConfigError("Whoops. You seem to want to store the metabolism dictionary in a JSON file, but you haven't provided the name of that file. "
+                                "Please use the --get-raw-data-as-json flag to do so.")
 
 
         # init the base class
