@@ -188,10 +188,10 @@ class BottleApplication(Bottle):
     def run_application(self, ip, port):
         # check for the wsgi module bottle will use.
         if not importlib.util.find_spec(self._wsgi_for_bottle):
-            raise ConfigError("Anvi'o uses `%{wsgi}s` as a web server gateway interface, and you don't seem to have it. Which "
+            raise ConfigError("Anvi'o uses `%(wsgi)s` as a web server gateway interface, and you don't seem to have it. Which "
                               "means bad news. But the good news is that you can actually install it very easily. If you are "
-                              "in a conda environment, try 'conda install %{wsgi}s'. If you are in a Python environment "
-                              "try 'pip install %{wsgi}s'. If you are not sure, start with conda, if it doesn't work, try pip." \
+                              "in a conda environment, try 'conda install %(wsgi)s'. If you are in a Python environment "
+                              "try 'pip install %(wsgi)s'. If you are not sure, start with conda, if it doesn't work, try pip." \
                                     % {'wsgi': self._wsgi_for_bottle})
 
         try:
