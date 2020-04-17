@@ -1255,36 +1255,25 @@ class KeggMetabolismEstimator(KeggContext):
             cw_ws_redundancy, copy_completeness_distribution = self.compute_copywise_redundancy_for_path(num_hits_per_kofam, aggregation_measure="weighted_sum")
             meta_dict_for_bin[mnum]["copywise_weighted-sum"].append(cw_ws_redundancy)
 
-
         return
 
 
-    def estimate_for_list_of_splits(self, ko_hits_in_splits, splits=None, bin_name=None):
-        """This is the atomic metabolism estimator function, which builds a metabolism completeness dictionary for an arbitrary list of splits.
+    def estimate_for_list_of_splits(self, metabolism_dict_for_list_of_splits, bin_name=None):
+        """This is the atomic metabolism estimator function, which builds up the metabolism completeness dictionary for an arbitrary list of splits.
 
         For example, the list of splits may represent a bin, a single isolate genome, or an entire metagenome.
-        The metabolism completeness dictionary is first initialized to contain the KOs that are present in the genome for each KEGG module.
-        It is later updated with the individual steps and completion estimates for each module.
+
+        The function takes in a metabolism completeness dictionary already initialized with the relevant KOfam hits per module, and updates it
+        with the individual steps and completion estimates for each module.
 
         PARAMETERS
         ==========
-        ko_hits_in_splits       list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
-        splits                  a list of splits identifiers
-        bin_name                the name of the bin/genome/metagenome that we are working with
-
-        RETURNS
-        =======
         metabolism_dict_for_list_of_splits      the metabolism completeness dictionary of dictionaries for this list of splits. It contains
                                                 one dictionary of module steps and completion information for each module (keyed by module number),
                                                 as well as one key num_complete_modules that tracks the number of complete modules found in these splits.
                                                 Calling functions should assign this dictionary to a metabolism superdict with the bin name as a key.
+        bin_name                                the name of the bin/genome/metagenome that we are working with
         """
-
-        metabolism_dict_for_list_of_splits = self.mark_kos_present_for_list_of_splits(ko_hits_in_splits, split_list=splits,
-                                                                                                    bin_name=bin_name)
-
-        if self.store_json_without_estimation:
-            return metabolism_dict_for_list_of_splits
 
         metabolism_dict_for_list_of_splits["num_complete_modules"] = 0
 
@@ -1372,8 +1361,12 @@ class KeggMetabolismEstimator(KeggContext):
         genome_metabolism_superdict = {}
         # since all hits belong to one genome, we can take the UNIQUE splits from all the hits
         splits_in_genome = list(set([tpl[2] for tpl in kofam_gene_split_contig]))
-
-        genome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(kofam_gene_split_contig, splits=splits_in_genome, bin_name=self.contigs_db_project_name)
+        metabolism_dict_for_genome = self.mark_kos_present_for_list_of_splits(kofam_gene_split_contig, split_list=splits_in_genome,
+                                                                                                    bin_name=self.contigs_db_project_name)
+        if not self.store_json_without_estimation:
+            genome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(metabolism_dict_for_genome, bin_name=self.contigs_db_project_name)
+        else:
+            genome_metabolism_superdict[self.contigs_db_project_name] = metabolism_dict_for_genome
 
         return genome_metabolism_superdict
 
@@ -1402,7 +1395,12 @@ class KeggMetabolismEstimator(KeggContext):
         for bin_name in bin_name_to_split_names_dict:
             splits_in_bin = bin_name_to_split_names_dict[bin_name]
             ko_in_bin = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_bin]
-            bins_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(ko_in_bin, splits=splits_in_bin, bin_name=bin_name)
+            metabolism_dict_for_bin = self.mark_kos_present_for_list_of_splits(ko_in_bin, split_list=splits_in_bin, bin_name=bin_name)
+
+            if not self.store_json_without_estimation:
+                bins_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(metabolism_dict_for_bin, bin_name=bin_name)
+            else:
+                bins_metabolism_superdict[bin_name] = metabolism_dict_for_bin
 
         return bins_metabolism_superdict
 
@@ -1430,8 +1428,12 @@ class KeggMetabolismEstimator(KeggContext):
         metagenome_metabolism_superdict = {}
         # since we consider all the hits in the metagenome collectively, we can take the UNIQUE splits from all the hits
         splits_in_metagenome = list(set([tpl[2] for tpl in kofam_gene_split_contig]))
-
-        metagenome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(kofam_gene_split_contig, splits=splits_in_metagenome, bin_name=self.contigs_db_project_name)
+        metabolism_dict_for_metagenome = self.mark_kos_present_for_list_of_splits(kofam_gene_split_contig, split_list=splits_in_metagenome,
+                                                                                                    bin_name=self.contigs_db_project_name)
+        if not self.store_json_without_estimation:
+            metagenome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(metabolism_dict_for_metagenome, bin_name=self.contigs_db_project_name)
+        else:
+            metagenome_metabolism_superdict[self.contigs_db_project_name] = metabolism_dict_for_metagenome
 
         return metagenome_metabolism_superdict
 
