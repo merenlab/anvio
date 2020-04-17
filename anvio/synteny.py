@@ -151,7 +151,7 @@ class NGram(object):
             if len(contigs_without_genes):
                 self.run.warning("Just so you know, %d contigs in %s had no genes. Here are the the first 5: %s" % \
                                   (len(contigs_without_genes), contigs_db_name, ''.join([str(x) for x in contigs_without_genes[:5]])))
-                
+
         #FIXME: Need a sanity check to test that a pan_db exists at the path given and is associated with the external genomes file
         self.collections = ccollections.Collections()
         self.collections.populate_collections_dict(self.pan_db_path)
@@ -168,6 +168,10 @@ class NGram(object):
         gene_cluster_frequencies_dataframe = pd.DataFrame.from_dict(
                                                     self.pan_db.db.get_table_as_dict('gene_clusters'),
                                                     orient='index')
+
+        self.run.warning("Anvi'o is now looking for Ngrams in your contigs!", lc='green')
+
+        self.run.info_single("What do we say to loci that appear to have no coherent synteny patterns...? Not today! ⚔️", nl_before=1, nl_after=1)
 
         genes_and_functions_list = []
         for contigs_db_name in self.genomes.external_genomes_dict:
