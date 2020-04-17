@@ -1444,7 +1444,8 @@ class KeggMetabolismEstimator(KeggContext):
         self.run.info("JSON input file", self.estimate_from_json)
 
         filesnpaths.is_file_json_formatted(self.estimate_from_json)
-        kegg_metabolism_superdict = json.load(open(self.estimate_from_json))
+        kegg_metabolism_superdict = json.load(open(self.estimate_from_json), parse_int=int)
+        new_kegg_metabolism_superdict = {}
 
         expected_keys_for_module = {"gene_caller_ids", "kofam_hits", "genes_to_contigs", "contigs_to_genes"}
         bins_found = []
@@ -1472,6 +1473,9 @@ class KeggMetabolismEstimator(KeggContext):
                 mod_dict['gene_caller_ids'] = set(mod_dict['gene_caller_ids'])
                 for contig, gene_list in mod_dict['contigs_to_genes'].items():
                     mod_dict['contigs_to_genes'][contig] = set(gene_list)
+                mod_dict['genes_to_contigs'] = {int(g):c for g,c in mod_dict['genes_to_contigs'].items()}
+
+            new_kegg_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(meta_dict_for_bin, bin_name=bin_name)
 
 
         if not self.quiet and additional_keys:
@@ -1479,6 +1483,7 @@ class KeggMetabolismEstimator(KeggContext):
                              "(no harm was done by including them): %s" % (additional_keys))
 
         self.run.info("Bins/genomes/metagenomes found", ", ".join(bins_found))
+        return new_kegg_metabolism_superdict
 
 
     def estimate_metabolism(self):
@@ -1492,7 +1497,7 @@ class KeggMetabolismEstimator(KeggContext):
         kegg_metabolism_superdict = {}
 
         if self.estimate_from_json:
-            self.estimate_metabolism_from_json_data()
+            kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
         else:
 
             kofam_hits_info = self.init_hits_and_splits()
