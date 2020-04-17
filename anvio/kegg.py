@@ -1441,6 +1441,40 @@ class KeggMetabolismEstimator(KeggContext):
 
         self.run.info("JSON input file", self.estimate_from_json)
 
+        filesnpaths.is_file_json_formatted(self.estimate_from_json)
+        kegg_metabolism_superdict = json.load(open(self.estimate_from_json))
+
+        expected_keys_for_module = {"gene_caller_ids", "kofam_hits", "genes_to_contigs", "contigs_to_genes"}
+        bins_found = []
+        additional_keys = set([])
+
+        for bin_name, meta_dict_for_bin in kegg_metabolism_superdict.items():
+            bins_found.append(bin_name)
+            for mod, mod_dict in meta_dict_for_bin.items():
+                if mod == "num_complete_modules":
+                    self.run.warning("Your JSON file appears to have been generated from data that already contains metabolic module completeness information. "
+                                      "We say this because the key 'num_complete_modules' was found. This isn't a problem; however you should know that anvi'o "
+                                      "won't take any of the existing estimation information into account. The only module-level keys that will be used from this file "
+                                      "are: %s" % (expected_keys_for_module))
+                    continue
+                # verify that dict contains the necessary keys for estimation
+                if not expected_keys_for_module.issubset(set(mod_dict.keys())):
+                    missing_keys = expected_keys_for_module.difference(set(mod_dict.keys()))
+                    raise ConfigError("Your JSON file is incorrectly formatted for metabolism estimation. We expect the following keys: %s. "
+                                      "However, we didn't find some of them for module %s in %s. Here are the missing keys: %s"
+                                      % (expected_keys_for_module, mod, bin_name, missing_keys))
+
+                additional_keys = additional_keys.union(set(mod_dict.keys()).difference(expected_keys_for_module))
+
+        if not self.quiet and additional_keys:
+            self.run.warning("Just to let you know, we found the following module-level keys in your JSON file that were totally ignored during metabolism estimation "
+                             "(no harm was done by including them): %s" % (additional_keys))
+
+
+                # convert lists back to sets
+
+        self.run.info("Bins/genomes/metagenomes found", ", ".join(bins_found))
+
 
     def estimate_metabolism(self):
         """This is the driver function for estimating metabolism.
