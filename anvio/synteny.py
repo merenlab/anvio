@@ -150,6 +150,7 @@ class NGram(object):
             if len(contigs_without_genes):
                 self.run.warning("Just so you know, %d contigs in %s had no genes. Here are the the first 5: %s" % \
                                   (len(contigs_without_genes), contigs_db_name, ''.join([str(x) for x in contigs_without_genes[:5]])))
+        #FIXME: Need a sanity check to test that a PanDB exists at the path given and is associated with the external genomes files
 
 
     def populate_genes(self):
@@ -189,8 +190,16 @@ class NGram(object):
                 # genes_and_functions_list has multiple contigs gene info in it, so we filter one contig at a time
                 # (contig_ID = name of contig in genes_and_functions_list)
                 for gene_callers_id, gene_function_accession, contig_ID in genes_and_functions_list:
+
+                    #FIXME: In rare cases, some gene-caller-ids do not have associated gene clusters and I am not sure why .
+                    # This error handling is a quick hack to keep the analysis going but is not a long term solution
+                    try: 
+                        gene_cluster_id = gene_callers_id_to_gene_cluster_id_dict[gene_callers_id]
+                    except KeyError:
+                        self.run.warning("Just to let you know, the gene associated with gene-callers-id %d from contigsDB %s "
+                                     "was not found to have a gene-cluster." % (gene_callers_id, contigs_db_name))
                     # grab gene-cluster-id
-                    gene_cluster_id = gene_callers_id_to_gene_cluster_id_dict[gene_callers_id]
+                    # gene_cluster_id = gene_callers_id_to_gene_cluster_id_dict[gene_callers_id]
                     if contig_name == contig_ID:
                         contig_function_list.append([gene_callers_id,gene_function_accession])
                         contig_gene_cluster_list.append([gene_callers_id,gene_cluster_id])
