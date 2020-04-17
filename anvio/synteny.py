@@ -71,9 +71,9 @@ class NGram(object):
         self.output_file = A('output_file')
         self.genomes = genomedescriptions.GenomeDescriptions(self.args)
         self.genomes.load_genomes_descriptions(init=False)
-        self.panDB = A('pan_db')
+        self.pan_db_path = A('pan_db')
 
-        self.pan_db = PanDatabase(self.panDB)
+        self.pan_db = PanDatabase(self.pan_db_path)
         
         # This houses the ngrams' data
         self.ngram_attributes_list = []
@@ -151,9 +151,10 @@ class NGram(object):
             if len(contigs_without_genes):
                 self.run.warning("Just so you know, %d contigs in %s had no genes. Here are the the first 5: %s" % \
                                   (len(contigs_without_genes), contigs_db_name, ''.join([str(x) for x in contigs_without_genes[:5]])))
-        #FIXME: Need a sanity check to test that a PanDB exists at the path given and is associated with the external genomes file
+                
+        #FIXME: Need a sanity check to test that a pan_db exists at the path given and is associated with the external genomes file
         self.collections = ccollections.Collections()
-        self.collections.populate_collections_dict(self.panDB)
+        self.collections.populate_collections_dict(self.pan_db_path)
 
 
     def populate_genes(self):
