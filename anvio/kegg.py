@@ -1466,12 +1466,15 @@ class KeggMetabolismEstimator(KeggContext):
 
                 additional_keys = additional_keys.union(set(mod_dict.keys()).difference(expected_keys_for_module))
 
+                # convert gene_caller_ids and contigs_to_genes lists to sets
+                mod_dict['gene_caller_ids'] = set(mod_dict['gene_caller_ids'])
+                for contig, gene_list in mod_dict['contigs_to_genes'].items():
+                    mod_dict['contigs_to_genes'][contig] = set(gene_list)
+
+
         if not self.quiet and additional_keys:
             self.run.warning("Just to let you know, we found the following module-level keys in your JSON file that were totally ignored during metabolism estimation "
                              "(no harm was done by including them): %s" % (additional_keys))
-
-
-                # convert lists back to sets
 
         self.run.info("Bins/genomes/metagenomes found", ", ".join(bins_found))
 
