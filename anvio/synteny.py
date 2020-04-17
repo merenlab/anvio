@@ -18,6 +18,7 @@ import anvio.utils as utils
 import anvio.tables as t
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+import anvio.ccollections as ccollections
 import anvio.genomedescriptions as genomedescriptions
 
 from anvio.dbops import PanDatabase
@@ -73,7 +74,7 @@ class NGram(object):
         self.panDB = A('pan_db')
 
         self.pan_db = PanDatabase(self.panDB)
-
+        
         # This houses the ngrams' data
         self.ngram_attributes_list = []
 
@@ -150,7 +151,9 @@ class NGram(object):
             if len(contigs_without_genes):
                 self.run.warning("Just so you know, %d contigs in %s had no genes. Here are the the first 5: %s" % \
                                   (len(contigs_without_genes), contigs_db_name, ''.join([str(x) for x in contigs_without_genes[:5]])))
-        #FIXME: Need a sanity check to test that a PanDB exists at the path given and is associated with the external genomes files
+        #FIXME: Need a sanity check to test that a PanDB exists at the path given and is associated with the external genomes file
+        self.collections = ccollections.Collections()
+        self.collections.populate_collections_dict(self.panDB)
 
 
     def populate_genes(self):
