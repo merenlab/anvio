@@ -38,12 +38,14 @@ pp = terminal.pretty_print
 
 
 class TablesForHMMHits(Table):
-    def __init__(self, db_path, num_threads_to_use=1, run=run, progress=progress, initializing_for_deletion=False, just_do_it=False):
+    def __init__(self, db_path, num_threads_to_use=1, run=run, progress=progress, initializing_for_deletion=False, just_do_it=False, hmm_program_to_use='hmmscan'):
         self.num_threads_to_use = num_threads_to_use
         self.db_path = db_path
         self.just_do_it = just_do_it
+        self.hmm_program = hmm_program_to_use or 'hmmscan'
 
         utils.is_contigs_db(self.db_path)
+        filesnpaths.is_program_exists(self.hmm_program)
 
         self.contigs_db_hash = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path)).get_meta_value('contigs_db_hash')
 
@@ -175,7 +177,7 @@ class TablesForHMMHits(Table):
                                                            target_files_dict['%s:CONTIG' % alphabet],
                                                            rna_alphabet=True if alphabet=='RNA' else False)
 
-        commander = HMMer(target_files_dict, num_threads_to_use=self.num_threads_to_use)
+        commander = HMMer(target_files_dict, num_threads_to_use=self.num_threads_to_use, program_to_use=self.hmm_program)
 
         for source in sources:
             alphabet, context = utils.anvio_hmm_target_term_to_alphabet_and_context(sources[source]['target'])
@@ -200,7 +202,7 @@ class TablesForHMMHits(Table):
             if not hmm_scan_hits_txt:
                 search_results_dict = {}
             else:
-                parser = parser_modules['search']['hmmscan'](hmm_scan_hits_txt, alphabet=alphabet, context=context)
+                parser = parser_modules['search']['hmmscan'](hmm_scan_hits_txt, alphabet=alphabet, context=context, program=self.hmm_program)
                 search_results_dict = parser.get_search_results()
 
             if not len(search_results_dict):
