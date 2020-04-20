@@ -16,7 +16,7 @@ __version__ = anvio.__version__
 __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
 __requires__ = ["contigs-db", "kofam-data", "kegg-modules-db", "kegg-functions",]
-#__provides__ = ["genome-metabolism", "genome-metabolism-txt",] #TODO: update when finished
+__provides__ = ["kegg-metabolism",] 
 __description__ = "Reconstructs metabolic pathways and estimates pathway completeness for a given set of contigs."
 
 
