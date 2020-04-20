@@ -166,12 +166,13 @@ class Pfam(object):
         self.progress = progress
         self.contigs_db_path = args.contigs_db
         self.num_threads = args.num_threads
+        self.hmm_program = args.hmmer_program or 'hmmsearch'
         self.pfam_data_dir = args.pfam_data_dir
 
         # load_catalog will populate this
         self.function_catalog = {}
 
-        filesnpaths.is_program_exists('hmmscan')
+        filesnpaths.is_program_exists(self.hmm_program)
         utils.is_contigs_db(self.contigs_db_path)
 
         if not self.pfam_data_dir:
@@ -273,7 +274,7 @@ class Pfam(object):
                                                                    report_aa_sequences=True)
 
         # run hmmscan
-        hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads)
+        hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
         hmm_hits_file = hmmer.run_hmmscan('Pfam', 'AA', 'GENE', None, None, len(self.function_catalog), hmm_file, None, '--cut_ga')
 
         if not hmm_hits_file:
@@ -286,7 +287,7 @@ class Pfam(object):
             return
 
         # parse hmmscan output
-        parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE')
+        parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
         search_results_dict = parser.get_search_results()
 
         # add functions to database
