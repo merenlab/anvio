@@ -102,7 +102,10 @@ class HMMer:
         self.run.info('Number of genes in HMM model', num_genes_in_model)
         self.run.info('Noise cutoff term(s)', noise_cutoff_terms)
         self.run.info('Number of CPUs will be used for search', self.num_threads_to_use)
-        self.run.info('HMMer program used for search', self.program_to_use)
+        if alphabet in ['DNA', 'RNA']:
+            self.run.info('HMMer program used for search', 'nhmmscan')
+        else:
+            self.run.info('HMMer program used for search', self.program_to_use)
 
         tmp_dir = os.path.dirname(self.target_files_dict[target][0])
         log_file_path = os.path.join(tmp_dir, '*_log')
