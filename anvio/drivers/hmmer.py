@@ -129,6 +129,10 @@ class HMMer:
                             "Anvi'o will use %s process with %s cores each instead. I hope thats okay for you. " %
                              (str(self.num_threads_to_use), str(num_parts), target, str(num_parts), cores_per_process))
 
+        if alphabet in ['DNA', 'RNA'] and self.program_to_use == 'hmmsearch':
+            self.run.warning("You requested to use the program `%s`, but because you are working with %s sequences Anvi'o will use `nhmmscan` instead. "
+                            "We hope that is alright." % (self.program_to_use, alphabet))
+
 
         for part_file in self.target_files_dict[target]:
             log_file = part_file + '_log'
