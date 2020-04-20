@@ -21,6 +21,8 @@ import getpass
 import argparse
 import requests
 import datetime
+import importlib
+
 from hashlib import md5
 from multiprocessing import Process
 from ete3 import Tree
@@ -64,6 +66,9 @@ class BottleApplication(Bottle):
     def __init__(self, interactive, mock_request=None, mock_response=None):
         super(BottleApplication, self).__init__()
         self.interactive = interactive
+
+        # WSGI for bottle to use
+        self._wsgi_for_bottle = "paste"
 
         if self.interactive:
             self.args = self.interactive.args
@@ -181,13 +186,24 @@ class BottleApplication(Bottle):
 
 
     def run_application(self, ip, port):
+        # check for the wsgi module bottle will use.
+        if not importlib.util.find_spec(self._wsgi_for_bottle):
+            raise ConfigError("Anvi'o uses `%(wsgi)s` as a web server gateway interface, and you don't seem to have it. Which "
+                              "means bad news. But the good news is that you can actually install it very easily. If you are "
+                              "in a conda environment, try 'conda install %(wsgi)s'. If you are in a Python environment "
+                              "try 'pip install %(wsgi)s'. If you are not sure, start with conda, if it doesn't work, try pip." \
+                                    % {'wsgi': self._wsgi_for_bottle})
+
         try:
-            server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': 'cherrypy'})
-            server_process.start()
+            with terminal.SuppressAllOutput():
+                server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': self._wsgi_for_bottle})
+                server_process.start()
+
+            url = "http://%s:%d" % (ip, port)
 
             if self.export_svg:
                 try:
-                    utils.run_selenium_and_export_svg("http://%s:%d/app/index.html" % (ip, port),
+                    utils.run_selenium_and_export_svg("/".join([url, "app/index.html"]),
                                                       self.args.export_svg,
                                                       browser_path=self.browser_path,
                                                       run=run)
@@ -203,19 +219,22 @@ class BottleApplication(Bottle):
                 # I have added sleep below to delay web browser little bit.
                 time.sleep(1.5)
 
-                utils.open_url_in_browser(url="http://%s:%d" % (ip, port),
-                                          browser_path=self.browser_path,
-                                          run=run)
+                utils.open_url_in_browser(url=url, browser_path=self.browser_path, run=run)
 
-                run.info_single("The server is now listening the port number '%d'. When you are finished, press CTRL+C to "
-                                "terminate the server. If you are using OSX and if the server terminates prematurely before "
-                                "you can see anything in your browser, try to run the same command by putting 'sudo ' at the "
-                                "beginning of it (you will be likely prompted to enter your password as this command will require "
-                                "super user rights to run)" % port, 'green', nl_before = 1, nl_after=1)
+                run.info_single("The server is up and running 🎉", mc='green', nl_before = 1)
+
+                run.warning("If you are using OSX and if the server terminates prematurely before you can see anything in your browser, "
+                            "try running the same command by putting 'sudo ' at the beginning of it (you will be prompted to enter your "
+                            "password if sudo requires super user credentials on your system). If your browser does not show up, try "
+                            "manually entering the URL shown below into the address bar of your favorite browser. *cough* CHROME *cough*.")
+
+            run.info('Server address', url, mc="green", nl_before=1, nl_after=1)
+
+            run.info_single("When you are ready, press CTRL+C once to terminate the server and go back to the command line.", nl_after=1)
 
             server_process.join()
         except KeyboardInterrupt:
-            run.warning('The server is being terminated.', header='Please wait...')
+            run.info_single("The server is being terminated...", mc="red", nl_before=1)
             server_process.terminate()
             sys.exit(0)
 
@@ -246,10 +265,10 @@ class BottleApplication(Bottle):
             index = 0
             for result in re.finditer(pattern, ret.body.read()):
                 pos = result.end(3)
-                suffix = b'?rand=' + self.random_hash(32).encode() 
+                suffix = b'?rand=' + self.random_hash(32).encode()
 
-                # read chunk from original file and write to buffer, 
-                # then store pos to index, next iteration we are going 
+                # read chunk from original file and write to buffer,
+                # then store pos to index, next iteration we are going
                 # to read from that position
                 ret.body.seek(index)
                 buff.write(ret.body.read(pos - index))
@@ -520,13 +539,13 @@ class BottleApplication(Bottle):
         if self.interactive.mode == 'inspect':
             if self.interactive.state_autoload:
                 state = json.loads(self.interactive.states_table.states[self.interactive.state_autoload]['content'])
-                layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]    
+                layers = [layer for layer in sorted(self.interactive.p_meta['samples']) if (layer not in state['layers'] or float(state['layers'][layer]['height']) > 0)]
             else:
                 layers = [layer for layer in sorted(self.interactive.p_meta['samples'])]
 
                 # anvi-inspect is called so there is no state stored in localstorage written by main anvio plot
                 # and there is no default state in the database, we are going to generate a mock state.
-                # only the keys we need is enough. 
+                # only the keys we need is enough.
                 state['layer-order'] = layers
                 state['layers'] = {}
                 for layer in layers:
@@ -1048,7 +1067,7 @@ class BottleApplication(Bottle):
             return json.dumps({'error': "You are in 'collection' mode, but your collection is empty. You are killing me."})
 
         if self.interactive.hmm_access is None:
-            return json.dumps({'error': "HMMs for single-copy core genes were not run for this contigs database. "})            
+            return json.dumps({'error': "HMMs for single-copy core genes were not run for this contigs database. "})
 
         hmm_sequences_dict = self.interactive.hmm_access.get_sequences_dict_for_hmm_hits_in_splits({bin_name: set(self.interactive.collection[bin_name])})
         gene_sequences = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set([gene_name]))
@@ -1301,7 +1320,7 @@ class BottleApplication(Bottle):
         options = json.loads(request.forms.get('options'))
         return self.interactive.store_variability(options)
 
-        
+
     def store_structure_as_pdb(self):
         options = json.loads(request.forms.get('options'))
         return self.interactive.store_structure_as_pdb(options)

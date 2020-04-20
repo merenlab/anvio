@@ -11,7 +11,6 @@ from collections import Counter
 
 import anvio
 import anvio.utils as utils
-import anvio.bamops as bamops
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
@@ -76,6 +75,8 @@ class ReportCodonFrequencies:
             for amino_acid in constants.AA_to_codons:
                 self.items.extend(constants.AA_to_codons[amino_acid])
 
+        self.item_name_conversion_dict = None
+
         self.process()
 
 
@@ -105,14 +106,19 @@ class ReportCodonFrequencies:
                 residue_frequencies[gene_callers_id] = Counter(dict([(r, round(residue_frequencies[gene_callers_id][r] * 100.0 / total, 3)) \
                                                                                     for r in residue_frequencies[gene_callers_id]]))
         elif self.merens_codon_normalization:
+            codons_used = set([])
             for gene_callers_id in residue_frequencies:
                 for amino_acid in constants.AA_to_codons:
                     codons_of_interest = constants.AA_to_codons[amino_acid]
                     codons_of_interest_total = sum([residue_frequencies[gene_callers_id][r] for r in constants.AA_to_codons[amino_acid]])
 
                     for codon in codons_of_interest:
+                        codons_used.add(codon)
                         if codons_of_interest_total:
                             residue_frequencies[gene_callers_id][codon] = round(residue_frequencies[gene_callers_id][codon] * 100.0 / codons_of_interest_total, 3)
+
+            self.item_name_conversion_dict = dict([(codon, '%s-%s' % (constants.codon_to_AA[codon], codon)) for codon in codons_used])
+
 
         if len(partial_genes_skipped):
             self.run.warning("%d of %d genes were skipped and will not be in the final report since they were "
@@ -121,7 +127,11 @@ class ReportCodonFrequencies:
         if not len(residue_frequencies):
             raise ConfigError("Anvi'o has no residue frequencies to work with :(")
 
-        utils.store_dict_as_TAB_delimited_file(residue_frequencies, self.output_file_path, headers=['gene_callers_id'] + self.items)
+        utils.store_dict_as_TAB_delimited_file(residue_frequencies,
+                                               self.output_file_path,
+                                               headers=['gene_callers_id'] + self.items,
+                                               header_item_conversion_dict=self.item_name_conversion_dict)
+
         self.run.info('Output file', self.output_file_path)
 
 

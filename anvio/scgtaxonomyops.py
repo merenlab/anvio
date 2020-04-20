@@ -1625,7 +1625,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck):
         scg_name = list(scgs_dict.values())[0]['gene_name']
 
         # the might for loop to go through all taxonomic levels one by one
-        for level in constants.ctx.levels_of_taxonomy[::-1]:
+        for level in self.ctx.levels_of_taxonomy[::-1]:
             # setting the data group early on:
             data_group = '%s_%s' % (scg_name, level[2:])
             self.progress.update('Working on %s-level data' % level)
@@ -1638,17 +1638,17 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck):
                     # the most highly resolved level of taxonomy that is not null for this
                     # particular scg taxonomy
                     i = 0
-                    for i in range(constants.ctx.levels_of_taxonomy.index(level), 0, -1):
-                        if scgs_dict[gene_callers_id][constants.ctx.levels_of_taxonomy[i]]:
+                    for i in range(self.ctx.levels_of_taxonomy.index(level), 0, -1):
+                        if scgs_dict[gene_callers_id][self.ctx.levels_of_taxonomy[i]]:
                             break
 
                     # just some abbreviations
-                    l = constants.ctx.levels_of_taxonomy[i][2:]
-                    m = scgs_dict[gene_callers_id][constants.ctx.levels_of_taxonomy[i]]
+                    l = self.ctx.levels_of_taxonomy[i][2:]
+                    m = scgs_dict[gene_callers_id][self.ctx.levels_of_taxonomy[i]]
 
                     # if the best level we found in the previous step is matching to the level
                     # set by the main for loop, we're good to go with that name:
-                    if level == constants.ctx.levels_of_taxonomy[i]:
+                    if level == self.ctx.levels_of_taxonomy[i]:
                         taxon_name = m
                     # otherwise we will try to replace that None name with something that is more
                     # sensible:
