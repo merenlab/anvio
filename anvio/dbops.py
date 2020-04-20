@@ -106,8 +106,6 @@ class ContigsSuperclass(object):
         self.split_name_to_genes_in_splits_entry_ids = {} # for fast access to all self.genes_in_splits entries for a given split
         self.gene_callers_id_to_split_name_dict = {} # for fast access to a split name that contains a given gene callers id
 
-        self.nt_positions_info = None
-
         self.gene_function_call_sources = []
         self.gene_function_calls_dict = {}
         self.gene_function_calls_initiated = False
@@ -828,10 +826,6 @@ class ContigsSuperclass(object):
         # First, we populate the first 3 columns of data, 'in_complete_gene_call',
         # 'in_complete_gene_call', and 'base_pos_in_codon'. This is done straightforwardly by
         # accessing self.nt_positions_info
-
-        if not self.nt_positions_info:
-            raise ConfigError("get_gene_info_for_each_position :: I am asked to return stuff, but "
-                              "self.nt_position_info is None!")
 
         if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
             # In these cases everything gets 0
@@ -2404,7 +2398,7 @@ class ProfileSuperclass(object):
         if super() and 'layers_additional_data_dict' in dir(self) and 'layers_additional_data_keys' in dir(self):
             pass
         else:
-            self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all()
+            self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args, p=self.progress).get_all()
 
         self.auxiliary_profile_data_available = None
         self.auxiliary_data_path = None
@@ -2415,8 +2409,6 @@ class ProfileSuperclass(object):
         self.item_orders = {}
         self.views = {}
         self.collection_profile = {}
-
-
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.profile_db_path = A('profile_db')
@@ -2518,6 +2510,8 @@ class ProfileSuperclass(object):
                               "flaw, but THANKS for reminding anyway... The best way to address this is to make sure all anvi'o "
                               "profile and pan databases maintain a table with all item names they are supposed to be working with.")
 
+        self.progress.end()
+
         # learn the number of mapped reads and set it in a nice variable VERY CAREFULLY (blank profiles don't have it,
         # and some ancient anvi'o databases may be lacking it).
         if self.p_meta['blank']:
@@ -2531,7 +2525,7 @@ class ProfileSuperclass(object):
                     self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: total_reads_mapped[i] for i in range(0, len(self.p_meta['samples']))}
             else:
                 sample_name = self.p_meta['samples'][0]
-                keys, data = TableForLayerAdditionalData(self.args).get()
+                keys, data = TableForLayerAdditionalData(self.args, p=self.progress).get()
                 if 'total_reads_mapped' not in data[sample_name]:
                     self.num_mapped_reads_per_sample = None
                 else:
@@ -2544,6 +2538,7 @@ class ProfileSuperclass(object):
         if not self.item_orders:
             self.p_meta['default_item_order'] = None
 
+        self.progress.new('Initializing the profile database superclass')
         self.progress.update('Accessing the auxiliary data file')
         self.auxiliary_data_path = get_auxiliary_data_path_for_profile_db(self.profile_db_path)
         if not os.path.exists(self.auxiliary_data_path):
@@ -2981,6 +2976,16 @@ class ProfileSuperclass(object):
         return output
 
 
+    def get_blank_variability_dict(self):
+        """Returns an empty variability dictionary to be filled elsewhere"""
+        d = {}
+
+        for sample_name in self.p_meta['samples']:
+            d[sample_name] = {'variability': {0: {}, 1: {}, 2: {}, 3: {}}, 'competing_nucleotides': {}}
+
+        return d
+
+
     def get_variability_information_for_split(self, split_name, skip_outlier_SNVs=False, return_raw_results=False):
         if not split_name in self.split_names:
             raise ConfigError("get_variability_information_for_split: The split name '%s' does not seem to be "
@@ -2998,10 +3003,7 @@ class ProfileSuperclass(object):
             return split_variability_information
 
         # they want pretty stuff...
-        d = {}
-
-        for sample_name in self.p_meta['samples']:
-            d[sample_name] = {'variability': {0: {}, 1: {}, 2: {}, 3: {}}, 'competing_nucleotides': {}}
+        d = self.get_blank_variability_dict()
 
         for e in split_variability_information:
             frequencies = utils.get_variabile_item_frequencies(e, engine='NT')
@@ -3285,6 +3287,7 @@ class ProfileDatabase:
         self.db.create_table(t.layer_orders_table_name, t.layer_orders_table_structure, t.layer_orders_table_types)
         self.db.create_table(t.variable_nts_table_name, t.variable_nts_table_structure, t.variable_nts_table_types)
         self.db.create_table(t.variable_codons_table_name, t.variable_codons_table_structure, t.variable_codons_table_types)
+        self.db.create_table(t.indels_table_name, t.indels_table_structure, t.indels_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
@@ -3665,25 +3668,29 @@ class ContigsDatabase:
         split_length = A('split_length')
         kmer_size = A('kmer_size')
         skip_gene_calling = A('skip_gene_calling')
-        external_gene_calls = A('external_gene_calls')
+        external_gene_calls_file_path = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
         ignore_internal_stop_codons = A('ignore_internal_stop_codons')
         prodigal_translation_table = A('prodigal_translation_table')
 
-        if external_gene_calls:
-            filesnpaths.is_file_exists(external_gene_calls)
+        if external_gene_calls_file_path:
+            filesnpaths.is_file_tab_delimited(external_gene_calls_file_path)
 
-        if external_gene_calls and skip_gene_calling:
+        if external_gene_calls_file_path and skip_gene_calling:
             raise ConfigError("You provided a file for external gene calls, and used requested gene calling to be "
                                "skipped. Please make up your mind.")
 
-        if (external_gene_calls or skip_gene_calling) and prodigal_translation_table:
+        if (external_gene_calls_file_path or skip_gene_calling) and prodigal_translation_table:
             raise ConfigError("You asked anvi'o to %s, yet you set a specific translation table for prodigal. These "
                               "parameters do not make much sense and anvi'o is kindly asking you to make up your "
                               "mind." % ('skip gene calling' if skip_gene_calling else 'use external gene calls'))
 
         filesnpaths.is_file_fasta_formatted(contigs_fasta)
         contigs_fasta = os.path.abspath(contigs_fasta)
+
+        # let's see if the user has provided extenral gene calls file with amino
+        # acid sequences:
+        external_gene_calls_include_amino_acid_sequences = external_gene_calls_file_path and 'aa_sequence' in utils.get_columns_of_TAB_delim_file(external_gene_calls_file_path)
 
         # let the user see what's up
         self.run.info('Input FASTA file', contigs_fasta)
@@ -3802,13 +3809,6 @@ class ContigsDatabase:
         # set split length variable in the meta table
         self.db.set_meta_value('split_length', split_length)
 
-        self.run.info('Split Length', pp(split_length))
-        self.run.info('K-mer size', kmer_size)
-        self.run.info('Skip gene calling?', skip_gene_calling)
-        self.run.info('External gene calls provided?', external_gene_calls)
-        self.run.info('Ignoring internal stop codons?', ignore_internal_stop_codons)
-        self.run.info('Splitting pays attention to gene calls?', (not skip_mindful_splitting))
-
         # first things first: do the gene calling on contigs. this part is important. we are doing the
         # gene calling first. so we understand wher genes start and end. this information will guide the
         # arrangement of the breakpoint of splits
@@ -3821,9 +3821,9 @@ class ContigsDatabase:
             gene_calls_tables = TablesForGeneCalls(self.db_path, contigs_fasta, args=args, run=self.run, progress=self.progress, debug=anvio.DEBUG)
 
             # if the user provided a file for external gene calls, use it. otherwise do the gene calling yourself.
-            if external_gene_calls:
+            if external_gene_calls_file_path:
                 gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(
-                    input_file_path=external_gene_calls,
+                    input_file_path=external_gene_calls_file_path,
                     ignore_internal_stop_codons=ignore_internal_stop_codons,
                 )
             else:
@@ -3841,6 +3841,17 @@ class ContigsDatabase:
 
                 contig_name_to_gene_start_stops[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
 
+        # print some information for the user
+        self.run.info('Split Length', pp(split_length))
+        self.run.info('K-mer size', kmer_size)
+        self.run.info('Skip gene calling?', skip_gene_calling)
+        self.run.info('External gene calls provided?', True if external_gene_calls_file_path else False, mc='green')
+
+        if external_gene_calls_file_path:
+            self.run.info('External gene calls file have AA sequences?', external_gene_calls_include_amino_acid_sequences, mc='green')
+
+        self.run.info('Ignoring internal stop codons?', ignore_internal_stop_codons)
+        self.run.info('Splitting pays attention to gene calls?', (not skip_mindful_splitting))
 
         # here we will process each item in the contigs fasta file.
         fasta = u.SequenceSource(contigs_fasta)
@@ -3918,6 +3929,13 @@ class ContigsDatabase:
         self.db.set_meta_value('gene_level_taxonomy_source', None)
         self.db.set_meta_value('gene_function_sources', None)
         self.db.set_meta_value('genes_are_called', (not skip_gene_calling))
+
+        # FIXME: these need to be included in the self table at some point (and of course
+        # after that we should increase the contigs db version, and include these variables
+        # in ContigsDatabase::init):
+        #self.db.set_meta_value('user_provided_external_gene_calls', True if external_gene_calls_file_path else False)
+        #self.db.set_meta_value('user_provided_external_gene_amino_acid_seqs', external_gene_calls_include_amino_acid_sequences)
+
         self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))
         self.db.set_meta_value('scg_taxonomy_was_run', False)
         self.db.set_meta_value('creation_date', self.get_date())
@@ -4379,6 +4397,13 @@ def get_default_item_order_name(default_item_order_requested, item_orders_dict, 
 
 
 def export_aa_sequences_from_contigs_db(contigs_db_path, output_file_path, gene_caller_ids=set([]), quiet=False):
+    if quiet:
+        run = terminal.Run(verbose=False)
+        progress = terminal.Progress(verbose=False)
+    else:
+        run = terminal.Run()
+        progress = terminal.Progress()
+
     filesnpaths.is_file_exists(contigs_db_path)
     filesnpaths.is_output_file_writable(output_file_path)
 

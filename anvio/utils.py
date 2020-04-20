@@ -13,13 +13,13 @@ import socket
 import shutil
 import smtplib
 import hashlib
+import Bio.PDB as PDB
 import textwrap
 import linecache
 import webbrowser
 import subprocess
 import tracemalloc
 import configparser
-import multiprocessing
 import urllib.request, urllib.error, urllib.parse
 
 import numpy as np
@@ -560,7 +560,7 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
     return output_path
 
 
-def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None):
+def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None):
     '''
         Store a dictionary of dictionaries as a TAB-delimited file.
         input:
@@ -586,7 +586,23 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
 
     f.write('%s\n' % '\t'.join(headers))
 
-    for k in sorted(d.keys()):
+    if not keys_order:
+        keys_order = sorted(d.keys())
+    else:
+        missing_keys = [k for k in keys_order if k not in d]
+        if len(missing_keys):
+            if anvio.DEBUG:
+                if len(missing_keys) > 10:
+                    raise ConfigError("Some keys (n=%d) are not in your dictionary :/ Here is the first ten "
+                                      " of them: %s" % (len(missing_keys), missing_keys[:10].__str__()))
+                else:
+                    raise ConfigError("Some keys are not in your dictionary :/ Here they are: %s" % missing_keys.__str__())
+            else:
+                raise ConfigError("Some keys are not in your dictionary :/ Use `--debug` to see where this "
+                                  "error is coming from the codebase with a list of example keys that are "
+                                  "missing.")
+
+    for k in keys_order:
         line = [str(k)]
         for header in headers[1:]:
             try:
@@ -682,8 +698,7 @@ def HTMLColorToRGB(colorstring, scaled=True):
         return (r, g, b)
 
 
-def transpose_tab_delimited_file(input_file_path, output_file_path):
-    filesnpaths.is_file_exists(input_file_path)
+def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after=False):
     filesnpaths.is_file_tab_delimited(input_file_path)
     filesnpaths.is_output_file_writable(output_file_path)
 
@@ -693,6 +708,9 @@ def transpose_tab_delimited_file(input_file_path, output_file_path):
     for entry in zip(*file_content):
         output_file.write('\t'.join(entry) + '\n')
     output_file.close()
+
+    if remove_after:
+        os.remove(input_file_path)
 
     return output_file_path
 
@@ -956,9 +974,10 @@ def apply_and_concat(df, fields, func, column_names, func_args=tuple([])):
 
 def get_required_packages_for_enrichment_test():
     ''' Return a dict with the packages as keys and installation instrucstions as values'''
-    packages = ["tidyverse", "magrittr", "qvalue", "optparse"]
+    packages = ["tidyverse", "stringi", "magrittr", "qvalue", "optparse"]
 
     installation_instructions = ["conda install -c r r-tidyverse",
+                                 "conda install -c r r-stringi",
                                  "conda install -c bioconda r-magrittr",
                                  "conda install -c bioconda bioconductor-qvalue",
                                  "conda install -c conda-forge r-optparse"]
@@ -1085,7 +1104,7 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
         return non_outliers
 
 
-def get_gene_caller_ids_from_args(gene_caller_ids, delimiter):
+def get_gene_caller_ids_from_args(gene_caller_ids, delimiter=','):
     gene_caller_ids_set = set([])
     if gene_caller_ids:
         if os.path.exists(gene_caller_ids):
@@ -1283,10 +1302,10 @@ def compare_times(calls, as_matrix=False, iterations_per_call=1):
         return dict(zip(names, averaged_call_times))
 
     matrix = []
-    for i, time in enumerate(call_times):
+    for i, _time in enumerate(call_times):
         row = []
 
-        for j, time in enumerate(call_times):
+        for j, _time in enumerate(call_times):
             row.append(averaged_call_times[j] - averaged_call_times[i] if i > j else 'NA')
 
         matrix.append(row)
@@ -1639,8 +1658,8 @@ def convert_SSM_to_single_accession(matrix_data):
     return new_data
 
 
-def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
-    """ Returns True if gene sequence is clean (amino acid or nucleotide), otherwise raises ConfigError
+def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False, must_start_with_met=True):
+    """Returns True if gene sequence is clean (amino acid or nucleotide), otherwise raises ConfigError
 
     Parameters
     ==========
@@ -1651,6 +1670,8 @@ def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
     can_end_with_stop : bool, False
         If True, the sequence can, but does not have to, end with * if amino_acid=True, or one of
         <TAG, TGA, TAA> if amino_acid=False.
+    must_start_with_met : bool, True
+        If True, the sequence must start with ATG if amino_acid=False or Met if amino_acid=True
 
     Returns
     =======
@@ -1684,7 +1705,7 @@ def is_gene_sequence_clean(seq, amino_acid=False, can_end_with_stop=False):
 
         seq = new_seq
 
-    if not seq[0] == start_char:
+    if not seq[0] == start_char and must_start_with_met:
         raise ConfigError(error_msg_template % "Should start with methionine but instead starts with %s" % seq[0])
 
     for i, element in enumerate(seq[:-1]):
@@ -2096,52 +2117,77 @@ def check_contig_names(contig_names, dont_raise=False):
 
 def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
     """genome_desc is an instance of GenomeDescriptions"""
+
     if genome_desc is None and fasta_txt is None:
         raise ConfigError("Anvi'o was given no internal genomes, no external genomes, and no fasta "
-                         "files. Although anvi'o can technically go ahead and create a temporary "
-                         "FASTA directory, what's the point if there's nothing to do?")
+                          "files. Although anvi'o can technically go ahead and create a temporary "
+                          "FASTA directory, what's the point if there's nothing to do?")
 
     temp_dir = filesnpaths.get_temp_directory_path()
     hash_to_name = {}
     name_to_path = {}
     genome_names = set([])
     file_paths = set([])
+
     if genome_desc is not None:
-        for genome_name in genome_desc.genomes:
-            genome_names.add(genome_name)
-            contigs_db_path = genome_desc.genomes[genome_name]['contigs_db_path']
-            hash_for_output_file = hashlib.sha256(genome_name.encode('utf-8')).hexdigest()
-            hash_to_name[hash_for_output_file] = genome_name
+        # first figure out internal genomes that are bound by the same collection name and
+        # profile db path
+        genome_subsets = {}
+        for entry in genome_desc.genomes.values():
+            if 'bin_id' in entry:
+                # if we are here, this entry represents an internal genome. we will add this genome
+                # to genome_subsets data structure to be processed later.
+                profile_and_collection_descriptor = '_'.join([entry['profile_db_path'], entry['collection_id']])
+                if profile_and_collection_descriptor in genome_subsets:
+                    genome_subsets[profile_and_collection_descriptor]['genome_name_bin_name_tpl'].add((entry['name'], entry['bin_id']),)
+                else:
+                    genome_subsets[profile_and_collection_descriptor] = {'genome_name_bin_name_tpl': set([(entry['name'], entry['bin_id'])]),
+                                                                         'profile_db_path': entry['profile_db_path'],
+                                                                         'contigs_db_path': entry['contigs_db_path'],
+                                                                         'collection_id': entry['collection_id']}
+            else:
+                # If we are here, this means this is an external genome, so we can basically take care of it here immediately.
+                genome_name = entry['name']
+                genome_names.add(genome_name)
+                contigs_db_path = genome_desc.genomes[genome_name]['contigs_db_path']
+                hash_for_output_file = hashlib.sha256(genome_name.encode('utf-8')).hexdigest()
+                hash_to_name[hash_for_output_file] = genome_name
 
-            path = os.path.join(temp_dir, hash_for_output_file + '.fa')
-            file_paths.add(path)
+                path = os.path.join(temp_dir, hash_for_output_file + '.fa')
+                file_paths.add(path)
 
-            name_to_path[genome_name] = path
+                name_to_path[genome_name] = path
 
-            if 'bin_id' in genome_desc.genomes[genome_name]:
-                # Internal genome
-                bin_id = genome_desc.genomes[genome_name]['bin_id']
-                collection_id = genome_desc.genomes[genome_name]['collection_id']
-                profile_db_path = genome_desc.genomes[genome_name]['profile_db_path']
+                export_sequences_from_contigs_db(contigs_db_path, path)
 
-                class Args: None
-                summary_args = Args()
+        # when we are here, all we have are interanl genomes as genome subsets.
+        for genome_subset in genome_subsets.values():
+            args = anvio.summarizer.ArgsTemplateForSummarizerClass()
+            args.contigs_db = genome_subset['contigs_db_path']
+            args.profile_db = genome_subset['profile_db_path']
+            args.collection_name = genome_subset['collection_id']
+            args.output_dir = filesnpaths.get_temp_directory_path(just_the_path=True)
+            args.quick_summary = True
 
-                summary_args.profile_db = profile_db_path
-                summary_args.contigs_db = contigs_db_path
-                summary_args.collection_name = collection_id
-                summary_args.quick = True
+            # note that we're initializing the summary class only for once for a given
+            # genome subset
+            summary = anvio.summarizer.ProfileSummarizer(args, r=Run(verbose=False))
+            summary.init()
 
-                summary = anvio.summarizer.ProfileSummarizer(summary_args, r=Run(verbose=False))
-                summary.init()
+            for genome_name, bin_name in genome_subset['genome_name_bin_name_tpl']:
+                genome_names.add(genome_name)
 
-                bin_summary = anvio.summarizer.Bin(summary, bin_id)
+                hash_for_output_file = hashlib.sha256(genome_name.encode('utf-8')).hexdigest()
+                hash_to_name[hash_for_output_file] = genome_name
+                path = os.path.join(temp_dir, hash_for_output_file + '.fa')
+                file_paths.add(path)
+                name_to_path[genome_name] = path
+
+                bin_summary = anvio.summarizer.Bin(summary, bin_name)
 
                 with open(path, 'w') as fasta:
                     fasta.write(bin_summary.get_bin_sequence())
-            else:
-                # External genome
-                export_sequences_from_contigs_db(contigs_db_path, path)
+
 
     if fasta_txt is not None:
         fastas = get_TAB_delimited_file_as_dictionary(fasta_txt, expected_fields=['name', 'path'], only_expected_fields=True)
@@ -2335,6 +2381,18 @@ def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_name
             seq_names_to_export = sorted(splits_info_dict.keys())
         else:
             seq_names_to_export = sorted(contig_sequences_dict.keys())
+    else:
+        if splits_mode:
+            pass
+        else:
+            missing_names = [contig_name for contig_name in seq_names_to_export if contig_name not in contig_sequences_dict]
+            if len(missing_names):
+                if len(missing_names) == len(seq_names_to_export):
+                    raise ConfigError("None of the sequence names you have requested were found in this contigs database :/ "
+                                      "This is kind of impressive.")
+                else:
+                    raise ConfigError("The sequence names you have requested include those that are not in the contigs "
+                                      "database, which correspond to %d of %d names you've sent." % (len(missing_names), len(seq_names_to_export)))
 
     for seq_name in seq_names_to_export:
         if splits_mode:
@@ -3265,7 +3323,7 @@ def get_remote_file_content(url, gzipped=False):
     remote_file = requests.get(url)
 
     if remote_file.status_code == 404:
-        raise ConfigError("Bad news. The remove file at '%s' was not found :(" % url)
+        raise ConfigError("Bad news. The remote file at '%s' was not found :(" % url)
 
     if gzipped:
         buf = BytesIO(remote_file.content)
@@ -3275,35 +3333,75 @@ def get_remote_file_content(url, gzipped=False):
     return remote_file.content.decode('utf-8')
 
 
-def download_protein_structures(protein_code_list, output_dir):
-    """
-    Downloads protein structures using Biopython. protein_code_list is a list
-    of 4-letter protein codes. Returns list of successful downloads
-    """
-    import Bio.PDB as PDB
+def download_protein_structure(protein_code, output_path=None, chain=None, raise_if_fail=True):
+    """Downloads protein structures using Biopython.
 
-    progress.new("Downloading proteins from PDB")
+    Parameters
+    ==========
+    protein_code : str
+        Each element is a 4-letter protein code
 
-    filesnpaths.gen_output_directory(output_dir)
+    output_path : str
+        Path where structure is written to. Temporary directory is chosen if None
+
+    chain : str, None
+        If None, all chains remain in the PDB file. If specified, only the chain with the chain ID
+        `chain` will be saved.
+
+    raise_if_fail : bool, True
+        If the file does not download, raise an error
+
+    Returns
+    =======
+    output : output_path
+        Returns the filepath of the written file. Returns None if download failed
+    """
+
+    output_dir = os.path.dirname(output_path)
+    if output_dir == '': output_dir = '.'
 
     pdb_list = PDB.PDBList()
 
-    # this rule may one day change
-    get_protein_path = lambda x: os.path.join(output_dir, "pdb" + x + ".ent")
+    try:
+        with SuppressAllOutput():
+            # We suppress output that looks like this:
+            # >>> WARNING: The default download format has changed from PDB to PDBx/mmCif
+            # >>> Downloading PDB structure '5w6y'...
+            temp_output_path = pdb_list.retrieve_pdb_file(protein_code, file_format='pdb', pdir=output_dir, overwrite=True)
+    except:
+        pass
 
-    for protein_code in protein_code_list:
-        progress.update("Downloading protein structure: {}".format(protein_code))
+    if not filesnpaths.is_file_exists(temp_output_path, dont_raise=True):
+        # The file wasn't downloaded
+        if raise_if_fail:
+            raise ConfigError("The protein %s could not be downloaded. Are you connected to internet?" % protein_code)
+        else:
+            return None
 
-        with SuppressAllOutput(): # FIXME SuppressAllOutput gives error
-            pdb_list.retrieve_pdb_file(protein_code, file_format="pdb", pdir=output_dir, overwrite=True)
+    if chain is not None:
+        class ChainSelect(PDB.Select):
+            def accept_chain(self, chain_obj):
+                x = 1 if chain_obj.get_id() == chain else 0
+                return 1 if chain_obj.get_id() == chain else 0
 
-        # raise warning if structure was not downloaded
-        if not filesnpaths.is_file_exists(get_protein_path(protein_code), dont_raise=True):
-            run.warning("The protein {} could not be downloaded. Are you connected to internet?".format(protein_code))
-            protein_code_list.remove(protein_code)
+        p = PDB.PDBParser()
+        try:
+            structure = p.get_structure(None, temp_output_path)
+        except:
+            # FIXME Something very rare happened on Biopython's end. We silently return the whole
+            # file instead of only the chain. Here is one such reason for failure we stumbled upon:
+            # https://github.com/biopython/biopython/issues/2819
+            shutil.move(temp_output_path, output_path)
+            return output_path
 
-    progress.end()
-    return protein_code_list
+        # Overwrite file with chain-only structure
+        io = PDB.PDBIO()
+        io.set_structure(structure)
+        io.save(temp_output_path, ChainSelect())
+
+    shutil.move(temp_output_path, output_path)
+
+    return output_path
 
 
 def get_hash_for_list(l):

@@ -20,20 +20,31 @@ run = anvio.terminal.Run()
 
 
 class HMMScan(Parser):
-    def __init__(self, hmm_scan_hits_txt, alphabet='AA', context='GENE'):
+    def __init__(self, hmm_scan_hits_txt, alphabet='AA', context='GENE', program='hmmscan'):
         self.alphabet = alphabet
         self.context = context
+        self.program = program
 
         self.run = run
 
         files_expected = {'hits': hmm_scan_hits_txt}
 
         if self.context == "GENE":
-            # see the HMMER user guide for details of the fields for AA sequence search, and DNA sequence search.
-            #                                                               --- full sequence ---- --- best 1 domain ---- --- domain number estimation ----
-            # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc description
-            col_names = ['gene_name', 'gene_hmm_id', 'gene_callers_id', 'f', 'e_value', 'bit_score', 'f', 'f', 'dom_bit_score', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f']
-            col_mapping = [str, str, int, str, float, float, str, str, float, str, str, str, str, str, str, str, str, str]
+            if self.program == 'hmmscan':
+                # see the HMMER user guide for details of the fields for AA sequence search, and DNA sequence search.
+                #                                                               --- full sequence ---- --- best 1 domain ---- --- domain number estimation ----
+                # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc description
+                col_names = ['gene_name', 'gene_hmm_id', 'gene_callers_id', 'f', 'e_value', 'bit_score', 'f', 'f', 'dom_bit_score', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f']
+                col_mapping = [str, str, int, str, float, float, str, str, float, str, str, str, str, str, str, str, str, str]
+            elif self.program == 'hmmsearch':
+                #                                                               --- full sequence ---- --- best 1 domain ---- --- domain number estimation ----
+                # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc description of target
+                #------------------- ---------- -------------------- ---------- --------- ------ ----- --------- ------ -----   --- --- --- --- --- --- --- --- ---------------------
+                col_names = ['gene_callers_id', 'f', 'gene_name', 'gene_hmm_id', 'e_value', 'bit_score', 'f', 'f', 'dom_bit_score', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f']
+                col_mapping = [int, str, str, str, float, float, str, str, float, str, str, str, str, str, str, str, str, str]
+            else:
+                raise ConfigError("The HMMScan Parser class is not sure if you know what you are doing. You told it that you wanted to "
+                                    "parse HMM hits from the program %s, but this class doesn't know how to handle those." % (self.program))
         elif self.context == "CONTIG" and (self.alphabet == "DNA" or self.alphabet == "RNA"):
             # 'hmm_target', 'hmm_acc', 'query_id', 'query_acc', 'hmm_from', 'hmm_to', 'alignment_from', 'alignment_to', 'envelope_from', 'envelope_to', 'seq_len', 'strand', 'e_value', 'score', 'bias', 'desc']
             col_names = ['gene_name', 'gene_hmm_id', 'contig_name', 'f', 'hmm_from', 'hmm_to', 'alignment_from', 'alignment_to', 'envelope_from', 'envelope_to', 'f', 'f', 'e_value', 'f', 'f', 'f']

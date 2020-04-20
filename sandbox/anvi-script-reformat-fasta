@@ -60,6 +60,7 @@ def reformat_FASTA(args):
     run.info('Input', args.contigs_fasta)
     run.info('Output', args.output_file)
     run.info('Minimum length', args.min_len)
+    run.info('Max % gaps allowed', '%.2f%%' % args.max_percentage_gaps)
 
     total_num_nucleotides = 0
     total_num_contigs = 0
@@ -84,6 +85,12 @@ def reformat_FASTA(args):
             continue
 
         if len(fasta.seq) < args.min_len:
+            total_num_nucleotides_removed += l
+            total_num_contigs_removed += 1
+            continue
+
+        percentage_of_gaps = fasta.seq.count('-') * 100.0 / l
+        if percentage_of_gaps >= args.max_percentage_gaps:
             total_num_nucleotides_removed += l
             total_num_contigs_removed += 1
             continue
@@ -124,6 +131,10 @@ if __name__ == '__main__':
                         help="Minimum length of contigs to keep (contigs shorter than this value\
                               will not be included in the output file). The default is %(default)d,\
                               so nothing will be removed if you do not declare a minimum size.")
+    parser.add_argument('--max-percentage-gaps', type=float, default=100, metavar='PERCENTAGE',
+                        help="Maximum fraction of gaps in a sequence (any sequence with \
+                              more gaps will be removed from the output FASTA file). The \
+                              default is %(default)f.")
     parser.add_argument('-i', '--exclude-ids', required=False, metavar='TXT FILE',
                         help="IDs to remove from the FASTA file. You cannot provide both\
                               --keep-ids and --exclude-ids.")

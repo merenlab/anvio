@@ -1,4 +1,4 @@
-{% set version = "6.1_master" %}
+{% set version = "6.2_master" %}
 
 package:
   name: anvio
@@ -15,7 +15,7 @@ requirements:
     - mcl
     - muscle
     - hmmer
-    - diamond=0.9.14
+    - diamond ==0.9.14
     - blast
     - megahit
     - bowtie2
@@ -25,16 +25,18 @@ requirements:
     - trimal
     - iqtree
     - fastani
-    - r
+    - r-base
     - r-stringi
     - r-tidyverse
-    - bioconductor-qvalue
+    - r-magrittr
+    - r-optparse
+    - bioconductor
+    - fasttree
 
 test:
   commands:
-    - anvi-pan-genome --help
-    - anvi-script-reformat-fasta --help
-    - anvi-profile --version
+    - anvi-self-test --version
+    - anvi-self-test --help
 
 about:
   home: http://merenlab.org/software/anvio/index.html

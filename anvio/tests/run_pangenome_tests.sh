@@ -64,6 +64,7 @@ anvi-import-misc-data -p TEST/TEST-PAN.db \
                       -t layers \
                       group-information.txt
 
+INFO "Estimating enriched functions per pan group"
 anvi-get-enriched-functions-per-pan-group -p TEST/TEST-PAN.db \
                                           -g TEST-GENOMES.db \
                                           --category group \
@@ -97,7 +98,7 @@ anvi-compute-gene-cluster-homogeneity -p TEST/TEST-PAN.db \
                                       -g TEST-GENOMES.db \
                                       --gene-cluster-id GC_00000001 \
                                       -o gene_cluster_homogeneity_results.txt
-column -t gene_cluster_homogeneity_results.txt
+cat -t gene_cluster_homogeneity_results.txt
 
 INFO "Computing homogeneity for a list of gene clusters"
 echo -e "GC_00000001\nGC_00000003" > gene_clusters_for_homogeneity.txt
@@ -105,7 +106,7 @@ anvi-compute-gene-cluster-homogeneity -p TEST/TEST-PAN.db \
                                       -g TEST-GENOMES.db \
                                       --gene-cluster-ids gene_clusters_for_homogeneity.txt \
                                       -o gene_cluster_homogeneity_results.txt
-column -t gene_cluster_homogeneity_results.txt
+cat -t gene_cluster_homogeneity_results.txt
 
 INFO "Computing homogeneity for gene clusters in a bin"
 anvi-compute-gene-cluster-homogeneity -p TEST/TEST-PAN.db \
@@ -114,7 +115,7 @@ anvi-compute-gene-cluster-homogeneity -p TEST/TEST-PAN.db \
                                       -b GENE_CLUSTER_BIN_2_G01_G02 \
                                       -o gene_cluster_homogeneity_results.txt \
                                       --num-threads 2
-column -t gene_cluster_homogeneity_results.txt
+cat -t gene_cluster_homogeneity_results.txt
 
 INFO "Importing the default state for pretty outputs"
 anvi-import-state -p TEST/TEST-PAN.db -s default-state.json -n default

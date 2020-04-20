@@ -362,16 +362,17 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                     });
                 }
 
-                // Reference data is always available
+                // Reference data's availability depends on how anvi-gen-structure-database was
+                // created. For example, if --skip-DSSP, there is no secondary structure
                 var tooltip_HTML_title = `<h5>Reference info</h5>`
                 var tooltip_HTML_body = `
                     <tr><td>Residue</td><td>${residue_info[residue]['amino_acid']} (${residue_info[residue]['codon']})</td></tr>
                     <tr><td>Residue No.</td><td>${residue_info[residue]['codon_number']}</td></tr>
-                    <tr><td>Secondary Structure</td><td>${residue_info[residue]['sec_struct']}</td></tr>
-                    <tr><td>Solvent Accessibility</td><td>${residue_info[residue]['rel_solvent_acc'].toFixed(2)}</td></tr>
-                    <tr><td>(Phi, Psi)</td><td>(${residue_info[residue]['phi'].toFixed(1)}, ${residue_info[residue]['psi'].toFixed(1)})</td></tr>
-                    <tr><td>Contacts With</td><td>${residue_info[residue]['contact_numbers']}</td></tr>
-                    `
+                `
+                if (residue_info[residue].hasOwnProperty('sec_struct')) {tooltip_HTML_body += `<tr><td>Secondary Structure</td><td>${residue_info[residue]['sec_struct']}</td></tr>`}
+                if (residue_info[residue].hasOwnProperty('rel_solvent_acc')) {tooltip_HTML_body += `<tr><td>Solvent Accessibility</td><td>${residue_info[residue]['rel_solvent_acc'].toFixed(2)}</td></tr>`}
+                if (residue_info[residue].hasOwnProperty('phi')) {tooltip_HTML_body += `<tr><td>(Phi, Psi)</td><td>(${residue_info[residue]['phi'].toFixed(1)}, ${residue_info[residue]['psi'].toFixed(1)})</td></tr>`}
+                if (residue_info[residue].hasOwnProperty('contact_numbers')) {tooltip_HTML_body += `<tr><td>Contacts With</td><td>${residue_info[residue]['contact_numbers']}</td></tr>`}
 
                 // Variant data is available if a variant exists at hovered residue
                 if (variability[group].hasOwnProperty(residue)) {
@@ -382,7 +383,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                         <tr><td>Site Coverage</td><td>${variability[group][residue]['coverage'].toFixed(2)}</td></tr>
                         ${variability[group][residue].hasOwnProperty('mean_normalized_coverage') ? `<tr><td>Site Coverage / Gene Coverage</td><td>${variability[group][residue]['mean_normalized_coverage'].toFixed(2)}</td></tr>` : ``}
                         <tr><td>Mean Entropy</td><td>${variability[group][residue]['entropy'].toFixed(2)}</td></tr>
-                        `
+                    `
                     // add engine-specific data
                     if ($('[name=engine]:checked').val() == 'AA') {
                         // append to body
@@ -399,14 +400,14 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                             <tr><td>${variability[group][residue]['1_item']}</td><td>${variability[group][residue]['1_freq'].toFixed(3)}</td></tr>
                             <tr><td>${variability[group][residue]['2_item']}</td><td>${variability[group][residue]['2_freq'].toFixed(3)}</td></tr>
                             <tr><td>${variability[group][residue]['3_item']}</td><td>${variability[group][residue]['3_freq'].toFixed(3)}</td></tr>
-                            `
+                        `
                     } else {
                         var tooltip_HTML_variant_freqs_body = `
                             <tr><td>${variability[group][residue]['0_item_AA']} (${variability[group][residue]['0_item']})</td><td>${variability[group][residue]['0_freq'].toFixed(3)}</td></tr>
                             <tr><td>${variability[group][residue]['1_item_AA']} (${variability[group][residue]['1_item']})</td><td>${variability[group][residue]['1_freq'].toFixed(3)}</td></tr>
                             <tr><td>${variability[group][residue]['2_item_AA']} (${variability[group][residue]['2_item']})</td><td>${variability[group][residue]['2_freq'].toFixed(3)}</td></tr>
                             <tr><td>${variability[group][residue]['3_item_AA']} (${variability[group][residue]['3_item']})</td><td>${variability[group][residue]['3_freq'].toFixed(3)}</td></tr>
-                            `
+                        `
                     }
                 }
 

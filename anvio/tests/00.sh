@@ -36,5 +36,5 @@ SETUP_WITH_OUTPUT_DIR() {
 
 SHOW_FILE() {
     echo
-    column -t $1
+    cat $1
 }
