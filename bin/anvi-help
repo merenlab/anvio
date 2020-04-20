@@ -101,6 +101,12 @@ class ProgramSearch:
 
 
     def process(self):
+        if sys.stdout.encoding != "UTF-8":
+            run.warning("Sorry :/ The encoding of your terminal is not UTF-8, and as a result you will "
+                        "not see anything but gibberish from displaying the nice table anvi'o will "
+                        "put together for you. Aborting mission.")
+            return
+
         self.populate_table()
         self.search_table()
         self.display_table()

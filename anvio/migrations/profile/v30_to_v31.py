@@ -35,7 +35,6 @@ def migrate(db_path):
         profile_db.set_meta_value('items_ordered', profile_db.get_meta_value('contigs_ordered'))
         profile_db.remove_meta_key_value_pair('contigs_ordered')
 
-
     # set the version
     profile_db.remove_meta_key_value_pair('version')
     profile_db.set_version(next_version)

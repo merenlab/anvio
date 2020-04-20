@@ -46,6 +46,7 @@ ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'raw-bam-file': {'name': 'RAW BAM FILE', 'type': 'BAM', 'internal': False},
                'locus-fasta': {'name': 'LOCUS', 'type': 'FASTA', 'internal': False},
                'structure-db': {'name': 'STRUCTURE', 'type': 'DB', 'internal': True},
+               'pdb-db': {'name': 'PDB DB', 'type': 'CONCEPT', 'internal': True},
                'single-profile-db': {'name': 'SINGLE PROFILE', 'type': 'DB', 'internal': True},
                'profile-db': {'name': 'PROFILE', 'type': 'DB', 'internal': True},
                'genes-db': {'name': 'GENES', 'type': 'DB', 'internal': True},
@@ -101,6 +102,7 @@ ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'summary': {'name': 'STATIC SUMMARY', 'type': 'SUMMARY', 'internal': False},
                'split-bins': {'name': 'SPLIT BINS', 'type': 'CONCEPT', 'internal': False},
                'state': {'name': 'INTERACTIVE STATE', 'type': 'CONCEPT', 'internal': True},
+               'ngrams': {'name': 'NGRAM', 'type': 'CONCEPT', 'internal': True},
                'state-json': {'name': 'INTERACTIVE STATE', 'type': 'JSON', 'internal': False}}
 
 ANVIO_CONCEPTS = {'functions': {'goes_in': ['contigs_db', 'genomes-storage-db'],
@@ -488,7 +490,7 @@ class ProgramsVignette(AnvioPrograms):
             progress.new('Bleep bloop')
             progress.update('%s (%d of %d)' % (program.name, i+1, len(self.programs)))
 
-            output = utils.run_command_STDIN('%s --help' % (program.program_path), log_file, '').split('\n')
+            output = utils.run_command_STDIN('%s --help --quiet' % (program.program_path), log_file, '').split('\n')
 
             if anvio.DEBUG:
                     usage, description, params, output = parse_help_output(output)

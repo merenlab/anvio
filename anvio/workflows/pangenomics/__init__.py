@@ -97,9 +97,9 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
         self.pan_project_name = self.get_param_value_from_config(["anvi_pan_genome", "--project-name"])
 
         if self.pan_project_name:
-            run.warning('you chose to set the "--project-name" parameter for "anvi_pan_genome". That is ok '
-                        'but just so you know, if you haven\'t supplied this, then we would have taken the value '
-                        'from "project_name" in your config file to also be the project name for "anvi_pan_genome"')
+            run.warning("You chose to set the '--project-name' parameter for 'anvi_pan_genome'. That is OK. "
+                        "But just so you know, if you haven't supplied this, then we would have taken the value "
+                        "from 'project_name' in your config file to also be the project name for 'anvi_pan_genome'.")
         else:
             self.pan_project_name = self.project_name
 

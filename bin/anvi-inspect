@@ -54,7 +54,7 @@ if __name__ == '__main__':
     try:
         if not args.split_name and not args.just_do_it:
             raise ConfigError("You didn't provide a split name to `anvi-inspect`. If you don't care and want to start the "
-                              "interactive inteface with a random split from the profile database, please use "
+                              "interactive interface with a random split from the profile database, please use "
                               "the flag `--just-do-it`")
 
         args.mode = 'inspect'

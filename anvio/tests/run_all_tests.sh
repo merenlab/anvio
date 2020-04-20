@@ -81,7 +81,8 @@ anvi-run-hmms -c $output_dir/CONTIGS.db \
 
 INFO "Rerunning HMMs for a specific installed profile"
 anvi-run-hmms -c $output_dir/CONTIGS.db \
-              -I Ribosomal_RNAs
+              -I Ribosomal_RNAs \
+              --just-do-it
 
 INFO "Listing all available HMM sources in the contigs database"
 anvi-delete-hmms -c $output_dir/CONTIGS.db \
@@ -131,8 +132,6 @@ anvi-export-functions -c $output_dir/CONTIGS.db \
 INFO "Export all functional annotations"
 anvi-export-functions -c $output_dir/CONTIGS.db \
                       -o $output_dir/exported_functions_from_all_sources.txt
-echo
-head $output_dir/exported_functions_from_all_sources.txt | tr ' ' @@ | column -t | tr @@ ' '
 
 INFO "Export genomic locus using functional annotation search"
 anvi-export-locus -c $output_dir/CONTIGS.db \
@@ -155,13 +154,10 @@ anvi-export-locus -c $output_dir/CONTIGS.db \
                   -s NusB,rpoz \
                   --overwrite-output-destinations
 
-
 INFO "Export only Pfam annotations"
 anvi-export-functions -c $output_dir/CONTIGS.db \
                       -o $output_dir/exported_functions_from_source_Pfam.txt \
                       --annotation-sources Pfam
-echo
-head $output_dir/exported_functions_from_source_Pfam.txt | tr ' ' @@ | column -t | tr @@ ' '
 
 INFO "Contigs DB is ready; here are the tables in it:"
 sqlite3 $output_dir/CONTIGS.db '.tables'
@@ -612,12 +608,16 @@ anvi-mcg-classifier -p $output_dir/SAMPLES-MERGED/PROFILE.db \
 INFO "Generating mock external genome data"
 cp $files/mock_data_for_pangenomics/{01,02,03}.fa $output_dir/
 cp $files/mock_data_for_pangenomics/external-genomes.txt $output_dir/
+cp $files/mock_data_for_pangenomics/functions/*-functions.txt $output_dir/
 for g in 01 02 03
 do
     echo -n "$g .. "
     anvi-gen-contigs-database -f $output_dir/$g.fa \
                               -o $output_dir/$g.db \
                               --project-name $g >/dev/null 2>&1
+
+    anvi-import-functions -c $output_dir/$g.db \
+                          -i $output_dir/$g-functions.txt >/dev/null 2>&1
 done; echo
 
 INFO "Dereplicating genomes using pyANI"
@@ -641,6 +641,21 @@ anvi-dereplicate-genomes --ani-dir $output_dir/GENOME_SIMILARITY_OUTPUT \
                          --similarity 0.99 \
                          --program pyANI
 SHOW_FILE $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS/CLUSTER_REPORT.txt
+
+INFO "Testing anvi-analyze-synteny ignoring genes with no annotation"
+
+# run anvi-analyze-synteny
+anvi-analyze-synteny -e $output_dir/external-genomes.txt \
+                     --annotation-source COG_FUNCTION \
+                     --ngram-window-range 2:3 \
+                     -o $output_dir/synteny_output_no_unknowns.tsv
+
+INFO "Testing anvi-analyze-synteny now including unannotated genes"
+anvi-analyze-synteny -e $output_dir/external-genomes.txt \
+                     --annotation-source COG_FUNCTION \
+                     --ngram-window-range 2:3 \
+                     -o $output_dir/synteny_output_with_unknowns.tsv \
+                     --analyze-unknown-functions
 
 INFO 'A dry run with an items order file for the merged profile without any clustering'
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \

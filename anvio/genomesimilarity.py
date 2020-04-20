@@ -103,8 +103,6 @@ class Dereplicate:
 
 
     def is_genome_names_compatible_with_similarity_matrix(self, similarity_matrix, genome_names):
-        matrix_names = similarity_matrix.keys()
-
         missing_in_matrix = [n for n in genome_names if n not in similarity_matrix]
         missing_in_names = [n for n in similarity_matrix if n not in genome_names]
 
@@ -170,8 +168,8 @@ class Dereplicate:
                                       "--just-do-it. Otherwise, have the results regenerated here by removing '%s' "
                                       "as an input." % (self.ani_dir or self.mash_dir))
             else:
-                additional_msg = (' In addition, no FASTAs will be generated since you did not provide any sequence '
-                                  'sources for anvi\'o.')
+                additional_msg = ("In addition, no FASTAs will be generated since you did not provide any sequence "
+                                  "sources for anvi'o.")
 
             run.warning("You chose to work with an already existing results folder. Please keep in mind that you "
                         "are now burdened with the responsibility of knowing what parameters you used to generate "
@@ -241,7 +239,7 @@ class Dereplicate:
             # With sourmash you don't always know the metric name, you only be sure of what it
             # contains. This is because the kmer is a part of the result name. This is my fault but
             # I'm too lazy to fix the design because sourmash is not appropriate for genome
-            # comparison anyways. 
+            # comparison anyways.
             for result_name in self.similarity.results:
                 if self.program_info['metric_name'] in result_name:
                     similarity_matrix = self.similarity.results[result_name]
@@ -416,12 +414,16 @@ class Dereplicate:
                 full_dict[name]['total_length'] = sum(utils.get_read_lengths_from_fasta(fastas[name]['path']).values())
 
         if self.representative_method == 'Qscore':
+            missing_completion = False
             for genome in full_dict:
                 if not full_dict[genome].get('percent_completion') or not full_dict[genome].get('percent_redundancy'):
                     self.representative_method = 'centrality'
-                    run.warning('At least one of your genomes does not have completion and/or redundancy scores, which makes '
-                                'it impossible to use Qscore to pick best representatives from each cluster. One of these '
-                                'genomes is %s. Anvi\'o will switch you to the \'centrality\' method for picking representatives.')
+                    missing_completion = genome
+
+            if missing_completion:
+                run.warning("At least one of your genomes does not have completion and/or redundancy scores, which makes "
+                            "it impossible to use Qscore to pick best representatives from each cluster. One of these "
+                            "genomes is %s. Anvi'o switched you to the 'centrality' method for picking representatives." % (genome))
 
         self.genomes_info_dict = full_dict
 
@@ -494,7 +496,7 @@ class Dereplicate:
                 continue
 
             similarity = float(self.similarity_matrix[genome1][genome2])
-            if similarity > self.similarity_threshold:
+            if similarity >= self.similarity_threshold:
                 self.update_clusters(genome1, genome2)
 
             counter += 1
@@ -789,9 +791,6 @@ class FastANI(GenomeSimilarity):
 
         self.program = fastani.ManyToMany(args=self.args)
 
-        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
-        null = lambda x: x
-
         self.fastANI_sanity_check()
 
 
@@ -1030,13 +1029,12 @@ class ANI(GenomeSimilarity):
         try:
             df = lambda matrix_name: pd.DataFrame(results[matrix_name]).astype(float)
             results['full_percentage_identity'] = (df('percentage_identity') * df('alignment_coverage')).to_dict()
-        except KeyError as e:
+        except KeyError:
             # method did not produce percentage_identity score--that's okay, no full percentage
             # identity for you
             pass
 
         return results
-
 
 
 class SourMash(GenomeSimilarity):
