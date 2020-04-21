@@ -2024,6 +2024,11 @@ class KeggModulesDatabase(KeggContext):
         """This function returns a list of all modules in the DB."""
         return self.db.get_single_column_from_table(self.module_table_name, 'module', unique=True)
 
+    def get_all_knums_as_list(self):
+        """This function returns a list of all KO numbers in the DB."""
+        where_clause_string = "data_name = 'ORTHOLOGY'"
+        return self.db.get_single_column_from_table(self.module_table_name, 'data_value', unique=True, where_clause=where_clause_string)
+
     def get_modules_for_knum(self, knum):
         """This function returns a list of modules that the given KO belongs to."""
         where_clause_string = "data_value = '%s'" % (knum)
