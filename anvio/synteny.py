@@ -72,8 +72,6 @@ class NGram(object):
         self.genomes = genomedescriptions.GenomeDescriptions(self.args)
         self.genomes.load_genomes_descriptions(init=False)
         self.pan_db_path = A('pan_db')
-
-        self.pan_db = PanDatabase(self.pan_db_path)
         
         # This houses the ngrams' data
         self.ngram_attributes_list = []
@@ -152,10 +150,12 @@ class NGram(object):
                 self.run.warning("Just so you know, %d contigs in %s had no genes. Here are the the first 5: %s" % \
                                   (len(contigs_without_genes), contigs_db_name, ''.join([str(x) for x in contigs_without_genes[:5]])))
 
-        #FIXME: Need a sanity check to test that a pan_db exists at the path given and is associated with the external genomes file
-        self.collections = ccollections.Collections()
-        self.collections.populate_collections_dict(self.pan_db_path)
-
+        #FIXME: Need a sanity check to test that a pan_db compatible with the external genomes file
+        # if utils.is_external_genomes_compatible_with_pan_database(pan_db_path, self.genomes):
+        #     self.pan_db = PanDatabase(self.pan_db_path)
+        
+        # Hopefully it is compatible for now
+        self.pan_db = PanDatabase(self.pan_db_path)
 
     def populate_genes(self):
         """Iterates through all contigs and use self.count_synteny to count all ngrams in that contig.
@@ -165,9 +165,7 @@ class NGram(object):
 
         """
         # Get gene cluster info from panDB
-        gene_cluster_frequencies_dataframe = pd.DataFrame.from_dict(
-                                                    self.pan_db.db.get_table_as_dict('gene_clusters'),
-                                                    orient='index')
+        gene_cluster_frequencies_dataframe = self.pan_db.db.get_table_as_dataframe('gene_clusters')
 
         self.run.warning("Anvi'o is now looking for Ngrams in your contigs!", lc='green')
 
@@ -237,7 +235,7 @@ class NGram(object):
             ngram = "::".join(map(str, list(ngram_attribute[0])))
             ngram_function = "::".join(map(str, list(ngram_attribute[1])))
             ngram_gene_clusters = "::".join(map(str, list(ngram_attribute[2])))
-            df = pd.DataFrame(columns=['ngram', 'ngram_functions', 'ngram_gene_clusters', 'count', 'contig_db_name','contig_name','N','number_of_loci'])
+            df = pd.DataFrame(columns=['ngram', 'ngram_functions', 'ngram_gene_clusters', 'count', 'contig_db_name', 'contig_name', 'N', 'number_of_loci'])
             df = df.append({'ngram': ngram,
                             'ngram_functions': ngram_function,
                             'ngram_gene_clusters': ngram_gene_clusters,
