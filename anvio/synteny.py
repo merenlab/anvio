@@ -23,6 +23,8 @@ import anvio.genomedescriptions as genomedescriptions
 
 from anvio.dbops import PanDatabase
 from anvio.errors import ConfigError
+## FIXME: Will need to change if accepting genome-storage instead of external-genomes
+# from anvio.genomestorage import GenomeStorage
 
 
 
@@ -69,8 +71,10 @@ class NGram(object):
         self.window_range = A('ngram_window_range') or "2:3"
         self.in_in_unknowns_mode = A('analyze_unknown_functions')
         self.output_file = A('output_file')
+        self.genomes_storage_path = A('genomes_storage')
         self.genomes = genomedescriptions.GenomeDescriptions(self.args)
         self.genomes.load_genomes_descriptions(init=False)
+
         self.pan_db_path = A('pan_db')
         
         # This houses the ngrams' data
@@ -92,6 +96,7 @@ class NGram(object):
         """Sanity_check will confirm input for NGram class"""
 
         # checking if the annotation source is common accross all contigs databases
+        ## FIXME: Will need to change if accepting genome-storage instead of external-genomes
         if self.annotation_source not in self.genomes.function_annotation_sources:
             raise ConfigError("The annotation source you requested does not appear to be in all of "
                               "the contigs databases from the external-genomes file. "
@@ -122,6 +127,7 @@ class NGram(object):
 
         # Loop through each contigs db, test that each contig contains at least as many genes as max window size and confirm every contig has annotations
         # Set the self.num_contigs_in_external_genomes_with_genes variable
+        ## FIXME: Will need to change if accepting genome-storage instead of external-genomes
         for contigs_db_name in self.genomes.external_genomes_dict:
             # extract contigsDB path
             contigs_db_path = self.genomes.external_genomes_dict[contigs_db_name]["contigs_db_path"]
