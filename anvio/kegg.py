@@ -824,6 +824,19 @@ class KeggMetabolismEstimator(KeggContext):
         self.progress.new('Loading data from Contigs DB')
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
         self.contigs_db_project_name = contigs_db.meta['project_name']
+
+        # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
+        contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
+        mod_db_hash = self.kegg_modules_db.db.get_meta_value('hash')
+        if contigs_db_mod_hash != mod_db_hash:
+            raise ConfigError("The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now. "
+                                "Perhaps you updated your KEGG setup after running `anvi-run-kegg-kofams` on this contigs DB? Or maybe you have multiple KEGG data "
+                                "directories set up on your computer, and the one you are using now is different from the one that you used for `anvi-run-kegg-kofams`? "
+                                "Well. The solution to the first problem is to re-run `anvi-run-kegg-kofams` on the contigs DB (%s) using the updated MODULES.db "
+                                "(located in the KEGG data directory %s). The solution to the second problem is to specify the appropriate KEGG data directory using "
+                                "the --kegg-data-dir flag. If neither of those things make this work, then you should contact the developers to see if they can help you "
+                                "figure this out." % (self.contigs_db_path, self.kegg_data_dir))
+
         genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "gene_callers_id, split")
         genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig")
         kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
