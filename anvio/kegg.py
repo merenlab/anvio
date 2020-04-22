@@ -2034,7 +2034,7 @@ class KeggModulesDatabase(KeggContext):
         orths.sort()
         mods_and_orths = mods + orths
         mods_and_orths = "".join(mods_and_orths)
-        return str(hashlib.sha224(mods_and_orths.encode('utf-8')).hexdigest())
+        return str(hashlib.sha224(mods_and_orths.encode('utf-8')).hexdigest())[0:12]
 
 
 
