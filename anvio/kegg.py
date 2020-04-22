@@ -1236,7 +1236,7 @@ class KeggMetabolismEstimator(KeggContext):
                 aggregated_completeness = 0
                 for c in range(len(extra_copy_completeness)):
                     aggregated_completeness += 1/(c+1) * extra_copy_completeness[c]
-            elif aggregation_measure == "geometric_mean"
+            elif aggregation_measure == "geometric_mean":
                 aggregated_completeness = stats.geometric_mean(extra_copy_completeness)
             elif aggregation_measure == "knee":
                 raise ConfigError("aggregation measure 'knee' not implemented yet")
