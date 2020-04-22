@@ -600,6 +600,17 @@ class KeggRunHMMs(KeggContext):
         # load existing kegg modules db
         self.kegg_modules_db = KeggModulesDatabase(os.path.join(self.kegg_data_dir, "MODULES.db"), args=self.args)
 
+
+    def set_hash_in_contigs_db(self):
+        """Modify the contigs DB self table to indicate which MODULES.db has been used to annotate it"""
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        contigs_db.db.set_meta_value('modules_db_hash', self.kegg_modules_db.db.get_meta_value('hash'))
+        contigs_db.disconnect()
+
+
     def get_annotation_from_ko_dict(self, knum, ok_if_missing_from_dict=False):
         if not self.ko_dict:
             raise ConfigError("Oops! The ko_list file has not been properly loaded, so get_annotation_from_ko_dict() is \
@@ -620,6 +631,9 @@ class KeggRunHMMs(KeggContext):
 
         tmp_directory_path = filesnpaths.get_temp_directory_path()
         contigs_db = ContigsSuperclass(self.args) # initialize contigs db
+
+        # mark contigs db with hash of modules.db content for version tracking
+        self.set_hash_in_contigs_db()
 
         # get AA sequences as FASTA
         target_files_dict = {'AA:GENE': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
