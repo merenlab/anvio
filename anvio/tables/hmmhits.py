@@ -87,28 +87,18 @@ class TablesForHMMHits(Table):
                                   "to remove them first, or run this program with `--just-do-it` flag so anvi'o would remove all "
                                   "for you. Here are the list of HMM sources that need to be removed: '%s'." % (', '.join(sources_need_to_be_removed)))
 
-    def hmmpress_sources(self, sources, tmp_dir, in_place=False):
-        """This function checks if the hmm files have been hmmpressed, and if not, it runs hmmpress.
+    def hmmpress_sources(self, sources, tmp_dir):
+        """This function runs hmmpress on the hmm profiles.
 
-        If in_place is False, we assume that the model should be unpacked and compressed in the temp directory.
-        Otherwise, we do it in the directory where the model is stored so that it only has to be done once.
-
-        Returns the locations of each hmmpressed file path in a dictionary keyed by the source.
+        It returns the locations of each hmmpressed file path in a dictionary keyed by the source.
         """
         hmmpressed_file_paths = {}
         for source in sources:
             model_file = sources[source]['model']
-            hmm_file_path = None
-
-            if in_place:
-                pass
-                #hmm_file_path = model_file
-                # check here if already hmmpressed and if so return
-            else:
-                hmm_file_path = os.path.join(tmp_dir, source + '.hmm')
-                hmm_file = open(hmm_file_path, 'wb')
-                hmm_file.write(gzip.open(model_file, 'rb').read())
-                hmm_file.close()
+            hmm_file_path = os.path.join(tmp_dir, source + '.hmm')
+            hmm_file = open(hmm_file_path, 'wb')
+            hmm_file.write(gzip.open(model_file, 'rb').read())
+            hmm_file.close()
 
             log_file_path = log_file_path = os.path.join(tmp_dir, 'hmmpress.log')
             cmd_line = ['hmmpress', hmm_file_path]
