@@ -632,8 +632,6 @@ class KeggRunHMMs(KeggContext):
         tmp_directory_path = filesnpaths.get_temp_directory_path()
         contigs_db = ContigsSuperclass(self.args) # initialize contigs db
 
-        # mark contigs db with hash of modules.db content for version tracking
-        self.set_hash_in_contigs_db()
 
         # get AA sequences as FASTA
         target_files_dict = {'AA:GENE': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
@@ -724,6 +722,9 @@ class KeggRunHMMs(KeggContext):
             self.run.warning("KOfam class has no hits to process. Returning empty handed, but still adding KOfam as \
                               a functional source.")
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
+
+        # mark contigs db with hash of modules.db content for version tracking
+        self.set_hash_in_contigs_db()
 
         if anvio.DEBUG:
             run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up\
