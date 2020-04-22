@@ -9,11 +9,11 @@ import requests
 import glob
 import re
 import copy
-import statistics as stats
+import statistics
+from scipy import stats
 import json
 import time
 import hashlib
-import math
 
 import anvio
 import anvio.db as db
@@ -1231,15 +1231,15 @@ class KeggMetabolismEstimator(KeggContext):
             aggregated_completeness = 0
         else:
             if aggregation_measure == "average":
-                aggregated_completeness = stats.mean(extra_copy_completeness)
+                aggregated_completeness = statistics.mean(extra_copy_completeness)
             elif aggregation_measure == "median":
-                aggregated_completeness = stats.median(extra_copy_completeness)
+                aggregated_completeness = statistics.median(extra_copy_completeness)
             elif aggregation_measure == "weighted_sum":
                 aggregated_completeness = 0
                 for c in range(len(extra_copy_completeness)):
                     aggregated_completeness += 1/(c+1) * extra_copy_completeness[c]
             elif aggregation_measure == "geometric_mean":
-                aggregated_completeness = math.prod(extra_copy_completeness)**len(extra_copy_completeness)
+                aggregated_completeness = stats.gmean(extra_copy_completeness)
             elif aggregation_measure == "knee":
                 raise ConfigError("aggregation measure 'knee' not implemented yet")
             else:
