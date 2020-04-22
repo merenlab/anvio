@@ -1977,11 +1977,13 @@ class KeggModulesDatabase(KeggContext):
         self.run.info('Number of parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
         self.run.info('Number of parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
 
+
         # record some useful metadata
         self.db.set_meta_value('db_type', 'modules')
         self.db.set_meta_value('num_modules', num_modules_parsed)
         self.db.set_meta_value('total_entries', mod_table.get_total_entries())
         self.db.set_meta_value('creation_date', time.time())
+        self.db.set_meta_value('hash', self.get_db_content_hash())
 
         self.db.disconnect()
 
@@ -1989,6 +1991,15 @@ class KeggModulesDatabase(KeggContext):
     def get_days_since_creation(self):
         """Returns the time (in days) since MODULES.db was created"""
         return (time.time() - float(self.db.get_meta_value('creation_date'))) / 3600
+
+
+    def get_db_content_hash(self):
+        """Compute hash of all KOs and module numbers present in the db (used for tracking major changes to db content with future KEGG updates)"""
+        mods_and_orths = self.db.get_all_modules_as_list()
+        mods_and_orths.append(self.db.get_all_knums_as_list())
+        mods_and_orths = tuple(mods_and_orths)
+        return hash(mods_and_orths)
+
 
 
     # KEGG Modules Table functions for data access and parsing start below
