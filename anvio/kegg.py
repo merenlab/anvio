@@ -1932,8 +1932,13 @@ class KeggModulesDatabase(KeggContext):
                     prev_data_name_field = entries_tuple_list[0][0]
 
                     for name, val, definition, line in entries_tuple_list:
-                        # append_and_store will collect db entries and store every 10000 at a time
-                        mod_table.append_and_store(self.db, mnum, name, val, definition, line)
+                        # there is one situation in which we want to ignore the entry, and that is Modules appearing in the ORTHOLOGY category, like so:
+                        # (M00531  Assimilatory nitrate reduction, nitrate => ammonia)
+                        if not (name == "ORTHOLOGY" and val[0] == '('):
+                            # append_and_store will collect db entries and store every 10000 at a time
+                            mod_table.append_and_store(self.db, mnum, name, val, definition, line)
+                        else:
+                            line -= 1
 
                 f.close()
 
