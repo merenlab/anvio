@@ -12,6 +12,7 @@ import copy
 import statistics as stats
 import json
 import time
+import hashlib
 
 import anvio
 import anvio.db as db
@@ -2033,7 +2034,7 @@ class KeggModulesDatabase(KeggContext):
         orths.sort()
         mods_and_orths = mods + orths
         mods_and_orths = "".join(mods_and_orths)
-        return hash(mods_and_orths)
+        return str(hashlib.sha224(mods_and_orths.encode('utf-8')).hexdigest())
 
 
 
