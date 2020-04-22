@@ -1995,8 +1995,8 @@ class KeggModulesDatabase(KeggContext):
 
     def get_db_content_hash(self):
         """Compute hash of all KOs and module numbers present in the db (used for tracking major changes to db content with future KEGG updates)"""
-        mods_and_orths = self.db.get_all_modules_as_list()
-        mods_and_orths.append(self.db.get_all_knums_as_list())
+        mods_and_orths = self.get_all_modules_as_list()
+        mods_and_orths.append(self.get_all_knums_as_list())
         mods_and_orths = tuple(mods_and_orths)
         return hash(mods_and_orths)
 
