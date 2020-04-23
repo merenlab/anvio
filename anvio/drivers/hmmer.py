@@ -110,10 +110,7 @@ class HMMer:
             self.run.info('HMMer program used for search', self.program_to_use)
 
         tmp_dir = os.path.dirname(self.target_files_dict[target][0])
-        log_file_path = os.path.join(tmp_dir, '*_log')
-
         self.run.info('Temporary work dir', tmp_dir)
-        self.run.info('Log files', log_file_path)
 
 
         # check if all hmmpress files are in the HMM directory
@@ -137,11 +134,14 @@ class HMMer:
             self.run.warning("You requested to use the program `%s`, but because you are working with %s sequences Anvi'o will use `nhmmscan` instead. "
                              "We hope that is alright." % (self.program_to_use, alphabet))
 
-
+        thread_num = 0
         for part_file in self.target_files_dict[target]:
             log_file = part_file + '_log'
             output_file = part_file + '_output'
             shitty_file = part_file + '_shitty'
+
+            self.run.info('Log file for thread %s' % thread_num, log_file)
+            thread_num += 1
 
             if noise_cutoff_terms:
                 cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
