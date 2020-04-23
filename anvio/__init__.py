@@ -2368,7 +2368,7 @@ def get_version_tuples():
             ("Pan DB version", __pan__version__),
             ("Genome data storage version", __genomes_storage_version__),
             ("Structure DB version", __structure__version__),
-            ("Kegg Modules DB version", __kegg_modules_version__)]
+            ("KEGG Modules DB version", __kegg_modules_version__)]
 
 
 def print_version():
