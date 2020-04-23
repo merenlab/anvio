@@ -713,7 +713,13 @@ D = {
             ['--hmmer-program'],
             {'type': str,
             'required': False,
-             'help': "Which of the HMMER programs to use to run HMMs (ie, hmmscan, hmmsearch)"}
+             'help': "Which of the HMMER programs to use to run HMMs (hmmscan or hmmsearch). By default "
+                     "anvi'o will use hmmscan for typical HMM operations like those in anvi-run-hmms (as these "
+                     "tend to scan a very large number of genes against a relatively small number of HMMs), "
+                     "but if you are using this program to scan a very large number of HMMs, hmmsearch might "
+                     "be a better choice for performance. For this reason, hmmsearch is the default in operations like "
+                     "anvi-run-pfams and anvi-run-kegg-kofams. See this article for a discussion on the performance "
+                     "of these two programs: https://cryptogenomicon.org/2011/05/27/hmmscan-vs-hmmsearch-speed-the-numerology/"}
                 ),
     'hmm-source': (
             ['--hmm-source'],
