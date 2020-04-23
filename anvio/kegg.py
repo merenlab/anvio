@@ -10,10 +10,10 @@ import glob
 import re
 import copy
 import statistics
-from scipy import stats
 import json
 import time
 import hashlib
+from scipy import stats
 
 import anvio
 import anvio.db as db
