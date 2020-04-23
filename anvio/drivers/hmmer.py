@@ -5,8 +5,9 @@ import os
 import io
 import gzip
 import shutil
-from threading import Thread, Lock
 import glob
+from threading import Thread, Lock
+
 
 import anvio
 import anvio.utils as utils
@@ -33,6 +34,7 @@ pp = terminal.pretty_print
 class HMMer:
     def __init__(self, target_files_dict, num_threads_to_use=1, program_to_use="hmmscan", progress=progress, run=run):
         """A class to streamline HMM runs."""
+
         self.num_threads_to_use = num_threads_to_use
         self.program_to_use = program_to_use
         self.progress = progress
@@ -43,8 +45,8 @@ class HMMer:
 
         acceptable_programs = ["hmmscan", "hmmsearch"]
         if self.program_to_use not in acceptable_programs:
-            raise ConfigError("HMMer class here. You are attemptimg to use the program %s to run HMMs, but we don't recognize it. The currently"
-                                " supported programs are: %s" % (self.program_to_use, ", ".join(acceptable_programs)))
+            raise ConfigError("HMMer class here. You are attemptimg to use the program %s to run HMMs, but we don't recognize it. The currently "
+                              "supported programs are: %s" % (self.program_to_use, ", ".join(acceptable_programs)))
 
         for source in target_files_dict:
             tmp_dir = filesnpaths.get_temp_directory_path()
@@ -74,10 +76,10 @@ class HMMer:
             expected_extensions = ['h3f', 'h3i', 'h3m', 'h3p']
             for ext in expected_extensions:
                 if not os.path.exists(base_path + ext):
-                    raise ConfigError("It appears that hmmpress was not properly run on the hmm profiles at %s. The \
-                                        file %s does not exist. It is likely that you will have to set up your profiles \
-                                        again by running a program such as `anvi-setup-pfams` or `anvi-setup-kegg-kofams`. \
-                                        We are very sorry about this." % (hmm_path, base_path + ext))
+                    raise ConfigError("It appears that hmmpress was not properly run on the hmm profiles at %s. The "
+                                      "file %s does not exist. It is likely that you will have to set up your profiles "
+                                      "again by running a program such as `anvi-setup-pfams` or `anvi-setup-kegg-kofams`. "
+                                      "We are very sorry about this." % (hmm_path, base_path + ext))
 
 
     def run_hmmscan(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms):
@@ -116,7 +118,6 @@ class HMMer:
 
         # check if all hmmpress files are in the HMM directory
         self.verify_hmmpress_output(hmm)
-        # we may want to throw a more descriptive error *here* instead of failing in the verify function
 
 
         workers = []
@@ -129,12 +130,12 @@ class HMMer:
             cores_per_process = self.num_threads_to_use // num_parts
 
             self.run.warning("You requested %s cores but there were only %s entries in the fasta for the target '%s'. "
-                            "Anvi'o will use %s process with %s cores each instead. I hope thats okay for you. " %
+                             "Anvi'o will use %s process with %s cores each instead. I hope thats okay for you. " %
                              (str(self.num_threads_to_use), str(num_parts), target, str(num_parts), cores_per_process))
 
         if alphabet in ['DNA', 'RNA'] and self.program_to_use == 'hmmsearch':
             self.run.warning("You requested to use the program `%s`, but because you are working with %s sequences Anvi'o will use `nhmmscan` instead. "
-                            "We hope that is alright." % (self.program_to_use, alphabet))
+                             "We hope that is alright." % (self.program_to_use, alphabet))
 
 
         for part_file in self.target_files_dict[target]:
