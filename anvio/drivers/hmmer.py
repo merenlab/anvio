@@ -67,8 +67,8 @@ class HMMer:
 
         PARAMETERS
         ==========
-        hmm_path    string, the path at which the HMM profiles are located
-
+        hmm_path: string
+            the path at which the HMM profiles are located
         """
 
         for file_path in glob.glob(os.path.join(hmm_path, '*.hmm')):
