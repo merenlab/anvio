@@ -130,7 +130,6 @@ class HMMScan(Parser):
                              'e_value': hit['e_value']}
 
                 else:
-                    # but in Pfams, we don't care, we just keep all hits
                     entry = {'entry_id': entry_id,
                              'gene_name': hit['gene_name'],
                              'gene_hmm_id': hit['gene_hmm_id'],
