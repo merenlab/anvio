@@ -2211,7 +2211,7 @@ class KeggModulesDatabase(KeggContext):
 
     def get_module_name(self, mnum):
         """This function returns the name of the specified KEGG module."""
-        where_clause_string = "module = '%s'" % (mnum)
+
         # there should only be one NAME per module, so we return the first list element
         return self.get_data_value_entries_for_module_by_data_name(mnum, "NAME")[0]
 
