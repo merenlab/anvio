@@ -59,8 +59,18 @@ class PfamSetup(object):
 
         filesnpaths.is_program_exists('hmmpress')
 
+        if self.pfam_data_dir and args.reset:
+            raise ConfigError("You are attempting to run Pfam setup on a non-default data directory (%s) using the --reset flag. "
+                              "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to reset "
+                              "directories that have been specified with --pfam-data-dir. If you really want to get rid of this "
+                              "directory and regenerate it with Pfam data inside, then please remove the directory yourself using "
+                              "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
+                              "the safest way to handle things." % (self.pfam_data_dir, self.pfam_data_dir))
+
         if not self.pfam_data_dir:
             self.pfam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Pfam')
+
+        filesnpaths.is_output_dir_writable(self.pfam_data_dir)
 
         if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
