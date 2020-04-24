@@ -7,6 +7,7 @@ import json
 import time
 import shutil
 import tempfile
+import tarfile
 
 import anvio
 import anvio.fastalib as u
@@ -183,6 +184,18 @@ def is_file_plain_text(file_path, dont_raise=False):
             return False
         else:
             raise FilesNPathsError("The file at '%s' does not seem to be plain a text file :/" % file_path)
+
+    return True
+
+
+def is_file_tar_file(file_path, dont_raise=False):
+    is_file_exists(file_path)
+
+    is_tarfile = tarfile.is_tarfile(file_path)
+    if dont_raise:
+        return False
+    else:
+        raise FilesNPathsError("The file at '%s' does not seem to be a tarfile." % file_path)
 
     return True
 

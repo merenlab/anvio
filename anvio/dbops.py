@@ -502,7 +502,7 @@ class ContigsSuperclass(object):
             if gene_callers_id not in self.gene_function_calls_dict:
                 self.gene_function_calls_dict[gene_callers_id] = dict([(s, None) for s in self.gene_function_call_sources])
 
-            if self.gene_function_calls_dict[gene_callers_id][source]:
+            if self.gene_function_calls_dict[gene_callers_id][source] and e_value:
                 if self.gene_function_calls_dict[gene_callers_id][source][2] < e_value:
                     # 'what we have:', self.gene_function_calls_dict[gene_callers_id][source]
                     # 'rejected    :', ('%s :: %s' % (function if function else 'unknown', accession), e_value)
@@ -3959,7 +3959,7 @@ class ContigsDatabase:
     def compress_nt_position_info(self, contig_length, genes_in_contig, genes_in_contigs_dict):
         """This function compresses information regarding each nucleotide position in a given contig
            into a small int. Every nucleotide position is represented by four bits depending on whether
-           they occur in a complete opoen reading frame, and which base they correspond to in a codon.
+           they occur in a complete open reading frame, and which base they correspond to in a codon.
 
                 0000
                 ||||

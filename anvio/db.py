@@ -185,10 +185,13 @@ class DB:
         return val
 
 
-    def get_meta_value(self, key, try_as_type_int=True):
+    def get_meta_value(self, key, try_as_type_int=True, return_none_if_not_in_table=False):
         """if try_as_type_int, value is attempted to be converted to integer. If it fails, no harm no foul."""
+
         response = self._exec("""SELECT value FROM self WHERE key='%s'""" % key)
         rows = response.fetchall()
+        if not rows and return_none_if_not_in_table:
+            return None
         if not rows:
             raise ConfigError("A value for '%s' does not seem to be set in table 'self'." % key)
 
@@ -450,7 +453,7 @@ class DB:
         # entry assigns a new `entry_id`, enters the data. it is all good when there is a single process doing it.
         # but when there are multiple processes running in parallel, sometimes race conditions occur: two processes
         # learn the max entry id about the same time, and when they finally enter the data to the db, some entries
-        # end up not being unique. this is a toughie because sometimes entry ids are used to connect distinct 
+        # end up not being unique. this is a toughie because sometimes entry ids are used to connect distinct
         # information from different tables, so they must be known before the data goes into the database, etc.
         # when these race conditions occur, anvi'o gives an error telling the user kindly that they are fucked. but in
         # some cases it is possible to recover from that (THE CODE BELOW TRIES TO DO THAT) by reassigning all ids on the
@@ -593,13 +596,34 @@ class DB:
         return results_df[columns_of_interest]
 
 
-    def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False):
+    def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False, row_num_as_key=False):
         """This is similar to get_table_as_dict, but much less general.
 
            get_table_as_dict can do a lot, but it first reads all data into the memory to operate on it.
            In some cases the programmer may like to access to only a small fraction of entries in a table
            by using `WHERE column = value` notation, which is not possible with the more generalized
-           function."""
+           function.
+
+           Parameters
+           ==========
+           table_name: str
+                which table to get rows from
+           where_clause: str
+                SQL-style where clause for row selection
+           error_if_no_data: bool
+                if true, this function will raise an error if no data is selected from the table. otherwise, it will
+                quietly return the empty dictionary
+           string_the_key: bool
+                if true, the row number will be converted to a string before being used as a key in the dictionary
+           row_num_as_key: bool
+                added as parameter so this function works for KEGG MODULES.db, which does not have unique IDs in the
+                first column. If True, the returned dictionary will be keyed by integers from 0 to (# rows returned - 1)
+
+           Returns
+           =======
+           results_dict: dictionary
+                contains the requested rows from the table
+        """
 
         results_dict = {}
 
@@ -608,16 +632,29 @@ class DB:
 
         rows = self._exec('''SELECT * FROM %s WHERE %s''' % (table_name, where_clause)).fetchall()
 
+        row_num = 0
         for row in rows:
             entry = {}
 
-            for i in columns_to_return[1:]:
-                entry[table_structure[i]] = row[i]
+            if row_num_as_key:
+                entry[table_structure[0]] = row[0]
+                for i in columns_to_return[1:]:
+                    entry[table_structure[i]] = row[i]
 
-            if string_the_key:
-                results_dict[str(row[0])] = entry
+                if string_the_key:
+                    results_dict[str(row_num)] = entry
+                else:
+                    results_dict[row_num] = entry
             else:
-                results_dict[row[0]] = entry
+                for i in columns_to_return[1:]:
+                    entry[table_structure[i]] = row[i]
+
+                if string_the_key:
+                    results_dict[str(row[0])] = entry
+                else:
+                    results_dict[row[0]] = entry
+
+            row_num += 1
 
         if error_if_no_data and not len(results_dict):
             raise ConfigError("Query on %s with the where clause of '%s' did not return anything." % (table_name, where_clause))

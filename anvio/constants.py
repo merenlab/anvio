@@ -62,7 +62,7 @@ default_gene_caller = "prodigal"
 
 max_num_items_for_hierarchical_clustering = 20000
 
-# max coverage depth to read from BAM files using pysam. 
+# max coverage depth to read from BAM files using pysam.
 # this parameter also can be set later using command line parameters
 # we use uint16 as dtype for numpy arrays when we work on & store coverages
 # which has limit of 65536, so this constant needs to be smaller than that.
@@ -163,8 +163,8 @@ AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
                                  'Val': {"C":5,  "H":11, "N":1, "O":2, "S":0}})
 
 # taken from http://prowl.rockefeller.edu/aainfo/volume.htm
-# volume reference: A.A. Zamyatin, Protein Volume in Solution, Prog. Biophys. Mol. Biol. 24(1972)107-123. 
-# surface area reference: C. Chotia, The Nature of the Accessible and Buried Surfaces in Proteins, J. Mol. Biol., 105(1975)1-14. 
+# volume reference: A.A. Zamyatin, Protein Volume in Solution, Prog. Biophys. Mol. Biol. 24(1972)107-123.
+# surface area reference: C. Chotia, The Nature of the Accessible and Buried Surfaces in Proteins, J. Mol. Biol., 105(1975)1-14.
 AA_geometry = Counter({'Ala': {"volume":88.6,  "area":115},
                        'Arg': {"volume":173.4, "area":225},
                        'Asn': {"volume":111.1, "area":150},
@@ -369,3 +369,7 @@ nt_to_num_lookup = get_nt_to_num_lookup({'A': 0, 'C': 1, 'G': 2, 'T': 3, 'N': 4}
 nt_to_RC_num_lookup = get_nt_to_num_lookup({'A': 3, 'C': 2, 'G': 1, 'T': 0, 'N': 4})
 codon_to_num_lookup = get_codon_to_num_lookup(reverse_complement=False)
 codon_to_RC_num_lookup = get_codon_to_num_lookup(reverse_complement=True)
+
+
+# KEGG setup constant - used to warn user that the KEGG MODULES.db data may need to be updated
+KEGG_SETUP_INTERVAL = 90 # days since last MODULES.db creation

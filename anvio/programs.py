@@ -34,7 +34,7 @@ S = lambda s: [x for x in G(os.path.dirname(utils.is_program_exists(s)))]
 J = lambda x: '\n'.join(x) if x else ''
 
 # this dictionary describes all anvi'o items that are referred from 'requires' and
-# 'provudes' statements written in anvi'o programs
+# 'provides' statements written in anvi'o programs
 ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'contigs-db': {'name': 'CONTIGS', 'type': 'DB', 'internal': True},
                'contigs-fasta': {'name': 'CONTIGS', 'type': 'FASTA', 'internal': False},
@@ -47,6 +47,7 @@ ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'locus-fasta': {'name': 'LOCUS', 'type': 'FASTA', 'internal': False},
                'structure-db': {'name': 'STRUCTURE', 'type': 'DB', 'internal': True},
                'pdb-db': {'name': 'PDB DB', 'type': 'CONCEPT', 'internal': True},
+               'kegg-db': {'name': 'KEGG DB', 'type': 'DB', 'internal': True},
                'single-profile-db': {'name': 'SINGLE PROFILE', 'type': 'DB', 'internal': True},
                'profile-db': {'name': 'PROFILE', 'type': 'DB', 'internal': True},
                'genes-db': {'name': 'GENES', 'type': 'DB', 'internal': True},
@@ -80,6 +81,7 @@ ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'functions': {'name': 'GENE FUNCTIONS', 'type': 'CONCEPT', 'internal': True},
                'functions-txt': {'name': 'GENE FUNCTIONS', 'type': 'TXT', 'internal': False},
                'functional-enrichment-txt': {'name': 'ENRICHED FUNCTIONS', 'type': 'TXT', 'internal': False},
+               'kegg-functions': {'name': 'KOFAM FUNCTIONS', 'type': 'CONCEPT', 'internal': True},
                'interactive': {'name': 'INTERACTIVE DISPLAY', 'type': 'DISPLAY', 'internal': True},
                'view-data': {'name': 'VIEW DATA', 'type': 'TXT', 'internal': False},
                'layer-taxonomy': {'name': 'LAYER TAXONOMY', 'type': 'CONCEPT', 'internal': True},
@@ -103,7 +105,8 @@ ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'split-bins': {'name': 'SPLIT BINS', 'type': 'CONCEPT', 'internal': False},
                'state': {'name': 'INTERACTIVE STATE', 'type': 'CONCEPT', 'internal': True},
                'ngrams': {'name': 'NGRAM', 'type': 'CONCEPT', 'internal': True},
-               'state-json': {'name': 'INTERACTIVE STATE', 'type': 'JSON', 'internal': False}}
+               'state-json': {'name': 'INTERACTIVE STATE', 'type': 'JSON', 'internal': False},
+               'kegg-metabolism': {'name': 'KEGG METABOLISM ESTIMATES', 'type': 'TXT', 'internal': False}}
 
 ANVIO_CONCEPTS = {'functions': {'goes_in': ['contigs_db', 'genomes-storage-db'],
                                'used_by': ['anvi-search-functions']}

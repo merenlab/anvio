@@ -689,6 +689,14 @@ D = {
                      "program with superuser privileges. If you don't have superuser privileges, then you can "
                      "use this parameter to tell anvi'o the location you wish to use to setup your database."}
                 ),
+    'kegg-data-dir': (
+            ['--kegg-data-dir'],
+            {'default': None,
+             'type': str,
+             'help': "The directory path for your KEGG setup, which will include things like \
+                      KOfam profiles and KEGG MODULE data. Anvi'o will try to use the default path\
+                      if you do not specify anything."}
+                ),
     'hide-outlier-SNVs': (
             ['--hide-outlier-SNVs'],
             {'default': False,
@@ -700,6 +708,18 @@ D = {
                      "(although it is clearly the best to see everything, no one will judge you if you end "
                      "up using this flag) (plus, there may or may not be some historical data on this here: "
                      "https://github.com/meren/anvio/issues/309)."}
+                ),
+    'hmmer-program': (
+            ['--hmmer-program'],
+            {'type': str,
+            'required': False,
+             'help': "Which of the HMMER programs to use to run HMMs (hmmscan or hmmsearch). By default "
+                     "anvi'o will use hmmscan for typical HMM operations like those in anvi-run-hmms (as these "
+                     "tend to scan a very large number of genes against a relatively small number of HMMs), "
+                     "but if you are using this program to scan a very large number of HMMs, hmmsearch might "
+                     "be a better choice for performance. For this reason, hmmsearch is the default in operations like "
+                     "anvi-run-pfams and anvi-run-kegg-kofams. See this article for a discussion on the performance "
+                     "of these two programs: https://cryptogenomicon.org/2011/05/27/hmmscan-vs-hmmsearch-speed-the-numerology/"}
                 ),
     'hmm-source': (
             ['--hmm-source'],
@@ -2265,6 +2285,41 @@ D = {
              'help': "Provide if working with INSeq/Tn-Seq genomic data. With this, all gene level "
                      "coverage stats will be calculated using INSeq/Tn-Seq statistical methods."}
                 ),
+    'module-completion-threshold': (
+            ['--module-completion-threshold'],
+            {'default': 0.75,
+             'metavar': 'NUM',
+             'type': float,
+             'help': "This threshold defines the point at which we consider a KEGG module to be 'complete' or "
+                     "'present' in a given genome or bin. It is the fraction of steps that must be complete in "
+                     " in order for the entire module to be marked complete. The default is %(default)g."}
+                ),
+    'get-raw-data-as-json': (
+            ['--get-raw-data-as-json'],
+            {'default': None,
+            'metavar': 'FILENAME_PREFIX',
+            'type': str,
+            'help': "If you want the raw metabolism estimation data dictionary in JSON-format, provide a filename prefix to this argument."
+                    "The program will then output a file with the .json extension containing this data."}
+                ),
+    'store-json-without-estimation': (
+            ['--store-json-without-estimation'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "This flag is used to control what is stored in the JSON-formatted metabolism data dictionary. When this flag is provided alongside the "
+                    "--get-raw-data-as-json flag, the JSON file will be created without running metabolism estimation, and "
+                    "that file will consequently include only information about KOfam hits and gene calls. The idea is that you can "
+                    "then modify this file as you like and re-run this program using the flag --estimate-from-json."}
+                ),
+    'estimate-from-json': (
+            ['--estimate-from-json'],
+            {'default': None,
+            'metavar': 'FILE_PATH',
+            'type': str,
+            'help': "If you have a JSON file containing KOfam hits and gene call information from your contigs database "
+                    "(such as a file produced using the --get-raw-data-as-json flag), you can provide that file to this flag "
+                    "and KEGG metabolism estimates will be computed from the information within instead of from a contigs database."}
+                ),
 }
 
 # two functions that works with the dictionary above.
@@ -2300,7 +2355,8 @@ def set_version():
            t.genes_db_version, \
            t.auxiliary_data_version, \
            t.genomes_storage_vesion, \
-           t.structure_db_version
+           t.structure_db_version, \
+           t.kegg_modules_db_version
 
 
 def get_version_tuples():
@@ -2311,7 +2367,8 @@ def get_version_tuples():
             ("Auxiliary data storage version", __auxiliary_data_version__),
             ("Pan DB version", __pan__version__),
             ("Genome data storage version", __genomes_storage_version__),
-            ("Structure DB version", __structure__version__)]
+            ("Structure DB version", __structure__version__),
+            ("KEGG Modules DB version", __kegg_modules_version__)]
 
 
 def print_version():
@@ -2322,6 +2379,7 @@ def print_version():
     run.info("Genome data storage version", __genomes_storage_version__)
     run.info("Auxiliary data storage version", __auxiliary_data_version__)
     run.info("Structure DB version", __structure__version__)
+    run.info("Kegg Modules DB version", __kegg_modules_version__)
 
 
 __version__, \
@@ -2332,7 +2390,8 @@ __profile__version__, \
 __genes__version__, \
 __auxiliary_data_version__, \
 __genomes_storage_version__ , \
-__structure__version__ = set_version()
+__structure__version__, \
+__kegg_modules_version__ = set_version()
 
 
 if '-v' in sys.argv or '--version' in sys.argv:
