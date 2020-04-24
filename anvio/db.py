@@ -185,10 +185,13 @@ class DB:
         return val
 
 
-    def get_meta_value(self, key, try_as_type_int=True):
+    def get_meta_value(self, key, try_as_type_int=True, return_none_if_not_in_table=False):
         """if try_as_type_int, value is attempted to be converted to integer. If it fails, no harm no foul."""
+
         response = self._exec("""SELECT value FROM self WHERE key='%s'""" % key)
         rows = response.fetchall()
+        if not rows and return_none_if_not_in_table:
+            return None
         if not rows:
             raise ConfigError("A value for '%s' does not seem to be set in table 'self'." % key)
 
@@ -611,7 +614,7 @@ class DB:
                 if true, this function will raise an error if no data is selected from the table. otherwise, it will
                 quietly return the empty dictionary
            string_the_key: bool
-                if true, the row number will be converted to a string before being used as a key in the dictionary 
+                if true, the row number will be converted to a string before being used as a key in the dictionary
            row_num_as_key: bool
                 added as parameter so this function works for KEGG MODULES.db, which does not have unique IDs in the
                 first column. If True, the returned dictionary will be keyed by integers from 0 to (# rows returned - 1)
