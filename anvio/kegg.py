@@ -925,7 +925,7 @@ class KeggMetabolismEstimator(KeggContext):
             if len(splits_missing_in_profile_db):
                 self.progress.reset()
                 self.run.warning("Please note that anvi'o found %s splits in your contigs database with KOfam hits. But only %s of them "
-                                 "appear in the profile database. As a result, anvi'o will now remove the %s splits with KOfam hits"
+                                 "appear in the profile database. As a result, anvi'o will now remove the %s splits with KOfam hits "
                                  "that occur only in the contigs db from all downstream analyses. Where is this difference coming from though? "
                                  "Well. This is often the case because the 'minimum contig length parameter' set during the `anvi-profile` "
                                  "step can exclude many contigs from downstream analyses (often for good reasons, too). For "
