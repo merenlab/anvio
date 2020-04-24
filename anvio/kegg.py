@@ -716,7 +716,7 @@ class KeggRunHMMs(KeggContext):
 
         # parse hmmscan output
         parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
-        search_results_dict = parser.get_search_results(ko_list_dict=self.ko_dict)
+        search_results_dict = parser.get_search_results(noise_cutoff_dict=self.ko_dict)
 
         # add functions and KEGG modules info to database
         functions_dict = {}
