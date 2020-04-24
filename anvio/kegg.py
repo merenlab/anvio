@@ -177,7 +177,7 @@ class KeggSetup(KeggContext):
 
         filesnpaths.is_program_exists('hmmpress')
 
-        filesnpaths.is_output_dir_writable(self.kegg_data_dir)
+        filesnpaths.is_output_dir_writable(os.path.dirname(self.kegg_data_dir))
 
         if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
