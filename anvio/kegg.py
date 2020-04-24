@@ -3,9 +3,7 @@
 """This file contains Kegg related classes."""
 
 import os
-import gzip
 import shutil
-import requests
 import glob
 import re
 import copy
@@ -17,18 +15,17 @@ from scipy import stats
 
 import anvio
 import anvio.db as db
-import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.tables as t
 import anvio.ccollections as ccollections
 
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
-from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
+from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileDatabase
 from anvio.constants import KEGG_SETUP_INTERVAL
 
 
