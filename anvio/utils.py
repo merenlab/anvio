@@ -383,23 +383,18 @@ def gzip_decompress_file(input_file_path, output_file_path=None, keep_original=T
     return output_file_path
 
 def tar_extract_file(input_file_path, output_file_path=None, keep_original=True):
-    filesnpaths.is_file_exists(input_file_path)
-
-    if not tarfile.is_tarfile(input_file_path):
-        raise ConfigError("the tar_extract_file function is terribly upset because your input file ('%s') is\
-                            apparently not a tar file 🤷")
+    filesnpaths.is_file_tar_file(input_file_path)
 
     if not output_file_path:
-        raise ConfigError("the tar_extract_file function is displeased because an output file path has not been specified.\
-                            If you are seeing this message, you are probably a developer, so go fix your code please, and \
-                            everyone will be happy then.")
+        raise ConfigError("The tar_extract_file function is displeased because an output file path has not been specified. "
+                          "If you are seeing this message, you are probably a developer, so go fix your code please, and "
+                          "everyone will be happy then.")
 
     tf = tarfile.open(input_file_path)
     tf.extractall(path = output_file_path)
 
     if not keep_original:
         os.remove(input_file_path)
-
 
 
 class RunInDirectory(object):
