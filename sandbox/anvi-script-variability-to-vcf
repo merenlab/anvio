@@ -5,7 +5,6 @@ Converts anvi'o variability output to VCF
 """
 
 
-import re
 import sys
 import argparse
 import datetime
@@ -14,7 +13,6 @@ import numpy as np
 import pandas as pd
 
 from collections import defaultdict
-from collections import OrderedDict
 
 import anvio
 
@@ -78,7 +76,7 @@ def main(args):
     finalVCF = defaultdict(dict)
     sampleNames = sorted(list(input_df['sample_id'].unique()))
     header = ["#CHROM" ,"POS", "ID", "REF", "ALT" ,"QUAL" ,"FILTER", "INFO","FORMAT"]
- 
+
    ##################### ADDING ALLELE COLUMNS FOR FINDING GENOTYPE #########################################
     input_df['competing_nts'] = input_df.competing_nts.astype(str)
     input_df['allele1'] = input_df.competing_nts.str[0]
@@ -126,7 +124,7 @@ def main(args):
            if sample not in sampleInfoDict.get(key, {}):
                sampleInfoDict[key][sample]='./.'
            finalVCF[key].append(sampleInfoDict[key][sample])
-    
+
     ######################################### PRINT THE VCF ################################################
     ###### PRINT HEADERS AND INFO
 
