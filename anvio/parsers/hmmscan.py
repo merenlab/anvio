@@ -66,14 +66,14 @@ class HMMScan(Parser):
         Parser.__init__(self, 'HMMScan', [hmm_scan_hits_txt], files_expected, files_structure)
 
 
-    def get_search_results(self, ko_list_dict = None):
+    def get_search_results(self, noise_cutoff_dict = None):
         """This function goes through the hits provided by `hmmscan` and generates an annotation dictionary with the relevant information about each hit.
 
-        If we are parsing Kofam hits, then this function makes sure only hits with a high enough bit score make it into the annotation dictionary.
+        This function makes sure only hits with a high enough bit score make it into the annotation dictionary.
 
         Parameters
         ==========
-        ko_list_dict    dictionary of the ko_list file; see setup_ko_dict in kofam.py for more details
+        noise_cutoff_dict    dictionary of noise cutoff terms; see setup_ko_dict in kofam.py for an example
 
         Returns
         =======
@@ -90,12 +90,12 @@ class HMMScan(Parser):
         for hit in list(self.dicts['hits'].values()):
             entry = None
             if self.context == 'GENE':
-                # This is for KEGG Kofams. Here we only add the hit to the annotations_dict if the appropriate bit score is above the
-                # threshold set in ko_list_dict (which is indexed by ko num, aka gene_name in the hits dict)
-                if ko_list_dict and hit['gene_name'] in ko_list_dict.keys():
-                    knum =  hit['gene_name']
-                    score_type = ko_list_dict[knum]['score_type']
-                    threshold = ko_list_dict[knum]['threshold']
+                # Here we only add the hit to the annotations_dict if the appropriate bit score is above the
+                # threshold set in noise_cutoff_dict (which is indexed by profile name (aka gene_name in the hits dict)
+                if noise_cutoff_dict and hit['gene_name'] in noise_cutoff_dict.keys():
+                    hmm_entry_name =  hit['gene_name']
+                    score_type = noise_cutoff_dict[hmm_entry_name]['score_type']
+                    threshold = noise_cutoff_dict[hmm_entry_name]['threshold']
                     keep = True
                     if score_type == 'full':
                         if hit['bit_score'] < float(threshold):
@@ -104,9 +104,9 @@ class HMMScan(Parser):
                         if hit['dom_bit_score'] < float(threshold):
                             keep = False
                     else:
-                        self.run.warning("Oh dear. The Kofam profile %s has a strange score_type value: %s. The only accepted values \
-                        for this type are 'full' or 'domain', so anvi'o cannot parse the hits to this profile. All hits will be kept \
-                        regardless of bit score. You have been warned." % (hit['gene_name'], score_type))
+                        self.run.warning("Oh dear. The HMM profile %s has a strange score_type value: %s. The only accepted values "
+                                         "for this type are 'full' or 'domain', so anvi'o cannot parse the hits to this profile. All hits "
+                                         "will be kept regardless of bit score. You have been warned." % (hit['gene_name'], score_type))
 
                     if keep:
                         entry = {'entry_id': entry_id,
@@ -117,12 +117,12 @@ class HMMScan(Parser):
                     else:
                         num_hits_removed += 1
 
-                elif ko_list_dict and hit['gene_name'] not in ko_list_dict.keys():
+                elif noise_cutoff_dict and hit['gene_name'] not in noise_cutoff_dict.keys():
                     # this should never happen, in an ideal world where everything is filled with butterflies and happiness
-                    self.run.warning("Hmm. While parsing your Kofam hits, it seems the Kofam profile %s was not found in the ko_list dictionary. \
-                    This should probably not ever happen, and you should contact a developer as soon as possible to figure out what \
-                    is going on. But for now, anvi'o is going to keep all hits to this profile. Consider those hits with a grain of salt, \
-                    as not all of them may be good." % hit['gene_name'])
+                    self.run.warning("Hmm. While parsing your HMM hits, it seems the HMM profile %s was not found in the noise cutoff dictionary. "
+                                     "This should probably not ever happen, and you should contact a developer as soon as possible to figure out what "
+                                     "is going on. But for now, anvi'o is going to keep all hits to this profile. Consider those hits with a grain of salt, "
+                                     "as not all of them may be good." % hit['gene_name'])
                     entry = {'entry_id': entry_id,
                              'gene_name': hit['gene_name'],
                              'gene_hmm_id': hit['gene_hmm_id'],
