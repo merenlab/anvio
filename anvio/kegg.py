@@ -63,6 +63,7 @@ class KeggContext(object):
         self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list.txt")
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
+        self.kegg_modules_db_path = os.path.join(self.kegg_data_dir, "MODULES.db")
 
 
     def setup_ko_dict(self):
@@ -95,14 +96,15 @@ class KeggContext(object):
             orphan_ko_dict.update({ko:self.ko_dict[ko] for ko in self.ko_no_threshold_list})
 
             if not os.path.exists(self.orphan_data_dir): # should not happen but we check just in case
-                raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist \
-                yet, but it needs to in order for the setup_ko_dict() function to work." % self.orphan_data_dir)
+                raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist "
+                                  "yet, but it needs to in order for the setup_ko_dict() function to work." % self.orphan_data_dir)
             orphan_ko_path = os.path.join(self.orphan_data_dir, "01_ko_fams_with_no_threshold.txt")
             orphan_ko_headers = ["threshold","score_type","profile_type","F-measure","nseq","nseq_used","alen","mlen","eff_nseq","re/pos", "definition"]
             utils.store_dict_as_TAB_delimited_file(orphan_ko_dict, orphan_ko_path, key_header="knum", headers=orphan_ko_headers)
 
         [self.ko_dict.pop(ko) for ko in self.ko_skip_list]
         [self.ko_dict.pop(ko) for ko in self.ko_no_threshold_list]
+
 
     def get_ko_skip_list(self):
         """The purpose of this function is to determine which KO numbers have no associated data or just no score threshold in the ko_list file.
@@ -145,6 +147,7 @@ class KeggContext(object):
             elif no_threshold:
                 no_threshold_list.append(k)
         return skip_list, no_threshold_list
+
 
 class KeggSetup(KeggContext):
     """Class for setting up KEGG Kofam HMM profiles and modules.
@@ -194,23 +197,29 @@ class KeggSetup(KeggContext):
         """This function determines whether the user has already downloaded the Kofam HMM profiles and KEGG modules."""
 
         if os.path.exists(self.kofam_hmm_file_path):
-            raise ConfigError("It seems you already have KOfam HMM profiles installed in '%s', please use --reset flag if you want to re-download it." % self.kegg_data_dir)
+            raise ConfigError("It seems you already have KOfam HMM profiles installed in '%s', please use --reset flag "
+                              "if you want to re-download it." % self.kegg_data_dir)
 
         if os.path.exists(self.kegg_module_file):
-            raise ConfigError("Interestingly, though KOfam HMM profiles are not installed on your system, KEGG module information seems to have been \
-            already downloaded in %s. Please use the --reset flag to re-download everything from scratch." % self.kegg_data_dir)
+            raise ConfigError("Interestingly, though KOfam HMM profiles are not installed on your system, KEGG module "
+                              "information seems to have been already downloaded in %s. Please use the --reset flag to "
+                              "re-download everything from scratch." % self.kegg_data_dir)
 
         if os.path.exists(self.kegg_pathway_file):
-            raise ConfigError("Interestingly, though KOfam HMM profiles are not installed on your system, KEGG pathway information seems to have been \
-            already downloaded in %s. Please use the --reset flag to re-download everything from scratch." % self.kegg_data_dir)
+            raise ConfigError("Interestingly, though KOfam HMM profiles are not installed on your system, KEGG pathway "
+                              "information seems to have been already downloaded in %s. Please use the --reset flag to "
+                              "re-download everything from scratch." % self.kegg_data_dir)
 
         if os.path.exists(self.module_data_dir):
-            raise ConfigError("It seems the KEGG module directory %s already exists on your system. This is even more strange because Kofam HMM \
-            profiles have not been downloaded. We suggest you to use the --reset flag to download everything from scratch." % self.module_data_dir)
+            raise ConfigError("It seems the KEGG module directory %s already exists on your system. This is even more "
+                              "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
+                              "--reset flag to download everything from scratch." % self.module_data_dir)
 
         if os.path.exists(self.pathway_data_dir):
-            raise ConfigError("It seems the KEGG pathway directory %s already exists on your system. This is even more strange because Kofam HMM \
-            profiles have not been downloaded. We suggest you to use the --reset flag to download everything from scratch." % self.pathway_data_dir)
+            raise ConfigError("It seems the KEGG pathway directory %s already exists on your system. This is even more "
+                              "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
+                              "--reset flag to download everything from scratch." % self.pathway_data_dir)
+
 
     def download_profiles(self):
         """This function downloads the Kofam profiles."""
@@ -220,6 +229,7 @@ class KeggSetup(KeggContext):
         for file_name in self.files.keys():
             utils.download_file(self.database_url + '/' + file_name,
                 os.path.join(self.kegg_data_dir, file_name), progress=self.progress, run=self.run)
+
 
     def process_module_file(self):
         """This function reads the kegg module file into a dictionary. It should be called during setup to get the KEGG module numbers so that KEGG modules can be downloaded.
@@ -285,8 +295,11 @@ class KeggSetup(KeggContext):
                     self.module_dict[mnum] = {"name" : fields[2], "type" : current_module_type, "category" : current_category, "subcategory" : current_subcategory}
                 # unknown code
                 else:
-                    raise ConfigError("While parsing the KEGG file %s, we found an unknown line code %s. This has \
-                    made the file unparseable. Sad. :(" % (self.kegg_module_file, first_char))
+                    raise ConfigError("While parsing the KEGG file %s, we found an unknown line code %s. This has "
+                                      "made the file unparseable. It is likely that an update to KEGG has broken "
+                                      "things such that anvi'o doesn't know what is going on anymore. Sad, we know. :( "
+                                      "Please contact the developers to see if this is a fixable issue, and in the "
+                                      "meantime use an older version of the KEGG data directory (if you have one)." % (self.kegg_module_file, first_char))
         self.progress.end()
 
 
@@ -353,16 +366,19 @@ class KeggSetup(KeggContext):
                         self.pathway_dict[konum] = {"name" : fields[2], "category" : current_category, "subcategory" : current_subcategory}
                 # unknown code
                 else:
-                    raise ConfigError("While parsing the KEGG file %s, we found an unknown line code %s. This has \
-                    made the file unparseable. Sad. :(" % (self.kegg_pathway_file, first_char))
+                    raise ConfigError("While parsing the KEGG file %s, we found an unknown line code %s. This has "
+                                      "made the file unparseable. It is likely that an update to KEGG has broken "
+                                      "things such that anvi'o doesn't know what is going on anymore. Sad, we know. :( "
+                                      "Please contact the developers to see if this is a fixable issue, and in the "
+                                      "meantime use an older version of the KEGG data directory (if you have one)." % (self.kegg_pathway_file, first_char))
         self.progress.end()
 
 
     def download_modules(self):
         """This function downloads the KEGG modules.
 
-        To do so, it also processes the KEGG module file into a dictionary via the
-        process_module_file() function. To verify that each file has been downloaded properly, we check that the last line is '///'.
+        To do so, it also processes the KEGG module file into a dictionary via the process_module_file() function.
+        To verify that each file has been downloaded properly, we check that the last line is '///'.
         """
 
         self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
@@ -385,8 +401,8 @@ class KeggSetup(KeggContext):
             f.seek(f.tell() - 4, os.SEEK_SET)
             last_line = f.readline().strip('\n')
             if not last_line == '///':
-                raise ConfigError("The KEGG module file %s was not downloaded properly. We were expecting the last line in the file \
-                to be '///', but instead it was %s." % (file_path, last_line))
+                raise ConfigError("The KEGG module file %s was not downloaded properly. We were expecting the last line in the file "
+                                  "to be '///', but instead it was %s." % (file_path, last_line))
 
 
     def download_pathways(self):
@@ -417,8 +433,8 @@ class KeggSetup(KeggContext):
             f.seek(f.tell() - 4, os.SEEK_SET)
             last_line = f.readline().strip('\n')
             if not last_line == '///':
-                raise ConfigError("The KEGG pathway file %s was not downloaded properly. We were expecting the last line in the file \
-                to be '///', but instead it was %s." % (file_path, last_line))
+                raise ConfigError("The KEGG pathway file %s was not downloaded properly. We were expecting the last line in the file "
+                                  "to be '///', but instead it was %s." % (file_path, last_line))
 
 
     def decompress_files(self):
@@ -450,9 +466,10 @@ class KeggSetup(KeggContext):
             if k not in self.ko_skip_list:
                 hmm_path = os.path.join(self.kegg_data_dir, "profiles/%s.hmm" % k)
                 if not os.path.exists(hmm_path):
-                    raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong \
-                                    while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset \
-                                    flag." % (hmm_path))
+                    raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong "
+                                      "while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset "
+                                      "flag." % (hmm_path))
+
 
     def move_orphan_files(self):
         """This function moves the following to the orphan files directory:
@@ -460,13 +477,13 @@ class KeggSetup(KeggContext):
             - profiles that do not have ko_list entries
             - profiles whose ko_list entries have no scoring threshold (in ko_no_threshold_list)
 
-        And, the following profiles should not have been downloaded, but we check if they exist and move any that do:
+        And, the following profiles should not have been downloaded, but if they were then we move them, too:
             - profiles whose ko_list entries have no data at all (in ko_skip_list)
         """
 
         if not os.path.exists(self.orphan_data_dir): # should not happen but we check just in case
-            raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist \
-            yet, but it needs to in order for the move_orphan_files() function to work." % self.orphan_data_dir)
+            raise ConfigError("Hmm. Something is out of order. The orphan data directory %s does not exist "
+                              "yet, but it needs to in order for the move_orphan_files() function to work." % self.orphan_data_dir)
 
         no_kofam_path = os.path.join(self.orphan_data_dir, "00_hmm_profiles_with_no_ko_fams.hmm")
         no_kofam_file_list = []
@@ -491,27 +508,26 @@ class KeggSetup(KeggContext):
         if no_kofam_file_list:
             utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=remove_old_files)
             self.progress.reset()
-            self.run.warning("Please note that while anvi'o was building your databases, she found %d \
-                            HMM profiles that did not have any matching KOfam entries. We have removed those HMM \
-                            profiles from the final database. You can find them under the directory '%s'."
-                            % (len(no_kofam_file_list), self.orphan_data_dir))
-
+            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
+                             "HMM profiles that did not have any matching KOfam entries. We have removed those HMM "
+                             "profiles from the final database. You can find them under the directory '%s'."
+                             % (len(no_kofam_file_list), self.orphan_data_dir))
 
         if no_threshold_file_list:
             utils.concatenate_files(no_threshold_path, no_threshold_file_list, remove_concatenated_files=remove_old_files)
             self.progress.reset()
-            self.run.warning("Please note that while anvi'o was building your databases, she found %d \
-                            KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM \
-                            profiles from the final database. You can find them under the directory '%s'."
-                            % (len(no_threshold_file_list), self.orphan_data_dir))
+            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
+                             "KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
+                             "profiles from the final database. You can find them under the directory '%s'."
+                             % (len(no_threshold_file_list), self.orphan_data_dir))
 
         if no_data_file_list:
             utils.concatenate_files(no_data_path, no_data_file_list, remove_concatenated_files=remove_old_files)
             self.progress.reset()
-            self.run.warning("Please note that while anvi'o was building your databases, she found %d \
-                            HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. \
-                            We have removed those HMM profiles from the final database. You can find them under the directory '%s'."
-                            % (len(no_data_file_list), self.orphan_data_dir))
+            self.run.warning("Please note that while anvi'o was building your databases, she found %d "
+                             "HMM profiles that did not have any associated data (besides an annotation) in their KOfam entries. "
+                             "We have removed those HMM profiles from the final database. You can find them under the directory '%s'."
+                             % (len(no_data_file_list), self.orphan_data_dir))
 
 
     def run_hmmpress(self):
@@ -539,23 +555,26 @@ class KeggSetup(KeggContext):
         ret_val = utils.run_command(cmd_line, log_file_path)
 
         if ret_val:
-            raise ConfigError("Hmm. There was an error while running `hmmpress` on the Kofam HMM profiles. \
-                                Check out the log file ('%s') to see what went wrong." % (log_file_path))
+            raise ConfigError("Hmm. There was an error while running `hmmpress` on the Kofam HMM profiles. "
+                              "Check out the log file ('%s') to see what went wrong." % (log_file_path))
         else:
             # getting rid of the log file because hmmpress was successful
             os.remove(log_file_path)
 
         self.progress.end()
 
-    def setup_modules_db(self):
-        """This function creates the Modules DB from the Kegg Module files. """
 
-        mod_db = KeggModulesDatabase(os.path.join(self.kegg_data_dir, "MODULES.db"), args=self.args, module_dictionary=self.module_dict, run=run, progress=progress)
+    def setup_modules_db(self):
+        """This function creates the Modules DB from the Kegg Module files."""
+
+        mod_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, module_dictionary=self.module_dict, run=run, progress=progress)
         mod_db.create()
 
 
     def setup_profiles(self):
-        """This is a driver function which executes the KEGG setup process by downloading, decompressing, and hmmpressing the KOfam profiles.
+        """This is a driver function which executes the KEGG setup process.
+
+        It downloads, decompresses, and hmmpresses the KOfam profiles.
         It also downloads and processes the KEGG Module files into the MODULES.db.
         """
 
@@ -565,6 +584,7 @@ class KeggSetup(KeggContext):
         self.setup_ko_dict()
         self.run_hmmpress()
         self.setup_modules_db()
+
 
 class KeggRunHMMs(KeggContext):
     """ Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DB for later metabolism prediction.
@@ -590,21 +610,22 @@ class KeggRunHMMs(KeggContext):
 
         # verify that Kofam HMM profiles have been set up
         if not os.path.exists(self.kofam_hmm_file_path):
-            raise ConfigError("Anvi'o is unable to find the Kofam.hmm file at %s. This can happen one of two ways. Either you \
-                                didn't specify the correct KEGG data directory using the flag --kegg-data-dir, or you haven't \
-                                yet set up the Kofam data by running `anvi-setup-kegg-kofams`. Hopefully you now know what to do \
-                                to fix this problem. :) " % self.kegg_data_dir)
+            raise ConfigError("Anvi'o is unable to find the Kofam.hmm file at %s. This can happen one of two ways. Either you "
+                              "didn't specify the correct KEGG data directory using the flag --kegg-data-dir, or you haven't "
+                              "yet set up the Kofam data by running `anvi-setup-kegg-kofams`. Hopefully you now know what to do "
+                              "to fix this problem. :) " % self.kegg_data_dir)
 
         utils.is_contigs_db(self.contigs_db_path)
 
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
 
         # load existing kegg modules db
-        self.kegg_modules_db = KeggModulesDatabase(os.path.join(self.kegg_data_dir, "MODULES.db"), args=self.args)
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
 
 
     def set_hash_in_contigs_db(self):
-        """Modify the contigs DB self table to indicate which MODULES.db has been used to annotate it"""
+        """Modifies the contigs DB self table to indicate which MODULES.db has been used to annotate it."""
+
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.contigs_db_path = A('contigs_db')
 
@@ -614,22 +635,37 @@ class KeggRunHMMs(KeggContext):
 
 
     def get_annotation_from_ko_dict(self, knum, ok_if_missing_from_dict=False):
+        """Returns the functional annotation of the provided KO number.
+
+        Parameters
+        ==========
+        knum : str
+            The KO number for which to get an annotation for
+        ok_if_missing_from_dict : bool
+            If false, not finding the KO will raise an error. If true, the function will quietly return an "Unknown" annotation string for the missing KO
+
+        Returns
+        =======
+        annotation : str
+        """
+
         if not self.ko_dict:
-            raise ConfigError("Oops! The ko_list file has not been properly loaded, so get_annotation_from_ko_dict() is \
-                                extremely displeased and unable to function properly. Please refrain from calling this \
-                                function until after setup_ko_dict() has been called.")
+            raise ConfigError("Oops! The ko_list file has not been properly loaded, so get_annotation_from_ko_dict() is "
+                              "extremely displeased and unable to function properly. Please refrain from calling this "
+                              "function until after setup_ko_dict() has been called.")
 
         if not knum in self.ko_dict:
             if ok_if_missing_from_dict:
                 return "Unknown function with KO num %s" % knum
             else:
-                raise ConfigError("It seems %s found a KO number that does not exist\
-                                   in the KOfam ko_list file: %s" % (self.hmm_program, knum))
+                raise ConfigError("It seems %s found a KO number that does not exist "
+                                  "in the KOfam ko_list file: %s" % (self.hmm_program, knum))
 
         return self.ko_dict[knum]['definition']
 
+
     def process_kofam_hmms(self):
-        """This is a driver function for running HMMs against the KOfam database and processing the hits into the provided contigs DB"""
+        """This is a driver function for running HMMs against the KOfam database and processing the hits into the provided contigs DB."""
 
         tmp_directory_path = filesnpaths.get_temp_directory_path()
         contigs_db = ContigsSuperclass(self.args) # initialize contigs db
@@ -650,16 +686,16 @@ class KeggRunHMMs(KeggContext):
         gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
 
         if not hmm_hits_file:
-            run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But\
-                             now anvi'o will add KOfam as a functional source with no hits, clean the temporary directories\
-                             and gracefully quit.", nl_before=1, nl_after=1)
+            run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But "
+                             "now anvi'o will add KOfam as a functional source with no hits, clean the temporary directories "
+                             "and gracefully quit.", nl_before=1, nl_after=1)
             if not anvio.DEBUG:
                 shutil.rmtree(tmp_directory_path)
                 hmmer.clean_tmp_dirs()
             else:
-                self.run.warning("Because you ran this script with the --debug flag, anvi'o will not clean up the temporary\
-                directories located at %s and %s. Please be responsible for cleaning up this directory yourself \
-                after you are finished debugging :)" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
+                self.run.warning("Because you ran this script with the --debug flag, anvi'o will not clean up the temporary "
+                                 "directories located at %s and %s. Please be responsible for cleaning up this directory yourself "
+                                 "after you are finished debugging :)" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
             return
 
@@ -721,21 +757,22 @@ class KeggRunHMMs(KeggContext):
             gene_function_calls_table.create(kegg_module_names_dict)
             gene_function_calls_table.create(kegg_module_classes_dict)
         else:
-            self.run.warning("KOfam class has no hits to process. Returning empty handed, but still adding KOfam as \
-                              a functional source.")
+            self.run.warning("KOfam class has no hits to process. Returning empty handed, but still adding KOfam as "
+                             "a functional source.")
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
 
         # mark contigs db with hash of modules.db content for version tracking
         self.set_hash_in_contigs_db()
 
         if anvio.DEBUG:
-            run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up\
-                         later" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
+            run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up "
+                        "later" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
         else:
-            run.info_single('Cleaning up the temp directory (you can use `--debug` if you would\
-                             like to keep it for testing purposes)', nl_before=1, nl_after=1)
+            run.info_single("Cleaning up the temp directory (you can use `--debug` if you would "
+                            "like to keep it for testing purposes)", nl_before=1, nl_after=1)
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
+
 
 class KeggMetabolismEstimator(KeggContext):
     """ Class for reconstructing/estimating metabolism based on hits to KEGG databases.
@@ -767,12 +804,12 @@ class KeggMetabolismEstimator(KeggContext):
 
         if not self.estimate_from_json and not self.contigs_db_path:
             raise ConfigError("NO INPUT PROVIDED. You must provide (at least) a contigs database to this program, unless you are using the --estimate-from-json "
-                                "flag, in which case you must provide a JSON-formatted file.")
+                              "flag, in which case you must provide a JSON-formatted file.")
 
         self.bin_ids_to_process = None
         if self.bin_id and self.bin_ids_file:
-            raise ConfigError("You have provided anvi'o with both the individual bin id %s and a file with bin ids (%s). \
-            Please make up your mind. Which one do you want an estimate for? :)" % (self.bin_id, self.bin_ids_file))
+            raise ConfigError("You have provided anvi'o with both the individual bin id %s and a file with bin ids (%s). "
+                              "Please make up your mind. Which one do you want an estimate for? :)" % (self.bin_id, self.bin_ids_file))
         elif self.bin_id:
             self.bin_ids_to_process = [self.bin_id]
         elif self.bin_ids_file:
@@ -781,17 +818,17 @@ class KeggMetabolismEstimator(KeggContext):
 
         if self.bin_id or self.bin_ids_file or self.collection_name and not self.profile_db_path:
             raise ConfigError("You have requested metabolism estimation for a bin or set of bins, but you haven't provided "
-                                "a profiles database. Unfortunately, this just does not work. Please try again.")
+                              "a profiles database. Unfortunately, this just does not work. Please try again.")
 
         if self.profile_db_path and not self.collection_name:
             raise ConfigError("If you provide a profiles DB, you should also provide a collection name.")
 
         if self.store_json_without_estimation and not self.json_output_file_path:
             raise ConfigError("Whoops. You seem to want to store the metabolism dictionary in a JSON file, but you haven't provided the name of that file. "
-                                "Please use the --get-raw-data-as-json flag to do so.")
+                              "Please use the --get-raw-data-as-json flag to do so.")
         if self.store_json_without_estimation and self.estimate_from_json:
             raise ConfigError("It is impossible to both estimate metabolism from JSON data and produce a JSON file without estimation at the same time... "
-                            "anvi'o is judging you SO hard right now.")
+                              "anvi'o is judging you SO hard right now.")
 
 
         # init the base class
@@ -801,13 +838,13 @@ class KeggMetabolismEstimator(KeggContext):
             utils.is_contigs_db(self.contigs_db_path)
 
         # load existing kegg modules db
-        if not os.path.exists(os.path.join(self.kegg_data_dir, "MODULES.db")):
-            raise ConfigError("It appears that a modules database (%s) does not exist in the KEGG data directory %s. \
-            Perhaps you need to specify a different KEGG directory using --kegg-data-dir. Or perhaps you didn't run \
-            `anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case \
-            since you also cannot run `anvi-run-kegg-kofams` without first having run KEGG setup. But fine. Hopefully \
-            you now know what you need to do to make this message go away." % ("MODULES.db", self.kegg_data_dir))
-        self.kegg_modules_db = KeggModulesDatabase(os.path.join(self.kegg_data_dir, "MODULES.db"), args=self.args)
+        if not os.path.exists(self.kegg_modules_db_path):
+            raise ConfigError("It appears that a modules database (%s) does not exist in the KEGG data directory %s. "
+                              "Perhaps you need to specify a different KEGG directory using --kegg-data-dir. Or perhaps you didn't run "
+                              "`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case "
+                              "since you also cannot run `anvi-run-kegg-kofams` without first having run KEGG setup. But fine. Hopefully "
+                              "you now know what you need to do to make this message go away." % ("MODULES.db", self.kegg_data_dir))
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
 
     def init_hits_and_splits(self):
         """This function loads KOfam hits, gene calls, splits, and contigs from the contigs DB.
@@ -820,7 +857,8 @@ class KeggMetabolismEstimator(KeggContext):
 
         RETURNS
         =======
-        kofam_gene_split_contig     list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
+        kofam_gene_split_contig : list
+            (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
         """
 
         self.progress.new('Loading data from Contigs DB')
@@ -842,7 +880,7 @@ class KeggMetabolismEstimator(KeggContext):
         genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "gene_callers_id, split")
         genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig")
         kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
-                                                where_clause="source = 'KOfam'")
+                                                               where_clause="source = 'KOfam'")
         min_contig_length_in_contigs_db = contigs_db.db.get_max_value_in_column(t.contigs_info_table_name, "length", return_min_instead=True)
         contigs_db.disconnect()
 
@@ -857,8 +895,8 @@ class KeggMetabolismEstimator(KeggContext):
             genes_in_contigs = [tpl for tpl in genes_in_contigs if tpl[0] not in gene_calls_without_kofam_hits]
             if anvio.DEBUG:
                 self.progress.reset()
-                self.run.warning("The following gene calls in your contigs DB were removed from consideration as they \
-                do not have any hits to the KOfam database: %s" % (gene_calls_without_kofam_hits))
+                self.run.warning("The following gene calls in your contigs DB were removed from consideration as they "
+                                 "do not have any hits to the KOfam database: %s" % (gene_calls_without_kofam_hits))
 
 
         # get rid of splits and contigs (and their associated gene calls) that are not in the profile DB
@@ -919,6 +957,7 @@ class KeggMetabolismEstimator(KeggContext):
 
         return kofam_gene_split_contig
 
+
     def mark_kos_present_for_list_of_splits(self, kofam_hits_in_splits, split_list=None, bin_name=None):
         """This function generates a bin-level dictionary of dictionaries, which associates modules with the KOs
         that are present in the bin for each module.
@@ -939,13 +978,17 @@ class KeggMetabolismEstimator(KeggContext):
 
         PARAMETERS
         ==========
-        kofam_hits_in_splits        list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
-        split_list                  list of splits we are considering, this is only for debugging output
-        bin_name                    name of the bin containing these splits, this is only for debugging output
+        kofam_hits_in_splits : list
+            (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
+        split_list : list
+            splits we are considering, this is only for debugging output
+        bin_name : str
+            name of the bin containing these splits, this is only for debugging output
 
         RETURNS
         =======
-        bin_level_module_dict       dict of dicts that maps module number to dictionary of KOs present in the splits for that module
+        bin_level_module_dict : dictionary of dictionaries
+            initialized metabolism completeness dictionary for the list of splits (genome, metagenome, or bin) provided
         """
 
         bin_level_module_dict = {}
@@ -1015,8 +1058,10 @@ class KeggMetabolismEstimator(KeggContext):
 
         PARAMETERS
         ==========
-        mnum                    string, module number to work on
-        meta_dict_for_bin       metabolism completeness dict for the current bin, to be modified in-place
+        mnum : string
+            module number to work on
+        meta_dict_for_bin : dictionary of dictionaries
+            metabolism completeness dict for the current bin, to be modified in-place
 
         NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
         =======
@@ -1029,10 +1074,14 @@ class KeggMetabolismEstimator(KeggContext):
 
         RETURNS
         =======
-        over_complete_threshold         boolean, whether or not the module is considered "complete" overall based on the threshold fraction of completeness
-        has_nonessential_step           boolean, whether or not the module contains non-essential steps. Used for warning the user about these.
-        has_no_ko_step                  boolean, whether or not the module contains steps without associated KOs. Used for warning the user about these.
-        defined_by_modules              boolean, whether or not the module contains steps defined by other modules. Used for going back to adjust completeness later.
+        over_complete_threshold : boolean
+            whether or not the module is considered "complete" overall based on the threshold fraction of completeness
+        has_nonessential_step : boolean
+            whether or not the module contains non-essential steps. Used for warning the user about these.
+        has_no_ko_step : boolean
+            whether or not the module contains steps without associated KOs. Used for warning the user about these.
+        defined_by_modules : boolean
+            whether or not the module contains steps defined by other modules. Used for going back to adjust completeness later.
         """
 
         present_list_for_mnum = meta_dict_for_bin[mnum]["kofam_hits"].keys()
@@ -1152,12 +1201,15 @@ class KeggMetabolismEstimator(KeggContext):
 
         PARAMETERS
         ==========
-        mod                 string, the module number to adjust
-        meta_dict_for_bin   metabolism completeness dictionary for the current bin
+        mod : string
+            the module number to adjust
+        meta_dict_for_bin : dictionary of dictionaries
+            metabolism completeness dictionary for the current bin
 
         RETURNS
         =======
-        now_complete        boolean, whether or not the module is NOW considered "complete" overall based on the threshold fraction of completeness
+        now_complete : boolean
+            whether or not the module is NOW considered "complete" overall based on the threshold fraction of completeness
         """
 
         for i in range(len(meta_dict_for_bin[mod]["paths"])):
@@ -1178,7 +1230,7 @@ class KeggMetabolismEstimator(KeggContext):
                     num_essential_steps_in_path += 1
                 else:
                     raise ConfigError("Well. While adjusting completeness estimates for module %s, we found an atomic step in the pathway that we "
-                                        "are not quite sure what to do with. Here it is: %s" % (mod, atomic_step))
+                                      "are not quite sure what to do with. Here it is: %s" % (mod, atomic_step))
 
             # now we adjust the previous pathway completeness
             old_complete_steps_in_path = meta_dict_for_bin[mod]["pathway_completeness"][i] * num_essential_steps_in_path
@@ -1257,8 +1309,10 @@ class KeggMetabolismEstimator(KeggContext):
 
         PARAMETERS
         ==========
-        mnum                    string, module number to work on
-        meta_dict_for_bin       metabolism completeness dict for the current bin, to be modified in-place
+        mnum : string
+            module number to work on
+        meta_dict_for_bin : dictionary of dictionaries
+            metabolism completeness dict for the current bin, to be modified in-place
 
         """
 
@@ -1305,11 +1359,13 @@ class KeggMetabolismEstimator(KeggContext):
 
         PARAMETERS
         ==========
-        metabolism_dict_for_list_of_splits      the metabolism completeness dictionary of dictionaries for this list of splits. It contains
-                                                one dictionary of module steps and completion information for each module (keyed by module number),
-                                                as well as one key num_complete_modules that tracks the number of complete modules found in these splits.
-                                                Calling functions should assign this dictionary to a metabolism superdict with the bin name as a key.
-        bin_name                                the name of the bin/genome/metagenome that we are working with
+        metabolism_dict_for_list_of_splits : dictionary of dictionaries
+            the metabolism completeness dictionary of dictionaries for this list of splits. It contains
+            one dictionary of module steps and completion information for each module (keyed by module number),
+            as well as one key num_complete_modules that tracks the number of complete modules found in these splits.
+            Calling functions should assign this dictionary to a metabolism superdict with the bin name as a key.
+        bin_name : str
+            the name of the bin/genome/metagenome that we are working with
         """
 
         metabolism_dict_for_list_of_splits["num_complete_modules"] = 0
@@ -1357,9 +1413,9 @@ class KeggMetabolismEstimator(KeggContext):
         if not self.quiet:
             if mods_with_nonessential_steps:
                 self.run.warning("Please note that anvi'o found one or more non-essential steps in the following KEGG modules: %s.   "
-                "At this time, we are not counting these steps in our percent completion estimates. But we still kept track of which "
-                "of these non-essential steps were found to be complete. You can see this information in the output file."
-                % (", ".join(mods_with_nonessential_steps)))
+                                 "At this time, we are not counting these steps in our percent completion estimates. But we still kept track of which "
+                                 "of these non-essential steps were found to be complete. You can see this information in the output file."
+                                 % (", ".join(mods_with_nonessential_steps)))
 
             if mods_with_unassociated_ko:
                 self.run.warning("Just so you know, while estimating the completeness of some KEGG modules, anvi'o saw "
@@ -1388,11 +1444,13 @@ class KeggMetabolismEstimator(KeggContext):
 
         PARAMETERS
         ==========
-        kofam_gene_split_contig     list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
+        kofam_gene_split_contig : list
+            (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
 
         RETURNS
         =======
-        genome_metabolism_dict      dictionary mapping genome name to its metabolism completeness dictionary
+        genome_metabolism_dict : dictionary of dictionary of dictionaries
+            dictionary mapping genome name to its metabolism completeness dictionary
         """
 
         genome_metabolism_superdict = {}
@@ -1414,11 +1472,13 @@ class KeggMetabolismEstimator(KeggContext):
 
         PARAMETERS
         ==========
-        kofam_gene_split_contig     list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
+        kofam_gene_split_contig : list
+            (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
 
         RETURNS
         =======
-        bins_metabolism_superdict      dictionary mapping bin name to its metabolism completeness dictionary
+        bins_metabolism_superdict : dictionary of dictionary of dictionaries
+            dictionary mapping bin name to its metabolism completeness dictionary
         """
 
         bins_metabolism_superdict = {}
@@ -1455,11 +1515,13 @@ class KeggMetabolismEstimator(KeggContext):
 
         PARAMETERS
         ==========
-        kofam_gene_split_contig     list of (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
+        kofam_gene_split_contig : list
+            (ko_num, gene_call_id, split, contig) tuples, one per KOfam hit in the splits we are considering
 
         RETURNS
         =======
-        metagenome_metabolism_superdict      dictionary mapping metagenome name to its metabolism completeness dictionary
+        metagenome_metabolism_superdict : dictionary of dictionary of dictionaries
+            dictionary mapping metagenome name to its metabolism completeness dictionary
         """
 
         metagenome_metabolism_superdict = {}
@@ -1493,9 +1555,9 @@ class KeggMetabolismEstimator(KeggContext):
             for mod, mod_dict in meta_dict_for_bin.items():
                 if mod == "num_complete_modules":
                     self.run.warning("Your JSON file appears to have been generated from data that already contains metabolic module completeness information. "
-                                      "We say this because the key 'num_complete_modules' was found. This isn't a problem; however you should know that anvi'o "
-                                      "won't take any of the existing estimation information into account. The only module-level keys that will be used from this file "
-                                      "are: %s" % (expected_keys_for_module))
+                                     "We say this because the key 'num_complete_modules' was found. This isn't a problem; however you should know that anvi'o "
+                                     "won't take any of the existing estimation information into account. The only module-level keys that will be used from this file "
+                                     "are: %s" % (expected_keys_for_module))
                     continue
                 # verify that dict contains the necessary keys for estimation
                 if not expected_keys_for_module.issubset(set(mod_dict.keys())):
@@ -1557,7 +1619,7 @@ class KeggMetabolismEstimator(KeggContext):
     def store_kegg_metabolism_superdict(self, kegg_superdict):
         """This function writes the metabolism superdict to a tab-delimited file, and also generates a file summarizing the complete modules.
 
-        The metabolism superdict is a three-to-four-level dictionary. The first three levels are: genomes/bins, modules, and module completion information.
+        The metabolism superdict is a three-to-four-level dictionary. The first three levels are: genomes/metagenomes/bins, modules, and module completion information.
         The module completion dictionary also has some dictionaries in it, and those make up the fourth level.
         The structure of the module completion dictionary is like this example:
         {mnum: {"gene_caller_ids": set([132, 133, 431, 6777])
@@ -1701,17 +1763,17 @@ class KeggModulesDatabase(KeggContext):
             days_since_created = self.get_days_since_creation()
             if not self.quiet and days_since_created >= KEGG_SETUP_INTERVAL:
                 self.run.warning("Just a friendly PSA here: it has been at least %s days since the MODULES.db was created (%s days to be exact). "
-                                "It is entirely possible that KEGG has been updated since then, so perhaps it is a good idea to re-run "
-                                "anvi-setup-kegg-kofams to be sure that you are working with the latest KEGG data. No pressure, though. If you do "
-                                "want to reset your KEGG setup, we STRONGLY encourage saving a copy of your current KEGG data directory, just "
-                                "in case there was an update that breaks everything and you need to go back to your previous KEGG setup. Don't say we "
-                                "didn't warn you. And we will even be so nice as to tell you that your current KEGG data directory is %s"
-                                % (KEGG_SETUP_INTERVAL, days_since_created, self.kegg_data_dir))
+                                 "It is entirely possible that KEGG has been updated since then, so perhaps it is a good idea to re-run "
+                                 "anvi-setup-kegg-kofams to be sure that you are working with the latest KEGG data. No pressure, though. If you do "
+                                 "want to reset your KEGG setup, we STRONGLY encourage saving a copy of your current KEGG data directory, just "
+                                 "in case there was an update that breaks everything and you need to go back to your previous KEGG setup. Don't say we "
+                                 "didn't warn you. And we will even be so nice as to tell you that your current KEGG data directory is %s"
+                                 % (KEGG_SETUP_INTERVAL, days_since_created, self.kegg_data_dir))
         else:
             # if self.module_dict is None, then we tried to initialize the DB outside of setup
             if not self.module_dict:
-                raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a modules dictionary. This \
-                usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
+                raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a modules dictionary. This "
+                                  "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
 
     def touch(self):
         """Creates an empty Modules database on disk, and sets `self.db` to access to it.
@@ -1722,13 +1784,14 @@ class KeggModulesDatabase(KeggContext):
         # sanity check to avoid overriding previous Modules DB
         # this will probably never happen as long as this function is called through the setup script, but we check just in case
         if os.path.exists(self.db_path):
-            raise ConfigError("A modules database at %s already exists. Please use the --reset flag when you restart the setup \
-            if you really want to get rid of this one and make a new one." % (self.db_path))
+            raise ConfigError("A modules database at %s already exists. Please use the --reset flag when you restart the setup "
+                              "if you really want to get rid of this one and make a new one." % (self.db_path))
 
 
         self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=True)
 
         self.db.create_table(self.module_table_name, self.module_table_structure, self.module_table_types)
+
 
     def data_vals_sanity_check(self, data_vals, current_data_name, current_module_num):
         """This function checks if the data values were correctly parsed from a line in a KEGG module file.
@@ -1743,13 +1806,17 @@ class KeggModulesDatabase(KeggContext):
 
         PARAMETERS
         ==========
-        data_vals           str, the data values field (split from the kegg module line)
-        current_data_name   str, which data name we are working on. It should never be None because we should have already figured this out by parsing the line.
-        current_module_num  str, which module we are working on. We need this to keep track of which modules throw parsing errors.
+        data_vals : str
+            the data values field (split from the kegg module line)
+        current_data_name : str
+            which data name we are working on. It should never be None because we should have already figured this out by parsing the line.
+        current_module_num : str
+            which module we are working on. We need this to keep track of which modules throw parsing errors.
 
         RETURNS
         =======
-        is_ok               bool, whether the values look correctly formatted or not
+        is_ok : bool
+            whether the values look correctly formatted or not
         """
 
         is_ok = True
@@ -1758,8 +1825,8 @@ class KeggModulesDatabase(KeggContext):
         corrected_def = None
 
         if not current_data_name:
-            raise ConfigError("data_vals_sanity_check() cannot be performed when the current data name is None. Something was not right when parsing the KEGG \
-            module line.")
+            raise ConfigError("data_vals_sanity_check() cannot be performed when the current data name is None. Something was not right "
+                              "when parsing the KEGG module line.")
         elif current_data_name == "ENTRY":
             # example format: M00175
             if data_vals[0] != 'M' or len(data_vals) != 6:
@@ -1830,23 +1897,26 @@ class KeggModulesDatabase(KeggContext):
             self.num_uncorrected_errors += 1
             if self.just_do_it:
                 self.progress.reset()
-                self.run.warning("While parsing, anvi'o found an uncorrectable issue with a KEGG Module line in module %s, but since you used the --just-do-it flag, \
-                anvi'o will quietly ignore this issue and add the line to the MODULES.db anyway. Please be warned that this may break things downstream. \
-                In case you are interested, the line causing this issue has data name %s and data value %s" % (current_module_num, current_data_name, data_vals))
+                self.run.warning("While parsing, anvi'o found an uncorrectable issue with a KEGG Module line in module %s, but "
+                                 "since you used the --just-do-it flag, anvi'o will quietly ignore this issue and add the line "
+                                 "to the MODULES.db anyway. Please be warned that this may break things downstream. In case you "
+                                 "are interested, the line causing this issue has data name %s and data value %s."
+                                 % (current_module_num, current_data_name, data_vals))
                 is_ok = True # let's pretend that everything is alright so that the next function will take the original parsed values
 
             else:
-                raise ConfigError("While parsing, anvi'o found an uncorrectable issue with a KEGG Module line in module %s. The current data name is %s, \
-                here is the incorrectly-formatted data value field: %s. If you think this is totally fine and want to ignore errors like this, please \
-                re-run the setup with the --just-do-it flag. But if you choose to do that of course we are obliged to inform you that things may eventually \
-                break as a result." % (current_module_num, current_data_name, data_vals))
+                raise ConfigError("While parsing, anvi'o found an uncorrectable issue with a KEGG Module line in module %s. The "
+                                  "current data name is %s, here is the incorrectly-formatted data value field: %s. If you think "
+                                  "this is totally fine and want to ignore errors like this, please re-run the setup with the "
+                                  "--just-do-it flag. But if you choose to do that of course we are obliged to inform you that things "
+                                  "may eventually break as a result." % (current_module_num, current_data_name, data_vals))
 
         if is_corrected:
             self.num_corrected_errors += 1
             if anvio.DEBUG and not self.quiet:
                 self.progress.reset()
-                self.run.warning("While parsing a KEGG Module line, we found an issue with the formatting. We did our very best to parse the line \
-                correctly, but please check that it looks right to you by examining the following values.")
+                self.run.warning("While parsing a KEGG Module line, we found an issue with the formatting. We did our very best to parse "
+                                 "the line correctly, but please check that it looks right to you by examining the following values.")
                 self.run.info("Incorrectly parsed data value field", data_vals)
                 self.run.info("Corrected data values", corrected_vals)
                 self.run.info("Corrected data definition", corrected_def)
@@ -1865,16 +1935,21 @@ class KeggModulesDatabase(KeggContext):
 
         PARAMETERS
         ==========
-        line                 str, the line to parse
-        current_module       str, which module we are working on. We need this to keep track of which modules throw parsing errors
-        line_num             int, which line number we are working on. We need this to keep track of which entities come from the same line of the file.
-        current_data_name    str, which data name we are working on. If this is None, we need to parse this info from the first field in the line.
+        line : str
+            the line to parse
+        current_module : str
+            which module we are working on. We need this to keep track of which modules throw parsing errors
+        line_num : int
+            which line number we are working on. We need this to keep track of which entities come from the same line of the file.
+        current_data_name : str
+            which data name we are working on. If this is None, we need to parse this info from the first field in the line.
 
         RETURNS
         =======
-        line_entries        a list of tuples, each containing information for one db entry, namely data name, data value, data definition, and line number.
-                            Not all parts of the db entry will be included (module num, for instance), so this information must be parsed and combined with
-                            the missing information before being added to the database.
+        line_entries : list
+            tuples, each containing information for one db entry, namely data name, data value, data definition, and line number.
+            Not all parts of the db entry will be included (module num, for instance), so this information must be parsed and combined with
+            the missing information before being added to the database.
         """
 
         fields = re.split('\s{2,}', line)
@@ -1886,9 +1961,9 @@ class KeggModulesDatabase(KeggContext):
         if not current_data_name:
             # sanity check: if line starts with space then there is no data name field and we should have passed a current_data_name
             if line[0] == ' ':
-                raise ConfigError("Oh, please. Some silly developer (you know who you are) has tried to call parse_kegg_modules_line() on \
-                a line without a data name field, and forgot to give it the current data name. Shame on you, go fix this. (For reference here \
-                is the line: %s)" % (line))
+                raise ConfigError("Oh, please. Some silly developer (you know who you are) has tried to call parse_kegg_modules_line() on "
+                                  "a line without a data name field, and forgot to give it the current data name. Shame on you, go fix "
+                                  "this. (For reference here is the line: %s)" % (line))
 
             current_data_name = fields[0]
         # note that if data name is known, first field still exists but is actually the empty string ''
@@ -1925,11 +2000,12 @@ class KeggModulesDatabase(KeggContext):
         # sanity check that we setup the modules previously.
         # It shouldn't be a problem since this function should only be called during the setup process after modules download, but just in case.
         if not os.path.exists(self.module_data_dir) or len(self.module_dict.keys()) == 0:
-            raise ConfigError("Appparently, the Kegg Modules were not correctly setup and now all sorts of things are broken. The \
-             Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone except maybe developers, so \
-             if you do not fall into that category you are likely in deep doo-doo. Maybe re-running setup with --reset will work? (if not, you \
-             probably should email/Slack/telepathically cry out for help to the developers). Anyway, if this helps make things any clearer, \
-             the number of modules in the module dictionary is currently %s" % len(self.module_dict.keys()))
+            raise ConfigError("Appparently, the Kegg Modules were not correctly setup and now all sorts of things are broken. The "
+                              "Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone "
+                              "except maybe developers, so if you do not fall into that category you are likely in deep doo-doo. "
+                              "Maybe re-running setup with --reset will work? (if not, you probably should email/Slack/telepathically "
+                              "cry out for help to the developers). Anyway, if this helps make things any clearer, the number of modules "
+                              "in the module dictionary is currently %s" % len(self.module_dict.keys()))
 
         # init the Modules table
         mod_table = KeggModulesTable(self.module_table_name)
@@ -1986,21 +2062,21 @@ class KeggModulesDatabase(KeggContext):
 
         # warn user about parsing errors
         if anvio.DEBUG:
-            self.run.warning("Several parsing errors were encountered while building the KEGG Modules DB. \
-            Below you will see which modules threw each type of parsing error. Note that modules which threw multiple \
-            errors will occur in the list as many times as it threw each error.")
+            self.run.warning("Several parsing errors were encountered while building the KEGG Modules DB. "
+                             "Below you will see which modules threw each type of parsing error. Note that modules which "
+                             "threw multiple errors will occur in the list as many times as it threw each error.")
             self.run.info("Bad line splitting (usually due to rogue or missing spaces)", self.parsing_error_dict["bad_line_splitting"])
             self.run.info("Bad KEGG code format (not corrected; possibly problematic)", self.parsing_error_dict["bad_kegg_code_format"])
         else: # less verbose
-            self.run.warning("First things first - don't panic. Several parsing errors were encountered while building the KEGG Modules DB. But that \
-            is probably okay, because if you got to this point it is likely that we already fixed all of them ourselves. So don't worry too much. \
-            Below you will see how many of each type of error was encountered. If you would like to see which modules threw these errors, please \
-            re-run the setup using the --debug flag (you will also probably need the --reset flag). When doing so, you will also see which lines \
-            caused issues; this can be a lot of output, so you can suppress the line-specific output with the --quiet flag if that makes things easier to read. \
-            So, in summary: You can probably ignore this warning. But if you want more info: \
-            run setup again with --reset --debug --quiet to see exactly which modules had issues, or \
-            run --reset --debug to see exactly which lines in which modules had issues. \
-            Now, here is a kiss for you because you have been so patient and good with anvi'o 😚")
+            self.run.warning("First things first - don't panic. Several parsing errors were encountered while building the KEGG Modules DB. "
+                             "But that is probably okay, because if you got to this point it is likely that we already fixed all of them "
+                             "ourselves. So don't worry too much. Below you will see how many of each type of error was encountered. If "
+                             "you would like to see which modules threw these errors, please re-run the setup using the --debug flag (you "
+                             "will also probably need the --reset flag). When doing so, you will also see which lines caused issues; this "
+                             "can be a lot of output, so you can suppress the line-specific output with the --quiet flag if that makes things "
+                             "easier to read. So, in summary: You can probably ignore this warning. But if you want more info: run setup again "
+                             "with --reset --debug --quiet to see exactly which modules had issues, or run with --reset --debug to see exactly "
+                             "which lines in which modules had issues. Now, here is a kiss for you because you have been so patient and good with anvi'o 😚")
             self.run.info("Bad line splitting (usually due to rogue or missing spaces)", len(self.parsing_error_dict["bad_line_splitting"]))
             self.run.info("Bad KEGG code format (usually not correctable)", len(self.parsing_error_dict["bad_kegg_code_format"]))
 
@@ -2010,7 +2086,6 @@ class KeggModulesDatabase(KeggContext):
         self.run.info('Number of entries', mod_table.get_total_entries(), quiet=self.quiet)
         self.run.info('Number of parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
         self.run.info('Number of parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
-
 
         # record some useful metadata
         self.db.set_meta_value('db_type', 'modules')
@@ -2038,7 +2113,6 @@ class KeggModulesDatabase(KeggContext):
         return str(hashlib.sha224(mods_and_orths.encode('utf-8')).hexdigest())[0:12]
 
 
-
     # KEGG Modules Table functions for data access and parsing start below
     # ====================================================================
     def get_data_value_entries_for_module_by_data_name(self, module_num, data_name):
@@ -2050,12 +2124,15 @@ class KeggModulesDatabase(KeggContext):
 
         PARAMETERS
         ==========
-        module_num           str, the module to fetch data for
-        data_name            str, which data_name field we want
+        module_num : str
+            the module to fetch data for
+        data_name : str
+            which data_name field we want
 
         RETURNS
         =======
-        data_values_to_ret   list of str, the data_values corresponding to the module/data_name pair
+        data_values_to_ret : list of str
+            the data_values corresponding to the module/data_name pair
         """
 
         where_clause_string = "module = '%s'" % (module_num)
@@ -2068,24 +2145,29 @@ class KeggModulesDatabase(KeggContext):
                 data_values_to_ret.append(dict_from_mod_table[key]['data_value'])
 
         if not data_values_to_ret:
-            self.run.warning("Just so you know, we tried to fetch data from the KEGG Modules database for the data_name field %s and KEGG module %s, \
-            but didn't come up with anything, so an empty list is being returned. This may cause errors down the line, and if so we're very sorry for that.")
+            self.run.warning("Just so you know, we tried to fetch data from the KEGG Modules database for the data_name field %s "
+                             "and KEGG module %s, but didn't come up with anything, so an empty list is being returned. This may "
+                             "cause errors down the line, and if so we're very sorry for that.")
 
         return data_values_to_ret
+
 
     def get_all_modules_as_list(self):
         """This function returns a list of all modules in the DB."""
         return self.db.get_single_column_from_table(self.module_table_name, 'module', unique=True)
+
 
     def get_all_knums_as_list(self):
         """This function returns a list of all KO numbers in the DB."""
         where_clause_string = "data_name = 'ORTHOLOGY'"
         return self.db.get_single_column_from_table(self.module_table_name, 'data_value', unique=True, where_clause=where_clause_string)
 
+
     def get_modules_for_knum(self, knum):
         """This function returns a list of modules that the given KO belongs to."""
         where_clause_string = "data_value = '%s'" % (knum)
         return self.db.get_single_column_from_table(self.module_table_name, 'module', unique=True, where_clause=where_clause_string)
+
 
     def get_module_classes_for_knum_as_dict(self, knum):
         """This function returns the classes for the modules that a given KO belongs to in a dictionary of dictionaries keyed by module number."""
@@ -2094,6 +2176,7 @@ class KeggModulesDatabase(KeggContext):
         for mnum in mods:
             all_mods_classes_dict[mnum] = self.get_kegg_module_class_dict(mnum)
         return all_mods_classes_dict
+
 
     def get_module_classes_for_knum_as_list(self, knum):
         """This function returns the classes for the modules that a given KO belongs to as a list of strings."""
@@ -2104,11 +2187,13 @@ class KeggModulesDatabase(KeggContext):
             all_mods_classes_list.append(mod_class)
         return all_mods_classes_list
 
+
     def get_module_name(self, mnum):
         """This function returns the name of the specified KEGG module."""
         where_clause_string = "module = '%s'" % (mnum)
         # there should only be one NAME per module, so we return the first list element
         return self.get_data_value_entries_for_module_by_data_name(mnum, "NAME")[0]
+
 
     def get_module_names_for_knum(self, knum):
         """This function returns all names of each KEGG module that the given KO belongs to in a dictionary keyed by module number."""
@@ -2117,6 +2202,7 @@ class KeggModulesDatabase(KeggContext):
         for mnum in mods:
             module_names[mnum] = self.get_module_name(mnum)
         return module_names
+
 
     def parse_kegg_class_value(self, class_data_val):
         """This function takes a data_value string for the CLASS field in the modules table and parses it into a dictionary.
@@ -2128,6 +2214,7 @@ class KeggModulesDatabase(KeggContext):
         fields = class_data_val.split("; ")
         class_dict = {"class" : fields[0], "category" : fields[1], "subcategory" : fields[2] if len(fields) > 2 else None}
         return class_dict
+
 
     def get_kegg_module_class_dict(self, mnum):
         """This function returns a dictionary of values in the CLASS field for a specific module
@@ -2166,16 +2253,29 @@ class KeggModulesDatabase(KeggContext):
     def split_by_delim_not_within_parens(self, d, delims, return_delims=False):
         """Takes a string, and splits it on the given delimiter(s) as long as the delimeter is not within parentheses.
 
+        This function exists because regular expressions don't handle nested parentheses very well. It is used in the
+        recursive module definition unrolling functions to split module steps, but it is generically written in case
+        it could have other uses in the future.
+
+        The function can also be used to determine if the parentheses in the string are unbalanced (it will return False
+        instead of the list of splits in this situation)
+
         PARAMETERS
         ==========
-        d               string
-        delims          a single delimiter, or a list of delimiters
-        return_delims   boolean, if this is true then the list of delimiters found at between each split is also returned
+        d : str
+            string to split
+        delims : str or list of str
+            a single delimiter, or a list of delimiters, to split on
+        return_delims : boolean
+            if this is true then the list of delimiters found between each split is also returned
 
         RETURNS
         =======
-        splits      list of strings that were split from d
-        delim_list  list of delimiters that were ofund between each split
+        If parentheses are unbalanced in the string, this function returns False. Otherwise:
+        splits : list
+            strings that were split from d
+        delim_list : list
+            delimiters that were found between each split (only returned if return_delims is True)
         """
 
         parens_level = 0
@@ -2214,6 +2314,16 @@ class KeggModulesDatabase(KeggContext):
         their respective components, which may be split further by the split_paths() function to find all possible
         alternative complexes, before being used to extend each path. Compound steps are split and recursively processed
         by the split_paths() function before the resulting downstream paths are used to extend each path.
+
+        PARAMETERS
+        ==========
+        step : str
+            step definition to split into component steps as necessary
+
+        RETURNS
+        =======
+        paths_list : list
+            all paths that the input step has been unrolled into
         """
 
         split_steps = self.split_by_delim_not_within_parens(step, " ")
@@ -2251,7 +2361,7 @@ class KeggModulesDatabase(KeggContext):
                             for a in alts:
                                 if len(a) > 1:
                                     raise ConfigError("Uh oh. recursive_definition_unroller() speaking. We found a protein complex with more "
-                                    "than one KO per alternative option here: %s" % s)
+                                                      "than one KO per alternative option here: %s" % s)
                                 for cs in complex_strs:
                                     extended_complex = cs + a[0]
                                     new_complex_strs.append(extended_complex)
@@ -2285,6 +2395,7 @@ class KeggModulesDatabase(KeggContext):
 
         return paths_list
 
+
     def split_path(self, step):
         """This function handles compound steps that should be split into multiple alternative paths.
 
@@ -2292,6 +2403,7 @@ class KeggModulesDatabase(KeggContext):
         it recursively calls the definition unrolling function to parse it. The list of all alternative paths
         that can be made from this step is returned.
         """
+        
         if step[0] == "(" and step[-1] == ")":
             substeps = self.split_by_delim_not_within_parens(step[1:-1], ",")
             if not substeps: # if it doesn't work, try without removing surrounding parentheses
