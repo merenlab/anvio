@@ -72,7 +72,7 @@ class KeggContext(object):
                               "directories that have been specified with --kegg-data-dir. If you really want to get rid of this "
                               "directory and regenerate it with KEGG data inside, then please remove the directory yourself using "
                               "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
-                              "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data dir))
+                              "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
 
 
     def setup_ko_dict(self):
