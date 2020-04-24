@@ -65,6 +65,15 @@ class KeggContext(object):
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
         self.kegg_modules_db_path = os.path.join(self.kegg_data_dir, "MODULES.db")
 
+        # sanity check to prevent automatic overwriting of non-default kegg data dir
+        if A('reset') and A('kegg_data_dir'):
+            raise ConfigError("You are attempting to run KEGG setup on a non-default data directory (%s) using the --reset flag. "
+                              "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to reset "
+                              "directories that have been specified with --kegg-data-dir. If you really want to get rid of this "
+                              "directory and regenerate it with KEGG data inside, then please remove the directory yourself using "
+                              "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
+                              "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data dir))
+
 
     def setup_ko_dict(self):
         """The purpose of this function is to process the ko_list file into usable form by KEGG sub-classes.
@@ -171,6 +180,8 @@ class KeggSetup(KeggContext):
 
         filesnpaths.is_program_exists('hmmpress')
 
+        filesnpaths.is_output_dir_writable(self.kegg_data_dir)
+
         if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
 
@@ -197,28 +208,32 @@ class KeggSetup(KeggContext):
         """This function determines whether the user has already downloaded the Kofam HMM profiles and KEGG modules."""
 
         if os.path.exists(self.kofam_hmm_file_path):
-            raise ConfigError("It seems you already have KOfam HMM profiles installed in '%s', please use --reset flag "
-                              "if you want to re-download it." % self.kegg_data_dir)
+            raise ConfigError("It seems you already have KOfam HMM profiles installed in '%s', please use the --reset flag "
+                              "or delete this directory manually if you want to re-download it." % self.kegg_data_dir)
 
         if os.path.exists(self.kegg_module_file):
             raise ConfigError("Interestingly, though KOfam HMM profiles are not installed on your system, KEGG module "
-                              "information seems to have been already downloaded in %s. Please use the --reset flag to "
-                              "re-download everything from scratch." % self.kegg_data_dir)
+                              "information seems to have been already downloaded in %s. Please use the --reset flag or "
+                              "delete this directory manually to let this script re-download everything from scratch."
+                              % self.kegg_data_dir)
 
         if os.path.exists(self.kegg_pathway_file):
             raise ConfigError("Interestingly, though KOfam HMM profiles are not installed on your system, KEGG pathway "
-                              "information seems to have been already downloaded in %s. Please use the --reset flag to "
-                              "re-download everything from scratch." % self.kegg_data_dir)
+                              "information seems to have been already downloaded in %s. Please use the --reset flag or "
+                              "delete this directory manually to let this script re-download everything from scratch."
+                              % self.kegg_data_dir)
 
         if os.path.exists(self.module_data_dir):
             raise ConfigError("It seems the KEGG module directory %s already exists on your system. This is even more "
                               "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
-                              "--reset flag to download everything from scratch." % self.module_data_dir)
+                              "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
+                              % (self.module_data_dir, self.kegg_data_dir))
 
         if os.path.exists(self.pathway_data_dir):
             raise ConfigError("It seems the KEGG pathway directory %s already exists on your system. This is even more "
                               "strange because Kofam HMM profiles have not been downloaded. We suggest you to use the "
-                              "--reset flag to download everything from scratch." % self.pathway_data_dir)
+                              "--reset flag or delete the KEGG directory (%s) manually to download everything from scratch."
+                              % (self.pathway_data_dir, self.kegg_data_dir))
 
 
     def download_profiles(self):
@@ -2403,7 +2418,7 @@ class KeggModulesDatabase(KeggContext):
         it recursively calls the definition unrolling function to parse it. The list of all alternative paths
         that can be made from this step is returned.
         """
-        
+
         if step[0] == "(" and step[-1] == ")":
             substeps = self.split_by_delim_not_within_parens(step[1:-1], ",")
             if not substeps: # if it doesn't work, try without removing surrounding parentheses
