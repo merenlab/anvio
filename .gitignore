@@ -20,3 +20,4 @@ diamond-log-file.txt
 anvio/data/misc/SCG_TAXONOMY/GTDB/SCG_SEARCH_DATABASES/*.dmnd
 
 anvio/tests/sandbox/test_visualize_split_coverages/TEST_OUTDIR
+anvio/data/misc/KEGG/

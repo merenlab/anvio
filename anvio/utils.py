@@ -6,6 +6,7 @@
 import os
 import sys
 import gzip
+import tarfile
 import time
 import copy
 import socket
@@ -380,6 +381,20 @@ def gzip_decompress_file(input_file_path, output_file_path=None, keep_original=T
         os.remove(input_file_path)
 
     return output_file_path
+
+def tar_extract_file(input_file_path, output_file_path=None, keep_original=True):
+    filesnpaths.is_file_tar_file(input_file_path)
+
+    if not output_file_path:
+        raise ConfigError("The tar_extract_file function is displeased because an output file path has not been specified. "
+                          "If you are seeing this message, you are probably a developer, so go fix your code please, and "
+                          "everyone will be happy then.")
+
+    tf = tarfile.open(input_file_path)
+    tf.extractall(path = output_file_path)
+
+    if not keep_original:
+        os.remove(input_file_path)
 
 
 class RunInDirectory(object):
@@ -3219,6 +3234,11 @@ def is_genes_db(db_path):
         raise ConfigError("'%s' is not an anvi'o genes database." % db_path)
     return True
 
+def is_kegg_modules_db(db_path):
+    if get_db_type(db_path) != 'modules':
+        raise ConfigError("'%s' is not an anvi'o KEGG modules database." % db_path)
+    return True
+
 
 def is_profile_db_merged(profile_db_path):
     is_profile_db(profile_db_path)
@@ -3312,7 +3332,7 @@ def download_file(url, output_file_path, progress=progress, run=run):
     f.close()
 
     progress.end()
-    run.info('Downloaded succesfully', output_file_path)
+    run.info('Downloaded successfully', output_file_path)
 
 
 def get_remote_file_content(url, gzipped=False):
@@ -3638,4 +3658,3 @@ class Mailer:
         self.progress.end()
 
         self.run.info('E-mail', 'Successfully sent to "%s"' % to)
-
