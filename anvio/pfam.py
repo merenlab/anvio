@@ -70,7 +70,7 @@ class PfamSetup(object):
         if not self.pfam_data_dir:
             self.pfam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Pfam')
 
-        filesnpaths.is_output_dir_writable(self.pfam_data_dir)
+        filesnpaths.is_output_dir_writable(os.path.dirname(self.pfam_data_dir))
 
         if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
