@@ -3,9 +3,7 @@
 """This file contains Kegg related classes."""
 
 import os
-import gzip
 import shutil
-import requests
 import glob
 import re
 import copy
@@ -17,18 +15,17 @@ from scipy import stats
 
 import anvio
 import anvio.db as db
-import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.tables as t
 import anvio.ccollections as ccollections
 
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
-from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
+from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileDatabase
 from anvio.constants import KEGG_SETUP_INTERVAL
 
 
@@ -180,7 +177,7 @@ class KeggSetup(KeggContext):
 
         filesnpaths.is_program_exists('hmmpress')
 
-        filesnpaths.is_output_dir_writable(self.kegg_data_dir)
+        filesnpaths.is_output_dir_writable(os.path.dirname(self.kegg_data_dir))
 
         if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
@@ -2214,7 +2211,7 @@ class KeggModulesDatabase(KeggContext):
 
     def get_module_name(self, mnum):
         """This function returns the name of the specified KEGG module."""
-        where_clause_string = "module = '%s'" % (mnum)
+
         # there should only be one NAME per module, so we return the first list element
         return self.get_data_value_entries_for_module_by_data_name(mnum, "NAME")[0]
 
