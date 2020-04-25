@@ -191,13 +191,13 @@ def is_file_plain_text(file_path, dont_raise=False):
 def is_file_tar_file(file_path, dont_raise=False):
     is_file_exists(file_path)
 
-    is_tarfile = tarfile.is_tarfile(file_path)
-    if dont_raise:
-        return False
+    if tarfile.is_tarfile(file_path):
+        return True
     else:
-        raise FilesNPathsError("The file at '%s' does not seem to be a tarfile." % file_path)
-
-    return True
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError("The file at '%s' does not seem to be a tarfile." % file_path)
 
 
 def is_program_exists(program):
