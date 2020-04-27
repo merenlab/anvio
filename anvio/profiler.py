@@ -488,7 +488,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.run.info('input_bam', self.input_file_path)
         self.run.info('output_dir', self.output_directory, display_only=True)
-        self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
+        self.run.info('num_reads_in_bam', pp(int(self.num_reads_mapped)))
         self.run.info('num_contigs', pp(len(self.contig_names)))
 
         if self.contig_names_of_interest:
@@ -799,6 +799,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.layer_additional_data['num_SNVs_reported'] = TableForVariability(self.profile_db_path, progress=null_progress).num_entries
             self.layer_additional_keys.append('num_SNVs_reported')
 
+        if self.total_reads_kept != self.num_reads_mapped:
+            # Num reads in profile do not equal num reads in bam
+            diff = self.num_reads_mapped - self.total_reads_kept
+            perc = (1 - self.total_reads_kept / self.num_reads_mapped) * 100
+            self.run.warning("There were %d reads present in the BAM file that did not end up being used "
+                             "by anvi'o. That corresponds to about %.2f percent of all reads in the bam file. "
+                             "This could be either because you supplied --contigs-of-interest, "
+                             "or because pysam encountered reads it could not deal with, e.g. they mapped "
+                             "but had no defined sequence, or they had a sequence but did not map. "
+                             "Regardless, anvi'o thought you should be aware of this." % (diff, perc))
+
         self.layer_additional_data['total_reads_kept'] = self.total_reads_kept
         self.layer_additional_keys.append('total_reads_kept')
 
@@ -906,6 +917,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self.skip_SNV_profiling:
             self.layer_additional_data['num_SNVs_reported'] = TableForVariability(self.profile_db_path, progress=null_progress).num_entries
             self.layer_additional_keys.append('num_SNVs_reported')
+
+        if self.total_reads_kept != self.num_reads_mapped:
+            # Num reads in profile do not equal num reads in bam
+            diff = self.num_reads_mapped - self.total_reads_kept
+            perc = (1 - self.total_reads_kept / self.num_reads_mapped) * 100
+            self.run.warning("There were %d reads present in the BAM file that did not end up being used "
+                             "by anvi'o. That corresponds to about %.2f percent of all reads in the bam file. "
+                             "This could be either because you supplied --contigs-of-interest, "
+                             "or because pysam encountered reads it could not deal with, e.g. they mapped "
+                             "but had no defined sequence, or they had a sequence but did not map. "
+                             "Regardless, anvi'o thought you should be aware of this." % (diff, perc))
 
         self.layer_additional_data['total_reads_kept'] = self.total_reads_kept
         self.layer_additional_keys.append('total_reads_kept')

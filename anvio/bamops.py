@@ -70,10 +70,11 @@ class BAMFileObject(pysam.AlignmentFile):
         """
 
         for read in self.fetch(contig_name, start, end, *args, **kwargs):
-            if read.cigartuples is None:
-                # This read has no associated cigar string. This either means it did not align but
-                # is in the BAM file anyways, or the mapping software decided it did not want to
-                # include a cigar string for this read.
+            if read.cigartuples is None or read.query_sequence is None:
+                # This read either has no associated cigar string or no query sequence. If cigar
+                # string is None, this means it did not align but is in the BAM file anyways, or the
+                # mapping software decided it did not want to include a cigar string for this read.
+                # The origin of why query sequence would be None is unkown.
                 continue
 
             read = Read(read)
@@ -107,10 +108,11 @@ class BAMFileObject(pysam.AlignmentFile):
         """
 
         for read in self.fetch(contig_name, start, end, *args, **kwargs):
-            if read.cigartuples is None:
-                # This read has no associated cigar string. This either means it did not align but
-                # is in the BAM file anyways, or the mapping software decided it did not want to
-                # include a cigar string for this read.
+            if read.cigartuples is None or read.query_sequence is None:
+                # This read either has no associated cigar string or no query sequence. If cigar
+                # string is None, this means it did not align but is in the BAM file anyways, or the
+                # mapping software decided it did not want to include a cigar string for this read.
+                # The origin of why query sequence would be None is unkown.
                 continue
 
             read = Read(read)
@@ -530,10 +532,11 @@ class Coverage:
         """Uses standard pysam fetch iterator from AlignmentFile objects, ignores unmapped reads"""
 
         for read in bam.fetch(contig_name, start, end):
-            if read.cigartuples is None:
-                # This read has no associated cigar string. This either means it did not align but
-                # is in the BAM file anyways, or the mapping software decided it did not want to
-                # include a cigar string for this read.
+            if read.cigartuples is None or read.query_sequence is None:
+                # This read either has no associated cigar string or no query sequence. If cigar
+                # string is None, this means it did not align but is in the BAM file anyways, or the
+                # mapping software decided it did not want to include a cigar string for this read.
+                # The origin of why query sequence would be None is unkown.
                 continue
 
             yield read
