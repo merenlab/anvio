@@ -22,6 +22,7 @@ __requires__ = ['genes-db', 'pan-db', 'profile-db', 'misc-data-items-txt', 'dend
 __provides__ = ['misc-data-items', 'misc-data-layers', 'misc-data-layer-orders']
 __description__ = ("Populate additional data or order tables in pan or profile databases for "
                    "items or layers (the Swiss army knife-level serious stuff).")
+# FIXME ^^^^^^ change to account for nucleotides and amino_acids. Yes that means editing programs.py
 
 
 def main(args):

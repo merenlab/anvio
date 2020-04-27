@@ -2967,13 +2967,12 @@ def get_HMM_sources_dictionary(source_dirs=[]):
 
 
 def check_misc_data_keys_for_format(data_keys_list):
-    """A function to make sure user-provided misc data keys are compatible
-       with the current version of anvi'o. Housekeeping BS."""
+    """Ensure user-provided misc data keys are compatible with the current version of anvi'o"""
 
     if not data_keys_list:
         return
 
-    # findout whether the user data contains the older implementation of stacked
+    # find out whether the user data contains the older implementation of stacked
     # bar data type
     obsolete_stackedbar_keys = [k for k in data_keys_list if k.find('!') > -1 and k.find(';') > -1]
 
