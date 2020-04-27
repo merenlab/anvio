@@ -18,8 +18,6 @@ import anvio.utils as utils
 import anvio.tables as t
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-import anvio.ccollections as ccollections
-## FIXME: Will need to change if accepting genome-storage instead of external-genomes
 import anvio.genomestorage as genomestorage
 import anvio.genomedescriptions as genomedescriptions
 
@@ -242,6 +240,9 @@ class NGram(object):
 
         ngram_count_df_final = pd.concat(ngram_count_df_list)
 
+        if not self.is_in_unknowns_mode:
+            ngram_count_df_final = ngram_count_df_final[~ngram_count_df_final['ngram_functions'].str.contains("unknown-function")]
+
         return ngram_count_df_final
 
 
@@ -365,7 +366,7 @@ class NGram(object):
 
             ngram = tuple(window)
 
-            if not self.is_in_unknowns_mode and "unknown-function" in ngram: # conditional to record NGrams with unk functions
+            if self.is_in_unknowns_mode and ("unknown-function" or "no-gene-cluster-annotation") in ngram: # conditional to record NGrams with unk functions
                 continue
             else:
                 # if ngram is not in dictionary add it, if it is add + 1
