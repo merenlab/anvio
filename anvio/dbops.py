@@ -3678,7 +3678,7 @@ class ContigsDatabase:
 
         if external_gene_calls_file_path and skip_gene_calling:
             raise ConfigError("You provided a file for external gene calls, and used requested gene calling to be "
-                               "skipped. Please make up your mind.")
+                              "skipped. Please make up your mind.")
 
         if (external_gene_calls_file_path or skip_gene_calling) and prodigal_translation_table:
             raise ConfigError("You asked anvi'o to %s, yet you set a specific translation table for prodigal. These "
