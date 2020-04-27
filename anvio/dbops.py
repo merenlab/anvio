@@ -2842,7 +2842,7 @@ class ProfileSuperclass(object):
         total_counts_of_sites_in_gene = 0
         total_counts_of_sites_in_gene_normalized = 0
         mean_three_prime = 0
-        below_threshold, over_threshold = 0, 0
+        below_threshold = 0
 
         # Split gene coverage values into splits that are nonzero
         insertion_splits_nonzero = [numpy.array(list(g)) for k, g in itertools.groupby(gene_coverage_values_per_nt, lambda x: x != 0) if k]
