@@ -34,6 +34,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        # FIXME
         self.db_path = A('pan_or_profile_db') or A('profile_db') or A('pan_db')
 
         # We just set the path for the database we are going to be working with. but if we seem to
@@ -68,12 +69,13 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         if not self.db_path:
             raise ConfigError("The AdditionalAndOrderDataBaseClass is inherited with an args object that did not "
                               "contain any database path :/ Even though any of the following would "
-                              "have worked: `pan_or_profile_db`, `profile_db`, `pan_db` :(")
+                              "have worked: `pan_or_profile_db`, `profile_db`, `pan_db`, `contigs_db` :(")
 
         if not self.table_name:
             raise ConfigError("The AdditionalAndOrderDataBaseClass does not know anything about the table it should "
                               "be working with.")
 
+        # FIXME
         utils.is_pan_or_profile_db(self.db_path, genes_db_is_also_accepted=True)
         self.db_type = utils.get_db_type(self.db_path)
         self.db_version = utils.get_required_version_for_db(self.db_path)
@@ -94,7 +96,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
     def populate_from_file(self, additional_data_file_path, skip_check_names=None):
 
         if skip_check_names is None and utils.is_blank_profile(self.db_path):
-            # FIXME: this BS is here because blank abvi'o profiles do not know what items they have,
+            # FIXME: this BS is here because blank anvi'o profiles do not know what items they have,
             #        hence the utils.get_all_item_names_from_the_database function eventually explodes if we
             #        don't skip check names.
             skip_check_names = True
@@ -117,6 +119,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                               "It does not seem to have any additional keys for data :/" \
                                             % (self.target_table, additional_data_file_path))
 
+        # FIXME
         if self.target_table == 'layer_orders':
             OrderDataBaseClass.add(self, data_dict, skip_check_names)
         else:
@@ -124,7 +127,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
 
     def remove(self, data_keys_list=[], data_groups_list=[]):
-        '''Give this guy a list of keys or groups for additional data, and watch their demise.'''
+        """Give this guy a list of keys or groups for additional data, and watch their demise."""
 
         if not isinstance(data_keys_list, list) or not isinstance(data_groups_list, list):
             raise ConfigError("The remove function in AdditionalDataBaseClass wants you to watch "
@@ -134,7 +137,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         if data_keys_list and data_groups_list:
             raise ConfigError("You seem to be interested in removing both data keys and data groups from "
                               "misc data tables. Using both of these parameters is quite risky, so anvi'o "
-                              "would like you to use only one of them at a time. Apologeies.")
+                              "would like you to use only one of them at a time. Apologies.")
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
@@ -150,7 +153,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True))
 
         if not len(additional_data_keys):
-            self.run.info_single('There is nothing to remove --the %s additional data table is already empty :(' % self.target_table)
+            self.run.info_single('There is nothing to remove--the %s additional data table is already empty :(' % self.target_table)
             database.disconnect()
             return
 
@@ -212,6 +215,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
     def export(self, output_file_path):
         filesnpaths.is_output_file_writable(output_file_path)
 
+        # FIXME I believe nucleotides and amino_acids should belong to this conditional
         if self.target_table in ['layers', 'items']:
             keys, data = AdditionalDataBaseClass.get(self)
             if keys:
@@ -241,10 +245,12 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
 
     def list_data_keys(self):
+        # FIXME This will have to be modified down the road when I can test it, i.e. when I am able
+        # to import data
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         NOPE = lambda: self.run.info_single("There are no additional data for '%s' in this database :/" \
-                                                    % (self.target_table), nl_before=1, nl_after=1, mc='red')
+                                                % (self.target_table), nl_before=1, nl_after=1, mc='red')
 
         additional_data_keys = {}
         # here is where things get tricky. if we are dealing with additional data layers or items, we will have
@@ -341,11 +347,12 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             raise ConfigError("The data that claims to be a layer order data do not seem to be one.")
 
         if data_keys_list:
-            for item_or_layer_name in data_dict:
+            # data_name is an item name, layer name, nucleotide identifier, or amino acid identifier
+            for data_name in data_dict:
                 for key in data_keys_list:
-                    if key not in data_dict[item_or_layer_name]:
+                    if key not in data_dict[data_name]:
                         raise ConfigError("Your data dictionary fails the sanity check since at least one item in it (i.e., %s) is "
-                                          "missing any data for the key '%s'." % (item_or_layer_name, key))
+                                          "missing any data for the key '%s'." % (data_name, key))
 
 
 class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
