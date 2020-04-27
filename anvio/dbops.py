@@ -3674,7 +3674,7 @@ class ContigsDatabase:
         prodigal_translation_table = A('prodigal_translation_table')
 
         if external_gene_calls_file_path:
-            filesnpaths.is_file_tab_delimited(external_gene_calls_file_path)
+            filesnpaths.is_proper_external_gene_calls_file(external_gene_calls_file_path)
 
         if external_gene_calls_file_path and skip_gene_calling:
             raise ConfigError("You provided a file for external gene calls, and used requested gene calling to be "
