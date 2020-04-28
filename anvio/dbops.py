@@ -3758,7 +3758,7 @@ class tRNASeqDatabase:
         for process in processes:
             process.start()
 
-        self.progress.new('Finding tRNA sequences', progress_total_items=total_num_rep_seqs)
+        self.progress.new('Finding tRNA sequences', os.getpid(), progress_total_items=total_num_rep_seqs)
         while fasta:
             next(fasta)
             input_queue.put((fasta.id, fasta.seq))
