@@ -3029,7 +3029,7 @@ def get_missing_programs_for_hmm_analysis():
 
 def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
     if not collection_name or not bin_name:
-        raise ConfigError("Genes database must be associted with a collection name and a bin name :/")
+        raise ConfigError("Genes database must be associated with a collection name and a bin name :/")
 
     return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s.db' % (collection_name, bin_name))
 
