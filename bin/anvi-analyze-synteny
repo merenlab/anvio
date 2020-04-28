@@ -64,7 +64,8 @@ __provides__ = ['ngrams']
 __description__ = ("This program helps you extract synteny patterns from a group of similar loci or genomes. This "
                    "is accomplished by deconstructing contigs into Ngrams (group of neighboring genes of which N is the number of genes) "
                    "using a sliding window method. Once completed, anvi'o will export a table with Ngrams "
-                   "for you to work with. By default anvi'o will ignore Ngrams that contain genes without annotations. If "
+                   "for you to work with. Please provide only one source of annotations for your genes (e.g. gene-clusters from a pangenome or COGs) "
+                   "By default anvi'o will ignore Ngrams that contain genes without annotations. If "
                    "you would like to override this, you can use the --analyze-unknown-functions flag.")
 
 
@@ -85,7 +86,7 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {"required": False}))
 
     # Annotation sources
-    groupB = parser.add_argument_group('Annotation sources for Ngrams', "Choose at least one source of annotations for your Ngrams.")
+    groupB = parser.add_argument_group('Annotation sources for Ngrams', "Choose one source of annotations for your Ngrams.")
     groupB.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source', {"required": False}))
     groupB.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {"required": False}))
 
