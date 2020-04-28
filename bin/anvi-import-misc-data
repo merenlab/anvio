@@ -50,12 +50,16 @@ if __name__ == '__main__':
                         when we say "it is not complicated"). You need to read the online documentation if this is your first\
                         time with this.')
 
-    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-    parser.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
-    parser.add_argument(*anvio.A('target-data-group'), **anvio.K('target-data-group'))
-    parser.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))
-    parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    group1 = parser.add_argument_group('Databse input', "Provide 1 of these")
+    group2 = parser.add_argument_group('Details', "Everything else.")
+
+    group1.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
+    group1.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+
+    group2.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
+    group2.add_argument(*anvio.A('target-data-group'), **anvio.K('target-data-group'))
+    group2.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))
+    group2.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = anvio.get_args(parser)
 
