@@ -43,9 +43,10 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                            'iu_gen_configs',
                            'iu_merge_pairs',
                            'gen_qc_report',
-                           'convert_fastq_to_fasta',
+                           'compress_merged_fasta',
                            'anvi_reformat_fasta',
                            'anvi_gen_tRNAseq_database',
+                           'compress_reformatted_fasta',
                            'get_unique_tRNA_fasta',
                            'prefix_derep_tRNA_fasta',
                            'map_tRNA',
@@ -58,16 +59,16 @@ class tRNASeqWorkflow(WorkflowSuperClass):
         # defining the accessible params per rule
         rule_acceptable_params_dict['iu_gen_configs'] = ['--r1-prefix',
                                                          '--r2-prefix']
-        rule_acceptable_params_dict['iu_merge_pairs'] = ['run',
-                                                         '--marker-gene-stringent',
+        rule_acceptable_params_dict['iu_merge_pairs'] = ['--marker-gene-stringent',
                                                          '--max-num-mismatches',
                                                          '--report-r1-prefix',
                                                          '--report-r2-prefix']
+        rule_acceptable_params_dict['compress_merged_fasta'] = ['run']
         rule_acceptable_params_dict['anvi_reformat_fasta'] = ['--simplify-names']
-        rule_acceptable_params_dict['anvi_gen_tRNAseq_database'] = ['run',
-                                                                    '--charging-recorded',
+        rule_acceptable_params_dict['anvi_gen_tRNAseq_database'] = ['--charging-recorded',
                                                                     '--trust-fasta',
                                                                     '--verbose']
+        rule_acceptable_params_dict['compress_reformatted_fasta'] = ['run']
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -75,18 +76,18 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                                'IDENT_DIR': '02_IDENT'})
 
         self.default_config.update({'samples_txt': 'samples.txt',
-                                    'iu_merge_pairs': {'run': True,
-                                                       '--marker-gene-stringent': True,
+                                    'iu_merge_pairs': {'--marker-gene-stringent': True,
                                                        '--max-num-mismatches': 0,
                                                        '--report-r1-prefix': False,
                                                        '--report-r2-prefix': False,
                                                        'threads': 1},
+                                    'compress_merged_fasta': {'run': True},
                                     'anvi_reformat_fasta': {'--simplify-names': True},
-                                    'anvi_gen_tRNAseq_database': {'run': True,
-                                                                  '--charging-recorded': False,
+                                    'anvi_gen_tRNAseq_database': {'--charging-recorded': False,
                                                                   '--trust-fasta': False,
                                                                   '--verbose': False,
-                                                                  'threads': 1}})
+                                                                  'threads': 1},
+                                    'compress_reformatted_fasta': {'run': True}})
 
 
     def init(self):
@@ -120,10 +121,8 @@ class tRNASeqWorkflow(WorkflowSuperClass):
         # get a list of the sample names
         self.sample_names = self.samples_information['sample'].tolist()[::len(self.valid_splits)]
 
-        self.run_qc = self.get_param_value_from_config(['iu_merge_pairs', 'run']) == True
-        self.run_identify = self.get_param_value_from_config(['anvi_gen_tRNAseq_database', 'run']) == True
-
-        self.init_target_files()
+        self.init_target_files(self.get_param_value_from_config(['compress_merged_fasta', 'run']),
+                               self.get_param_value_from_config(['compress_reformatted_fasta', 'run']))
 
 
     def check_samples_txt(self):
@@ -168,24 +167,18 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                         "%s." % (self.samples_txt_file, ', '.join(bad_fastq_names[:5])))
 
 
-    def init_target_files(self):
+    def init_target_files(self, run_compress_merged_fasta, run_compress_reformatted_fasta):
 
-        if self.run_qc:
+        for sample in self.sample_names:
+            for split in self.valid_splits:
+                self.target_files.append(os.path.join(self.dirs_dict['IDENT_DIR'], "%s_%s_CONDENSED.bam" % (sample, split)))
+
+        if run_compress_merged_fasta:
             for sample in self.sample_names:
                 for split in self.valid_splits:
-                    self.target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "%s_%s_MERGED" % (sample, split)))
-                    self.target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "%s_%s_STATS" % (sample, split)))
-                    self.target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "%s_%s_MERGED.fasta" % (sample, split)))
-                    self.target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "%s_%s.fasta" % (sample, split)))
-                    self.target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "%s_%s_REFORMAT_REPORT.txt" % (sample, split)))
-                    self.target_files.append(os.path.join(self.dirs_dict['IDENT_DIR'], "%s_%s_TRNASEQ.db" % (sample, split)))
-                    self.target_files.append(os.path.join(self.dirs_dict['IDENT_DIR'], "%s_%s_CONDENSED.bam" % (sample, split)))
-            self.target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "qc-report.txt"))
-            # self.target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "qc-report.txt"))
+                    self.target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "%s_%s_MERGED.gz" % (sample, split)))
 
-        # if self.run_identify:
-        #     for sample in self.sample_names:
-        #         for split in self.valid_splits:
-        #             self.target_files.append(os.path.join(self.dirs_dict['IDENT_DIR'], "%s_%s_DEREP_all_seqs.fasta"))
-        #             self.target_files.append(os.path.join(self.dirs_dict['IDENT_DIR'], "%s_%s_DEREP_cluster.tsv"))
-        #             self.target_files.append(os.path.join(self.dirs_dict['IDENT_DIR'], "%s_%s_DEREP_rep_seq.tsv"))
+        if run_compress_reformatted_fasta:
+            for sample in self.sample_names:
+                for split in self.valid_splits:
+                    self.target_files.append(os.path.join(self.dirs_dict['QC_DIR'], "%s_%s.fasta.gz" % (sample, split)))

@@ -268,25 +268,48 @@ residue_info_table_types      = ['integer',         'integer'        ,        'i
 #
 ####################################################################################################
 
-tRNAseq_sequences_table_name            = 'tRNA_sequences'
+tRNAseq_sequences_table_name            = 'sequences'
 tRNAseq_sequences_table_structure       = ['name', 'replicate_names', 'replicate_count', 'sequence']
 tRNAseq_sequences_table_types           = ['str' , 'str'            , 'numeric'        , 'str']
 
-tRNAseq_info_table_name                 = 'tRNA_basic_info'
-tRNAseq_info_table_structure            = ['name', 'is_mature', 'is_long_read', 'is_charged', 'anticodon_sequence', 'amino_acid', 'sequence_length', 'profiled_features_start', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature']
-tRNAseq_info_table_types                = ['str' , 'bool'     , 'bool'        , 'bool'      , 'str'               , 'str'       , 'numeric'        , 'numeric'                , 'numeric'      , 'numeric'        , 'numeric'   , 'numeric'     , 'numeric']
+tRNAseq_info_table_name                 = 'basic_info'
+tRNAseq_info_table_structure            = ['name', 'is_mature', 'is_long_read', 'is_charged', 'anticodon_sequence', 'amino_acid', 'sequence_length', 'features_start', 'features_stop', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature', 'num_extra_threeprime', 'alpha_start', 'alpha_stop', 'beta_start', 'beta_stop']
+tRNAseq_info_table_types                = ['str' , 'bool'     , 'bool'        , 'bool'      , 'str'               , 'str'       , 'numeric'        , 'numeric'       , 'numeric'      , 'numeric'      , 'numeric'        , 'numeric'   , 'numeric'     , 'numeric'                              , 'numeric'             , 'numeric'    , 'numeric'   , 'numeric'   , 'numeric']
 
-tRNAseq_features_table_name             = 'tRNA_features'
+tRNAseq_features_table_name             = 'features'
 tRNAseq_features_table_structure        = ['name'] + list(itertools.chain(*zip([f + '_start' for f in db_formatted_tRNA_feature_names], [f + '_stop' for f in db_formatted_tRNA_feature_names])))
 tRNAseq_features_table_types            = ['str']  + ['str'] * len(db_formatted_tRNA_feature_names) * 2
 
-tRNAseq_unconserved_table_name          = 'tRNA_unconserved_nucleotides'
+tRNAseq_unconserved_table_name          = 'unconserved_nucleotides'
 tRNAseq_unconserved_table_structure     = ['name', 'pos'    , 'observed_nucleotide', 'expected_nucleotides']
 tRNAseq_unconserved_table_types         = ['str' , 'numeric', 'str'                , 'str']
 
-tRNAseq_unpaired_table_name             = 'tRNA_unpaired_nucleotides'
+tRNAseq_unpaired_table_name             = 'unpaired_nucleotides'
 tRNAseq_unpaired_table_structure        = ['name', 'fiveprime_pos', 'threeprime_pos', 'observed_fiveprime_nucleotide', 'observed_threeprime_nucleotide']
 tRNAseq_unpaired_table_types            = ['str' , 'numeric'      , 'numeric'       , 'str'                          , 'str']
+
+tRNAseq_long_sequences_table_name       = 'long_sequences'
+tRNAseq_long_sequences_table_structure  = ['name', 'replicate_names', 'replicate_count', 'sequence']
+tRNAseq_long_sequences_table_types      = ['str' , 'str'            , 'numeric'        , 'str']
+
+tRNAseq_long_info_table_name            = 'long_basic_info'
+tRNAseq_long_info_table_structure       = ['name', 'is_mature', 'is_long_read', 'is_charged', 'anticodon_sequence', 'amino_acid', 'sequence_length', 'features_start', 'features_stop', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature', 'num_extra_threeprime', 'alpha_start', 'alpha_stop', 'beta_start', 'beta_stop']
+tRNAseq_long_info_table_types           = ['str' , 'bool'     , 'bool'        , 'bool'      , 'str'               , 'str'       , 'numeric'        , 'numeric'       , 'numeric'      , 'numeric'      , 'numeric'        , 'numeric'   , 'numeric'     , 'numeric'                              , 'numeric'             , 'numeric'    , 'numeric'   , 'numeric'   , 'numeric']
+
+tRNAseq_long_features_table_name        = 'long_features'
+tRNAseq_long_features_table_structure   = ['name'] + list(itertools.chain(*zip([f + '_start' for f in db_formatted_tRNA_feature_names], [f + '_stop' for f in db_formatted_tRNA_feature_names])))
+tRNAseq_long_features_table_types       = ['str']  + ['str'] * len(db_formatted_tRNA_feature_names) * 2
+
+tRNAseq_long_unconserved_table_name     = 'long_unconserved_nucleotides'
+tRNAseq_long_unconserved_table_structure= ['name', 'pos'    , 'observed_nucleotide', 'expected_nucleotides']
+tRNAseq_long_unconserved_table_types    = ['str' , 'numeric', 'str'                , 'str']
+
+tRNAseq_long_unpaired_table_name        = 'long_unpaired_nucleotides'
+tRNAseq_long_unpaired_table_structure   = ['name', 'fiveprime_pos', 'threeprime_pos', 'observed_fiveprime_nucleotide', 'observed_threeprime_nucleotide']
+tRNAseq_long_unpaired_table_types       = ['str' , 'numeric'      , 'numeric'       , 'str'                          , 'str']
+
+
+
 
 ####################################################################################################
 #
