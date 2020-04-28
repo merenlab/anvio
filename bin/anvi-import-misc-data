@@ -28,6 +28,16 @@ __description__ = ("Populate additional data or order tables in pan or profile d
 def main(args):
     # - you're ugly.
     # - no u :(
+
+    d = args.__dict__
+    if not d['contigs_db'] and not d['pan_or_profile_db']:
+        raise ConfigError("Please provide either a contigs database (--contigs-db) or a profile/pan "
+                          "database (--pan-or-profile-db)")
+
+    if d['contigs_db'] and d['pan_or_profile_db']:
+        raise ConfigError("You provided a contigs db and (--contigs-db) a profile/pan "
+                          "db (--pan-or-profile-db). Please provide only one.")
+
     MiscDataTableFactory(args).populate_from_file(args.data_file)
 
 
@@ -40,7 +50,8 @@ if __name__ == '__main__':
                         when we say "it is not complicated"). You need to read the online documentation if this is your first\
                         time with this.')
 
-    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
+    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
+    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     parser.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
     parser.add_argument(*anvio.A('target-data-group'), **anvio.K('target-data-group'))
     parser.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))
