@@ -6,12 +6,11 @@ import anvio.constants as constants
 
 from anvio.constants import WC_plus_wobble_base_pairs as WC_PLUS_WOBBLE_BASE_PAIRS
 from anvio.constants import codon_to_AA_RC as CODON_TO_AA_RC
+from anvio.constants import db_formatted_tRNA_feature_names as DB_FORMATTED_TRNA_FEATURE_NAMES
 from anvio.errors import ConfigError
 
 import itertools
 import os
-
-from collections import Counter
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -767,7 +766,7 @@ class TArm(_Arm):
         self,
         stem,
         loop,
-        num_allowed_unconserved=1,
+        num_allowed_unconserved=2,
         cautious=False):
 
         super().__init__(
@@ -831,7 +830,7 @@ class TLoop(_Loop):
     def __init__(
         self,
         substrings,
-        num_allowed_unconserved=1,
+        num_allowed_unconserved=2,
         start_index=None,
         stop_index=None,
         cautious=False):
@@ -916,8 +915,8 @@ class Discriminator(_Nucleotide):
 class Acceptor(_Sequence):
     name = 'Acceptor'
     canonical_positions = ((74, 75, 76), )
-    allowed_input_lengths = ((3, ), )
-    summed_input_lengths = (3, )
+    allowed_input_lengths = ((3, ), (2, ), (1, )) # a minority of reads end CC or C instead of CCA
+    summed_input_lengths = (3, 2, 1)
     conserved_nucleotides = ({0: 'C', 1: 'C', 2: 'A'}, )
     charging_recorded = False
 
@@ -925,6 +924,7 @@ class Acceptor(_Sequence):
         self,
         substrings,
         num_allowed_unconserved=0,
+        num_extra_threeprime=0,
         start_index=None,
         stop_index=None,
         cautious=False):
@@ -936,16 +936,30 @@ class Acceptor(_Sequence):
             stop_index=stop_index,
             cautious=cautious)
 
+        # A relatively common read error is an erroneous base in the acceptor.
+        # This appears to occur most at the 5'-C or 3'-A.
+        # These are not included in Acceptor.conserved_nucleotides,
+        # so that errors are still recorded as "unconserved."
+        # However, since they are permitted, Acceptor.meets_conserved_thresh is changed.
+        # The offending nucleotide and its position can be found in Acceptor.conserved_status.
+        # An unconserved base is only allowed in a full-length acceptor at the 3' end of the read
+        # to avoid too much leeway resulting in false positive profiles.
+        if self.num_unconserved == 1:
+            if self.num_nucleotides == 3:
+                if num_extra_threeprime == 0:
+                    self.meets_conserved_thresh = True
+
         if self.charging_recorded:
-            # The following class attributes must be set when tRNA-seq measures charging state:
-            # allowed_input_lengths = ((2, ), (3, ))
-            # summed_input_lengths = (2, 3)
-            if self.string == 'CC':
-                self.charged = True
-            else:
+            if self.string == 'CC' or self.string == 'C':
                 self.charged = False
+            else:
+                self.charged = True # the loaded amino acid "protects" the A
         else:
             self.charged = None
+
+
+def set_up_charging_analysis():
+    Acceptor.charging_recorded = True
 
 
 def _get_max_fiveprime_lengths(threeprime_to_fiveprime_feature_classes):
@@ -959,38 +973,13 @@ def _get_max_fiveprime_lengths(threeprime_to_fiveprime_feature_classes):
     return fiveprime_max_lengths
 
 
-def profile_wrapper(available_record_queue, output_queue, cluster_filepath):
-
-    num_features_through_T_loop = constants.db_formatted_tRNA_feature_names[::-1].index(
-        't_loop') + 1
-
-    cluster_file = open(cluster_filepath)
-    rep_seq_name = cluster_file.readline().split('\t')[8]
+def profile_wrapper(input_queue, output_queue):
+    ''' Iterates a Queue of FASTA records and builds a Queue of tRNA profiles '''
 
     while True:
-        record = available_record_queue.get(True)
-        tRNA_profile = Profile(record)
-
-        tRNAseq_name = tRNA_profile.name
-        member_names = [tRNAseq_name]
-        if len(tRNA_profile.features) >= num_features_through_T_loop:
-            # Find the sequence's cluster.
-            if tRNAseq_name != rep_seq_name:
-                for line in cluster_file:
-                    if line[0] == 'S':
-                        rep_seq_name = line.split('\t')[8]
-                        if tRNAseq_name == rep_seq_name:
-                            break
-            # Loop through the cluster's member sequences.
-            for line in cluster_file:
-                member_seq_name, rep_seq_name = line.rstrip().split('\t')[8: 10]
-                if tRNAseq_name != rep_seq_name:
-                    rep_seq_name = member_seq_name # look at UC file format to see why
-                    break
-                else:
-                    member_names.append(member_seq_name)
-
-        output_queue.put((tRNA_profile, member_names))
+        # A record is a tuple of read name and sequence.
+        name, read = input_queue.get(True)
+        output_queue.put(Profile(read, name))
 
 
 class Profile:
@@ -1004,10 +993,11 @@ class Profile:
         AnticodonStem: threeprime_to_fiveprime_feature_classes.index(ThreeprimeAnticodonStemSeq),
         DStem: threeprime_to_fiveprime_feature_classes.index(ThreeprimeDStemSeq),
         AcceptorStem: threeprime_to_fiveprime_feature_classes.index(ThreeprimeAcceptorStemSeq)}
+    D_loop_index = threeprime_to_fiveprime_feature_classes.index(DLoop)
     loop_indices = {
         TArm: threeprime_to_fiveprime_feature_classes.index(TLoop),
         AnticodonArm: threeprime_to_fiveprime_feature_classes.index(AnticodonLoop),
-        DArm: threeprime_to_fiveprime_feature_classes.index(DLoop)}
+        DArm: D_loop_index}
     anticodon_loop_index = threeprime_to_fiveprime_feature_classes.index(AnticodonLoop)
     extrapolation_ineligible_features = [
         ThreeprimeAcceptorStemSeq,
@@ -1019,11 +1009,9 @@ class Profile:
     long_read_unprofiled_thresh = 5
 
 
-    def __init__(self, record):
-        self.name = record[0]
-        self.read = record[1]
-    # def __init__(self, read):
-    #     self.read = read
+    def __init__(self, read, name=''):
+        self.read = read
+        self.name = name
 
         (self.profiled_seq,
         self.features,
@@ -1031,6 +1019,7 @@ class Profile:
         self.num_unconserved,
         self.num_paired,
         self.num_unpaired,
+        self.num_extra_threeprime,
         self.num_in_extrapolated_fiveprime_feature,
         self.is_mature,
         self.is_long_read) = self.get_profile(self.read[::-1], '', [])
@@ -1038,6 +1027,23 @@ class Profile:
         self.feature_names = [f.name for f in self.features]
 
         if self.features:
+            # The variable lengths of the alpha and beta subsequences of the D loop
+            # can create sequence alignment problems downstream.
+            # Therefore, their bounds are tracked explicitly.
+            if self.D_loop_index < len(self.features):
+                D_loop = self.features[-self.D_loop_index - 1]
+                alpha_seq = D_loop.alpha_seq
+                beta_seq = D_loop.beta_seq
+                self.alpha_start = alpha_seq.start_index
+                self.alpha_stop = alpha_seq.stop_index
+                self.beta_start = beta_seq.start_index
+                self.beta_stop = beta_seq.stop_index
+            else:
+                self.alpha_start = None
+                self.alpha_stop = None
+                self.beta_start = None
+                self.beta_stop = None
+
             if self.anticodon_loop_index < len(self.features):
                 anticodon = self.features[-self.anticodon_loop_index - 1].anticodon
                 self.anticodon_seq = anticodon.string
@@ -1048,6 +1054,11 @@ class Profile:
 
             self.charged = self.features[-1].charged # charge state of the acceptor
         else:
+            self.alpha_start = None
+            self.alpha_stop = None
+            self.beta_start = None
+            self.beta_stop = None
+
             self.anticodon_seq = ''
             self.anticodon_aa = ''
 
@@ -1065,8 +1076,11 @@ class Profile:
         num_unconserved=0,
         num_paired=0,
         num_unpaired=0,
+        num_extra_threeprime=0,
         feature_index=0,
         is_mature=False):
+
+        profile_candidates = []
 
         if feature_index == len(self.threeprime_to_fiveprime_feature_classes):
             # All tRNA features were profiled, including the tRNA-His 5' G.
@@ -1081,6 +1095,7 @@ class Profile:
                 num_unconserved,
                 num_paired,
                 num_unpaired,
+                num_extra_threeprime,
                 0, # number of nucleotides in extrapolated 5' feature
                 is_mature,
                 is_long_read)
@@ -1093,6 +1108,7 @@ class Profile:
                 num_unconserved,
                 num_paired,
                 num_unpaired,
+                num_extra_threeprime,
                 0, # number of nucleotides in extrapolated 5' feature
                 is_mature,
                 False) # read is not longer than full-length tRNA
@@ -1130,6 +1146,7 @@ class Profile:
                         num_unconserved,
                         num_paired,
                         num_unpaired,
+                        num_extra_threeprime,
                         0, # number of nucleotides in extrapolated 5' feature
                         is_mature,
                         is_long_read)
@@ -1141,7 +1158,6 @@ class Profile:
         # Each primary sequence feature takes (sub)sequence inputs, which can be of varying length.
         # Consider each possible combination of input lengths for the feature,
         # e.g., the D loop contains alpha and beta subsequences of variable length.
-        min_summed_input_length = feature_class.summed_input_lengths[0]
         for input_lengths, summed_input_length in zip(
             feature_class.allowed_input_lengths, feature_class.summed_input_lengths):
 
@@ -1229,7 +1245,7 @@ class Profile:
 
             # The procedure for assigning full-length features
             # is similar to the prior precedure for partial-length features
-            # with a few efficiencies.
+            # with a few efficiencies and special consideration of the acceptor.
             else:
                 string_components = [] # feature input substrings
                 num_processed_bases = 0
@@ -1239,10 +1255,17 @@ class Profile:
                         unprofiled_read[num_processed_bases: num_processed_bases + input_length][
                             ::-1]) # flip orientation to 5' to 3'
                     num_processed_bases += input_length
-                feature = feature_class(
-                    *string_components,
-                    start_index=len(self.read) - len(profiled_read) - num_processed_bases,
-                    stop_index=len(self.read) - len(profiled_read))
+                if feature_class.name == 'Acceptor':
+                    feature = feature_class(
+                        *string_components,
+                        num_extra_threeprime=num_extra_threeprime,
+                        start_index=len(self.read) - len(profiled_read) - num_processed_bases,
+                        stop_index=len(self.read) - len(profiled_read))
+                else:
+                    feature = feature_class(
+                        *string_components,
+                        start_index=len(self.read) - len(profiled_read) - num_processed_bases,
+                        stop_index=len(self.read) - len(profiled_read))
                 # The sequence is valid if it doesn't have too many unconserved bases.
                 if feature.meets_conserved_thresh:
                     if make_stem:
@@ -1284,10 +1307,40 @@ class Profile:
                             0, # number of paired nucleotides (not considering a stem)
                             0, # number of unpaired nucleotides (not considering a stem)
                             0)) # number of nucleotides in extrapolated 5' feature
+
+                        # AVOID TESTING PARTIAL ACCEPTOR SEQUENCES IF THE FULL ONE WAS JUST FOUND.
+                        if feature.name == 'Acceptor':
+                            if feature.string == 'CCA':
+                                break
+
                         continue
+
+                # Only consider extra 3' nucleotides and a full acceptor, CCA,
+                # not a partial acceptor, CC or C.
+                elif feature.name == 'Acceptor':
+                    if summed_input_length == 3:
+                        if num_extra_threeprime > 0:
+                            break
+
+            # AVOID TESTING PARTIAL ACCEPTOR SEQUENCES IF EXTRA 3' NUCLEOTIDES ARE CONSIDERED.
+            if feature_class.name == 'Acceptor':
+                if num_extra_threeprime > 0:
+                    break
 
 
         if not incremental_profile_candidates: # the feature didn't pass muster
+            # Try adding an extra 3' "nontemplated" nucleotide, up to 2 extra.
+            if feature_class.name == 'Acceptor':
+                if num_extra_threeprime < 2:
+                    # Since the first feature, the acceptor, was not found,
+                    # return the result from adding extra nucleotides,
+                    # rather than comparing to the current (nonexistent) result.
+                    return self.get_profile(
+                        unprofiled_read[1: ],
+                        unprofiled_read[0] + profiled_read, # 5' to 3' orientation
+                        [], # extra 3' nucleotides are not counted as a feature
+                        num_extra_threeprime=num_extra_threeprime + 1)
+
             if len(unprofiled_read) > (
                 self.fiveprime_max_lengths[feature_index] + self.long_read_unprofiled_thresh):
                 is_long_read = True
@@ -1300,6 +1353,7 @@ class Profile:
                 num_unconserved,
                 num_paired,
                 num_unpaired,
+                num_extra_threeprime,
                 0, # number of nucleotides in extrapolated 5' feature
                 is_mature,
                 is_long_read)
@@ -1314,32 +1368,33 @@ class Profile:
         incremental_profile_candidates.sort(key=lambda p: (-len(p[1]), p[3] + p[5], p[6]))
         # Continue finding features in reads that have not been fully profiled --
         # do not recurse profile candidates in which the final feature was extrapolated.
-        profile_candidates = []
-        for p in incremental_profile_candidates:
-            if p[6] == 0: # 5' feature was NOT extrapolated from unprofiled read
-                if is_mature or feature_class == FiveprimeAcceptorStemSeq:
-                    profile_candidate = self.get_profile( # recurse
-                        unprofiled_read[len(p[0]): ],
-                        p[0] + profiled_read,
-                        p[1] + features,
-                        p[2] + num_conserved,
-                        p[3] + num_unconserved,
-                        p[4] + num_paired,
-                        p[5] + num_unpaired,
-                        feature_index + len(p[1]),
+        for ipc in incremental_profile_candidates:
+            if ipc[6] == 0: # 5' feature was NOT extrapolated from unprofiled read
+                if is_mature or feature_class.name == '5\' Acceptor Stem Sequence':
+                    profile_candidate = self.get_profile( # RECURSE
+                        unprofiled_read[len(ipc[0]): ],
+                        ipc[0] + profiled_read,
+                        ipc[1] + features,
+                        num_conserved=ipc[2] + num_conserved,
+                        num_unconserved=ipc[3] + num_unconserved,
+                        num_paired=ipc[4] + num_paired,
+                        num_unpaired=ipc[5] + num_unpaired,
+                        num_extra_threeprime=num_extra_threeprime,
+                        feature_index=feature_index + len(ipc[1]),
                         is_mature=True)
                 else:
-                    profile_candidate = self.get_profile( # recurse
-                        unprofiled_read[len(p[0]): ],
-                        p[0] + profiled_read,
-                        p[1] + features,
-                        p[2] + num_conserved,
-                        p[3] + num_unconserved,
-                        p[4] + num_paired,
-                        p[5] + num_unpaired,
-                        feature_index + len(p[1]),
+                    profile_candidate = self.get_profile( # RECURSE
+                        unprofiled_read[len(ipc[0]): ],
+                        ipc[0] + profiled_read,
+                        ipc[1] + features,
+                        num_conserved=ipc[2] + num_conserved,
+                        num_unconserved=ipc[3] + num_unconserved,
+                        num_paired=ipc[4] + num_paired,
+                        num_unpaired=ipc[5] + num_unpaired,
+                        num_extra_threeprime=num_extra_threeprime,
+                        feature_index=feature_index + len(ipc[1]),
                         is_mature=False)
-                if (profile_candidate[7] # is mature (full-length tRNA)
+                if (profile_candidate[8] # is mature (full-length tRNA)
                     and profile_candidate[3] == 0 # no unconserved
                     and profile_candidate[5] == 0): # no unpaired
                     return profile_candidate
@@ -1349,21 +1404,32 @@ class Profile:
                 # Extrapolated features are grounded
                 # in conserved nucleotides and/or paired nucleotides in stems.
                 profile_candidates.append((
-                    p[0] + profiled_read,
-                    p[1] + features,
-                    p[2] + num_conserved,
-                    p[3] + num_unconserved,
-                    p[4] + num_paired,
-                    p[5] + num_unpaired,
-                    p[6], # number of nucleotides in extrapolated 5' feature
+                    ipc[0] + profiled_read,
+                    ipc[1] + features,
+                    ipc[2] + num_conserved,
+                    ipc[3] + num_unconserved,
+                    ipc[4] + num_paired,
+                    ipc[5] + num_unpaired,
+                    num_extra_threeprime,
+                    ipc[6], # number of nucleotides in extrapolated 5' feature
                     False, # not a full-length mature tRNA
                     False)) # read is not longer than full-length tRNA
+
+        # Try adding an extra 3' "nontemplated" nucleotide, up to 2 extra.
+        if feature_class.name == 'Acceptor':
+            if num_extra_threeprime < 2:
+                profile_candidates.append(self.get_profile(
+                    unprofiled_read[1: ],
+                    unprofiled_read[0] + profiled_read, # 5' to 3' orientation
+                    [], # extra 3' nucleotides are not counted as a feature
+                    num_extra_threeprime=num_extra_threeprime + 1))
+
         # Do not add 5' features to profiled 3' features if the additional features
         # have no grounding in conserved nucleotides or paired nucleotides in stems.
         profile_candidates = [
             p for p in profile_candidates if p[2] + p[4] > num_conserved + num_paired]
         if profile_candidates:
-            profile_candidates.sort(key=lambda p: (-len(p[1]), p[3] + p[5], p[6]))
+            profile_candidates.sort(key=lambda p: (-len(p[1]), p[3] + p[5], p[7]))
             return profile_candidates[0]
         else:
             if len(unprofiled_read) > (
@@ -1378,6 +1444,7 @@ class Profile:
                 num_unconserved,
                 num_paired,
                 num_unpaired,
+                num_extra_threeprime,
                 0, # number of nucleotides in extrapolated 5' feature
                 is_mature,
                 is_long_read)
@@ -1471,7 +1538,7 @@ class Profile:
 # E. coli tRNA-Ala-GGC-1-1: start first position of 3' strand of D stem
 # forward = 'GAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACCA'
 
-# profile = Profile(forward)
+# Profile(forward)
 # print(profile.profiled_seq)
 # print(profile.features)
 # print(profile.num_unconserved)
