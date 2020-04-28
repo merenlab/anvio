@@ -570,20 +570,21 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
     def check_target_data_group(self):
         """A function to check whether the data group set is among the available ones.
 
-           The reason this function is a separate one and it is not being called by the
-           init function of the base class is because the user *can* set a new data group
-           name when they want to 'import' things into the database. So, while exporting
-           data or displaying data will require the requested data group to be a proper one,
-           it is better to check that explicitly."""
+        The reason this function is a separate one and it is not being called by the
+        init function of the base class is because the user *can* set a new data group
+        name when they want to 'import' things into the database. So, while exporting
+        data or displaying data will require the requested data group to be a proper one,
+        it is better to check that explicitly.
+        """
 
         if self.target_data_group not in self.available_group_names:
             raise ConfigError("You (or the programmer) requested to initiate the additional data table for '%s' with "
                               "the data group '%s', which is not really in that table :/ If it helps at all, "
                               "the target table happened to have these ones instead: %s. What to do now? If you are "
-                              "here becasue the last command you run was something like 'show me all the data in misc' "
+                              "here because the last command you run was something like 'show me all the data in misc' "
                               "data tables, then you may try to be more specific by explicitly defining your target "
                               "data table. If you think you have already been as sepecific as you could be, then anvi'o "
-                              "is as frustrated as you are right now :(" %\
+                              "is as frustrated as you are right now :(" % \
                                     (self.target_table, self.target_data_group, ', '.join(['"%s"' % d for d in self.available_group_names])))
 
 
@@ -614,7 +615,8 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         ==========
         additional_data_keys_requested : list, []
             Which keys are requested? If [], all are assumed. Read as "data_keys_requested", they
-            "additional" because they are fetched from additional layers data table
+            "additional" because they are fetched from 'layer_additional_data', 'item_additional_data',
+            'amino_acid_additional_data', or 'nucleotide_additional_data' tables.
 
         Returns
         =======
@@ -705,7 +707,10 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
     def add(self, data_dict, data_keys_list, skip_check_names=False):
         """Function to add data into the item additional data table.
 
-           * `data_dict`: a dictionary for items or layers additional should follow this format:
+        Parameters
+        ==========
+        data_dict : dict
+            A dictionary for items or layers additional should follow this format:
 
                 d = {
                         'item_or_layer_name_01': {'data_key_01': value,
@@ -718,10 +723,11 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                         (...)
                     }
 
-           * `data_keys_list`: is a list of keys one or more of which should appear for each item
-                               in `data_dict`.
+        data_keys_list : list
+            A list of keys one or more of which should appear for each item in `data_dict`.
         """
 
+        # FIXME
         if self.target_table not in ['items', 'layers']:
             raise ConfigError("You are using an AdditionalDataBaseClass instance to add %s data into your %s database. But "
                               "you know what? You can't do that :/ Someone made a mistake somewhere. If you are a user, "
@@ -776,6 +782,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                              "you will not blame anvi'o for your poorly prepared data, but choose between yourself or "
                              "Obama." % (self.target_table, self.db_type))
         else:
+            # FIXME
             if self.target_table == 'layers':
                 TableForLayerAdditionalData.check_names(self, data_dict)
             elif self.target_table == 'items':
@@ -985,6 +992,7 @@ class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalDa
             raise ConfigError("When creating an instance from the MiscDataTableFactory class, the `args` object "
                               "must contain the `target_data_table` variable.")
 
+        # FIXME
         if target_data_table == 'items':
             TableForItemAdditionalData.__init__(self, args, r=self.run, p=self.progress)
         elif target_data_table == 'layers':
