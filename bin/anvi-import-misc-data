@@ -50,7 +50,7 @@ if __name__ == '__main__':
                         when we say "it is not complicated"). You need to read the online documentation if this is your first\
                         time with this.')
 
-    group1 = parser.add_argument_group('Databse input', "Provide 1 of these")
+    group1 = parser.add_argument_group('Database input', "Provide 1 of these")
     group2 = parser.add_argument_group('Details', "Everything else.")
 
     group1.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
