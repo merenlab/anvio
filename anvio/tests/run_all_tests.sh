@@ -647,8 +647,13 @@ SHOW_FILE $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS/CLUSTER_REPORT.txt
 INFO "Generating an anvi'o genomes storage"
 anvi-gen-genomes-storage -e $output_dir/external-genomes.txt -o $output_dir/TEST-GENOMES.db
 
-INFO "Running the pangenome anaysis with default parameters"
-anvi-pan-genome -g $output_dir/TEST-GENOMES.db -o $output_dir/TEST/ -n TEST --use-ncbi-blast --description $output_dir/example_description.md
+INFO "Running the jenome anaysis with default parameters"
+#FIXME The pangenome test fails here
+anvi-pan-genome -g $output_dir/TEST-GENOMES.db \
+                -o $output_dir/TEST/ \
+                -n TEST \
+                --use-ncbi-blast \
+                --description $output_dir/example_description.md
 
 INFO "Testing anvi-analyze-synteny ignoring genes with no annotation"
 
@@ -662,9 +667,15 @@ anvi-analyze-synteny -e $output_dir/external-genomes.txt \
 INFO "Testing anvi-analyze-synteny now including unannotated genes"
 anvi-analyze-synteny -e $output_dir/external-genomes.txt \
                      -p $output_dir/TEST/TEST-PAN.db \
-                     --annotation-source COG_FUNCTION \
                      --ngram-window-range 2:3 \
                      -o $output_dir/synteny_output_with_unknowns.tsv \
+                     --analyze-unknown-functions
+
+INFO "Testing anvi-analyze-synteny now including unannotated genes"
+anvi-analyze-synteny -e $output_dir/external-genomes.txt \
+                     --annotation-source COG_FUNCTION \
+                     --ngram-window-range 2:3 \
+                     -o $output_dir/synteny_output_with_COGs.tsv \
                      --analyze-unknown-functions
 
 INFO 'A dry run with an items order file for the merged profile without any clustering'
