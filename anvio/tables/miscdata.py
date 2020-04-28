@@ -1000,15 +1000,16 @@ class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalDa
                               "must contain the `target_data_table` variable.")
 
         # FIXME
-        if target_data_table == 'items':
-            TableForItemAdditionalData.__init__(self, args, r=self.run, p=self.progress)
-        elif target_data_table == 'layers':
-            TableForLayerAdditionalData.__init__(self, args, r=self.run, p=self.progress)
-        elif target_data_table == 'layer_orders':
-            TableForLayerOrders.__init__(self, args, r=self.run, p=self.progress)
-        else:
+        try:
+            table_classes[target_data_table].__init__(self, args, r=self.run, p=self.progress)
+        except KeyError:
             raise ConfigError("MiscDataTableFactory does not know about target data tables for '%s' :( "
-                              "You can go to the online documentation, or you can try either 'items', 'layers', "
-                              "or 'layer_orders'" % target_data_table)
+                              "You can go to the online documentation, or you can try any of %s" % \
+                              (target_data_table, ', '.join(["'%s'" % table for table in table_classes])))
 
 
+table_classes = {
+    'items': TableForItemAdditionalData,
+    'layers': TableForLayerAdditionalData,
+    'layer_orders': TableForLayerOrders
+}
