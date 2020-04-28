@@ -567,9 +567,10 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
     """Implements additional data ops base class.
 
-       See TableForItemAdditionalData or TableForLayerAdditionalData for usage example.
-
-       See AdditionalAndOrderDataBaseClass for inherited functionality.
+    Notes
+    =====
+    - See TableForItemAdditionalData or TableForLayerAdditionalData for usage example.
+    - See AdditionalAndOrderDataBaseClass for inherited functionality.
     """
 
     def __init__(self, args):
@@ -845,10 +846,13 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
 
 class TableForItemAdditionalData(AdditionalDataBaseClass):
+    """Maintains the item additional data table in anvi'o pan and profile databases.
+
+    Notes
+    =====
+    - Related issue: https://github.com/merenlab/anvio/issues/662.
     """
-       This is the class where we maintain the item additional data table in anvi'o
-       pan and profile databases. Related issue: https://github.com/merenlab/anvio/issues/662.
-    """
+
     def __init__(self, args, r=run, p=progress):
         self.run = r
         self.progress = p
@@ -887,14 +891,13 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
 
 
 class TableForLayerAdditionalData(AdditionalDataBaseClass):
-    """
-       This is the class where we maintain the layer additional data table in anvi'o
-       pan and profile databases.
+    """Maintains the layer additional data table in anvi'o pan and profile databases.
 
-       Once upon a time there was something called an anvi'o samples database. This
-       is one of two tables that made it irrelevant.
-
-       Related issue: https://github.com/merenlab/anvio/issues/674.
+    Notes
+    =====
+    - Once upon a time there was something called an anvi'o samples database. This
+      is one of two tables that made it irrelevant. Related issue on the topic:
+      https://github.com/merenlab/anvio/issues/674.
     """
 
     def __init__(self, args, r=run, p=progress):
@@ -943,10 +946,7 @@ class TableForLayerAdditionalData(AdditionalDataBaseClass):
 
 
 class TableForLayerOrders(OrderDataBaseClass):
-    """
-       This is the class where we maintain the layer order data table in anvi'o pan and profile
-       databases.
-    """
+    """Maintains the layer order data table in anvi'o pan and profile databases."""
 
     def __init__(self, args, r=run, p=progress):
         self.run = r
@@ -987,9 +987,10 @@ class TableForLayerOrders(OrderDataBaseClass):
 
 
 class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalData, TableForLayerOrders):
-    """Gives seamless access to additional data or order tables in pan or profile databases.
+    """Gives seamless access to additional data or order tables in pan/profile/contigs databases.
 
-       Create an instance with args.target_data_table = [items|layers|layer_orders], and you will be golden.
+    Create an instance with args.target_data_table =
+    [items|layers|layer_orders|nucleotides|amino_acids], and you will be golden.
     """
 
     def __init__(self, args, r=run, p=progress):
