@@ -476,11 +476,12 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
 
     def add(self, data_dict, skip_check_names=False):
-        """
-            The default function to add data into the orders table.
+        """The default function to add data into the orders table.
 
-             * `data_dict`: this variable for layer orders is expected to follow this format:
-
+        Parameters
+        ==========
+        data_dict : dict
+            This variable for layer orders is expected to follow this format:
                   d = {
                           'data_key_01': {'data_type': 'newick',
                                           'data_value': '(item_or_layer_name_01:0.0370199,(item_or_layer_name_02:0.0227268,item_or_layer_name_01:0.0227268)Int3:0.0370199);'
@@ -794,15 +795,12 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                              "you will not blame anvi'o for your poorly prepared data, but choose between yourself or "
                              "Obama." % (self.target_table, self.db_type))
         else:
-            # FIXME
-            if self.target_table == 'layers':
-                TableForLayerAdditionalData.check_names(self, data_dict)
-            elif self.target_table == 'items':
-                TableForItemAdditionalData.check_names(self, data_dict)
-            else:
-                raise ConfigError("Congratulations, you managed to hit an uncharted are in anvi'o. It is cerrtainly very "
+            if self.target_table not in table_classes:
+                raise ConfigError("Congratulations, you managed to hit an uncharted are in anvi'o. It is certainly very "
                                   "curious how you got here unless you are trying to implement a new functionality. Are "
                                   "you? What *IS* it? IS IT FUN?")
+
+            table_classes[self.target_table].check_names(self, data_dict)
 
         db_entries = []
         self.set_next_available_id(self.table_name)
@@ -1016,5 +1014,5 @@ class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalDa
 table_classes = {
     'items': TableForItemAdditionalData,
     'layers': TableForLayerAdditionalData,
-    'layer_orders': TableForLayerOrders
+    'layer_orders': TableForLayerOrders,
 }
