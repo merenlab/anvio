@@ -34,12 +34,16 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        # FIXME
-        self.db_path = A('pan_or_profile_db') or A('profile_db') or A('pan_db')
-        if not self.db_path:
-            raise ConfigError("The AdditionalAndOrderDataBaseClass is inherited with an args object that did not "
-                              "contain any database path :/ Even though any of the following would "
-                              "have worked: `pan_or_profile_db`, `profile_db`, `pan_db`, `contigs_db` :(")
+
+        acceptable_db_inputs = ('pan_or_profile_db', 'profile_db', 'pan_db', 'contigs_db')
+
+        # FIXME This is a first-come, first-serve business. As of now, it is the programmer's
+        # responsibility to ensure they are not passing more inputs than they need.
+        for db_input in acceptable_db_inputs:
+            self.db_path = A(db_input)
+
+            if self.db_path is not None:
+                break
 
         # We just set the path for the database we are going to be working with. but if we seem to
         # be in 'gene mode', then the actual database we want to work with through this module is
@@ -68,6 +72,11 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         self.just_do_it = A('just_do_it')
         self.target_data_group_set_by_user = A('target_data_group') or None
         self.target_data_group = self.target_data_group_set_by_user or 'default'
+
+        if not self.db_path:
+            raise ConfigError("The AdditionalAndOrderDataBaseClass is inherited with an args object that did not "
+                              "contain any database path :/ Even though any of the following would "
+                              "have worked: %s :(" % ', '.join(["'%s'" % x for x in acceptable_db_inputs]))
 
         if not self.table_name:
             raise ConfigError("The AdditionalAndOrderDataBaseClass does not know anything about the table it should "
