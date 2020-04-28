@@ -3916,8 +3916,8 @@ class tRNASeqDatabase:
 
                 del(tRNA_profile)
 
-            progress.update("%d of %d unique sequences have been profiled"
-                            % (num_profiled_rep_seqs, total_num_rep_seqs))
+            self.progress.update("%d of %d unique sequences have been profiled"
+                                 % (num_profiled_rep_seqs, total_num_rep_seqs))
 
             if len(tRNAseq_sequences_table_entries) > 0:
                 self.db._exec_many(
