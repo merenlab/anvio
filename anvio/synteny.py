@@ -13,9 +13,10 @@ import pandas as pd
 from collections import Counter
 
 import anvio
+import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
-import anvio.tables as t
+import anvio.panops as panops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.genomestorage as genomestorage
@@ -70,9 +71,10 @@ class NGram(object):
         self.is_in_unknowns_mode = A('analyze_unknown_functions')
         self.output_file = A('output_file')
         self.skip_init_functions = A('skip_init_functions')
-
+        self.genome_names_to_focus = A('genome_names')
 
         self.pan_db_path = A('pan_db')
+
         if self.pan_db_path:
             self.pan_db = PanDatabase(self.pan_db_path)
 
@@ -88,6 +90,7 @@ class NGram(object):
 
         self.genomes_storage_path = A('genomes_storage')
 
+        # confirm genome-storage and pangenome hashes match of pangenome is provided
         if self.pan_db:
             self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
                                                                self.p_meta['genomes_storage_hash'],
@@ -101,10 +104,9 @@ class NGram(object):
                                                                run=self.run,
                                                                progress=self.progress)
 
+        # list-annotation-resources
         self.list_annotation_sources = A('list_annotation_sources')
-
         self.gene_function_source_set = self.genomes_storage.db.get_table_as_dataframe('gene_function_calls').source.unique()
-
         if self.list_annotation_sources:
             self.run.info('Available functional annotation sources', ', '.join(self.gene_function_source_set))
             sys.exit()
@@ -112,6 +114,29 @@ class NGram(object):
         # This houses the ngrams' data
         self.ngram_attributes_list = []
 
+        # Focus on specfic set of genomes
+        if self.genome_names_to_focus:
+            if filesnpaths.is_file_exists(self.genome_names_to_focus, dont_raise=True):
+                self.genome_names_to_focus = utils.get_column_data_from_TAB_delim_file(self.genome_names_to_focus, column_indices=[0], expected_number_of_fields=1)[0]
+            else:
+                self.genome_names_to_focus = [g.strip() for g in self.genome_names_to_focus.split(',')]
+
+            self.run.warning("A subset of genome names is found, and anvi'o will focus only on to those.")
+
+            self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path, storage_hash=None, genome_names_to_focus=self.genome_names_to_focus)
+            self.genomes = self.genomes_storage.get_genomes_dict()
+
+            self.external_genome_names = [g for g in self.genomes if self.genomes[g]['external_genome']]
+            self.internal_genome_names = [g for g in self.genomes if not self.genomes[g]['external_genome']]
+
+            self.hash_to_genome_name = {}
+            for genome_name in self.genomes:
+                self.hash_to_genome_name[self.genomes[genome_name]['genome_hash']] = genome_name
+
+            # number of genomes in genome-storage
+            self.num_contigs_in_external_genomes_with_genes = len(self.genomes)
+
+        # number of genomes in genome-storage
         self.num_contigs_in_external_genomes_with_genes = len(self.genomes_storage.get_all_genome_names())
 
         if not skip_sanity_check:
@@ -128,7 +153,6 @@ class NGram(object):
         """Sanity_check will confirm input for NGram class"""
 
         # checking if the annotation source is common accross all contigs databases
-        ## FIXME: Will need to change if accepting genome-storage instead of external-genomes
         if self.annotation_source not in self.gene_function_source_set:
             raise ConfigError("The annotation source you requested does not appear to be in all of "
                               "the contigs databases from the external-genomes file. "
@@ -152,7 +176,7 @@ class NGram(object):
             raise ConfigError("anvi'o would love to slice and dice your loci, but the "
                               "window-range needs to be from small to big :)")
 
-        # Must contain 2 integers for window
+        # Window-range must contain 2 integers for window
         if len(self.window_range) > 2 or not isinstance(self.window_range[0], int) or not isinstance(self.window_range[1], int):
             raise ConfigError("anvi'o would love to slice and dice your loci, but... the "
                               "window_range must only contain 2 integers and be formated as x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
@@ -164,7 +188,6 @@ class NGram(object):
             num_genes = len(gene_caller_ids)
 
             if self.window_range[1] > num_genes:
-                print("asdf")
                 raise ConfigError("The largest window size you requested (%d) is larger than the number of genes found on this genome: %s" % \
                     (self.window_range[1], contigs_db_name))
 
@@ -205,10 +228,25 @@ class NGram(object):
                     if self.pan_db and self.annotation_source:
                         ngram_annotation = tuple([gene_caller_id_to_function_dict[g] for g in ngram])
                         ngram_gene_clusters = tuple([gene_caller_id_to_gene_cluster_dict[g] for g in ngram])
+
+                        ngram_annotation = self.order_ngrams(ngram_annotation)
+                        ngram_gene_clusters = self.order_ngrams(ngram_gene_clusters)
+
                         self.ngram_attributes_list.append([ngram, ngram_annotation, ngram_gene_clusters, count, contigs_db_name, n])
                     elif self.annotation_source and not self.pan_db:
                         ngram_annotation = tuple([gene_caller_id_to_function_dict[g] for g in ngram])
+                        ngram_annotation = self.order_ngrams(ngram_annotation)
                         self.ngram_attributes_list.append([ngram, ngram_annotation, count, contigs_db_name, n]) 
+
+    def order_ngrams(self, ngram_annotation):
+        original_order = ngram_annotation
+        flipped_order = ngram_annotation[::-1]
+        if original_order[0] < flipped_order[0]:
+            ngram = original_order
+        else:
+            ngram = flipped_order
+
+        return ngram
 
     def convert_to_df(self):
         """Takes self.ngram_attributes_list and returns a pandas dataframe"""
@@ -243,6 +281,8 @@ class NGram(object):
         if not self.is_in_unknowns_mode:
             ngram_count_df_final = ngram_count_df_final[~ngram_count_df_final['ngram_functions'].str.contains("unknown-function")]
 
+        # ngram_count_df_final = ngram_count_df_final.groupby('ngram_functions').count()
+        # print(ngram_count_df_final)
         return ngram_count_df_final
 
 
@@ -356,21 +396,22 @@ class NGram(object):
             # extract window
             window = function_list[i:i + n]
 
-            # order the window based arbitrarily based on the first gene in the synteny being smallest
-            original_order = window
-            flipped_order = window[::-1]
-            if original_order[0] < flipped_order[0]:
-                window = original_order
-            else:
-                window = flipped_order
+            # # order the window based arbitrarily based on the first gene in the synteny being smallest
+            # original_order = window
+            # flipped_order = window[::-1]
+            # if original_order[0] < flipped_order[0]:
+            #     window = original_order
+            # else:
+            #     window = flipped_order
 
             ngram = tuple(window)
+            ngram_frequencies_dict[ngram] +=  1
 
-            if self.is_in_unknowns_mode and ("unknown-function" or "no-gene-cluster-annotation") in ngram: # conditional to record NGrams with unk functions
-                continue
-            else:
-                # if ngram is not in dictionary add it, if it is add + 1
-                ngram_frequencies_dict[ngram] +=  1
+            # if self.is_in_unknowns_mode and ("unknown-function" or "no-gene-cluster-annotation") in ngram: # conditional to record NGrams with unk functions
+            #     continue
+            # else:
+            #     # if ngram is not in dictionary add it, if it is add + 1
+            #     ngram_frequencies_dict[ngram] +=  1
 
         return ngram_frequencies_dict
 
