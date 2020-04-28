@@ -221,6 +221,21 @@ class NGram(object):
 
             # Iterate over range of window sizes and run synteny algorithm to count occurrences of ngrams in a contig
             for n in range(self.window_range[0], self.window_range[1]):
+                ngram_counts_dict = self.count_synteny()
+
+
+    def count_synteny(...):
+        d = Counter()
+        for window in self.get_window():
+            output2 = self.colorize_window(window, source='gc')
+            output1 = self.colorize_window(window, source='annotaiton')
+
+            d[output] += 1
+
+        # parse d
+        self.ngram_attributes_list.append(sdfsdf)
+
+
                 ngram_counts_dict = self.count_synteny(gene_caller_ids_list, n)
 
                 # add results of this window size, contig pairing to ngram attributes
