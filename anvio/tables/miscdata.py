@@ -86,8 +86,17 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
         if self.db_type in ['pan', 'profile', 'genes']:
             utils.is_pan_or_profile_db(self.db_path, genes_db_is_also_accepted=True)
+
+            if self.target_table not in ['layers', 'items', 'layer_orders']:
+                raise ConfigError("The only target data table names possible for DBs of type '%s' are 'layers' "
+                                  "and 'items'" % self.db_type)
+
         elif self.db_type == 'contigs':
             utils.is_contigs_db(self.db_path)
+
+            if self.target_table not in ['nucleotides', 'amino_acids']:
+                raise ConfigError("The only target data table names possible for DBs of type '%s' are 'nucleotides' "
+                                  "and 'amino_acids'" % self.db_type)
 
         self.db_version = utils.get_required_version_for_db(self.db_path)
 
@@ -130,7 +139,6 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                               "It does not seem to have any additional keys for data :/" \
                                             % (self.target_table, additional_data_file_path))
 
-        # FIXME
         if self.target_table == 'layer_orders':
             OrderDataBaseClass.add(self, data_dict, skip_check_names)
         else:
@@ -226,8 +234,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
     def export(self, output_file_path):
         filesnpaths.is_output_file_writable(output_file_path)
 
-        # FIXME I believe nucleotides and amino_acids should belong to this conditional
-        if self.target_table in ['layers', 'items']:
+        if self.target_table in ['layers', 'items', 'nucleotides', 'amino_acids']:
             keys, data = AdditionalDataBaseClass.get(self)
             if keys:
                 if len(self.available_group_names) - 1:
@@ -740,8 +747,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             A list of keys one or more of which should appear for each item in `data_dict`.
         """
 
-        # FIXME
-        if self.target_table not in ['items', 'layers']:
+        if self.target_table not in ['items', 'layers', 'nucleotides', 'amino_acids']:
             raise ConfigError("You are using an AdditionalDataBaseClass instance to add %s data into your %s database. But "
                               "you know what? You can't do that :/ Someone made a mistake somewhere. If you are a user, "
                               "check your flags to make sure you are targeting the right data table. If you are a programmer, "
@@ -816,7 +822,6 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % self.table_name, db_entries)
         database.disconnect()
-
 
         self.run.warning('', 'NEW DATA', lc='green')
         self.run.info('Database', self.db_type)
@@ -984,6 +989,46 @@ class TableForLayerOrders(OrderDataBaseClass):
                                                                                ', '.join(layers_in_db)))
 
 
+class TableForNucleotideAdditionalData(AdditionalDataBaseClass):
+    """Maintains 'nucleotide_additional_data' table in anvi'o contigs databases"""
+
+    def __init__(self, args, r=run, p=progress):
+        self.run = r
+        self.progress = p
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.table_name = A('table_name') or t.nucleotide_additional_data_table_name
+
+        self.target_table = 'nucleotides'
+
+        AdditionalDataBaseClass.__init__(self, args)
+
+
+    def check_names(self, data_dict):
+        """FIXME"""
+        pass
+
+
+class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
+    """Maintains 'amino_acid_additional_data' table in anvi'o contigs databases"""
+
+    def __init__(self, args, r=run, p=progress):
+        self.run = r
+        self.progress = p
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.table_name = A('table_name') or t.nucleotide_additional_data_table_name
+
+        self.target_table = 'amino_acids'
+
+        AdditionalDataBaseClass.__init__(self, args)
+
+
+    def check_names(self, data_dict):
+        """FIXME"""
+        pass
+
+
 class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalData, TableForLayerOrders):
     """Gives seamless access to additional data or order tables in pan/profile/contigs databases.
 
@@ -1002,7 +1047,6 @@ class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalDa
             raise ConfigError("When creating an instance from the MiscDataTableFactory class, the `args` object "
                               "must contain the `target_data_table` variable.")
 
-        # FIXME
         try:
             table_classes[target_data_table].__init__(self, args, r=self.run, p=self.progress)
         except KeyError:
@@ -1015,4 +1059,6 @@ table_classes = {
     'items': TableForItemAdditionalData,
     'layers': TableForLayerAdditionalData,
     'layer_orders': TableForLayerOrders,
+    'nucleotides': TableForNucleotideAdditionalData,
+    'amino_acids': TableForAminoAcidAdditionalData,
 }
