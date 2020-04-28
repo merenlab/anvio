@@ -91,11 +91,11 @@ if __name__ == '__main__':
 
     # Optional arguments
     groupC = parser.add_argument_group('Optional arguments')
-    #FIXME currently doesn't work, this would require the tool to accept a genome storage file.
     groupC.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources', {"required": False}))
     groupC.add_argument('--analyze-unknown-functions',action="store_true",
                         help="Provide this flag if you want anvi-analyze-synteny to report "
                               'Ngrams that contain gene calls that have no annotation.')
+    groupC.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names', {"required": False}))
     args = anvio.get_args(parser)
 
     try:
