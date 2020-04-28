@@ -60,7 +60,6 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                                    "be generated automatically, but this very part of the code has no idea how to "
                                    "deal with this awkward situation, hence throwing this exception and waves its hand "
                                    "to you from a wild wild corner of the anvi'o codebase." % (A('collection_name'), A('bin_id')))
-                self.db_path = None
 
         self.just_do_it = A('just_do_it')
         self.target_data_group_set_by_user = A('target_data_group') or None
