@@ -169,7 +169,7 @@ class NGram(object):
             raise ConfigError("You should provide an output file name.")
 
         # checking window-range input
-        if ":" not in self.window_range:
+        if self.window_range.count(':') != 1:
             raise ConfigError("anvi'o would love to slice and dice your loci, but the "
                               "Format of window_range must be x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
 
@@ -198,13 +198,14 @@ class NGram(object):
                 raise ConfigError("The largest window size you requested (%d) is larger than the number of genes found on this genome: %s" % \
                     (self.window_range[1], contigs_db_name))
 
+
     def populate_ngram_attributes(self):
         """Iterates through all contigs and use self.count_synteny to count all ngrams in that contig.
 
         This populates the self.ngram_attributes_list, where each element looks like:
         (ngram, count, contigs_db_name, contig_name, N)
-
         """
+
         # Get gene cluster info from panDB
         if self.pan_db:
             gene_cluster_frequencies_dataframe = self.pan_db.db.get_table_as_dataframe('gene_clusters')
@@ -230,17 +231,19 @@ class NGram(object):
                 self.gene_caller_id_to_gene_cluster_dict = self.get_gene_cluster_dict(contigs_db_name, gene_cluster_frequencies_dataframe)
 
             # Iterate over range of window sizes and run synteny algorithm to count occurrences of ngrams in a contig
-            for N in range(self.window_range[0], self.window_range[1]):
+            for N in range(*self.window_range):
                 ngram_counts_dict = self.count_synteny(N, gene_caller_ids_list)
 
                 for ngram, count in ngram_counts_dict.items():
                     self.ngram_attributes_list.append([ngram, count, contigs_db_name, N])
 
+
     def count_synteny(self, N, gene_caller_ids_list):
-        """This method will count synteny patterns of size N on a contig
-        
-        This method counts synteny patterns of size N on a contig by taking a window of gene-callers-ids, annotating it,
-        ordering it consistently, and then counting its occurence on the contig.
+        """This method counts synteny patterns of size N on a contig
+
+        This method counts synteny patterns of size N on a contig by taking a window of
+        gene-callers-ids, annotating it, ordering it consistently, and then counting its occurence
+        on the contig.
 
         Parameters
         ==========
@@ -257,8 +260,10 @@ class NGram(object):
 
         Notes
         =====
-        This function assumes that the input list of gene-callers-ids are in the order of which they occur on the contig
+        This function assumes that the input list of gene-callers-ids are in the order of which they
+        occur on the contig
         """
+
         ngram_counts_dict = Counter({})
         gene_callers_id_windows = self.get_windows(N, gene_caller_ids_list)
         for window in gene_callers_id_windows:
@@ -269,10 +274,12 @@ class NGram(object):
 
         return ngram_counts_dict
 
+
     def annotate_window(self, window):
-        """This method will annotate a gene-callers-id window
-        
-        This method will annotate a gene-callers-id window based using annotation sources provided by the user (e.g. COGs, pan_db)
+        """This method annotates a gene-callers-id window
+
+        This method will annotate a gene-callers-id window based using annotation sources provided
+        by the user (e.g. COGs, pan_db)
 
         Parameters
         ==========
@@ -283,10 +290,8 @@ class NGram(object):
         =======
         ngram_gene_clusters : tuple
             A tuple of annotations
-
-        Notes
-        =====
         """
+
         # Annotate window based on user input
         if self.pan_db and not self.annotation_source:
             ngram_annotation = tuple([self.gene_caller_id_to_gene_cluster_dict[g] for g in window])
@@ -296,11 +301,12 @@ class NGram(object):
 
         return ngram_annotation
 
+
     def order_window(self, annotated_window):
-        """This method will orient an annotated_window in a consistent order 
-        
-        This method is to make sure that all Ngrams are ordered in the same direction. For example, we want to count
-        A-B-C and C-B-A as the same Ngram.
+        """This method orients an annotated_window in a consistent order
+
+        This method is to make sure that all Ngrams are ordered in the same direction. For example,
+        we want to count A-B-C and C-B-A as the same Ngram.
 
         Parameters
         ==========
@@ -311,10 +317,8 @@ class NGram(object):
         =======
         ngram : tuple
             A tuple Ngram that is correctly oriented
-
-        Notes
-        =====
         """
+
         original_order = annotated_window
         flipped_order = annotated_window[::-1]
         if original_order[0] < flipped_order[0]:
@@ -323,6 +327,7 @@ class NGram(object):
             ngram = flipped_order
 
         return ngram
+
 
     def convert_to_df(self):
         """Takes self.ngram_attributes_list and returns a pandas dataframe"""
@@ -352,8 +357,6 @@ class NGram(object):
         if not self.is_in_unknowns_mode:
             ngram_count_df_final = ngram_count_df_final[~ngram_count_df_final['ngram'].str.contains("unknown-function" or "no-gene-cluster-annotation")]
 
-        # ngram_count_df_final = ngram_count_df_final.groupby('ngram_functions').count()
-        # print(ngram_count_df_final)
         return ngram_count_df_final
 
 
@@ -378,13 +381,13 @@ class NGram(object):
         # get contigsDB
         gene_function_call_df_filtered = gene_function_call_df[(gene_function_call_df['genome_name'] == contigs_db_name) & (gene_function_call_df['source'] == self.annotation_source)]
         gene_callers_id_to_accession_dict = gene_function_call_df_filtered[['gene_callers_id','accession']].set_index('gene_callers_id')['accession'].to_dict()
-        
+
         gene_caller_ids_list = self.genomes_storage.get_gene_caller_ids(contigs_db_name)
 
         # Make list of lists containing gene attributes. If there is not annotation add one in!
         genes_and_functions_list = [] # List of lists [gene-caller-id, accessions, contig-name]
         counter = 0
-        for gene_callers_id in gene_caller_ids_list: 
+        for gene_callers_id in gene_caller_ids_list:
             list_of_gene_attributes = []
 
             if gene_callers_id in gene_callers_id_to_accession_dict:
@@ -401,9 +404,10 @@ class NGram(object):
 
         gene_caller_id_to_accession_dict = {}
         for entry in genes_and_functions_list:
-            gene_caller_id_to_accession_dict[entry[0]] = entry[1] 
+            gene_caller_id_to_accession_dict[entry[0]] = entry[1]
 
         return gene_caller_id_to_accession_dict
+
 
     def get_gene_cluster_dict(self, contigs_db_name, gene_cluster_frequencies_dataframe):
         gene_cluster_frequencies_dataframe_filtered = gene_cluster_frequencies_dataframe[gene_cluster_frequencies_dataframe['genome_name'] == contigs_db_name]
@@ -414,7 +418,7 @@ class NGram(object):
         # Make list of lists containing gene cluster attributes. If there is not annotation add one in!
         genes_cluster_list = [] # List of lists [gene-caller-id, gene-cluster-id, contig-name]
         counter = 0
-        for gene_callers_id in gene_caller_ids_list: 
+        for gene_callers_id in gene_caller_ids_list:
             list_of_gene_attributes = []
 
             if gene_callers_id in gene_callers_id_to_gene_cluster_id_dict:
@@ -431,7 +435,7 @@ class NGram(object):
 
         gene_caller_id_to_gene_cluster_dict = {}
         for entry in genes_cluster_list:
-            gene_caller_id_to_gene_cluster_dict[entry[0]] = entry[1] 
+            gene_caller_id_to_gene_cluster_dict[entry[0]] = entry[1]
 
         return gene_caller_id_to_gene_cluster_dict
 
@@ -439,7 +443,7 @@ class NGram(object):
     def get_windows(self, N, gene_caller_ids_list):
         """This method will count NGrams in contigs
 
-        This method will use a sliding window of size N to extract gene-callers-id windows. 
+        This method will use a sliding window of size N to extract gene-callers-id windows.
         The final output will be a list of windows of size N.
 
         Parameters
@@ -454,10 +458,8 @@ class NGram(object):
         =======
         gene_callers_id_windows : list
             A list of n sized windows of gene-callers-ids from a contig
-
-        Notes
-        =====
         """
+
         gene_callers_id_windows = []
         for i in range(0, len(gene_caller_ids_list) - N + 1):
 
