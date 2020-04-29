@@ -647,32 +647,28 @@ SHOW_FILE $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS/CLUSTER_REPORT.txt
 INFO "Generating an anvi'o genomes storage"
 anvi-gen-genomes-storage -e $output_dir/external-genomes.txt -o $output_dir/TEST-GENOMES.db
 
-INFO "Running the jenome anaysis with default parameters"
-#FIXME The pangenome test fails here
+INFO "Running the pangenome analysis with default parameters"
 anvi-pan-genome -g $output_dir/TEST-GENOMES.db \
                 -o $output_dir/TEST/ \
                 -n TEST \
                 --use-ncbi-blast \
                 --description $output_dir/example_description.md
 
-INFO "Testing anvi-analyze-synteny ignoring genes with no annotation"
-
-# run anvi-analyze-synteny
-anvi-analyze-synteny -e $output_dir/external-genomes.txt \
+INFO "Testing anvi-analyze-synteny with default parameters using a pangenome for annotations"
+anvi-analyze-synteny -g $output_dir/TEST-GENOMES.db \
                      -p $output_dir/TEST/TEST-PAN.db \
-                     --annotation-source COG_FUNCTION \
                      --ngram-window-range 2:3 \
                      -o $output_dir/synteny_output_no_unknowns.tsv
 
 INFO "Testing anvi-analyze-synteny now including unannotated genes"
-anvi-analyze-synteny -e $output_dir/external-genomes.txt \
+anvi-analyze-synteny -g $output_dir/TEST-GENOMES.db \
                      -p $output_dir/TEST/TEST-PAN.db \
                      --ngram-window-range 2:3 \
                      -o $output_dir/synteny_output_with_unknowns.tsv \
                      --analyze-unknown-functions
 
 INFO "Testing anvi-analyze-synteny now including unannotated genes"
-anvi-analyze-synteny -e $output_dir/external-genomes.txt \
+anvi-analyze-synteny -g $output_dir/TEST-GENOMES.db \
                      --annotation-source COG_FUNCTION \
                      --ngram-window-range 2:3 \
                      -o $output_dir/synteny_output_with_COGs.tsv \
