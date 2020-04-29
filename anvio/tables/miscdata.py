@@ -61,7 +61,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                                    "object that wanted to initiate anvi'o operations for 'gene mode', which is a special "
                                    "mode of operation where gene-level coverage statistics per collection is "
                                    "read from a special database. In this mode anvi'o also tries to initialize "
-                                   "additional data tables from the genes database, instesad of the profile "
+                                   "additional data tables from the genes database, instead of the profile "
                                    "database with which it is associated. However, in the current run, it seems the "
                                    "genes database has not yet been initiated for the collection '%s' and bin '%s'. "
                                    "Probably this will be handled by a higher power, and the genes database will "
@@ -1015,7 +1015,7 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
         self.progress = p
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.table_name = A('table_name') or t.nucleotide_additional_data_table_name
+        self.table_name = A('table_name') or t.amino_acid_additional_data_table_name
 
         self.target_table = 'amino_acids'
 
