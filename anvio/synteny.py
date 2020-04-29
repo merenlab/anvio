@@ -337,14 +337,14 @@ class NGram(object):
         for ngram_attribute in self.ngram_attributes_list:
             ngram = "::".join(map(str, list(ngram_attribute[0])))
             if self.pan_db and not self.annotation_source:
-                df = pd.DataFrame(columns=['ngram_gene_clusters','count', 'contig_db_name', 'N', 'number_of_loci'])
+                df = pd.DataFrame(columns=['ngram','count', 'contig_db_name', 'N', 'number_of_loci'])
                 df = df.append({'ngram': ngram,
                                 'count': ngram_attribute[1],
                                 'contig_db_name': ngram_attribute[2],
                                 'N':ngram_attribute[3],
                                 'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
             elif not self.pan_db and self.annotation_source:
-                df = pd.DataFrame(columns=['ngram_functions', 'count', 'contig_db_name', 'N', 'number_of_loci'])
+                df = pd.DataFrame(columns=['ngram', 'count', 'contig_db_name', 'N', 'number_of_loci'])
                 df = df.append({'ngram': ngram,
                                 'count': ngram_attribute[1],
                                 'contig_db_name': ngram_attribute[2],
