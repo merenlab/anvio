@@ -3421,7 +3421,7 @@ class PanDatabase:
 
 
     def init(self):
-        if utils.is_pan_db(self.db_path):
+        if os.path.exists(self.db_path):
             utils.is_pan_db(self.db_path)
             self.db = db.DB(self.db_path, anvio.__pan__version__)
             meta_table = self.db.get_table_as_dict('self')
