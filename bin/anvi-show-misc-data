@@ -25,6 +25,15 @@ run = terminal.Run()
 
 
 def main(args):
+    d = args.__dict__
+    if not d['contigs_db'] and not d['pan_or_profile_db']:
+        raise ConfigError("Please provide either a contigs database (--contigs-db) or a profile/pan "
+                          "database (--pan-or-profile-db)")
+
+    if d['contigs_db'] and d['pan_or_profile_db']:
+        raise ConfigError("You provided a contigs db (--contigs-db) and a profile/pan "
+                          "db (--pan-or-profile-db). Please provide only one.")
+
     if args.target_data_table:
         table_for_additional_data = MiscDataTableFactory(args)
         table_for_additional_data.list_data_keys()
