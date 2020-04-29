@@ -1003,8 +1003,59 @@ class TableForNucleotideAdditionalData(AdditionalDataBaseClass):
 
 
     def check_names(self, data_dict):
-        """FIXME"""
-        pass
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+        # A dict of {<contig_name>: <contig_length>, ...}
+        contig_lengths = dict(database.get_some_columns_from_table(t.contigs_info_table_name, 'contig,length'))
+
+        is_format_good = lambda key: len(key.split('::')) == 2
+
+        not_in_db = set()
+
+        # These tables could be millions of entries. We do not bother compiling a prettified list of
+        # their badly formatted table. If it's wrong we complain immediately.
+        for i, data_key in enumerate(data_dict):
+            if not is_format_good(data_key):
+                raise ConfigError("The data key '%s' (entry #%d) is not properly formatted. It should "
+                                  "have the format <contig_name>::<position_in_contig>, e.g. "
+                                  "contig_000001::125 would be an entry for contig_000001 at the "
+                                  "125th position of the sequence (The first letter in the sequence "
+                                  "has the position 0, not 1)." % (data_key, i+1))
+
+            contig, pos = data_key.split('::')
+            pos = int(pos)
+
+            if contig not in contig_lengths:
+                not_in_db.add(data_key)
+
+            elif pos < 0 or pos >= contig_lengths[contig]:
+                raise ConfigError("The data key '%s' (entry #%d) is not properly formatted. The contig "
+                                  "'%s' exists in the database, but the position %d falls outside of "
+                                  "the contig, which has a length of %d." % \
+                                  (data_key, i+1, contig, pos, contig_lengths[contig]))
+
+        if len(not_in_db):
+            example = next(iter(not_in_db))
+            msg = ("Listen up! %d of %d entries in your additional data specified contigs that are *only* "
+                   "in your data--that means these contigs don't exist in the %s database you are "
+                   "working with. For example, the data key '%s' corresponds to the contig '%s', which "
+                   "is non-existent in this database." % (len(not_in_db),
+                                                          len(data_dict),
+                                                          self.db_type,
+                                                          example,
+                                                          example.split('::')[0]))
+
+            if self.just_do_it:
+                self.run.warning(msg + ".. But since you asked anvi'o to keep its mouth shut, it removed the ones that "
+                                 "were not in your database from your input data, hoping that the rest of your "
+                                 "probably very dubious operation will go just fine :/")
+
+                for data_key in not_in_db:
+                    data_dict.pop(data_key)
+            else:
+                raise ConfigError(msg + " If you want to proceed anyways, rerun with the --just-do-it flag.")
+
+        database.disconnect()
 
 
 class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
