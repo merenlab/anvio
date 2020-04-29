@@ -1279,7 +1279,7 @@ class KeggMetabolismEstimator(KeggContext):
         naive redundancy = # extra hits / len(path) where a hit is "extra" if it is not the first hit to the KO.
         """
 
-        extra_hits = [num_ko_hits_in_path_dict[ko] - 1 for ko in num_ko_hits_in_path_dict if num_ko_hits_in_path_dict[ko] > 1 ]
+        extra_hits = [num_ko_hits_in_path_dict[ko] - 1 if num_ko_hits_in_path_dict[ko] > 1 else 0 for ko in num_ko_hits_in_path_dict]
         return sum(extra_hits)/len(num_ko_hits_in_path_dict.keys())
 
 
@@ -1321,6 +1321,27 @@ class KeggMetabolismEstimator(KeggContext):
         return (base_redundancy + aggregated_completeness), extra_copy_completeness
 
 
+    def compute_entropy_weighted_redundancy_for_bin(self, num_ko_hits_in_path_dict):
+        """This function computes naive redundancy but weights it by the entropy of the hit distribution."""
+
+        extra_hits = [num_ko_hits_in_path_dict[ko] - 1 if num_ko_hits_in_path_dict[ko] > 1 else 0 for ko in num_ko_hits_in_path_dict]
+        total_extra_hits = sum(extra_hits)
+        num_kos = len(num_ko_hits_in_path_dict.keys())
+        naive_redundancy = total_extra_hits/num_kos
+        entropy = stats.entropy(extra_hits)
+        max_entropy_distribution = [total_extra_hits // num_kos] * num_kos
+        for i in range(total_extra_hits % num_kos):
+            max_entropy_distribution[i] += 1
+        max_entropy = stats.entropy(max_entropy_distribution)
+
+        print('extra hits distribution: ', extra_hits)
+        print('naive_red: ', naive_redundancy)
+        print('entropy: ', entropy)
+        print('max entropy distribution: ', max_entropy_distribution)
+        print('max entropy: ', max_entropy)
+        return naive_redundancy * entropy/max_entropy
+
+
     def compute_module_redundancy_for_bin(self, mnum, meta_dict_for_bin):
         """This function calculates the redundancy of the specified module within the given bin metabolism dictionary.
 
@@ -1342,6 +1363,7 @@ class KeggMetabolismEstimator(KeggContext):
         meta_dict_for_bin[mnum]["copywise_completeness_distributions"] = []
         meta_dict_for_bin[mnum]["copywise_median"] = []
         meta_dict_for_bin[mnum]["copywise_weighted-sum"] = []
+        meta_dict_for_bin[mnum]["entropy_weighted"] = []
 
         paths_of_highest_completeness = meta_dict_for_bin[mnum]["most_complete_paths"]
         if not paths_of_highest_completeness:
@@ -1366,6 +1388,7 @@ class KeggMetabolismEstimator(KeggContext):
             meta_dict_for_bin[mnum]["copywise_weighted-sum"].append(cw_ws_redundancy)
             cw_gm_redundancy, copy_completeness_distribution = self.compute_copywise_redundancy_for_path(num_hits_per_kofam, aggregation_measure="geometric_mean")
             meta_dict_for_bin[mnum]["copywise_weighted-sum"].append(cw_gm_redundancy)
+            meta_dict_for_bin[mnum]["entropy_weighted"].append(self.compute_entropy_weighted_redundancy_for_bin(num_hits_per_kofam))
 
         return
 
