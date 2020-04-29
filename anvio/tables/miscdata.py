@@ -263,8 +263,6 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
 
     def list_data_keys(self):
-        # FIXME This will have to be modified down the road when I can test it, i.e. when I am able
-        # to import data
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         NOPE = lambda: self.run.info_single("There are no additional data for '%s' in this database :/" \
@@ -275,7 +273,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         # data groups that are not relevant for order data. this will affect the listing of data keys in either
         # of these table types. hence we get group names first here, and then will do a bunch of if/else checks
         # based on their availability
-        if self.target_table in ['layers', 'items']:
+        if self.target_table in ['layers', 'items', 'nucleotides', 'amino_acids']:
             if not self.available_group_names:
                 NOPE()
                 return
