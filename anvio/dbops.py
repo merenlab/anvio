@@ -3581,7 +3581,8 @@ class ContigsDatabase:
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
         self.db.create_table(t.nt_position_info_table_name, t.nt_position_info_table_structure, t.nt_position_info_table_types)
         self.db.create_table(t.scg_taxonomy_table_name, t.scg_taxonomy_table_structure, t.scg_taxonomy_table_types)
-
+        self.db.create_table(t.nucleotide_additional_data_table_name, t.nucleotide_additional_data_table_structure, t.nucleotide_additional_data_table_types)
+        self.db.create_table(t.amino_acid_additional_data_table_name, t.amino_acid_additional_data_table_structure, t.amino_acid_additional_data_table_types)
 
         return self.db
 
