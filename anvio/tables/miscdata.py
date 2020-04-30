@@ -851,7 +851,7 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
     - Related issue: https://github.com/merenlab/anvio/issues/662.
     """
 
-    def __init__(self, args, r=run, p=progress):
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
         self.run = r
         self.progress = p
 
@@ -898,7 +898,7 @@ class TableForLayerAdditionalData(AdditionalDataBaseClass):
       https://github.com/merenlab/anvio/issues/674.
     """
 
-    def __init__(self, args, r=run, p=progress):
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
         self.run = r
         self.progress = p
 
@@ -946,7 +946,7 @@ class TableForLayerAdditionalData(AdditionalDataBaseClass):
 class TableForLayerOrders(OrderDataBaseClass):
     """Maintains the layer order data table in anvi'o pan and profile databases."""
 
-    def __init__(self, args, r=run, p=progress):
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
         self.run = r
         self.progress = p
 
@@ -987,7 +987,7 @@ class TableForLayerOrders(OrderDataBaseClass):
 class TableForNucleotideAdditionalData(AdditionalDataBaseClass):
     """Maintains 'nucleotide_additional_data' table in anvi'o contigs databases"""
 
-    def __init__(self, args, r=run, p=progress):
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
         self.run = r
         self.progress = p
 
@@ -1060,7 +1060,7 @@ class TableForNucleotideAdditionalData(AdditionalDataBaseClass):
 class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
     """Maintains 'amino_acid_additional_data' table in anvi'o contigs databases"""
 
-    def __init__(self, args, r=run, p=progress):
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
         self.run = r
         self.progress = p
 
