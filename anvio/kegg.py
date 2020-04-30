@@ -1291,6 +1291,7 @@ class KeggMetabolismEstimator(KeggContext):
         added to this 'base' redundancy to get the overall path redundancy.
         """
 
+        accepted_aggregation_measures = ["average", "median", "weighted_sum", "geometric_mean"]
         extra_hits = [num_ko_hits_in_path_dict[ko] - 1 if num_ko_hits_in_path_dict[ko] > 1 else 0 for ko in num_ko_hits_in_path_dict]
         base_redundancy = min(extra_hits) # number of extra copies of path that are 100% complete
         extra_copy_completeness = []
@@ -1316,7 +1317,8 @@ class KeggMetabolismEstimator(KeggContext):
             elif aggregation_measure == "knee":
                 raise ConfigError("aggregation measure 'knee' not implemented yet")
             else:
-                raise ConfigError("The function compute_copywise_redundancy_for_path() doesn't know how to handle the aggregation measure '%s'", aggregation_measure)
+                raise ConfigError("The function compute_copywise_redundancy_for_path() doesn't know how to handle the aggregation measure '%s'. "
+                                  "Accepted aggregation measures include: %s " % (aggregation_measure, ", ".join(accepted_aggregation_measures)))
 
         return (base_redundancy + aggregated_completeness), extra_copy_completeness
 
