@@ -2967,13 +2967,12 @@ def get_HMM_sources_dictionary(source_dirs=[]):
 
 
 def check_misc_data_keys_for_format(data_keys_list):
-    """A function to make sure user-provided misc data keys are compatible
-       with the current version of anvi'o. Housekeeping BS."""
+    """Ensure user-provided misc data keys are compatible with the current version of anvi'o"""
 
     if not data_keys_list:
         return
 
-    # findout whether the user data contains the older implementation of stacked
+    # find out whether the user data contains the older implementation of stacked
     # bar data type
     obsolete_stackedbar_keys = [k for k in data_keys_list if k.find('!') > -1 and k.find(';') > -1]
 
@@ -3030,7 +3029,7 @@ def get_missing_programs_for_hmm_analysis():
 
 def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
     if not collection_name or not bin_name:
-        raise ConfigError("Genes database must be associted with a collection name and a bin name :/")
+        raise ConfigError("Genes database must be associated with a collection name and a bin name :/")
 
     return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s.db' % (collection_name, bin_name))
 

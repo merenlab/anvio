@@ -25,11 +25,25 @@ run = terminal.Run()
 
 
 def main(args):
+    d = args.__dict__
+    if not d['contigs_db'] and not d['pan_or_profile_db']:
+        raise ConfigError("Please provide either a contigs database (--contigs-db) or a profile/pan "
+                          "database (--pan-or-profile-db)")
+
+    if d['contigs_db'] and d['pan_or_profile_db']:
+        raise ConfigError("You provided a contigs db (--contigs-db) and a profile/pan "
+                          "db (--pan-or-profile-db). Please provide only one.")
+
     if args.target_data_table:
         table_for_additional_data = MiscDataTableFactory(args)
         table_for_additional_data.list_data_keys()
     else:
-        for table_name in ['items', 'layers', 'layer_orders']:
+        if args.pan_or_profile_db:
+            table_names = ['items', 'layers', 'layer_orders']
+        else:
+            table_names = ['nucleotides', 'amino_acids']
+
+        for table_name in table_names:
             args.target_data_table = table_name
             table_for_additional_data = MiscDataTableFactory(args)
             table_for_additional_data.list_data_keys()
@@ -38,9 +52,14 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__description__)
 
-    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
-    parser.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table'))
-    parser.add_argument(*anvio.A('target-data-group'), **anvio.K('target-data-group'))
+    group1 = parser.add_argument_group('Database input', "Provide 1 of these")
+    group2 = parser.add_argument_group('Details', "Everything else.")
+
+    group1.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
+    group1.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+
+    group2.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table'))
+    group2.add_argument(*anvio.A('target-data-group'), **anvio.K('target-data-group'))
 
     args = anvio.get_args(parser)
 

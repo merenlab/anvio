@@ -13,7 +13,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-contigs_db_version = "14"
+contigs_db_version = "15"
 profile_db_version = "32"
 genes_db_version = "5"
 pan_db_version = "13"
@@ -113,6 +113,14 @@ scg_taxonomy_table_types               = ['numeric' ,     'numeric'    ,    'tex
 nt_position_info_table_name            = 'nt_position_info'
 nt_position_info_table_structure       = ['contig_name', 'position_info']
 nt_position_info_table_types           = [    'str'    ,      'blob'    ]
+
+nucleotide_additional_data_table_name      = 'nucleotide_additional_data'
+nucleotide_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
+nucleotide_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
+
+amino_acid_additional_data_table_name      = 'amino_acid_additional_data'
+amino_acid_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
+amino_acid_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
 
 gene_level_coverage_stats_table_name      = 'gene_level_coverage_stats'
 gene_level_coverage_stats_table_structure = ['entry_id', 'gene_callers_id', 'sample_name', 'mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std', 'gene_coverage_values_per_nt', 'non_outlier_positions']
