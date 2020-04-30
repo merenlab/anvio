@@ -852,6 +852,10 @@ class KeggMetabolismEstimator(KeggContext):
                               "anvi'o is judging you SO hard right now.")
 
 
+        if self.profile_db_path:
+            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+
+
         # init the base class
         KeggContext.__init__(self, self.args)
 

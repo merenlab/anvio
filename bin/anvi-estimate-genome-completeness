@@ -219,6 +219,9 @@ def main(args):
             raise ConfigError("When there is no profile database involved in your analysis, there is no "
                               "collections to list really :/")
 
+        if profile_db_path:
+            utils.is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
+
     if external_genomes_file_path:
         if profile_db_path:
             raise ConfigError("If you want to work with a set of external genomes, there is no use of "
