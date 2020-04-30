@@ -97,9 +97,14 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
         self.db_version = utils.get_required_version_for_db(self.db_path)
 
+        self.progress.new("Fetching existing data keys from database")
+        self.progress.update("...")
+
         database = db.DB(self.db_path, self.db_version)
         self.additional_data_keys = database.get_single_column_from_table(self.table_name, 'data_key')
         database.disconnect()
+
+        self.progress.end()
 
         Table.__init__(self, self.db_path, self.db_version, self.run, self.progress)
 
@@ -118,8 +123,12 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             #        don't skip check names.
             skip_check_names = True
 
+        self.progress.new("Processing input")
+
+        self.progress.update("Checking integrity of input file")
         filesnpaths.is_file_tab_delimited(additional_data_file_path)
 
+        self.progress.update("Loading input file into memory")
         data_keys = utils.get_columns_of_TAB_delim_file(additional_data_file_path)
         data_dict = utils.get_TAB_delimited_file_as_dictionary(additional_data_file_path)
 
@@ -135,6 +144,9 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             raise ConfigError("There is something wrong with the additional data file for %s at %s. "
                               "It does not seem to have any additional keys for data :/" \
                                             % (self.target_table, additional_data_file_path))
+
+        self.progress.end()
+        self.run.info_single("%s successfully loaded" % additional_data_file_path, nl_after=1, nl_before=1)
 
         if self.target_table == 'layer_orders':
             OrderDataBaseClass.add(self, data_dict, skip_check_names)
@@ -581,6 +593,8 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
         self.available_group_names = self.get_group_names()
 
+        self.storage_buffer = []
+
 
     def check_target_data_group(self):
         """A function to check whether the data group set is among the available ones.
@@ -741,7 +755,6 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         data_keys_list : list
             A list of keys one or more of which should appear for each item in `data_dict`.
         """
-
         if self.target_table not in ['items', 'layers', 'nucleotides', 'amino_acids']:
             raise ConfigError("You are using an AdditionalDataBaseClass instance to add %s data into your %s database. But "
                               "you know what? You can't do that :/ Someone made a mistake somewhere. If you are a user, "
@@ -803,26 +816,52 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
             table_classes[self.target_table].check_names(self, data_dict)
 
-        db_entries = []
         self.set_next_available_id(self.table_name)
-        for item_name in data_dict:
-            for key in data_keys_list:
-                db_entries.append(tuple([self.next_id(self.table_name),
-                                         item_name,
-                                         key,
-                                         data_dict[item_name][key],
-                                         key_types[key],
-                                         self.target_data_group]))
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % self.table_name, db_entries)
-        database.disconnect()
+        num_entries = len(data_dict)
+
+        self.progress.new("Adding data to DB", progress_total_items=num_entries)
+
+        for i, item_name in enumerate(data_dict):
+            if (i % 100000) == 0:
+                self.progress.increment(increment_to=i)
+                self.progress.update('%d / %d Rows ⚙  | Writing to DB 💾 ...' % (i, num_entries))
+
+                self.store_buffer()
+                self.storage_buffer = []
+
+                self.progress.update('%d / %d Rows ⚙  ...' % (i, num_entries))
+
+            for key in data_keys_list:
+                self.storage_buffer.append(tuple([self.next_id(self.table_name),
+                                           item_name,
+                                           key,
+                                           data_dict[item_name][key],
+                                           key_types[key],
+                                           self.target_data_group]))
+
+        self.progress.increment(increment_to=num_entries)
+        self.progress.update('%d / %d Rows ⚙  | Writing to DB 💾 ...' % (num_entries, num_entries))
+
+        self.store_buffer()
+        self.storage_buffer = []
+
+        self.progress.end()
 
         self.run.warning('', 'NEW DATA', lc='green')
         self.run.info('Database', self.db_type)
         self.run.info('Data group', self.target_data_group)
         self.run.info('Data table', self.target_table)
         self.run.info('New data keys', '%s.' % (', '.join(data_keys_list)), nl_after=1)
+
+
+    def store_buffer(self):
+        if not len(self.storage_buffer):
+            return
+
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % self.table_name, self.storage_buffer)
+        database.disconnect()
 
 
     def get_all(self):

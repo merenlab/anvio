@@ -6,6 +6,7 @@ import sys
 import argparse
 
 import anvio
+import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.miscdata import MiscDataTableFactory
@@ -25,6 +26,7 @@ __description__ = ("Populate additional data or order tables in pan or profile d
                    "and amino acids (the Swiss army knife-level serious stuff).")
 
 
+@terminal.time_program
 def main(args):
     # - you're ugly.
     # - no u :(
