@@ -26,11 +26,6 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
-
-
 class AdditionalAndOrderDataBaseClass(Table, object):
     """This is a base class for common operations between order and additional data classes."""
 
@@ -1143,7 +1138,7 @@ class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalDa
     [items|layers|layer_orders|nucleotides|amino_acids], and you will be golden.
     """
 
-    def __init__(self, args, r=run, p=progress):
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
         self.run = r
         self.progress = p
 
