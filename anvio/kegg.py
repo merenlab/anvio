@@ -1334,11 +1334,6 @@ class KeggMetabolismEstimator(KeggContext):
             max_entropy_distribution[i] += 1
         max_entropy = stats.entropy(max_entropy_distribution)
 
-        print('extra hits distribution: ', extra_hits)
-        print('naive_red: ', naive_redundancy)
-        print('entropy: ', entropy)
-        print('max entropy distribution: ', max_entropy_distribution)
-        print('max entropy: ', max_entropy)
         return naive_redundancy * entropy/max_entropy
 
 
