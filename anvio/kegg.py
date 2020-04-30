@@ -1314,8 +1314,6 @@ class KeggMetabolismEstimator(KeggContext):
                     aggregated_completeness += 1/(c+1) * extra_copy_completeness[c]
             elif aggregation_measure == "geometric_mean":
                 aggregated_completeness = stats.gmean(extra_copy_completeness)
-            elif aggregation_measure == "knee":
-                raise ConfigError("aggregation measure 'knee' not implemented yet")
             else:
                 raise ConfigError("The function compute_copywise_redundancy_for_path() doesn't know how to handle the aggregation measure '%s'. "
                                   "Accepted aggregation measures include: %s " % (aggregation_measure, ", ".join(accepted_aggregation_measures)))
