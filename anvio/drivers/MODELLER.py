@@ -17,8 +17,8 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
+from anvio.drivers import diamond
 from anvio.errors import ConfigError, ModellerError, ModellerScriptError
-
 
 __author__ = "Evan Kiefl"
 __copyright__ = "Copyright 2016, The anvio Project"
@@ -66,7 +66,8 @@ class MODELLER:
       self.run_align_to_templates. Please see that method if you want to add your own script.
     """
 
-    def __init__(self, args, target_fasta_path, directory=None, run=terminal.Run(), lazy_init=False, skip_warnings=False):
+    def __init__(self, args, target_fasta_path, directory=None, run=terminal.Run(),
+                 lazy_init=False, skip_warnings=False, check_db_only=False):
 
         self.args = args
         self.run = run
@@ -92,12 +93,11 @@ class MODELLER:
         self.offline_mode = A('offline_mode', null)
 
         # All MODELLER scripts are housed in self.script_folder
-        self.scripts_folder = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/scripts')
+        self.scripts_folder = constants.default_modeller_scripts_dir
 
         self.alignment_pap_path = None
         self.alignment_pir_path = None
         self.get_template_path = None
-        self.search_results_path = None
         self.target_pir_path = None
         self.template_family_matrix_path = None
         self.template_info_path = None
@@ -108,6 +108,17 @@ class MODELLER:
 
         self.logs = {}
         self.scripts = {}
+
+        # All MODELLER databases are housed in self.database_dir
+        self.database_dir = constants.default_modeller_database_dir
+
+        # store the original directory so we can cd back and forth between
+        # self.directory and self.start_dir
+        self.start_dir = os.getcwd()
+
+        if check_db_only:
+            self.check_database()
+            return
 
         self.sanity_check()
         self.corresponding_gene_call = self.get_corresponding_gene_call_from_target_fasta_path()
@@ -127,19 +138,12 @@ class MODELLER:
             "directory"                : self.directory,
         }
 
-        # All MODELLER databases are housed in self.database_dir
-        self.database_dir = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
-
         # copy fasta into the working directory
         try:
             shutil.copy2(self.target_fasta_path, self.directory)
             self.target_fasta_path = J(self.directory, self.target_fasta_path)
         except shutil.SameFileError:
             pass
-
-        # store the original directory so we can cd back and forth between
-        # self.directory and self.start_dir
-        self.start_dir = os.getcwd()
 
 
     def get_corresponding_gene_call_from_target_fasta_path(self):
@@ -167,7 +171,7 @@ class MODELLER:
         if filesnpaths.is_file_exists(self.pdb_db_path, dont_raise=ok_if_absent):
             # The user has a database there! Try and load it
             self.pdb_db = anvio.structureops.PDBDatabase(argparse.Namespace(pdb_database_path=self.pdb_db_path))
-            self.pdb_db.load_or_create_db()
+            self.pdb_db.check_or_create_db()
             self.pdb_db.get_stored_structure_ids()
             self.use_pdb_db = True
         else:
@@ -175,28 +179,34 @@ class MODELLER:
 
 
     def process(self):
+        timer = terminal.Timer()
+
         try:
             self.load_pdb_db()
+            timer.make_checkpoint('PDB DB loaded')
 
             self.run_fasta_to_pir()
+            timer.make_checkpoint('Converted gene FASTA to PIR')
 
             self.check_database()
+            timer.make_checkpoint('Checked databases')
 
-            self.run_search()
-
-            self.parse_search_results()
+            self.run_search_and_parse_results()
+            timer.make_checkpoint('Ran DIAMOND search and parsed hits')
 
             self.get_structures()
+            timer.make_checkpoint('Obtained template structures')
 
             self.run_align_to_templates(self.list_of_template_code_and_chain_ids)
+            timer.make_checkpoint('Sequence aligned to templates')
 
             self.run_get_model(self.num_models, self.deviation, self.very_fast)
+            timer.make_checkpoint('Ran structure predictions')
 
             self.tidyup()
-
             self.pick_best_model()
-
             self.run_add_chain_identifiers_to_best_model()
+            timer.make_checkpoint('Picked best model and tidied up')
 
             self.out["structure_exists"] = True
 
@@ -207,6 +217,7 @@ class MODELLER:
             print(e)
 
         finally:
+            timer.gen_report(title='ID %s Time Report' % str(self.corresponding_gene_call), run=self.run)
             self.abort()
 
         return self.out
@@ -225,8 +236,13 @@ class MODELLER:
 
             if self.use_pdb_db and five_letter_id in self.pdb_db.stored_structure_ids:
                 # This chain exists in the external database. Export it and get the path
-                path = self.pdb_db.export_pdb(five_letter_id, requested_path)
-                source = 'Offline DB'
+                try:
+                    path = self.pdb_db.export_pdb(five_letter_id, requested_path)
+                    source = 'Offline DB'
+                except ConfigError:
+                    # The ID is in the DB, but the PDB content is None
+                    path = None
+                    source = 'Nowhere'
 
             elif not self.offline_mode:
                 # This chain doesn't exist in an external database, and internet access is assumed.
@@ -258,84 +274,6 @@ class MODELLER:
             raise self.EndModeller
 
         self.run.info("Structures obtained for", ", ".join([code[0]+code[1] for code in self.list_of_template_code_and_chain_ids]))
-
-
-    def parse_search_results(self):
-        """
-        Parses search results and filters for best homologs to use as structure templates.
-
-        parameters used :: self.percent_identical_cutoff, self.max_number_templates
-        """
-        if not self.percent_identical_cutoff or not self.max_number_templates:
-            raise ConfigError("parse_search_results::You initiated this class without providing values for percent_identical_cutoff "
-                              "and max_number_templates, which is required for this function.")
-
-        # put names to the columns
-        column_names = (      "idx"      ,  "code_and_chain"  ,       "type"     ,  "iteration_num"  ,
-                            "seq_len"    , "start_pos_target" , "end_pos_target" , "start_pos_dbseq" ,
-                        "send_pos_dbseq" ,   "align_length"   ,   "seq_identity" ,      "evalue"      )
-
-        # load the table as a dataframe
-        search_df = pd.read_csv(self.search_results_path, sep="\s+", comment="#", names=column_names, index_col=False)
-
-        # matches found (-1 because target is included)
-        matches_found = len(search_df) - 1
-
-        if not matches_found:
-            self.run.warning("No proteins with homologous sequence were found for {}. No structure will be modelled".format(self.corresponding_gene_call))
-            raise self.EndModeller
-
-        # add some useful columns
-        search_df["proper_pident"] = search_df["seq_identity"] * search_df["align_length"] / \
-                                     search_df.iloc[0, search_df.columns.get_loc("seq_len")]
-        search_df["code"] = search_df["code_and_chain"].str[:-1]
-        search_df["chain"] = search_df["code_and_chain"].str[-1]
-
-        # filter results by self.percent_identical_cutoff.
-        max_pident_found = search_df["proper_pident"].max()
-        id_of_max_pident = tuple(search_df.loc[search_df["proper_pident"].idxmax(), ["code", "chain"]].values)
-        search_df = search_df[search_df["proper_pident"] >= self.percent_identical_cutoff]
-
-        search_df = search_df.sort_values("proper_pident", ascending=False)
-
-        # If more than 1 template in 1 PDB id, just choose 1
-        search_df = search_df.drop_duplicates('code', keep='first')
-
-        # Order them and take the first self.modeller.max_number_templates.
-        matches_after_filter = len(search_df)
-        if not matches_after_filter:
-            self.run.warning("Gene {} did not have a search result with proper percent identicalness above or equal "
-                             "to {}%. The best match was chain {} of https://www.rcsb.org/structure/{}, which had a "
-                             "proper percent identicalness of {:.2f}%. No structure will be modelled.".\
-                              format(self.corresponding_gene_call,
-                                     self.percent_identical_cutoff,
-                                     id_of_max_pident[1],
-                                     id_of_max_pident[0],
-                                     max_pident_found))
-            raise self.EndModeller
-
-        # get up to self.modeller.max_number_templates of those with the highest proper_ident scores.
-        search_df = search_df.iloc[:min([len(search_df), self.max_number_templates])]
-
-        # Get their chain and 4-letter ids
-        self.list_of_template_code_and_chain_ids = list(zip(search_df["code"], search_df["chain"]))
-
-        self.run.info("Max number of templates allowed", self.max_number_templates)
-        self.run.info("Number of candidate templates", matches_found)
-        self.run.info("After >{}% identical filter".format(self.percent_identical_cutoff), matches_after_filter)
-        self.run.info("Number accepted as templates", len(self.list_of_template_code_and_chain_ids))
-
-        # update user on which templates are used, and write the templates to self.out
-        for i in range(len(self.list_of_template_code_and_chain_ids)):
-            pdb_id, chain_id = self.list_of_template_code_and_chain_ids[i]
-            ppi = search_df["proper_pident"].iloc[i]
-
-            self.out["templates"]["pdb_id"].append(pdb_id)
-            self.out["templates"]["chain_id"].append(chain_id)
-            self.out["templates"]["ppi"].append(ppi)
-
-            self.run.info("Template {}".format(i+1),
-                          "Protein ID: {}, Chain {} ({:.1f}% identical)".format(pdb_id, chain_id, ppi))
 
 
     def sanity_check(self, skip_warnings=False):
@@ -562,66 +500,176 @@ class MODELLER:
                                                                   os.path.basename(self.alignment_pap_path)]))
 
 
-    def run_search(self):
+    def run_search_and_parse_results(self):
         """Align the protein against the database based on only sequence"""
 
-        script_name = "search.py"
+        if not self.percent_identical_cutoff or not self.max_number_templates:
+            raise ConfigError("run_search_and_parse_results :: You initiated this class without providing values for percent_identical_cutoff "
+                              "and max_number_templates, which is required for this function.")
 
-        # check script exists, then copy the script into the working directory
-        self.copy_script_to_directory(script_name)
+        # Change to MODELLER working directory
+        os.chdir(self.directory)
 
-        # name pir file by the corresponding_gene_call (i.e. defline of the fasta)
-        self.search_results_path = J(self.directory, "gene_{}_SearchResults.prf".format(self.corresponding_gene_call))
+        driver = diamond.Diamond(
+            query_fasta=self.target_fasta_path,
+            target_fasta=J(self.database_dir, 'pdb_95.dmnd'),
+            run=terminal.Run(verbose=False),
+            progress=terminal.Progress(verbose=False),
+        )
+        driver.blastp()
 
-        command = [self.executable,
-                   script_name,
-                   self.target_pir_path,
-                   self.database_path,
-                   self.search_results_path]
+        # Change back to user directory
+        os.chdir(self.start_dir)
 
-        self.run_command(command,
-                         script_name = script_name,
-                         check_output = [self.search_results_path])
+        search_df = driver.view_as_dataframe(J(self.directory, driver.tabular_output_path))
 
-        self.run.info("Search results for similar AA sequences", os.path.basename(self.search_results_path))
+        matches_found = search_df.shape[0]
+
+        if not matches_found:
+            self.run.warning("No proteins with homologous sequence were found for {}. No structure will be modelled".format(self.corresponding_gene_call))
+            raise self.EndModeller
+
+        # We need the gene length for proper_pident
+        target_fasta = u.SequenceSource(self.target_fasta_path, lazy_init=False)
+        while next(target_fasta):
+            gene_length = len(target_fasta.seq)
+
+        # add some useful columns
+        search_df["proper_pident"] = search_df["pident"] * search_df["length"] / gene_length
+        search_df["code"] = search_df["sseqid"].str[:-1]
+        search_df["chain"] = search_df["sseqid"].str[-1]
+
+        # filter results by self.percent_identical_cutoff.
+        max_pident_found = search_df["proper_pident"].max()
+        id_of_max_pident = tuple(search_df.loc[search_df["proper_pident"].idxmax(), ["code", "chain"]].values)
+        search_df = search_df[search_df["proper_pident"] >= self.percent_identical_cutoff]
+
+        search_df = search_df.sort_values("proper_pident", ascending=False)
+
+        # If more than 1 template in 1 PDB id, just choose 1
+        search_df = search_df.drop_duplicates('code', keep='first')
+
+        # Order them and take the first self.modeller.max_number_templates.
+        matches_after_filter = len(search_df)
+        if not matches_after_filter:
+            self.run.warning("Gene {} did not have a search result with proper percent identicalness above or equal "
+                             "to {}%. The best match was chain {} of https://www.rcsb.org/structure/{}, which had a "
+                             "proper percent identicalness of {:.2f}%. No structure will be modelled.".\
+                              format(self.corresponding_gene_call,
+                                     self.percent_identical_cutoff,
+                                     id_of_max_pident[1],
+                                     id_of_max_pident[0],
+                                     max_pident_found))
+            raise self.EndModeller
+
+        # get up to self.modeller.max_number_templates of those with the highest proper_ident scores.
+        search_df = search_df.iloc[:min([len(search_df), self.max_number_templates])]
+
+        # Get their chain and 4-letter ids
+        self.list_of_template_code_and_chain_ids = list(zip(search_df["code"], search_df["chain"]))
+
+        self.run.info("Max number of templates allowed", self.max_number_templates)
+        self.run.info("Number of candidate templates", matches_found)
+        self.run.info("After >{}% identical filter".format(self.percent_identical_cutoff), matches_after_filter)
+        self.run.info("Number accepted as templates", len(self.list_of_template_code_and_chain_ids))
+
+        # update user on which templates are used, and write the templates to self.out
+        for i in range(len(self.list_of_template_code_and_chain_ids)):
+            pdb_id, chain_id = self.list_of_template_code_and_chain_ids[i]
+            ppi = search_df["proper_pident"].iloc[i]
+
+            self.out["templates"]["pdb_id"].append(pdb_id)
+            self.out["templates"]["chain_id"].append(chain_id)
+            self.out["templates"]["ppi"].append(ppi)
+
+            self.run.info("Template {}".format(i+1),
+                          "Protein ID: {}, Chain {} ({:.1f}% identical)".format(pdb_id, chain_id, ppi))
 
 
     def check_database(self):
-        """Checks for the .bin version of database. Binarizes if only .pir version found. Sets the db filepath."""
+        """Setup the database files
+
+        Downloads the .pir file if it is missing
+        Binarizes .pir file if .bin is missing
+        Creates the .dmnd file if it is missing
+        """
 
         extensionless, extension = os.path.splitext(self.modeller_database)
         if extension not in [".bin",".pir",""]:
             raise ConfigError("MODELLER :: The only possible database extensions are .bin and .pir")
 
-        bin_db_path = J(self.database_dir, extensionless+".bin")
-        pir_db_path = J(self.database_dir, extensionless+".pir")
+        bin_db_path = J(self.database_dir, extensionless + ".bin")
+        pir_db_path = J(self.database_dir, extensionless + ".pir")
         bin_exists = utils.filesnpaths.is_file_exists(bin_db_path, dont_raise=True)
         pir_exists = utils.filesnpaths.is_file_exists(pir_db_path, dont_raise=True)
 
         self.database_path = bin_db_path
 
-        if bin_exists:
-            return
+        if bin_exists and pir_exists:
+            # We good
+            pass
+        else:
+            if not pir_exists:
+                # Download .pir
+                self.run.warning("Anvi'o looked in {} for a database with the name {} and with an extension "
+                                 "of either .bin or .pir, but didn't find anything matching that "
+                                 "criteria. Anvi'o will try and download the best database it knows of from "
+                                 "https://salilab.org/modeller/downloads/pdb_95.pir.gz and use that. "
+                                 "You can checkout https://salilab.org/modeller/ for more info about the pdb_95 "
+                                 "database".format(self.database_dir, self.modeller_database))
 
-        if not pir_exists and not bin_exists:
-            self.run.warning("Anvi'o looked in {} for a database with the name {} and with an extension "
-                             "of either .bin or .pir, but didn't find anything matching that "
-                             "criteria. Anvi'o will try and download the best database it knows of from "
-                             "https://salilab.org/modeller/downloads/pdb_95.pir.gz and use that. "
-                             "You can checkout https://salilab.org/modeller/ for more info about the pdb_95 "
-                             "database".format(self.database_dir, self.modeller_database))
+                db_download_path = os.path.join(self.database_dir, "pdb_95.pir.gz")
+                utils.download_file("https://salilab.org/modeller/downloads/pdb_95.pir.gz", db_download_path)
+                utils.run_command(['gzip', '-d', db_download_path], log_file_path=filesnpaths.get_temp_file_path())
 
-            db_download_path = os.path.join(self.database_dir, "pdb_95.pir.gz")
-            utils.download_file("https://salilab.org/modeller/downloads/pdb_95.pir.gz", db_download_path)
-            utils.run_command(['gzip', '-d', db_download_path], log_file_path=filesnpaths.get_temp_file_path())
-
-            pir_exists = utils.filesnpaths.is_file_exists(pir_db_path, dont_raise=True)
-
-        if pir_exists and not bin_exists:
+            # Binarize .pir (make .bin)
             self.run.warning("Your database is not in binary format. That means accessing its contents is slower "
                              "than it could be. Anvi'o is going to make a binary format. Just FYI")
             self.run_binarize_database(pir_db_path, bin_db_path)
+
+        dmnd_db_path = J(self.database_dir, 'pdb_95.dmnd')
+
+        if os.path.exists(dmnd_db_path):
             return
+
+        self.run.warning("Your diamond database does not exist. It will be created.")
+
+        script_name = "pir_to_fasta.py"
+
+        self.copy_script_to_directory(script_name)
+
+        input_pir_path = J(self.database_dir, 'pdb_95.pir')
+        fasta_path = J(self.database_dir, 'pdb_95.fa')
+        dmnd_path = J(self.database_dir, 'pdb_95')
+
+        command = [self.executable,
+                   script_name,
+                   input_pir_path,
+                   fasta_path]
+
+        self.run_command(command,
+                         script_name=script_name,
+                         rename_log=False)
+
+        temp = u.FastaOutput(filesnpaths.get_temp_file_path())
+        fasta = u.SequenceSource(fasta_path)
+
+        while next(fasta):
+            temp.write_id(fasta.id)
+            temp.write_seq(fasta.seq.replace('-', '').replace('.', 'X'))
+
+        shutil.move(temp.output_file_path, fasta_path)
+        fasta.close()
+        temp.close()
+
+        driver = diamond.Diamond(
+            query_fasta=fasta_path,
+            run=terminal.Run(verbose=False),
+            progress=terminal.Progress(verbose=False),
+        )
+        driver.makedb(output_file_path=dmnd_path)
+
+        os.remove(fasta_path)
 
 
     def run_binarize_database(self, pir_db_path, bin_db_path):
@@ -644,17 +692,15 @@ class MODELLER:
         # check script exists, then copy the script into the working directory
         self.copy_script_to_directory(script_name)
 
-        # name pir file by the corresponding_gene_call (i.e. defline of the fasta)
-        self.target_pir_path = "{}.pir".format(self.corresponding_gene_call)
-
         command = [self.executable,
                    script_name,
                    pir_db_path,
                    bin_db_path]
 
         self.run_command(command,
-                         script_name = script_name,
-                         check_output=[bin_db_path])
+                         script_name=script_name,
+                         check_output=[bin_db_path],
+                         rename_log=False)
 
         self.run.info("New database", bin_db_path)
 
@@ -723,7 +769,7 @@ class MODELLER:
         self.run.info("Target alignment file", os.path.basename(self.target_pir_path))
 
 
-    def run_command(self, command, script_name, check_output=None):
+    def run_command(self, command, script_name, check_output=None, rename_log=True):
         """Base routine for running MODELLER scripts
 
         Parameters
@@ -737,6 +783,9 @@ class MODELLER:
 
         check_output : list, None
             Verify that this list of filepaths exist after the command is ran
+
+        rename_log : bool, True
+            MODELLER outputs a log that is renamed to reflect the command and gene used
         """
 
         # first things first, we CD into MODELLER's directory
@@ -764,8 +813,11 @@ class MODELLER:
 
         # MODELLER outputs a log that we rename right here, right now
         old_log_name = os.path.splitext(script_name)[0] + ".log"
-        new_log_name = "gene_{}_{}".format(self.corresponding_gene_call, old_log_name)
-        os.rename(old_log_name, new_log_name)
+        if rename_log:
+            new_log_name = "gene_{}_{}".format(self.corresponding_gene_call, old_log_name)
+            os.rename(old_log_name, new_log_name)
+        else:
+            new_log_name = old_log_name
 
         # add to logs
         self.logs[script_name] = new_log_name

@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+
+import anvio
+import anvio.terminal as terminal
+import anvio.kegg as kegg
+
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import time_program
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Iva Veseli"
+__email__ = "iveseli@uchicago.edu"
+__requires__ = ["contigs-db", "kegg-db",]
+__provides__ = ["kegg-functions",]
+__description__ = "Run KOfam HMMs on an anvi'o contigs database."
+
+@time_program
+def main(args):
+    p = kegg.KeggRunHMMs(args)
+    p.process_kofam_hmms()
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__description__)
+
+    groupR = parser.add_argument_group('REQUIRED INPUT', 'The stuff you need for this to work.')
+    groupO = parser.add_argument_group('OPTIONAL INPUT', "Optional params for a custom experience.")
+
+    groupR.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupO.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
+    groupO.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupO.add_argument(*anvio.A('hmmer-program'), **anvio.K('hmmer-program'))
+    groupO.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        main(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)

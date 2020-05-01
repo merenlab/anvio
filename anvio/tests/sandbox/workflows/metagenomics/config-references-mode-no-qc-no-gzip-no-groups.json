@@ -57,7 +57,7 @@
     },
     "megahit": {
         "--min-contig-len": 1000,
-        "--memory": 0.4,
+        "--memory": 1e6,
         "threads": 7
     },
     "idba_ud": {

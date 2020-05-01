@@ -19,6 +19,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
+from anvio.tables.indels import TableForIndels
 from anvio.tables.variability import TableForVariability
 from anvio.tables.codonfrequencies import TableForCodonFrequencies
 from anvio.tables.miscdata import TableForLayerOrders, TableForLayerAdditionalData
@@ -288,7 +289,8 @@ class MultipleRuns:
                      ('min_coverage_for_variability', 'The minimum coverage values to report variability (-V)'),
                      ('report_variability_full', 'Whether to report full variability (--report-variability-full) flags'),
                      ('SCVs_profiled', 'Profile SCVs flags (--profile-SCVs)'),
-                     ('SNVs_profiled', 'SNV profiling flags (--skip-SNV-profiling)')]:
+                     ('SNVs_profiled', 'SNV profiling flags (--skip-SNV-profiling)'),
+                     ('INDELs_profiled', 'Profile indels flags (--profile-indels)')]:
             v = set([r[k] for r in list(self.profile_dbs_info_dict.values())])
             if len(v) > 1:
                 if anvio.FORCE:
@@ -376,6 +378,21 @@ class MultipleRuns:
         variable_codons_table.store()
 
 
+    def merge_indels_tables(self):
+        indels_table = TableForIndels(self.merged_profile_db_path, progress=self.progress)
+
+        for input_profile_db_path in self.profile_dbs_info_dict:
+            sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
+            sample_indels_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.indels_table_name, tables.indels_table_structure)
+            sample_profile_db.disconnect()
+
+            for tpl in sample_indels_table:
+                entry = tuple([indels_table.next_id(tables.indels_table_name)] + list(tpl[1:]))
+                indels_table.append_entry(entry)
+
+        indels_table.store()
+
+
     def merge_split_coverage_data(self):
         output_file_path = os.path.join(self.output_directory, 'AUXILIARY-DATA.db')
         merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file_path, self.contigs_db_hash, create_new=True)
@@ -416,7 +433,6 @@ class MultipleRuns:
         # this is not the best way to do it. a better way probably required all reads obtained from each
         # run, yet even that would wrongly assume equal eukaryotic contamination, etc. normalization is a bitch.
 
-        smallest_sample_size = min(self.total_reads_mapped_per_sample.values())
         smallest_non_zero_sample_size = min([v for v in self.total_reads_mapped_per_sample.values() if v] or [0])
 
         if smallest_non_zero_sample_size == 0 and not self.skip_hierarchical_clustering:
@@ -461,6 +477,7 @@ class MultipleRuns:
         self.report_variability_full = C('report_variability_full')
         self.SCVs_profiled = C('SCVs_profiled')
         self.SNVs_profiled = C('SNVs_profiled')
+        self.INDELs_profiled = int(C('INDELs_profiled'))
         self.total_length = C('total_length')
 
         if self.num_splits > self.max_num_splits_for_hierarchical_clustering and not self.enforce_hierarchical_clustering:
@@ -500,6 +517,7 @@ class MultipleRuns:
                        'max_contig_length': self.max_contig_length,
                        'SNVs_profiled': self.SNVs_profiled,
                        'SCVs_profiled': self.SCVs_profiled,
+                       'INDELs_profiled': self.INDELs_profiled,
                        'num_contigs': self.num_contigs,
                        'num_splits': self.num_splits,
                        'total_length': self.total_length,
@@ -545,6 +563,14 @@ class MultipleRuns:
             self.progress.end()
         else:
             self.run.warning("Codon frequencies were not profiled, hence, these tables will be empty in the merged profile database.")
+
+        if self.INDELs_profiled:
+            self.progress.new('Merging indels tables')
+            self.progress.update('...')
+            self.merge_indels_tables()
+            self.progress.end()
+        else:
+            self.run.warning("Indels were not profiled, hence, these tables will be empty in the merged profile database.")
 
         # critical part:
         self.gen_view_data_tables_from_atomic_data()
