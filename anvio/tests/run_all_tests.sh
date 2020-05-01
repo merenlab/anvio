@@ -154,7 +154,6 @@ anvi-export-locus -c $output_dir/CONTIGS.db \
                   -s NusB,rpoz \
                   --overwrite-output-destinations
 
-
 INFO "Export only Pfam annotations"
 anvi-export-functions -c $output_dir/CONTIGS.db \
                       -o $output_dir/exported_functions_from_source_Pfam.txt \
@@ -642,6 +641,21 @@ anvi-dereplicate-genomes --ani-dir $output_dir/GENOME_SIMILARITY_OUTPUT \
                          --similarity 0.99 \
                          --program pyANI
 SHOW_FILE $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS/CLUSTER_REPORT.txt
+
+INFO "Testing anvi-analyze-synteny ignoring genes with no annotation"
+
+# run anvi-analyze-synteny
+anvi-analyze-synteny -e $output_dir/external-genomes.txt \
+                     --annotation-source COG_FUNCTION \
+                     --ngram-window-range 2:3 \
+                     -o $output_dir/synteny_output_no_unknowns.tsv
+
+INFO "Testing anvi-analyze-synteny now including unannotated genes"
+anvi-analyze-synteny -e $output_dir/external-genomes.txt \
+                     --annotation-source COG_FUNCTION \
+                     --ngram-window-range 2:3 \
+                     -o $output_dir/synteny_output_with_unknowns.tsv \
+                     --analyze-unknown-functions
 
 INFO 'A dry run with an items order file for the merged profile without any clustering'
 anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \

@@ -34,7 +34,7 @@ S = lambda s: [x for x in G(os.path.dirname(utils.is_program_exists(s)))]
 J = lambda x: '\n'.join(x) if x else ''
 
 # this dictionary describes all anvi'o items that are referred from 'requires' and
-# 'provudes' statements written in anvi'o programs
+# 'provides' statements written in anvi'o programs
 ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'contigs-db': {'name': 'CONTIGS', 'type': 'DB', 'internal': True},
                'contigs-fasta': {'name': 'CONTIGS', 'type': 'FASTA', 'internal': False},
@@ -47,6 +47,7 @@ ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'locus-fasta': {'name': 'LOCUS', 'type': 'FASTA', 'internal': False},
                'structure-db': {'name': 'STRUCTURE', 'type': 'DB', 'internal': True},
                'pdb-db': {'name': 'PDB DB', 'type': 'CONCEPT', 'internal': True},
+               'kegg-db': {'name': 'KEGG DB', 'type': 'DB', 'internal': True},
                'single-profile-db': {'name': 'SINGLE PROFILE', 'type': 'DB', 'internal': True},
                'profile-db': {'name': 'PROFILE', 'type': 'DB', 'internal': True},
                'genes-db': {'name': 'GENES', 'type': 'DB', 'internal': True},
@@ -65,6 +66,10 @@ ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'misc-data-items': {'name': 'ITEMS DATA', 'type': 'CONCEPT', 'internal': False},
                'misc-data-layers-txt': {'name': 'LAYERS DATA', 'type': 'TXT', 'internal': False},
                'misc-data-layers': {'name': 'LAYERS DATA', 'type': 'CONCEPT', 'internal': False},
+               'misc-data-nucleotides-txt': {'name': 'NUCLEOTIDES DATA', 'type': 'TXT', 'internal': False},
+               'misc-data-nucleotides': {'name': 'NUCLEOTIDES DATA', 'type': 'CONCEPT', 'internal': False},
+               'misc-data-amino-acids-txt': {'name': 'AMINO_ACIDS DATA', 'type': 'TXT', 'internal': False},
+               'misc-data-amino-acids': {'name': 'AMINO_ACIDS DATA', 'type': 'CONCEPT', 'internal': False},
                'misc-data-layers-category': {'name': 'LAYERS DATA CATEGORY', 'type': 'CONCEPT', 'internal': True},
                'genome-similarity': {'name': 'GENOME SIMILARITY', 'type': 'CONCEPT', 'internal': False},
                'misc-data-layer-orders': {'name': 'LAYER ORDERS DATA', 'type': 'CONCEPT', 'internal': False},
@@ -80,6 +85,7 @@ ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'functions': {'name': 'GENE FUNCTIONS', 'type': 'CONCEPT', 'internal': True},
                'functions-txt': {'name': 'GENE FUNCTIONS', 'type': 'TXT', 'internal': False},
                'functional-enrichment-txt': {'name': 'ENRICHED FUNCTIONS', 'type': 'TXT', 'internal': False},
+               'kegg-functions': {'name': 'KOFAM FUNCTIONS', 'type': 'CONCEPT', 'internal': True},
                'interactive': {'name': 'INTERACTIVE DISPLAY', 'type': 'DISPLAY', 'internal': True},
                'view-data': {'name': 'VIEW DATA', 'type': 'TXT', 'internal': False},
                'layer-taxonomy': {'name': 'LAYER TAXONOMY', 'type': 'CONCEPT', 'internal': True},
@@ -102,7 +108,9 @@ ANVIO_ITEMS = {'pan-db': {'name': 'PAN', 'type': 'DB', 'internal': True},
                'summary': {'name': 'STATIC SUMMARY', 'type': 'SUMMARY', 'internal': False},
                'split-bins': {'name': 'SPLIT BINS', 'type': 'CONCEPT', 'internal': False},
                'state': {'name': 'INTERACTIVE STATE', 'type': 'CONCEPT', 'internal': True},
-               'state-json': {'name': 'INTERACTIVE STATE', 'type': 'JSON', 'internal': False}}
+               'ngrams': {'name': 'NGRAM', 'type': 'CONCEPT', 'internal': True},
+               'state-json': {'name': 'INTERACTIVE STATE', 'type': 'JSON', 'internal': False},
+               'kegg-metabolism': {'name': 'KEGG METABOLISM ESTIMATES', 'type': 'TXT', 'internal': False}}
 
 ANVIO_CONCEPTS = {'functions': {'goes_in': ['contigs_db', 'genomes-storage-db'],
                                'used_by': ['anvi-search-functions']}
@@ -489,7 +497,7 @@ class ProgramsVignette(AnvioPrograms):
             progress.new('Bleep bloop')
             progress.update('%s (%d of %d)' % (program.name, i+1, len(self.programs)))
 
-            output = utils.run_command_STDIN('%s --help' % (program.program_path), log_file, '').split('\n')
+            output = utils.run_command_STDIN('%s --help --quiet' % (program.program_path), log_file, '').split('\n')
 
             if anvio.DEBUG:
                     usage, description, params, output = parse_help_output(output)

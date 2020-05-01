@@ -47,6 +47,7 @@ class BAMFileObject(pysam.AlignmentFile):
         This class inherits pysam.AlignmentFile and adds a little flair. Init such an object the
         way you would an AlignmentFile, i.e. bam = bamops.BAMFileObject(path_to_bam)
         """
+
         self.input_bam_path = args[0]
         filesnpaths.is_file_exists(self.input_bam_path)
 
@@ -67,11 +68,13 @@ class BAMFileObject(pysam.AlignmentFile):
         Like pysam.AlignmeFile.fetch(), except trims reads that overhang the start and end of the
         defined region so that they fit inside the start and stop.
         """
+
         for read in self.fetch(contig_name, start, end, *args, **kwargs):
-            if read.cigartuples is None:
-                # This read has no associated cigar string. This either means it did not align but
-                # is in the BAM file anyways, or the mapping software decided it did not want to
-                # include a cigar string for this read.
+            if read.cigartuples is None or read.query_sequence is None:
+                # This read either has no associated cigar string or no query sequence. If cigar
+                # string is None, this means it did not align but is in the BAM file anyways, or the
+                # mapping software decided it did not want to include a cigar string for this read.
+                # The origin of why query sequence would be None is unkown.
                 continue
 
             read = Read(read)
@@ -83,6 +86,97 @@ class BAMFileObject(pysam.AlignmentFile):
                 read.trim(trim_by=(read.reference_end - end), side='right')
 
             yield read
+
+
+    def fetch_filter_and_trim(self, contig_name, start, end, percent_id_cutoff=0, *args, **kwargs):
+        """Returns an read iterator that trims and also filters reads based on their characteristics
+
+        Trims just as self.fetch_and_trim does. Filtering is applied before trimming.
+
+        Parameters
+        ==========
+        start : int
+            Pass None if you don't want a start position cutoff
+
+        end : int
+            Pass None if you don't want an end cutoff
+
+        percent_id_cutoff : float, 0
+            Reads with a percentage ID relative to their mapped segments of the reference genome
+            less than this amount will be excluded. E.g. if you want 95% as a cutoff, use
+            percent_id_cutoff=95.0
+        """
+
+        for read in self.fetch(contig_name, start, end, *args, **kwargs):
+            if read.cigartuples is None or read.query_sequence is None:
+                # This read either has no associated cigar string or no query sequence. If cigar
+                # string is None, this means it did not align but is in the BAM file anyways, or the
+                # mapping software decided it did not want to include a cigar string for this read.
+                # The origin of why query sequence would be None is unkown.
+                continue
+
+            read = Read(read)
+
+            # The read must be vectorized before calling read.get_percent_id
+            read.vectorize()
+
+            if read.get_percent_id() < percent_id_cutoff:
+                continue
+
+            # Trimming takes place _after_ filtering based on percent ID
+
+            if start - read.reference_start > 0:
+                read.trim(trim_by=(start - read.reference_start), side='left')
+
+            if read.reference_end - end > 0:
+                read.trim(trim_by=(read.reference_end - end), side='right')
+
+            yield read
+
+
+    def reads_have_MD_tags(self, num_reads=10000, require=all):
+        """A holistic approach to testing if reads in the BAM file have MD tags
+
+        Tests the first `num_reads` in the file to see if they contain the MD tag.  The MD tag
+        provides information about the reference bases in the aligned segment and are essential for
+        some read operations, such as calculating percent ID of a read to its reference.
+
+        Parameters
+        ==========
+        num_reads : int, 10000
+            How many reads should be sampled?
+
+        require : function, all
+            function that takes list of bool values and returns single bool. E.g. built-ins all or
+            any. The default is all, which means all of the sampled reads are required to have the
+            MD tag
+
+        Returns
+        =======
+        output : bool
+            require(has_MD), where has_MD is a list of booleans (length has_MD) that are True if the
+            read has the MD tag and False otherwise
+        """
+
+        has_MD = []
+        reads_checked = 0
+
+        for contig_name in self.references:
+            for read in self.fetch(contig_name):
+                if read.cigartuples is None:
+                    # if it didn't map we forgive it for not having an MD tag
+                    continue
+
+                has_MD.append(read.has_tag('MD'))
+
+                reads_checked += 1
+                if reads_checked == num_reads:
+                    return require(has_MD)
+
+        if reads_checked == 0:
+            return True
+
+        return require(has_MD)
 
 
 class Read:
@@ -104,16 +198,28 @@ class Read:
         self.reference_start = read.reference_start
         self.reference_end = read.reference_end
 
+        if read.has_tag('MD'):
+            self.reference_sequence = np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)
+        else:
+            self.reference_sequence = np.array([ord('N')] * (self.reference_end - self.reference_start))
+
         # See self.vectorize
         self.v = None
 
 
     def vectorize(self):
-        """Set the self.v attribute to provide array-like access to the read"""
+        """Set the self.v attribute to provide array-like access to the read
+
+        0th column = reference position
+        1st column = query sequence
+        2nd column = mapping type (0, 1, or 2)
+        3rd column = reference sequence
+        """
 
         self.v = _vectorize_read(
             self.cigartuples,
             self.query_sequence,
+            self.reference_sequence,
             self.reference_start,
             constants.cigar_consumption
         )
@@ -148,6 +254,24 @@ class Read:
         """Used to access the vectorized form of the read, self.v"""
 
         return self.v.__getitem__(key)
+
+
+    def get_percent_id(self):
+        """Get the percent id of the read to the reference
+
+        Returns
+        =======
+        output : float
+            The percent ID. E.g. 95.2
+
+        Notes
+        =====
+        - Only mapped segments (i.e. consumed by read and ref) are considered. E.g if 50% of a read
+          maps with 100% identity and the other 50% is composed of indels, this function returns 100.0
+        - Delegates to the just-in-time compiled function _get_percent_id
+        """
+
+        return _get_percent_id(self.v)
 
 
     def get_aligned_sequence_and_reference_positions(self):
@@ -218,7 +342,7 @@ class Read:
                 read.extend(['-'] * length)
 
             if consumes_ref:
-                ref.extend(['X'] * length)
+                ref.extend([chr(x) for x in self.reference_sequence[pos_ref:(pos_ref + length)]])
                 pos_ref += length
             else:
                 ref.extend(['-'] * length)
@@ -308,13 +432,17 @@ class Coverage:
         self.median = 0.0
         self.detection = 0.0
         self.mean_Q2Q3 = 0.0
+        self.num_reads = 0
 
-        self.routine_dict = {
-            'accurate': self._accurate_routine,
+        self.read_iterator_dict = {
+            'fetch': self._fetch_iterator,
+            'fetch_and_trim': self._fetch_and_trim_iterator,
+            'fetch_filter_and_trim': self._fetch_filter_and_trim_iterator,
         }
 
 
-    def run(self, bam, contig_or_split, start=None, end=None, method='accurate', max_coverage=None, skip_coverage_stats=False, **kwargs):
+    def run(self, bam, contig_or_split, start=None, end=None, read_iterator='fetch',
+            max_coverage=None, skip_coverage_stats=False, **kwargs):
         """Loop through the bam pileup and calculate coverage over a defined region of a contig or split
 
         Parameters
@@ -336,8 +464,11 @@ class Coverage:
             The index end of where coverage is calculated. Relative to the contig, even when
             `contig_or_split` is a Split object.
 
-        method : string
-            How do you want to calculate? Options: see self.routine_dict
+        read_iterator : string
+            How do you want to iterate through reads? Options: see self.read_iterator_dict. Some
+            notes: If you supply a start and end, you _must_ supply a read iterator that trims
+            reads, i.e, not 'fetch', which returns the entirety of a read, even if it only partially
+            lands in [start, end)
 
         skip_coverage_stats : bool, False
             Should the call to process_c be skipped?
@@ -345,9 +476,6 @@ class Coverage:
         **kwargs : **kwargs
             kwargs are passed to the method chosen
         """
-
-        # if there are defined start and ends we have to trim reads so their ranges fit inside self.c
-        iterator = bam.fetch if (start is None and end is None) else bam.fetch_and_trim
 
         if isinstance(contig_or_split, anvio.contigops.Split):
             contig_name = contig_or_split.parent
@@ -371,11 +499,20 @@ class Coverage:
         c = np.zeros(end - start).astype(int)
 
         try:
-            routine = self.routine_dict[method]
+            read_iterator = self.read_iterator_dict[read_iterator]
         except KeyError:
-            raise ConfigError("Coverage :: %s is not a valid method." % method)
+            raise ConfigError("Coverage :: %s is not a valid read iterator." % read_iterator)
 
-        self.c = routine(c, bam, contig_name, start, end, iterator, **kwargs)
+        for read in read_iterator(bam, contig_name, start, end, **kwargs):
+            if len(read.cigartuples) == 1:
+                c[read.reference_start:(read.reference_start + read.cigartuples[0][1])] += 1
+            else:
+                for start, end in read.get_blocks():
+                    c[start:end] += 1
+
+            self.num_reads += 1
+
+        self.c = c
 
         if max_coverage is not None:
             if np.max(self.c) > max_coverage:
@@ -391,31 +528,32 @@ class Coverage:
                 self.process_c(self.c)
 
 
-    def _accurate_routine(self, c, bam, contig_name, start, end, iterator):
-        """Routine that accounts for gaps in the alignment
+    def _fetch_iterator(self, bam, contig_name, start, end):
+        """Uses standard pysam fetch iterator from AlignmentFile objects, ignores unmapped reads"""
 
-        Notes
-        =====
-        - There used to be an '_approximate_routine', but its only negligibly faster
-        - Should typically not be called explicitly. Use run instead
-        - fancy indexing of reference_positions was also considered, but is much slower because it
-          uses fancy-indexing
-          https://jakevdp.github.io/PythonDataScienceHandbook/02.07-fancy-indexing.html:
-        """
-        for read in iterator(contig_name, start, end):
-            if read.cigartuples is None:
-                # This read has no associated cigar string. This either means it did not align but
-                # is in the BAM file anyways, or the mapping software decided it did not want to
-                # include a cigar string for this read.
+        for read in bam.fetch(contig_name, start, end):
+            if read.cigartuples is None or read.query_sequence is None:
+                # This read either has no associated cigar string or no query sequence. If cigar
+                # string is None, this means it did not align but is in the BAM file anyways, or the
+                # mapping software decided it did not want to include a cigar string for this read.
+                # The origin of why query sequence would be None is unkown.
                 continue
 
-            if len(read.cigartuples) == 1:
-                c[read.reference_start:(read.reference_start + read.cigartuples[0][1])] += 1
-            else:
-                for start, end in read.get_blocks():
-                    c[start:end] += 1
+            yield read
 
-        return c
+
+    def _fetch_and_trim_iterator(self, bam, contig_name, start, end):
+        """Uses BAMFileObject.fetch_and_trim iterator"""
+
+        for read in bam.fetch_and_trim(contig_name, start, end):
+            yield read
+
+
+    def _fetch_filter_and_trim_iterator(self, bam, contig_name, start, end, percent_id_cutoff):
+        """Uses BAMFileObject.fetch_and_filter iterator"""
+
+        for read in bam.fetch_filter_and_trim(contig_name, start, end, percent_id_cutoff):
+            yield read
 
 
     def process_c(self, c):
@@ -966,12 +1104,12 @@ def iterate_cigartuples(cigartuples, cigar_consumption):
 
 
 @jit(nopython=True)
-def _vectorize_read(cigartuples, query_sequence, reference_start, cigar_consumption):
+def _vectorize_read(cigartuples, query_sequence, reference_sequence, reference_start, cigar_consumption):
     # init the array
     size = 0
     for i in range(cigartuples.shape[0]):
         size += cigartuples[i, 1]
-    v = np.full((size, 3), -1, dtype=np.int32)
+    v = np.full((size, 4), -1, dtype=np.int32)
 
     count = 0
     ref_consumed = 0
@@ -983,12 +1121,14 @@ def _vectorize_read(cigartuples, query_sequence, reference_start, cigar_consumpt
         if consumes_read and consumes_ref:
             v[count:(count + length), 0] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
             v[count:(count + length), 1] = query_sequence[read_consumed:(read_consumed + length)]
+            v[count:(count + length), 3] = reference_sequence[ref_consumed:(ref_consumed + length)]
             v[count:(count + length), 2] = 0
 
             read_consumed += length
             ref_consumed += length
 
         elif consumes_read:
+            v[count:(count + length), 0] = ref_consumed + reference_start - 1
             v[count:(count + length), 1] = query_sequence[read_consumed:(read_consumed + length)]
             v[count:(count + length), 2] = 1
 
@@ -996,6 +1136,7 @@ def _vectorize_read(cigartuples, query_sequence, reference_start, cigar_consumpt
 
         elif consumes_ref:
             v[count:(count + length), 0] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
+            v[count:(count + length), 3] = reference_sequence[ref_consumed:(ref_consumed + length)]
             v[count:(count + length), 2] = 2
 
             ref_consumed += length
@@ -1003,6 +1144,21 @@ def _vectorize_read(cigartuples, query_sequence, reference_start, cigar_consumpt
         count += length
 
     return v
+
+
+@jit(nopython=True)
+def _get_percent_id(vectorized_read):
+    # Filter vectorization to only include mapped segments, i.e. mapping_type == 0
+    vectorized_read = vectorized_read[vectorized_read[:, 2] == 0]
+
+    mapped_length = vectorized_read.shape[0]
+
+    num_equal = 0
+    for i in range(mapped_length):
+        if vectorized_read[i, 1] == vectorized_read[i, 3]:
+            num_equal += 1
+
+    return 100 * num_equal / mapped_length
 
 
 @jit(nopython=True)

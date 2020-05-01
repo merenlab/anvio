@@ -5,8 +5,6 @@
 import gc
 import os
 import sys
-import time
-import pysam
 import shutil
 import argparse
 import multiprocessing
@@ -27,9 +25,10 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.tables.views import TablesForViews
-from anvio.tables.codonfrequencies import TableForCodonFrequencies
-from anvio.tables.variability import TableForVariability
+from anvio.tables.indels import TableForIndels
 from anvio.tables.miscdata import TableForLayerAdditionalData
+from anvio.tables.variability import TableForVariability
+from anvio.tables.codonfrequencies import TableForCodonFrequencies
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -69,7 +68,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.report_variability_full = A('report_variability_full')
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.skip_SNV_profiling = A('skip_SNV_profiling')
+        self.skip_INDEL_profiling = A('skip_INDEL_profiling')
         self.profile_SCVs = A('profile_SCVs')
+        self.min_percent_identity = A('min_percent_identity')
         self.gen_serialized_profile = A('gen_serialized_profile')
         self.distance = A('distance') or constants.distance_metric_default
         self.linkage = A('linkage') or constants.linkage_method_default
@@ -79,6 +80,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.write_buffer_size = self.write_buffer_size_per_thread * self.num_threads
         self.total_length_of_all_contigs = 0
         self.total_coverage_values_for_all_contigs = 0
+        self.total_reads_kept = 0
         self.description_file_path = A('description')
 
         # make sure early on that both the distance and linkage is OK.
@@ -172,6 +174,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         if self.skip_SNV_profiling:
             self.profile_SCVs = False
+            self.skip_INDEL_profiling = True
 
         meta_values = {'db_type': 'profile',
                        'anvio': __version__,
@@ -185,6 +188,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'max_contig_length': self.max_contig_length,
                        'SNVs_profiled': not self.skip_SNV_profiling,
                        'SCVs_profiled': self.profile_SCVs,
+                       'INDELs_profiled': not self.skip_INDEL_profiling,
+                       'min_percent_identity': self.min_percent_identity or 0,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
                        'report_variability_full': self.report_variability_full,
                        'contigs_db_hash': self.a_meta['contigs_db_hash'],
@@ -210,6 +215,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.run.warning('Amino acid linkmer frequencies will not be characterized for this profile.')
         else:
             self.variable_codons_table = TableForCodonFrequencies(self.profile_db_path, progress=null_progress)
+
+        if self.skip_INDEL_profiling:
+            self.run.warning('Indels (read insertion and deletions) will not be characterized for this profile.')
+        else:
+            self.indels_table = TableForIndels(self.profile_db_path, progress=null_progress)
 
 
     def _run(self):
@@ -237,7 +247,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('clustering_performed', self.contigs_shall_be_clustered)
         self.run.info('min_coverage_for_variability', self.min_coverage_for_variability)
         self.run.info('skip_SNV_profiling', self.skip_SNV_profiling)
+        self.run.info('skip_INDEL_profiling', self.skip_INDEL_profiling)
         self.run.info('profile_SCVs', self.profile_SCVs)
+        self.run.info('min_percent_identity', self.min_percent_identity)
         self.run.info('report_variability_full', self.report_variability_full)
 
         self.run.warning("Your minimum contig length is set to %s base pairs. So anvi'o will not take into "
@@ -247,7 +259,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         if self.max_contig_length < sys.maxsize:
             self.run.warning("Your maximum contig length is set to %s base pairs. Which means anvi'o will remove "
-           "any contigs that are longer than this value." % pp(self.max_contig_length))
+                             "any contigs that are longer than this value." % pp(self.max_contig_length))
 
         # this is kinda important. we do not run full-blown profile function if we are dealing with a summarized
         # profile...
@@ -327,6 +339,18 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     self.variable_nts_table.append(entry)
 
         self.variable_nts_table.store()
+
+
+    def generate_indels_table(self):
+        if self.skip_INDEL_profiling:
+            return
+
+        for contig in self.contigs:
+            for split in contig.splits:
+                for entry in split.indels_profiles.values():
+                    self.indels_table.append([self.sample_id] + list(entry.values()))
+
+        self.indels_table.store()
 
 
     def store_split_coverages(self):
@@ -447,11 +471,24 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.contig_names = self.bam.references
         self.contig_lengths = self.bam.lengths
 
+        if self.min_percent_identity:
+            # We will permit as many as 1% of sampled reads to be missing an MD tag, for whatever
+            # crazy mapping reason, although it is most probable that if 1 read is missing an MD
+            # tag, they all are.
+            requirement = lambda x: sum(x) / len(x) >= 0.99
+
+            if not self.bam.reads_have_MD_tags(require=requirement):
+                raise ConfigError("Your BAM file has reads that do not have MD "
+                                  "tags, which give essential information about the "
+                                  "reference bases in alignments. Unfortunately, "
+                                  "this is required to use --min-percent-identity. "
+                                  "Please remove this flag or redo your mapping.")
+
         utils.check_contig_names(self.contig_names)
 
         self.run.info('input_bam', self.input_file_path)
         self.run.info('output_dir', self.output_directory, display_only=True)
-        self.run.info('total_reads_mapped', pp(int(self.num_reads_mapped)))
+        self.run.info('num_reads_in_bam', pp(int(self.num_reads_mapped)))
         self.run.info('num_contigs', pp(len(self.contig_names)))
 
         if self.contig_names_of_interest:
@@ -599,9 +636,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 # We mark these for deletion the next time garbage is collected
                 for split in contig.splits:
                     del split.coverage
-                    del split.auxiliary.split.SNV_profiles
-                    del split.auxiliary.split.SCV_profiles
-                    del split.auxiliary.split
                     del split.auxiliary
                     del split
                 del contig.splits[:]
@@ -624,7 +658,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         contig.min_coverage_for_variability = self.min_coverage_for_variability
         contig.skip_SNV_profiling = self.skip_SNV_profiling
         contig.report_variability_full = self.report_variability_full
-        timer.make_checkpoint('%s initialization done' % contig_name)
+        timer.make_checkpoint('Initialization done')
 
         # populate contig with empty split objects
         for split_name in self.contig_name_to_splits[contig_name]:
@@ -639,22 +673,24 @@ class BAMProfiler(dbops.ContigsSuperclass):
         timer.make_checkpoint('Gene info for split added')
 
         # analyze coverage for each split
-        contig.analyze_coverage(bam_file)
+        contig.analyze_coverage(bam_file, self.min_percent_identity)
         timer.make_checkpoint('Coverage done')
 
         # test the mean coverage of the contig.
         if contig.coverage.mean < self.min_mean_coverage:
             if anvio.DEBUG:
-                timer.gen_report()
+                timer.gen_report('%s Time Report' % contig.name)
             return None
 
         if not self.skip_SNV_profiling:
             for split in contig.splits:
                 split.auxiliary = contigops.Auxiliary(split,
                                                       profile_SCVs=self.profile_SCVs,
+                                                      skip_INDEL_profiling=self.skip_INDEL_profiling,
                                                       skip_SNV_profiling=self.skip_SNV_profiling,
                                                       min_coverage=self.min_coverage_for_variability,
-                                                      report_variability_full=self.report_variability_full)
+                                                      report_variability_full=self.report_variability_full,
+                                                      min_percent_identity=self.min_percent_identity)
 
                 split.auxiliary.process(bam_file)
 
@@ -679,7 +715,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             del split.per_position_info
 
         if anvio.DEBUG:
-            timer.gen_report()
+            timer.gen_report('%s Time Report' % contig.name)
 
         return contig
 
@@ -731,9 +767,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 for c in self.contigs:
                     for split in c.splits:
                         del split.coverage
-                        del split.auxiliary.split.SNV_profiles
-                        del split.auxiliary.split.SCV_profiles
-                        del split.auxiliary.split
                         del split.auxiliary
                         del split
                     del c.splits[:]
@@ -765,6 +798,20 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self.skip_SNV_profiling:
             self.layer_additional_data['num_SNVs_reported'] = TableForVariability(self.profile_db_path, progress=null_progress).num_entries
             self.layer_additional_keys.append('num_SNVs_reported')
+
+        if self.total_reads_kept != self.num_reads_mapped:
+            # Num reads in profile do not equal num reads in bam
+            diff = self.num_reads_mapped - self.total_reads_kept
+            perc = (1 - self.total_reads_kept / self.num_reads_mapped) * 100
+            self.run.warning("There were %d reads present in the BAM file that did not end up being used "
+                             "by anvi'o. That corresponds to about %.2f percent of all reads in the bam file. "
+                             "This could be either because you supplied --contigs-of-interest, "
+                             "or because pysam encountered reads it could not deal with, e.g. they mapped "
+                             "but had no defined sequence, or they had a sequence but did not map. "
+                             "Regardless, anvi'o thought you should be aware of this." % (diff, perc))
+
+        self.layer_additional_data['total_reads_kept'] = self.total_reads_kept
+        self.layer_additional_keys.append('total_reads_kept')
 
         self.check_contigs(num_contigs=received_contigs-discarded_contigs)
 
@@ -868,8 +915,22 @@ class BAMProfiler(dbops.ContigsSuperclass):
             dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE atomic_data_contigs SET abundance = abundance / " + str(overall_mean_coverage) + " * 1.0;")
 
         if not self.skip_SNV_profiling:
-            self.layer_additional_data['num_SNVs_reported'] =  TableForVariability(self.profile_db_path, progress=null_progress).num_entries
+            self.layer_additional_data['num_SNVs_reported'] = TableForVariability(self.profile_db_path, progress=null_progress).num_entries
             self.layer_additional_keys.append('num_SNVs_reported')
+
+        if self.total_reads_kept != self.num_reads_mapped:
+            # Num reads in profile do not equal num reads in bam
+            diff = self.num_reads_mapped - self.total_reads_kept
+            perc = (1 - self.total_reads_kept / self.num_reads_mapped) * 100
+            self.run.warning("There were %d reads present in the BAM file that did not end up being used "
+                             "by anvi'o. That corresponds to about %.2f percent of all reads in the bam file. "
+                             "This could be either because you supplied --contigs-of-interest, "
+                             "or because pysam encountered reads it could not deal with, e.g. they mapped "
+                             "but had no defined sequence, or they had a sequence but did not map. "
+                             "Regardless, anvi'o thought you should be aware of this." % (diff, perc))
+
+        self.layer_additional_data['total_reads_kept'] = self.total_reads_kept
+        self.layer_additional_keys.append('total_reads_kept')
 
         self.check_contigs(num_contigs=received_contigs-discarded_contigs)
 
@@ -884,8 +945,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
             for split in contig.splits:
                 split.abundance = split.coverage.mean
 
+            self.total_reads_kept += contig.coverage.num_reads
+
         self.generate_variable_nts_table()
         self.generate_variable_codons_table()
+        self.generate_indels_table()
         self.store_split_coverages()
 
         # creating views in the database for atomic data we gathered during the profiling. Meren, please note

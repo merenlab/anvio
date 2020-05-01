@@ -9,6 +9,7 @@ import gzip
 import shutil
 import requests
 from io import BytesIO
+import glob
 
 import anvio
 import anvio.dbops as dbops
@@ -58,10 +59,20 @@ class PfamSetup(object):
 
         filesnpaths.is_program_exists('hmmpress')
 
+        if self.pfam_data_dir and args.reset:
+            raise ConfigError("You are attempting to run Pfam setup on a non-default data directory (%s) using the --reset flag. "
+                              "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to reset "
+                              "directories that have been specified with --pfam-data-dir. If you really want to get rid of this "
+                              "directory and regenerate it with Pfam data inside, then please remove the directory yourself using "
+                              "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
+                              "the safest way to handle things." % (self.pfam_data_dir, self.pfam_data_dir))
+
         if not self.pfam_data_dir:
             self.pfam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Pfam')
 
-        if not args.reset:
+        filesnpaths.is_output_dir_writable(os.path.dirname(self.pfam_data_dir))
+
+        if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
 
         filesnpaths.gen_output_directory(self.pfam_data_dir, delete_if_exists=args.reset)
@@ -71,8 +82,9 @@ class PfamSetup(object):
 
 
     def is_database_exists(self):
-        if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')):
+        if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm') or os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz'))):
             raise ConfigError("It seems you already have Pfam database installed in '%s', please use --reset flag if you want to re-download it." % self.pfam_data_dir)
+
 
 
     def get_remote_version(self):
@@ -127,14 +139,35 @@ class PfamSetup(object):
 
 
     def decompress_files(self):
-        # Decompressing Pfam-A.hmm.gz is not necessary, HMMer class works with .gz
-
-        for file_name in ['Pfam.version.gz', 'Pfam-A.clans.tsv.gz']:
+        """Decompresses and runs hmmpress on Pfam HMM profiles."""
+        for file_name in self.files:
             full_path = os.path.join(self.pfam_data_dir, file_name)
 
-            utils.gzip_decompress_file(full_path)
-            os.remove(full_path)
+            if full_path.endswith('.gz'):
+                if not os.path.exists(full_path) and os.path.exists(full_path[:-3]):
+                    self.run.warning("It seems the file at %s is already decompressed. You are probably seeing "
+                                     "this message because Pfams was set up previously on this computer. Hakuna Matata. Anvi'o will "
+                                     "simply skip decompressing this file at this time. But if you think there is an issue, you can "
+                                     "re-do the Pfam setup by running `anvi-setup-pfams` again and using the --reset flag."
+                                     % (full_path[:-3]))
+                    continue
+                elif not os.path.exists(full_path):
+                    raise ConfigError("Oh no. The file at %s does not exist. Something is terribly wrong. :( Anvi'o suggests re-running "
+                                      "`anvi-setup-pfams` using the --reset flag." % (full_path))
+                utils.gzip_decompress_file(full_path)
+                os.remove(full_path)
 
+        for file_path in glob.glob(os.path.join(self.pfam_data_dir, '*.hmm')):
+            cmd_line = ['hmmpress', file_path]
+            log_file_path = os.path.join(self.pfam_data_dir, '00_hmmpress_log.txt')
+            ret_val = utils.run_command(cmd_line, log_file_path)
+
+            if ret_val:
+                raise ConfigError("Hmm. There was an error while running `hmmpress` on the Pfam HMM profiles. "
+                                  "Check out the log file ('%s') to see what went wrong." % (log_file_path))
+            else:
+                # getting rid of the log file because hmmpress was successful
+                os.remove(log_file_path)
 
 class Pfam(object):
     def __init__(self, args, run=run, progress=progress):
@@ -143,17 +176,20 @@ class Pfam(object):
         self.progress = progress
         self.contigs_db_path = args.contigs_db
         self.num_threads = args.num_threads
+        self.hmm_program = args.hmmer_program or 'hmmsearch'
         self.pfam_data_dir = args.pfam_data_dir
 
         # load_catalog will populate this
         self.function_catalog = {}
 
-        filesnpaths.is_program_exists('hmmscan')
+        filesnpaths.is_program_exists(self.hmm_program)
         utils.is_contigs_db(self.contigs_db_path)
 
         if not self.pfam_data_dir:
             self.pfam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Pfam')
 
+        # here, in the process of checking whether Pfam has been downloaded into the pfam_data_dir,
+        # we also decompress and hmmpress the profile if it is currently gzipped
         self.is_database_exists()
 
         self.run.info('Pfam database directory', self.pfam_data_dir)
@@ -163,8 +199,30 @@ class Pfam(object):
 
 
     def is_database_exists(self):
-        if not os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')):
+        """
+        This function verifies that pfam_data_dir contains the Pfam hmm profiles and checks whether they are compressed or not.
+
+        If they are compressed, we decompress them and run hmmpress.
+        """
+
+        if not (os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')) or os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm'))):
             raise ConfigError("It seems you do not have Pfam database installed, please run 'anvi-setup-pfams' to download it.")
+        # here we check if the HMM profile is compressed so we can decompress it for next time
+        if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')):
+            self.run.warning("Anvi'o has detected that your Pfam database is currently compressed. It will now be unpacked before "
+                             "running HMMs.")
+            utils.gzip_decompress_file(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz'), keep_original=False)
+
+            cmd_line = ['hmmpress', os.path.join(self.pfam_data_dir, 'Pfam-A.hmm')]
+            log_file_path = os.path.join(self.pfam_data_dir, '00_hmmpress_log.txt')
+            ret_val = utils.run_command(cmd_line, log_file_path)
+
+            if ret_val:
+                raise ConfigError("Hmm. There was an error while running `hmmpress` on the Pfam HMM profiles. "
+                                  "Check out the log file ('%s') to see what went wrong." % (log_file_path))
+            else:
+                # getting rid of the log file because hmmpress was successful
+                os.remove(log_file_path)
 
 
     def get_version(self):
@@ -204,7 +262,7 @@ class Pfam(object):
 
 
     def process(self):
-        hmm_file = os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')
+        hmm_file = os.path.join(self.pfam_data_dir, 'Pfam-A.hmm')
 
         # initialize contigs database
         class Args: pass
@@ -224,7 +282,7 @@ class Pfam(object):
                                                                    report_aa_sequences=True)
 
         # run hmmscan
-        hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads)
+        hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
         hmm_hits_file = hmmer.run_hmmscan('Pfam', 'AA', 'GENE', None, None, len(self.function_catalog), hmm_file, None, '--cut_ga')
 
         if not hmm_hits_file:
@@ -237,7 +295,7 @@ class Pfam(object):
             return
 
         # parse hmmscan output
-        parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE')
+        parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
         search_results_dict = parser.get_search_results()
 
         # add functions to database

@@ -1,4 +1,4 @@
-{% set version = "6.1_master" %}
+{% set version = "6.2_master" %}
 
 package:
   name: anvio
@@ -25,12 +25,13 @@ requirements:
     - trimal
     - iqtree
     - fastani
-    - r
+    - r-base
     - r-stringi
     - r-tidyverse
     - r-magrittr
-    - bioconductor-qvalue
-    - trnascan-se
+    - r-optparse
+    - bioconductor
+    - fasttree
 
 test:
   commands:
