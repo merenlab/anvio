@@ -58,13 +58,16 @@ rule make_iu_input:
 
 
 rule iu_gen_configs:
-    ''' Create an Illumina-utils config file for each sample+split pair from the Illumina-utils samples file (run once) '''
+    '''
+    Create an Illumina-utils config file for each sample+split pair
+    from the Illumina-utils samples file (run once)
+    '''
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "iu_gen_configs.log")
     # The input file is marked "ancient" to prevent Snakemake from rerunning this step
     # when the iu_samples_input file has been changed.
     input: ancient(os.path.join(dirs_dict["QC_DIR"], "iu_samples_input.txt"))
-    output: expand(os.path.join(dirs_dict["QC_DIR"], "{sample}_{split}.ini"), sample=M.sample_names, split=M.valid_splits)
+    output: expand(os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}.ini"), sample_split_prefix=M.sample_split_prefixes)
     params:
         DIR = dirs_dict['QC_DIR'],
         r1_prefix = M.get_rule_param('iu_gen_configs', '--r1-prefix'), # regex-formatted adapter tag at the beginning of the forward read, e.g., "^...AAGT"
@@ -77,11 +80,11 @@ rule iu_gen_configs:
 rule iu_merge_pairs:
     ''' Merge paired-end reads using Illumina-utils '''
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-iu_merge_pairs.log")
-    input: os.path.join(dirs_dict["QC_DIR"], "{sample}_{split}.ini")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-iu_merge_pairs.log")
+    input: os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}.ini")
     output:
-        qc_output_merged = os.path.join(dirs_dict["QC_DIR"], "{sample}_{split}_MERGED"),
-        stats = os.path.join(dirs_dict["QC_DIR"], "{sample}_{split}_STATS")
+        qc_output_merged = os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}_MERGED"),
+        stats = os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}_STATS")
     params:
         marker_gene_stringent = M.get_rule_param('iu_merge_pairs', '--marker-gene-stringent'), # allows for both full and partial overlap of inserts, by default trimming trailing adapters following fully overlapping inserts
         max_num_mismatches = M.get_rule_param('iu_merge_pairs', '--max-num-mismatches'),
@@ -96,7 +99,7 @@ rule gen_qc_report:
     ''' Report all quality control statistics (run once) '''
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "gen_qc_report.log")
-    input: expand(os.path.join(dirs_dict['QC_DIR'], "{sample}_{split}_STATS"), sample=M.sample_names, split=M.valid_splits)
+    input: expand(os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_STATS"), sample_split_prefix=M.sample_split_prefixes)
     output: os.path.join(dirs_dict['QC_DIR'], "qc-report.txt")
     threads: M.T('gen_qc_report')
     resources: nodes = M.T('gen_qc_report')
@@ -131,11 +134,11 @@ rule gen_qc_report:
 rule anvi_reformat_fasta:
     ''' Reformat the FASTA file to have Anvi\'o-compliant deflines '''
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-reformat_fasta.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-reformat_fasta.log")
     input: rules.iu_merge_pairs.output.qc_output_merged
     output:
-        fasta = os.path.join(dirs_dict['QC_DIR'], "{sample}_{split}.fasta"),
-        report = os.path.join(dirs_dict['QC_DIR'], "{sample}_{split}_REFORMAT_REPORT.txt")
+        fasta = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}.fasta"),
+        report = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_REFORMAT_REPORT.txt")
     threads: M.T('anvi_reformat_fasta')
     resources: nodes = M.T('anvi_reformat_fasta')
     params:
@@ -145,11 +148,11 @@ rule anvi_reformat_fasta:
 
 rule compress_merged_fasta:
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-compress_merged_fasta.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-compress_merged_fasta.log")
     input:
         qc_output_merged = rules.iu_merge_pairs.output.qc_output_merged,
         _ = rules.anvi_reformat_fasta.output.fasta
-    output: os.path.join(dirs_dict['QC_DIR'], "{sample}_{split}_MERGED.gz")
+    output: os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_MERGED.gz")
     threads: M.T('compress_merged_fasta')
     resources: nodes = M.T('compress_merged_fasta')
     run:
@@ -165,9 +168,9 @@ rule compress_merged_fasta:
 rule anvi_gen_tRNAseq_database:
     ''' Identify tRNA sequences and their structural features, storing in an Anvi\'o database '''
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-anvi_gen_tRNAseq_database.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-anvi_gen_tRNAseq_database.log")
     input: rules.anvi_reformat_fasta.output.fasta
-    output: os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_TRNASEQ.db")
+    output: os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}_TRNASEQ.db")
     threads: M.T('anvi_gen_tRNAseq_database')
     resources: nodes = M.T('anvi_gen_tRNAseq_database')
     params:
@@ -179,12 +182,12 @@ rule anvi_gen_tRNAseq_database:
 
 rule compress_reformatted_fasta:
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-compress_reformatted_fasta.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-compress_reformatted_fasta.log")
     input:
         fasta = rules.anvi_reformat_fasta.output.fasta,
         report = rules.anvi_reformat_fasta.output.report,
         _ = rules.anvi_gen_tRNAseq_database.output
-    output: os.path.join(dirs_dict['QC_DIR'], "{sample}_{split}.fasta.gz")
+    output: os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}.fasta.gz")
     threads: M.T('compress_reformatted_fasta')
     resources: nodes = M.T('compress_reformatted_fasta')
     shell: "gzip {input.fasta} >> {log} 2>&1 ; gzip {input.report} >> {log} 2>&1"
@@ -196,9 +199,9 @@ rule get_unique_tRNA_fasta:
     # replacing with a uniform 3'-CCA acceptor.
     # A 3' sequence beside CCA is not biological but an artifact of the experiment.
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-get_unique_tRNA_fasta.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-get_unique_tRNA_fasta.log")
     input: rules.anvi_gen_tRNAseq_database.output
-    output: os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_UNIQUE_TRNA.fasta")
+    output: os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}_UNIQUE_TRNA.fasta")
     threads: M.T('get_unique_tRNA_fasta')
     resources: nodes = M.T('get_unique_tRNA_fasta')
     run:
@@ -212,35 +215,15 @@ rule get_unique_tRNA_fasta:
                 outf.write(">%s\n" % name)
                 outf.write("%s\n" % seq)
 
-        # REMOVE
-        # rows = [
-        #     (r[0], r[3]) for r
-        #     in db.get_some_rows_from_table(
-        #         'tRNA_sequences',
-        #         'name IN (%s)' % ','.join('"' + n + '"' for n in table['name'].tolist()))]
-        # with open(output[0], 'w') as outf:
-        #     if rules.anvi_gen_tRNAseq_database.params.charging_recorded:
-        #         # Add the "A" to the 3' end of the sequence if it was chemically removed in an uncharged tRNA.
-        #         for r in rows:
-        #             outf.write(">%s\n" % r[0])
-        #             if r[1][-1] == 'C':
-        #                 outf.write("%s\n" % (r[1] + 'A'))
-        #             else:
-        #                 outf.write("%s\n" % r[1])
-        #     else:
-        #         for r in rows:
-        #             outf.write(">%s\n" % r[0])
-        #             outf.write("%s\n" % r[1])
-
 
 rule prefix_derep_tRNA_fasta:
     ''' Cluster fragmentary tRNA reads that are subsequences of other reads '''
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-prefix_derep_tRNA_seeds.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-prefix_derep_tRNA_seeds.log")
     input: rules.get_unique_tRNA_fasta.output
     output:
-        fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_PREFIX_DEREP_TRNA.fasta"),
-        uc = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_UC_PREFIX_DEREP_TRNA.tsv")
+        fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}_PREFIX_DEREP_TRNA.fasta"),
+        uc = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}_UC_PREFIX_DEREP_TRNA.tsv")
     threads: M.T('prefix_derep_tRNA_fasta')
     resources: nodes = M.T('prefix_derep_tRNA_fasta')
     run:
@@ -256,11 +239,11 @@ rule prefix_derep_tRNA_fasta:
 
 rule map_tRNA:
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-map_tRNA.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-map_tRNA.log")
     input: rules.prefix_derep_tRNA_fasta.output.fasta
     output:
-        bam = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}.bam"),
-        bam_index = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}.bam.bai")
+        bam = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}.bam"),
+        bam_index = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}.bam.bai")
     threads: M.T('map_tRNA')
     resources: nodes = M.T('map_tRNA')
     run:
@@ -277,13 +260,13 @@ rule map_tRNA:
 
 rule anvi_condense_clusters:
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample}_{split}-anvi_condense_clusters.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-anvi_condense_clusters.log")
     input:
         bam = rules.map_tRNA.output.bam,
         trnaseqdb = rules.anvi_gen_tRNAseq_database.output
     output:
-        bam = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_CONDENSED.bam"),
-        bam_index = os.path.join(dirs_dict['IDENT_DIR'], "{sample}_{split}_CONDENSED.bam.bai")
+        bam = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}_CONDENSED.bam"),
+        bam_index = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}_CONDENSED.bam.bai")
     threads: M.T('anvi-condense-clusters')
     resources: nodes = M.T('anvi_condense_clusters')
     shell: "anvi-condense-clusters {input.bam} {output.bam} {input.trnaseqdb} >> {log} 2>&1"
