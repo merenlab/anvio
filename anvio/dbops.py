@@ -3741,11 +3741,15 @@ class tRNASeqDatabase:
 
         chunk_size = 50000
         num_chunks = total_num_rep_seqs // chunk_size
-        write_points = [chunk_size * (i + 1) for i in range(num_chunks)]
-        if total_num_rep_seqs % num_chunks > 0:
+        if num_chunks == 0:
             num_chunks += 1
-            write_points.append(total_num_rep_seqs)
-        next_write_point = 0
+            write_points = [total_num_rep_seqs]
+        else:
+            write_points = [chunk_size * (i + 1) for i in range(num_chunks)]
+            if total_num_rep_seqs % num_chunks > 0:
+                num_chunks += 1
+                write_points.append(total_num_rep_seqs)
+        write_point_index = 0
 
         fasta = u.SequenceSource(rep_seq_fasta)
 
@@ -3764,7 +3768,7 @@ class tRNASeqDatabase:
             input_queue.put((fasta.id, fasta.seq))
             num_profiled_rep_seqs += 1
 
-            if num_profiled_rep_seqs != write_points[next_write_point]:
+            if num_profiled_rep_seqs != write_points[write_point_index]:
                 continue
 
             while not output_queue.empty():
@@ -3969,8 +3973,8 @@ class tRNASeqDatabase:
 
             gc.collect()
 
-            next_write_point += 1
-            if next_write_point == len(write_points):
+            write_point_index += 1
+            if write_point_index == len(write_points):
                 break
 
         for process in processes:
