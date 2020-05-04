@@ -2842,7 +2842,7 @@ class ProfileSuperclass(object):
         total_counts_of_sites_in_gene = 0
         total_counts_of_sites_in_gene_normalized = 0
         mean_three_prime = 0
-        below_threshold, over_threshold = 0, 0
+        below_threshold = 0
 
         # Split gene coverage values into splits that are nonzero
         insertion_splits_nonzero = [numpy.array(list(g)) for k, g in itertools.groupby(gene_coverage_values_per_nt, lambda x: x != 0) if k]
@@ -3581,7 +3581,8 @@ class ContigsDatabase:
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
         self.db.create_table(t.nt_position_info_table_name, t.nt_position_info_table_structure, t.nt_position_info_table_types)
         self.db.create_table(t.scg_taxonomy_table_name, t.scg_taxonomy_table_structure, t.scg_taxonomy_table_types)
-
+        self.db.create_table(t.nucleotide_additional_data_table_name, t.nucleotide_additional_data_table_structure, t.nucleotide_additional_data_table_types)
+        self.db.create_table(t.amino_acid_additional_data_table_name, t.amino_acid_additional_data_table_structure, t.amino_acid_additional_data_table_types)
 
         return self.db
 
@@ -3674,11 +3675,11 @@ class ContigsDatabase:
         prodigal_translation_table = A('prodigal_translation_table')
 
         if external_gene_calls_file_path:
-            filesnpaths.is_file_tab_delimited(external_gene_calls_file_path)
+            filesnpaths.is_proper_external_gene_calls_file(external_gene_calls_file_path)
 
         if external_gene_calls_file_path and skip_gene_calling:
             raise ConfigError("You provided a file for external gene calls, and used requested gene calling to be "
-                               "skipped. Please make up your mind.")
+                              "skipped. Please make up your mind.")
 
         if (external_gene_calls_file_path or skip_gene_calling) and prodigal_translation_table:
             raise ConfigError("You asked anvi'o to %s, yet you set a specific translation table for prodigal. These "
