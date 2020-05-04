@@ -9,7 +9,7 @@ In addition, here are some blog posts that you may be interested:
 ***
 
 # v6.1: a minor update for "esther" (28.10.2019) #
->>>>>>> 52feaf035172a94f6ae1fc6c95e6cdb26c1d21a2
+
 This is a minor release that contains a set of bug fixes our users identified in `v6`. Please see our up-to-date [installation](http://merenlab.org/2016/06/26/installation-v2/) document to upgrade your anvi'o.
 
 In addition, here is a new blog post on our new tool, [anvi-export-locus](http://merenlab.org/2019/10/17/export-locus/)!
