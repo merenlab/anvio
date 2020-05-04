@@ -301,6 +301,11 @@ html, body, #wrapper {
     right: 350px !important;
 }
 
+.toggle-panel-right-pos-3-unread {
+	width: 60px !important;
+	padding-top: 28px !important;
+}
+
 #toggle-panel-right:hover {
     background-color: #DDDDDD;
 }
