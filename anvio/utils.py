@@ -2382,7 +2382,7 @@ def store_dict_as_FASTA_file(d, output_file_path, wrap_from=200):
     return True
 
 
-def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_names_to_export=None, splits_mode=False, rna_alphabet=False, truncate=True):
+def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_names_to_export=None, splits_mode=False, rna_alphabet=False, truncate=True, just_do_it=False, run=run):
     """Export sequences from a contigs database."""
     filesnpaths.is_output_file_writable(output_file_path)
 
@@ -2401,18 +2401,31 @@ def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_name
         else:
             seq_names_to_export = sorted(contig_sequences_dict.keys())
     else:
-        if splits_mode:
-            pass
-        else:
-            missing_names = [contig_name for contig_name in seq_names_to_export if contig_name not in contig_sequences_dict]
-            if len(missing_names):
-                if len(missing_names) == len(seq_names_to_export):
-                    raise ConfigError("None of the sequence names you have requested were found in this contigs database :/ "
-                                      "This is kind of impressive.")
-                else:
-                    raise ConfigError("The sequence names you have requested include those that are not in the contigs "
-                                      "database, which correspond to %d of %d names you've sent." % (len(missing_names), len(seq_names_to_export)))
+        contig_names = [contig_name for contig_name in seq_names_to_export if contig_name in contig_sequences_dict]
+        split_names = [split_name for split_name in seq_names_to_export if split_name in splits_info_dict]
+        missing_names = [name for name in seq_names_to_export if name not in contig_names and name not in split_names]
 
+        if splits_mode:
+          mode = "splits"
+          appropriate_seq_names = split_names
+
+        else: 
+          mode = "contigs"
+          appropriate_seq_names = contig_names
+
+        if len(appropriate_seq_names) < len(seq_names_to_export):
+          if just_do_it:
+              run.warning("Not all the sequences you requested are %s in this CONTIGS.db. %d names are contigs, "
+                          "%d are splits, and %d are neither. BUT you're in just-do-it mode and we know you're in charge, so we'll "
+                          "proceed using any appropriate names." % \
+                          (mode, len(contig_names), len(split_names), len(missing_names),))
+              seq_names_to_export = appropriate_seq_names 
+          else:
+              raise ConfigError("Not all the sequences you requested are %s in this CONTIGS.db. %d names are contigs, "
+                                "%d are splits, and %d are neither. If you want to live on the edge and try to "
+                                "proceed using any appropriate names, try out the `--just-do-it` flag." % \
+                                (mode, len(contig_names), len(split_names), len(missing_names)))
+        
     for seq_name in seq_names_to_export:
         if splits_mode:
             s = splits_info_dict[seq_name]
