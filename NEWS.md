@@ -1,4 +1,4 @@
-# Test: v6.2: a critical update for "esther" (06.04.2020) #
+# v6.2: a critical update for "esther" (06.04.2020) #
 We have a minor release that contains a set of bug fixes and critical performance improvements for the program `anvi-profile`. Please see the [installation](http://merenlab.org/2016/06/26/installation-v2/) page to upgrade your anvi'o.
 
 In addition, here are some blog posts that you may be interested:
