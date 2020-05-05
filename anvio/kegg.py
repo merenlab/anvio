@@ -579,7 +579,7 @@ class KeggSetup(KeggContext):
 
 
     def setup_modules_db(self):
-        """This function creates the Modules DB from the Kegg Module files."""
+        """This function creates the Modules DB from the KEGG Module files."""
 
         mod_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, module_dictionary=self.module_dict, run=run, progress=progress)
         mod_db.create()
