@@ -11,6 +11,7 @@ import anvio.utils
 
 import pandas as pd
 import os
+import gc
 
 from copy import deepcopy
 from collections import OrderedDict
@@ -19,7 +20,7 @@ t0 = time()
 
 anticodons = sorted(anvio.utils.rev_comp(codon) for codon in anvio.constants.codons)
 
-gast_ranks = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species', 'subspecies']
+gast_ranks = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species', 'subspecies'] # GAST doesn't seem to report subspecies, but has a space for it anyways
 num_gast_ranks = len(gast_ranks)
 ranks = gast_ranks[:-1]
 
@@ -38,19 +39,24 @@ parser.add_argument('dataset_name')
 parser.add_argument('outdir')
 parser.add_argument('--mmseqsTSV')
 parser.add_argument('--ucTSV')
-args = parser.parse_args(['/Users/sammiller/Documents/test5/02_IDENT/tongue1_day2_untreated_TRNASEQ.db',
-                          '/Users/sammiller/Documents/test5/02_IDENT/tongue1_day2_untreated_UNIQUE_TRNA.gast',
-                          'tongue1_day2_untreated',
-                          '/Users/sammiller/Documents/test5',
-                          '--ucTSV', '/Users/sammiller/Documents/test5/02_IDENT/tongue1_day2_untreated-UC_CLUSTERS.tsv'])
+args = parser.parse_args(['/Users/sammiller/Documents/reanalysis/tongue1/02_IDENT/tongue1_day1_untreated_TRNASEQ.db',
+                          '/Users/sammiller/Documents/reanalysis/tongue1/02_IDENT/tongue1_day1_untreated_UNIQUE_TRNA.gast',
+                          'tongue1_day1_untreated',
+                          '/Users/sammiller/Documents/reanalysis/tongue1',
+                          '--ucTSV', '/Users/sammiller/Documents/reanalysis/tongue1/02_IDENT/tongue1_day1_untreated-UC_CLUSTERS.tsv'])
 
 db = anvio.db.DB(args.tRNASeqDB, 1)
-t = db.get_table_as_dataframe('tRNA_sequences')
-t.set_index('name', inplace=True)
-if args.mmseqsTSV is not None:
-    cl = pd.read_csv(args.mmseqsTSV, sep='\t', names=['rep_name', 'name'])
-else:
-    cl = pd.read_csv(args.ucTSV, sep='\t', names=['record_type', 'clust_num', 'seq_len', 'percent_ident', 'strand', 'unused1', 'unused2', 'compressed_align', 'query_label', 'target_label'])
+fulldf = pd.DataFrame(db.get_some_columns_from_table('sequences', 'name,replicate_count'),
+                  columns=['name', 'replicate_count'])
+fulldf.set_index('name', inplace=True)
+
+if args.ucTSV:
+    cl = pd.read_csv(
+        args.ucTSV,
+        sep='\t',
+        names=['record_type', 'clust_num', 'seq_len', 'percent_ident', 'strand',
+               'unused1', 'unused2', 'compressed_align', 'query_label', 'target_label'],
+        usecols=['record_type', 'query_label', 'target_label'])
     cl = cl[(cl['record_type'] == 'S') | (cl['record_type'] == 'H')]
     query_labels = cl['query_label'].tolist()
     target_labels = cl['target_label'].tolist()
@@ -60,124 +66,308 @@ else:
             new_target_labels.append(query_label)
         else:
             new_target_labels.append(target_label)
+    del query_labels
+    del target_labels
     cl['target_label'] = new_target_labels
+    del new_target_labels
     cl.rename(columns={'query_label': 'name', 'target_label': 'rep_name'}, inplace=True)
+else:
+    cl = pd.read_csv(args.mmseqsTSV, sep='\t', names=['rep_name', 'name'])
 cl.set_index('name', inplace=True)
-t['rep_name'] = cl[['rep_name']]
+fulldf['rep_name'] = cl[['rep_name']]
+del cl
+gc.collect()
 
-taxdf = pd.read_csv(args.gast, sep='\t')
+# t = db.get_table_as_dataframe('sequences')
+# t.set_index('name', inplace=True)
+# if args.mmseqsTSV is not None:
+#     cl = pd.read_csv(args.mmseqsTSV, sep='\t', names=['rep_name', 'name'])
+# else:
+#     cl = pd.read_csv(args.ucTSV, sep='\t', names=['record_type', 'clust_num', 'seq_len', 'percent_ident', 'strand', 'unused1', 'unused2', 'compressed_align', 'query_label', 'target_label'])
+#     cl = cl[(cl['record_type'] == 'S') | (cl['record_type'] == 'H')]
+#     query_labels = cl['query_label'].tolist()
+#     target_labels = cl['target_label'].tolist()
+#     new_target_labels = []
+#     for query_label, target_label in zip(query_labels, target_labels):
+#         if target_label == '*':
+#             new_target_labels.append(query_label)
+#         else:
+#             new_target_labels.append(target_label)
+#     cl['target_label'] = new_target_labels
+#     cl.rename(columns={'query_label': 'name', 'target_label': 'rep_name'}, inplace=True)
+# cl.set_index('name', inplace=True)
+# t['rep_name'] = cl[['rep_name']]
+
+taxdf = pd.read_csv(args.gast, sep='\t', usecols=['read_id', 'taxonomy'])
 taxdf[gast_ranks] = pd.DataFrame(split_taxonomy_col(taxdf['taxonomy'].tolist()))
+taxdf.drop(['taxonomy', 'subspecies'], axis=1, inplace=True)
 taxdf.set_index('read_id', inplace=True)
-t.reset_index(inplace=True)
-t.set_index('rep_name', inplace=True) # Merge on representative name, as taxonomy was done for seed sequences
-t[gast_ranks] = taxdf[gast_ranks]
-t.reset_index(inplace=True)
-t.set_index('name', inplace=True)
-t['species'] = t[t['species'] != '']['genus'] + ' ' + t[t['species'] != '']['species'] # Unlike other ranks, species names are not unique, so must be combined with genus
-t['species'].fillna('', inplace=True)
-t.drop('subspecies', axis=1, inplace=True) # GAST doesn't seem to report subspecies, but has a space for it anyways
+fulldf.reset_index(inplace=True)
+fulldf.set_index('rep_name', inplace=True) # Merge on representative name, as taxonomy was done for seed sequences
+fulldf[gast_ranks[:-1]] = taxdf[gast_ranks[:-1]]
+del taxdf
+fulldf.reset_index(inplace=True)
+fulldf.set_index('name', inplace=True)
+fulldf['species'] = (fulldf[fulldf['species'] != '']['genus'] # Unlike other ranks, species names are not unique, so must be combined with genus
+                     + ' '
+                     + fulldf[fulldf['species'] != '']['species'])
+fulldf['species'].fillna('', inplace=True)
+gc.collect()
 
-t['anticodon'] = db.get_table_as_dataframe('tRNA_basic_info')[['name', 'anticodon_sequence']].set_index('name')
-t['anticodon_rc'] = t['anticodon'].apply(anvio.utils.rev_comp)
+# taxdf = pd.read_csv(args.gast, sep='\t')
+# taxdf[gast_ranks] = pd.DataFrame(split_taxonomy_col(taxdf['taxonomy'].tolist()))
+# taxdf.set_index('read_id', inplace=True)
+# t.reset_index(inplace=True)
+# t.set_index('rep_name', inplace=True) # Merge on representative name, as taxonomy was done for seed sequences
+# t[gast_ranks] = taxdf[gast_ranks]
+# t.reset_index(inplace=True)
+# t.set_index('name', inplace=True)
+# t['species'] = t[t['species'] != '']['genus'] + ' ' + t[t['species'] != '']['species'] # Unlike other ranks, species names are not unique, so must be combined with genus
+# t['species'].fillna('', inplace=True)
+# t.drop('subspecies', axis=1, inplace=True)
+
+fulldf['anticodon'] = pd.DataFrame(db.get_some_columns_from_table('basic_info', 'name,anticodon_sequence'),
+                                   columns=['name', 'anticodon_sequence']).set_index('name')
+fulldf['anticodon_rc'] = fulldf['anticodon'].apply(anvio.utils.rev_comp)
 codon_to_AA = deepcopy(anvio.constants.codon_to_AA)
 codon_to_AA[''] = ''
-t['amino_acid'] = t['anticodon_rc'].map(codon_to_AA)
-t.drop('anticodon_rc', axis=1, inplace=True)
+fulldf['amino_acid'] = fulldf['anticodon_rc'].map(codon_to_AA)
+fulldf.drop('anticodon_rc', axis=1, inplace=True)
 
+# t['anticodon'] = db.get_table_as_dataframe('basic_info')[['name', 'anticodon_sequence']].set_index('name')
+# t['anticodon_rc'] = t['anticodon'].apply(anvio.utils.rev_comp)
+# codon_to_AA = deepcopy(anvio.constants.codon_to_AA)
+# codon_to_AA[''] = ''
+# t['amino_acid'] = t['anticodon_rc'].map(codon_to_AA)
+# t.drop('anticodon_rc', axis=1, inplace=True)
 
 # TOTAL READ COUNTS FOR EACH AMINO ACID
 print("Finding total read counts for each amino acid...")
 aa_count = OrderedDict()
 for aa in anvio.constants.amino_acids:
-    aa_count[aa] = t[t['amino_acid'] == aa]['replicate_count'].sum()
+    aa_count[aa] = fulldf[fulldf['amino_acid'] == aa]['replicate_count'].sum()
 
 with open(os.path.join(args.outdir, args.dataset_name + '_aa_total_counts.tsv'), 'w') as f:
     f.write('amino_acid\treads_identified_as_tRNA_decoding_amino_acid\n')
     for aa, count in aa_count.items():
         f.write(aa + '\t' + str(count) + '\n')
+del aa_count
+gc.collect()
+
+
+# # TOTAL READ COUNTS FOR EACH AMINO ACID
+# print("Finding total read counts for each amino acid...")
+# aa_count = OrderedDict()
+# for aa in anvio.constants.amino_acids:
+#     aa_count[aa] = t[t['amino_acid'] == aa]['replicate_count'].sum()
+
+# with open(os.path.join(args.outdir, args.dataset_name + '_aa_total_counts.tsv'), 'w') as f:
+#     f.write('amino_acid\treads_identified_as_tRNA_decoding_amino_acid\n')
+#     for aa, count in aa_count.items():
+#         f.write(aa + '\t' + str(count) + '\n')
 
 # TOTAL READ COUNTS FOR EACH ANTICODON
 print("Finding total read counts for each anticodon...")
 anticodon_count = OrderedDict()
 for anticodon in anticodons:
-    anticodon_count[anticodon] = t[t['anticodon'] == anticodon]['replicate_count'].sum()
+    anticodon_count[anticodon] = fulldf[fulldf['anticodon'] == anticodon]['replicate_count'].sum()
 
 with open(os.path.join(args.outdir, args.dataset_name + '_codon_total_counts.tsv'), 'w') as f:
     f.write('anticodon\treads_identified_as_tRNA_decoding_anticodon\n')
     for anticodon, count in anticodon_count.items():
         f.write(anticodon + '\t' + str(count) + '\n')
+del anticodon_count
+gc.collect()
+
+# # TOTAL READ COUNTS FOR EACH ANTICODON
+# print("Finding total read counts for each anticodon...")
+# anticodon_count = OrderedDict()
+# for anticodon in anticodons:
+#     anticodon_count[anticodon] = t[t['anticodon'] == anticodon]['replicate_count'].sum()
+
+# with open(os.path.join(args.outdir, args.dataset_name + '_codon_total_counts.tsv'), 'w') as f:
+#     f.write('anticodon\treads_identified_as_tRNA_decoding_anticodon\n')
+#     for anticodon, count in anticodon_count.items():
+#         f.write(anticodon + '\t' + str(count) + '\n')
 
 # TOTAL READ COUNTS FOR EACH TAXON FROM EACH TAXONOMIC RANK
 print("Finding total read counts for each taxon, from each taxonomic rank...")
-rank_read_count_dfs = OrderedDict().fromkeys(ranks)
+rank_read_count_dfs = OrderedDict()
 for rank in ranks:
-    rank_read_count_table = []
-    for taxon in t[rank].unique():
-        read_count_row = [taxon]
-        read_count_row.append(t[t[rank] == taxon]['replicate_count'].sum())
-        rank_read_count_table.append(read_count_row)
-    rank_read_count_df = pd.DataFrame(rank_read_count_table, columns=[rank, 'reads_identified_as_tRNA'])
-    rank_read_count_df.set_index(rank, inplace=True)
-    rank_read_count_df.sort_values('reads_identified_as_tRNA', ascending=False, inplace=True)
-    rank_read_count_dfs[rank] = rank_read_count_df
+    rank_read_count_dfs[rank] = fulldf.groupby(rank)[['replicate_count']].sum().rename(
+        columns={'replicate_count': 'reads_identified_as_tRNA'}).sort_values(
+            'reads_identified_as_tRNA', ascending=False)
+
+# rank_read_count_dfs = OrderedDict().fromkeys(ranks)
+# for rank in ranks:
+#     rank_read_count_table = []
+#     for taxon in df[rank].unique():
+#         read_count_row = [taxon]
+#         read_count_row.append(df[df[rank] == taxon]['replicate_count'].sum())
+#         rank_read_count_table.append(read_count_row)
+#     rank_read_count_df = pd.DataFrame(rank_read_count_table, columns=[rank, 'reads_identified_as_tRNA'])
+#     rank_read_count_df.set_index(rank, inplace=True)
+#     rank_read_count_df.sort_values('reads_identified_as_tRNA', ascending=False, inplace=True)
+#     rank_read_count_dfs[rank] = rank_read_count_df
 
 with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_counts.xlsx')) as writer:
     for rank, df in rank_read_count_dfs.items():
         df.to_excel(writer, sheet_name=rank)
         df.to_csv(os.path.join(args.outdir, args.dataset_name + '_' + rank + '_aa_counts.tsv'), sep='\t')
+del rank_read_count_dfs
+gc.collect()
+
+# # TOTAL READ COUNTS FOR EACH TAXON FROM EACH TAXONOMIC RANK
+# print("Finding total read counts for each taxon, from each taxonomic rank...")
+# rank_read_count_dfs = OrderedDict().fromkeys(ranks)
+# for rank in ranks:
+#     rank_read_count_table = []
+#     for taxon in t[rank].unique():
+#         read_count_row = [taxon]
+#         read_count_row.append(t[t[rank] == taxon]['replicate_count'].sum())
+#         rank_read_count_table.append(read_count_row)
+#     rank_read_count_df = pd.DataFrame(rank_read_count_table, columns=[rank, 'reads_identified_as_tRNA'])
+#     rank_read_count_df.set_index(rank, inplace=True)
+#     rank_read_count_df.sort_values('reads_identified_as_tRNA', ascending=False, inplace=True)
+#     rank_read_count_dfs[rank] = rank_read_count_df
+
+# with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_counts.xlsx')) as writer:
+#     for rank, df in rank_read_count_dfs.items():
+#         df.to_excel(writer, sheet_name=rank)
+#         df.to_csv(os.path.join(args.outdir, args.dataset_name + '_' + rank + '_aa_counts.tsv'), sep='\t')
+
 
 # READ COUNTS FOR EACH AMINO ACID FOR EACH TAXON FROM EACH TAXONOMIC RANK
 print("Finding read counts for each amino acid, for each taxon, from each taxonomic rank...")
-aa_df_dict = {}
-for aa in anvio.constants.amino_acids:
-    aa_df_dict[aa] = t[t['amino_acid'] == aa]
-rank_aa_count_dfs = OrderedDict().fromkeys(ranks)
-
+rank_aa_count_dfs = OrderedDict()
 for rank in ranks:
-    rank_aa_count_table = []
-    for taxon in t[rank].unique():
-        aa_count_row = [taxon]
-        for aa in anvio.constants.amino_acids:
-            aa_df = aa_df_dict[aa]
-            aa_count_row.append(aa_df[aa_df[rank] == taxon]['replicate_count'].sum())
-        rank_aa_count_table.append(aa_count_row)
-    rank_aa_count_df = pd.DataFrame(rank_aa_count_table, columns=[rank] + anvio.constants.amino_acids)
-    rank_aa_count_df.set_index(rank, inplace=True)
-    rank_aa_count_df['total'] = rank_aa_count_df.sum(1)
-    rank_aa_count_df.sort_values('total', ascending=False, inplace=True)
-    rank_aa_count_df.drop('total', axis=1, inplace=True)
+    rank_aa_count_df = fulldf.groupby([rank, 'amino_acid'])[['replicate_count']].sum().rename(
+        columns={'replicate_count': 'reads_identified_as_tRNA'}).sort_values(
+            'reads_identified_as_tRNA', ascending=False).unstack(level='amino_acid')
+    rank_aa_count_df.columns = rank_aa_count_df.columns.droplevel(0) # top level with value of 'replicate_count'
+    del rank_aa_count_df.index.name # The name is the rank
     rank_aa_count_dfs[rank] = rank_aa_count_df
+
+# aa_df_dict = {}
+# for aa in anvio.constants.amino_acids:
+#     aa_df_dict[aa] = df[df['amino_acid'] == aa]
+# rank_aa_count_dfs = OrderedDict().fromkeys(ranks)
+
+# for rank in ranks:
+#     rank_aa_count_table = []
+#     for taxon in df[rank].unique():
+#         aa_count_row = [taxon]
+#         for aa in anvio.constants.amino_acids:
+#             aa_df = aa_df_dict[aa]
+#             aa_count_row.append(aa_df[aa_df[rank] == taxon]['replicate_count'].sum())
+#         rank_aa_count_table.append(aa_count_row)
+#     rank_aa_count_df = pd.DataFrame(rank_aa_count_table, columns=[rank] + anvio.constants.amino_acids)
+#     rank_aa_count_df.set_index(rank, inplace=True)
+#     rank_aa_count_df['total'] = rank_aa_count_df.sum(1)
+#     rank_aa_count_df.sort_values('total', ascending=False, inplace=True)
+#     rank_aa_count_df.drop('total', axis=1, inplace=True)
+#     rank_aa_count_dfs[rank] = rank_aa_count_df
+# del aa_df_dict
 
 with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_aa_counts.xlsx')) as writer:
     for rank, df in rank_aa_count_dfs.items():
         df.to_excel(writer, sheet_name=rank)
         df.to_csv(os.path.join(args.outdir, args.dataset_name + '_' + rank + '_aa_counts.tsv'), sep='\t')
+del rank_aa_count_dfs
+gc.collect()
+
+
+# # READ COUNTS FOR EACH AMINO ACID FOR EACH TAXON FROM EACH TAXONOMIC RANK
+# print("Finding read counts for each amino acid, for each taxon, from each taxonomic rank...")
+# aa_df_dict = {}
+# for aa in anvio.constants.amino_acids:
+#     aa_df_dict[aa] = t[t['amino_acid'] == aa]
+# rank_aa_count_dfs = OrderedDict().fromkeys(ranks)
+
+# for rank in ranks:
+#     rank_aa_count_table = []
+#     for taxon in t[rank].unique():
+#         aa_count_row = [taxon]
+#         for aa in anvio.constants.amino_acids:
+#             aa_df = aa_df_dict[aa]
+#             aa_count_row.append(aa_df[aa_df[rank] == taxon]['replicate_count'].sum())
+#         rank_aa_count_table.append(aa_count_row)
+#     rank_aa_count_df = pd.DataFrame(rank_aa_count_table, columns=[rank] + anvio.constants.amino_acids)
+#     rank_aa_count_df.set_index(rank, inplace=True)
+#     rank_aa_count_df['total'] = rank_aa_count_df.sum(1)
+#     rank_aa_count_df.sort_values('total', ascending=False, inplace=True)
+#     rank_aa_count_df.drop('total', axis=1, inplace=True)
+#     rank_aa_count_dfs[rank] = rank_aa_count_df
+
+# with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_aa_counts.xlsx')) as writer:
+#     for rank, df in rank_aa_count_dfs.items():
+#         df.to_excel(writer, sheet_name=rank)
+#         df.to_csv(os.path.join(args.outdir, args.dataset_name + '_' + rank + '_aa_counts.tsv'), sep='\t')
 
 # READ COUNTS FOR EACH ANTICODON FOR EACH TAXON FROM EACH TAXONOMIC RANK
 print("Finding read counts for each anticodon, for each taxon, from each taxonomic rank...")
-anticodon_df_dict = {}
-for anticodon in anticodons:
-    anticodon_df_dict[anticodon] = t[t['anticodon'] == anticodon]
-
-rank_anticodon_count_dfs = OrderedDict().fromkeys(ranks)
+rank_anticodon_count_dfs = OrderedDict()
 for rank in ranks:
-    rank_anticodon_count_table = []
-    for taxon in t[rank].unique():
-        anticodon_count_row = [taxon]
-        for anticodon in anticodons:
-            anticodon_df = anticodon_df_dict[anticodon]
-            anticodon_count_row.append(anticodon_df[anticodon_df[rank] == taxon]['replicate_count'].sum())
-        rank_anticodon_count_table.append(anticodon_count_row)
-    rank_anticodon_count_df = pd.DataFrame(rank_anticodon_count_table, columns=[rank] + anticodons)
-    rank_anticodon_count_df.set_index(rank, inplace=True)
-    rank_anticodon_count_df['total'] = rank_anticodon_count_df.sum(1)
-    rank_anticodon_count_df.sort_values('total', ascending=False, inplace=True)
-    rank_anticodon_count_df.drop('total', axis=1, inplace=True)
+    rank_anticodon_count_df = fulldf.groupby([rank, 'anticodon'])[['replicate_count']].sum().rename(
+        columns={'replicate_count': 'reads_identified_as_tRNA'}).sort_values(
+            'reads_identified_as_tRNA', ascending=False).unstack(level='anticodon')
+    rank_anticodon_count_df.columns = rank_anticodon_count_df.columns.droplevel(0) # top level with value of 'replicate_count'
+    del rank_anticodon_count_df.index.name # The name is the rank
     rank_anticodon_count_dfs[rank] = rank_anticodon_count_df
+
+# anticodon_df_dict = {}
+# for anticodon in anticodons:
+#     anticodon_df_dict[anticodon] = df[df['anticodon'] == anticodon]
+
+# rank_anticodon_count_dfs = OrderedDict().fromkeys(ranks)
+# for rank in ranks:
+#     rank_anticodon_count_table = []
+#     for taxon in df[rank].unique():
+#         anticodon_count_row = [taxon]
+#         for anticodon in anticodons:
+#             anticodon_df = anticodon_df_dict[anticodon]
+#             anticodon_count_row.append(anticodon_df[anticodon_df[rank] == taxon]['replicate_count'].sum())
+#         rank_anticodon_count_table.append(anticodon_count_row)
+#     rank_anticodon_count_df = pd.DataFrame(rank_anticodon_count_table, columns=[rank] + anticodons)
+#     rank_anticodon_count_df.set_index(rank, inplace=True)
+#     rank_anticodon_count_df['total'] = rank_anticodon_count_df.sum(1)
+#     rank_anticodon_count_df.sort_values('total', ascending=False, inplace=True)
+#     rank_anticodon_count_df.drop('total', axis=1, inplace=True)
+#     rank_anticodon_count_dfs[rank] = rank_anticodon_count_df
+# del anticodon_df_dict
 
 with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_anticodon_counts.xlsx')) as writer:
     for rank, df in rank_anticodon_count_dfs.items():
         df.to_excel(writer, sheet_name=rank)
         df.to_csv(os.path.join(args.outdir, args.dataset_name + '_' + rank + '_anticodon_counts.tsv'), sep='\t')
+del rank_anticodon_count_dfs
+gc.collect()
+
+# # READ COUNTS FOR EACH ANTICODON FOR EACH TAXON FROM EACH TAXONOMIC RANK
+# print("Finding read counts for each anticodon, for each taxon, from each taxonomic rank...")
+# anticodon_df_dict = {}
+# for anticodon in anticodons:
+#     anticodon_df_dict[anticodon] = t[t['anticodon'] == anticodon]
+
+# rank_anticodon_count_dfs = OrderedDict().fromkeys(ranks)
+# for rank in ranks:
+#     rank_anticodon_count_table = []
+#     for taxon in t[rank].unique():
+#         anticodon_count_row = [taxon]
+#         for anticodon in anticodons:
+#             anticodon_df = anticodon_df_dict[anticodon]
+#             anticodon_count_row.append(anticodon_df[anticodon_df[rank] == taxon]['replicate_count'].sum())
+#         rank_anticodon_count_table.append(anticodon_count_row)
+#     rank_anticodon_count_df = pd.DataFrame(rank_anticodon_count_table, columns=[rank] + anticodons)
+#     rank_anticodon_count_df.set_index(rank, inplace=True)
+#     rank_anticodon_count_df['total'] = rank_anticodon_count_df.sum(1)
+#     rank_anticodon_count_df.sort_values('total', ascending=False, inplace=True)
+#     rank_anticodon_count_df.drop('total', axis=1, inplace=True)
+#     rank_anticodon_count_dfs[rank] = rank_anticodon_count_df
+
+# with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_anticodon_counts.xlsx')) as writer:
+#     for rank, df in rank_anticodon_count_dfs.items():
+#         df.to_excel(writer, sheet_name=rank)
+#         df.to_csv(os.path.join(args.outdir, args.dataset_name + '_' + rank + '_anticodon_counts.tsv'), sep='\t')
 
 print("Total time elapsed: %d s" % (time() - t0))
