@@ -693,9 +693,17 @@ D = {
             ['--kegg-data-dir'],
             {'default': None,
              'type': str,
-             'help': "The directory path for your KEGG setup, which will include things like \
-                      KOfam profiles and KEGG MODULE data. Anvi'o will try to use the default path\
-                      if you do not specify anything."}
+             'help': "The directory path for your KEGG setup, which will include things like "
+                     "KOfam profiles and KEGG MODULE data. Anvi'o will try to use the default path "
+                     "if you do not specify anything."}
+                ),
+    'kegg-archive': (
+            ['--kegg-archive'],
+            {'default': None,
+             'type': str,
+             'help': "The path to an archived KEGG directory. If you provide this parameter, anvi'o will set up "
+                     "the KEGG data directory from the archive rather than downloading and building it from "
+                     "the KEGG website."}
                 ),
     'hide-outlier-SNVs': (
             ['--hide-outlier-SNVs'],

@@ -171,6 +171,7 @@ class KeggSetup(KeggContext):
         self.args = args
         self.run = run
         self.progress = progress
+        self.kegg_archive_path = args.kegg_archive
 
         # init the base class
         KeggContext.__init__(self, self.args)
