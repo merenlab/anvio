@@ -593,12 +593,15 @@ class KeggSetup(KeggContext):
         It also downloads and processes the KEGG Module files into the MODULES.db.
         """
 
-        self.download_profiles()
-        self.decompress_files()
-        self.download_modules()
-        self.setup_ko_dict()
-        self.run_hmmpress()
-        self.setup_modules_db()
+        if self.kegg_archive_path:
+            self.setup_from_archive()
+        else:
+            self.download_profiles()
+            self.decompress_files()
+            self.download_modules()
+            self.setup_ko_dict()
+            self.run_hmmpress()
+            self.setup_modules_db()
 
 
 class KeggRunHMMs(KeggContext):
