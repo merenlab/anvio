@@ -183,11 +183,12 @@ class KeggSetup(KeggContext):
         if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
 
-        filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
-        filesnpaths.gen_output_directory(self.hmm_data_dir, delete_if_exists=args.reset)
-        filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
-        filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
-        filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
+        if not self.kegg_archive_path:
+            filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
+            filesnpaths.gen_output_directory(self.hmm_data_dir, delete_if_exists=args.reset)
+            filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
+            filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
+            filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
 
         # ftp path for HMM profiles and KO list
             # for ko list, add /ko_list.gz to end of url
