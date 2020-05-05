@@ -586,6 +586,46 @@ class KeggSetup(KeggContext):
         mod_db.create()
 
 
+    def kegg_archive_is_ok(self, unpacked_archive_path):
+        """This function checks the structure and contents of an unpacked KEGG archive and returns True if it is as expected."""
+
+        return False
+
+    def setup_from_archive(self):
+        """This function sets up the KEGG data directory from an archive of a previously-setup KEGG data directory.
+
+        To do so, it unpacks the archive and checks its structure and that all required components are there.
+        """
+        self.run.info("KEGG archive", self.kegg_archive_path)
+        if not self.kegg_archive_path.endswith("tar.gz"):
+            raise ConfigError("The provided archive file %s does not appear to be an archive at all. Perhaps you passed "
+                              "the wrong file to anvi'o?" % (self.kegg_archive_path))
+        unpacked_archive_name = "KEGG_archive_unpacked"
+        utils.tar_extract_file(self.kegg_archive_path, output_file_path=unpacked_archive_name, keep_original=True)
+
+        archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
+        if archive_is_ok:
+            if os.path.exists(self.kegg_data_dir) and self.kegg_data_dir != self.default_kegg_dir:
+                raise ConfigError("You are attempting to set up KEGG from a KEGG data archive in a non-default data directory (%s) which already exists. "
+                                  "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to get rid of "
+                                  "directories that have been specified with --kegg-data-dir. If you really want to get rid of this "
+                                  "directory and replace it with the KEGG archive data, then please remove the directory yourself using "
+                                  "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
+                                  "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
+
+            shutil.rmtree(self.kegg_data_dir)
+            shutil.move(unpacked_archive_name, self.kegg_data_dir)
+    
+        else:
+            if not anvio.DEBUG:
+                shutil.rmtree(unpacked_archive_name)
+            else:
+                self.run.warning("The unpacked archive file %s was kept for debugging purposes. You may want to "
+                                 "clean it up after you are done looking through it." % (os.path.abspath(unpacked_archive_name)))
+            raise ConfigError("The provided archive file %s does not appear to be a KEGG data directory, so anvi'o is unable "
+                              "to use it." % (self.kegg_archive_path))
+
+
     def setup_profiles(self):
         """This is a driver function which executes the KEGG setup process.
 
