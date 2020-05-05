@@ -47,7 +47,8 @@ class KeggContext(object):
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         # default data directory will be called KEGG and will store the KEGG Module data as well
-        self.kegg_data_dir = A('kegg_data_dir') or os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
+        self.default_kegg_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
+        self.kegg_data_dir = A('kegg_data_dir') or self.default_kegg_dir
         self.orphan_data_dir = os.path.join(self.kegg_data_dir, "orphan_data")
         self.module_data_dir = os.path.join(self.kegg_data_dir, "modules")
         self.hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
