@@ -516,7 +516,7 @@ class KeggSetup(KeggContext):
                                       "while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset "
                                       "flag. If that still doesn't work, please contact the developers to see if the issue is fixable. "
                                       "If it isn't, we may be able to provide you with a legacy KEGG data archive that you can use to "
-                                      "setup KEGG with the --kegg-archive flag." " % (hmm_path))
+                                      "setup KEGG with the --kegg-archive flag." % (hmm_path))
 
 
     def move_orphan_files(self):
