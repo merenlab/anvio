@@ -36,6 +36,9 @@ function checkNews() {
                 		$('#toggle-panel-right-3-inner').html('&#9658;');
                 	}
 		});
+            } else {
+		// remove upon starting interface in case 'last-seen-hash' cookie is not cleared
+	    	$('#news-mark-read').remove();
             }
         }
     });
@@ -45,6 +48,7 @@ function newsMarkRead() {
     $('.blue-dot').remove();
     $('#toggle-panel-right-3').css('color', '#000000');
     $('#toggle-panel-right-3').removeClass('fading-button');
+    $('#news-mark-read').remove();
     $('#toggle-panel-right-3').off('mouseover');
     createCookie('last_seen_hash', md5($('.news-item > h1')[0].textContent), -1);
 }
