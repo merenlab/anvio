@@ -629,7 +629,8 @@ class KeggSetup(KeggContext):
                 self.run.warning("The unpacked archive file %s was kept for debugging purposes. You may want to "
                                  "clean it up after you are done looking through it." % (os.path.abspath(unpacked_archive_name)))
             raise ConfigError("The provided archive file %s does not appear to be a KEGG data directory, so anvi'o is unable "
-                              "to use it." % (self.kegg_archive_path))
+                              "to use it. The unpacked archive has been deleted, but you can re-run the script with the --debug "
+                              "flag to keep it if you want to see its contents." % (self.kegg_archive_path))
 
 
     def setup_profiles(self):
