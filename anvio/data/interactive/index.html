@@ -797,7 +797,12 @@
     </div>
 
     <div id="news-panel">
-        <h1 style="font-size: 22px; display: inline-block;">What's New</h1><a href="#" style="font-weight: bold; font-size: 14px; color: gray; margin-top: 36px; float: right;" onclick="newsMarkRead(); ">Mark everything as read&nbsp;</a>
+        <h1 style="font-size: 22px; display: inline-block;">What's New</h1>
+	<div id="news-mark-read">
+	    <p style="border: 1px dashed #b8b8b8; background: #f0f8ff2e; border-radius: 4px; padding: 6px;">
+                <a href="#" style="font-weight: bold; color: red;" onclick="newsMarkRead();">Mark everything as read</a> to make the annoying news button stop blinking red.
+            </p>
+        </div>
         <div id="news-panel-inner"></div>
     </div>
     <!-- DIALOGS SECTION -->
