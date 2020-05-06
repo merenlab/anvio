@@ -587,15 +587,68 @@ class KeggSetup(KeggContext):
 
 
     def kegg_archive_is_ok(self, unpacked_archive_path):
-        """This function checks the structure and contents of an unpacked KEGG archive and returns True if it is as expected."""
+        """This function checks the structure and contents of an unpacked KEGG archive and returns True if it is as expected.
 
-        return False
+        Please note that we check for existence of the files that are necessary to run KEGG scripts, but we don't check the file
+        formats. This means that people could technically trick this function into returning True by putting a bunch of crappy files
+        with the right names/paths into the archive file. But what would be the point of that?
+
+        We also don't care about the contents of certain folders (ie modules) because they are not being directly used
+        when running KEGG scripts. In the case of modules, all the information should already be in the MODULES.db so we don't
+        waste our time checking that all the module files are there. We only check that the directory is there. If later changes
+        to the implementation require the direct use of the files in these folders, then this function should be updated
+        to check for those.
+        """
+
+        is_ok = True
+
+        # check top-level files and folders
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        expected_directories_and_files = [self.orphan_data_dir,
+                                          self.module_data_dir,
+                                          self.hmm_data_dir,
+                                          #self.pathway_data_dir,   #TODO: uncomment me when we start incorporating pathways
+                                          self.ko_list_file_path,
+                                          self.kegg_module_file,
+                                          #self.kegg_pathway_file,  #TODO: uncomment me when we start incorporating pathways
+                                          self.kegg_modules_db_path]
+        for f in expected_directories_and_files:
+            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
+            if not os.path.exists(path_to_f_in_archive):
+                is_ok = False
+                if anvio.DEBUG:
+                    self.run.warning("The KEGG archive does not contain the folllowing expected file or directory: %s"
+                                     % (path_to_f_in_archive))
+
+        # check hmm files
+        path_to_hmms_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(self.hmm_data_dir))
+        kofam_hmm_basename = os.path.basename(self.kofam_hmm_file_path)
+        expected_hmm_files = [kofam_hmm_basename]
+        for h in expected_hmm_files:
+            path_to_h_in_archive = os.path.join(path_to_hmms_in_archive, h)
+            if not os.path.exists(path_to_h_in_archive):
+                is_ok = False
+                if anvio.DEBUG:
+                    self.run.warning("The KEGG archive does not contain the folllowing expected hmm file: %s"
+                                     % (path_to_h_in_archive))
+            expected_extensions = ['.h3f', '.h3i', '.h3m', '.h3p']
+            for ext in expected_extensions:
+                path_to_expected_hmmpress_file = path_to_h_in_archive + ext
+                if not os.path.exists(path_to_expected_hmmpress_file):
+                    is_ok = False
+                    if anvio.DEBUG:
+                        self.run.warning("The KEGG archive does not contain the folllowing expected `hmmpress` output: %s"
+                                         % (path_to_expected_hmmpress_file))
+
+        return is_ok
+
 
     def setup_from_archive(self):
         """This function sets up the KEGG data directory from an archive of a previously-setup KEGG data directory.
 
         To do so, it unpacks the archive and checks its structure and that all required components are there.
         """
+
         self.run.info("KEGG archive", self.kegg_archive_path)
         self.progress.new('Unzipping KEGG archive file...')
         if not self.kegg_archive_path.endswith("tar.gz"):
