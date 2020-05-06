@@ -305,7 +305,7 @@ html, body, #wrapper {
 }
 
 .fading-button {
-  animation: fade 5s infinite;
+  animation: fade 4s infinite;
 }
 
 .toggle-panel-right-pos {
