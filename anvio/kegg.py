@@ -618,8 +618,10 @@ class KeggSetup(KeggContext):
                                   "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
 
             shutil.rmtree(self.kegg_data_dir)
-            shutil.move(unpacked_archive_name, self.kegg_data_dir)
-    
+            path_to_kegg_in_archive = os.path.join(unpacked_archive_name, "KEGG")
+            shutil.move(os.path.join(path_to_kegg_in_archive, self.kegg_data_dir))
+            shutil.rmtree(unpacked_archive_name)
+
         else:
             if not anvio.DEBUG:
                 shutil.rmtree(unpacked_archive_name)
