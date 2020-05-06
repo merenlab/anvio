@@ -1,0 +1,9 @@
+@keyframes glowing {
+  0% { box-shadow: 0 0 3px #B20000; }
+  50% { box-shadow: 0 0 20px #FF0000; }
+  100% { box-shadow: 0 0 3px #B20000; }
+}
+
+.glowing-button {
+  animation: glowing 1500ms infinite;
+}
