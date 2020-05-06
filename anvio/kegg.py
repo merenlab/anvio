@@ -321,7 +321,9 @@ class KeggSetup(KeggContext):
                                       "made the file unparseable. It is likely that an update to KEGG has broken "
                                       "things such that anvi'o doesn't know what is going on anymore. Sad, we know. :( "
                                       "Please contact the developers to see if this is a fixable issue, and in the "
-                                      "meantime use an older version of the KEGG data directory (if you have one)." % (self.kegg_module_file, first_char))
+                                      "meantime use an older version of the KEGG data directory (if you have one). "
+                                      "If we cannot fix it, we may be able to provide you with a legacy KEGG "
+                                      "data archive that you can use to setup KEGG with the --kegg-archive flag." % (self.kegg_module_file, first_char))
         self.progress.end()
 
 
@@ -392,7 +394,9 @@ class KeggSetup(KeggContext):
                                       "made the file unparseable. It is likely that an update to KEGG has broken "
                                       "things such that anvi'o doesn't know what is going on anymore. Sad, we know. :( "
                                       "Please contact the developers to see if this is a fixable issue, and in the "
-                                      "meantime use an older version of the KEGG data directory (if you have one)." % (self.kegg_pathway_file, first_char))
+                                      "meantime use an older version of the KEGG data directory (if you have one). "
+                                      "If we cannot fix it, we may be able to provide you with a legacy KEGG "
+                                      "data archive that you can use to setup KEGG with the --kegg-archive flag." % (self.kegg_pathway_file, first_char))
         self.progress.end()
 
 
@@ -406,7 +410,14 @@ class KeggSetup(KeggContext):
         self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
 
         # download the kegg module file, which lists all modules
-        utils.download_file(self.kegg_module_download_path, self.kegg_module_file, progress=self.progress, run=self.run)
+        try:
+            utils.download_file(self.kegg_module_download_path, self.kegg_module_file, progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download the KEGG Module htext file from the KEGG website. Something "
+                              "likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
 
         # get module dict
         self.process_module_file()
@@ -424,7 +435,10 @@ class KeggSetup(KeggContext):
             last_line = f.readline().strip('\n')
             if not last_line == '///':
                 raise ConfigError("The KEGG module file %s was not downloaded properly. We were expecting the last line in the file "
-                                  "to be '///', but instead it was %s." % (file_path, last_line))
+                                  "to be '///', but instead it was %s. Formatting of these files may have changed on the KEGG website. "
+                                  "Please contact the developers to see if this is a fixable issue. If it isn't, we may be able to "
+                                  "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
+                                  % (file_path, last_line))
 
 
     def download_pathways(self):
@@ -438,7 +452,14 @@ class KeggSetup(KeggContext):
         self.run.info("KEGG Pathway Database URL", self.kegg_rest_api_get)
 
         # download the kegg pathway file, which lists all modules
-        utils.download_file(self.kegg_pathway_download_path, self.kegg_pathway_file, progress=self.progress, run=self.run)
+        try:
+            utils.download_file(self.kegg_pathway_download_path, self.kegg_pathway_file, progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download the KEGG Pathway htext file from the KEGG website. Something "
+                              "likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
 
         # get pathway dict
         self.process_pathway_file()
@@ -456,7 +477,10 @@ class KeggSetup(KeggContext):
             last_line = f.readline().strip('\n')
             if not last_line == '///':
                 raise ConfigError("The KEGG pathway file %s was not downloaded properly. We were expecting the last line in the file "
-                                  "to be '///', but instead it was %s." % (file_path, last_line))
+                                  "to be '///', but instead it was %s. Formatting of these files may have changed on the KEGG website. "
+                                  "Please contact the developers to see if this is a fixable issue. If it isn't, we may be able to "
+                                  "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
+                                  % (file_path, last_line))
 
 
     def decompress_files(self):
@@ -490,7 +514,9 @@ class KeggSetup(KeggContext):
                 if not os.path.exists(hmm_path):
                     raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong "
                                       "while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset "
-                                      "flag." % (hmm_path))
+                                      "flag. If that still doesn't work, please contact the developers to see if the issue is fixable. "
+                                      "If it isn't, we may be able to provide you with a legacy KEGG data archive that you can use to "
+                                      "setup KEGG with the --kegg-archive flag." " % (hmm_path))
 
 
     def move_orphan_files(self):
@@ -589,8 +615,16 @@ class KeggSetup(KeggContext):
     def setup_modules_db(self):
         """This function creates the Modules DB from the KEGG Module files."""
 
-        mod_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, module_dictionary=self.module_dict, run=run, progress=progress)
-        mod_db.create()
+        try:
+            mod_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, module_dictionary=self.module_dict, run=run, progress=progress)
+            mod_db.create()
+        except Exception as e:
+            print(e)
+            raise ConfigError("While attempting to build the MODULES.db, anvi'o encountered an error, which should be printed above. "
+                              "If you look at that error and it seems like something you cannot handle, please contact the developers "
+                              "for assistance, as it may be possible that a recent update to KEGG has broken our setup process. If that "
+                              "is the case, we may be able to provide you with a legacy KEGG data archive that you can use to set up "
+                              "KEGG with the --kegg-archive flag, while we try to fix things. :) ")
 
 
     def kegg_archive_is_ok(self, unpacked_archive_path):
