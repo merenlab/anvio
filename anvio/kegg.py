@@ -597,13 +597,17 @@ class KeggSetup(KeggContext):
         To do so, it unpacks the archive and checks its structure and that all required components are there.
         """
         self.run.info("KEGG archive", self.kegg_archive_path)
+        self.progress.new('Unzipping KEGG archive file...')
         if not self.kegg_archive_path.endswith("tar.gz"):
+            self.progress.reset()
             raise ConfigError("The provided archive file %s does not appear to be an archive at all. Perhaps you passed "
                               "the wrong file to anvi'o?" % (self.kegg_archive_path))
         unpacked_archive_name = "KEGG_archive_unpacked"
         utils.tar_extract_file(self.kegg_archive_path, output_file_path=unpacked_archive_name, keep_original=True)
 
+        self.progress.update('Checking KEGG archive structure and contents...')
         archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
+        self.progress.end()
         if archive_is_ok:
             if os.path.exists(self.kegg_data_dir) and self.kegg_data_dir != self.default_kegg_dir:
                 raise ConfigError("You are attempting to set up KEGG from a KEGG data archive in a non-default data directory (%s) which already exists. "
