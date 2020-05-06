@@ -669,21 +669,24 @@ class KeggSetup(KeggContext):
                                   "directory and replace it with the KEGG archive data, then please remove the directory yourself using "
                                   "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
                                   "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
-
-            shutil.rmtree(self.kegg_data_dir)
+            elif os.path.exists(self.kegg_data_dir):
+                shutil.rmtree(self.kegg_data_dir)
             path_to_kegg_in_archive = os.path.join(unpacked_archive_name, "KEGG")
-            shutil.move(os.path.join(path_to_kegg_in_archive, self.kegg_data_dir))
+            shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
             shutil.rmtree(unpacked_archive_name)
 
         else:
+            debug_output = "We kept the unpacked archive for you to take a look at it. It is at %s and you may want " \
+                           "to delete it after you are done checking its contents." % os.path.abspath(unpacked_archive_name)
             if not anvio.DEBUG:
                 shutil.rmtree(unpacked_archive_name)
+                debug_output = "The unpacked archive has been deleted, but you can re-run the script with the --debug " \
+                               "flag to keep it if you want to see its contents."
             else:
                 self.run.warning("The unpacked archive file %s was kept for debugging purposes. You may want to "
                                  "clean it up after you are done looking through it." % (os.path.abspath(unpacked_archive_name)))
             raise ConfigError("The provided archive file %s does not appear to be a KEGG data directory, so anvi'o is unable "
-                              "to use it. The unpacked archive has been deleted, but you can re-run the script with the --debug "
-                              "flag to keep it if you want to see its contents." % (self.kegg_archive_path))
+                              "to use it. %s" % (self.kegg_archive_path, debug_output))
 
 
     def setup_profiles(self):
