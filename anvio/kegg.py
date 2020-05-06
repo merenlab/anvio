@@ -241,9 +241,16 @@ class KeggSetup(KeggContext):
 
         self.run.info("Kofam Profile Database URL", self.database_url)
 
-        for file_name in self.files.keys():
-            utils.download_file(self.database_url + '/' + file_name,
-                os.path.join(self.kegg_data_dir, file_name), progress=self.progress, run=self.run)
+        try:
+            for file_name in self.files.keys():
+                utils.download_file(self.database_url + '/' + file_name,
+                    os.path.join(self.kegg_data_dir, file_name), progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download KEGG KOfam profiles from the KEGG website. Something "
+                              "likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
 
 
     def process_module_file(self):
