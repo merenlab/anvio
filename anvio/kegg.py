@@ -972,6 +972,7 @@ class KeggMetabolismEstimator(KeggContext):
         self.json_output_file_path = A('get_raw_data_as_json')
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
         self.estimate_from_json = A('estimate_from_json') or None
+        self.ignore_modules_db_hash = True if A('ignore_modules_db_hash') else False
 
         if not self.estimate_from_json and not self.contigs_db_path:
             raise ConfigError("NO INPUT PROVIDED. You must provide (at least) a contigs database to this program, unless you are using the --estimate-from-json "
@@ -1041,16 +1042,23 @@ class KeggMetabolismEstimator(KeggContext):
         self.contigs_db_project_name = contigs_db.meta['project_name']
 
         # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
-        contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
-        mod_db_hash = self.kegg_modules_db.db.get_meta_value('hash')
-        if contigs_db_mod_hash != mod_db_hash:
-            raise ConfigError("The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now. "
-                                "Perhaps you updated your KEGG setup after running `anvi-run-kegg-kofams` on this contigs DB? Or maybe you have multiple KEGG data "
-                                "directories set up on your computer, and the one you are using now is different from the one that you used for `anvi-run-kegg-kofams`? "
-                                "Well. The solution to the first problem is to re-run `anvi-run-kegg-kofams` on the contigs DB (%s) using the updated MODULES.db "
-                                "(located in the KEGG data directory %s). The solution to the second problem is to specify the appropriate KEGG data directory using "
-                                "the --kegg-data-dir flag. If neither of those things make this work, then you should contact the developers to see if they can help you "
-                                "figure this out." % (self.contigs_db_path, self.kegg_data_dir))
+        if not self.ignore_modules_db_hash:
+            if 'modules_db_hash' not in contigs_db.meta:
+                raise ConfigError("Based on the contigs DB metadata, the contigs DB that you are working with has not been annotated with hits "
+                                  "to the KOfam database using `anvi-run-kegg-kofams`, so may be no KOs to estimate metabolism from. Please run "
+                                  "`anvi-run-kegg-kofams` on this contigs DB before you attempt to run `anvi-estimate-kegg-metabolism` again. "
+                                  "Alternatively, if you know that you have imported KOfam functional annotations into this contigs DB, you "
+                                  "can bypass this metadata sanity check by re-running this script with the --ignore-modules-db-hash flag.")
+            contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
+            mod_db_hash = self.kegg_modules_db.db.get_meta_value('hash')
+            if contigs_db_mod_hash != mod_db_hash:
+                raise ConfigError("The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now. "
+                                    "Perhaps you updated your KEGG setup after running `anvi-run-kegg-kofams` on this contigs DB? Or maybe you have multiple KEGG data "
+                                    "directories set up on your computer, and the one you are using now is different from the one that you used for `anvi-run-kegg-kofams`? "
+                                    "Well. The solution to the first problem is to re-run `anvi-run-kegg-kofams` on the contigs DB (%s) using the updated MODULES.db "
+                                    "(located in the KEGG data directory %s). The solution to the second problem is to specify the appropriate KEGG data directory using "
+                                    "the --kegg-data-dir flag. If neither of those things make this work, then you should contact the developers to see if they can help you "
+                                    "figure this out." % (self.contigs_db_path, self.kegg_data_dir))
 
         genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "gene_callers_id, split")
         genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig")
@@ -1941,7 +1949,7 @@ class KeggModulesDatabase(KeggContext):
         KeggContext.__init__(self, args)
 
         # modules table info
-        # I wonder if these should be moved to the tables __init__.py at some point?
+        # should these be moved to the tables __init__.py at some point?
         self.module_table_name = "kegg_modules"
         self.module_table_structure = ['module', 'data_name', 'data_value', 'data_definition', 'line']
         self.module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
