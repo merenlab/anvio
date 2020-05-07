@@ -648,6 +648,8 @@ class GenbankToAnvio:
 
         # dumping gene if "location" section contains any of these: "join" means the
         # gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
+        # FIXME join does not necessarily mean the gene call spans multiple columns. See the first
+        # gene here to see an instance where this is not true: https://www.ncbi.nlm.nih.gov/nuccore/MN908947
         self.location_terms_to_exclude = ["join", "<", ">"]
 
 
