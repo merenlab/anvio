@@ -1021,14 +1021,6 @@ class KeggMetabolismEstimator(KeggContext):
                               "since you also cannot run `anvi-run-kegg-kofams` without first having run KEGG setup. But fine. Hopefully "
                               "you now know what you need to do to make this message go away." % ("MODULES.db", self.kegg_data_dir))
         self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
- 
-        if self.ignore_modules_db_hash and not self.quiet:
-            self.run.warning("Please be cautious when using the --ignore-modules-db-hash flag, as this means that anvi'o is not enforcing the "
-                             "function annotations in your contigs DB to come from the same MODULES.db that will be used for estimating "
-                             "metabolism. That means there may be annotations that do not match up with the MODULES.db. In that case "
-                             "the estimation results may be affected, or things might break entirely. So please consider any estimation outputs "
-                             "with a grain of salt.")
-
 
     def init_hits_and_splits(self):
         """This function loads KOfam hits, gene calls, splits, and contigs from the contigs DB.
