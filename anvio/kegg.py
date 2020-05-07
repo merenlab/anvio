@@ -1041,6 +1041,10 @@ class KeggMetabolismEstimator(KeggContext):
         self.contigs_db_project_name = contigs_db.meta['project_name']
 
         # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
+        if 'modules_db_hash' not in contigs_db.meta:
+            raise ConfigError("Based on the contigs DB metadata, the contigs DB that you are working with has not been annotated with hits to the "
+                              "KOfam database, so there are no KOs to estimate metabolism from. Please run `anvi-run-kegg-kofams` on this contigs DB "
+                              "before you attempt to run `anvi-estimate-kegg-metabolism` again.")
         contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
         mod_db_hash = self.kegg_modules_db.db.get_meta_value('hash')
         if contigs_db_mod_hash != mod_db_hash:
