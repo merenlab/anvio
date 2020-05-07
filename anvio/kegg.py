@@ -1138,6 +1138,12 @@ class KeggMetabolismEstimator(KeggContext):
         elif self.bin_ids_file:
             self.run.info('Bin IDs file', self.bin_ids_file)
 
+        if not self.quiet and not len(kofam_hits):
+            self.run.warning("Hmmm. No KOfam hits were found in this contigs DB, so all metabolism estimate outputs will be empty. This is fine, and "
+                             "could even be biologically correct. But we thought we'd mention it just in case you thought it was weird. "
+                             "Other, technical reasons that this could have happened include: 1) you didn't annotate with `anvi-run-kegg-kofams` "
+                             "and 2) you imported KEGG functional annotations but the 'source' was not 'KOfam'.")
+
         return kofam_gene_split_contig
 
 
