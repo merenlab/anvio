@@ -2328,16 +2328,6 @@ D = {
                     "(such as a file produced using the --get-raw-data-as-json flag), you can provide that file to this flag "
                     "and KEGG metabolism estimates will be computed from the information within instead of from a contigs database."}
                 ),
-    'ignore-modules-db-hash': (
-            ['--ignore-modules-db-hash'],
-            {'default': False,
-            'action': 'store_true',
-            'help': "This flag allows you to bypass the sanity check that your contigs DB has been annotated (via `anvi-run-kegg-kofams`) "
-                    "with KOs from the same MODULES.db as the one you are using for estimating metabolism. This is useful, for example, if "
-                    "you have imported KOfam annotations rather than running `anvi-run-kegg-kofams`. But be VERY cautious when using this "
-                    "flag, because then there will be no guarantee that the KOfam annotations match up with the contents of your MODULES.db "
-                    "and metabolism estimations could be off."}
-                ),
 }
 
 # two functions that works with the dictionary above.
