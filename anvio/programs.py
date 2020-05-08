@@ -323,9 +323,6 @@ class Program:
                 'object_name': '__description__',
                 'null_object': ''
             },
-            'status': {
-                'object_name': '__status__',
-                'null_object': ''
             },
         }
 
