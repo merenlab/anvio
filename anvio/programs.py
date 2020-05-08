@@ -323,6 +323,10 @@ class Program:
                 'object_name': '__description__',
                 'null_object': ''
             },
+            'usage': {
+                'object_name': '__usage__',
+                'null_object': '',
+                'read_as_is': True,
             },
         }
 
@@ -342,7 +346,10 @@ class Program:
                 info = [Item(item_name) for item_name in info]
 
             if type(info) == str:
-                info = info.replace('\n', ' ')
+                if 'read_as_is' in self.meta_info[info_type] and self.meta_info[info_type]['read_as_is']:
+                    info = info
+                else:
+                    info = info.replace('\n', ' ')
 
             self.meta_info[info_type]['value'] = info
 
