@@ -41,7 +41,7 @@ if __name__ == '__main__':
     # setup the command line user interface
     parser = argparse.ArgumentParser(description=__description__)
 
-    groupA = parser.add_argument_group('DEFAULT INPUTS', "The interavtive interface can be started with and without\
+    groupA = parser.add_argument_group('DEFAULT INPUTS', "The interactive interface can be started with and without\
                                                           anvi'o databases. The default use assumes you have your\
                                                           profile and contigs database, however, it is also possible\
                                                           to start the interface using ad hoc input files. See 'MANUAL\
