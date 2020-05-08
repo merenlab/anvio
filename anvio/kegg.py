@@ -1492,11 +1492,15 @@ class KeggMetabolismEstimator(KeggContext):
         total_extra_hits = sum(extra_hits)
         num_kos = len(num_ko_hits_in_path_dict.keys())
         naive_redundancy = total_extra_hits/num_kos
+        if all(e == 0 for e in extra_hits):
+            return 0.0
         entropy = stats.entropy(extra_hits)
         max_entropy_distribution = [total_extra_hits // num_kos] * num_kos
         for i in range(total_extra_hits % num_kos):
             max_entropy_distribution[i] += 1
         max_entropy = stats.entropy(max_entropy_distribution)
+        # avoid divide by 0
+        max_entropy += 1e-20
 
         return naive_redundancy * entropy/max_entropy
 
