@@ -6,7 +6,6 @@ import anvio.constants as constants
 
 from anvio.constants import WC_plus_wobble_base_pairs as WC_PLUS_WOBBLE_BASE_PAIRS
 from anvio.constants import codon_to_AA_RC as CODON_TO_AA_RC
-from anvio.constants import db_formatted_tRNA_feature_names as DB_FORMATTED_TRNA_FEATURE_NAMES
 from anvio.errors import ConfigError
 
 import itertools
@@ -1133,8 +1132,12 @@ class Profile:
             if feature_class == tRNAHisPositionZero:
                 # Check for tRNA-His based on the anticodon sequence.
                 # tRNA-His uniquely has an extra nucleotide (G) at the 5' end.
-                if CODON_TO_AA_RC[
-                    features[-self.anticodon_loop_index - 1].anticodon.string] != 'His':
+                anticodon_string = features[-self.anticodon_loop_index - 1].anticodon.string
+                try:
+                    aa_string = CODON_TO_AA_RC[anticodon_string]
+                except KeyError:
+                    aa_string = 'NA'
+                if aa_string != 'His':
                     if len(unprofiled_read) > self.long_read_unprofiled_thresh:
                         is_long_read = True # read is longer than full-length tRNA
                     else:
