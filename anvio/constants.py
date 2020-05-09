@@ -142,17 +142,19 @@ unambiguous_nucleotides = set(list('ATCG'))
 nucleotides = sorted(list(unambiguous_nucleotides)) + ['N']
 
 WC_base_pairs = {
-    'A': ('T',),
-    'T': ('A',),
-    'C': ('G',),
-    'G': ('C',)
+    'A': ('T', ),
+    'T': ('A', ),
+    'C': ('G', ),
+    'G': ('C', ),
+    'N': ('', )
 }
 # In tRNA, wobble base pairing, including G/U, is common
 WC_plus_wobble_base_pairs = {
-    'A': ('T',),
+    'A': ('T', ),
     'T': ('A', 'G'),
-    'C': ('G',),
-    'G': ('C', 'T')
+    'C': ('G', ),
+    'G': ('C', 'T'),
+    'N': ('N', )
 }
 
 AA_atomic_composition = Counter({'Ala': {"C":3,  "H":7,  "N":1, "O":2, "S":0},
