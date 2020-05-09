@@ -74,7 +74,10 @@ class NGram(object):
         self.genome_names_to_focus = A('genome_names')
 
         if not self.annotation_source:
-            self.annotation_source = None
+            self.annotation_sources = None
+
+        if self.annotation_source:
+            self.annotation_sources = [self.annotation_source]
 
         self.pan_db_path = A('pan_db')
 
@@ -228,7 +231,7 @@ class NGram(object):
 
             # Create dicts for annotate Ngrams
             if self.annotation_source:
-                self.gene_caller_id_to_function_dict = self.get_genes_and_functions_dict(contigs_db_name, gene_function_call_df)
+                self.gene_caller_id_to_accession_dicto_function_dict = self.get_genes_and_functions_dict(contigs_db_name, gene_function_call_df)
 
             if self.pan_db:
                 self.gene_caller_id_to_gene_cluster_dict = self.get_gene_cluster_dict(contigs_db_name, gene_cluster_frequencies_dataframe)
@@ -271,7 +274,7 @@ class NGram(object):
         gene_callers_id_windows = self.get_windows(N, gene_caller_ids_list)
         for window in gene_callers_id_windows:
             annotated_window = self.annotate_window(window)
-            ngram = self.order_window(annotated_window['gene_clusters'])
+            ngram, flipped = self.order_window(annotated_window['gene_clusters'])
             print(ngram)
 
             ngram_counts_dict[ngram] += 1
@@ -299,14 +302,25 @@ class NGram(object):
 
         # Annotate window based on user input
         gene_annotation_dict = {}
-        for annotation_source in self.annotation_sources:
+        if len(self.annotation_sources) > 1:
+            print('asdf')
+            for annotation_source in self.annotation_sources:
+                if annotation_source == "gene_clusters":
+                    ngram_annotation = tuple([self.gene_caller_id_to_gene_cluster_dict[g] for g in window])
 
-            if annotation_source == "gene_clusters":
-                ngram_annotation = tuple([self.gene_caller_id_to_gene_cluster_dict[g] for g in window])
+                if annotation_source == "COG_FUNCTION":
+                    ngram_annotation = tuple([self.gene_caller_id_to_function_dict[g] for g in window])
+                gene_annotation_dict[annotation_source] = ngram_annotation 
 
-            if annotation_source == "COG_FUNCTION":
-                ngram_annotation = tuple([self.gene_caller_id_to_function_dict[g] for g in window])
-            gene_annotation_dict[annotation_source] = ngram_annotation 
+        else:
+            for annotation_source in self.annotation_sources:
+
+                if annotation_source == "gene_clusters":
+                    ngram_annotation = tuple([self.gene_caller_id_to_gene_cluster_dict[g] for g in window])
+
+                if annotation_source == "COG_FUNCTION":
+                    ngram_annotation = tuple([self.gene_caller_id_to_function_dict[g] for g in window])
+                gene_annotation_dict[annotation_source] = ngram_annotation     
         # # for annotation in self.annotation_source:
         #     # print(annotation)
         # if self.pan_db and not self.annotation_source:
@@ -339,10 +353,12 @@ class NGram(object):
         flipped_order = annotated_window[::-1]
         if original_order[0] < flipped_order[0]:
             ngram = original_order
+            flipped = False
         else:
             ngram = flipped_order
+            flipped = True
 
-        return ngram
+        return ngram, flipped
 
 
     def convert_to_df(self):
@@ -358,15 +374,16 @@ class NGram(object):
                 df = df.append({'ngram': ngram,
                                 'count': ngram_attribute[1],
                                 'annotation': annotation,
-                                'contig_db_name': ngram_attribute[2],
+                                'contig_db_name': ngram_attribute[3],
                                 'N':ngram_attribute[3],
                                 'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
-            elif not self.pan_db and self.annotation_source:
-                df = pd.DataFrame(columns=['ngram', 'count', 'contig_db_name', 'N', 'number_of_loci'])
+            elif self.pan_db and not self.annotation_source:
+                ngram = "::".join(map(str, list(ngram_attribute[0])))
+                df = pd.DataFrame(columns=['ngram','count', 'contig_db_name', 'N', 'number_of_loci'])
                 df = df.append({'ngram': ngram,
                                 'count': ngram_attribute[1],
-                                'contig_db_name': ngram_attribute[2],
-                                'N':ngram_attribute[3],
+                                'contig_db_name': ngram_attribute[3],
+                                'N':ngram_attribute[4],
                                 'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
             ngram_count_df_list.append(df)
 
