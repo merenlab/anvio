@@ -157,12 +157,12 @@ rule compress_merged_fasta:
     resources: nodes = M.T('compress_merged_fasta')
     run:
         shell("gzip %s >> %s 2>&1" % (input.qc_output_merged, log[0]))
-        shell("gzip %s >> %s 2>&1" % (os.path.join(dirs_dict['QC_DIR'], wildcards.sample + "_" + wildcards.split + "_FAILED"), log[0]))
-        shell("gzip %s >> %s 2>&1" % (os.path.join(dirs_dict['QC_DIR'], wildcards.sample + "_" + wildcards.split + "_FAILED_WITH_Ns"), log[0]))
+        shell("gzip %s >> %s 2>&1" % (os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_FAILED"), log[0]))
+        shell("gzip %s >> %s 2>&1" % (os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_FAILED_WITH_Ns"), log[0]))
         if rules.iu_merge_pairs.params.report_r1_prefix:
-            shell("gzip %s >> %s 2>&1" % (os.path.join(dirs_dict['QC_DIR'], wildcards.sample + "_" + wildcards.split + "_MERGED_R1_PREFIX"), log[0]))
+            shell("gzip %s >> %s 2>&1" % (os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_MERGED_R1_PREFIX"), log[0]))
         if rules.iu_merge_pairs.params.report_r2_prefix:
-            shell("gzip %s >> %s 2>&1" % (os.path.join(dirs_dict['QC_DIR'], wildcards.sample + "_" + wildcards.split + "_MERGED_R2_PREFIX"), log[0]))
+            shell("gzip %s >> %s 2>&1" % (os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_MERGED_R2_PREFIX"), log[0]))
 
 
 rule anvi_gen_tRNAseq_database:
@@ -228,9 +228,9 @@ rule prefix_derep_tRNA_fasta:
     resources: nodes = M.T('prefix_derep_tRNA_fasta')
     run:
         # All reads end in "CCA", so prefix dereplication should proceed from the 3' end.
-        revcomp_filepath = os.path.join(dirs_dict['IDENT_DIR'], "%s_%s_REVCOMP.fasta" % (wildcards.sample, wildcards.split))
+        revcomp_filepath = os.path.join(dirs_dict['IDENT_DIR'], "%s_REVCOMP.fasta" % wildcards.sample_split_prefix)
         shell("vsearch --fastx_revcomp %s --fastaout %s --fasta_width 0 >> %s 2>&1" % (input[0], revcomp_filepath, log[0]))
-        revcomp_prefix_derep_filepath = os.path.join(dirs_dict['IDENT_DIR'], "%s_%s_REVCOMP_PREFIX_DEREP.fasta" % (wildcards.sample, wildcards.split))
+        revcomp_prefix_derep_filepath = os.path.join(dirs_dict['IDENT_DIR'], "%s_REVCOMP_PREFIX_DEREP.fasta" % wildcards.sample_split_prefix)
         shell("vsearch --derep_prefix %s --output %s --uc %s --minseqlength 1 --fasta_width 0 --threads %d >> %s 2>&1" % (revcomp_filepath, revcomp_prefix_derep_filepath, output.uc, threads, log[0]))
         os.remove(revcomp_filepath)
         shell("vsearch --fastx_revcomp %s --fastaout %s --fasta_width 0 >> %s 2>&1" % (revcomp_prefix_derep_filepath, output.fasta, log[0]))
@@ -248,7 +248,7 @@ rule map_tRNA:
     resources: nodes = M.T('map_tRNA')
     run:
         shell("bowtie2-build -f %s %s >> %s 2>&1" % (input[0], os.path.splitext(output.bam)[0], log[0]))
-        sam_filepath = os.path.join(dirs_dict['IDENT_DIR'], "%s_%s.sam" % (wildcards.sample, wildcards.split))
+        sam_filepath = os.path.join(dirs_dict['IDENT_DIR'], "%s.sam" % wildcards.sample_split_prefix)
         # Use prohibitively high gap penalties to ensure reads can only map with a mismatch and not gap in the alignment.
         shell("bowtie2 -x %s -f %s -S %s --very-sensitive -N 1 -k 2 --rdg 100,3 --rfg 100,3 -p %d >> %s 2>&1" % (os.path.splitext(output.bam)[0], input[0], sam_filepath, threads, log[0]))
         raw_bam_filepath = os.path.splitext(output.bam)[0] + "_RAW.bam"
