@@ -189,8 +189,7 @@ class AnvioPrograms:
         self.progress.new('Characterizing program', progress_total_items=num_all_programs)
 
         for program_filepath in self.all_program_filepaths:
-            self.progress.update(os.path.basename(program_filepath))
-            self.progress.increment()
+            self.progress.update(os.path.basename(program_filepath), increment=True)
 
             program = Program(program_filepath, r=self.run, p=self.progress)
 
