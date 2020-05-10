@@ -409,6 +409,30 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
                               "`self.programs` dictionary seems to be empty :/")
 
 
+    def generate_pages_for_artifacts(self):
+        """Generates static pages for artifacts in the output directory"""
+
+        for artifact in ANVIO_ARTIFACTS:
+            d = {'artifact': ANVIO_ARTIFACTS[artifact],
+                 'meta': {'summary_type': 'artifact',
+                          'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
+                          'date': utils.get_date()}
+                }
+
+            d['artifact']['name'] = artifact
+            d['artifact']['required_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['required_by']]
+            d['artifact']['provided_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['provided_by']]
+
+            if anvio.DEBUG:
+                run.warning(None, 'THE OUTPUT DICT')
+                import json
+                print(json.dumps(d, indent=2))
+
+            artifact_output_dir = filesnpaths.gen_output_directory(os.path.join(self.artifacts_output_dir, artifact))
+            output_file_path = os.path.join(artifact_output_dir, 'index.md')
+            open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
+
+
 
 
 class ProgramsNetwork(AnvioPrograms):
