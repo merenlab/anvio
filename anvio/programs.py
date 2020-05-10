@@ -413,6 +413,31 @@ class Item:
 
     def __repr__(self):
         return "ITEM::%s" % self.id
+
+
+class AnvioDocs(AnvioPrograms):
+    """Generate a docs output.
+
+       The purpose of this class is to generate a static HTML output with
+       interlinked files that serve as the primary documentation for anvi'o
+       programs, input files they expect, and output files the generate.
+
+       The default client of this class is `anvi-script-gen-help-docs`.
+    """
+
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
+        self.args = args
+        self.run = r
+        self.progress = p
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.output_directory_path = A("output_dir") or 'ANVIO-HELP'
+
+        filesnpaths.gen_output_directory(self.output_directory_path, delete_if_exists=True, dont_warn=True)
+
+        AnvioPrograms.__init__(self, args, r=self.run, p=self.progress)
+
+
 class ProgramsNetwork(AnvioPrograms):
     def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
         self.args = args
