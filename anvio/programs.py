@@ -433,6 +433,33 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
 
 
+    def generate_pages_for_programs(self):
+        """Generates static pages for programs in the output directory"""
+
+        for program_name in self.programs:
+            program = self.programs[program_name]
+            d = {'program': {},
+                 'meta': {'summary_type': 'program',
+                          'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
+                          'date': utils.get_date()}
+                }
+
+            d['program']['name'] = program_name
+            d['program']['description'] = program.meta_info['description']['value']
+            d['program']['resources'] = program.meta_info['resources']['value']
+            d['program']['requires'] = [(r.id, '../../artifacts/%s' % r.id) for r in program.meta_info['requires']['value']]
+            d['program']['provides'] = [(r.id, '../../artifacts/%s' % r.id) for r in program.meta_info['provides']['value']]
+
+            if anvio.DEBUG:
+                run.warning(None, 'THE OUTPUT DICT')
+                import json
+                print(json.dumps(d, indent=2))
+
+            program_output_dir = filesnpaths.gen_output_directory(os.path.join(self.programs_output_dir, program_name))
+            output_file_path = os.path.join(program_output_dir, 'index.md')
+            open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
+
+
 
 
 class ProgramsNetwork(AnvioPrograms):
