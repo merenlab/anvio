@@ -15,7 +15,6 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.summaryhtml import SummaryHTMLOutput
 from anvio.errors import ConfigError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
