@@ -16,7 +16,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.artifacts import ANVIO_ARTIFACTS
+from anvio.docs import ANVIO_ARTIFACTS
 from anvio.summaryhtml import SummaryHTMLOutput
 
 
