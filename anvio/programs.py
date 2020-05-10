@@ -395,6 +395,9 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
         filesnpaths.gen_output_directory(self.output_directory_path, delete_if_exists=True, dont_warn=True)
 
+        self.artifacts_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'artifacts'))
+        self.programs_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'programs'))
+
         AnvioPrograms.__init__(self, args, r=self.run, p=self.progress)
         self.init_programs()
 
