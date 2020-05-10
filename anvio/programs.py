@@ -460,6 +460,16 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
 
 
+    def generate_index_page(self):
+        d = {'programs': [(p, 'programs/%s' % p, self.programs[p].meta_info['description']['value']) for p in self.programs],
+             'artifacts': [(a, 'artifacts/%s' % a) for a in self.artifacts_info],
+             'meta': {'summary_type': 'programs_and_artifacts_index',
+                      'version': '%s (%s)' % (anvio.anvio_version, anvio.anvio_codename),
+                      'date': utils.get_date()}
+            }
+
+        output_file_path = os.path.join(self.output_directory_path, 'index.md')
+        open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
 
 
 class ProgramsNetwork(AnvioPrograms):
