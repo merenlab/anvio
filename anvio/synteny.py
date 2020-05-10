@@ -25,8 +25,6 @@ import anvio.genomedescriptions as genomedescriptions
 from anvio.dbops import PanDatabase
 from anvio.errors import ConfigError
 
-
-
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
@@ -72,12 +70,9 @@ class NGram(object):
         self.output_file = A('output_file')
         self.skip_init_functions = A('skip_init_functions')
         self.genome_names_to_focus = A('genome_names')
+        self.ngram_source = A("ngram_source")
 
-        if not self.annotation_source:
-            self.annotation_sources = None
-
-        if self.annotation_source:
-            self.annotation_sources = [self.annotation_source]
+        self.annotation_source_dict = {}
 
         self.pan_db_path = A('pan_db')
 
@@ -167,9 +162,9 @@ class NGram(object):
                               "the contigs databases from the external-genomes file. "
                               "Please confirm your annotation-source and that all contigs databases have it :)")
 
-        # if self.annotation_source and self.pan_db:
-        #     raise ConfigError("anvi-analyze-synteny can only work with one annotation-source at a time "
-        #                       "and you provided two (%s and %s). Please choose one :)" % (self.annotation_source, "gene-clusters from " + self.pan_db_path))
+        if (self.annotation_source and self.pan_db) and not self.ngram_source:
+            raise ConfigError("anvi-analyze-synteny needs to know which annotation source to slice Ngrams with. "
+                              "Please use the --ngram-source flag to declare one :)")
 
         if not self.args.output_file:
             raise ConfigError("You should provide an output file name.")
@@ -229,18 +224,21 @@ class NGram(object):
             # Use gene_caller_ids_list to get functions table
             gene_function_call_df = self.genomes_storage.db.get_table_as_dataframe('gene_function_calls')
 
-            # Create dicts for annotate Ngrams
+            # Create dict for annotate Ngrams
             if self.annotation_source:
-                self.gene_caller_id_to_accession_dicto_function_dict = self.get_genes_and_functions_dict(contigs_db_name, gene_function_call_df)
+                self.gene_caller_id_to_accession_dict = self.get_genes_and_functions_dict(contigs_db_name, gene_function_call_df)
+                self.annotation_source_dict[self.annotation_source] = self.gene_caller_id_to_accession_dict
 
             if self.pan_db:
                 self.gene_caller_id_to_gene_cluster_dict = self.get_gene_cluster_dict(contigs_db_name, gene_cluster_frequencies_dataframe)
+                self.annotation_source_dict['gene_clusters'] = self.gene_caller_id_to_gene_cluster_dict
 
             # Iterate over range of window sizes and run synteny algorithm to count occurrences of ngrams in a contig
             for N in range(*self.window_range):
                 ngram_counts_dict, annotations_dict = self.count_synteny(N, gene_caller_ids_list)
 
                 for ngram, count in ngram_counts_dict.items():
+                    # FIXME: need to iterate through annotation sources and select the NON ngram_source
                     self.ngram_attributes_list.append([ngram, count, annotations_dict[ngram]['COG_FUNCTION'], contigs_db_name, N])
 
     def count_synteny(self, N, gene_caller_ids_list):
@@ -273,12 +271,20 @@ class NGram(object):
         annotations_dict = {}
         gene_callers_id_windows = self.get_windows(N, gene_caller_ids_list)
         for window in gene_callers_id_windows:
-            annotated_window = self.annotate_window(window)
-            ngram, flipped = self.order_window(annotated_window['gene_clusters'])
-            print(ngram)
+
+            annotated_window_dict = self.annotate_window(window)
+            ngram, flipped = self.order_window(annotated_window_dict[self.ngram_source])
+
+            # FIXME: need to also reorder the annotation if the Ngram is flipped
+            # if flippped == True:
+            #     for key, value in annotated_window_dict.items():
+            #         if key == self.ngram_source:
+            #             pass
+            #         else:
+            #             annotated_window_flipped = self.order_window(value)
 
             ngram_counts_dict[ngram] += 1
-            annotations_dict[ngram] = annotated_window
+            annotations_dict[ngram] = annotated_window_dict
 
         return ngram_counts_dict, annotations_dict
 
@@ -302,32 +308,9 @@ class NGram(object):
 
         # Annotate window based on user input
         gene_annotation_dict = {}
-        if len(self.annotation_sources) > 1:
-            print('asdf')
-            for annotation_source in self.annotation_sources:
-                if annotation_source == "gene_clusters":
-                    ngram_annotation = tuple([self.gene_caller_id_to_gene_cluster_dict[g] for g in window])
-
-                if annotation_source == "COG_FUNCTION":
-                    ngram_annotation = tuple([self.gene_caller_id_to_function_dict[g] for g in window])
-                gene_annotation_dict[annotation_source] = ngram_annotation 
-
-        else:
-            for annotation_source in self.annotation_sources:
-
-                if annotation_source == "gene_clusters":
-                    ngram_annotation = tuple([self.gene_caller_id_to_gene_cluster_dict[g] for g in window])
-
-                if annotation_source == "COG_FUNCTION":
-                    ngram_annotation = tuple([self.gene_caller_id_to_function_dict[g] for g in window])
-                gene_annotation_dict[annotation_source] = ngram_annotation     
-        # # for annotation in self.annotation_source:
-        #     # print(annotation)
-        # if self.pan_db and not self.annotation_source:
-        #     ngram_annotation = tuple([self.gene_caller_id_to_gene_cluster_dict[g] for g in window])
-
-        # elif self.annotation_source and not self.pan_db:
-        #     ngram_annotation = tuple([self.gene_caller_id_to_function_dict[g] for g in window])
+        for annotation_source, annotations_dict in self.annotation_source_dict.items():
+            ngram_annotation = tuple([annotations_dict[g] for g in window])
+            gene_annotation_dict[annotation_source] = ngram_annotation 
 
         return gene_annotation_dict
 
