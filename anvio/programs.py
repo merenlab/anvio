@@ -336,7 +336,6 @@ class Artifact:
         return "ARTIFACT::%s" % self.id
 
 
-class AnvioDocs(AnvioPrograms):
 class AnvioArtifacts:
     """Information on anvi'o artifacts"""
 
@@ -376,6 +375,7 @@ class AnvioArtifacts:
                     self.artifacts_info[artifact]['provided_by'].append(program.name)
 
 
+class AnvioDocs(AnvioPrograms, AnvioArtifacts):
     """Generate a docs output.
 
        The purpose of this class is to generate a static HTML output with
@@ -396,6 +396,16 @@ class AnvioArtifacts:
         filesnpaths.gen_output_directory(self.output_directory_path, delete_if_exists=True, dont_warn=True)
 
         AnvioPrograms.__init__(self, args, r=self.run, p=self.progress)
+        self.init_programs()
+
+        AnvioArtifacts.__init__(self, args, r=self.run, p=self.progress)
+        self.init_artifacts()
+
+        if not len(self.programs):
+            raise ConfigError("AnvioDocs is asked ot process the usage statements of some programs, but the "
+                              "`self.programs` dictionary seems to be empty :/")
+
+
 
 
 class ProgramsNetwork(AnvioPrograms):
