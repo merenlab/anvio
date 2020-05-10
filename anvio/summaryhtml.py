@@ -50,6 +50,10 @@ try:
 except ImportError:
     raise ConfigError('You need to have Django module (http://djangoproject.com) installed on your system to generate HTML output.')
 
+# It seems this really wants to be here in the global context :/ 
+settings.configure(**local_settings)
+django.setup()
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -68,9 +72,6 @@ progress = terminal.Progress()
 
 class SummaryHTMLOutput:
     def __init__(self, summary_dict={}, r=run, p=progress):
-        settings.configure(**local_settings)
-        django.setup()
-
         self.run = r
         self.progress = p
         self.summary_dict = summary_dict
