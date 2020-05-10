@@ -263,7 +263,7 @@ class AnvioPrograms:
         num_all_programs = len(self.all_program_filepaths)
 
         meta_count = 0
-        self.programs = []
+        self.programs = {}
         self.progress.new('Characterizing program', progress_total_items=num_all_programs)
 
         for program_filepath in self.all_program_filepaths:
@@ -278,7 +278,7 @@ class AnvioPrograms:
             if not (program.meta_info['provides']['value'] or program.meta_info['requires']['value']) and not okay_if_no_meta:
                 pass
             else:
-                self.programs.append(program)
+                self.programs[program.name] = program
 
         self.progress.end()
 
@@ -291,7 +291,7 @@ class AnvioPrograms:
                                  "statements." % (len(self.all_program_filepaths), meta_count),
                                   nl_after=1, nl_before=1)
         if anvio.DEBUG:
-            absentees = ', '.join(list(set([os.path.basename(p) for p in self.all_program_filepaths]) - set([p.name for p in self.programs])))
+            absentees = ', '.join(list(set([os.path.basename(p) for p in self.all_program_filepaths]) - set(list(self.programs.keys()))))
             self.run.info_single("Here is a list of programs that do not contain any information "
                                  "about themselves: %s" % (absentees), nl_after=1, nl_before=1, mc="red")
 
@@ -434,7 +434,7 @@ class ProgramsNetwork(AnvioPrograms):
         item_names_seen = set([])
         items_seen = Counter({})
         all_items = []
-        for program in self.programs:
+        for program in self.programs.values():
             for item in program.meta_info['provides']['value'] + program.meta_info['requires']['value']:
                 items_seen[item.id] += 1
                 if not item.id in item_names_seen:
@@ -443,7 +443,7 @@ class ProgramsNetwork(AnvioPrograms):
 
         programs_seen = Counter({})
         for item in all_items:
-            for program in self.programs:
+            for program in self.programs.values():
                 for program_item in program.meta_info['provides']['value'] + program.meta_info['requires']['value']:
                     if item.name == program_item.name:
                         programs_seen[program.name] += 1
@@ -466,7 +466,7 @@ class ProgramsNetwork(AnvioPrograms):
             node_indices[item.id] = index
             index += 1
 
-        for program in self.programs:
+        for program in self.programs.values():
             network_dict["nodes"].append({"size": programs_seen[program.name],
                                           "score": 0.1,
                                           "color": "#AAAA00",
@@ -477,7 +477,7 @@ class ProgramsNetwork(AnvioPrograms):
             index += 1
 
         for item in all_items:
-            for program in self.programs:
+            for program in self.programs.values():
                 for item_provided in program.meta_info['provides']['value']:
                     if item_provided.id == item.id:
                         network_dict["links"].append({"source": node_indices[program.name], "target": node_indices[item.id]})
@@ -510,12 +510,14 @@ class ProgramsVignette(AnvioPrograms):
 
         d = {}
         log_file = filesnpaths.get_temp_file_path()
-        for i, program in enumerate(self.programs):
-            if program.name in self.programs_to_skip:
+        for i, program_name in enumerate(self.programs):
+            program = self.programs[program_name]
+
+            if program_name in self.programs_to_skip:
                 run.warning("Someone doesn't want %s to be in the output :/ Fine. Skipping." % (program.name))
 
             progress.new('Bleep bloop')
-            progress.update('%s (%d of %d)' % (program.name, i+1, len(self.programs)))
+            progress.update('%s (%d of %d)' % (program_name, i+1, len(self.programs)))
 
             output = utils.run_command_STDIN('%s --help --quiet' % (program.program_path), log_file, '').split('\n')
 

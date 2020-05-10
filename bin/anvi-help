@@ -125,7 +125,7 @@ class ProgramSearch:
 
 
     def populate_table(self):
-        for program in self.programs:
+        for program in self.programs.values():
             tags = program.meta_info['tags']['value']
             provides = [item.id for item in program.meta_info['provides']['value']]
             requires = [item.id for item in program.meta_info['requires']['value']]
