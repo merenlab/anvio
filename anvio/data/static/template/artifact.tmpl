@@ -1,0 +1,26 @@
+---
+layout: page 
+title: {{ artifact.name }} [artifact]
+comments: false
+---
+
+{% verbatim %}
+{% include _project-anvio-version.html %}
+{% include _toc.html %}
+{% endverbatim %}
+
+## Type
+
+{{ artifact.type }}
+
+## Provided by
+
+{% for name, path in artifact.provided_by %}{% if forloop.last %}[{{name}}]({{path}}){% else %}[{{name}}]({{path}}), {% endif %}{% endfor %}
+
+## Required by
+
+{% for name, path in artifact.required_by %}{% if forloop.last %}[{{name}}]({{path}}){% else %}[{{name}}]({{path}}), {% endif %}{% endfor %}
+
+## Internal
+
+{{ artifact.internal }}
