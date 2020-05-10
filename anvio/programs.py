@@ -208,13 +208,12 @@ class AnvioPrograms:
                               "requires statements :/" % len(self.all_program_filepaths))
 
         if not quiet:
-            self.run.info_single("Of %d programs found, %d did contain provides and/or requires "
-                                 "statements." % (len(self.all_program_filepaths), meta_count),
-                                  nl_after=1, nl_before=1)
-        if anvio.DEBUG:
             absentees = ', '.join(list(set([os.path.basename(p) for p in self.all_program_filepaths]) - set(list(self.programs.keys()))))
-            self.run.info_single("Here is a list of programs that do not contain any information "
-                                 "about themselves: %s" % (absentees), nl_after=1, nl_before=1, mc="red")
+
+            self.run.info_single("Of %d programs found, %d did contain provides and/or requires "
+                                 "statements. In case you would like to help with this, here is a "
+                                 "list of programs that do not contain any provides and/or requires "
+                                 "information: %s."% (len(self.all_program_filepaths), meta_count, absentees), nl_after=1, nl_before=1)
 
 
 class Program:
