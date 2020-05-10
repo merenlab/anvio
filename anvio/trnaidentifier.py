@@ -1133,7 +1133,7 @@ class Profile:
         else:
             make_stem = False
             make_arm = False
-            if feature_class == tRNAHisPositionZero:
+            if feature_class == TransferRNAHisPositionZero:
                 # Check for tRNA-His based on the anticodon sequence.
                 # tRNA-His uniquely has an extra nucleotide (G) at the 5' end.
                 anticodon_string = features[-self.anticodon_loop_index - 1].anticodon.string
