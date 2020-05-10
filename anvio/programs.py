@@ -296,9 +296,11 @@ class AnvioPrograms:
                                  "about themselves: %s" % (absentees), nl_after=1, nl_before=1, mc="red")
 
 
-
 class Program:
-    def __init__(self, program_path):
+    def __init__(self, program_path, r=terminal.Run(), p=terminal.Progress()):
+        self.run = r
+        self.progress = p
+
         self.program_path = program_path
         self.name = os.path.basename(program_path)
 
@@ -377,6 +379,18 @@ class Program:
             return None
 
 
+    def __str__(self):
+        self.run.warning(None, header='%s' % self.name, lc='green')
+        for info_type in self.meta_info:
+            self.run.info(info_type, self.meta_info[info_type]['value'])
+
+        return ''
+
+
+    def __repr__(self):
+        return "PROG::%s" % self.name
+
+
 class Item:
     def __init__(self, item_id, internal=True, optional=True, single=True):
         if item_id not in ANVIO_ITEMS:
@@ -395,6 +409,8 @@ class Item:
         self.optional = optional
 
 
+    def __repr__(self):
+        return "ITEM::%s" % self.id
 class ProgramsNetwork(AnvioPrograms):
     def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
         self.args = args
