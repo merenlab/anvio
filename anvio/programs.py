@@ -270,7 +270,7 @@ class AnvioPrograms:
             self.progress.update(os.path.basename(program_filepath))
             self.progress.increment()
 
-            program = Program(program_filepath)
+            program = Program(program_filepath, r=self.run, p=self.progress)
 
             if program.meta_info['provides']['value'] or program.meta_info['requires']['value']:
                 meta_count += 1
