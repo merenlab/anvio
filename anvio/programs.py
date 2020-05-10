@@ -409,6 +409,14 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
                               "`self.programs` dictionary seems to be empty :/")
 
 
+    def generate(self):
+        self.generate_pages_for_artifacts()
+
+        self.generate_pages_for_programs()
+
+        self.generate_index_page()
+
+
     def generate_pages_for_artifacts(self):
         """Generates static pages for artifacts in the output directory"""
 
