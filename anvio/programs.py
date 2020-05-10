@@ -337,6 +337,45 @@ class Artifact:
 
 
 class AnvioDocs(AnvioPrograms):
+class AnvioArtifacts:
+    """Information on anvi'o artifacts"""
+
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
+        self.args = args
+        self.run = r
+        self.progress = p
+
+        self.artifacts_info = {}
+
+        if not hasattr(self, 'programs'):
+            raise ConfigError("AnvioArtifacts class is upset. You need to treat this class as a base class, and initialize "
+                              "it from within another class that has already initialized AnvioPrograms class. If this is "
+                              "confusing, take a look at the AnvioDocs class.")
+
+        if not len(self.programs):
+            raise ConfigError("AnvioArtifacts is initialized with a blank `self.programs` variable. HOW CUTE.")
+
+
+    def init_artifacts(self):
+        """Generate `required_by` and `provided_by` statements.
+
+        Returns
+        =======
+        artifacts_info, dict:
+            Running this function will fill in the dictionary `self.artifacts_info`
+        """
+    
+        for artifact in ANVIO_ARTIFACTS:
+            self.artifacts_info[artifact] = {'required_by': [], 'provided_by': []}
+
+            for program in self.programs.values():
+                if artifact in [a.id for a in program.meta_info['requires']['value']]:
+                    self.artifacts_info[artifact]['required_by'].append(program.name)
+
+                if artifact in [a.id for a in program.meta_info['provides']['value']]:
+                    self.artifacts_info[artifact]['provided_by'].append(program.name)
+
+
     """Generate a docs output.
 
        The purpose of this class is to generate a static HTML output with
