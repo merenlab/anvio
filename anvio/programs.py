@@ -259,7 +259,9 @@ class AnvioPrograms:
                                   "Probably there is a typo or something :/")
 
 
-    def create_program_classes(self, okay_if_no_meta=False, quiet=False):
+    def init_programs(self, okay_if_no_meta=False, quiet=False):
+        """Initializes the `self.programs` dictionary."""
+
         num_all_programs = len(self.all_program_filepaths)
 
         meta_count = 0
@@ -426,7 +428,7 @@ class ProgramsNetwork(AnvioPrograms):
 
 
     def generate(self):
-        self.create_program_classes()
+        self.init_programs()
         self.report_network()
 
 
@@ -506,7 +508,7 @@ class ProgramsVignette(AnvioPrograms):
 
 
     def generate(self):
-        self.create_program_classes(okay_if_no_meta = True, quiet = True)
+        self.init_programs(okay_if_no_meta = True, quiet = True)
 
         d = {}
         log_file = filesnpaths.get_temp_file_path()

@@ -62,7 +62,7 @@ class ProgramSearch:
         self.handle_inputs()
 
         anvio_programs = p.AnvioPrograms(args)
-        anvio_programs.create_program_classes(okay_if_no_meta=True, quiet=True)
+        anvio_programs.init_programs(okay_if_no_meta=True, quiet=True)
         self.programs = anvio_programs.programs
 
         self.get_headers_to_report()
