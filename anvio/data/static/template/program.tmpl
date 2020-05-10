@@ -1,0 +1,28 @@
+---
+layout: page 
+title: {{ program.name }} [program]
+comments: false
+---
+
+{% verbatim %}
+{% include _project-anvio-version.html %}
+{% include _toc.html %}
+{% endverbatim %}
+
+## Description 
+
+{{ program.description }}
+
+## Resources
+
+{% for text, url in program.resources %}
+* [{{text}}]({{url}})
+{% endfor %}
+
+## Requires
+
+{% for name, path in program.requires %}{% if forloop.last %}[{{name}}]({{path}}){% else %}[{{name}}]({{path}}), {% endif %}{% endfor %}
+
+## Provides
+
+{% for name, path in program.provides %}{% if forloop.last %}[{{name}}]({{path}}){% else %}[{{name}}]({{path}}), {% endif %}{% endfor %}

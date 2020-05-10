@@ -1,0 +1,37 @@
+---
+layout: post 
+title: Help pages for anvi'o programs and artifacts 
+categories: [anvio]
+comments: false
+image:
+  feature: header.jpg
+---
+
+A complete list of current anvi'o programs and artifacts.
+
+{:.notice}
+The contents of this file was last updated on **{{ meta|lookup:"date" }}**, and at the time of generation, anvi'o was at version **{{ meta|lookup:"version" }}**.
+
+{% verbatim %}
+{% include _project-anvio-version.html %}
+{% include _toc.html %}
+{% include _join-anvio-slack.html %}
+{% endverbatim %}
+
+---
+
+## Programs
+
+Listed below a total of {{ programs|length }} programs.
+
+{% for text, url, desc in programs %}
+* [{{text}}]({{url}}): {{desc}}
+{% endfor %}
+
+## Artifacts
+
+Listed below a total of {{ artifacts|length }} artifacts.
+
+{% for text, url in artifacts %}
+* [{{text}}]({{url}})
+{% endfor %}
