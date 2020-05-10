@@ -21,7 +21,7 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
-class _tRNAFeature:
+class _TransferRNAFeature:
     conserved_nucleotides = ({}, )
 
     def __init__(
@@ -32,7 +32,7 @@ class _tRNAFeature:
 
         if cautious:
             if type(string_components) != tuple:
-                raise Exception(
+                raise ConfigError(
                     "`string_components` must be in the form of a tuple, "
                     "e.g., ('ACTGG', 'CCAGT'). "
                     "Your `string_components` were %s"
@@ -81,7 +81,7 @@ class _tRNAFeature:
     @staticmethod
     def list_all_tRNA_features():
         return [
-            tRNAHisPositionZero,
+            TransferRNAHisPositionZero,
             AcceptorStem,
             FiveprimeAcceptorStemSeq,
             PositionEight,
@@ -108,7 +108,7 @@ class _tRNAFeature:
             Acceptor]
 
 
-class _Nucleotide(_tRNAFeature):
+class _Nucleotide(_TransferRNAFeature):
     allowed_input_lengths = ((1, ), )
     summed_input_lengths = tuple(map(sum, allowed_input_lengths))
 
@@ -135,7 +135,7 @@ class _Nucleotide(_tRNAFeature):
          self.conserved_status) = self.check_conserved_nucleotides()
 
 
-class _Sequence(_tRNAFeature):
+class _Sequence(_TransferRNAFeature):
     def __init__(
         self,
         substrings, # must be a string, tuple of strings, or tuple of _Nucleotide/_Sequence objects
@@ -182,7 +182,7 @@ class _Loop(_Sequence):
             cautious=cautious)
 
 
-class _Stem(_tRNAFeature):
+class _Stem(_TransferRNAFeature):
     def __init__(
         self,
         fiveprime_seq,
@@ -193,7 +193,7 @@ class _Stem(_tRNAFeature):
 
         if cautious:
             if type(fiveprime_seq) != _Sequence or type(threeprime_seq) != _Sequence:
-                raise Exception("You can only define a _Stem from _Sequence objects.")
+                raise ConfigError("You can only define a _Stem from _Sequence objects.")
         self.fiveprime_seq = fiveprime_seq
         self.threeprime_seq = threeprime_seq
 
@@ -205,13 +205,13 @@ class _Stem(_tRNAFeature):
         if cautious:
             if (tuple(map(len, self.fiveprime_seq.string_components))
                 != tuple(map(len, self.threeprime_seq.string_components[::-1]))):
-                raise Exception(
+                raise ConfigError(
                     "The two _Sequence objects, %s and %s, "
                     "that were used to define your _Stem are not the same length."
                     % (self.fiveprime_seq.string_components, threeprime_seq.string_components))
             length = sum(map(len, self.fiveprime_seq.string_components))
             if num_allowed_unpaired > length:
-                raise Exception(
+                raise ConfigError(
                     "You tried to leave at most %d base pairs unpaired, "
                     "but there are only %d base pairs in the stem."
                     % (num_allowed_unpaired, length))
@@ -251,7 +251,7 @@ class _Stem(_tRNAFeature):
         return (meets_pair_thresh, num_paired, num_unpaired, paired_status)
 
 
-class _Arm(_tRNAFeature):
+class _Arm(_TransferRNAFeature):
     def __init__(
         self,
         stem, # must be _Stem object
@@ -261,7 +261,8 @@ class _Arm(_tRNAFeature):
 
         if cautious:
             if type(stem) != _Stem or type(loop) != _Loop:
-                raise Exception("A `_Stem` and a `_Loop` are required input to create an `_Arm`.")
+                raise ConfigError(
+                    "A `_Stem` and a `_Loop` are required input to create an `_Arm`.")
         self.stem = stem
         self.loop = loop
 
@@ -276,7 +277,7 @@ class _Arm(_tRNAFeature):
                                 + len(canonical_positions[0])
                                 + len(canonical_positions[1])
                                 + len(canonical_positions[2]))))):
-                raise Exception(
+                raise ConfigError(
                     "The canonical positions in an `_Arm` must be contiguous. "
                     "These were yours: %s. "
                     "These came from the canonical positions in _Stem, %s, "
@@ -307,7 +308,7 @@ class _Arm(_tRNAFeature):
             self.meets_conserved_thresh = True
 
 
-class tRNAHisPositionZero(_Nucleotide):
+class TransferRNAHisPositionZero(_Nucleotide):
     name = 'tRNA-His Position 0'
     canonical_positions = ((-1, ), )
     conserved_nucleotides = ({0: 'G'}, )
@@ -368,7 +369,7 @@ class FiveprimeAcceptorStemSeq(_Sequence):
             cautious=cautious)
 
         if len(self.string) != 7:
-            raise Exception(
+            raise ConfigError(
                 "Your `FiveprimeAcceptorSeq` was not the required 7 bases long: %s" % self.string)
 
 
@@ -465,13 +466,13 @@ class FiveprimeDStemSeq(_Sequence):
 
         if cautious:
             if len(positions_10_to_12_string) != 3:
-                raise Exception("Your `positions_10_to_12_string` "
-                                "was not the required 3 bases long: %s"
-                                % positions_10_to_12_string)
+                raise ConfigError(
+                    "Your `positions_10_to_12_string` was not the required 3 bases long: %s"
+                    % positions_10_to_12_string)
             if not 0 <= len(position_13_string) <= 1:
-                raise Exception("Your `position_13_string` "
-                                "was not the required 0 or 1 bases long: %s"
-                                % position_13_string)
+                raise ConfigError(
+                    "Your `position_13_string` was not the required 0 or 1 bases long: %s"
+                    % position_13_string)
 
         super().__init__(
             (positions_10_to_12_string,
@@ -505,24 +506,25 @@ class DLoop(_Loop):
 
         if cautious:
             if len(positions_14_to_15_string) != 1:
-                raise Exception("Your `positions_14_to_15_string` "
-                                "was not the required 1 base long: %s"
-                                % positions_14_to_15_string)
+                raise ConfigError(
+                    "Your `positions_14_to_15_string` was not the required 1 base long: %s"
+                    % positions_14_to_15_string)
             if not 1 <= len(alpha_positions_string) <= 3:
-                raise Exception("Your `alpha_positions_string` "
-                                "was not the required 1 to 3 bases long: %s"
-                                % alpha_positions_string)
+                raise ConfigError(
+                    "Your `alpha_positions_string` was not the required 1 to 3 bases long: %s"
+                    % alpha_positions_string)
             if len(positions_18_to_19_string) != 2:
-                raise Exception("Your `positions_18_to_19_string` "
-                                "was not the required 2 bases long: %s"
-                                % positions_18_to_19_string)
+                raise ConfigError(
+                    "Your `positions_18_to_19_string` was not the required 2 bases long: %s"
+                    % positions_18_to_19_string)
             if not 1 <= len(beta_positions_string) <= 3:
-                raise Exception("Your `beta_positions_string` "
-                                "was not the required 1 to 3 bases long: %s"
-                                % beta_positions_string)
+                raise ConfigError(
+                    "Your `beta_positions_string` was not the required 1 to 3 bases long: %s"
+                    % beta_positions_string)
             if len(position_21_string) != 1:
-                raise Exception("Your `position_21_string` was not the required 1 base long: %s"
-                                % position_21_string)
+                raise ConfigError(
+                    "Your `position_21_string` was not the required 1 base long: %s"
+                    % position_21_string)
         self.alpha_seq = _Sequence(alpha_positions_string)
         self.beta_seq = _Sequence(beta_positions_string)
 
@@ -557,12 +559,13 @@ class ThreeprimeDStemSeq(_Sequence):
 
         if cautious:
             if not 0 <= len(position_22_string) <= 1:
-                raise Exception("Your `position_22_string` was not the required 1 base long: %s"
-                                % position_22_string)
+                raise ConfigError(
+                    "Your `position_22_string` was not the required 1 base long: %s"
+                    % position_22_string)
             if len(positions_23_to_25_string) != 3:
-                raise Exception("Your `positions_23_to_25_string` "
-                                "was not the required 1 to 3 bases long: %s"
-                                % positions_23_to_25_string)
+                raise ConfigError(
+                    "Your `positions_23_to_25_string` was not the required 1 to 3 bases long: %s"
+                    % positions_23_to_25_string)
 
         super().__init__(
             (position_22_string, positions_23_to_25_string),
@@ -702,7 +705,7 @@ class AnticodonLoop(_Loop):
             cautious=cautious)
 
         if len(self.string) != 7:
-            raise Exception(
+            raise ConfigError(
                 "Your `AnticodonLoop` was not the required 7 bases long: %s" % self.string)
 
         self.anticodon = Anticodon(self.string[2: 5])
@@ -889,7 +892,7 @@ class ThreeprimeAcceptorStemSeq(_Sequence):
             cautious=cautious)
 
         if len(self.string) != 7:
-            raise Exception(
+            raise ConfigError(
                 "Your `ThreeprimeAcceptorSeq` was not the required 7 bases long: %s" % self.string)
 
 
@@ -982,7 +985,7 @@ def profile_wrapper(input_queue, output_queue):
 
 
 class Profile:
-    fiveprime_to_threeprime_feature_classes = _tRNAFeature.list_all_tRNA_features()
+    fiveprime_to_threeprime_feature_classes = _TransferRNAFeature.list_all_tRNA_features()
     threeprime_to_fiveprime_feature_classes = fiveprime_to_threeprime_feature_classes[::-1]
     stem_formation_triggers = [
         FiveprimeTStemSeq, FiveprimeAnticodonStemSeq, FiveprimeDStemSeq, FiveprimeAcceptorStemSeq]
