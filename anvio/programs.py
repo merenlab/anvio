@@ -1,6 +1,6 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
-"""A library to build vignettes and networks of anvi'o programs"""
+"""A library to help anvi'o desribe itself"""
 
 import os
 import sys
