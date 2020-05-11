@@ -362,10 +362,23 @@ class AnvioArtifacts:
         artifacts_info, dict:
             Running this function will fill in the dictionary `self.artifacts_info`
         """
+
+        docs_path = os.path.join(os.path.dirname(anvio.__file__), 'docs')
+        artifacts_with_descriptions = set([])
+        artifacts_without_descriptions = set([])
     
         for artifact in ANVIO_ARTIFACTS:
-            self.artifacts_info[artifact] = {'required_by': [], 'provided_by': []}
+            self.artifacts_info[artifact] = {'required_by': [], 'provided_by': [], 'description': None}
 
+            # learn about the description of the artifact
+            artifact_description_path = os.path.join(docs_path, '%s.md' % (artifact))
+            if os.path.exists(artifact_description_path):
+                self.artifacts_info[artifact]['description'] = open(artifact_description_path).read()
+                artifacts_with_descriptions.add(artifact)
+            else:
+                artifacts_without_descriptions.add(artifact)
+
+            # learn about what provides or requires this artifact
             for program in self.programs.values():
                 if artifact in [a.id for a in program.meta_info['requires']['value']]:
                     self.artifacts_info[artifact]['required_by'].append(program.name)
@@ -473,6 +486,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d['artifact']['name'] = artifact
             d['artifact']['required_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['required_by']]
             d['artifact']['provided_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['provided_by']]
+            d['artifact']['description'] = self.artifacts_info[artifact]['description']
             d['artifact']['icon'] = '../../images/icons/%s.png' % ANVIO_ARTIFACTS[artifact]['type']
 
             if anvio.DEBUG:
