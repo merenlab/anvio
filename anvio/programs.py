@@ -409,6 +409,27 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
         self.images_source_directory = os.path.join(os.path.dirname(anvio.__file__), 'docs/images/png')
 
+        self.sanity_check()
+
+
+    def sanity_check(self):
+        """Quick sanity checks to ensure things are working"""
+
+        if not os.path.exists(self.images_source_directory):
+            raise ConfigError("AnvioDocs speaking: the images source directory does not seem to be "
+                              "where it should have been :/")
+
+        # make sure each artifact type has an icon
+        A_PNG = lambda x: os.path.exists(os.path.join(self.images_source_directory, 'icons', ANVIO_ARTIFACTS[x]['type'] + '.png'))
+        missing_images_for_artifact_types = [ANVIO_ARTIFACTS[artifact]['type'] for artifact in self.artifacts_info if not A_PNG(artifact)]
+        if len(missing_images_for_artifact_types):
+            raise ConfigError("Some artifacts do not have matching images. If you just added a new artifact type, you "
+                              "also need to add a corresponding PNG icon for the type under the directory '%s'. See "
+                              "examples in that directory, and if they are not enough, get in touch with a developer. "
+                              "Regardless. These are the artifact types missing images: %s." \
+                                                                % (os.path.join(self.images_source_directory, 'icons'),
+                                                                   ', '.join(missing_images_for_artifact_types)))
+
 
     def generate(self):
         self.copy_images()
