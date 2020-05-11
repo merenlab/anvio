@@ -386,6 +386,15 @@ class AnvioArtifacts:
                 if artifact in [a.id for a in program.meta_info['provides']['value']]:
                     self.artifacts_info[artifact]['provided_by'].append(program.name)
 
+        if len(artifacts_without_descriptions):
+            self.run.info_single("Of %d artifacts found, %d did not contain any description. If you would like to "
+                                 "see examples and add new descriptions, please see the directory '%s'. Here is the "
+                                 "full list of artifacts that are not yet explained: %s." \
+                                        % (len(ANVIO_ARTIFACTS),
+                                           len(artifacts_without_descriptions),
+                                           docs_path,
+                                           ', '.join(artifacts_without_descriptions)), nl_after=1, nl_before=1)
+
 
 class AnvioDocs(AnvioPrograms, AnvioArtifacts):
     """Generate a docs output.
