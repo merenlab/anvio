@@ -407,6 +407,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             raise ConfigError("AnvioDocs is asked ot process the usage statements of some programs, but the "
                               "`self.programs` dictionary seems to be empty :/")
 
+        self.images_source_directory = os.path.join(os.path.dirname(anvio.__file__), 'docs/images/png')
+
 
     def generate(self):
         self.copy_images()
