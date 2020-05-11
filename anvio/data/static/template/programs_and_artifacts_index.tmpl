@@ -34,8 +34,6 @@ Listed below a total of {{ programs|length }} programs.
 
 ## Artifacts
 
-Listed below a total of {{ artifacts|length }} artifacts.
+A total of {{ artifacts|length }} artifacts.
 
-{% for text, url in artifacts %}
-* [{{text}}]({{url}})
-{% endfor %}
+* <span style="line-height: 25px;">{% for name, path in artifacts %}<span style="background:#e8e8e8; padding: 0px 3px 2px 3px; border-radius: 5px;">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}.</span>
