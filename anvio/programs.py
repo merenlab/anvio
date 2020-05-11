@@ -409,11 +409,19 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
 
     def generate(self):
+        self.copy_images()
+
         self.generate_pages_for_artifacts()
 
         self.generate_pages_for_programs()
 
         self.generate_index_page()
+
+
+    def copy_images(self):
+        """Copies images from the codebase to the output directory"""
+
+        utils.shutil.copytree(self.images_source_directory, os.path.join(self.output_directory_path, 'images'))
 
 
     def generate_pages_for_artifacts(self):
