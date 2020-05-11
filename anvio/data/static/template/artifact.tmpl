@@ -1,7 +1,10 @@
 ---
-layout: page 
+layout: post
 title: {{ artifact.name }} [artifact]
 comments: false
+image:
+  featurerelative: ../../../images/header.png
+  display: true
 ---
 
 {% verbatim %}
@@ -9,17 +12,19 @@ comments: false
 {% include _toc.html %}
 {% endverbatim %}
 
-## Type
+## Description 
 
-{{ artifact.type }}
+<img src="{{artifact.icon}}" alt="{{ artifact.type }}" style="width:100px; border:none" />
+
+A {{ artifact.type }}-type anvi'o artifact.
 
 ## Provided by
 
-{% for name, path in artifact.provided_by %}{% if forloop.last %}[{{name}}]({{path}}){% else %}[{{name}}]({{path}}), {% endif %}{% endfor %}
+<p style="text-align: left" markdown="1">{% for name, path in artifact.provided_by %}<span style="background:#cbe4d5; padding: 0px 3px 2px 3px; border-radius: 5px;">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 
 ## Required by
 
-{% for name, path in artifact.required_by %}{% if forloop.last %}[{{name}}]({{path}}){% else %}[{{name}}]({{path}}), {% endif %}{% endfor %}
+<p style="text-align: left" markdown="1">{% for name, path in artifact.required_by %}<span style="background:#dcbfe8; padding: 0px 3px 2px 3px; border-radius: 5px;">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 
 ## Internal
 
