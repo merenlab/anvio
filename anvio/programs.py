@@ -447,6 +447,19 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         utils.shutil.copytree(self.images_source_directory, os.path.join(self.output_directory_path, 'images'))
 
 
+    def get_program_requires_provides_dict(self, prefix="../../"):
+        d = {}
+
+        for program_name in self.programs:
+            d[program_name] = {}
+
+            program = self.programs[program_name]
+            d[program_name]['requires'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['requires']['value']]
+            d[program_name]['provides'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['provides']['value']]
+
+        return d
+
+
     def generate_pages_for_artifacts(self):
         """Generates static pages for artifacts in the output directory"""
 
@@ -470,19 +483,6 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             artifact_output_dir = filesnpaths.gen_output_directory(os.path.join(self.artifacts_output_dir, artifact))
             output_file_path = os.path.join(artifact_output_dir, 'index.md')
             open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
-
-
-    def get_program_requires_provides_dict(self, prefix="../../"):
-        d = {}
-
-        for program_name in self.programs:
-            d[program_name] = {}
-
-            program = self.programs[program_name]
-            d[program_name]['requires'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['requires']['value']]
-            d[program_name]['provides'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['provides']['value']]
-
-        return d
 
 
     def generate_pages_for_programs(self):
