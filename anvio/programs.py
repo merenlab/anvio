@@ -460,6 +460,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d['artifact']['name'] = artifact
             d['artifact']['required_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['required_by']]
             d['artifact']['provided_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['provided_by']]
+            d['artifact']['icon'] = '../../images/icons/%s.png' % ANVIO_ARTIFACTS[artifact]['type']
 
             if anvio.DEBUG:
                 run.warning(None, 'THE OUTPUT DICT')
@@ -471,8 +472,23 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
 
 
+    def get_program_requires_provides_dict(self, prefix="../../"):
+        d = {}
+
+        for program_name in self.programs:
+            d[program_name] = {}
+
+            program = self.programs[program_name]
+            d[program_name]['requires'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['requires']['value']]
+            d[program_name]['provides'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['provides']['value']]
+
+        return d
+
+
     def generate_pages_for_programs(self):
         """Generates static pages for programs in the output directory"""
+
+        program_provides_requires_dict = self.get_program_requires_provides_dict()
 
         for program_name in self.programs:
             program = self.programs[program_name]
@@ -485,8 +501,9 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             d['program']['name'] = program_name
             d['program']['description'] = program.meta_info['description']['value']
             d['program']['resources'] = program.meta_info['resources']['value']
-            d['program']['requires'] = [(r.id, '../../artifacts/%s' % r.id) for r in program.meta_info['requires']['value']]
-            d['program']['provides'] = [(r.id, '../../artifacts/%s' % r.id) for r in program.meta_info['provides']['value']]
+            d['program']['requires'] = program_provides_requires_dict[program_name]['requires']
+            d['program']['provides'] = program_provides_requires_dict[program_name]['provides']
+            d['program']['icon'] = '../../images/icons/%s.png' % 'PROGRAM'
 
             if anvio.DEBUG:
                 run.warning(None, 'THE OUTPUT DICT')
@@ -505,6 +522,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
                       'version': '%s (%s)' % (anvio.anvio_version, anvio.anvio_codename),
                       'date': utils.get_date()}
             }
+
+        d['program_provides_requires'] = self.get_program_requires_provides_dict(prefix='')
 
         output_file_path = os.path.join(self.output_directory_path, 'index.md')
         open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
