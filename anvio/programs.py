@@ -158,6 +158,7 @@ class AnvioPrograms:
             self.script_filepaths = S('anvi-script-gen-programs-vignette')
 
             self.all_program_filepaths = sorted(list(set(self.main_program_filepaths + self.script_filepaths)))
+            self.all_program_names = [os.path.basename(p) for p in self.all_program_filepaths]
         except:
             raise ConfigError("Something is wrong. Either your installation or anvi'o setup on this computer is missing some of "
                               "the fundamental programs, or your configuration is broken :/")
