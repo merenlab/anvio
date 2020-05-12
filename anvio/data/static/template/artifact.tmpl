@@ -21,19 +21,19 @@ A {{ artifact.type }}-type anvi'o artifact. It is typically {% if artifact.inter
 ## Provided by
 
 {% if artifact.provided_by %}
-<p style="text-align: left" markdown="1">{% for name, path in artifact.provided_by %}<span style="background:#cbe4d5; padding: 0px 3px 2px 3px; border-radius: 5px;">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+<p style="text-align: left" markdown="1">{% for name, path in artifact.provided_by %}<span class="artifact-p">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 {% else %}
 Most likely provided by the user.
 {% endif %}
 
 ## Required or used by
 
-<p style="text-align: left" markdown="1">{% for name, path in artifact.required_by %}<span style="background:#dcbfe8; padding: 0px 3px 2px 3px; border-radius: 5px;">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+<p style="text-align: left" markdown="1">{% for name, path in artifact.required_by %}<span class="artifact-r">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 
 ## Description
 {% if artifact.description %}
 {{ artifact.description }}
 {% else %}
 {:.notice}
-**No one has described this artifact yet** :/ If you would like to contribute to its description, please see examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs), and feel free to add a Markdown formatted file in this directory named "{{artifact.id}}.md", contents of which will replace this sad text. THANK YOU!
+**No one has described this artifact yet** :/ If you would like to contribute by describing it, please see previous examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs/artifacts), and add a Markdown formatted file in that directory named "{{artifact.name}}.md". Its contents will replace this sad text. THANK YOU!
 {% endif %}
