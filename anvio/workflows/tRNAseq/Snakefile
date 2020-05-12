@@ -83,7 +83,9 @@ rule iu_merge_pairs:
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-iu_merge_pairs.log")
     input: os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}.ini")
     output:
-        qc_output_merged = os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}_MERGED"),
+        merged = os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}_MERGED"),
+        merge_failed = os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}_FAILED"),
+        merge_failed_with_Ns = os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}_FAILED_WITH_Ns"),
         stats = os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}_STATS")
     params:
         marker_gene_stringent = M.get_rule_param('iu_merge_pairs', '--marker-gene-stringent'), # allows for both full and partial overlap of inserts, by default trimming trailing adapters following fully overlapping inserts
@@ -135,7 +137,7 @@ rule anvi_reformat_fasta:
     ''' Reformat the FASTA file to have Anvi\'o-compliant deflines '''
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-reformat_fasta.log")
-    input: rules.iu_merge_pairs.output.qc_output_merged
+    input: rules.iu_merge_pairs.output.merged
     output:
         fasta = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}.fasta"),
         report = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_REFORMAT_REPORT.txt")
@@ -150,15 +152,20 @@ rule compress_merged_fasta:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-compress_merged_fasta.log")
     input:
-        qc_output_merged = rules.iu_merge_pairs.output.qc_output_merged,
+        merged = rules.iu_merge_pairs.output.merged,
+        merge_failed = rules.iu_merge_pairs.output.merge_failed,
+        merge_failed_with_Ns = rules.iu_merge_pairs.output.merge_failed_with_Ns,
         _ = rules.anvi_reformat_fasta.output.fasta
-    output: os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_MERGED.gz")
+    output:
+        merged_gz = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_MERGED.gz"),
+        merge_failed_gz = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_FAILED.gz"),
+        merge_failed_with_Ns_gz = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_FAILED_WITH_Ns.gz")
     threads: M.T('compress_merged_fasta')
     resources: nodes = M.T('compress_merged_fasta')
     run:
-        shell("gzip %s >> %s 2>&1" % (input.qc_output_merged, log[0]))
-        shell("gzip %s >> %s 2>&1" % (os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_FAILED"), log[0]))
-        shell("gzip %s >> %s 2>&1" % (os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_FAILED_WITH_Ns"), log[0]))
+        shell("gzip %s >> %s 2>&1" % (input.merged, log[0]))
+        shell("gzip %s >> %s 2>&1" % (input.merge_failed, log[0]))
+        shell("gzip %s >> %s 2>&1" % (input.merge_failed_with_Ns, log[0]))
         if rules.iu_merge_pairs.params.report_r1_prefix:
             shell("gzip %s >> %s 2>&1" % (os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_MERGED_R1_PREFIX"), log[0]))
         if rules.iu_merge_pairs.params.report_r2_prefix:
@@ -190,7 +197,9 @@ rule compress_reformatted_fasta:
     output: os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}.fasta.gz")
     threads: M.T('compress_reformatted_fasta')
     resources: nodes = M.T('compress_reformatted_fasta')
-    shell: "gzip {input.fasta} >> {log} 2>&1 ; gzip {input.report} >> {log} 2>&1"
+    run:
+        shell("gzip {input.fasta} >> {log} 2>&1" % (input.fasta, log[0]))
+        shell("gzip {input.report} >> {log} 2>&1" % (input.report, log[0]))
 
 
 rule get_unique_tRNA_fasta:
