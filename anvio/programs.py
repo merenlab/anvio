@@ -253,6 +253,7 @@ class Program:
 
         self.program_path = program_path
         self.name = os.path.basename(program_path)
+        self.usage = None
 
         self.meta_info = {
             'requires': {
@@ -492,6 +493,35 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         """Copies images from the codebase to the output directory"""
 
         utils.shutil.copytree(self.images_source_directory, os.path.join(self.output_directory_path, 'images'))
+
+
+    def init_anvio_markdown_variables_conversion_dict(self):
+        for program_name in self.all_program_names:
+            self.anvio_markdown_variables_conversion_dict[program_name] = "[%s](%s/programs/%s)" % (program_name, self.base_url, program_name)
+
+        for artifact_name in ANVIO_ARTIFACTS:
+            self.anvio_markdown_variables_conversion_dict[artifact_name] = "[%s](%s/artifacts/%s)" % (artifact_name, self.base_url, artifact_name)
+
+
+    def read_anvio_markdown(self, file_path):
+        """Reads markdown descriptions filling in anvi'o variables"""
+
+        filesnpaths.is_file_plain_text(file_path)
+
+        if not len(self.anvio_markdown_variables_conversion_dict):
+            self.init_anvio_markdown_variables_conversion_dict()
+
+        markdown_content = open(file_path).read()
+
+        try:
+            markdown_content = markdown_content % self.anvio_markdown_variables_conversion_dict
+        except KeyError as e:
+            raise ConfigError("One of the variables, %s, in '%s' is not yet described anywhere :/ If it is not a typo but "
+                              "a new artifact, you can add it to the file `anvio/docs/__init__.py`. After which everything "
+                              "should work. But please also remember to update provides / requires statements of programs "
+                              "for everything to be linked together." % (e, file_path))
+
+        return markdown_content
 
 
     def get_program_requires_provides_dict(self, prefix="../../"):
