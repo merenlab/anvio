@@ -23,6 +23,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.structureops as structureops
 import anvio.variabilityops as variabilityops
+import anvio.kegg as kegg
 
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
@@ -2371,7 +2372,9 @@ class MetabolismInteractive():
         self.progress = progress
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
-        self.contigs_db_path = A('contigs_db')
+        self.contigs_db_path = A('contigs_db') #TODO delete if we don't need this
+        m = kegg.KeggMetabolismEstimator(args)
+        self.metabolism_data = m.get_metabolism_data_for_visualization()
 
 
 class ContigsInteractive():
