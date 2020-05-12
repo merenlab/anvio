@@ -398,7 +398,7 @@ class AnvioArtifacts:
             # learn about the description of the artifact
             artifact_description_path = os.path.join(self.docs_path, 'artifacts/%s.md' % (artifact))
             if os.path.exists(artifact_description_path):
-                self.artifacts_info[artifact]['description'] = open(artifact_description_path).read()
+                self.artifacts_info[artifact]['description'] = self.read_anvio_markdown(artifact_description_path)
                 artifacts_with_descriptions.add(artifact)
             else:
                 artifacts_without_descriptions.add(artifact)
@@ -447,6 +447,9 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
         self.artifacts_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'artifacts'))
         self.programs_output_dir = filesnpaths.gen_output_directory(os.path.join(self.output_directory_path, 'programs'))
+
+        self.base_url = "/software/anvio/help"
+        self.anvio_markdown_variables_conversion_dict = {}
 
         AnvioPrograms.__init__(self, args, r=self.run, p=self.progress)
         self.init_programs()
@@ -580,6 +583,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
                 }
 
             d['program']['name'] = program_name
+            d['program']['usage'] = program.usage
             d['program']['description'] = program.meta_info['description']['value']
             d['program']['resources'] = program.meta_info['resources']['value']
             d['program']['requires'] = program_provides_requires_dict[program_name]['requires']
