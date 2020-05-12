@@ -6,6 +6,14 @@
     <script type='text/javascript' src='js/utils.js'></script>
     <script type='text/javascript' src='lib/d3.js/d3.min.js'></script>
     <link rel="stylesheet" href="lib/bootstrap/dist/css/bootstrap.min.css" />
+    <script type="text/javascript" src="lib/bootstrap/dist/js/bootstrap.min.js"></script>
 </head>
+
+<script>
+    d3.json("/data/get_metabolism", function(data) {
+        console.log(data);
+    });
+</script>
+
 
 </html>
