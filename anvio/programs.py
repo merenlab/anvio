@@ -389,7 +389,6 @@ class AnvioArtifacts:
             Running this function will fill in the dictionary `self.artifacts_info`
         """
 
-        docs_path = os.path.join(os.path.dirname(anvio.__file__), 'docs')
         artifacts_with_descriptions = set([])
         artifacts_without_descriptions = set([])
     
@@ -397,7 +396,7 @@ class AnvioArtifacts:
             self.artifacts_info[artifact] = {'required_by': [], 'provided_by': [], 'description': None}
 
             # learn about the description of the artifact
-            artifact_description_path = os.path.join(docs_path, '%s.md' % (artifact))
+            artifact_description_path = os.path.join(self.docs_path, 'artifacts/%s.md' % (artifact))
             if os.path.exists(artifact_description_path):
                 self.artifacts_info[artifact]['description'] = open(artifact_description_path).read()
                 artifacts_with_descriptions.add(artifact)
@@ -413,12 +412,12 @@ class AnvioArtifacts:
                     self.artifacts_info[artifact]['provided_by'].append(program.name)
 
         if len(artifacts_without_descriptions):
-            self.run.info_single("Of %d artifacts found, %d did not contain any description. If you would like to "
+            self.run.info_single("Of %d artifacts found, %d did not contain any DESCRIPTION. If you would like to "
                                  "see examples and add new descriptions, please see the directory '%s'. Here is the "
                                  "full list of artifacts that are not yet explained: %s." \
                                         % (len(ANVIO_ARTIFACTS),
                                            len(artifacts_without_descriptions),
-                                           docs_path,
+                                           self.docs_path,
                                            ', '.join(artifacts_without_descriptions)), nl_after=1, nl_before=1)
 
 
@@ -439,6 +438,10 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_directory_path = A("output_dir") or 'ANVIO-HELP'
+
+        self.docs_path = os.path.join(os.path.dirname(anvio.__file__), 'docs')
+        if not os.path.exists(self.docs_path):
+            raise ConfigError("The anvi'o docs path is not where it should be :/ Something funny is going on.")
 
         filesnpaths.gen_output_directory(self.output_directory_path, delete_if_exists=True, dont_warn=True)
 
