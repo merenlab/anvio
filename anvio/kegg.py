@@ -1792,7 +1792,7 @@ class KeggMetabolismEstimator(KeggContext):
         return new_kegg_metabolism_superdict
 
 
-    def estimate_metabolism(self):
+    def estimate_metabolism(self, for_visualization=False):
         """This is the driver function for estimating metabolism.
 
         It will decide what to do based on whether the input contigs DB is a genome or metagenome.
@@ -1817,10 +1817,12 @@ class KeggMetabolismEstimator(KeggContext):
             else:
                 raise ConfigError("This class doesn't know how to deal with that yet :/")
 
-        if not self.store_json_without_estimation:
+        if not self.store_json_without_estimation and not for_visualization:
             self.store_kegg_metabolism_superdict(kegg_metabolism_superdict)
         if self.write_dict_to_json:
             self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json")
+
+        return kegg_metabolism_superdict
 
 
     def store_kegg_metabolism_superdict(self, kegg_superdict):
