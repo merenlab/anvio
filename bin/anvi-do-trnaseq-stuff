@@ -79,6 +79,7 @@ del cl
 gc.collect()
 
 taxdf = pd.read_csv(args.gast, sep='\t', usecols=['read_id', 'taxonomy'])
+taxdf = taxdf[taxdf['taxonomy'] != 'Unknown'] # Ignore queries without a significant hit
 taxdf[gast_ranks] = pd.DataFrame(split_taxonomy_col(taxdf['taxonomy'].tolist()))
 taxdf.drop(['taxonomy', 'subspecies'], axis=1, inplace=True)
 taxdf.set_index('read_id', inplace=True)
