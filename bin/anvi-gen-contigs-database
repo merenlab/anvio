@@ -17,7 +17,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['contigs-fasta']
+__requires__ = ['contigs-fasta', 'external-gene-calls']
 __provides__ = ['contigs-db']
 __description__ = "Generate a new anvi'o contigs database."
 
