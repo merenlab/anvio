@@ -19,6 +19,11 @@ ANVIO_ARTIFACTS ={
         "type": "FASTA",
         "internal": False
     },
+    "external-gene-calls": {
+        "name": "EXTERNAL GENE CALLS",
+        "type": "TXT",
+        "internal": False
+    },
     "concatenated-gene-alignment-fasta": {
         "name": "CONCATENATED GENE ALIGNMENT",
         "type": "FASTA",
