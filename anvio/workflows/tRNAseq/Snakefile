@@ -198,8 +198,8 @@ rule compress_reformatted_fasta:
     threads: M.T('compress_reformatted_fasta')
     resources: nodes = M.T('compress_reformatted_fasta')
     run:
-        shell("gzip {input.fasta} >> {log} 2>&1" % (input.fasta, log[0]))
-        shell("gzip {input.report} >> {log} 2>&1" % (input.report, log[0]))
+        shell("gzip %s >> %s 2>&1" % (input.fasta, log[0]))
+        shell("gzip %s >> %s 2>&1" % (input.report, log[0]))
 
 
 rule get_unique_tRNA_fasta:
