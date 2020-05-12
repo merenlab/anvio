@@ -2373,8 +2373,12 @@ class MetabolismInteractive():
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.contigs_db_path = A('contigs_db') #TODO delete if we don't need this
-        m = kegg.KeggMetabolismEstimator(args)
-        self.metabolism_data = m.get_metabolism_data_for_visualization()
+
+        self.estimator = kegg.KeggMetabolismEstimator(args)
+
+
+    def get_metabolism_data(self):
+        return self.estimator.get_metabolism_data_for_visualization()
 
 
 class ContigsInteractive():

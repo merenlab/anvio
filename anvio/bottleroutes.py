@@ -183,6 +183,7 @@ class BottleApplication(Bottle):
         self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
         self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
+        self.route('/data/get_metabolism',                     callback=self.get_metabolism)
 
 
     def run_application(self, ip, port):
@@ -1307,6 +1308,10 @@ class BottleApplication(Bottle):
         engine = request.forms.get('engine')
 
         return json.dumps(self.interactive.get_column_info(gene_callers_id, engine))
+
+
+    def get_metabolism(self):
+        return json.dumps(self.interactive.get_metabolism_data())
 
 
     def get_structure(self, gene_callers_id):
