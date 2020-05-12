@@ -512,7 +512,7 @@ class MODELLER:
 
         driver = diamond.Diamond(
             query_fasta=self.target_fasta_path,
-            target_fasta=J(self.database_dir, 'pdb_95.dmnd'),
+            target_fasta=J(self.database_dir, self.modeller_database + '.dmnd'),
             run=terminal.Run(verbose=False),
             progress=terminal.Progress(verbose=False),
         )
@@ -594,16 +594,10 @@ class MODELLER:
         Creates the .dmnd file if it is missing
         """
 
-        extensionless, extension = os.path.splitext(self.modeller_database)
-        if extension not in [".bin",".pir",""]:
-            raise ConfigError("MODELLER :: The only possible database extensions are .bin and .pir")
-
-        bin_db_path = J(self.database_dir, extensionless + ".bin")
-        pir_db_path = J(self.database_dir, extensionless + ".pir")
+        bin_db_path = J(self.database_dir, self.modeller_database + ".bin")
+        pir_db_path = J(self.database_dir, self.modeller_database + ".pir")
         bin_exists = utils.filesnpaths.is_file_exists(bin_db_path, dont_raise=True)
         pir_exists = utils.filesnpaths.is_file_exists(pir_db_path, dont_raise=True)
-
-        self.database_path = bin_db_path
 
         if bin_exists and pir_exists:
             # We good
@@ -627,7 +621,7 @@ class MODELLER:
                              "than it could be. Anvi'o is going to make a binary format. Just FYI")
             self.run_binarize_database(pir_db_path, bin_db_path)
 
-        dmnd_db_path = J(self.database_dir, 'pdb_95.dmnd')
+        dmnd_db_path = J(self.database_dir, self.modeller_database + '.dmnd')
 
         if os.path.exists(dmnd_db_path):
             return
@@ -638,9 +632,9 @@ class MODELLER:
 
         self.copy_script_to_directory(script_name)
 
-        input_pir_path = J(self.database_dir, 'pdb_95.pir')
-        fasta_path = J(self.database_dir, 'pdb_95.fa')
-        dmnd_path = J(self.database_dir, 'pdb_95')
+        input_pir_path = J(self.database_dir, self.modeller_database + '.pir')
+        fasta_path = J(self.database_dir, self.modeller_database + '.fa')
+        dmnd_path = J(self.database_dir, self.modeller_database)
 
         command = [self.executable,
                    script_name,
