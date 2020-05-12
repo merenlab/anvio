@@ -503,10 +503,10 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
     def init_anvio_markdown_variables_conversion_dict(self):
         for program_name in self.all_program_names:
-            self.anvio_markdown_variables_conversion_dict[program_name] = "[%s](%s/programs/%s)" % (program_name, self.base_url, program_name)
+            self.anvio_markdown_variables_conversion_dict[program_name] = """<span class="artifact-n">[%s](%s/programs/%s)</span>""" % (program_name, self.base_url, program_name)
 
         for artifact_name in ANVIO_ARTIFACTS:
-            self.anvio_markdown_variables_conversion_dict[artifact_name] = "[%s](%s/artifacts/%s)" % (artifact_name, self.base_url, artifact_name)
+            self.anvio_markdown_variables_conversion_dict[artifact_name] = """<span class="artifact-n">[%s](%s/artifacts/%s)</span>""" % (artifact_name, self.base_url, artifact_name)
 
 
     def read_anvio_markdown(self, file_path):
@@ -522,13 +522,18 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         try:
             markdown_content = markdown_content % self.anvio_markdown_variables_conversion_dict
         except KeyError as e:
+            self.progress.end()
             raise ConfigError("One of the variables, %s, in '%s' is not yet described anywhere :/ If it is not a typo but "
                               "a new artifact, you can add it to the file `anvio/docs/__init__.py`. After which everything "
                               "should work. But please also remember to update provides / requires statements of programs "
                               "for everything to be linked together." % (e, file_path))
+        except Exception as e:
+            self.progress.end()
+            raise ConfigError("Something went wrong while working with '%s' :/ This is what we know: '%s'." % (file_path, e))
 
         markdown_content = markdown_content.replace("""{{ codestart }}""", """<div class="codeblock" markdown="1">""")
         markdown_content = markdown_content.replace("""{{ codestop }}""", """</div>""")
+        markdown_content = markdown_content.replace("""-""", """&#45;""")
 
 
         return markdown_content
