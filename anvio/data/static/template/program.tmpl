@@ -16,13 +16,24 @@ image:
 
 {{ program.description }}
 
+[Back to help main page](../../)
+
 ## Provides
 
 <p style="text-align: left" markdown="1">{% for name, path in program.provides %}<span style="background:#cbe4d5; padding: 0px 3px 2px 3px; border-radius: 5px;">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
 
-## Requires
+## Requires or uses
 
 <p style="text-align: left" markdown="1">{% for name, path in program.requires %}<span style="background:#dcbfe8; padding: 0px 3px 2px 3px; border-radius: 5px;">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+
+## Usage
+
+{% if program.usage %}
+{{ program.usage }}
+{% else %}
+{:.notice}
+**No one has described the usage of this program** :/ If you would like to contribute, please see usage examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs), and feel free to add a Markdown formatted file in this directory named "{{program.name}}.md". For a template, you can use the markdown file for `anvi-gen-contigs-database`. THANK YOU!
+{% endif %}
 
 ## Additional Resources
 
