@@ -527,6 +527,10 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
                               "should work. But please also remember to update provides / requires statements of programs "
                               "for everything to be linked together." % (e, file_path))
 
+        markdown_content = markdown_content.replace("""{{ codestart }}""", """<div class="codeblock" markdown="1">""")
+        markdown_content = markdown_content.replace("""{{ codestop }}""", """</div>""")
+
+
         return markdown_content
 
 
