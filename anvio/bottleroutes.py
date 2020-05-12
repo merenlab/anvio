@@ -245,6 +245,8 @@ class BottleApplication(Bottle):
             homepage = 'contigs.html'
         elif self.interactive.mode == 'structure':
             homepage = 'structure.html'
+        elif self.interactive.mode == 'metabolism':
+            homepage = 'metabolism.html'
         elif self.interactive.mode == 'inspect':
             redirect('/app/charts.html?id=%s&show_snvs=true&rand=%s' % (self.interactive.inspect_split_name, self.random_hash(8)))
 
@@ -1400,4 +1402,3 @@ class BottleApplication(Bottle):
             return json.dumps({'status': 1, 'message': message})
 
         return json.dumps(output)
-

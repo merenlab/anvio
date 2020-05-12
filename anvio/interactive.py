@@ -2362,6 +2362,18 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         var.merged.drop(labels=columns_to_drop, axis=1, inplace=True)
 
 
+class MetabolismInteractive():
+    def __init__(self, args, run=run, progress=progress):
+        self.mode = "metabolism"
+
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
+
+
 class ContigsInteractive():
     def __init__(self, args, run=run, progress=progress):
         self.mode = 'contigs'
