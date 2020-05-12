@@ -64,11 +64,9 @@ class tRNASeqWorkflow(WorkflowSuperClass):
             '--max-num-mismatches',
             '--report-r1-prefix',
             '--report-r2-prefix']
-        rule_acceptable_params_dict['compress_merged_fasta'] = ['run']
         rule_acceptable_params_dict['anvi_reformat_fasta'] = ['--simplify-names']
         rule_acceptable_params_dict['anvi_gen_tRNAseq_database'] = [
             '--charging-recorded', '--trust-fasta', '--verbose']
-        rule_acceptable_params_dict['compress_reformatted_fasta'] = ['run']
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
         # Default values for certain accessible parameters
@@ -80,14 +78,12 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                 '--report-r1-prefix': False,
                 '--report-r2-prefix': False,
                 'threads': 1},
-            'compress_merged_fasta': {'run': True},
             'anvi_reformat_fasta': {'--simplify-names': True},
             'anvi_gen_tRNAseq_database': {
                 '--charging-recorded': False,
                 '--trust-fasta': False,
                 '--verbose': False,
-                'threads': 1},
-            'compress_reformatted_fasta': {'run': True}})
+                'threads': 1}})
 
         # Directories where output beside log files are written
         self.dirs_dict.update({'QC_DIR': '01_QC', 'IDENT_DIR': '02_IDENT'})
@@ -121,30 +117,26 @@ class tRNASeqWorkflow(WorkflowSuperClass):
             sample_name + '_' + split_type
             for sample_name, split_type in zip(self.sample_names, self.sample_info['split'])]
 
-        # The target files are extended depending on the rules set to run by the config file
-        self.init_target_files(
-            self.get_param_value_from_config(['compress_merged_fasta', 'run']),
-            self.get_param_value_from_config(['compress_reformatted_fasta', 'run']))
+        self.init_target_files()
 
 
-    def init_target_files(self, run_compress_merged_fasta, run_compress_reformatted_fasta):
+    def init_target_files(self):
 
-        # The target files of all tRNAseq workflows
         for sample_split_prefix in self.sample_split_prefixes:
             self.target_files.append(
-                os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "_CONDENSED.bam"))
+                os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "_UNIQUE_TRNA.fasta"))
 
-        # Compress by default unless specified otherwise in the config file
-        if run_compress_merged_fasta:
-            for sample_split_prefix in self.sample_split_prefixes:
-                self.target_files.append(
-                    os.path.join(self.dirs_dict['QC_DIR'], sample_split_prefix + "_MERGED.gz"))
-
-        # Compress by default unless specified otherwise in the config file
-        if run_compress_reformatted_fasta:
-            for sample_split_prefix in self.sample_split_prefixes:
-                self.target_files.append(
-                    os.path.join(self.dirs_dict['QC_DIR'], sample_split_prefix + ".fasta.gz"))
+        for sample_split_prefix in self.sample_split_prefixes:
+            self.target_files.append(
+                os.path.join(self.dirs_dict['QC_DIR'], sample_split_prefix + "_MERGED.gz"))
+            self.target_files.append(
+                os.path.join(self.dirs_dict['QC_DIR'], sample_split_prefix + "_FAILED.gz"))
+            self.target_files.append(
+                os.path.join(self.dirs_dict['QC_DIR'], sample_split_prefix + "_FAILED_WITH_Ns.gz"))
+            self.target_files.append(
+                os.path.join(self.dirs_dict['QC_DIR'], sample_split_prefix + ".fasta.gz"))
+            self.target_files.append(
+                os.path.join(self.dirs_dict['QC_DIR'], sample_split_prefix + "_REFORMAT_REPORT.txt"))
 
 
     @staticmethod
