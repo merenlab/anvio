@@ -56,13 +56,13 @@ class ProgramSearch:
         self.report = A('report', null)
 
         self.headers_to_report = []
-        self.headers = ['Program', 'Description', 'Tags', 'Provides', 'Requires', 'Status']
+        self.headers = ['Program', 'Description', 'Tags', 'Provides', 'Requires']
         self.table = pd.DataFrame([], columns = self.headers)
 
         self.handle_inputs()
 
         anvio_programs = p.AnvioPrograms(args)
-        anvio_programs.create_program_classes(okay_if_no_meta=True, quiet=True)
+        anvio_programs.init_programs(okay_if_no_meta=True, quiet=True)
         self.programs = anvio_programs.programs
 
         self.get_headers_to_report()
@@ -125,9 +125,8 @@ class ProgramSearch:
 
 
     def populate_table(self):
-        for program in self.programs:
+        for program in self.programs.values():
             tags = program.meta_info['tags']['value']
-            status = program.meta_info['status']['value']
             provides = [item.id for item in program.meta_info['provides']['value']]
             requires = [item.id for item in program.meta_info['requires']['value']]
             description = program.meta_info['description']['value']
@@ -145,7 +144,7 @@ class ProgramSearch:
 
                 description += "<><>RESOURCES:<><>%s<>" % (resources_text)
 
-            row_info = [program.name, description, tags, provides, requires, status]
+            row_info = [program.name, description, tags, provides, requires]
             row = dict(zip(self.headers, row_info))
             self.table = self.table.append(row, ignore_index = True)
 
