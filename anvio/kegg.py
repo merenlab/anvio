@@ -1938,6 +1938,34 @@ class KeggMetabolismEstimator(KeggContext):
         self.run.info("JSON Output", file_path)
 
 
+    def get_metabolism_data_for_visualization(self):
+        """Returns a dictionary of metabolism data for visualization on the interactive interface.
+
+        This function should be called from the interactive interface class to obtain metabolism data.
+        It runs the metabolism estimation function on-the-fly to generate the data.
+        It then pulls only certain keys from the resulting dictionary and returns them to the interface.
+        """
+
+        # add keys to this list to include the data in the visualization dictionary
+        module_data_keys_for_visualization = ['module_completeness']
+
+        metabolism_dict = self.estimate_metabolism(for_visualization=True)
+        data_for_visualization = {}
+
+        for bin, mod_dict in metabolism_dict.items():
+            data_for_visualization[bin] = {}
+            for mnum, c_dict in mod_dict.items():
+                if mnum == "num_complete_modules":
+                    continue
+
+                data_for_visualization[bin][mnum] = {}
+                for key in c_dict:
+                    if key in module_data_keys_for_visualization:
+                        data_for_visualization[bin][mnum][key] = c_dict[key]
+
+        return data_for_visualization
+
+
 class KeggModulesDatabase(KeggContext):
     """To create or access a Modules DB.
 
