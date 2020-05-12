@@ -185,36 +185,65 @@ class AnvioPrograms:
 
         num_all_programs = len(self.all_program_filepaths)
 
-        meta_count = 0
         self.programs = {}
         self.progress.new('Characterizing program', progress_total_items=num_all_programs)
+
+        programs_with_usage_info = set([])
+        programs_without_usage_info = set([])
+        programs_with_provides_requires_info = set([])
+        programs_without_provides_requires_info = set([])
 
         for program_filepath in self.all_program_filepaths:
             self.progress.update(os.path.basename(program_filepath), increment=True)
 
             program = Program(program_filepath, r=self.run, p=self.progress)
 
+            program_usage_information_path = os.path.join(self.docs_path, 'programs/%s.md' % (program.name))
+
             if program.meta_info['provides']['value'] or program.meta_info['requires']['value']:
-                meta_count += 1
+                programs_with_provides_requires_info.add(program.name)
+            else:
+                programs_without_provides_requires_info.add(program.name)
+
+            # learn about the usage statement of the program
+            if os.path.exists(program_usage_information_path):
+                program.usage = self.read_anvio_markdown(program_usage_information_path)
+                programs_with_usage_info.add(program.name)
+            else:
+                programs_without_usage_info.add(program.name)
 
             if not (program.meta_info['provides']['value'] or program.meta_info['requires']['value']) and not okay_if_no_meta:
-                pass
+                try:
+                    programs_with_usage_info.remove(program.name)
+                    programs_without_usage_info.remove(program.name)
+                except:
+                    pass
             else:
                 self.programs[program.name] = program
 
         self.progress.end()
 
-        if not meta_count and not okay_if_no_meta:
-            raise ConfigError("None of the %d anvi'o programs found contained any provides or "
-                              "requires statements :/" % len(self.all_program_filepaths))
+        # report missing provides/requires information
+        self.run.info_single("Of %d programs found, %d did not contain PROVIDES AND/OR REQUIRES "
+                             "statements :/ This may be normal for some programs, but here is the "
+                             "complete list of those that are missing __provides__ and __requires__ "
+                             "tags in their code in case you see something you can complete: '%s'." % \
+                                        (len(self.all_program_filepaths),
+                                         len(programs_without_provides_requires_info),
+                                         ', '.join(programs_without_provides_requires_info)),
+                             nl_after=1, nl_before=1)
 
-        if not quiet:
-            absentees = ', '.join(list(set([os.path.basename(p) for p in self.all_program_filepaths]) - set(list(self.programs.keys()))))
-
-            self.run.info_single("Of %d programs found, %d did contain provides and/or requires "
-                                 "statements. In case you would like to help with this, here is a "
-                                 "list of programs that do not contain any provides and/or requires "
-                                 "information: %s."% (len(self.all_program_filepaths), meta_count, absentees), nl_after=1, nl_before=1)
+        # report missing provides/requires information
+        self.run.info_single("Of %d programs found, %d did not have any USAGE INFORMATION. You can "
+                             "help by adding usage information for programs by creating markdown "
+                             "formatted files under the directory '%s'. Please see examples in anvi'o "
+                             "codebase: https://github.com/merenlab/anvio/tree/master/anvio/docs. "
+                             "Here is a complete list of programs that are missing usage statements: %s " % \
+                                        (len(self.all_program_filepaths),
+                                         len(programs_without_provides_requires_info),
+                                         self.docs_path, 
+                                         ', '.join(programs_without_provides_requires_info)),
+                             nl_after=1, nl_before=1)
 
 
 class Program:
