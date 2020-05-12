@@ -32,7 +32,7 @@ Most likely provided by the user.
 
 ## Description
 {% if artifact.description %}
-{{ artifact.description }}
+{{ artifact.description|safe }}
 {% else %}
 {:.notice}
 **No one has described this artifact yet** :/ If you would like to contribute by describing it, please see previous examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs/artifacts), and add a Markdown formatted file in that directory named "{{artifact.name}}.md". Its contents will replace this sad text. THANK YOU!
