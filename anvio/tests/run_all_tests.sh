@@ -609,6 +609,8 @@ INFO "Generating mock external genome data"
 cp $files/mock_data_for_pangenomics/{01,02,03}.fa $output_dir/
 cp $files/mock_data_for_pangenomics/external-genomes.txt $output_dir/
 cp $files/mock_data_for_pangenomics/functions/*-functions.txt $output_dir/
+cp $files/example_description.md $output_dir/
+
 for g in 01 02 03
 do
     echo -n "$g .. "
@@ -642,19 +644,34 @@ anvi-dereplicate-genomes --ani-dir $output_dir/GENOME_SIMILARITY_OUTPUT \
                          --program pyANI
 SHOW_FILE $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS/CLUSTER_REPORT.txt
 
-INFO "Testing anvi-analyze-synteny ignoring genes with no annotation"
+INFO "Generating an anvi'o genomes storage"
+anvi-gen-genomes-storage -e $output_dir/external-genomes.txt -o $output_dir/TEST-GENOMES.db
 
-# run anvi-analyze-synteny
-anvi-analyze-synteny -e $output_dir/external-genomes.txt \
-                     --annotation-source COG_FUNCTION \
+INFO "Running the pangenome analysis with default parameters"
+anvi-pan-genome -g $output_dir/TEST-GENOMES.db \
+                -o $output_dir/TEST/ \
+                -n TEST \
+                --use-ncbi-blast \
+                --description $output_dir/example_description.md
+
+INFO "Testing anvi-analyze-synteny with default parameters using a pangenome for annotations"
+anvi-analyze-synteny -g $output_dir/TEST-GENOMES.db \
+                     -p $output_dir/TEST/TEST-PAN.db \
                      --ngram-window-range 2:3 \
                      -o $output_dir/synteny_output_no_unknowns.tsv
 
 INFO "Testing anvi-analyze-synteny now including unannotated genes"
-anvi-analyze-synteny -e $output_dir/external-genomes.txt \
-                     --annotation-source COG_FUNCTION \
+anvi-analyze-synteny -g $output_dir/TEST-GENOMES.db \
+                     -p $output_dir/TEST/TEST-PAN.db \
                      --ngram-window-range 2:3 \
                      -o $output_dir/synteny_output_with_unknowns.tsv \
+                     --analyze-unknown-functions
+
+INFO "Testing anvi-analyze-synteny now including unannotated genes"
+anvi-analyze-synteny -g $output_dir/TEST-GENOMES.db \
+                     --annotation-source COG_FUNCTION \
+                     --ngram-window-range 2:3 \
+                     -o $output_dir/synteny_output_with_COGs.tsv \
                      --analyze-unknown-functions
 
 INFO 'A dry run with an items order file for the merged profile without any clustering'
