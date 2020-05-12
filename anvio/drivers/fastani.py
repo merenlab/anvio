@@ -94,7 +94,7 @@ class ManyToMany(FastANIDriver):
 
 
     def fill_missing_data(self, fastANI_output):
-        """ If alignment is insufficient, fastANI removes the results from the output. This puts them back """
+        """If alignment is insufficient, fastANI removes the results from the output. This puts them back"""
 
         all_query_reference_combinations = set(product(self.query_names, self.reference_names))
         present_query_reference_combinations = set([tuple(r) for r in fastANI_output[['query', 'reference']].values])
@@ -139,7 +139,7 @@ class ManyToMany(FastANIDriver):
 
 
     def run_command(self, query_targets, reference_targets, output_path, run_dir=os.getcwd(), name_conversion_dict=None):
-        """ Run the command
+        """Run the command
 
         Parameters
         ==========
