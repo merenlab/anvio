@@ -14,6 +14,11 @@ ANVIO_ARTIFACTS ={
         "type": "DB",
         "internal": True
     },
+    "fasta": {
+        "name": "REGULAR FASTA",
+        "type": "FASTA",
+        "internal": False
+    },
     "contigs-fasta": {
         "name": "CONTIGS",
         "type": "FASTA",
