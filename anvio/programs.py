@@ -275,11 +275,6 @@ class Program:
                 'object_name': '__description__',
                 'null_object': ''
             },
-            'usage': {
-                'object_name': '__usage__',
-                'null_object': '',
-                'read_as_is': True,
-            },
         }
 
         self.module = self.load_as_module(self.program_path)
