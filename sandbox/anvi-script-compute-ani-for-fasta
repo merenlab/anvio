@@ -27,7 +27,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['contigs-fasta']
+__requires__ = ['fasta']
 __provides__ = ['genome-similarity']
 __description__ = "Run ANI between contigs in a single FASTA file."
 
