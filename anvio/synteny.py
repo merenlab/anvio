@@ -238,8 +238,12 @@ class NGram(object):
                 ngram_counts_dict, annotations_dict = self.count_synteny(N, gene_caller_ids_list)
 
                 for ngram, count in ngram_counts_dict.items():
-                    # FIXME: need to iterate through annotation sources and select the NON ngram_source
-                    self.ngram_attributes_list.append([ngram, count, annotations_dict[ngram]['COG_FUNCTION'], contigs_db_name, N])
+
+                    for annotation_source, annotation in annotations_dict[ngram].items():
+                        if annotation_source == self.ngram_source:
+                            pass
+                        else:
+                            self.ngram_attributes_list.append([ngram, count, annotations_dict[ngram][annotation_source], contigs_db_name, N])
 
     def count_synteny(self, N, gene_caller_ids_list):
         """This method counts synteny patterns of size N on a contig
@@ -273,18 +277,27 @@ class NGram(object):
         for window in gene_callers_id_windows:
 
             annotated_window_dict = self.annotate_window(window)
-            ngram, flipped = self.order_window(annotated_window_dict[self.ngram_source])
+            if self.ngram_source:
+                ngram = self.order_window(annotated_window_dict[self.ngram_source])
+            elif self.annotation_source:
+                ngram = self.order_window(annotated_window_dict[self.annotation_source])
+            else:
+                ngram = self.order_window(annotated_window_dict['gene_clusters'])
 
-            # FIXME: need to also reorder the annotation if the Ngram is flipped
-            # if flippped == True:
-            #     for key, value in annotated_window_dict.items():
-            #         if key == self.ngram_source:
-            #             pass
-            #         else:
-            #             annotated_window_flipped = self.order_window(value)
+            # flip annotation if the ngram was flipped
+            if ngram[1] == True:
+                annotated_window_dict_ordered = {}
+                for annotation_source, annotation in annotated_window_dict.items():
+                    if annotation_source == self.ngram_source:
+                        pass
+                    else:
+                        annotated_window_flipped = annotation[::-1]
+                        annotated_window_dict_ordered[annotation_source] = annotated_window_flipped
+            else:
+                pass
 
-            ngram_counts_dict[ngram] += 1
-            annotations_dict[ngram] = annotated_window_dict
+            ngram_counts_dict[ngram[0]] += 1
+            annotations_dict[ngram[0]] = annotated_window_dict
 
         return ngram_counts_dict, annotations_dict
 
@@ -334,6 +347,7 @@ class NGram(object):
 
         original_order = annotated_window
         flipped_order = annotated_window[::-1]
+
         if original_order[0] < flipped_order[0]:
             ngram = original_order
             flipped = False
@@ -341,14 +355,15 @@ class NGram(object):
             ngram = flipped_order
             flipped = True
 
-        return ngram, flipped
+        ngram = [ngram, flipped]
+
+        return ngram
 
 
     def convert_to_df(self):
         """Takes self.ngram_attributes_list and returns a pandas dataframe"""
 
         ngram_count_df_list = []
-
         for ngram_attribute in self.ngram_attributes_list:
             ngram = "::".join(map(str, list(ngram_attribute[0])))
             annotation = "::".join(map(str, list(ngram_attribute[2])))
@@ -358,7 +373,7 @@ class NGram(object):
                                 'count': ngram_attribute[1],
                                 'annotation': annotation,
                                 'contig_db_name': ngram_attribute[3],
-                                'N':ngram_attribute[3],
+                                'N':ngram_attribute[4],
                                 'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
             elif self.pan_db and not self.annotation_source:
                 ngram = "::".join(map(str, list(ngram_attribute[0])))
@@ -368,6 +383,15 @@ class NGram(object):
                                 'contig_db_name': ngram_attribute[3],
                                 'N':ngram_attribute[4],
                                 'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
+            else:
+                ngram = "::".join(map(str, list(ngram_attribute[0])))
+                df = pd.DataFrame(columns=['ngram','count', 'contig_db_name', 'N', 'number_of_loci'])
+                df = df.append({'ngram': ngram,
+                                'count': ngram_attribute[1],
+                                'contig_db_name': ngram_attribute[3],
+                                'N':ngram_attribute[4],
+                                'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
+
             ngram_count_df_list.append(df)
 
         ngram_count_df_final = pd.concat(ngram_count_df_list)
