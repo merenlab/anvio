@@ -196,9 +196,14 @@ class BottleApplication(Bottle):
                                     % {'wsgi': self._wsgi_for_bottle})
 
         try:
-            with terminal.SuppressAllOutput():
+            # allow output to terminal when debugging
+            if anvio.DEBUG:
                 server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': self._wsgi_for_bottle})
                 server_process.start()
+            else:
+                with terminal.SuppressAllOutput():
+                    server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': self._wsgi_for_bottle})
+                    server_process.start()
 
             url = "http://%s:%d" % (ip, port)
 
