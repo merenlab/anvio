@@ -1021,16 +1021,17 @@ class KeggMetabolismEstimator(KeggContext):
                               "you now know what you need to do to make this message go away." % ("MODULES.db", self.kegg_data_dir))
         self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
 
-        # load and sanity check contigs DB
-        self.contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
-        self.contigs_db_project_name = self.contigs_db.meta['project_name']
+        # here we load the contigs DB just for sanity check purposes.
+        # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+        self.contigs_db_project_name = contigs_db.meta['project_name']
 
         # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
-        if 'modules_db_hash' not in self.contigs_db.meta:
+        if 'modules_db_hash' not in contigs_db.meta:
             raise ConfigError("Based on the contigs DB metadata, the contigs DB that you are working with has not been annotated with hits to the "
                               "KOfam database, so there are no KOs to estimate metabolism from. Please run `anvi-run-kegg-kofams` on this contigs DB "
                               "before you attempt to run this script again.")
-        contigs_db_mod_hash = self.contigs_db.meta['modules_db_hash']
+        contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
         mod_db_hash = self.kegg_modules_db.db.get_meta_value('hash')
         if contigs_db_mod_hash != mod_db_hash:
             raise ConfigError("The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now. "
@@ -1041,6 +1042,7 @@ class KeggMetabolismEstimator(KeggContext):
                               "the --kegg-data-dir flag. If neither of those things make this work, then you should contact the developers to see if they can help you "
                               "figure this out. For those who need this information, the Modules DB used to annotate this contigs database previously had the "
                               "following hash: %s. And the hash of the current Modules DB is: %s" % (self.contigs_db_path, self.kegg_data_dir, contigs_db_mod_hash, mod_db_hash))
+        contigs_db.disconnect()
 
 
     def init_hits_and_splits(self):
@@ -1059,12 +1061,13 @@ class KeggMetabolismEstimator(KeggContext):
         """
 
         self.progress.new('Loading data from Contigs DB')
-        genes_in_splits = self.contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "gene_callers_id, split")
-        genes_in_contigs = self.contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig")
-        kofam_hits = self.contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "gene_callers_id, split")
+        genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig")
+        kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
                                                                where_clause="source = 'KOfam'")
-        min_contig_length_in_contigs_db = self.contigs_db.db.get_max_value_in_column(t.contigs_info_table_name, "length", return_min_instead=True)
-        self.contigs_db.disconnect()
+        min_contig_length_in_contigs_db = contigs_db.db.get_max_value_in_column(t.contigs_info_table_name, "length", return_min_instead=True)
+        contigs_db.disconnect()
 
         # get rid of gene calls that are not associated with KOfam hits.
         all_gene_calls_in_splits = set([tpl[0] for tpl in genes_in_splits])
