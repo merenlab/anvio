@@ -2123,8 +2123,13 @@ class KeggModulesDatabase(KeggContext):
 
 
     def get_days_since_creation(self):
-        """Returns the time (in days) since MODULES.db was created"""
-        return (time.time() - float(self.db.get_meta_value('creation_date'))) / 3600
+        """Returns the time (in days) since MODULES.db was created.
+
+        The time units are seconds, and there are 60*60*24 = 86400 seconds per day,
+        so we do the appropriate division to get the time in days.
+        """
+
+        return (time.time() - float(self.db.get_meta_value('creation_date'))) / 86400
 
 
     def get_db_content_hash(self):
