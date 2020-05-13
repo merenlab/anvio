@@ -100,7 +100,7 @@ n_columns_before_data <- (names(df_in) %>% startsWith("p_") %>% which %>% min) -
 G <- (ncol(df_in) - n_columns_before_data) / 2
 # check if the input file makes sense
 if (G %% 1 != 0) {
-  stop(sprintf("The input file '%s' does not look like it came from anvi-get-enriched-functions-per-pan-group.", opt$input))
+  stop(sprintf("The input file '%s' does not look like it came from anvi-get-enriched-functions-per-pan-group.", opts$input))
 }
 
 # Set up functions to run
