@@ -1019,7 +1019,7 @@ class KeggMetabolismEstimator(KeggContext):
                               "`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case "
                               "since you also cannot run `anvi-run-kegg-kofams` without first having run KEGG setup. But fine. Hopefully "
                               "you now know what you need to do to make this message go away." % ("MODULES.db", self.kegg_data_dir))
-        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
+        kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
 
         # here we load the contigs DB just for sanity check purposes.
         # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
@@ -1032,7 +1032,7 @@ class KeggMetabolismEstimator(KeggContext):
                               "KOfam database, so there are no KOs to estimate metabolism from. Please run `anvi-run-kegg-kofams` on this contigs DB "
                               "before you attempt to run this script again.")
         contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
-        mod_db_hash = self.kegg_modules_db.db.get_meta_value('hash')
+        mod_db_hash = kegg_modules_db.db.get_meta_value('hash')
         if contigs_db_mod_hash != mod_db_hash:
             raise ConfigError("The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now. "
                               "Perhaps you updated your KEGG setup after running `anvi-run-kegg-kofams` on this contigs DB? Or maybe you have multiple KEGG data "
@@ -1043,6 +1043,7 @@ class KeggMetabolismEstimator(KeggContext):
                               "figure this out. For those who need this information, the Modules DB used to annotate this contigs database previously had the "
                               "following hash: %s. And the hash of the current Modules DB is: %s" % (self.contigs_db_path, self.kegg_data_dir, contigs_db_mod_hash, mod_db_hash))
         contigs_db.disconnect()
+        kegg_modules_db.disconnect()
 
 
     def init_hits_and_splits(self):
@@ -1807,6 +1808,8 @@ class KeggMetabolismEstimator(KeggContext):
         """
 
         kegg_metabolism_superdict = {}
+
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
 
         if self.estimate_from_json:
             kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
