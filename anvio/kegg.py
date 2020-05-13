@@ -2340,6 +2340,10 @@ class KeggModulesDatabase(KeggContext):
         self.db.disconnect()
 
 
+    def disconnect(self):
+        self.db.disconnect()
+
+
     def get_days_since_creation(self):
         """Returns the time (in days) since MODULES.db was created.
 
