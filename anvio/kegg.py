@@ -1956,7 +1956,7 @@ class KeggMetabolismEstimator(KeggContext):
         """
 
         # add keys to this list to include the data in the visualization dictionary
-        module_data_keys_for_visualization = ['module_completeness']
+        module_data_keys_for_visualization = ['percent_complete']
 
         metabolism_dict = self.estimate_metabolism(for_visualization=True)
         data_for_visualization = {}
@@ -1968,9 +1968,9 @@ class KeggMetabolismEstimator(KeggContext):
                     continue
 
                 data_for_visualization[bin][mnum] = {}
-                for key in c_dict:
+                for key, value in c_dict.items():
                     if key in module_data_keys_for_visualization:
-                        data_for_visualization[bin][mnum][key] = c_dict[key]
+                        data_for_visualization[bin][mnum][key] = value
 
         return data_for_visualization
 
