@@ -1826,6 +1826,101 @@ def translate(sequence):
     return ''.join(translated_sequence)
 
 
+def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop_prob=None):
+    """Predict the translation frame with a markov model of amino acid sequences
+
+    Parameters
+    ==========
+    sequence : str
+        A DNA sequence
+
+    model : numpy array, None
+        A numpy array of transition probabilities. For an example, see
+        anvio/data/seq_transition_models/AA/3rd_order.npy
+
+    null_prob : float, None
+        When a markov state contains an unspecified amino acid (X), what probability transition should
+        be applied to it? To be as uninformative as possible, if None, null_prob is set to the median
+        transition probability of the model.
+
+    stop_prob : float, None
+        When a markov state contains a stop codon, what transition probability should
+        be applied to it? Since internal stop codons are exceedingly rare, if None, stop_prob is set
+        to be 1/1000th the probability of the minimum transition probability of the model.
+
+    Returns
+    =======
+    frame, amino_acid_sequence : int, str
+        frame is the number of shifted nucleotides that produced the most likely frame and is either
+        0, 1, or 2. amino_acid_sequence is the translated sequence.
+    """
+
+    if len(sequence) < 3:
+        raise ConfigError("utils.get_most_likely_translation_frame :: sequence has a length less than 3 "
+                          "so there is nothing to translate.")
+
+    if model is None:
+        default_model_path = os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/3rd_order.npy')
+        model = np.load(default_model_path)
+
+    order = len(model.shape)
+    null_prob = stop_prob if stop_prob is not None else np.median(model)
+    stop_prob = stop_prob if stop_prob is not None else model.min()/1e3
+
+    aas = [constants.AA_to_single_letter_code[aa] for aa in constants.amino_acids if aa != 'STP']
+    aa_to_array_index = {aa: i for i, aa in enumerate(aas)}
+
+    # Collect all of the candidate sequences
+
+    candidates = {}
+    for frame in range(3):
+        frame_seq = sequence[frame:]
+
+        remainder = len(frame_seq) % 3
+        if remainder:
+            frame_seq = frame_seq[:-remainder]
+
+        if not frame_seq:
+            continue
+
+        candidates[frame] = {
+            'sequence': translate(frame_seq),
+            'log_prob': 0,
+        }
+
+    # Calculate the log probability of each candidate
+
+    smallest_seq_length = min([len(candidate['sequence']) for candidate in candidates.values()])
+
+    for frame in candidates:
+        # Some of the candidates will be one AA smaller. To not skew values, we truncate each
+        # candidate to the length of the smallest candidate
+        seq = candidates[frame]['sequence'][:smallest_seq_length]
+
+        trans_probs = np.zeros(smallest_seq_length - order)
+
+        for codon_order in range(smallest_seq_length - order):
+            state = seq[codon_order:codon_order+order]
+
+            if '*' in state:
+                trans_probs[codon_order] = stop_prob
+            elif 'X' in state:
+                trans_probs[codon_order] = null_prob
+            else:
+                state_as_indices = tuple([aa_to_array_index[aa] for aa in state])
+                trans_probs[codon_order] = model[state_as_indices]
+
+        candidates[frame]['log_prob'] = np.sum(np.log10(trans_probs))
+
+    # FIXME here for testing only
+    for frame in candidates:
+        assert candidates[frame]['log_prob'] != 0
+
+    best_frame = max(candidates, key=lambda frame: candidates[frame]['log_prob'])
+
+    return best_frame, candidates[best_frame]['sequence']
+
+
     sequence = sequence.upper()
 
     if len(sequence) % 3.0 != 0:
