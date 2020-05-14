@@ -30,6 +30,9 @@ image:
 
 {% if program.usage %}
 {{ program.usage|safe }}
+
+{:.notice}
+Edit [this file](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs/{{program.name}}.md) to update this information.
 {% else %}
 {:.notice}
 **No one has described the usage of this program** :/ If you would like to contribute, please see previous examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs), and feel free to add a Markdown formatted file in that directory named "{{program.name}}.md". For a template, you can use the markdown file for `anvi-gen-contigs-database`. THANK YOU!
