@@ -25,6 +25,5 @@ anvi-gen-contigs-database -f %(contigs-fasta)s \
 {{ codestart }}
 anvi-gen-contigs-database -f %(contigs-fasta)s \
                           -o %(contigs-db)s \
-                          -e %(external-gene-calls)s
+                          --external-gene-calls %(external-gene-calls)s
 {{ codestop }}
-
