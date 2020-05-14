@@ -667,7 +667,14 @@ class ProgramsNetwork(AnvioPrograms):
         self.report_network()
 
 
-    def report_network(self):
+    def report_network(self, program_name=None):
+        """Reports an association network for anvi'o programs and artifacs
+
+        By default this function will report a network for all programs, unless the user
+        set args.program_names_to_focus to a list of programs, in which case the function
+        will focus only on that program and its artifats, reporting a sub-network.
+        """
+
         artifact_names_seen = set([])
         artifacts_seen = Counter({})
         all_artifacts = []
