@@ -6,6 +6,7 @@ import os
 import sys
 import glob
 import json
+import argparse
 import importlib
 
 from collections import Counter
@@ -632,6 +633,10 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             program_output_dir = filesnpaths.gen_output_directory(os.path.join(self.programs_output_dir, program_name))
             output_file_path = os.path.join(program_output_dir, 'index.md')
             open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
+
+            # create the program network, too
+            program_network = ProgramsNetwork(argparse.Namespace(output_file=os.path.join(program_output_dir, "network.json"), program_names_to_focus=program_name), r=terminal.Run(verbose=False))
+            program_network.generate()
 
 
     def generate_index_page(self):
