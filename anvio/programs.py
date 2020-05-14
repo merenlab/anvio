@@ -198,7 +198,7 @@ class AnvioPrograms:
 
             program = Program(program_filepath, r=self.run, p=self.progress)
 
-            program_usage_information_path = os.path.join(self.docs_path, 'programs/%s.md' % (program.name))
+            program_usage_information_path = os.path.join(anvio.DOCS_PATH, 'programs/%s.md' % (program.name))
 
             if program.meta_info['provides']['value'] or program.meta_info['requires']['value']:
                 programs_with_provides_requires_info.add(program.name)
@@ -241,7 +241,7 @@ class AnvioPrograms:
                              "Here is a complete list of programs that are missing usage statements: %s " % \
                                         (len(self.all_program_filepaths),
                                          len(programs_without_provides_requires_info),
-                                         self.docs_path, 
+                                         anvio.DOCS_PATH, 
                                          ', '.join(programs_without_provides_requires_info)),
                              nl_after=1, nl_before=1)
 
@@ -398,7 +398,7 @@ class AnvioArtifacts:
             self.artifacts_info[artifact] = {'required_by': [], 'provided_by': [], 'description': None}
 
             # learn about the description of the artifact
-            artifact_description_path = os.path.join(self.docs_path, 'artifacts/%s.md' % (artifact))
+            artifact_description_path = os.path.join(anvio.DOCS_PATH, 'artifacts/%s.md' % (artifact))
             if os.path.exists(artifact_description_path):
                 self.artifacts_info[artifact]['description'] = self.read_anvio_markdown(artifact_description_path)
                 artifacts_with_descriptions.add(artifact)
@@ -419,7 +419,7 @@ class AnvioArtifacts:
                                  "full list of artifacts that are not yet explained: %s." \
                                         % (len(ANVIO_ARTIFACTS),
                                            len(artifacts_without_descriptions),
-                                           self.docs_path,
+                                           anvio.DOCS_PATH,
                                            ', '.join(artifacts_without_descriptions)), nl_after=1, nl_before=1)
 
 
@@ -441,8 +441,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_directory_path = A("output_dir") or 'ANVIO-HELP'
 
-        self.docs_path = os.path.join(os.path.dirname(anvio.__file__), 'docs')
-        if not os.path.exists(self.docs_path):
+        if not os.path.exists(anvio.DOCS_PATH):
             raise ConfigError("The anvi'o docs path is not where it should be :/ Something funny is going on.")
 
         filesnpaths.gen_output_directory(self.output_directory_path, delete_if_exists=True, dont_warn=True)
