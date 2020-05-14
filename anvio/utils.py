@@ -1795,7 +1795,32 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
     return list_of_codons
 
 
-def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=False):
+def get_translated_sequence_for_gene_call(sequence, gene_callers_id, return_with_stops=False):
+    sequence = sequence.upper()
+
+    if len(sequence) % 3.0 != 0:
+        raise ConfigError("The sequence corresponds to the gene callers id '%s' does not seem to "
+                           "have proper number of nucleotides to be translated :/ Here it is: %s" % (gene_callers_id, sequence))
+
+    translated_sequence = ''
+
+    for i in range(0, len(sequence), 3):
+        single_letter_code = constants.AA_to_single_letter_code[constants.codon_to_AA[sequence[i:i + 3]]]
+
+        if not single_letter_code:
+            single_letter_code = 'X'
+
+        translated_sequence += single_letter_code
+
+    if translated_sequence.endswith('*'):
+        if return_with_stops:
+            pass
+        else:
+            translated_sequence = translated_sequence[:-1]
+
+    return translated_sequence
+
+
 def translate(sequence):
     """Translate a sequence. As stupid as possible.
 
@@ -1808,7 +1833,7 @@ def translate(sequence):
     Notes
     =====
     - Raises error if indivisible by 3
-    - Consider smarter functions: utils.get_DNA_sequence_translated,
+    - Consider smarter functions: utils.get_translated_sequence_for_gene_call,
       utils.get_most_likely_translation_frame
     """
 
@@ -1919,31 +1944,6 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
     best_frame = max(candidates, key=lambda frame: candidates[frame]['log_prob'])
 
     return best_frame, candidates[best_frame]['sequence']
-
-
-    sequence = sequence.upper()
-
-    if len(sequence) % 3.0 != 0:
-        raise ConfigError("The sequence corresponds to the gene callers id '%s' does not seem to "
-                           "have proper number of nucleotides to be translated :/ Here it is: %s" % (gene_callers_id, sequence))
-
-    translated_sequence = ''
-
-    for i in range(0, len(sequence), 3):
-        single_letter_code = constants.AA_to_single_letter_code[constants.codon_to_AA[sequence[i:i + 3]]]
-
-        if not single_letter_code:
-            single_letter_code = 'X'
-
-        translated_sequence += single_letter_code
-
-    if translated_sequence.endswith('*'):
-        if return_with_stops:
-            pass
-        else:
-            translated_sequence = translated_sequence[:-1]
-
-    return translated_sequence
 
 
 def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
