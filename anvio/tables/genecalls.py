@@ -203,7 +203,7 @@ class TablesForGeneCalls(Table):
         if skip_amino_acid_sequences:
             amino_acid_sequences = dict([(g, '') for g in gene_calls_dict])
         else:
-            amino_acid_sequences = self.get_amino_acid_sequences_for_genes_in_gene_calls_dict(
+            gene_calls_dict, amino_acid_sequences = self.get_amino_acid_sequences_for_genes_in_gene_calls_dict(
                 gene_calls_dict,
                 ignore_internal_stop_codons=ignore_internal_stop_codons,
             )
@@ -213,7 +213,7 @@ class TablesForGeneCalls(Table):
 
 
     def get_amino_acid_sequences_for_genes_in_gene_calls_dict(self, gene_calls_dict, ignore_internal_stop_codons=False):
-        '''Recover amino acid sequences for gene calls in a gene_calls_dict.
+        """Recover amino acid sequences for gene calls in a gene_calls_dict.
 
         If 'aa_sequence' exists as keys in the gene_calls_dict[<key>] objects, this trivially
         reorganizes the data and returns a sequence dictionary. Otherwise, the sequence dictionary
@@ -225,7 +225,7 @@ class TablesForGeneCalls(Table):
         ignore_internal_stop_codons : bool, False
             If False, ConfigError will be raised if a stop codon is found inside any gene. If True,
             this is suppressed and the stop codon is replaced with the character `X`.
-        '''
+        """
 
         if 'aa_sequence' in gene_calls_dict[list(gene_calls_dict.keys())[0]]:
             # we already have AA sequences
@@ -247,6 +247,7 @@ class TablesForGeneCalls(Table):
 
         num_genes_with_internal_stops = 0
         number_of_impartial_gene_calls = 0
+
         for gene_callers_id in gene_calls_dict:
             gene_call = gene_calls_dict[gene_callers_id]
             contig_name = gene_call['contig']
@@ -258,6 +259,7 @@ class TablesForGeneCalls(Table):
                                    "does not appear to be in the contigs FASTA file. How did this happen?" % contig_name)
 
             if gene_call['partial']:
+                # FIXME we can give it our best guess, no need to report nothing
                 amino_acid_sequences[gene_callers_id] = ''
                 number_of_impartial_gene_calls += 1
                 continue
@@ -296,7 +298,7 @@ class TablesForGeneCalls(Table):
             self.run.warning('%d of your %d gene calls were impartial, hence the translated amino acid sequences for those '
                              'were not stored in the database.' % (number_of_impartial_gene_calls, len(gene_calls_dict)))
 
-        return amino_acid_sequences
+        return gene_calls_dict, amino_acid_sequences
 
 
     def call_genes_and_populate_genes_in_contigs_table(self, gene_caller='prodigal'):
