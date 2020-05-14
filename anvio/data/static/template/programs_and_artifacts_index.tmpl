@@ -10,11 +10,16 @@ image:
 
 A complete list of current anvi'o programs and artifacts.
 
+{% verbatim %}
+{% include _project-anvio-version.html %}
+{% endverbatim %}
+
+<a href="/software/anvio/network/" target="_blank"><img src="/images/anvio-network.png" width="100%" /></a>
+
 {:.notice}
 The help contents were last updated on **{{ meta|lookup:"date" }}** for anvi'o version **{{ meta|lookup:"version" }}**.
 
 {% verbatim %}
-{% include _project-anvio-version.html %}
 {% include _toc.html %}
 {% include _join-anvio-slack.html %}
 {% endverbatim %}
