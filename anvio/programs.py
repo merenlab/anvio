@@ -205,12 +205,14 @@ class AnvioPrograms:
             else:
                 programs_without_provides_requires_info.add(program.name)
 
-            # learn about the usage statement of the program
-            if os.path.exists(program_usage_information_path):
-                program.usage = self.read_anvio_markdown(program_usage_information_path)
-                programs_with_usage_info.add(program.name)
-            else:
-                programs_without_usage_info.add(program.name)
+            # learn about the usage statement of the program if you have access to reading
+            # markdown reader function:
+            if hasattr(self, 'read_anvio_markdown'):
+                if os.path.exists(program_usage_information_path):
+                    program.usage = self.read_anvio_markdown(program_usage_information_path)
+                    programs_with_usage_info.add(program.name)
+                else:
+                    programs_without_usage_info.add(program.name)
 
             if not (program.meta_info['provides']['value'] or program.meta_info['requires']['value']) and not okay_if_no_meta:
                 try:
