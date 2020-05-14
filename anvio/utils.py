@@ -1796,6 +1796,36 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
 
 
 def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=False):
+def translate(sequence):
+    """Translate a sequence. As stupid as possible.
+
+    Returns
+    =======
+    amino_acid_sequence : str
+        Amino acid sequence of sequence. If translation of codon is unknown, X is used. All stop
+        codons are included and represented as *.
+
+    Notes
+    =====
+    - Raises error if indivisible by 3
+    - Consider smarter functions: utils.get_DNA_sequence_translated,
+      utils.get_most_likely_translation_frame
+    """
+
+    N = len(sequence)
+    sequence = sequence.upper()
+    translated_sequence = []
+
+    if N % 3:
+        raise ConfigError("utils.translate :: sequence is not divisible by 3: %s" % sequence)
+
+    for i in range(0, N, 3):
+        aa = constants.AA_to_single_letter_code[constants.codon_to_AA[sequence[i:i + 3]]] or 'X'
+        translated_sequence.append(aa)
+
+    return ''.join(translated_sequence)
+
+
     sequence = sequence.upper()
 
     if len(sequence) % 3.0 != 0:
