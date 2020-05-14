@@ -2,6 +2,7 @@
 # pylint: disable=line-too-long
 """A library to help anvi'o desribe itself"""
 
+import re
 import os
 import sys
 import glob
@@ -391,7 +392,7 @@ class AnvioArtifacts:
 
         artifacts_with_descriptions = set([])
         artifacts_without_descriptions = set([])
-    
+
         for artifact in ANVIO_ARTIFACTS:
             self.artifacts_info[artifact] = {'required_by': [], 'provided_by': [], 'description': None}
 
@@ -510,7 +511,10 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
 
     def read_anvio_markdown(self, file_path):
-        """Reads markdown descriptions filling in anvi'o variables"""
+        """Reads markdown descriptions filling in anvi'o variables.
+
+        Basically a lot of l_l83Я 1337 Я0XX0ЯZ stuff's going on down there, so you better run while you can.
+        """
 
         filesnpaths.is_file_plain_text(file_path)
 
@@ -519,6 +523,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
         markdown_content = open(file_path).read()
 
+        # this is quite a big deal thing to do here:
         try:
             markdown_content = markdown_content % self.anvio_markdown_variables_conversion_dict
         except KeyError as e:
@@ -531,11 +536,29 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             self.progress.end()
             raise ConfigError("Something went wrong while working with '%s' :/ This is what we know: '%s'." % (file_path, e))
 
+        # now we have replaced anvi'o variables with markdown links, it is time to replace
+        # hyphens in anvi'o codeblocks with HTML hyphens so markdown does not freakout when it is
+        # time to visualize these and replace -- characters with en dash.
+        markdwon_lines = markdown_content.split('\n')
+        line_nums_for_codestart_tags = [i for i in range(0, len(markdwon_lines)) if markdwon_lines[i].strip() == "{{ codestart }}"]
+        line_nums_for_codestop_tags = [i for i in range(0, len(markdwon_lines)) if markdwon_lines[i].strip() == "{{ codestop }}"]
+
+        if len(line_nums_for_codestart_tags) != len(line_nums_for_codestop_tags):
+            raise ConfigError("The number of {{ codestart }} tags do not match to the number of {{ codestop }} tags :/")
+
+
+        for line_start, line_end in list(zip(line_nums_for_codestart_tags, line_nums_for_codestop_tags)):
+            for line_num in range(line_start + 1, line_end):
+                markdwon_lines[line_num] = markdwon_lines[line_num].replace("-", "&#45;")
+
+        # all lines are processed: merge them back into a single text:
+        markdown_content = '\n'.join(markdwon_lines)
+
+        # now we have a proper markdown, it is time to remove anvi'o {{ codestart }} and {{ codestop }} blocks.
         markdown_content = markdown_content.replace("""{{ codestart }}""", """<div class="codeblock" markdown="1">""")
         markdown_content = markdown_content.replace("""{{ codestop }}""", """</div>""")
-        markdown_content = markdown_content.replace("""-""", """&#45;""")
 
-
+        # return it like a pro.
         return markdown_content
 
 
