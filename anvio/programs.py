@@ -171,7 +171,7 @@ class AnvioPrograms:
 
         if self.program_names_to_focus:
             self.program_names_to_focus = [p.strip() for p in self.program_names_to_focus.split(',')]
-            run.info("Program names to focus", len(self.program_names_to_focus))
+            self.run.info("Program names to focus", len(self.program_names_to_focus))
 
             self.all_program_filepaths = [p for p in self.all_program_filepaths if os.path.basename(p) in self.program_names_to_focus]
 
