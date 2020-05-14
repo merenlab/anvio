@@ -2,7 +2,6 @@
 # pylint: disable=line-too-long
 """A library to help anvi'o desribe itself"""
 
-import re
 import os
 import sys
 import glob
@@ -344,8 +343,10 @@ class Artifact:
     def __init__(self, artifact_id, internal=True, optional=True, single=True):
         if artifact_id not in ANVIO_ARTIFACTS:
             raise ConfigError("Ehem. Anvi'o does not know about artifact '%s'. There are two was this could happen: "
-                              "one, you made a type (easy to fix), two, you just added a new program into anvi'o "
-                              "but have not yet updated `anvio/programs.py`." % artifact_id)
+                              "one, you've made a typo (easy to fix), two, you've just updated __provides__ or __requires__ "
+                              "statement in an anvi'o program with an artifact that does not exist and have not yet updated "
+                              "`anvio/programs.py` (which is also easy to fix). Please consider also adding a description of "
+                              "this artifact under anvio/docs/artifacts while you are at it :)" % artifact_id)
 
         artifact = ANVIO_ARTIFACTS[artifact_id]
         self.id = artifact_id
