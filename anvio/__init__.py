@@ -3,6 +3,7 @@
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away.."""
 
+import os
 import sys
 import json
 import copy
@@ -22,6 +23,7 @@ FORCE = '--force' in sys.argv
 QUIET = '--quiet' in sys.argv
 NO_PROGRESS = '--no-progress' in sys.argv
 FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
+DOCS_PATH = os.path.join(os.path.dirname(__file__), 'docs')
 
 def P(d, dont_exit=False):
     """Poor man's debug output printer during debugging."""
