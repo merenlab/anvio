@@ -134,6 +134,11 @@ ANVIO_ARTIFACTS ={
         "type": "CONCEPT",
         "internal": True
     },
+    "completion": {
+        "name": "COMPLETION",
+        "type": "CONCEPT",
+        "internal": True
+    },
     "cogs-data": {
         "name": "COGs DATA",
         "type": "DATA",
