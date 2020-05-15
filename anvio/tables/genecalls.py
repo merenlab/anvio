@@ -326,7 +326,10 @@ class TablesForGeneCalls(Table):
                                       "external gene calls file you've provided (if you want the modified gene "
                                       "calls, run anvi-export-gene-calls after your contigs database has been "
                                       "created). If all this sounds good to you, go ahead and provide the "
-                                      "--predict-frame flag. If not, then fix this gene manually.")
+                                      "--predict-frame flag. If not, then fix this gene manually. If you want "
+                                      "more info, you should read up here: "
+                                      "http://merenlab.org/software/anvio/help/artifacts/external-gene-calls/ "
+                                      "and also here: http://merenlab.org/software/anvio/help/programs/anvi-gen-contigs-database/")
 
             # check if there are any internal stops:
             if amino_acid_sequence.find('*') > -1:
