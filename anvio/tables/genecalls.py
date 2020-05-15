@@ -263,6 +263,14 @@ class TablesForGeneCalls(Table):
         num_indivisible_gene_calls = 0 # number of genes that are indivisible by 3
         num_genes_with_internal_stops = 0
 
+        if predict_frame:
+            # This is not necessary, but preloading the markov model and
+            # assigning null codon and stop codon transition probabilities
+            # saves time
+            model = numpy.load(os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/3rd_order.npy'))
+            null_prob = numpy.median(model)
+            stop_prob = model.min()/1e6
+
         for gene_callers_id in gene_calls_dict:
             gene_call = gene_calls_dict[gene_callers_id]
             contig_name = gene_call['contig']
@@ -287,7 +295,12 @@ class TablesForGeneCalls(Table):
                 amino_acid_sequence = utils.get_translated_sequence_for_gene_call(sequence, gene_callers_id)
             except ConfigError as non_divisible_by_3_error:
                 if predict_frame:
-                    frame, amino_acid_sequence = utils.get_most_likely_translation_frame(sequence)
+                    frame, amino_acid_sequence = utils.get_most_likely_translation_frame(
+                        sequence,
+                        model=model,
+                        stop_prob=stop_prob,
+                        null_prob=null_prob,
+                    )
                     gene_calls_dict[gene_callers_id] = self.update_gene_call(gene_call, frame)
                     num_indivisible_gene_calls += 1
                 else:
