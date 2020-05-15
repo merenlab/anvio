@@ -346,11 +346,23 @@ D = {
              'action': 'store_true',
              'help': "This is only relevant when you have an external gene calls file. If anvi'o figures out that your custom gene calls "
                      "result in amino acid sequences with stop codons in the middle, it will complain about it. You can use this flag "
-                     "to tell anvi'o to don't check for internal stop codons, EVEN THOUGH IT MEANS THERE IS MOST LIKELY SOMETHING "
-                     "WRONG WITH YOUR EXTERNAL GENE CALLS FILE. Anvi'o will understand that sometimes we don't want to care, and will "
+                     "to tell anvi'o to don't check for internal stop codons, Even though this shouldn't happen in theory, we understand "
+                     "that it almost always does. In these cases, anvi'o understands that sometimes we don't want to care, and will "
                      "not judge you. Instead, it will replace every stop codon residue in the amino acid sequence with an 'X' character. "
                      "Please let us know if you used this and things failed, so we can tell you that you shouldn't have really used it "
                      "if you didn't like failures at the first place (smiley)."}
+                ),
+    'predict-frame': (
+            ['--predict-frame'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "This is only relevant when you have an external gene calls file. If anvi'o figures out that any of your custom gene calls are "
+                     "indivisible by 3, it will complain about it since this introduces ambiguity in deciding which frame should be used to "
+                     "translate the amino acid sequence. Yet if you supply this flag, anvi'o will translate all 3 possible sequences "
+                     "and decide which one is best based off of a markov model trained on the uniprot50 dataset. It will also allow the "
+                     "prediction of amino acid sequences for gene calls that are partial. This sounds great, but it comes at the cost of "
+                     "anvi'o modifying your gene calls slightly by trimming the start/stop values of gene calls so that they are in-frame "
+                     "and divisble by 3. For this reason, you must explicitly provide this flag."}
                 ),
     'get-samples-stats-only': (
             ['--get-samples-stats-only'],
