@@ -1929,10 +1929,6 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
 
         candidates[frame]['log_prob'] = np.sum(np.log10(trans_probs))
 
-    # FIXME here for testing only
-    for frame in candidates:
-        assert candidates[frame]['log_prob'] != 0
-
     best_frame = max(candidates, key=lambda frame: candidates[frame]['log_prob'])
 
     return best_frame, candidates[best_frame]['sequence']
