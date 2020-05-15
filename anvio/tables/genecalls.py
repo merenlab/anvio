@@ -295,6 +295,12 @@ class TablesForGeneCalls(Table):
                         stop_prob=stop_prob,
                         null_prob=null_prob,
                     )
+
+                    if frame is None:
+                        # frame was not juicy enough compared to the competing frame
+                        amino_acid_sequences[gene_callers_id] = ''
+                        continue
+
                     gene_calls_dict[gene_callers_id] = self.update_gene_call(gene_call, frame)
                 else:
                     amino_acid_sequences[gene_callers_id] = ''
@@ -304,14 +310,21 @@ class TablesForGeneCalls(Table):
                 amino_acid_sequence = utils.get_translated_sequence_for_gene_call(sequence, gene_callers_id)
             except ConfigError as non_divisible_by_3_error:
                 if predict_frame:
+                    num_indivisible_gene_calls += 1
+
                     frame, amino_acid_sequence = utils.get_most_likely_translation_frame(
                         sequence,
                         model=model,
                         stop_prob=stop_prob,
                         null_prob=null_prob,
                     )
+
+                    if frame is None:
+                        # frame was not juicy enough compared to the competing frame
+                        amino_acid_sequences[gene_callers_id] = ''
+                        continue
+
                     gene_calls_dict[gene_callers_id] = self.update_gene_call(gene_call, frame)
-                    num_indivisible_gene_calls += 1
                 else:
                     raise ConfigError(non_divisible_by_3_error.e + ". Since you are creating a contigs database, "
                                       "anvi'o is willing to strike you a deal. If you give anvi'o the power to "
@@ -367,7 +380,7 @@ class TablesForGeneCalls(Table):
 
         if num_indivisible_gene_calls:
             self.run.warning('%d of your %d gene calls were complete but indivisible by 3, but since --predict-frame was provided, '
-                             'anvi\'o perservered and calculated you amino acid sequences. As a result, the start '
+                             'anvi\'o perservered and tried to calculate amino acid sequences. As a result, the start '
                              'and/or stop values from these gene calls differ compared to your external gene calls file. '
                              'More specifically, the start value may be larger by up to 2, and the stop value may be '
                              'smaller by up to 2. You can export these new gene calls with anvi-export-gene-calls to view differences' \
