@@ -267,7 +267,7 @@ class TablesForGeneCalls(Table):
             # This is not necessary, but preloading the markov model and
             # assigning null codon and stop codon transition probabilities
             # saves time
-            model = numpy.load(os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/3rd_order.npy'))
+            model = numpy.load(os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/fourth_order.npy'))
             null_prob = numpy.median(model)
             stop_prob = model.min()/1e6
 
