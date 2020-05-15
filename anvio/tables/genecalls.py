@@ -70,7 +70,8 @@ class TablesForGeneCalls(Table):
                                "should be multiply of 3. It is not the case for all, which is a deal breaker.")
 
 
-    def use_external_gene_calls_to_populate_genes_in_contigs_table(self, input_file_path, gene_calls_dict=None, ignore_internal_stop_codons=False, skip_amino_acid_sequences=False):
+    def use_external_gene_calls_to_populate_genes_in_contigs_table(self, input_file_path, gene_calls_dict=None, ignore_internal_stop_codons=False,
+                                                                   predict_frame=False, skip_amino_acid_sequences=False):
         """Add genes to the contigs database.
 
         Primary input is either an `input_file_path` for external gene calls, or an
@@ -122,6 +123,12 @@ class TablesForGeneCalls(Table):
         ignore_internal_stop_codons : bool, False
             If False, ConfigError will be raised if a stop codon is found inside any gene. If True,
             this is suppressed and the stop codon is replaced with the character `X`.
+
+        predict_frame : bool, False
+            If False, ConfigError will be raised if a gene is not divisible by 3. If True, anvi'o predicts
+            the most likley open reading frame and trims the start/stop of the gene call to reflect this
+            change so that the gene *is* divisible by 3. This flag allows the retention of amino acid
+            sequences even if genes are not divisible by 3.
 
         skip_amino_acid_sequences : bool, False
             Should the gene_amino_acid_sequences table be populated? This may be useful if genes
@@ -206,13 +213,14 @@ class TablesForGeneCalls(Table):
             gene_calls_dict, amino_acid_sequences = self.get_amino_acid_sequences_for_genes_in_gene_calls_dict(
                 gene_calls_dict,
                 ignore_internal_stop_codons=ignore_internal_stop_codons,
+                predict_frame=predict_frame,
             )
 
         # populate genes_in_contigs, and gene_amino_acid_sequences table in contigs db.
         self.populate_genes_in_contigs_table(gene_calls_dict, amino_acid_sequences, append_to_the_db=append_to_the_db)
 
 
-    def get_amino_acid_sequences_for_genes_in_gene_calls_dict(self, gene_calls_dict, ignore_internal_stop_codons=False):
+    def get_amino_acid_sequences_for_genes_in_gene_calls_dict(self, gene_calls_dict, ignore_internal_stop_codons=False, predict_frame=False):
         """Recover amino acid sequences for gene calls in a gene_calls_dict.
 
         If 'aa_sequence' exists as keys in the gene_calls_dict[<key>] objects, this trivially
@@ -225,6 +233,12 @@ class TablesForGeneCalls(Table):
         ignore_internal_stop_codons : bool, False
             If False, ConfigError will be raised if a stop codon is found inside any gene. If True,
             this is suppressed and the stop codon is replaced with the character `X`.
+
+        predict_frame : bool, False
+            If False, ConfigError will be raised if a gene is not divisible by 3. If True, anvi'o predicts
+            the most likley open reading frame and trims the start/stop of the gene call to reflect this
+            change so that the gene *is* divisible by 3. This flag allows the retention of amino acid
+            sequences even if genes are not divisible by 3, or when a gene is partial
         """
 
         if 'aa_sequence' in gene_calls_dict[list(gene_calls_dict.keys())[0]]:
@@ -246,7 +260,8 @@ class TablesForGeneCalls(Table):
             contig_sequences = database.get_table_as_dict(t.contig_sequences_table_name)
 
         num_genes_with_internal_stops = 0
-        number_of_impartial_gene_calls = 0
+        num_impartial_gene_calls = 0
+        num_indivisible_gene_calls = 0 # number of genes that are indivisible by 3
 
         for gene_callers_id in gene_calls_dict:
             gene_call = gene_calls_dict[gene_callers_id]
@@ -261,7 +276,7 @@ class TablesForGeneCalls(Table):
             if gene_call['partial']:
                 # FIXME we can give it our best guess, no need to report nothing
                 amino_acid_sequences[gene_callers_id] = ''
-                number_of_impartial_gene_calls += 1
+                num_impartial_gene_calls += 1
                 continue
 
             sequence = contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
@@ -271,20 +286,24 @@ class TablesForGeneCalls(Table):
             try:
                 amino_acid_sequence = utils.get_translated_sequence_for_gene_call(sequence, gene_callers_id)
             except ConfigError as non_divisible_by_3_error:
-                raise ConfigError(non_divisible_by_3_error.e + ". Since you are creating a contigs database, "
-                                  "anvi'o is willing to strike you a deal. If you give anvi'o the power to "
-                                  "modify the external gene calls you provided, she will do the following "
-                                  "whenever she runs into a problem like this: (1) translate all 3 possible "
-                                  "amino acid sequences for the gene (one for each frame), (2) determine which "
-                                  "is the most likely based on the tendency that amino acids tend to co-occur "
-                                  "as neighbors [nerd speak: a 4th order markov state model trained on the "
-                                  "uniprot50 dataset], and (3) trim the start and/or stop of your gene to "
-                                  "match the most likley frame. The trimming of your start/stop positions will "
-                                  "be reflected in the anvi'o database, but will *not* be changed in the "
-                                  "external gene calls file you've provided (if you want the modified gene "
-                                  "calls, run anvi-export-gene-calls after your contigs database has been "
-                                  "created). If all this sounds good to you, go ahead and provide the "
-                                  "--predict-frame flag. If not, then fix this gene manually.")
+                if predict_frame:
+                    frame, amino_acid_sequence = utils.get_most_likely_translation_frame(sequence)
+                    num_indivisible_gene_calls += 1
+                else:
+                    raise ConfigError(non_divisible_by_3_error.e + ". Since you are creating a contigs database, "
+                                      "anvi'o is willing to strike you a deal. If you give anvi'o the power to "
+                                      "modify the external gene calls you provided, she will do the following "
+                                      "whenever she runs into a problem like this: (1) translate all 3 possible "
+                                      "amino acid sequences for the gene (one for each frame), (2) determine which "
+                                      "is the most likely based on the tendency that amino acids tend to co-occur "
+                                      "as neighbors [nerd speak: a 4th order markov state model trained on the "
+                                      "uniprot50 dataset], and (3) trim the start and/or stop of your gene to "
+                                      "match the most likley frame. The trimming of your start/stop positions will "
+                                      "be reflected in the anvi'o database, but will *not* be changed in the "
+                                      "external gene calls file you've provided (if you want the modified gene "
+                                      "calls, run anvi-export-gene-calls after your contigs database has been "
+                                      "created). If all this sounds good to you, go ahead and provide the "
+                                      "--predict-frame flag. If not, then fix this gene manually.")
 
             # check if there are any internal stops:
             if amino_acid_sequence.find('*') > -1:
@@ -294,7 +313,7 @@ class TablesForGeneCalls(Table):
                 else:
                     os.remove(self.db_path)
                     raise ConfigError("Oops. Anvi'o run into an amino acid sequence (that corresponds to the gene callers id '%s') "
-                                      "which had an internal stop codon :/ This usually indicates that your external gene calls "
+                                      "which had an internal stop codon :/ This may indicate that your external gene calls "
                                       "have problems. If you still want to continue, you can ask anvi'o to ignore internal stop "
                                       "codons on your own risk. It will probably look very ugly on your screen, but here is the "
                                       "DNA sequence for that gene in case you don't trust anvi'o (which only would be fair since "
@@ -310,9 +329,23 @@ class TablesForGeneCalls(Table):
                              "to %.2f%% of the total %d genes, had internal stop codons. We hope you are happy." % \
                                         (num_genes_with_internal_stops, percent_genes_with_internal_stops, len(gene_calls_dict)))
 
-        if number_of_impartial_gene_calls:
-            self.run.warning('%d of your %d gene calls were impartial, hence the translated amino acid sequences for those '
-                             'were not stored in the database.' % (number_of_impartial_gene_calls, len(gene_calls_dict)))
+        if num_impartial_gene_calls:
+            if predict_frame:
+                self.run.warning('%d of your %d gene calls were impartial, but since you supplied --predict-frame, anvi\'o attempted '
+                                 'to translate these sequences. It\'s up to you to decide if she did a good job.' \
+                                 % (num_impartial_gene_calls, len(gene_calls_dict)))
+            else:
+                self.run.warning('%d of your %d gene calls were impartial, hence the translated amino acid sequences for those '
+                                 'were not stored in the database. You could recover amino acid sequences for these genes by using '
+                                 'the --predict-frame flag' % (num_impartial_gene_calls, len(gene_calls_dict)))
+
+        if num_indivisible_gene_calls:
+            self.run.warning('%d of your %d gene calls were indivisible by 3, but since --predict-frame was provided, '
+                             'anvi\'o perservered and gave you amino acid sequences anyways. As a result, the start '
+                             'and/or stop values from these gene calls differ compared to your external gene calls file. '
+                             'More specifically, the start value may be larger by up to 2, and the stop value may be '
+                             'smaller by up to 2. You can export these new gene calls with anvi-export-gene-calls' \
+                             % (num_indivisible_gene_calls, len(gene_calls_dict)))
 
         return gene_calls_dict, amino_acid_sequences
 
