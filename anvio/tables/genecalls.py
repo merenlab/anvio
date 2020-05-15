@@ -281,15 +281,24 @@ class TablesForGeneCalls(Table):
                 raise ConfigError("You are in big trouble :( The contig name '%s' in your external gene callers file "
                                    "does not appear to be in the contigs FASTA file. How did this happen?" % contig_name)
 
-            if gene_call['partial']:
-                # FIXME we can give it our best guess, no need to report nothing
-                amino_acid_sequences[gene_callers_id] = ''
-                num_impartial_gene_calls += 1
-                continue
-
             sequence = contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
             if gene_call['direction'] == 'r':
                 sequence = utils.rev_comp(sequence)
+
+            if gene_call['partial']:
+                num_impartial_gene_calls += 1
+
+                if predict_frame:
+                    frame, amino_acid_sequence = utils.get_most_likely_translation_frame(
+                        sequence,
+                        model=model,
+                        stop_prob=stop_prob,
+                        null_prob=null_prob,
+                    )
+                    gene_calls_dict[gene_callers_id] = self.update_gene_call(gene_call, frame)
+                else:
+                    amino_acid_sequences[gene_callers_id] = ''
+                    continue
 
             try:
                 amino_acid_sequence = utils.get_translated_sequence_for_gene_call(sequence, gene_callers_id)
@@ -354,11 +363,11 @@ class TablesForGeneCalls(Table):
                                  'the --predict-frame flag' % (num_impartial_gene_calls, len(gene_calls_dict)))
 
         if num_indivisible_gene_calls:
-            self.run.warning('%d of your %d gene calls were indivisible by 3, but since --predict-frame was provided, '
-                             'anvi\'o perservered and gave you amino acid sequences anyways. As a result, the start '
+            self.run.warning('%d of your %d gene calls were complete but indivisible by 3, but since --predict-frame was provided, '
+                             'anvi\'o perservered and calculated you amino acid sequences. As a result, the start '
                              'and/or stop values from these gene calls differ compared to your external gene calls file. '
                              'More specifically, the start value may be larger by up to 2, and the stop value may be '
-                             'smaller by up to 2. You can export these new gene calls with anvi-export-gene-calls' \
+                             'smaller by up to 2. You can export these new gene calls with anvi-export-gene-calls to view differences' \
                              % (num_indivisible_gene_calls, len(gene_calls_dict)))
 
         return gene_calls_dict, amino_acid_sequences
