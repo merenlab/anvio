@@ -229,7 +229,7 @@ class TablesForGeneCalls(Table):
 
         if 'aa_sequence' in gene_calls_dict[list(gene_calls_dict.keys())[0]]:
             # we already have AA sequences
-            return {gene_caller_id: info['aa_sequence'] for gene_caller_id, info in gene_calls_dict.items()}
+            return gene_calls_dict, {gene_caller_id: info['aa_sequence'] for gene_caller_id, info in gene_calls_dict.items()}
 
         amino_acid_sequences = {}
 
@@ -268,7 +268,7 @@ class TablesForGeneCalls(Table):
             if gene_call['direction'] == 'r':
                 sequence = utils.rev_comp(sequence)
 
-            amino_acid_sequence = utils.get_DNA_sequence_translated(sequence, gene_callers_id)
+            amino_acid_sequence = utils.get_translated_sequence_for_gene_call(sequence, gene_callers_id)
 
             # check if there are any internal stops:
             if amino_acid_sequence.find('*') > -1:
