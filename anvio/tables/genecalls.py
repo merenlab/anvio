@@ -355,7 +355,7 @@ class TablesForGeneCalls(Table):
         if num_impartial_gene_calls:
             if predict_frame:
                 self.run.warning('%d of your %d gene calls were impartial, but since you supplied --predict-frame, anvi\'o attempted '
-                                 'to translate these sequences. It\'s up to you to decide if she did a good job.' \
+                                 'to translate these sequences. It\'s up to you to decide if she did a good job (she did).' \
                                  % (num_impartial_gene_calls, len(gene_calls_dict)))
             else:
                 self.run.warning('%d of your %d gene calls were impartial, hence the translated amino acid sequences for those '
