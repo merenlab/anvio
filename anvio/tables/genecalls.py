@@ -268,7 +268,23 @@ class TablesForGeneCalls(Table):
             if gene_call['direction'] == 'r':
                 sequence = utils.rev_comp(sequence)
 
-            amino_acid_sequence = utils.get_translated_sequence_for_gene_call(sequence, gene_callers_id)
+            try:
+                amino_acid_sequence = utils.get_translated_sequence_for_gene_call(sequence, gene_callers_id)
+            except ConfigError as non_divisible_by_3_error:
+                raise ConfigError(non_divisible_by_3_error.e + ". Since you are creating a contigs database, "
+                                  "anvi'o is willing to strike you a deal. If you give anvi'o the power to "
+                                  "modify the external gene calls you provided, she will do the following "
+                                  "whenever she runs into a problem like this: (1) translate all 3 possible "
+                                  "amino acid sequences for the gene (one for each frame), (2) determine which "
+                                  "is the most likely based on the tendency that amino acids tend to co-occur "
+                                  "as neighbors [nerd speak: a 4th order markov state model trained on the "
+                                  "uniprot50 dataset], and (3) trim the start and/or stop of your gene to "
+                                  "match the most likley frame. The trimming of your start/stop positions will "
+                                  "be reflected in the anvi'o database, but will *not* be changed in the "
+                                  "external gene calls file you've provided (if you want the modified gene "
+                                  "calls, run anvi-export-gene-calls after your contigs database has been "
+                                  "created). If all this sounds good to you, go ahead and provide the "
+                                  "--predict-frame flag. If not, then fix this gene manually.")
 
             # check if there are any internal stops:
             if amino_acid_sequence.find('*') > -1:
