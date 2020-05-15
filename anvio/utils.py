@@ -1843,7 +1843,7 @@ def translate(sequence):
     return ''.join(translated_sequence)
 
 
-def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop_prob=None):
+def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop_prob=None, log_likelihood_cutoff=2):
     """Predict the translation frame with a markov model of amino acid sequences
 
     Parameters
@@ -1865,14 +1865,26 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
         be applied to it? Since internal stop codons are exceedingly rare, if None, stop_prob is set
         to be 1/1,000,000th the probability of the minimum transition probability of the model.
 
+    log_likelihood_cutoff : float, 2
+        If the best frame has a log likelihood with respect to the second best frame that is less
+        than this value, the frame is set to None, which is to say, anvi'o is not confident enough
+        to tell you the frame. The amino acid sequence is still returned. The default is 2, which
+        means the probability of the first should be at least 10^2 times the probability of the
+        competing frame
+
     Returns
     =======
     frame, amino_acid_sequence : int, str
         frame is the number of shifted nucleotides that produced the most likely frame and is either
-        0, 1, or 2. amino_acid_sequence is the translated sequence.
+        0, 1, or 2. amino_acid_sequence is the translated sequence. If less than log_likelihood_cutoff,
+        None is returned as the frame
     """
 
-    if len(sequence) < 3:
+    N = len(sequence)
+    if N == 3:
+         # Save ourselves the effort
+        return 0, translate(sequence)
+    elif N < 3:
         raise ConfigError("utils.get_most_likely_translation_frame :: sequence has a length less than 3 "
                           "so there is nothing to translate.")
 
@@ -1929,9 +1941,16 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
 
         candidates[frame]['log_prob'] = np.sum(np.log10(trans_probs))
 
-    best_frame = max(candidates, key=lambda frame: candidates[frame]['log_prob'])
+    frame_second, frame_best = sorted(candidates, key=lambda frame: candidates[frame]['log_prob'])[-2:]
+    log_prob_best = candidates[frame_best]['log_prob']
+    log_prob_second = candidates[frame_second]['log_prob']
 
-    return best_frame, candidates[best_frame]['sequence']
+    if (log_prob_best - log_prob_second) < log_likelihood_cutoff:
+        # Frame is not league's better than the competing frame, which it should be if we are to
+        # have any confidence in it. The sequence is returned
+        return None, candidates[frame_best]['sequence']
+
+    return frame_best, candidates[frame_best]['sequence']
 
 
 def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
