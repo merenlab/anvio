@@ -552,7 +552,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
         for line_start, line_end in list(zip(line_nums_for_codestart_tags, line_nums_for_codestop_tags)):
             for line_num in range(line_start + 1, line_end):
-                markdwon_lines[line_num] = markdwon_lines[line_num].replace("-", "&#45;")
+                markdwon_lines[line_num] = markdwon_lines[line_num].replace("-", "&#45;").replace("*", "&#42;").replace("==", "&#61;&#61;")
 
         # all lines are processed: merge them back into a single text:
         markdown_content = '\n'.join(markdwon_lines)
