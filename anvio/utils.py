@@ -1877,7 +1877,7 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
                           "so there is nothing to translate.")
 
     if model is None:
-        default_model_path = os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/3rd_order.npy')
+        default_model_path = os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/fourth_order.npy')
         model = np.load(default_model_path)
 
     order = len(model.shape)
