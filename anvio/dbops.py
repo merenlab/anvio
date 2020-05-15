@@ -3671,6 +3671,7 @@ class ContigsDatabase:
         external_gene_calls_file_path = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
         ignore_internal_stop_codons = A('ignore_internal_stop_codons')
+        predict_frame = A('predict_frame')
         prodigal_translation_table = A('prodigal_translation_table')
 
         if external_gene_calls_file_path:
@@ -3825,6 +3826,7 @@ class ContigsDatabase:
                 gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(
                     input_file_path=external_gene_calls_file_path,
                     ignore_internal_stop_codons=ignore_internal_stop_codons,
+                    predict_frame=predict_frame,
                 )
             else:
                 gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()
