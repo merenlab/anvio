@@ -1,3 +1,4 @@
+
 By default, anvi'o uses Prodigal for gene calling when the user is generating a %(contigs-db)s. Yet, if the user provides an external gene calls file, then anvi'o does not perform gene calling, and uses this file to store the gene information into the new %(contigs-db)s.
 
 External gene calls is a user-provided TAB-delimited file that should follow this format:
@@ -43,7 +44,7 @@ Please note that while anvi'o will not perform any gene prediction, it will stil
 Explicitly defining amino acid sequences could be particularly useful when working with eukaryotic genomes, or genomes that use non-standard genetic code.
 
 {:.notice}
-**Please note**: For a complete gene call where the value of `partial` is `0`, the number of nucleotides, i.e. the value of `stop - start`, must be divided by three **without** any remainder. Any other gene call is not a complete gene call, and must be identified as such by setting the value of `partial` to `1` so anvi'o does not try to translate their sequence. Otherwise anvi'o will be upset, and then frustrate you.
+**Please note**: If gene calls are partial (i.e. they take the value `1` under the `partial` column), or if complete genes (i.e. they take the value `0` under the `partial` column) have lengths (`stop - start`) that are indivisible by 3, anvi'o by default does not attempt to translate their sequence, since there is ambiguity in which codon frame should be used for translation. However, during `anvi-gen-contigs-database`, one can provide `--predict-frame`, which causes anvi'o to find the best codon frame for the given gene call. This is not the default behavior, as it gives anvi'o the responsibility and power to slightly trim the `start`/`stop` that you explicitly told it to use. Read more in this pull request where the feature was [first introduced](https://github.com/merenlab/anvio/pull/1428).
 
 {:.notice}
 **Please note**: anvi'o follows the convention of string indexing and splicing that is identical to the way one does it in Python or C.
