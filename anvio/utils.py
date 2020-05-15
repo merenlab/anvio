@@ -1796,21 +1796,13 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
 
 
 def get_translated_sequence_for_gene_call(sequence, gene_callers_id, return_with_stops=False):
-    sequence = sequence.upper()
-
-    if len(sequence) % 3.0 != 0:
-        raise ConfigError("The sequence corresponds to the gene callers id '%s' does not seem to "
-                           "have proper number of nucleotides to be translated :/ Here it is: %s" % (gene_callers_id, sequence))
-
-    translated_sequence = ''
-
-    for i in range(0, len(sequence), 3):
-        single_letter_code = constants.AA_to_single_letter_code[constants.codon_to_AA[sequence[i:i + 3]]]
-
-        if not single_letter_code:
-            single_letter_code = 'X'
-
-        translated_sequence += single_letter_code
+    try:
+        translated_sequence = translate(sequence)
+    except ConfigError:
+        raise ConfigError("The sequence corresponding to the gene callers id '%s' has %d nucleotides, "
+                          "which is indivisible by 3. This is bad because it is now ambiguous which codon "
+                          "frame should be used for translation into an amino acid sequence. Here is "
+                          "the culprit sequence: %s" % (gene_callers_id, len(sequence), sequence))
 
     if translated_sequence.endswith('*'):
         if return_with_stops:
