@@ -1863,7 +1863,7 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
     stop_prob : float, None
         When a markov state contains a stop codon, what transition probability should
         be applied to it? Since internal stop codons are exceedingly rare, if None, stop_prob is set
-        to be 1/1000th the probability of the minimum transition probability of the model.
+        to be 1/1,000,000th the probability of the minimum transition probability of the model.
 
     Returns
     =======
@@ -1882,7 +1882,7 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
 
     order = len(model.shape)
     null_prob = stop_prob if stop_prob is not None else np.median(model)
-    stop_prob = stop_prob if stop_prob is not None else model.min()/1e3
+    stop_prob = stop_prob if stop_prob is not None else model.min()/1e6
 
     aas = [constants.AA_to_single_letter_code[aa] for aa in constants.amino_acids if aa != 'STP']
     aa_to_array_index = {aa: i for i, aa in enumerate(aas)}
