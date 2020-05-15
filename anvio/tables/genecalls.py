@@ -259,9 +259,9 @@ class TablesForGeneCalls(Table):
             database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
             contig_sequences = database.get_table_as_dict(t.contig_sequences_table_name)
 
-        num_genes_with_internal_stops = 0
         num_impartial_gene_calls = 0
         num_indivisible_gene_calls = 0 # number of genes that are indivisible by 3
+        num_genes_with_internal_stops = 0
 
         for gene_callers_id in gene_calls_dict:
             gene_call = gene_calls_dict[gene_callers_id]
@@ -288,6 +288,7 @@ class TablesForGeneCalls(Table):
             except ConfigError as non_divisible_by_3_error:
                 if predict_frame:
                     frame, amino_acid_sequence = utils.get_most_likely_translation_frame(sequence)
+                    gene_calls_dict[gene_callers_id] = self.update_gene_call(gene_call, frame)
                     num_indivisible_gene_calls += 1
                 else:
                     raise ConfigError(non_divisible_by_3_error.e + ". Since you are creating a contigs database, "
@@ -348,6 +349,24 @@ class TablesForGeneCalls(Table):
                              % (num_indivisible_gene_calls, len(gene_calls_dict)))
 
         return gene_calls_dict, amino_acid_sequences
+
+
+    def update_gene_call(self, gene_call, frame):
+        """Updates gene call that has had its codon frame predicted"""
+
+        reverse = True if gene_call['direction'] == 'r' else False
+
+        trim_5p = frame
+        trim_3p = (gene_call['stop'] - gene_call['start'] - frame) % 3
+
+        if reverse:
+            gene_call['start'] += trim_3p
+            gene_call['stop'] -= trim_5p
+        else:
+            gene_call['start'] += trim_5p
+            gene_call['stop'] -= trim_3p
+
+        return gene_call
 
 
     def call_genes_and_populate_genes_in_contigs_table(self, gene_caller='prodigal'):
