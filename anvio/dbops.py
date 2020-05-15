@@ -3672,6 +3672,7 @@ class ContigsDatabase:
         external_gene_calls_file_path = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
         ignore_internal_stop_codons = A('ignore_internal_stop_codons')
+        predict_frame = A('predict_frame')
         prodigal_translation_table = A('prodigal_translation_table')
 
         if external_gene_calls_file_path:
@@ -3826,6 +3827,7 @@ class ContigsDatabase:
                 gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(
                     input_file_path=external_gene_calls_file_path,
                     ignore_internal_stop_codons=ignore_internal_stop_codons,
+                    predict_frame=predict_frame,
                 )
             else:
                 gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()
@@ -3952,7 +3954,7 @@ class ContigsDatabase:
         self.run.info('Gene calling step skipped', skip_gene_calling, quiet=self.quiet)
         self.run.info("Splits broke genes (non-mindful mode)", skip_mindful_splitting, quiet=self.quiet)
         self.run.info('Desired split length (what the user wanted)', split_length, quiet=self.quiet)
-        self.run.info("Average split length (wnat anvi'o gave back)", (int(round(numpy.mean(recovered_split_lengths)))) \
+        self.run.info("Average split length (what anvi'o gave back)", (int(round(numpy.mean(recovered_split_lengths)))) \
                                                                         if recovered_split_lengths \
                                                                             else "(Anvi'o did not create any splits)", quiet=self.quiet)
 
