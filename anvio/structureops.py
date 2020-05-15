@@ -34,6 +34,7 @@ J = lambda x, y: os.path.join(x, y)
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 warnings.simplefilter(action='ignore', category=PDBConstructionWarning)
 
+
 class StructureDatabase(object):
     """Structure database operations"""
 
