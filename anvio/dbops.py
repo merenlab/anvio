@@ -3689,9 +3689,6 @@ class ContigsDatabase:
                               "parameters do not make much sense and anvi'o is kindly asking you to make up your "
                               "mind." % ('skip gene calling' if skip_gene_calling else 'use external gene calls'))
 
-        if skip_predict_frame and not external_gene_calls_file_path:
-            raise ConfigError("The flag `--skip-predict-frame` is only relevant if you are providing external gene calls. ")
-
         filesnpaths.is_file_fasta_formatted(contigs_fasta)
         contigs_fasta = os.path.abspath(contigs_fasta)
 
