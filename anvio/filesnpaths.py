@@ -86,7 +86,12 @@ def is_proper_external_gene_calls_file(file_path):
                 break
 
             fields = line.strip().split('\t')
-            start, stop = int(fields[2]), int(fields[3])
+
+            try:
+                start, stop = int(fields[2]), int(fields[3])
+            except ValueError:
+                raise FilesNPathsError("All start/stop positions in an external gene calls file must contain integer values (duh). "
+                                       "Guess whose file has gene calls with start/stop positions of nope?")
 
             if start < 0:
                 raise FilesNPathsError("At least one gene call in your external genes file ('%s') contains a start position "
