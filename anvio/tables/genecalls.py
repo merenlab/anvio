@@ -243,6 +243,18 @@ class TablesForGeneCalls(Table):
 
         predict_frame = (not skip_predict_frame)
 
+        if predict_frame:
+            # Preload the markov model to predict frames and assign null codon and stop codon transition probabilities
+            model_path = os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/fourth_order.npy')
+            if not filesnpaths.is_file_exists(model_path, dont_raise=True):
+                raise ConfigError("The task at hand calls for the use of the anvi'o Markov model to predict proper open reading "
+                                  "frames for external gene calls when necessary, but the model does not seem to be in the right "
+                                  "place in the anvi'o codebase. FAILING BIG HERE.")
+
+            model = numpy.load(model_path)
+            null_prob = numpy.median(model)
+            stop_prob = model.min()/1e6
+
         if 'aa_sequence' in gene_calls_dict[list(gene_calls_dict.keys())[0]]:
             # we already have AA sequences
             return gene_calls_dict, {gene_caller_id: info['aa_sequence'] for gene_caller_id, info in gene_calls_dict.items()}
@@ -264,14 +276,6 @@ class TablesForGeneCalls(Table):
         num_impartial_gene_calls = 0
         num_indivisible_gene_calls = 0 # number of genes that are indivisible by 3
         num_genes_with_internal_stops = 0
-
-        if predict_frame:
-            # This is not necessary, but preloading the markov model and
-            # assigning null codon and stop codon transition probabilities
-            # saves time
-            model = numpy.load(os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/fourth_order.npy'))
-            null_prob = numpy.median(model)
-            stop_prob = model.min()/1e6
 
         for gene_callers_id in gene_calls_dict:
             gene_call = gene_calls_dict[gene_callers_id]
