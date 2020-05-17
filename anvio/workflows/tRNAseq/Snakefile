@@ -81,12 +81,10 @@ rule iu_merge_pairs:
     ''' Merge paired-end reads using Illumina-utils '''
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-iu_merge_pairs.log")
-    input: os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}.ini")
+    input: os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}.ini")
     output:
-        merged = os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}_MERGED"),
-        merge_failed = os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}_FAILED"),
-        merge_failed_with_Ns = os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}_FAILED_WITH_Ns"),
-        stats = os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}_STATS")
+        merged = temp(os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_MERGED")) if M.gzip_iu_merge_pairs_output else os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_MERGED"),
+        stats = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_STATS")
     params:
         marker_gene_stringent = M.get_rule_param('iu_merge_pairs', '--marker-gene-stringent'), # allows for both full and partial overlap of inserts, by default trimming trailing adapters following fully overlapping inserts
         max_num_mismatches = M.get_rule_param('iu_merge_pairs', '--max-num-mismatches'),
@@ -94,7 +92,16 @@ rule iu_merge_pairs:
         report_r2_prefix = M.get_rule_param('iu_merge_pairs', '--report-r2-prefix') # flag for reporting the actual sequence of an adapter tag at the beginning of the reverse read
     threads: M.T('iu_merge_pairs')
     resources: nodes = M.T('iu_merge_pairs')
-    shell: "iu-merge-pairs {input} {params.marker_gene_stringent} {params.max_num_mismatches} {params.report_r1_prefix} {params.report_r2_prefix} --num-threads {threads} >> {log} 2>&1"
+    run:
+        shell("iu-merge-pairs {input} {params.marker_gene_stringent} {params.max_num_mismatches} {params.report_r1_prefix} {params.report_r2_prefix} --num-threads {threads} >> {log} 2>&1")
+        if M.gzip_iu_merge_pairs_output:
+            shell("gzip -k {output.merged} >> {log} 2>&1")
+            shell("gzip %s >> {log} 2>&1" % os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_FAILED"))
+            shell("gzip %s >> {log} 2>&1" % os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_FAILED_WITH_Ns"))
+            if params.report_r1_prefix:
+                shell("gzip %s >> {log} 2>&1" % os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_MERGED_R1_PREFIX"))
+            if params.report_r2_prefix:
+                shell("gzip %s >> {log} 2>&1" % os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_MERGED_R2_PREFIX"))
 
 
 rule gen_qc_report:
@@ -102,7 +109,7 @@ rule gen_qc_report:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "gen_qc_report.log")
     input: expand(os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_STATS"), sample_split_prefix=M.sample_split_prefixes)
-    output: os.path.join(dirs_dict['QC_DIR'], "qc-report.txt")
+    output: report = os.path.join(dirs_dict['QC_DIR'], "qc_report.txt") # optional target file that triggers Illumina-utils QC steps
     threads: M.T('gen_qc_report')
     resources: nodes = M.T('gen_qc_report')
     run:
@@ -130,76 +137,59 @@ rule gen_qc_report:
                                       "indicates an inconsistency in how files were processed by 'iu-merge-pairs'. "
                                       "These files, for example, have a difference between their headers: "
                                       "%s and %s" % (input[i], input[i - 1]))
-        u.store_dict_as_TAB_delimited_file(report_dict, output[0], headers=['sample + split'] + headers)
+        u.store_dict_as_TAB_delimited_file(report_dict, output.report, headers=['sample + split'] + headers)
+
+
+def gunzip_fasta(fasta, log):
+    fasta_gunzipped = os.path.splitext(fasta)[0]
+    shell("gunzip < %s > %s 2>> %s" % (fasta, fasta_gunzipped, log))
+    return fasta_gunzipped
 
 
 rule anvi_reformat_fasta:
-    ''' Reformat the FASTA file to have Anvi\'o-compliant deflines '''
+    ''' Reformat the FASTA file with Anvi\'o-compliant deflines '''
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-reformat_fasta.log")
-    input: rules.iu_merge_pairs.output.merged
+    input: M.get_input_for_anvi_reformat_fasta
     output:
-        fasta = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}.fasta"),
-        report = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_REFORMAT_REPORT.txt")
+        fasta = temp(os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}-reformatted.fasta")) if M.gzip_anvi_reformat_fasta_output else os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}-reformatted.fasta"),
+        report = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}-reformat_report.txt") # optional target file that triggers reformatting
     threads: M.T('anvi_reformat_fasta')
     resources: nodes = M.T('anvi_reformat_fasta')
     params:
         simplify_names = M.get_rule_param('anvi_reformat_fasta', '--simplify-names')
-    shell: "anvi-script-reformat-fasta -o {output.fasta} {params.simplify_names} --report-file {output.report} {input} >> {log} 2>&1"
-
-
-rule compress_merged_fasta:
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-compress_merged_fasta.log")
-    input:
-        merged = rules.iu_merge_pairs.output.merged,
-        merge_failed = rules.iu_merge_pairs.output.merge_failed,
-        merge_failed_with_Ns = rules.iu_merge_pairs.output.merge_failed_with_Ns,
-        _ = rules.anvi_reformat_fasta.output.fasta
-    output:
-        merged_gz = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_MERGED.gz"),
-        merge_failed_gz = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_FAILED.gz"),
-        merge_failed_with_Ns_gz = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_FAILED_WITH_Ns.gz")
-    threads: M.T('compress_merged_fasta')
-    resources: nodes = M.T('compress_merged_fasta')
     run:
-        shell("gzip %s >> %s 2>&1" % (input.merged, log[0]))
-        shell("gzip %s >> %s 2>&1" % (input.merge_failed, log[0]))
-        shell("gzip %s >> %s 2>&1" % (input.merge_failed_with_Ns, log[0]))
-        if rules.iu_merge_pairs.params.report_r1_prefix:
-            shell("gzip %s >> %s 2>&1" % (os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_MERGED_R1_PREFIX"), log[0]))
-        if rules.iu_merge_pairs.params.report_r2_prefix:
-            shell("gzip %s >> %s 2>&1" % (os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_MERGED_R2_PREFIX"), log[0]))
+        if input[0].endswith('.gz'):
+            decompressed_fasta = gunzip_fasta(input[0], log[0])
+        else:
+            decompressed_fasta = input[0]
+        shell("anvi-script-reformat-fasta -o {output.fasta} {params.simplify_names} --report-file {output.report} %s >> {log} 2>&1" % decompressed_fasta)
+        if input[0].endswith('.gz'):
+            os.remove(decompressed_fasta)
+        if M.gzip_anvi_reformat_fasta_output:
+            shell("gzip -k {output.fasta} >> {log} 2>&1")
 
 
 rule anvi_gen_tRNAseq_database:
     ''' Identify tRNA sequences and their structural features, storing in an Anvi\'o database '''
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-anvi_gen_tRNAseq_database.log")
-    input: rules.anvi_reformat_fasta.output.fasta
-    output: os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}_TRNASEQ.db")
+    input: M.get_input_for_anvi_gen_tRNAseq_database
+    output: db = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-tRNAseq.db")
     threads: M.T('anvi_gen_tRNAseq_database')
     resources: nodes = M.T('anvi_gen_tRNAseq_database')
     params:
         charging_recorded = M.get_rule_param('anvi_gen_tRNAseq_database', '--charging-recorded'), # tRNA-seq chemistry can record amino acid charging
         trust_fasta = M.get_rule_param('anvi_gen_tRNAseq_database', '--trust-fasta'), # save time by skipping basic FASTA format checks
         verbose = M.get_rule_param('anvi_gen_tRNAseq_database', '--verbose')
-    shell: "anvi-gen-trnaseq-database -f {input} -o {output} {params.charging_recorded} {params.trust_fasta} -T {threads} {params.verbose}"
-
-
-rule compress_reformatted_fasta:
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-compress_reformatted_fasta.log")
-    input:
-        fasta = rules.anvi_reformat_fasta.output.fasta,
-        report = rules.anvi_reformat_fasta.output.report,
-        _ = rules.anvi_gen_tRNAseq_database.output
-    output: os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}.fasta.gz")
-    threads: M.T('compress_reformatted_fasta')
-    resources: nodes = M.T('compress_reformatted_fasta')
     run:
-        shell("gzip %s >> %s 2>&1" % (input.fasta, log[0]))
-        shell("gzip %s >> %s 2>&1" % (input.report, log[0]))
+        if input[0].endswith('.gz'):
+            decompressed_fasta = gunzip_fasta(input[0], log[0])
+        else:
+            decompressed_fasta = input[0]
+        shell("anvi-gen-trnaseq-database -f %s -o {output.db} {params.charging_recorded} {params.trust_fasta} -T {threads} {params.verbose}" % decompressed_fasta)
+        if input[0].endswith('.gz'):
+            os.remove(decompressed_fasta)
 
 
 rule get_unique_tRNA_fasta:
@@ -209,8 +199,8 @@ rule get_unique_tRNA_fasta:
     # A 3' sequence beside CCA is not biological but an artifact of the experiment.
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-get_unique_tRNA_fasta.log")
-    input: rules.anvi_gen_tRNAseq_database.output
-    output: os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}_UNIQUE_TRNA.fasta")
+    input: rules.anvi_gen_tRNAseq_database.output.db
+    output: fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-unique_tRNA.fasta")
     threads: M.T('get_unique_tRNA_fasta')
     resources: nodes = M.T('get_unique_tRNA_fasta')
     run:
@@ -219,7 +209,7 @@ rule get_unique_tRNA_fasta:
         seqs = db.get_single_column_from_table('sequences', 'sequence')
         acceptor_starts = db.get_single_column_from_table('features', 'acceptor_start')
         seqs = [seq[: acceptor_start] + 'CCA' for seq, acceptor_start in zip(seqs, acceptor_starts)]
-        with open(output[0], 'w') as outf:
+        with open(output.fasta, 'w') as outf:
             for name, seq in zip(names, seqs):
                 outf.write(">%s\n" % name)
                 outf.write("%s\n" % seq)
@@ -229,7 +219,7 @@ rule prefix_derep_tRNA_fasta:
     ''' Cluster fragmentary tRNA reads that are subsequences of other reads '''
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-prefix_derep_tRNA_seeds.log")
-    input: rules.get_unique_tRNA_fasta.output
+    input: fasta = rules.get_unique_tRNA_fasta.output.fasta
     output:
         fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}_PREFIX_DEREP_TRNA.fasta"),
         uc = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}_UC_PREFIX_DEREP_TRNA.tsv")
@@ -238,32 +228,32 @@ rule prefix_derep_tRNA_fasta:
     run:
         # All reads end in "CCA", so prefix dereplication should proceed from the 3' end.
         revcomp_filepath = os.path.join(dirs_dict['IDENT_DIR'], "%s_REVCOMP.fasta" % wildcards.sample_split_prefix)
-        shell("vsearch --fastx_revcomp %s --fastaout %s --fasta_width 0 >> %s 2>&1" % (input[0], revcomp_filepath, log[0]))
+        shell("vsearch --fastx_revcomp {input.fasta} --fastaout %s --fasta_width 0 >> {log} 2>&1" % revcomp_filepath)
         revcomp_prefix_derep_filepath = os.path.join(dirs_dict['IDENT_DIR'], "%s_REVCOMP_PREFIX_DEREP.fasta" % wildcards.sample_split_prefix)
-        shell("vsearch --derep_prefix %s --output %s --uc %s --minseqlength 1 --fasta_width 0 --threads %d >> %s 2>&1" % (revcomp_filepath, revcomp_prefix_derep_filepath, output.uc, threads, log[0]))
+        shell("vsearch --derep_prefix %s --output %s --uc {output.uc} --minseqlength 1 --fasta_width 0 --threads {threads} >> {log} 2>&1" % (revcomp_filepath, revcomp_prefix_derep_filepath))
         os.remove(revcomp_filepath)
-        shell("vsearch --fastx_revcomp %s --fastaout %s --fasta_width 0 >> %s 2>&1" % (revcomp_prefix_derep_filepath, output.fasta, log[0]))
+        shell("vsearch --fastx_revcomp %s --fastaout {output.fasta} --fasta_width 0 >> {log} 2>&1" % revcomp_prefix_derep_filepath)
         os.remove(revcomp_prefix_derep_filepath)
 
 
 rule map_tRNA:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-map_tRNA.log")
-    input: rules.prefix_derep_tRNA_fasta.output.fasta
+    input: fasta = rules.prefix_derep_tRNA_fasta.output.fasta
     output:
         bam = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}.bam"),
         bam_index = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}.bam.bai")
     threads: M.T('map_tRNA')
     resources: nodes = M.T('map_tRNA')
     run:
-        shell("bowtie2-build -f %s %s >> %s 2>&1" % (input[0], os.path.splitext(output.bam)[0], log[0]))
+        shell("bowtie2-build -f {input_fasta} %s >> {log} 2>&1" % os.path.splitext(output.bam)[0])
         sam_filepath = os.path.join(dirs_dict['IDENT_DIR'], "%s.sam" % wildcards.sample_split_prefix)
         # Use prohibitively high gap penalties to ensure reads can only map with a mismatch and not gap in the alignment.
-        shell("bowtie2 -x %s -f %s -S %s --very-sensitive -N 1 -k 2 --rdg 100,3 --rfg 100,3 -p %d >> %s 2>&1" % (os.path.splitext(output.bam)[0], input[0], sam_filepath, threads, log[0]))
+        shell("bowtie2 -x %s -f {input.fasta} -S %s --very-sensitive -N 1 -k 2 --rdg 100,3 --rfg 100,3 -p {threads} >> {log} 2>&1" % (os.path.splitext(output.bam)[0], sam_filepath))
         raw_bam_filepath = os.path.splitext(output.bam)[0] + "_RAW.bam"
-        shell("samtools view -bS %s -o %s -F 4 >> %s 2>&1" % (sam_filepath, raw_bam_filepath, log[0]))
+        shell("samtools view -bS %s -o %s -F 4 >> {log} 2>&1" % (sam_filepath, raw_bam_filepath))
         os.remove(sam_filepath)
-        shell("anvi-init-bam %s -o %s -T %d >> %s 2>&1" % (raw_bam_filepath, output.bam, threads, log[0]))
+        shell("anvi-init-bam %s -o {output.bam} -T {threads} >> {log} 2>&1" % raw_bam_filepath)
         os.remove(raw_bam_filepath)
 
 
