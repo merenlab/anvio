@@ -3517,7 +3517,9 @@ class ContigsDatabase:
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
             try:
-                for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called', 'splits_consider_gene_calls', 'scg_taxonomy_was_run']:
+                for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs',
+                            'genes_are_called', 'splits_consider_gene_calls', 'scg_taxonomy_was_run',
+                            'external_gene_calls', 'external_gene_amino_acid_seqs', 'skip_predict_frame']:
                     self.meta[key] = int(self.meta[key])
             except KeyError:
                 raise ConfigError("Oh no :( There is a contigs database here at '%s', but it seems to be broken :( It is very "
@@ -3936,13 +3938,9 @@ class ContigsDatabase:
         self.db.set_meta_value('gene_level_taxonomy_source', None)
         self.db.set_meta_value('gene_function_sources', None)
         self.db.set_meta_value('genes_are_called', (not skip_gene_calling))
-
-        # FIXME: these need to be included in the self table at some point (and of course
-        # after that we should increase the contigs db version, and include these variables
-        # in ContigsDatabase::init):
-        #self.db.set_meta_value('user_provided_external_gene_calls', True if external_gene_calls_file_path else False)
-        #self.db.set_meta_value('user_provided_external_gene_amino_acid_seqs', external_gene_calls_include_amino_acid_sequences)
-
+        self.db.set_meta_value('external_gene_calls', True if external_gene_calls_file_path else False)
+        self.db.set_meta_value('external_gene_amino_acid_seqs', external_gene_calls_include_amino_acid_sequences)
+        self.db.set_meta_value('skip_predict_frame', skip_predict_frame)
         self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))
         self.db.set_meta_value('scg_taxonomy_was_run', False)
         self.db.set_meta_value('creation_date', self.get_date())
