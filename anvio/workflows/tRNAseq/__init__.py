@@ -83,6 +83,7 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                 '--report-r2-prefix': False,
                 'threads': 1},
             'anvi_reformat_fasta': {
+                'run': True,
                 '--gzip-output': False,
                 '--simplify-names': True},
             'anvi_gen_tRNAseq_database': {
