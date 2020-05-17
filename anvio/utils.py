@@ -1810,22 +1810,14 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
     return list_of_codons
 
 
-def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=False):
-    sequence = sequence.upper()
-
-    if len(sequence) % 3.0 != 0:
-        raise ConfigError("The sequence corresponds to the gene callers id '%s' does not seem to "
-                           "have proper number of nucleotides to be translated :/ Here it is: %s" % (gene_callers_id, sequence))
-
-    translated_sequence = ''
-
-    for i in range(0, len(sequence), 3):
-        single_letter_code = constants.AA_to_single_letter_code[constants.codon_to_AA[sequence[i:i + 3]]]
-
-        if not single_letter_code:
-            single_letter_code = 'X'
-
-        translated_sequence += single_letter_code
+def get_translated_sequence_for_gene_call(sequence, gene_callers_id, return_with_stops=False):
+    try:
+        translated_sequence = translate(sequence)
+    except ConfigError:
+        raise ConfigError("The sequence corresponding to the gene callers id '%s' has %d nucleotides, "
+                          "which is indivisible by 3. This is bad because it is now ambiguous which codon "
+                          "frame should be used for translation into an amino acid sequence. Here is "
+                          "the culprit sequence: %s" % (gene_callers_id, len(sequence), sequence))
 
     if translated_sequence.endswith('*'):
         if return_with_stops:
@@ -1834,6 +1826,146 @@ def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=Fal
             translated_sequence = translated_sequence[:-1]
 
     return translated_sequence
+
+
+def translate(sequence):
+    """Translate a sequence. As stupid as possible.
+
+    Returns
+    =======
+    amino_acid_sequence : str
+        Amino acid sequence of sequence. If translation of codon is unknown, X is used. All stop
+        codons are included and represented as *.
+
+    Notes
+    =====
+    - Raises error if indivisible by 3
+    - Consider smarter functions: utils.get_translated_sequence_for_gene_call,
+      utils.get_most_likely_translation_frame
+    """
+
+    N = len(sequence)
+    sequence = sequence.upper()
+    translated_sequence = []
+
+    if N % 3:
+        raise ConfigError("utils.translate :: sequence is not divisible by 3: %s" % sequence)
+
+    for i in range(0, N, 3):
+        aa = constants.AA_to_single_letter_code[constants.codon_to_AA[sequence[i:i + 3]]] or 'X'
+        translated_sequence.append(aa)
+
+    return ''.join(translated_sequence)
+
+
+def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop_prob=None, log_likelihood_cutoff=2):
+    """Predict the translation frame with a markov model of amino acid sequences
+
+    Parameters
+    ==========
+    sequence : str
+        A DNA sequence
+
+    model : numpy array, None
+        A numpy array of transition probabilities. For an example, see
+        anvio/data/seq_transition_models/AA/3rd_order.npy
+
+    null_prob : float, None
+        When a markov state contains an unspecified amino acid (X), what probability transition should
+        be applied to it? To be as uninformative as possible, if None, null_prob is set to the median
+        transition probability of the model.
+
+    stop_prob : float, None
+        When a markov state contains a stop codon, what transition probability should
+        be applied to it? Since internal stop codons are exceedingly rare, if None, stop_prob is set
+        to be 1/1,000,000th the probability of the minimum transition probability of the model.
+
+    log_likelihood_cutoff : float, 2
+        If the best frame has a log likelihood with respect to the second best frame that is less
+        than this value, the frame is set to None, which is to say, anvi'o is not confident enough
+        to tell you the frame. The amino acid sequence is still returned. The default is 2, which
+        means the probability of the first should be at least 10^2 times the probability of the
+        competing frame
+
+    Returns
+    =======
+    frame, amino_acid_sequence : int, str
+        frame is the number of shifted nucleotides that produced the most likely frame and is either
+        0, 1, or 2. amino_acid_sequence is the translated sequence. If less than log_likelihood_cutoff,
+        None is returned as the frame
+    """
+
+    N = len(sequence)
+    if N == 3:
+         # Save ourselves the effort
+        return 0, translate(sequence)
+    elif N < 3:
+        raise ConfigError("utils.get_most_likely_translation_frame :: sequence has a length less than 3 "
+                          "so there is nothing to translate.")
+
+    if model is None:
+        default_model_path = os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/fourth_order.npy')
+        model = np.load(default_model_path)
+
+    order = len(model.shape)
+    null_prob = stop_prob if stop_prob is not None else np.median(model)
+    stop_prob = stop_prob if stop_prob is not None else model.min()/1e6
+
+    aas = [constants.AA_to_single_letter_code[aa] for aa in constants.amino_acids if aa != 'STP']
+    aa_to_array_index = {aa: i for i, aa in enumerate(aas)}
+
+    # Collect all of the candidate sequences
+
+    candidates = {}
+    for frame in range(3):
+        frame_seq = sequence[frame:]
+
+        remainder = len(frame_seq) % 3
+        if remainder:
+            frame_seq = frame_seq[:-remainder]
+
+        if not frame_seq:
+            continue
+
+        candidates[frame] = {
+            'sequence': translate(frame_seq),
+            'log_prob': 0,
+        }
+
+    # Calculate the log probability of each candidate
+
+    smallest_seq_length = min([len(candidate['sequence']) for candidate in candidates.values()])
+
+    for frame in candidates:
+        # Some of the candidates will be one AA smaller. To not skew values, we truncate each
+        # candidate to the length of the smallest candidate
+        seq = candidates[frame]['sequence'][:smallest_seq_length]
+
+        trans_probs = np.zeros(smallest_seq_length - order)
+
+        for codon_order in range(smallest_seq_length - order):
+            state = seq[codon_order:codon_order+order]
+
+            if '*' in state:
+                trans_probs[codon_order] = stop_prob
+            elif 'X' in state:
+                trans_probs[codon_order] = null_prob
+            else:
+                state_as_indices = tuple([aa_to_array_index[aa] for aa in state])
+                trans_probs[codon_order] = model[state_as_indices]
+
+        candidates[frame]['log_prob'] = np.sum(np.log10(trans_probs))
+
+    frame_second, frame_best = sorted(candidates, key=lambda frame: candidates[frame]['log_prob'])[-2:]
+    log_prob_best = candidates[frame_best]['log_prob']
+    log_prob_second = candidates[frame_second]['log_prob']
+
+    if (log_prob_best - log_prob_second) < log_likelihood_cutoff:
+        # Frame is not league's better than the competing frame, which it should be if we are to
+        # have any confidence in it. The sequence is returned
+        return None, candidates[frame_best]['sequence']
+
+    return frame_best, candidates[frame_best]['sequence']
 
 
 def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
