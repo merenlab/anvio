@@ -83,14 +83,14 @@ class TablesForGeneCalls(Table):
             Path to file with one of the following structures.
 
             Option 1:
-                gene_callers_id contig          start  stop  direction  partial  source    version
-                0               CACHJY01_00016  0      693   r          1        prodigal  v2.6.3
-                1               CACHJY01_00016  711    1140  r          0        prodigal  v2.6.3
+                gene_callers_id contig          start  stop  direction  partial  call_type  source    version
+                0               CACHJY01_00016  0      693   r          1        1          prodigal  v2.6.3
+                1               CACHJY01_00016  711    1140  r          0        1          prodigal  v2.6.3
 
             Option 2:
-                gene_callers_id contig          start  stop  direction  partial  source    version  aa_sequence
-                0               CACHJY01_00016  0      693   r          1        prodigal  v2.6.3   MSKKIYFTEYSKVNRLQTISNFTGSA
-                1               CACHJY01_00016  711    1140  r          0        prodigal  v2.6.3   MVNVDYHGLIAGAGSGKTKVLTSRIAHIIK
+                gene_callers_id contig          start  stop  direction  partial  call_type  source    version  aa_sequence
+                0               CACHJY01_00016  0      693   r          1        1          prodigal  v2.6.3   MSKKIYFTEYSKVNRLQTISNFTGSA
+                1               CACHJY01_00016  711    1140  r          0        1          prodigal  v2.6.3   MVNVDYHGLIAGAGSGKTKVLTSRIAHIIK
 
         gene_calls_dict : dict, None
             Alternative to `input_file_path`. If provided, entries will be APPENDED to the database.
@@ -104,6 +104,7 @@ class TablesForGeneCalls(Table):
                         "stop": 1544,
                         "direction": "f",
                         "partial": 0,
+                        "call_type": 1,
                         "source": "source_name",
                         "version": "unknown",
                         "aa_sequence": "MSKKIYFTEYSKVNRLQTISNFTGSA"
@@ -176,7 +177,7 @@ class TablesForGeneCalls(Table):
         # take care of gene calls dict
         if not gene_calls_found:
             expected_fields = t.genes_in_contigs_table_structure
-            column_mapping = [int, str, int, int, str, int, str, str]
+            column_mapping = [int, str, int, int, str, int, int, str, str]
 
             if 'aa_sequence' in utils.get_columns_of_TAB_delim_file(input_file_path):
                 expected_fields = t.genes_in_contigs_table_structure + ['aa_sequence']
@@ -477,7 +478,7 @@ class TablesForGeneCalls(Table):
         self.progress.update('Entering %d gene calls into the db ...' % (len(gene_calls_dict)))
 
         db_entries = [tuple([entry_id] + [gene_calls_dict[entry_id][h] for h in t.genes_in_contigs_table_structure[1:]]) for entry_id in gene_calls_dict]
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.genes_in_contigs_table_name, db_entries)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % t.genes_in_contigs_table_name, db_entries)
 
         db_entries = [tuple([entry_id] + [amino_acid_sequences[entry_id]]) for entry_id in gene_calls_dict]
         database._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.gene_amino_acid_sequences_table_name, db_entries)
