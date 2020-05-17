@@ -3650,6 +3650,7 @@ def check_h5py_module():
 
     try:
         import h5py
+        h5py.__version__
     except:
         raise ConfigError("Please install the Python module `h5py` manually for this migration task to continue. "
                           "The reason why the standard anvi'o installation did not install module is complicated, "
