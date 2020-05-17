@@ -3672,7 +3672,7 @@ class ContigsDatabase:
         external_gene_calls_file_path = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
         ignore_internal_stop_codons = A('ignore_internal_stop_codons')
-        predict_frame = A('predict_frame')
+        skip_predict_frame= A('skip_predict_frame')
         prodigal_translation_table = A('prodigal_translation_table')
 
         if external_gene_calls_file_path:
@@ -3827,7 +3827,7 @@ class ContigsDatabase:
                 gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(
                     input_file_path=external_gene_calls_file_path,
                     ignore_internal_stop_codons=ignore_internal_stop_codons,
-                    predict_frame=predict_frame,
+                    skip_predict_frame=skip_predict_frame,
                 )
             else:
                 gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()
@@ -3852,6 +3852,7 @@ class ContigsDatabase:
 
         if external_gene_calls_file_path:
             self.run.info('External gene calls file have AA sequences?', external_gene_calls_include_amino_acid_sequences, mc='green')
+            self.run.info('Proper frames will be predicted?', (not skip_predict_frame), mc='green')
 
         self.run.info('Ignoring internal stop codons?', ignore_internal_stop_codons)
         self.run.info('Splitting pays attention to gene calls?', (not skip_mindful_splitting))
