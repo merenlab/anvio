@@ -71,7 +71,7 @@ class TablesForGeneCalls(Table):
 
 
     def use_external_gene_calls_to_populate_genes_in_contigs_table(self, input_file_path, gene_calls_dict=None, ignore_internal_stop_codons=False,
-                                                                   predict_frame=False, skip_amino_acid_sequences=False):
+                                                                   skip_predict_frame=False, skip_amino_acid_sequences=False):
         """Add genes to the contigs database.
 
         Primary input is either an `input_file_path` for external gene calls, or an
@@ -124,11 +124,11 @@ class TablesForGeneCalls(Table):
             If False, ConfigError will be raised if a stop codon is found inside any gene. If True,
             this is suppressed and the stop codon is replaced with the character `X`.
 
-        predict_frame : bool, False
-            If False, ConfigError will be raised if a gene is not divisible by 3. If True, anvi'o predicts
+        skip_predict_frame : bool, False
+            If True, ConfigError will be raised if a gene is not divisible by 3. If False, anvi'o predicts
             the most likley open reading frame and trims the start/stop of the gene call to reflect this
             change so that the gene *is* divisible by 3. This flag allows the retention of amino acid
-            sequences even if genes are not divisible by 3.
+            sequences even if genes are not divisible by 3, or when it is flagged as partial.
 
         skip_amino_acid_sequences : bool, False
             Should the gene_amino_acid_sequences table be populated? This may be useful if genes
@@ -213,14 +213,14 @@ class TablesForGeneCalls(Table):
             gene_calls_dict, amino_acid_sequences = self.get_amino_acid_sequences_for_genes_in_gene_calls_dict(
                 gene_calls_dict,
                 ignore_internal_stop_codons=ignore_internal_stop_codons,
-                predict_frame=predict_frame,
+                skip_predict_frame=skip_predict_frame,
             )
 
         # populate genes_in_contigs, and gene_amino_acid_sequences table in contigs db.
         self.populate_genes_in_contigs_table(gene_calls_dict, amino_acid_sequences, append_to_the_db=append_to_the_db)
 
 
-    def get_amino_acid_sequences_for_genes_in_gene_calls_dict(self, gene_calls_dict, ignore_internal_stop_codons=False, predict_frame=False):
+    def get_amino_acid_sequences_for_genes_in_gene_calls_dict(self, gene_calls_dict, ignore_internal_stop_codons=False, skip_predict_frame=False):
         """Recover amino acid sequences for gene calls in a gene_calls_dict.
 
         If 'aa_sequence' exists as keys in the gene_calls_dict[<key>] objects, this trivially
@@ -234,12 +234,14 @@ class TablesForGeneCalls(Table):
             If False, ConfigError will be raised if a stop codon is found inside any gene. If True,
             this is suppressed and the stop codon is replaced with the character `X`.
 
-        predict_frame : bool, False
-            If False, ConfigError will be raised if a gene is not divisible by 3. If True, anvi'o predicts
+        skip_predict_frame : bool, False
+            If True, ConfigError will be raised if a gene is not divisible by 3. If False, anvi'o predicts
             the most likley open reading frame and trims the start/stop of the gene call to reflect this
             change so that the gene *is* divisible by 3. This flag allows the retention of amino acid
-            sequences even if genes are not divisible by 3, or when a gene is partial
+            sequences even if genes are not divisible by 3, or when it is flagged as partial.
         """
+
+        predict_frame = (not skip_predict_frame)
 
         if 'aa_sequence' in gene_calls_dict[list(gene_calls_dict.keys())[0]]:
             # we already have AA sequences

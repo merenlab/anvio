@@ -292,8 +292,9 @@ D = {
                      "frame; can be 'f' or 'r'), 'partial' (whether it is a complete gene call, or a partial one; must be 1 for partial "
                      "calls, and 0 for complete calls), 'source' (the gene caller), and 'version' (the version of the gene caller, i.e., "
                      "v2.6.7 or v1.0). An additional 'optional' column is 'aa_sequence' to explicitly define the amino acid seqeuence of "
-                     "a gene call so anvi'o does not attempt to translate the DNA sequence itself. An EXAMPLE FILE (with the non-mandatory "
-                     "'aa_sequence' column (so feel free to take it out for your own case)) can be found at the URL https://bit.ly/2qEEHuQ"}
+                     "a gene call so anvi'o does not attempt to translate the DNA sequence itself. An EXAMPLE FILE (with the optional "
+                     "'aa_sequence' column (so feel free to take it out for your own case)) can be found at the URL https://bit.ly/2qEEHuQ. "
+                     "If you are providing external gene calls, please also see the flag `--skip-predict-frame`."}
                 ),
     'external-genomes': (
             ['-e', '--external-genomes'],
@@ -354,17 +355,18 @@ D = {
                      "Please let us know if you used this and things failed, so we can tell you that you shouldn't have really used it "
                      "if you didn't like failures at the first place (smiley)."}
                 ),
-    'predict-frame': (
-            ['--predict-frame'],
+    'skip-predict-frame': (
+            ['--skip-predict-frame'],
             {'default': False,
              'action': 'store_true',
-             'help': "This is only relevant when you have an external gene calls file. If anvi'o figures out that any of your custom gene calls are "
-                     "indivisible by 3, it will complain about it since this introduces ambiguity in deciding which frame should be used to "
-                     "translate the amino acid sequence. Yet if you supply this flag, anvi'o will translate all 3 possible sequences "
-                     "and decide which one is best based off of a markov model trained on the uniprot50 dataset. It will also allow the "
-                     "prediction of amino acid sequences for gene calls that are partial. This sounds great, but it comes at the cost of "
-                     "anvi'o modifying your gene calls slightly by trimming the start/stop values of gene calls so that they are in-frame "
-                     "and divisble by 3. For this reason, you must explicitly provide this flag."}
+             'help': "When you have provide an external gene calls file, anvi'o will predict the correct frame for gene calls as best as it can by "
+                     "using a previously-generated Markow model that is trained using the uniprot50 database (see this for details: "
+                     "https://github.com/merenlab/anvio/pull/1428), UNLESS there is an `aa_sequence` entry for a given gene call in the external "
+                     "gene calls file. Please note that PREDICTING FRAMES MAY CHANGE START/STOP POSITIONS OF YOUR GENE CALLS SLIGHTLY, if "
+                     "those that are in the external gene calls file are not describing proper gene calls according to the model. "
+                     "If you use this flag, anvi'o will not rely on any model and will attempt to translate your DNA sequences by solely "
+                     "relying upon start/stop positions in the file, but it will complain about sequences start/stop positions of which are "
+                     "not divisible by 3."}
                 ),
     'get-samples-stats-only': (
             ['--get-samples-stats-only'],
