@@ -63,14 +63,15 @@ def is_proper_newick(newick_data, dont_raise=False):
 def is_proper_external_gene_calls_file(file_path):
     is_file_tab_delimited(file_path)
 
-    headers_proper = ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'source', 'version', 'aa_sequence']
+    headers_proper = ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version', 'aa_sequence']
+    call_types_allowed = set([1, 2, 3])
 
     with open(file_path, 'rU') as input_file:
         headers = input_file.readline().strip().split('\t')
 
-        if len(headers) == 9:
+        if len(headers) == 10:
             missing_headers = [h for h in headers_proper if h not in headers]
-        elif len(headers) == 8:
+        elif len(headers) == 9:
             missing_headers = [h for h in headers_proper[:-1] if h not in headers]
         else:
             raise FilesNPathsError("Your external gene calls file does not contain the right number of columns :/ Here is how "
@@ -105,6 +106,15 @@ def is_proper_external_gene_calls_file(file_path):
                                        "position that is not larger than the start position. No, says anvi'o. "
                                        "If you need to reverse your genes, the way to do it is to use the `direction`"
                                        "column as it is instructed on our web resources." % (fields[0]))
+            try:
+                call_type = int(fields[6])
+            except ValueError:
+                raise FilesNPathsError("Values in the call_type column must be integers :/ Please see "
+                                       "http://merenlab.org/software/anvio/help/artifacts/external-gene-calls/")
+
+            if call_type not in call_types_allowed:
+                raise FilesNPathsError("Each call type in an external gene calls file must have a value of either "
+                                       "of these: '%s'." % (', '.join([str(e) for e in sorted(list(call_types_allowed))])))
 
     return True
 
