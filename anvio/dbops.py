@@ -3850,6 +3850,7 @@ class ContigsDatabase:
                 contig_name_to_gene_start_stops[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
 
         # print some information for the user
+        self.run.warning(None, header="CONTIGS DB CREATE REPORT", lc="cyan")
         self.run.info('Split Length', pp(split_length))
         self.run.info('K-mer size', kmer_size)
         self.run.info('Skip gene calling?', skip_gene_calling)
