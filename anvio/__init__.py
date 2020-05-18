@@ -360,7 +360,7 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "When you have provide an external gene calls file, anvi'o will predict the correct frame for gene calls as best as it can by "
-                     "using a previously-generated Markow model that is trained using the uniprot50 database (see this for details: "
+                     "using a previously-generated Markov model that is trained using the uniprot50 database (see this for details: "
                      "https://github.com/merenlab/anvio/pull/1428), UNLESS there is an `aa_sequence` entry for a given gene call in the external "
                      "gene calls file. Please note that PREDICTING FRAMES MAY CHANGE START/STOP POSITIONS OF YOUR GENE CALLS SLIGHTLY, if "
                      "those that are in the external gene calls file are not describing proper gene calls according to the model. "
