@@ -232,10 +232,12 @@ class TablesForGeneCalls(Table):
     def get_amino_acid_sequences_for_genes_in_gene_calls_dict(self, gene_calls_dict, ignore_internal_stop_codons=False, skip_predict_frame=False):
         """Recover amino acid sequences for gene calls in a gene_calls_dict.
 
-        If 'aa_sequence' exists as keys in the gene_calls_dict[<key>] objects, this trivially
-        reorganizes the data and returns a sequence dictionary. Otherwise, the sequence dictionary
-        is created by reading all contig sequences into memory. Anvi'o is doing a pretty bad job
-        with memory management in this case :(
+        If 'aa_sequence' exists as keys in the gene_calls_dict[<key>] objects, this function will take
+        those seqeunces into consideration and use them without trying to predict frames even if the gene
+        call is partial. So user-defined aa sequences in `aa_sequence` column will have priority.
+
+        Please note this FIXME: By reading all contig sequences into memory, anvi'o does a pretty bad job
+        at memory management throughout this function :(
 
         Parameters
         ==========
