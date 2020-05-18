@@ -60,6 +60,11 @@ pan_default = "presence-absence"
 
 default_gene_caller = "prodigal"
 
+# see https://github.com/merenlab/anvio/issues/1358
+gene_call_types = {'CODING': 1,
+                   'NONCODING': 2,
+                   'UNKNOWN': 3}
+
 max_num_items_for_hierarchical_clustering = 20000
 
 # max coverage depth to read from BAM files using pysam.
