@@ -310,9 +310,18 @@ class TablesForGeneCalls(Table):
             database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
             contig_sequences = database.get_table_as_dict(t.contig_sequences_table_name)
 
-        num_impartial_gene_calls = 0
-        num_indivisible_gene_calls = 0 # number of genes that are indivisible by 3
-        num_genes_with_internal_stops = 0
+        # keep track of things to report later
+        P = lambda x: x % ("partial_" if partial else "")
+        report = {"num_non_coding_gene_calls": 0,
+                  "num_partial_gene_calls": 0,
+                  "num_partial_gene_calls_with_user_provided_amino_acid_sequences": 0,
+                  "num_gene_calls_with_user_provided_amino_acid_sequences": 0,
+                  "num_partial_gene_calls_with_predicted_frame": 0,
+                  "num_gene_calls_with_predicted_frame": 0,
+                  "num_partial_gene_calls_with_no_predicted_frame": 0,
+                  "num_gene_calls_with_no_predicted_frame": 0,
+                  "num_partial_genes_with_internal_stops": 0,
+                  "num_genes_with_internal_stops": 0}
 
         # the main loop to go through all the gene calls.
         for gene_callers_id in gene_calls_dict:
@@ -329,15 +338,20 @@ class TablesForGeneCalls(Table):
 
             # if this is a gene call that is not CODING, we have no interest in trying to get amino acid seqeunces for it
             if gene_calls_dict[gene_callers_id]['call_type'] != constants.gene_call_types['CODING']:
+                report["num_non_coding_gene_calls"] += 1
                 continue
 
             sequence = contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
             if gene_call['direction'] == 'r':
                 sequence = utils.rev_comp(sequence)
 
+            # a let's keep track of partial gene calls
+            if partial:
+                report["num_partial_gene_calls"] += 1
 
             if gene_callers_id in gene_caller_ids_with_user_provided_amino_acid_sequences:
                 # we good. the user gave us one already
+                report[P("num_%sgene_calls_with_user_provided_amino_acid_sequences")] += 1
                 amino_acid_sequence = amino_acid_sequences[gene_callers_id]
             elif predict_frame:
                 # no amino acid sequence is provided, BUT USER WANTS FRAME TO BE PREDICTED
@@ -348,10 +362,12 @@ class TablesForGeneCalls(Table):
                     # we not good because we couldn't find a frame for it. because this gene call has no predicted frame,
                     # and no user-provided amino acid sequence, we will mark this one as noncoding. BAM:
                     gene_calls_dict[gene_callers_id]['call_type'] = constants.gene_call_types['NONCODING']
+                    report[P("num_%sgene_calls_with_no_predicted_frame")] += 1
                     continue
                 else:
                     # we good. found the amino acid sequence. we will update the gene call so start/stop
                     # matches to the frame, and report the amino acid sequence
+                    report[P("num_%sgene_calls_with_predicted_frame")] += 1
                     gene_calls_dict[gene_callers_id] = self.update_gene_call(gene_call, frame)
                     amino_acid_sequences[gene_callers_id] = amino_acid_sequence
             elif not predict_frame:
@@ -388,7 +404,7 @@ class TablesForGeneCalls(Table):
             if amino_acid_sequence.find('*') > -1:
                 if ignore_internal_stop_codons:
                     amino_acid_sequence = amino_acid_sequence.replace('*', 'X')
-                    num_genes_with_internal_stops += 1
+                    report[P("num_%sgenes_with_internal_stops")] += 1
                 else:
                     os.remove(self.db_path)
                     raise ConfigError("Oops. Anvi'o run into an amino acid sequence (that corresponds to the gene callers id '%s') "
@@ -400,6 +416,24 @@ class TablesForGeneCalls(Table):
 
             amino_acid_sequences[gene_callers_id] = amino_acid_sequence
 
+
+        # repoting time
+        self.run.warning(None, header="EXTERNAL GENE CALLS PARSER REPORT", lc="cyan")
+        self.run.info("Num gene calls in file", len(gene_calls_dict))
+        self.run.info("Non-coding gene calls", report["num_non_coding_gene_calls"])
+        self.run.info("Partial gene calls", report["num_partial_gene_calls"])
+        self.run.info("Num amino acid sequences provided", report["num_partial_gene_calls_with_user_provided_amino_acid_sequences"] + report["num_gene_calls_with_user_provided_amino_acid_sequences"], mc="green")
+        self.run.info("  - For complete gene calls", report["num_gene_calls_with_user_provided_amino_acid_sequences"])
+        self.run.info("  - For partial gene calls", report["num_partial_gene_calls_with_user_provided_amino_acid_sequences"])
+        self.run.info("Frames predicted", report["num_partial_gene_calls_with_predicted_frame"] + report["num_gene_calls_with_predicted_frame"])
+        self.run.info("  - For complete gene calls", report["num_gene_calls_with_predicted_frame"])
+        self.run.info("  - For partial gene calls", report["num_partial_gene_calls_with_predicted_frame"])
+        self.run.info("Gene calls marked as NONCODING", report["num_partial_gene_calls_with_no_predicted_frame"] + report["num_gene_calls_with_no_predicted_frame"], mc="red")
+        self.run.info("  - For complete gene calls", report["num_gene_calls_with_no_predicted_frame"], mc="red")
+        self.run.info("  - For partial gene calls", report["num_partial_gene_calls_with_no_predicted_frame"], mc="red")
+        self.run.info("Gene calls with internal stops", report["num_genes_with_internal_stops"] + report["num_partial_genes_with_internal_stops"])
+        self.run.info("  - For complete gene calls", report["num_genes_with_internal_stops"])
+        self.run.info("  - For partial gene calls", report["num_partial_genes_with_internal_stops"], nl_after=1)
 
         return gene_calls_dict, amino_acid_sequences
 
