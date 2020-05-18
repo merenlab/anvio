@@ -270,6 +270,21 @@ class TablesForGeneCalls(Table):
                 if len(amino_acid_sequences[gene_callers_id]):
                     gene_caller_ids_with_user_provided_amino_acid_sequences.add(gene_callers_id)
 
+                    gene_length = gene_calls_dict[gene_callers_id]['stop'] - gene_calls_dict[gene_callers_id]['start']
+                    estimated_length_for_aa = gene_length / 3
+                    user_provided_aa_length = len(amino_acid_sequences[gene_callers_id])
+
+                    # there is already a sanity check for htis, but one can't be too careful
+                    if gene_calls_dict[gene_callers_id]['call_type'] != constants.gene_call_types['CODING'] and user_provided_aa_length:
+                        raise ConfigError("You have provided an amino acid sequence for at least one gene call in your external gene calls "
+                                           "(%d) file that was not marked as CODING type :(" % gene_callers_id)
+
+                    if user_provided_aa_length > estimated_length_for_aa:
+                        raise ConfigError("Bad news :( There seems to be at least one gene call in your external gene calls file "
+                                          "that has an aminio acid sequence that is longer than the expected length of it given the "
+                                          "start/stop positions of the gene call. This is certainly true for gene call number %d "
+                                          "but anvi'o doesn't know if there are more of these in your file or not :/" % gene_callers_id)
+
             self.run.warning("Anvi'o found amino acid sequences in your external gene calls file that match to %d of %d gene "
                              "in it and will use these amino acid seqeunces for everything." % (len(amino_acid_sequences), len(gene_calls_dict)))
         else:
