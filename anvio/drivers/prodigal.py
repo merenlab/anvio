@@ -7,6 +7,7 @@ import anvio
 import anvio.utils as utils
 import anvio.fastalib as fastalib
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
@@ -77,6 +78,7 @@ class Prodigal:
         hit['partial'] = False if additional_attributes[1] == 'partial=00' else True
 
         hit['source'] = 'prodigal'
+        hit['call_type'] = constants.gene_call_types['CODING']
         hit['version'] = self.installed_version
 
         return hit
