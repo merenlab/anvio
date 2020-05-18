@@ -61,6 +61,13 @@ class TablesForGeneCalls(Table):
             raise ConfigError("The values in 'direction' column can't be anything but 'f' (for forward) "
                                "or 'r' (for reverse). You have other stuff, and it is not cool.")
 
+        if len([True for x in list(gene_calls_dict.values()) if 'call_type' not in x]):
+            raise ConfigError("Gene calls must have key 'call_type'.")
+
+        call_types_known = set(list(constants.gene_call_types.values()))
+        if len([True for x in list(gene_calls_dict.values()) if x['call_type'] not in call_types_known]):
+            raise ConfigError("Call types must be one of these (note, they're all integeres): %s." % (', '.join([str(c) for c in call_types_known])))
+
         if False in [x['stop'] > x['start'] for x in list(gene_calls_dict.values())]:
             raise ConfigError("For each gene call, the stop position must be bigger than the start position. "
                                "Your gene calls dict does not conform to that. If you have reverse gene calls "
