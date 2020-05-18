@@ -1965,7 +1965,12 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
         # have any confidence in it. The sequence is returned
         return None, candidates[frame_best]['sequence']
 
-    return frame_best, candidates[frame_best]['sequence']
+    amino_acid_sequence = candidates[frame_best]['sequence']
+
+    # if the best amino acid sequence ends with a stop codon, remove it.
+    amino_acid_sequence = amino_acid_sequence[:-1] if amino_acid_sequence.endswith('*') else amino_acid_sequence
+
+    return frame_best, amino_acid_sequence
 
 
 def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
