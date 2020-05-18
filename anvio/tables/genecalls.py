@@ -350,7 +350,12 @@ class TablesForGeneCalls(Table):
                 report["num_partial_gene_calls"] += 1
 
             if gene_callers_id in gene_caller_ids_with_user_provided_amino_acid_sequences:
-                # we good. the user gave us one already
+                # FIXME / NOTE: Here we actually move on with the assumption that the start/stop positions
+                #               for the gene call are appropriate, and the user-provided amino acid sequence actually
+                #               matches to those essential information. It may have been a better strategy to
+                #               spend just a little more here test the frame, and start/stop positions. This probably
+                #               will explode at some point due to some user error, and some poor soul will spend hours
+                #               in the codebase to figure out how the hell did it happen.
                 report[P("num_%sgene_calls_with_user_provided_amino_acid_sequences")] += 1
                 amino_acid_sequence = amino_acid_sequences[gene_callers_id]
             elif predict_frame:
