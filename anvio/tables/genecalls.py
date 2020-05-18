@@ -295,7 +295,7 @@ class TablesForGeneCalls(Table):
                                           "but anvi'o doesn't know if there are more of these in your file or not :/" % gene_callers_id)
 
             self.run.warning("Anvi'o found amino acid sequences in your external gene calls file that match to %d of %d gene "
-                             "in it and will use these amino acid seqeunces for everything." % (len(amino_acid_sequences), len(gene_calls_dict)))
+                             "in it and will use these amino acid sequences for everything." % (len(amino_acid_sequences), len(gene_calls_dict)))
         else:
             amino_acid_sequences = {}
 
@@ -426,8 +426,7 @@ class TablesForGeneCalls(Table):
 
             amino_acid_sequences[gene_callers_id] = amino_acid_sequence
 
-
-        # repoting time
+        # reporting time
         self.run.warning(None, header="EXTERNAL GENE CALLS PARSER REPORT", lc="cyan")
         self.run.info("Num gene calls in file", len(gene_calls_dict))
         self.run.info("Non-coding gene calls", report["num_non_coding_gene_calls"])
