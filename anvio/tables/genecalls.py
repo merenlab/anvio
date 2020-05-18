@@ -66,7 +66,7 @@ class TablesForGeneCalls(Table):
 
         call_types_known = set(list(constants.gene_call_types.values()))
         if len([True for x in list(gene_calls_dict.values()) if x['call_type'] not in call_types_known]):
-            raise ConfigError("Call types must be one of these (note, they're all integeres): %s." % (', '.join([str(c) for c in call_types_known])))
+            raise ConfigError("Call types must be one of these (note, they're all integers): %s." % (', '.join([str(c) for c in call_types_known])))
 
         if False in [x['stop'] > x['start'] for x in list(gene_calls_dict.values())]:
             raise ConfigError("For each gene call, the stop position must be bigger than the start position. "
