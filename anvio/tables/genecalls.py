@@ -10,6 +10,7 @@ import anvio.tables as t
 import anvio.fastalib as u
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 import anvio.genecalling as genecalling
 
@@ -256,15 +257,26 @@ class TablesForGeneCalls(Table):
             null_prob = numpy.median(model)
             stop_prob = model.min()/1e6
 
-        if 'aa_sequence' in gene_calls_dict[list(gene_calls_dict.keys())[0]]:
-            # we already have AA sequences
-            return gene_calls_dict, {gene_caller_id: info['aa_sequence'] for gene_caller_id, info in gene_calls_dict.items()}
+        gene_caller_ids_with_user_provided_amino_acid_sequences = set([])
 
-        amino_acid_sequences = {}
+        # get all the amino acids sorted out. either we will start with an empty dict, or take user defined
+        # aa seqs as starting material
+        if 'aa_sequence' in gene_calls_dict[list(gene_calls_dict.keys())[0]]:
+            # the external gene calls file include amino acid sequences for at least some of the gene calls
+            # here we will learn about them, and then use them we already have AA sequences
+            amino_acid_sequences = {gene_caller_id: info['aa_sequence'].strip() for gene_caller_id, info in gene_calls_dict.items()}
+
+            for gene_callers_id in amino_acid_sequences:
+                if len(amino_acid_sequences[gene_callers_id]):
+                    gene_caller_ids_with_user_provided_amino_acid_sequences.add(gene_callers_id)
+
+            self.run.warning("Anvi'o found amino acid sequences in your external gene calls file that match to %d of %d gene "
+                             "in it and will use these amino acid seqeunces for everything." % (len(amino_acid_sequences), len(gene_calls_dict)))
+        else:
+            amino_acid_sequences = {}
 
         # FIXME: this is a very poor practice for memory management:
         contig_sequences = {}
-
         if self.contigs_fasta:
             fasta = u.SequenceSource(self.contigs_fasta)
             while next(fasta):
