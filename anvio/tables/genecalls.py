@@ -377,24 +377,26 @@ class TablesForGeneCalls(Table):
                     amino_acid_sequence = utils.get_translated_sequence_for_gene_call(sequence, gene_callers_id)
                 except ConfigError as non_divisible_by_3_error:
                     raise ConfigError(non_divisible_by_3_error.e + ". Since you are creating a contigs database, "
-                                      "anvi'o is willing to strike you a deal. If you give anvi'o the power to "
-                                      "modify the external gene calls you provided, she will do the following "
-                                      "whenever she runs into a problem like this: (1) translate all 3 possible "
-                                      "amino acid sequences for the gene (one for each frame), (2) determine which "
-                                      "is the most likely based on the tendency that amino acids tend to co-occur "
-                                      "as neighbors [nerd speak: a 4th order markov state model trained on the "
-                                      "uniprot50 dataset], and (3) trim the start and/or stop of your gene to "
-                                      "match the most likley frame. The trimming of your start/stop positions will "
-                                      "be reflected in the anvi'o database, but will *not* be changed in the "
-                                      "external gene calls file you've provided (if you want the modified gene "
-                                      "calls, run anvi-export-gene-calls after your contigs database has been "
-                                      "created). If all this sounds good to you, go ahead and provide the "
-                                      "--predict-frame flag. If not, then fix this gene manually. If you want "
-                                      "more info, you should read up here: "
-                                      "http://merenlab.org/software/anvio/help/artifacts/external-gene-calls/ "
-                                      "and also here: http://merenlab.org/software/anvio/help/programs/anvi-gen-contigs-database/")
-
-            # check if there are any internal stops:
+                                      "anvi'o is willing to strike you a deal, but it will require you to trust her a bit more and give her "
+                                      "the power power to modify the external gene calls you provided. In your external gene calls file you "
+                                      "have at least one gene call for which you did not provide an amino acid sequence, and marked it as a "
+                                      "CODING type gene call. But becasue YOU ELECTED TO SKIP anvi'o frame prediction to estimate a proper amino "
+                                      "acid sequence, anvi'o simply tried to translate your DNA sequence from the start to the end. But as you "
+                                      "can tell, it didn't go well. This may be happening because you simply didn't follow the instructions for "
+                                      "external gene calls file format. We hope it is not the case as we have described the format of this file "
+                                      "here: http://merenlab.org/software/anvio/help/artifacts/external-gene-calls/. But this may also happen "
+                                      "even if you have follwed it carefully, but your amino acid sequences are simply not translatable because "
+                                      "they are partial. In these cases you have two options. Either you provide amino acid sequences for these "
+                                      "gene calls explicitly, or do not use the `--skip-predict-frame` so anvi'o can do the following whenever "
+                                      "this problem arises using a Markov model: (1) translate all 3 possible amino acid sequences for the "
+                                      "gene (one for each frame), (2) determine which is the most likely based on the tendency that amino acids "
+                                      "tend to co-occur as neighbors [nerd speak: a 4th order markov state model trained on the uniprot50 dataset], "
+                                      "and finally (3) trim the start and/or stop of your gene to match the most likley frame. The trimming of your "
+                                      "start/stop positions will be reflected in the anvi'o contigs database, but will *not* be changed in the external "
+                                      "gene calls file you've provided (if you want the modified gene calls as they will appear in your contigs database, "
+                                      "you can use `anvi-export-gene-calls` after your contigs database has been created). If all this sounds good to you, "
+                                      "go ahead and remove the --skip-predict-frame flag. If not, well then you are on your own :( Find more info here: "
+                                      "http://merenlab.org/software/anvio/help/programs/anvi-gen-contigs-database/")
 
             else:
                 raise ConfigError("You broke anvi'o and ended up somewhere no one should ever end up in its codebase. Not nice.")
@@ -408,11 +410,14 @@ class TablesForGeneCalls(Table):
                 else:
                     os.remove(self.db_path)
                     raise ConfigError("Oops. Anvi'o run into an amino acid sequence (that corresponds to the gene callers id '%s') "
-                                      "which had an internal stop codon :/ This may indicate that your external gene calls "
-                                      "have problems. If you still want to continue, you can ask anvi'o to ignore internal stop "
-                                      "codons on your own risk. It will probably look very ugly on your screen, but here is the "
+                                      "which had an internal stop codon :/ This is sometimes due to errors in the external gene "
+                                      "calls file, but more often it is due to the non-standard genetic code. You still can continue "
+                                      "by asking anvi'o to ignore internal stop codons via the flag `--ignore-internal-stop-codons`. "
+                                      "It will probably look very ugly on your screen, but here is the "
                                       "DNA sequence for that gene in case you don't trust anvi'o (which only would be fair since "
-                                      "anvi'o does not trust you either): %s" % (str(gene_callers_id), sequence))
+                                      "anvi'o does not trust you either): '%s'. And here is the amino acid sequence of the "
+                                      "same gene call if you would like to BLAST it around and see whether it actually makes "
+                                      "sense as a gene call: '%s'." % (str(gene_callers_id), sequence, amino_acid_sequence))
 
             amino_acid_sequences[gene_callers_id] = amino_acid_sequence
 
