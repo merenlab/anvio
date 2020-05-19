@@ -43,7 +43,8 @@ def migrate(db_path):
     call_types = coding_num * np.ones(gene_calls.shape[0]).astype(int)
     for i, gene_call in gene_calls.iterrows():
         if i % 5000 == 0:
-            progress.update("done %d of %d" % (i, gene_calls.shape[0]), increment=True)
+            progress.update("done %d of %d" % (i, gene_calls.shape[0]))
+            progress.increment(increment_to=i)
 
         if not len(aa_seqs.get(gene_call['gene_callers_id'], '')):
             call_types[i] = noncoding_num
