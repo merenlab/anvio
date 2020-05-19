@@ -20,16 +20,7 @@ genes_in_contigs_table_types     = [    'numeric'    ,  'text' ,'numeric','numer
 run = terminal.Run()
 progress = terminal.Progress()
 
-def migrate(db_path):
-    if db_path is None:
-        raise ConfigError("No database path is given.")
-
-    utils.is_contigs_db(db_path)
-
-    contigs_db = db.DB(db_path, None, ignore_version = True)
-    if str(contigs_db.get_version()) != current_version:
-        raise ConfigError("Version of this contigs database is not %s (hence, this script cannot really do anything)." % current_version)
-
+def update_with_gene_calls(contigs_db):
     aa_seqs = contigs_db.get_table_as_dataframe('gene_amino_acid_sequences')
     aa_seqs = dict(zip(aa_seqs['gene_callers_id'], aa_seqs['sequence']))
 
@@ -51,31 +42,62 @@ def migrate(db_path):
 
     gene_calls['call_type'] = call_types
 
-    progress.end()
-
+    progress.update("Update `genes_in_contigs` table ...")
     contigs_db.drop_table('genes_in_contigs')
     contigs_db.create_table('genes_in_contigs', genes_in_contigs_table_structure, genes_in_contigs_table_types)
     contigs_db.insert_rows_from_dataframe('genes_in_contigs', gene_calls)
 
-    # -------------------------------------
-
-    progress.new("Adding self table values")
-    progress.update("...")
-
+    progress.update("Update `self` table ...")
     contigs_db.remove_meta_key_value_pair('version')
     contigs_db.set_version(next_version)
-
     contigs_db.set_meta_value('external_gene_calls', 0)
     contigs_db.set_meta_value('external_gene_amino_acid_seqs', 0)
     contigs_db.set_meta_value('skip_predict_frame', 0)
 
+    progress.end()
 
-    progress.update("Committing changes")
-    contigs_db.disconnect()
+    return contigs_db
+
+
+def update_without_gene_calls(contigs_db):
+    progress.new("Updating contigs db with no gene calls")
+
+    progress.update("Update `genes_in_contigs` table ...")
+    contigs_db.drop_table('genes_in_contigs')
+    contigs_db.create_table('genes_in_contigs', genes_in_contigs_table_structure, genes_in_contigs_table_types)
+
+    progress.update("Update self table")
+    contigs_db.set_meta_value('external_gene_calls', 0)
+    contigs_db.set_meta_value('external_gene_amino_acid_seqs', 0)
+    contigs_db.set_meta_value('skip_predict_frame', 0)
+    contigs_db.remove_meta_key_value_pair('version')
+    contigs_db.set_version(next_version)
 
     progress.end()
-    run.info_single("genes_in_contigs now has 'coding_type' as a column", nl_after=1, nl_before=1, mc='green')
 
+    return contigs_db
+
+
+def migrate(db_path):
+    if db_path is None:
+        raise ConfigError("No database path is given.")
+
+    utils.is_contigs_db(db_path)
+
+    contigs_db = db.DB(db_path, None, ignore_version = True)
+    if str(contigs_db.get_version()) != current_version:
+        raise ConfigError("Version of this contigs database is not %s (hence, this script cannot really do anything)." % current_version)
+
+    genes_are_called = contigs_db.get_meta_value('genes_are_called')
+
+    if genes_are_called:
+        contigs_db = update_with_gene_calls(contigs_db)
+    else:
+        contigs_db = update_without_gene_calls(contigs_db)
+
+    contigs_db.disconnect()
+
+    run.info_single("Your contigs db is now v16, and the `genes_in_contigs` table in it now has a new column for `coding_type`!", nl_after=1, nl_before=1, mc='green')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade CONTIGS.db from version %s to version %s' % (current_version, next_version))
