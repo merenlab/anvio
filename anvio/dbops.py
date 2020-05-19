@@ -3817,7 +3817,7 @@ class ContigsDatabase:
         self.db.set_meta_value('split_length', split_length)
 
         # first things first: do the gene calling on contigs. this part is important. we are doing the
-        # gene calling first. so we understand wher genes start and end. this information will guide the
+        # gene calling first, so we understand wher genes start and end. this information will guide the
         # arrangement of the breakpoint of splits
         genes_in_contigs_dict = {}
         contig_name_to_gene_start_stops = {}
@@ -3963,38 +3963,46 @@ class ContigsDatabase:
 
 
     def compress_nt_position_info(self, contig_length, genes_in_contig, genes_in_contigs_dict):
-        """This function compresses information regarding each nucleotide position in a given contig
-           into a small int. Every nucleotide position is represented by four bits depending on whether
-           they occur in a complete open reading frame, and which base they correspond to in a codon.
+        """Compress info regarding each nucleotide position in a given contig into a small int
 
-                0000
-                ||||
-                ||| \
-                |||   Third codon pos?
-                || \
-                ||   Second codon pos?
-                | \
-                |   First codon pos?
-                 \
-                   Whether the position in a partial gene call
+        Every nucleotide position is represented by four bits depending on whether they occur in a
+        coding open reading frame, and which base they correspond to in a codon.
 
-           8: int('1000', 2); nt position is in a partial gene call
-           4: int('0100', 2); nt position is in a complete gene call, and is at the 1st position in the codon
-           2: int('0010', 2); nt position is in a complete gene call, and is at the 2nd position in the codon
-           1: int('0001', 2); nt position is in a complete gene call, and is at the 3rd position in the codon
+             0000
+             ||||
+             ||| \
+             |||   Third codon pos?
+             || \
+             ||   Second codon pos?
+             | \
+             |   First codon pos?
+              \
+                Whether the position is in an noncoding gene (call_type = NONCODING or UNKNOWN)
+
+        8: int('1000', 2); nt position is in an noncoding gene
+        4: int('0100', 2); nt position is in a coding gene, and is at the 1st position in the codon
+        2: int('0010', 2); nt position is in a coding gene, and is at the 2nd position in the codon
+        1: int('0001', 2); nt position is in a coding gene, and is at the 3rd position in the codon
+        0: int('0000', 2); nt position not in a gene
+
+        Notes
+        =====
+        - This code could be much faster by populating and returning a numpy array rather than a
+          list
+        - Upon testing (2020/05/19), this function is about 8% of runtime for
+          anvi-gen-contigs-database (ignoring ORF prediction) so vectorization of this function is
+          probably not worth it at this point in time.
         """
 
         # first we create a list of zeros for each position of the contig
         nt_position_info_list = [0] * contig_length
 
+        coding = constants.gene_call_types['CODING']
+
         for gene_unique_id, start, stop in genes_in_contig:
             gene_call = genes_in_contigs_dict[gene_unique_id]
 
-            # if the gene call is a partial one, meaning the gene was cut at the beginning or
-            # at the end of the contig, we are not going to try to make sense of synonymous /
-            # non-synonmous bases in that. the clients who wish to use these variables must also
-            # be careful about the difference
-            if gene_call['partial']:
+            if gene_call['call_type'] != coding:
                 for nt_position in range(start, stop):
                     nt_position_info_list[nt_position] = 8
                 continue
