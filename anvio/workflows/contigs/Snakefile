@@ -191,6 +191,7 @@ rule anvi_gen_contigs_database:
         skip_gene_calling = M.get_rule_param("anvi_gen_contigs_database", "--skip-gene-calling"),
         external_gene_calls = lambda wildcards: M.get_external_gene_calls_param(wildcards),
         ignore_internal_stop_codons = M.get_rule_param("anvi_gen_contigs_database", "--ignore-internal-stop-codons"),
+        skip_predict_frame = M.get_rule_param("anvi_gen_contigs_database", "--skip-predict-frame"),
         skip_mindful_splitting = M.get_rule_param("anvi_gen_contigs_database", "--skip-mindful-splitting"),
         contigs_fasta = M.get_rule_param("anvi_gen_contigs_database", "--contigs-fasta"),
         project_name = M.get_rule_param("anvi_gen_contigs_database", "--project-name"),
@@ -208,6 +209,7 @@ rule anvi_gen_contigs_database:
                                           {params.skip_mindful_splitting} \
                                           {params.ignore_internal_stop_codons} \
                                           {params.external_gene_calls} \
+                                          {params.skip_predict_frame} \
                                           {params.skip_gene_calling} \
                                           {params.prodigal_translation_table} \
                                           {params.description} >> {log} 2>&1")
