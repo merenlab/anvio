@@ -4,11 +4,9 @@
 import sys
 import argparse
 import numpy as np
-import pandas as pd
 
 import anvio.db as db
 import anvio.utils as utils
-import anvio.constants as constants
 
 import anvio.terminal as terminal
 
@@ -39,8 +37,8 @@ def migrate(db_path):
 
     progress.new("Adding coding type to each gene call", progress_total_items=gene_calls.shape[0])
 
-    coding_num = constants.gene_call_types['CODING']
-    noncoding_num = constants.gene_call_types['NONCODING']
+    coding_num = 1
+    noncoding_num = 2
 
     call_types = coding_num * np.ones(gene_calls.shape[0]).astype(int)
     for i, gene_call in gene_calls.iterrows():
