@@ -840,7 +840,6 @@ rule anvi_profile:
                              {params.skip_SNV_profiling} {params.description} \
                              {params.skip_hierarchical_clustering} {params.distance} \
                              {params.linkage} {params.min_mean_coverage} \
-                             {params.max_coverage_depth} \
                              {params.min_coverage_for_variability} {params.contigs_of_interest} \
                              {params.queue_size} {params.write_buffer_size_per_thread} {params.max_contig_length} >> {log} 2>&1
         """
