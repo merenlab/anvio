@@ -3970,11 +3970,11 @@ class ContigsDatabase:
                 0000
                 ||||
                 ||| \
-                |||   Third codon?
+                |||   Third codon pos?
                 || \
-                ||   Second codon?
+                ||   Second codon pos?
                 | \
-                |   First codon?
+                |   First codon pos?
                  \
                    Whether the position in a partial gene call
 
