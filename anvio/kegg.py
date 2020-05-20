@@ -972,6 +972,11 @@ class KeggMetabolismEstimator(KeggContext):
         self.json_output_file_path = A('get_raw_data_as_json')
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
         self.estimate_from_json = A('estimate_from_json') or None
+        self.output_modes = A('kegg_output_modes') or "kofam_hits,complete_modules"
+        self.list_output_modes = True if A('list_available_modes') else False
+        self.custom_output_headers = A('custom_output_headers') or None
+        self.list_output_headers = True if A('list_available_output_headers') else False
+        
 
         if not self.estimate_from_json and not self.contigs_db_path:
             raise ConfigError("NO INPUT PROVIDED. You must provide (at least) a contigs database to this program, unless you are using the --estimate-from-json "
