@@ -717,7 +717,7 @@ class ContigsSuperclass(object):
         for gene_call_id in gene_calls_of_interest:
             gene_call = self.genes_in_contigs_dict[gene_call_id]
 
-            if gene_call['partial']:
+            if gene_call['call_type'] != constants.gene_call_types['CODING']:
                 continue
 
             if return_codons_instead:
@@ -770,8 +770,8 @@ class ContigsSuperclass(object):
                                         or multiple gene calls)?
             'codon_order_in_gene'     : To which codon does the nt belong (0-indexed, -1 if
                                         corresponding_gene_call is -1)?
-            'in_partial_gene_call'    : Does this position lie in a gene that is partial (0 or 1)?
-            'in_complete_gene_call'   : Does this position lie in a gene that is complete (0 or 1)?
+            'in_noncoding_gene_call'  : Does this position lie in a gene that is noncoding (0 or 1)?
+            'in_coding_gene_call'     : Does this position lie in a gene that is coding (0 or 1)?
             'base_pos_in_codon'       : To what codon position (1, 2, or 3) does the nt belong (0 if
                                         corresponding_gene_call is -1, or gene does not have codons,
                                         e.g. ribosomal proteins)?
