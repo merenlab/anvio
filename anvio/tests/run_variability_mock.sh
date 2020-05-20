@@ -165,6 +165,7 @@ cat test-output/fixation_NT_external_no_quince.txt
 cat test-output/fixation_NT_external.txt
 
 INFO "anvi-gen-fixation-index-matrix for NT with external table no quince"
+rm -rf test-output/pn_ps_ratio_output
 anvi-script-calculate-pn-ps-ratio -a test-output/variability_AA.txt \
                                   -b test-output/variability_CDN.txt \
                                   -c test-output/single_contig.db \
