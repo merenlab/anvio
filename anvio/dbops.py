@@ -752,7 +752,9 @@ class ContigsSuperclass(object):
         if not gene_start_stops_in_contig:
             return []
 
-        corresponding_gene_calls = [gene_callers_id for (gene_callers_id, start, stop) in gene_start_stops_in_contig if pos_in_contig >= start and pos_in_contig < stop]
+        corresponding_gene_calls = [gene_callers_id
+                                    for (gene_callers_id, start, stop) in gene_start_stops_in_contig
+                                    if pos_in_contig >= start and pos_in_contig < stop]
 
         return corresponding_gene_calls
 
@@ -783,8 +785,8 @@ class ContigsSuperclass(object):
 
         info : list, 'all'
             A list of desired info names. By default, 'all' corresponds to
-            ['corresponding_gene_call', 'codon_order_in_gene', 'in_partial_gene_call',
-            'in_complete_gene_call', 'base_pos_in_codon', 'forward', 'gene_start', 'gene_stop'].
+            ['corresponding_gene_call', 'codon_order_in_gene', 'in_noncoding_gene_call',
+            'in_coding_gene_call', 'base_pos_in_codon', 'forward', 'gene_start', 'gene_stop'].
             Please note that this is just a convenience for the programmer: _all_ keys are
             calculated, and then only the requested subset is returned.
 
@@ -799,8 +801,8 @@ class ContigsSuperclass(object):
         """
 
         available_info = [
-            'in_partial_gene_call',
-            'in_complete_gene_call',
+            'in_noncoding_gene_call',
+            'in_coding_gene_call',
             'base_pos_in_codon',
             'corresponding_gene_call',
             'codon_order_in_gene',
@@ -825,8 +827,8 @@ class ContigsSuperclass(object):
         data = -numpy.ones(data_shape).astype(int)
         data[:, :3] = 0
 
-        # First, we populate the first 3 columns of data, 'in_complete_gene_call',
-        # 'in_complete_gene_call', and 'base_pos_in_codon'. This is done straightforwardly by
+        # First, we populate the first 3 columns of data, 'in_noncoding_gene_call',
+        # 'in_coding_gene_call', and 'base_pos_in_codon'. This is done straightforwardly by
         # accessing self.nt_positions_info
 
         if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
