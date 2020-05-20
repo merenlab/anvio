@@ -290,11 +290,13 @@ D = {
                      "(a unique integer number for each gene call, start from 1), 'contig' (the contig name the gene call is found), "
                      "'start' (start position, integer), 'stop' (stop position, integer), 'direction' (the direction of the gene open reading "
                      "frame; can be 'f' or 'r'), 'partial' (whether it is a complete gene call, or a partial one; must be 1 for partial "
-                     "calls, and 0 for complete calls), 'source' (the gene caller), and 'version' (the version of the gene caller, i.e., "
-                     "v2.6.7 or v1.0). An additional 'optional' column is 'aa_sequence' to explicitly define the amino acid seqeuence of "
-                     "a gene call so anvi'o does not attempt to translate the DNA sequence itself. An EXAMPLE FILE (with the optional "
-                     "'aa_sequence' column (so feel free to take it out for your own case)) can be found at the URL https://bit.ly/2qEEHuQ. "
-                     "If you are providing external gene calls, please also see the flag `--skip-predict-frame`."}
+                     "calls, and 0 for complete calls), 'call_type' (1 if it is coding, 2 if it is noncoding, or 3 if it is unknown (only gene "
+                     "calls with call_type = 1 will have amino acid sequences translated)), 'source' (the gene caller), "
+                     "and 'version' (the version of the gene caller, i.e., v2.6.7 or v1.0). An additional 'optional' column is 'aa_sequence'"
+                     " to explicitly define the amino acid seqeuence of a gene call so anvi'o does not attempt to translate the "
+                     "DNA sequence itself. An EXAMPLE FILE (with the optional 'aa_sequence' column (so feel free to take it out "
+                     "for your own case)) can be found at the URL https://bit.ly/2qEEHuQ. If you are providing external gene calls, "
+                     "please also see the flag `--skip-predict-frame`."}
                 ),
     'external-genomes': (
             ['-e', '--external-genomes'],
