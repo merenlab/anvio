@@ -2331,7 +2331,7 @@ D = {
     'kegg-output-mode': (
             ['--kegg-output-mode'],
             {'default': None,
-            'metavar': 'MODES'
+            'metavar': 'MODES',
             'type': str,
             'help': "Use this flag to indicate what information you want in the kegg metabolism output files, by "
                     "providing a comma-separated list of output modes (each 'mode' you provide will result in a "
@@ -2348,7 +2348,7 @@ D = {
     'custom-output-headers': (
             ['--custom-output-headers'],
             {'default': None,
-            'metavar': 'HEADERS'
+            'metavar': 'HEADERS',
             'type': str,
             'help': "For use with the 'custom' output mode. Provide a comma-separated list of headers to include "
                     "in the output matrix. To see a list of available headers, run this script with the flag "
