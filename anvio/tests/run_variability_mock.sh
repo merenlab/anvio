@@ -164,6 +164,14 @@ INFO "(the value should be the same but the order of the samples becomes arbitra
 cat test-output/fixation_NT_external_no_quince.txt
 cat test-output/fixation_NT_external.txt
 
+INFO "anvi-gen-fixation-index-matrix for NT with external table no quince"
+anvi-script-calculate-pn-ps-ratio -a test-output/variability_AA.txt \
+                                  -b test-output/variability_CDN.txt \
+                                  -c test-output/single_contig.db \
+                                  -o test-output/pn_ps_ratio_output \
+                                  -m 10 \
+                                  -i 3
+
 INFO "Do you want the interactive interface? Run the following:"
 
 echo "anvi-interactive -p `pwd`/test-output/SAMPLES-MERGED/PROFILE.db -c `pwd`/test-output/single_contig.db"
