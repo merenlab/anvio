@@ -2328,8 +2328,8 @@ D = {
                     "(such as a file produced using the --get-raw-data-as-json flag), you can provide that file to this flag "
                     "and KEGG metabolism estimates will be computed from the information within instead of from a contigs database."}
                 ),
-    'kegg-output-mode': (
-            ['--kegg-output-mode'],
+    'kegg-output-modes': (
+            ['--kegg-output-modes'],
             {'default': None,
             'metavar': 'MODES',
             'type': str,
