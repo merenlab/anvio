@@ -443,14 +443,16 @@ class ContigsSuperclass(object):
         """Returns a tuple with 3 pieces of information for a given nucleotide position.
 
         This function accesses the self.nt_positions_info dictionary of arrays (each key is a contig
-        name) to return the tuple: (in_partial_gene_call, in_complete_gene_call, base_pos_in_codon).
+        name) to return the tuple: (in_noncoding_gene_call, in_coding_gene_call, base_pos_in_codon).
 
         Notes
         =====
         - If you plan on calling this function many times, consider instead `self.get_gene_info_for_each_position`
         """
 
-        if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
+        if (not self.a_meta['genes_are_called']) or \
+           (not contig_name in self.nt_positions_info) or \
+           (not len(self.nt_positions_info[contig_name])):
             return (0, 0, 0)
 
         if not self.nt_positions_info:
@@ -644,13 +646,13 @@ class ContigsSuperclass(object):
         gene_call = self.genes_in_contigs_dict[gene_caller_id]
 
         if contig_name != gene_call['contig']:
-            raise ConfigError('get_corresponding_codon_order_in_gene :: well, the gene call %d and the contig %s '
-                               'do not seem to have anything to do with each other :/ This is not a user-level error '
-                               'something must have gone very wrong somewhere in the code ...' % (gene_caller_id, contig_name))
+            raise ConfigError("get_corresponding_codon_order_in_gene :: well, the gene call %d and the contig %s "
+                              "do not seem to have anything to do with each other :/ This is not a user-level error "
+                              "something must have gone very wrong somewhere in the code ..." % (gene_caller_id, contig_name))
 
         if not pos_in_contig >= gene_call['start'] or not pos_in_contig < gene_call['stop']:
             raise ConfigError("get_corresponding_codon_order_in_gene :: position %d does not occur in gene call %d :(" \
-                                                        % (pos_in_contig, gene_caller_id))
+                              % (pos_in_contig, gene_caller_id))
 
         start, stop = gene_call['start'], gene_call['stop']
 
@@ -666,17 +668,17 @@ class ContigsSuperclass(object):
 
 
     def get_gene_start_stops_in_contig(self, contig_name):
-        """Return a list of (gene_callers_id, start, stop) tuples for each gene occurring
-           in contig_name"""
+        """Return a list of (gene_callers_id, start, stop) tuples for each gene occurring in contig_name"""
         return self.contig_name_to_genes[contig_name]
 
 
     def get_AA_counts_dict(self, split_names=set([]), contig_names=set([]), gene_caller_ids=set([]), return_codons_instead=False):
         """Returns a dictionary of AA counts.
 
-           The dict can be returned for a given collection of split names, contigs names,
-           or gene calls. If none of these variables are specified, the dict will contain
-           counts for all gene calls in the contigs database"""
+        The dict can be returned for a given collection of split names, contigs names,
+        or gene calls. If none of these variables are specified, the dict will contain
+        counts for all gene calls in the contigs database
+        """
 
         counts_dict = {}
 
