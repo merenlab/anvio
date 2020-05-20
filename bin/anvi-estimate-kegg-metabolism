@@ -51,7 +51,7 @@ if __name__ == '__main__':
                                                  default are prefixed with 'kegg-metabolism', but you can of course change that name here.")
     groupC.add_argument(*anvio.A('module-completion-threshold'), **anvio.K('module-completion-threshold'))
     groupC.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
-    groupC.add_argument(*anvio.A('kegg-output-mode'), **anvio.K('kegg-output-mode'))
+    groupC.add_argument(*anvio.A('kegg-output-modes'), **anvio.K('kegg-output-modes'))
     groupC.add_argument(*anvio.A('list-available-modes'), **anvio.K('list-available-modes'))
     groupC.add_argument(*anvio.A('custom-output-headers'), **anvio.K('custom-output-headers'))
     groupC.add_argument(*anvio.A('list-available-output-headers'), **anvio.K('list-available-output-headers'))
