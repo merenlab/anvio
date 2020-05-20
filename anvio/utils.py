@@ -1985,9 +1985,9 @@ def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
         start of the split
     """
 
-    if gene_call['partial']:
-        raise ConfigError("get_codon_order_to_nt_positions_dict: this simply will not work "
-                           "for partial gene calls, and this on *is* a partial one.")
+    if gene_call['call_type'] != constants['CODING']:
+        raise ConfigError("utils.get_codon_order_to_nt_positions_dict :: this simply will not work "
+                           "for noncoding gene calls, and gene caller id %d is noncoding." % gene_call['gene_callers_id'])
 
     start = gene_call['start'] - subtract_by
     stop = gene_call['stop'] - subtract_by
