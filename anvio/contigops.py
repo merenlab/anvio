@@ -772,6 +772,7 @@ class GenbankToAnvio:
                                                            'stop': end,
                                                            'direction': direction,
                                                            'partial': 0,
+                                                           'call_type': 1,
                                                            'source': self.source,
                                                            'version': self.version}
                 num_genes_reported += 1
@@ -806,7 +807,7 @@ class GenbankToAnvio:
         if len(output_gene_calls):
             utils.store_dict_as_TAB_delimited_file(output_gene_calls,
                                                    self.output_gene_calls_path,
-                                                   headers=["gene_callers_id", "contig", "start", "stop", "direction", "partial", "source", "version"])
+                                                   headers=["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version"])
             self.run.info('External gene calls file', self.output_gene_calls_path)
 
             utils.store_dict_as_TAB_delimited_file(output_functions,
