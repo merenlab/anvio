@@ -2668,7 +2668,7 @@ class VariabilityFixationIndex(object):
             self.v = variability_engines[self.engine](args_for_variability_class, p=self.progress, r=self.run)
 
         self.items_dict = {
-            'NT': [nt for nt in constants.nucleotides if nt != 'N'],
+            'NT': constants.nucleotides,
             'CDN': constants.codons,
             'AA': constants.amino_acids
         }
@@ -2714,7 +2714,7 @@ class VariabilityFixationIndex(object):
         output_file_path = self.v.output_file_path
 
         self.progress.new('Saving output')
-        self.progress.update('...'.format(output_file_path))
+        self.progress.update('...')
         utils.store_dataframe_as_TAB_delimited_file(self.fst_matrix, output_file_path, include_index=True, index_label='')
         self.run.info('Output', output_file_path, progress = self.progress)
         self.progress.end()
