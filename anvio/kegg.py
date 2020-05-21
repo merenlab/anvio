@@ -984,13 +984,36 @@ class KeggMetabolismEstimator(KeggContext):
             self.name_header = 'metagenome_name'
 
         # output modes that we can handle
-        self.available_modes = ['kofam_hits', 'complete_modules', 'module', 'custom']
+        self.available_modes = {'kofam_hits': {
+                                    'output_suffix': "kofam_hits.txt",
+                                    'headers': ["unique_id", self.name_header, "kegg_module", "module_is_complete",
+                                                "module_completeness", "path_id", "path", "path_completeness",
+                                                "kofam_hit", "gene_caller_id", "contig"],
+                                    'only_complete': False
+                                    },
+                                'complete_modules': {
+                                    'output_suffix': "complete_modules.txt",
+                                    'headers': ["unique_id", self.name_header, "kegg_module","module_completeness",
+                                                "module_name", "module_class", "module_category", "module_subcategory"],
+                                    'only_complete': True
+                                    },
+                                'module': {
+                                    'output_suffix': "modules.txt",
+                                    'headers': None,
+                                    'only_complete': False
+                                    },
+                                'custom': {
+                                    'output_suffix': "custom_matrix.txt",
+                                    'headers': None,
+                                    'only_complete': False
+                                    }
+                                }
 
         # parse requested output modes and make sure we can handle them all
         self.output_modes = self.output_modes.split(",")
         if anvio.DEBUG:
             self.run.info("Output Modes", ", ".join(self.output_modes))
-        illegal_modes = set(self.output_modes).difference(set(self.available_modes))
+        illegal_modes = set(self.output_modes).difference(set(self.available_modes.keys()))
         if illegal_modes:
             raise ConfigError("You have requested some output modes that we cannot handle. The offending modes "
                               "are: %s. Please use the flag --list-available-modes to see which ones are acceptable."
@@ -1111,6 +1134,7 @@ class KeggMetabolismEstimator(KeggContext):
                 raise ConfigError("You have requested some output headers that we cannot handle. The offending ones "
                                   "are: %s. Please use the flag --list-available-output-headers to see which ones are acceptable."
                                   % (", ".join(illegal_headers)))
+            self.available_modes['custom']['headers'] = self.custom_output_headers
 
 
         # init the base class
