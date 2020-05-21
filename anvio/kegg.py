@@ -1914,6 +1914,132 @@ class KeggMetabolismEstimator(KeggContext):
         return kegg_metabolism_superdict
 
 
+    def generate_output_dict(self, kegg_superdict, headers_to_include=None):
+        """This dictionary converts the metabolism superdict to a two-level dict containing desired headers for output."""
+
+        # use the kofam_hits output mode header set by default
+        if not headers_to_include:
+            headers_to_include = set(["unique_id", self.name_header, "kegg_module", "module_is_complete", "module_completeness",
+            "path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
+
+        # make sure all requested headers are available
+        avail_headers = set(self.available_headers.keys())
+        illegal_headers = headers_to_include.difference(avail_headers)
+        if illegal_headers:
+            raise ConfigError("Some unavailable headers were requested. These include: %s" % (", ".join(illegal_headers)))
+
+        keys_not_in_superdict = set(["unique_id", self.name_header, "kegg_module"])
+        path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
+        remaining_headers = headers_to_include.difference(keys_not_in_superdict)
+        remaining_headers = remaining_headers.difference(path_and_ko_level_headers)
+
+        # convert to two-level dict where unique id keys for a dictionary of information for each bin/module pair
+        d = {}
+        unique_id = 0
+
+        for bin, mod_dict in kegg_superdict.items():
+            for mnum, c_dict in mod_dict.items():
+                if mnum == "num_complete_modules":
+                    continue
+
+                if anvio.DEBUG:
+                    self.run.info("Generating output for module", mnum)
+
+                # fetch module info from db
+                module_name = self.kegg_modules_db.get_module_name(mnum)
+                mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum)
+                module_class = mnum_class_dict["class"]
+                module_cat = mnum_class_dict["category"]
+                module_subcat = mnum_class_dict["subcategory"]
+
+                # handle path- and ko-level information
+                if headers_to_include.intersection(path_and_ko_level_headers):
+                    for p_index in range(len(c_dict['paths'])):
+                        p = c_dict['paths'][p_index]
+
+                        # handle ko-level information
+                        for ko in c_dict['kofam_hits']:
+                            if ko not in p:
+                                continue
+
+                            for gc_id in c_dict["kofam_hits"][ko]:
+                                d[unique_id] = {}
+
+                                # kofam hit specific info
+                                if "kofam_hit" in headers_to_include:
+                                    d[unique_id]["kofam_hit"] = ko
+                                if "gene_caller_id" in headers_to_include:
+                                    d[unique_id]["gene_caller_id"] = gc_id
+                                if "contig" in headers_to_include:
+                                    d[unique_id]["contig"] = c_dict["genes_to_contigs"][gc_id]
+
+                                # repeated information for each hit
+                                # path specific info
+                                if "path_id" in headers_to_include:
+                                    d[unique_id]["path_id"] = p_index
+                                if "path" in headers_to_include:
+                                    d[unique_id]["path"] = ",".join(p)
+                                if "path_completeness" in headers_to_include:
+                                    d[unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
+
+                                # top-level keys and keys not in superdict
+                                if self.name_header in headers_to_include:
+                                    d[unique_id][self.name_header] = bin
+                                if "kegg_module" in headers_to_include:
+                                    d[unique_id]["kegg_module"] = mnum
+
+                                # module specific info
+                                if "module_name" in headers_to_include:
+                                    d[unique_id]["module_name"] = module_name
+                                if "module_class" in headers_to_include:
+                                    d[unique_id]["module_class"] = module_class
+                                if "module_category" in headers_to_include:
+                                    d[unique_id]["module_category"] = module_cat
+                                if "module_subcategory" in headers_to_include:
+                                    d[unique_id]["module_subcategory"] = module_subcat
+
+                                # everything else at c_dict level
+                                for h in remaining_headers:
+                                    if h not in self.available_headers.keys():
+                                        raise ConfigError("Requested header %s not available." % (h))
+                                    h_cdict_key = self.available_headers[h]['cdict_key']
+                                    if not h_cdict_key:
+                                        raise ConfigError("We don't know the corresponding key in metabolism completeness dict for header %s." % (h))
+                                    d[unique_id][h] = c_dict[h_cdict_key]
+
+                                unique_id += 1
+                else:
+                    d[unique_id] = {}
+
+                    # top-level keys and keys not in superdict
+                    if self.name_header in headers_to_include:
+                        d[unique_id][self.name_header] = bin
+                    if "kegg_module" in headers_to_include:
+                        d[unique_id]["kegg_module"] = mnum
+
+                    # module specific info
+                    if "module_name" in headers_to_include:
+                        d[unique_id]["module_name"] = module_name
+                    if "module_class" in headers_to_include:
+                        d[unique_id]["module_class"] = module_class
+                    if "module_category" in headers_to_include:
+                        d[unique_id]["module_category"] = module_cat
+                    if "module_subcategory" in headers_to_include:
+                        d[unique_id]["module_subcategory"] = module_subcat
+
+                    # everything else at c_dict level
+                    for h in remaining_headers:
+                        if h not in self.available_headers.keys():
+                            raise ConfigError("Requested header %s not available." % (h))
+                        h_cdict_key = self.available_headers[h]['cdict_key']
+                        if not h_cdict_key:
+                            raise ConfigError("We don't know the corresponding key in metabolism completeness dict for header %s." % (h))
+                        d[unique_id][h] = c_dict[h_cdict_key]
+                    unique_id += 1
+
+        return d
+
+
     def store_kegg_metabolism_superdict(self, kegg_superdict):
         """This function writes the metabolism superdict to a tab-delimited file, and also generates a file summarizing the complete modules.
 
