@@ -986,6 +986,16 @@ class KeggMetabolismEstimator(KeggContext):
         # output modes that we can handle
         self.available_modes = ['kofam_hits', 'complete_modules', 'module', 'custom']
 
+        # parse requested output modes and make sure we can handle them all
+        self.output_modes = self.output_modes.split(",")
+        if anvio.DEBUG:
+            self.run.info("Output Modes", ", ".join(self.output_modes))
+        illegal_modes = set(self.output_modes).difference(set(self.available_modes))
+        if illegal_modes:
+            raise ConfigError("You have requested some output modes that we cannot handle. The offending modes "
+                              "are: %s. Please use the flag --list-available-modes to see which ones are acceptable."
+                              % (", ".join(illegal_modes)))
+
         # dict containing matrix headers of information that we can output in custom mode
         # key corresponds to key in output dictionary (generated in store_kegg_metabolism_superdict)
         # dictionary contains its key in module-level completion dictionary (if any)
