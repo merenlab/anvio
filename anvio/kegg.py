@@ -1992,7 +1992,50 @@ class KeggMetabolismEstimator(KeggContext):
 
 
     def generate_output_dict(self, kegg_superdict, headers_to_include=None, only_complete_modules=False):
-        """This dictionary converts the metabolism superdict to a two-level dict containing desired headers for output."""
+        """This dictionary converts the metabolism superdict to a two-level dict containing desired headers for output.
+
+        The metabolism superdict is a three-to-four-level dictionary. The first three levels are: genomes/metagenomes/bins, modules, and module completion information.
+        The module completion dictionary also has some dictionaries in it, and those make up the fourth level.
+        The structure of the module completion dictionary is like this example:
+        {mnum: {"gene_caller_ids": set([132, 133, 431, 6777])
+                "kofam_hits": {'K00033' : [431, 6777],
+                                'K01057' : [133],
+                                'K00036' : [132] },
+                "genes_to_contigs": {132: 0,
+                                     133: 0,
+                                     431: 2,
+                                    6777: 1 },
+                "contigs_to_genes": { 0: set([132, 133]),
+                                      1: set(6777),
+                                      2: set(431) },}
+                "paths":             [['K00033','K01057','K02222'], ['K00033','K01057','K00036'], ...]
+                "pathway_completeness":     [0.66, 0.66, ...]
+                "present_nonessential_kos":      []
+                "most_complete_paths":           [['K00033','K01057','K02222'], ['K00033','K01057','K00036'], ...]
+                "percent_complete":              0.66
+                "complete":                      False
+                                      }
+
+        To distill this information into one line, we need to convert the dictionary on-the-fly to a dict of dicts,
+        where each bin-module-path-kofam_hit-gene_caller_id is keyed by an arbitrary integer. There will be a lot of redundant information
+        in the rows.
+
+        PARAMETERS
+        ==========
+        kegg_superdict : dictionary of dictionaries of dictionaries
+            The metabolism superdict containing KO hit and KEGG module information for each bin/genome/metagenome
+
+        headers_to_include : list
+            Which headers to include in the output dictionary
+
+        only_complete_modules : boolean
+            If True, we only put information into the output dictionary for modules whose completeness is above the threshold
+
+        RETURNS
+        =======
+        d : dictionary of dictionaries
+            The output dictionary whose format is compatible for printing to a tab-delimited file
+        """
 
         # use the kofam_hits output mode header set by default
         if not headers_to_include:
@@ -2125,37 +2168,11 @@ class KeggMetabolismEstimator(KeggContext):
 
 
     def store_kegg_metabolism_superdict(self, kegg_superdict):
-        """This function writes the metabolism superdict to a tab-delimited file, and also generates a file summarizing the complete modules.
+        """This function writes the metabolism superdict to tab-delimited files depending on which output the user requested.
 
-        The metabolism superdict is a three-to-four-level dictionary. The first three levels are: genomes/metagenomes/bins, modules, and module completion information.
-        The module completion dictionary also has some dictionaries in it, and those make up the fourth level.
-        The structure of the module completion dictionary is like this example:
-        {mnum: {"gene_caller_ids": set([132, 133, 431, 6777])
-                "kofam_hits": {'K00033' : [431, 6777],
-                                'K01057' : [133],
-                                'K00036' : [132] },
-                "genes_to_contigs": {132: 0,
-                                     133: 0,
-                                     431: 2,
-                                    6777: 1 },
-                "contigs_to_genes": { 0: set([132, 133]),
-                                      1: set(6777),
-                                      2: set(431) },}
-                "paths":             [['K00033','K01057','K02222'], ['K00033','K01057','K00036'], ...]
-                "pathway_completeness":     [0.66, 0.66, ...]
-                "present_nonessential_kos":      []
-                "most_complete_paths":           [['K00033','K01057','K02222'], ['K00033','K01057','K00036'], ...]
-                "percent_complete":              0.66
-                "complete":                      False
-                                      }
-
-        To distill this information into one line, we need to convert the dictionary on-the-fly to a dict of dicts,
-        where each bin-module-path-kofam_hit-gene_caller_id is keyed by an arbitrary integer. There will be a lot of redundant information
-        in the rows.
-
-        The complete modules summary file includes only a portion of the information in the metabolism dictionary. Its purpose is to give the user
-        quick access to the complete modules in each bin. Every bin-module pair in this file is keyed by an arbitrary integer (with no relation to the
-        id in the other file).
+        The user can request a variety of output 'modes', and for each of these modes we look up the details on the output
+        format which are stored in self.available_modes, use that information to generate a dictionary of dictionaries,
+        and store that dictionary as a tab-delimited file.
         """
 
         for mode in self.output_modes:
