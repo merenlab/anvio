@@ -1101,6 +1101,16 @@ class KeggMetabolismEstimator(KeggContext):
         if "custom" in self.output_modes and not self.custom_output_headers:
             raise ConfigError("You have requested 'custom' output mode, but haven't told us what headers to include in that output. "
                               "You should be using the --custom-output-headers flag to do this.")
+        # parse requested output headers and make sure we can handle them all
+        if self.custom_output_headers:
+            self.custom_output_headers = self.custom_output_headers.split(",")
+            if anvio.DEBUG:
+                self.run.info("Custom Output Headers", ", ".join(self.custom_output_headers))
+            illegal_headers = set(self.custom_output_headers).difference(set(self.available_headers.keys()))
+            if illegal_headers:
+                raise ConfigError("You have requested some output headers that we cannot handle. The offending ones "
+                                  "are: %s. Please use the flag --list-available-output-headers to see which ones are acceptable."
+                                  % (", ".join(illegal_headers)))
 
 
         # init the base class
