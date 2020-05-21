@@ -39,11 +39,22 @@ parser.add_argument('dataset_name')
 parser.add_argument('outdir')
 parser.add_argument('--mmseqsTSV')
 parser.add_argument('--ucTSV')
-args = parser.parse_args(['/Users/sammiller/Documents/reanalysis/tongue1/02_IDENT/tongue1_day1_untreated_TRNASEQ.db',
-                          '/Users/sammiller/Documents/reanalysis/tongue1/02_IDENT/tongue1_day1_untreated_UNIQUE_TRNA.gast',
-                          'tongue1_day1_untreated',
-                          '/Users/sammiller/Documents/reanalysis/tongue1',
-                          '--ucTSV', '/Users/sammiller/Documents/reanalysis/tongue1/02_IDENT/tongue1_day1_untreated-UC_CLUSTERS.tsv'])
+
+parser.add_argument('--fasta')
+parser.add_argument('--outfasta')
+parser.add_argument('--profilefasta')
+parser.add_argument('--samplenum')
+args = parser.parser_args()
+# args = parser.parse_args(['/Users/sammiller/Documents/SANDBOX/COVID_UC_S9/COVID_UC_S9_untreated_TRNASEQ.db',
+#                           '/Users/sammiller/Documents/SANDBOX/COVID_UC_S9/COVID_UC_S9_untreated_UNIQUE_TRNA.gast',
+#                           'COVID_UC_S9',
+#                           '/Users/sammiller/Documents/SANDBOX/COVID_UC_S9',
+#                           '--ucTSV', '/Users/sammiller/Documents/SANDBOX/COVID_UC_S9/COVID_UC_S9_untreated-UC_CLUSTERS.tsv',
+#                           '--fasta', '/Users/sammiller/Documents/SANDBOX/COVID_UC_S9_untreated_UNIQUE_TRNA.fasta',
+#                           '--outfasta', '/Users/sammiller/Documents/SANDBOX/COVID_UC_S9_untreated_UNIQUE_TAXANNOT_TRNA.fasta',
+#                           '--profilefasta', '/Users/sammiller/Documents/SANDBOX/COVID_UC_S9_untreated_TAXANNOT_PROFILE_TRNA.fasta',
+#                           '--samplenum', '9'])
+
 
 db = anvio.db.DB(args.tRNASeqDB, 1)
 fulldf = pd.DataFrame(db.get_some_columns_from_table('sequences', 'name,replicate_count'),
@@ -102,6 +113,27 @@ codon_to_AA = deepcopy(anvio.constants.codon_to_AA)
 codon_to_AA[''] = ''
 fulldf['amino_acid'] = fulldf['anticodon_rc'].map(codon_to_AA)
 fulldf.drop('anticodon_rc', axis=1, inplace=True)
+
+
+df = fulldf[pd.notnull(fulldf['kingdom'])]
+seq_dict = dict()
+with open(args.fasta) as f:
+    for line in f:
+        if line[0] == '>':
+            seq_name = line.rstrip()[1:]
+        else:
+            seq_dict[seq_name] = line.rstrip()
+df['seq'] = [seq_dict[seq_name] for seq_name in df.index]
+samplenum_suffix = '_' + args.samplenum
+with open(args.outfasta, 'w') as f:
+    for seq_name, seq in zip(df.index.tolist(), df['seq'].tolist()):
+        f.write('>' + seq_name + samplenum_suffix + '\n')
+        f.write(seq + '\n')
+with open(args.profilefasta, 'w') as f:
+    for seq_name, seq, replicate_count in zip(df.index.tolist(), df['seq'].tolist(), df['replicate_count'].tolist()):
+        for i in range(1, replicate_count + 1):
+            f.write('>' + seq_name + samplenum_suffix + '_' + str(i) + '\n')
+            f.write(seq + '\n')
 
 
 # TOTAL READ COUNTS FOR EACH AMINO ACID
