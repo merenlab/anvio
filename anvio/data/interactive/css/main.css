@@ -289,6 +289,25 @@ html, body, #wrapper {
     right: 0px;
 }
 
+@keyframes fade {
+  25% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 0.1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.fading-button {
+  animation: fade 4s infinite;
+}
+
 .toggle-panel-right-pos {
     right: 350px !important;
 }

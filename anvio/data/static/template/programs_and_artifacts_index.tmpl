@@ -1,0 +1,39 @@
+---
+layout: post
+title: Help pages for anvi'o programs and artifacts
+categories: [anvio]
+comments: false
+image:
+  featurerelative: images/header.png
+  display: true
+---
+
+A complete list of current anvi'o programs and artifacts.
+
+{:.notice}
+The help contents were last updated on **{{ meta|lookup:"date" }}** for anvi'o version **{{ meta|lookup:"version" }}**.
+
+{% verbatim %}
+{% include _project-anvio-version.html %}
+{% include _toc.html %}
+{% include _join-anvio-slack.html %}
+{% endverbatim %}
+
+---
+
+## Programs
+
+Listed below a total of {{ programs|length }} programs.
+
+{% for program_name, url, desc in programs %}
+* **[{{program_name}}]({{url}})**: {{desc}}.
+<span>**Provides**: {% for key, value in program_provides_requires.items %}{% if key == program_name %}{% for name, path in value|lookup:"provides" %}<span class="artifact-p">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}{% endif %}{% endfor %} / 
+<span>**Requires**: {% for key, value in program_provides_requires.items %}{% if key == program_name %}{% for name, path in value|lookup:"requires" %}<span class="artifact-r">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}{% endif %}{% endfor %}.</span>
+
+{% endfor %}
+
+## Artifacts
+
+A total of {{ artifacts|length }} artifacts.
+
+* <span style="line-height: 25px;">{% for name, path in artifacts %}<span class="artifact-n">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}.</span>

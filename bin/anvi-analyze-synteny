@@ -59,13 +59,14 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Matthew S. Schechter"
 __email__ = "mschechter@uchicago.edu"
-__requires__ = ['contigs-db', 'external-genomes']
+__requires__ = ['contigs-db', 'genomes-storage-db']
 __provides__ = ['ngrams']
 __description__ = ("This program helps you extract synteny patterns from a group of similar loci or genomes. This "
-                   "is accomplished by deconstructing contigs into Ngrams (group of neighboring genes of which N is the number of genes) of gene "
-                   "functions using a sliding window method. Once completed, anvi'o will export a table with Ngrams counts "
-                   "for you to work with. By default anvi'o will ignore Ngrams that contain genes without annotations. If "
-                   "you would like to override this, you can use the --analyze-unknown-functions flag.")
+                   "is accomplished by deconstructing contigs into Ngrams (group of neighboring genes of which N is the number of genes) "
+                   "using a sliding window method. Once completed, anvi'o will export a table with Ngrams "
+                   "for you to work with. If more than one annotation source is provided, please designate which annotation_source "
+                   "anvio should use to make the Ngrams with using the --ngram-source parameter (e.g. gene_clusters, COG_FUNCTION). By default anvi'o will ignore Ngrams "
+                   "that contain genes without annotations. If you would like to override this, you can use the --analyze-unknown-functions flag.")
 
 
 
@@ -78,17 +79,24 @@ if __name__ == '__main__':
 
     # Essential input
     groupA = parser.add_argument_group('Essential INPUT')
-    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {"required": True}))
-    groupA.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source', {"required": True}))
-    groupA.add_argument(*anvio.A('ngram-window-range'), **anvio.K('ngram-window-range', {"required": True}))
-    groupA.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {"required": True}))
+    groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': True}))
+    groupA.add_argument(*anvio.A('ngram-window-range'), **anvio.K('ngram-window-range', {"required": False}))
+    groupA.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {"required": False}))
 
-    # Additional input
-    groupB = parser.add_argument_group('Additonal INPUT')
-    groupB.add_argument('--analyze-unknown-functions',action="store_true",
-                        help="Provide this flag if you want anvi-analyze-synteny to take into account "
-                              "Ngrams that contain gene calls that have no annotation.")
+    # Annotation sources
+    groupB = parser.add_argument_group('Annotation sources for Ngrams', "Choose one source of annotations for your Ngrams.")
+    groupB.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source', {"required": False}))
+    groupB.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {"required": False}))
+    groupB.add_argument('-n', '--ngram-source', help='If two annotation sources are provided, please choose one annotation source'
+                                                     ' that will be used to calcuate Ngrams (e.g. gene_clusters, COG_FUNCTION)')
 
+    # Optional arguments
+    groupC = parser.add_argument_group('Optional arguments')
+    groupC.add_argument(*anvio.A('list-annotation-sources'), **anvio.K('list-annotation-sources', {"required": False}))
+    groupC.add_argument('--analyze-unknown-functions',action="store_true",
+                        help="Provide this flag if you want anvi-analyze-synteny to report "
+                              'Ngrams that contain gene calls that have no annotation.')
+    groupC.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names', {"required": False}))
     args = anvio.get_args(parser)
 
     try:
