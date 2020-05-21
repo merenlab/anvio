@@ -1941,13 +1941,15 @@ class KeggMetabolismEstimator(KeggContext):
         return kegg_metabolism_superdict
 
 
-    def generate_output_dict(self, kegg_superdict, headers_to_include=None):
+    def generate_output_dict(self, kegg_superdict, headers_to_include=None, only_complete_modules=False):
         """This dictionary converts the metabolism superdict to a two-level dict containing desired headers for output."""
 
         # use the kofam_hits output mode header set by default
         if not headers_to_include:
             headers_to_include = set(["unique_id", self.name_header, "kegg_module", "module_is_complete", "module_completeness",
             "path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
+        else:
+            headers_to_include = set(headers_to_include)
 
         # make sure all requested headers are available
         avail_headers = set(self.available_headers.keys())
@@ -1971,6 +1973,9 @@ class KeggMetabolismEstimator(KeggContext):
 
                 if anvio.DEBUG:
                     self.run.info("Generating output for module", mnum)
+
+                if only_complete_modules and not c_dict["complete"]:
+                    continue
 
                 # fetch module info from db
                 module_name = self.kegg_modules_db.get_module_name(mnum)
