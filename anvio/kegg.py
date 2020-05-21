@@ -1186,6 +1186,22 @@ class KeggMetabolismEstimator(KeggContext):
         kegg_modules_db.disconnect()
 
 
+    def list_output_modes(self):
+        """This function prints out the available output modes for the metabolism estimation script."""
+        run.warning(None, header="AVAILABLE OUTPUT MODES", lc="green")
+
+        for mode, mode_meta in self.available_modes.items():
+            self.run.info(mode, mode_meta['description'])
+
+
+    def list_output_headers(self):
+        """This function prints out the available output headers for the 'custom' output mode"""
+        run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
+
+        for header, header_meta in self.available_headers.items():
+            self.run.info(header, header_meta['description'])
+
+
     def init_hits_and_splits(self):
         """This function loads KOfam hits, gene calls, splits, and contigs from the contigs DB.
 
