@@ -973,10 +973,85 @@ class KeggMetabolismEstimator(KeggContext):
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
         self.estimate_from_json = A('estimate_from_json') or None
         self.output_modes = A('kegg_output_modes') or "kofam_hits,complete_modules"
-        self.list_output_modes = True if A('list_available_modes') else False
         self.custom_output_headers = A('custom_output_headers') or None
-        self.list_output_headers = True if A('list_available_output_headers') else False
-        
+
+        self.name_header = None
+        if self.profile_db_path and not self.metagenome_mode:
+            self.name_header = 'bin_name'
+        elif not self.profile_db_path and not self.metagenome_mode:
+            self.name_header = 'genome_name'
+        elif self.metagenome_mode:
+            self.name_header = 'metagenome_name'
+
+        # output modes that we can handle
+        self.available_modes = ['kofam_hits', 'complete_modules', 'module', 'custom']
+
+        # dict containing matrix headers of information that we can output in custom mode
+        # key corresponds to key in output dictionary (generated in store_kegg_metabolism_superdict)
+        # dictionary contains its key in module-level completion dictionary (if any)
+        # and description of the information to print when listing available headers
+        self.available_headers = {self.name_header : {
+                                        'cdict_key': None,
+                                        'description': ""
+                                        },
+                                  'unique_id' : {
+                                        'cdict_key': None,
+                                        'description': ""
+                                        },
+                                  'kegg_module' : {
+                                        'cdict_key': None,
+                                        'description': ""
+                                        },
+                                  'module_is_complete' : {
+                                        'cdict_key': 'complete',
+                                        'description': ""
+                                        },
+                                  'module_completeness' : {
+                                        'cdict_key': 'percent_complete',
+                                        'description': ""
+                                        },
+                                  'module_name' : {
+                                        'cdict_key': None,
+                                        'description': ""
+                                        },
+                                  'module_class' : {
+                                        'cdict_key': None,
+                                        'description': ""
+                                        },
+                                  'module_category' : {
+                                        'cdict_key': None,
+                                        'description': ""
+                                        },
+                                  'module_subcategory' : {
+                                        'cdict_key': None,
+                                        'description': ""
+                                        },
+                                  'gene_caller_id': {
+                                        'cdict_key': None,
+                                        'description': ""
+                                        },
+                                  'kofam_hit' : {
+                                        'cdict_key': 'kofam_hits',
+                                        'description': ""
+                                        },
+                                  'contig' : {
+                                        'cdict_key': 'genes_to_contigs',
+                                        'description': ""
+                                        },
+                                  'path_id' : {
+                                        'cdict_key': None,
+                                        'description': ""
+                                        },
+                                  'path' : {
+                                        'cdict_key': 'paths',
+                                        'description': ""
+                                        },
+                                  'path_completeness' : {
+                                        'cdict_key': 'pathway_completeness',
+                                        'description': ""
+                                        },
+                                  }
+
 
         if not self.estimate_from_json and not self.contigs_db_path:
             raise ConfigError("NO INPUT PROVIDED. You must provide (at least) a contigs database to this program, unless you are using the --estimate-from-json "
