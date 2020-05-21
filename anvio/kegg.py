@@ -2132,63 +2132,16 @@ class KeggMetabolismEstimator(KeggContext):
         id in the other file).
         """
 
-        hits_output_path = self.output_file_prefix + "-all_kofam_hits.txt"
-        complete_module_summary_path = self.output_file_prefix + "-complete_modules.txt"
-
-        header_list = ["unique_id", self.name_header, "kegg_module", "module_is_complete", "module_completeness",
-        "path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"]
-        summary_header_list = ["unique_id", self.name_header, "kegg_module","module_completeness", "module_name", "module_class",
-        "module_category", "module_subcategory"]
-
-        d = {}
-        cm_summary = {}
-        unique_id = 0
-        summary_unique_id = 0
-        for bin, mod_dict in kegg_superdict.items():
-            for mnum, c_dict in mod_dict.items():
-                if mnum == "num_complete_modules":
-                    continue
-
-
-                if c_dict["complete"]:
-                    cm_summary[summary_unique_id] = {}
-                    cm_summary[summary_unique_id][self.name_header] = bin
-                    cm_summary[summary_unique_id]["kegg_module"] = mnum
-                    cm_summary[summary_unique_id]["module_completeness"] = c_dict["percent_complete"]
-                    cm_summary[summary_unique_id]["module_name"] = self.kegg_modules_db.get_module_name(mnum)
-                    mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum)
-                    cm_summary[summary_unique_id]["module_class"] = mnum_class_dict["class"]
-                    cm_summary[summary_unique_id]["module_category"] = mnum_class_dict["category"]
-                    cm_summary[summary_unique_id]["module_subcategory"] = mnum_class_dict["subcategory"]
-
-                    summary_unique_id += 1
-
-                for p_index in range(len(c_dict['paths'])):
-                    p = c_dict['paths'][p_index]
-
-                    for ko in c_dict['kofam_hits']:
-                        if ko not in p:
-                            continue
-
-                        for gc_id in c_dict["kofam_hits"][ko]:
-                            d[unique_id] = {}
-                            d[unique_id][self.name_header] = bin
-                            d[unique_id]["kegg_module"] = mnum
-                            d[unique_id]["module_is_complete"] = c_dict["complete"]
-                            d[unique_id]["module_completeness"] = c_dict["percent_complete"]
-                            d[unique_id]["path_id"] = p_index
-                            d[unique_id]["path"] = ",".join(p)
-                            d[unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
-                            d[unique_id]["kofam_hit"] = ko
-                            d[unique_id]["gene_caller_id"] = gc_id
-                            d[unique_id]["contig"] = c_dict["genes_to_contigs"][gc_id]
-
-                            unique_id += 1
-
-        utils.store_dict_as_TAB_delimited_file(d, hits_output_path, key_header="unique_id", headers=header_list)
-        self.run.info("Kofam hits output file", hits_output_path, nl_before=1)
-        utils.store_dict_as_TAB_delimited_file(cm_summary, complete_module_summary_path, key_header="unique_id", headers=summary_header_list)
-        self.run.info("Complete modules summary file", complete_module_summary_path)
+        for mode in self.output_modes:
+            output_path = self.output_file_prefix + "_" + self.available_modes[mode]["output_suffix"]
+            header_list = self.available_modes[mode]["headers"]
+            if not header_list:
+                raise ConfigError("Oh, dear. You've come all this way only to realize that we don't know which headers to use "
+                                  "for the %s output mode. Something is terribly wrong, and it is probably a developer's fault. :("
+                                  % (mode))
+            output_dict = self.generate_output_dict(kegg_superdict, headers_to_include=header_list, only_complete_modules=self.available_modes[mode]["only_complete"])
+            utils.store_dict_as_TAB_delimited_file(output_dict, output_path, key_header="unique_id", headers=header_list)
+            self.run.info("%s output file" % mode, output_path, nl_before=1)
 
 
     def store_metabolism_superdict_as_json(self, kegg_superdict, file_path):
