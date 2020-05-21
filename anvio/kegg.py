@@ -2114,14 +2114,14 @@ class KeggMetabolismEstimator(KeggContext):
 
                         for gc_id in c_dict["kofam_hits"][ko]:
                             d[unique_id] = {}
-                            d[unique_id][name_header] = bin
+                            d[unique_id][self.name_header] = bin
                             d[unique_id]["kegg_module"] = mnum
                             d[unique_id]["module_is_complete"] = c_dict["complete"]
                             d[unique_id]["module_completeness"] = c_dict["percent_complete"]
                             d[unique_id]["path_id"] = p_index
                             d[unique_id]["path"] = ",".join(p)
                             d[unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
-                            d[unique_id]["kofam_hit_in_path"] = ko
+                            d[unique_id]["kofam_hit"] = ko
                             d[unique_id]["gene_caller_id"] = gc_id
                             d[unique_id]["contig"] = c_dict["genes_to_contigs"][gc_id]
 
