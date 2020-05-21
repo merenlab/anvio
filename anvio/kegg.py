@@ -1136,6 +1136,9 @@ class KeggMetabolismEstimator(KeggContext):
                                   % (", ".join(illegal_headers)))
             if "unique_id" not in self.custom_output_headers:
                 self.custom_output_headers = ["unique_id"] + self.custom_output_headers
+            elif self.custom_output_headers.index("unique_id") != 0:
+                self.custom_output_headers.remove("unique_id")
+                self.custom_output_headers = ["unique_id"] + self.custom_output_headers
             self.available_modes['custom']['headers'] = self.custom_output_headers
 
 
