@@ -1029,63 +1029,64 @@ class KeggMetabolismEstimator(KeggContext):
         # and description of the information to print when listing available headers
         self.available_headers = {self.name_header : {
                                         'cdict_key': None,
-                                        'description': ""
+                                        'description': "Name of genome/bin/metagenome in which we find KOfam hits and/or KEGG modules"
                                         },
                                   'unique_id' : {
                                         'cdict_key': None,
-                                        'description': ""
+                                        'description': "Just an integer that keeps our data organized. No real meaning here. Always included in output, so no need to specify it on the command line"
                                         },
                                   'kegg_module' : {
                                         'cdict_key': None,
-                                        'description': ""
+                                        'description': "KEGG module number"
                                         },
                                   'module_is_complete' : {
                                         'cdict_key': 'complete',
-                                        'description': ""
+                                        'description': "Whether a KEGG module is considered complete or not based on its percent completeness and the completeness threshold"
                                         },
                                   'module_completeness' : {
                                         'cdict_key': 'percent_complete',
-                                        'description': ""
+                                        'description': "Percent completeness of a KEGG module"
                                         },
                                   'module_name' : {
                                         'cdict_key': None,
-                                        'description': ""
+                                        'description': "English name/description of a KEGG module"
                                         },
                                   'module_class' : {
                                         'cdict_key': None,
-                                        'description': ""
+                                        'description': "Metabolism class of a KEGG module"
                                         },
                                   'module_category' : {
                                         'cdict_key': None,
-                                        'description': ""
+                                        'description': "Metabolism category of a KEGG module"
                                         },
                                   'module_subcategory' : {
                                         'cdict_key': None,
-                                        'description': ""
+                                        'description': "Metabolism subcategory of a KEGG module"
                                         },
                                   'gene_caller_id': {
                                         'cdict_key': None,
-                                        'description': ""
+                                        'description': "Gene caller ID of a KOfam hit in the contigs DB"
                                         },
                                   'kofam_hit' : {
                                         'cdict_key': 'kofam_hits',
-                                        'description': ""
+                                        'description': "KO number of a KOfam hit"
                                         },
                                   'contig' : {
                                         'cdict_key': 'genes_to_contigs',
-                                        'description': ""
+                                        'description': "Contig that a KOfam hit is found on"
                                         },
                                   'path_id' : {
                                         'cdict_key': None,
-                                        'description': ""
+                                        'description': "Integer ID for a path through a KEGG module. Again, no real meaning and just for data organization"
                                         },
                                   'path' : {
                                         'cdict_key': 'paths',
-                                        'description': ""
+                                        'description': "A path through a KEGG module (a linear sequence of KOs that together represent each metabolic step "
+                                                       "in the module. Most modules have several of these due to KO redundancy)"
                                         },
                                   'path_completeness' : {
                                         'cdict_key': 'pathway_completeness',
-                                        'description': ""
+                                        'description': "Percent completeness of a particular path through a KEGG module"
                                         },
                                   }
 
