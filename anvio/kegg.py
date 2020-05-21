@@ -2077,17 +2077,9 @@ class KeggMetabolismEstimator(KeggContext):
         hits_output_path = self.output_file_prefix + "-all_kofam_hits.txt"
         complete_module_summary_path = self.output_file_prefix + "-complete_modules.txt"
 
-        name_header = None
-        if self.profile_db_path and not self.metagenome_mode:
-            name_header = "bin_name"
-        elif not self.profile_db_path and not self.metagenome_mode:
-            name_header = "genome_name"
-        elif self.metagenome_mode:
-            name_header = "metagenome_name"
-
-        header_list = ["unique_id", name_header, "kegg_module", "module_is_complete", "module_completeness",
-        "path_id", "path", "path_completeness", "kofam_hit_in_path", "gene_caller_id", "contig"]
-        summary_header_list = ["unique_id", name_header, "kegg_module","module_completeness", "module_name", "module_class",
+        header_list = ["unique_id", self.name_header, "kegg_module", "module_is_complete", "module_completeness",
+        "path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"]
+        summary_header_list = ["unique_id", self.name_header, "kegg_module","module_completeness", "module_name", "module_class",
         "module_category", "module_subcategory"]
 
         d = {}
@@ -2102,7 +2094,7 @@ class KeggMetabolismEstimator(KeggContext):
 
                 if c_dict["complete"]:
                     cm_summary[summary_unique_id] = {}
-                    cm_summary[summary_unique_id][name_header] = bin
+                    cm_summary[summary_unique_id][self.name_header] = bin
                     cm_summary[summary_unique_id]["kegg_module"] = mnum
                     cm_summary[summary_unique_id]["module_completeness"] = c_dict["percent_complete"]
                     cm_summary[summary_unique_id]["module_name"] = self.kegg_modules_db.get_module_name(mnum)
