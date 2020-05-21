@@ -1958,8 +1958,10 @@ class KeggMetabolismEstimator(KeggContext):
             raise ConfigError("Some unavailable headers were requested. These include: %s" % (", ".join(illegal_headers)))
 
         keys_not_in_superdict = set(["unique_id", self.name_header, "kegg_module"])
+        module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory"])
         path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
         remaining_headers = headers_to_include.difference(keys_not_in_superdict)
+        remaining_headers = remaining_headers.difference(module_level_headers)
         remaining_headers = remaining_headers.difference(path_and_ko_level_headers)
 
         # convert to two-level dict where unique id keys for a dictionary of information for each bin/module pair
