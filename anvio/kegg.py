@@ -1095,6 +1095,13 @@ class KeggMetabolismEstimator(KeggContext):
         if self.profile_db_path:
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
+        if self.custom_output_headers and "custom" not in self.output_modes:
+            raise ConfigError("You seem to have provided a list of custom headers without actually requesting the 'custom' output "
+                              "mode. We think perhaps you missed something, so we are stopping you right there.")
+        if "custom" in self.output_modes and not self.custom_output_headers:
+            raise ConfigError("You have requested 'custom' output mode, but haven't told us what headers to include in that output. "
+                              "You should be using the --custom-output-headers flag to do this.")
+
 
         # init the base class
         KeggContext.__init__(self, self.args)
