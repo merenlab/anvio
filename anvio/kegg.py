@@ -1134,6 +1134,8 @@ class KeggMetabolismEstimator(KeggContext):
                 raise ConfigError("You have requested some output headers that we cannot handle. The offending ones "
                                   "are: %s. Please use the flag --list-available-output-headers to see which ones are acceptable."
                                   % (", ".join(illegal_headers)))
+            if "unique_id" not in self.custom_output_headers:
+                self.custom_output_headers = ["unique_id"] + self.custom_output_headers
             self.available_modes['custom']['headers'] = self.custom_output_headers
 
 
