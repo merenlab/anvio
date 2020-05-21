@@ -999,7 +999,7 @@ class KeggMetabolismEstimator(KeggContext):
                                     },
                                 'module': {
                                     'output_suffix': "modules.txt",
-                                    'headers': None,
+                                    'headers': ["unique_id", self.name_header, "kegg_module","module_completeness"],
                                     'only_complete': False
                                     },
                                 'custom': {
