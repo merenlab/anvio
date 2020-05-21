@@ -989,23 +989,27 @@ class KeggMetabolismEstimator(KeggContext):
                                     'headers': ["unique_id", self.name_header, "kegg_module", "module_is_complete",
                                                 "module_completeness", "path_id", "path", "path_completeness",
                                                 "kofam_hit", "gene_caller_id", "contig"],
-                                    'only_complete': False
+                                    'only_complete': False,
+                                    'description': "Information on each KOfam hit in the contigs DB"
                                     },
                                 'complete_modules': {
                                     'output_suffix': "complete_modules.txt",
                                     'headers': ["unique_id", self.name_header, "kegg_module","module_completeness",
                                                 "module_name", "module_class", "module_category", "module_subcategory"],
-                                    'only_complete': True
+                                    'only_complete': True,
+                                    'description': "Modules whose percent completeness was over the completeness threshold"
                                     },
                                 'module': {
                                     'output_suffix': "modules.txt",
                                     'headers': ["unique_id", self.name_header, "kegg_module","module_completeness"],
-                                    'only_complete': False
+                                    'only_complete': False,
+                                    'description': "Completeness information on all KEGG modules"
                                     },
                                 'custom': {
                                     'output_suffix': "custom_matrix.txt",
                                     'headers': None,
-                                    'only_complete': False
+                                    'only_complete': False,
+                                    'description': "A custom tab-delimited output file where you choose the included data using --custom-output-headers"
                                     }
                                 }
 
