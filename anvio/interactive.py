@@ -23,6 +23,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.structureops as structureops
 import anvio.variabilityops as variabilityops
+import anvio.kegg as kegg
 
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
@@ -2360,6 +2361,24 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         for item in var.items:
             columns_to_drop.extend([x for x in columns if x.startswith(item)])
         var.merged.drop(labels=columns_to_drop, axis=1, inplace=True)
+
+
+class MetabolismInteractive():
+    def __init__(self, args, run=run, progress=progress):
+        self.mode = "metabolism"
+
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.contigs_db_path = A('contigs_db') #TODO delete if we don't need this
+
+        self.estimator = kegg.KeggMetabolismEstimator(args)
+
+
+    def get_metabolism_data(self):
+        return self.estimator.get_metabolism_data_for_visualization()
 
 
 class ContigsInteractive():
