@@ -44,7 +44,7 @@ parser.add_argument('--fasta')
 parser.add_argument('--outfasta')
 parser.add_argument('--profilefasta')
 parser.add_argument('--samplenum')
-args = parser.parser_args()
+args = parser.parse_args()
 # args = parser.parse_args(['/Users/sammiller/Documents/SANDBOX/COVID_UC_S9/COVID_UC_S9_untreated_TRNASEQ.db',
 #                           '/Users/sammiller/Documents/SANDBOX/COVID_UC_S9/COVID_UC_S9_untreated_UNIQUE_TRNA.gast',
 #                           'COVID_UC_S9',
