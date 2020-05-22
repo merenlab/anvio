@@ -2529,7 +2529,15 @@ class ProfileSuperclass(object):
                     self.num_mapped_reads_per_sample = {self.p_meta['samples'][i]: total_reads_mapped[i] for i in range(0, len(self.p_meta['samples']))}
             else:
                 sample_name = self.p_meta['samples'][0]
-                keys, data = TableForLayerAdditionalData(self.args, p=self.progress).get()
+
+                # create a copy of the args to avoid some misunderstanding downstream when THIS class is initiated with
+                # a gene_mode = True statement. Here we are trying to learn the layer additional data from a profile
+                # database. But if genes_mod = True, TableForLayerAdditionalData class will try to initialize for a genes
+                # database rather than a profile database. this workaround addresses that issue:
+                args = copy.deepcopy(self.args)
+                args.gene_mode = False
+                keys, data = TableForLayerAdditionalData(args, p=self.progress).get()
+
                 if 'total_reads_mapped' not in data[sample_name]:
                     self.num_mapped_reads_per_sample = None
                 else:
