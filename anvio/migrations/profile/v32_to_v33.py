@@ -46,15 +46,9 @@ def migrate(db_path):
     progress.new('Updating DB')
 
     if variable_nts_table_name in tables_in_db:
-        progress.update('Loading variability table...')
-        var = profile_db.get_table_as_dataframe(variable_nts_table_name, error_if_no_data=False)
-        var.rename(columns = {'in_partial_gene_call': 'in_noncoding_gene_call',
-                              'in_complete_gene_call': 'in_coding_gene_call'}, inplace=True)
-
-        progress.update('Rewriting variability table... Do not interrupt this process')
-        profile_db.drop_table(variable_nts_table_name)
-        profile_db.create_table(variable_nts_table_name, variable_nts_table_structure, variable_nts_table_types)
-        profile_db.insert_rows_from_dataframe(variable_nts_table_name, var)
+        progress.update('Renaming columns in variability table...')
+        profile_db._exec("""ALTER TABLE %s RENAME COLUMN in_partial_gene_call TO in_noncoding_gene_call;""" % variable_nts_table_name)
+        profile_db._exec("""ALTER TABLE %s RENAME COLUMN in_complete_gene_call TO in_coding_gene_call;""" % variable_nts_table_name)
 
     # ---------------------------------------------------------------------------------
 
