@@ -22,5 +22,5 @@ for script_full_path in Path(base_path).glob('*/v*_to_v*.py'):
     spec = importlib.util.spec_from_file_location(script_name, script_full_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    
+
     migration_scripts[db_type][script_name] = module

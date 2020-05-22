@@ -72,10 +72,12 @@ class DB:
             self.version = self.get_version()
             if str(self.version) != str(client_version) and not ignore_version:
                 if int(self.version) > int(client_version):
+                    progress.reset()
                     raise ConfigError("Bad news of the day: the database at %s was generated with an anvi'o version that is 'newer' than "
                                       "the one you are actively using right now. We know, you hate to hear this, but you need to upgrade "
                                       "your anvi'o :(" % self.db_path)
                 else:
+                    progress.reset()
                     raise ConfigError("The database at '%s' is outdated (its version is v%s, but your anvi'o installation only knows how to "
                                       "deal with v%s). You can migrate your database without losing any data using the program `anvi-migrate`."\
                                                % (self.db_path, self.version, client_version))

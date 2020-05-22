@@ -443,14 +443,16 @@ class ContigsSuperclass(object):
         """Returns a tuple with 3 pieces of information for a given nucleotide position.
 
         This function accesses the self.nt_positions_info dictionary of arrays (each key is a contig
-        name) to return the tuple: (in_partial_gene_call, in_complete_gene_call, base_pos_in_codon).
+        name) to return the tuple: (in_noncoding_gene_call, in_coding_gene_call, base_pos_in_codon).
 
         Notes
         =====
         - If you plan on calling this function many times, consider instead `self.get_gene_info_for_each_position`
         """
 
-        if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
+        if (not self.a_meta['genes_are_called']) or \
+           (not contig_name in self.nt_positions_info) or \
+           (not len(self.nt_positions_info[contig_name])):
             return (0, 0, 0)
 
         if not self.nt_positions_info:
@@ -644,13 +646,13 @@ class ContigsSuperclass(object):
         gene_call = self.genes_in_contigs_dict[gene_caller_id]
 
         if contig_name != gene_call['contig']:
-            raise ConfigError('get_corresponding_codon_order_in_gene :: well, the gene call %d and the contig %s '
-                               'do not seem to have anything to do with each other :/ This is not a user-level error '
-                               'something must have gone very wrong somewhere in the code ...' % (gene_caller_id, contig_name))
+            raise ConfigError("get_corresponding_codon_order_in_gene :: well, the gene call %d and the contig %s "
+                              "do not seem to have anything to do with each other :/ This is not a user-level error "
+                              "something must have gone very wrong somewhere in the code ..." % (gene_caller_id, contig_name))
 
         if not pos_in_contig >= gene_call['start'] or not pos_in_contig < gene_call['stop']:
             raise ConfigError("get_corresponding_codon_order_in_gene :: position %d does not occur in gene call %d :(" \
-                                                        % (pos_in_contig, gene_caller_id))
+                              % (pos_in_contig, gene_caller_id))
 
         start, stop = gene_call['start'], gene_call['stop']
 
@@ -666,17 +668,17 @@ class ContigsSuperclass(object):
 
 
     def get_gene_start_stops_in_contig(self, contig_name):
-        """Return a list of (gene_callers_id, start, stop) tuples for each gene occurring
-           in contig_name"""
+        """Return a list of (gene_callers_id, start, stop) tuples for each gene occurring in contig_name"""
         return self.contig_name_to_genes[contig_name]
 
 
     def get_AA_counts_dict(self, split_names=set([]), contig_names=set([]), gene_caller_ids=set([]), return_codons_instead=False):
         """Returns a dictionary of AA counts.
 
-           The dict can be returned for a given collection of split names, contigs names,
-           or gene calls. If none of these variables are specified, the dict will contain
-           counts for all gene calls in the contigs database"""
+        The dict can be returned for a given collection of split names, contigs names,
+        or gene calls. If none of these variables are specified, the dict will contain
+        counts for all gene calls in the contigs database
+        """
 
         counts_dict = {}
 
@@ -715,7 +717,7 @@ class ContigsSuperclass(object):
         for gene_call_id in gene_calls_of_interest:
             gene_call = self.genes_in_contigs_dict[gene_call_id]
 
-            if gene_call['partial']:
+            if gene_call['call_type'] != constants.gene_call_types['CODING']:
                 continue
 
             if return_codons_instead:
@@ -750,7 +752,9 @@ class ContigsSuperclass(object):
         if not gene_start_stops_in_contig:
             return []
 
-        corresponding_gene_calls = [gene_callers_id for (gene_callers_id, start, stop) in gene_start_stops_in_contig if pos_in_contig >= start and pos_in_contig < stop]
+        corresponding_gene_calls = [gene_callers_id
+                                    for (gene_callers_id, start, stop) in gene_start_stops_in_contig
+                                    if pos_in_contig >= start and pos_in_contig < stop]
 
         return corresponding_gene_calls
 
@@ -766,8 +770,8 @@ class ContigsSuperclass(object):
                                         or multiple gene calls)?
             'codon_order_in_gene'     : To which codon does the nt belong (0-indexed, -1 if
                                         corresponding_gene_call is -1)?
-            'in_partial_gene_call'    : Does this position lie in a gene that is partial (0 or 1)?
-            'in_complete_gene_call'   : Does this position lie in a gene that is complete (0 or 1)?
+            'in_noncoding_gene_call'  : Does this position lie in a gene that is noncoding (0 or 1)?
+            'in_coding_gene_call'     : Does this position lie in a gene that is coding (0 or 1)?
             'base_pos_in_codon'       : To what codon position (1, 2, or 3) does the nt belong (0 if
                                         corresponding_gene_call is -1, or gene does not have codons,
                                         e.g. ribosomal proteins)?
@@ -781,8 +785,8 @@ class ContigsSuperclass(object):
 
         info : list, 'all'
             A list of desired info names. By default, 'all' corresponds to
-            ['corresponding_gene_call', 'codon_order_in_gene', 'in_partial_gene_call',
-            'in_complete_gene_call', 'base_pos_in_codon', 'forward', 'gene_start', 'gene_stop'].
+            ['corresponding_gene_call', 'codon_order_in_gene', 'in_noncoding_gene_call',
+            'in_coding_gene_call', 'base_pos_in_codon', 'forward', 'gene_start', 'gene_stop'].
             Please note that this is just a convenience for the programmer: _all_ keys are
             calculated, and then only the requested subset is returned.
 
@@ -797,8 +801,8 @@ class ContigsSuperclass(object):
         """
 
         available_info = [
-            'in_partial_gene_call',
-            'in_complete_gene_call',
+            'in_noncoding_gene_call',
+            'in_coding_gene_call',
             'base_pos_in_codon',
             'corresponding_gene_call',
             'codon_order_in_gene',
@@ -823,8 +827,8 @@ class ContigsSuperclass(object):
         data = -numpy.ones(data_shape).astype(int)
         data[:, :3] = 0
 
-        # First, we populate the first 3 columns of data, 'in_complete_gene_call',
-        # 'in_complete_gene_call', and 'base_pos_in_codon'. This is done straightforwardly by
+        # First, we populate the first 3 columns of data, 'in_noncoding_gene_call',
+        # 'in_coding_gene_call', and 'base_pos_in_codon'. This is done straightforwardly by
         # accessing self.nt_positions_info
 
         if (not self.a_meta['genes_are_called']) or (not contig_name in self.nt_positions_info) or (not len(self.nt_positions_info[contig_name])):
@@ -3525,7 +3529,9 @@ class ContigsDatabase:
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
 
             try:
-                for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs', 'genes_are_called', 'splits_consider_gene_calls', 'scg_taxonomy_was_run']:
+                for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs',
+                            'genes_are_called', 'splits_consider_gene_calls', 'scg_taxonomy_was_run',
+                            'external_gene_calls', 'external_gene_amino_acid_seqs', 'skip_predict_frame']:
                     self.meta[key] = int(self.meta[key])
             except KeyError:
                 raise ConfigError("Oh no :( There is a contigs database here at '%s', but it seems to be broken :( It is very "
@@ -3680,7 +3686,7 @@ class ContigsDatabase:
         external_gene_calls_file_path = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
         ignore_internal_stop_codons = A('ignore_internal_stop_codons')
-        predict_frame = A('predict_frame')
+        skip_predict_frame= A('skip_predict_frame')
         prodigal_translation_table = A('prodigal_translation_table')
 
         if external_gene_calls_file_path:
@@ -3694,6 +3700,9 @@ class ContigsDatabase:
             raise ConfigError("You asked anvi'o to %s, yet you set a specific translation table for prodigal. These "
                               "parameters do not make much sense and anvi'o is kindly asking you to make up your "
                               "mind." % ('skip gene calling' if skip_gene_calling else 'use external gene calls'))
+
+        if skip_predict_frame and not external_gene_calls_file_path:
+            raise ConfigError("The flag `--skip-predict-frame` is only relevant if you are providing external gene calls. ")
 
         filesnpaths.is_file_fasta_formatted(contigs_fasta)
         contigs_fasta = os.path.abspath(contigs_fasta)
@@ -3820,7 +3829,7 @@ class ContigsDatabase:
         self.db.set_meta_value('split_length', split_length)
 
         # first things first: do the gene calling on contigs. this part is important. we are doing the
-        # gene calling first. so we understand wher genes start and end. this information will guide the
+        # gene calling first, so we understand wher genes start and end. this information will guide the
         # arrangement of the breakpoint of splits
         genes_in_contigs_dict = {}
         contig_name_to_gene_start_stops = {}
@@ -3835,7 +3844,7 @@ class ContigsDatabase:
                 gene_calls_tables.use_external_gene_calls_to_populate_genes_in_contigs_table(
                     input_file_path=external_gene_calls_file_path,
                     ignore_internal_stop_codons=ignore_internal_stop_codons,
-                    predict_frame=predict_frame,
+                    skip_predict_frame=skip_predict_frame,
                 )
             else:
                 gene_calls_tables.call_genes_and_populate_genes_in_contigs_table()
@@ -3853,6 +3862,7 @@ class ContigsDatabase:
                 contig_name_to_gene_start_stops[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
 
         # print some information for the user
+        self.run.warning(None, header="CONTIGS DB CREATE REPORT", lc="cyan")
         self.run.info('Split Length', pp(split_length))
         self.run.info('K-mer size', kmer_size)
         self.run.info('Skip gene calling?', skip_gene_calling)
@@ -3860,6 +3870,7 @@ class ContigsDatabase:
 
         if external_gene_calls_file_path:
             self.run.info('External gene calls file have AA sequences?', external_gene_calls_include_amino_acid_sequences, mc='green')
+            self.run.info('Proper frames will be predicted?', (not skip_predict_frame), mc='green')
 
         self.run.info('Ignoring internal stop codons?', ignore_internal_stop_codons)
         self.run.info('Splitting pays attention to gene calls?', (not skip_mindful_splitting))
@@ -3940,13 +3951,9 @@ class ContigsDatabase:
         self.db.set_meta_value('gene_level_taxonomy_source', None)
         self.db.set_meta_value('gene_function_sources', None)
         self.db.set_meta_value('genes_are_called', (not skip_gene_calling))
-
-        # FIXME: these need to be included in the self table at some point (and of course
-        # after that we should increase the contigs db version, and include these variables
-        # in ContigsDatabase::init):
-        #self.db.set_meta_value('user_provided_external_gene_calls', True if external_gene_calls_file_path else False)
-        #self.db.set_meta_value('user_provided_external_gene_amino_acid_seqs', external_gene_calls_include_amino_acid_sequences)
-
+        self.db.set_meta_value('external_gene_calls', True if external_gene_calls_file_path else False)
+        self.db.set_meta_value('external_gene_amino_acid_seqs', True if external_gene_calls_include_amino_acid_sequences else False)
+        self.db.set_meta_value('skip_predict_frame', True if skip_predict_frame else False)
         self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))
         self.db.set_meta_value('scg_taxonomy_was_run', False)
         self.db.set_meta_value('creation_date', self.get_date())
@@ -3968,38 +3975,46 @@ class ContigsDatabase:
 
 
     def compress_nt_position_info(self, contig_length, genes_in_contig, genes_in_contigs_dict):
-        """This function compresses information regarding each nucleotide position in a given contig
-           into a small int. Every nucleotide position is represented by four bits depending on whether
-           they occur in a complete open reading frame, and which base they correspond to in a codon.
+        """Compress info regarding each nucleotide position in a given contig into a small int
 
-                0000
-                ||||
-                ||| \
-                |||   Third codon?
-                || \
-                ||   Second codon?
-                | \
-                |   First codon?
-                 \
-                   Whether the position in a partial gene call
+        Every nucleotide position is represented by four bits depending on whether they occur in a
+        coding open reading frame, and which base they correspond to in a codon.
 
-           8: int('1000', 2); nt position is in a partial gene call
-           4: int('0100', 2); nt position is in a complete gene call, and is at the 1st position in the codon
-           2: int('0010', 2); nt position is in a complete gene call, and is at the 2nd position in the codon
-           1: int('0001', 2); nt position is in a complete gene call, and is at the 3rd position in the codon
+             0000
+             ||||
+             ||| \
+             |||   Third codon pos?
+             || \
+             ||   Second codon pos?
+             | \
+             |   First codon pos?
+              \
+                Whether the position is in an noncoding gene (call_type = NONCODING or UNKNOWN)
+
+        8: int('1000', 2); nt position is in an noncoding gene
+        4: int('0100', 2); nt position is in a coding gene, and is at the 1st position in the codon
+        2: int('0010', 2); nt position is in a coding gene, and is at the 2nd position in the codon
+        1: int('0001', 2); nt position is in a coding gene, and is at the 3rd position in the codon
+        0: int('0000', 2); nt position not in a gene
+
+        Notes
+        =====
+        - This code could be much faster by populating and returning a numpy array rather than a
+          list
+        - Upon testing (2020/05/19), this function is about 8% of runtime for
+          anvi-gen-contigs-database (ignoring ORF prediction) so vectorization of this function is
+          probably not worth it at this point in time.
         """
 
         # first we create a list of zeros for each position of the contig
         nt_position_info_list = [0] * contig_length
 
+        coding = constants.gene_call_types['CODING']
+
         for gene_unique_id, start, stop in genes_in_contig:
             gene_call = genes_in_contigs_dict[gene_unique_id]
 
-            # if the gene call is a partial one, meaning the gene was cut at the beginning or
-            # at the end of the contig, we are not going to try to make sense of synonymous /
-            # non-synonmous bases in that. the clients who wish to use these variables must also
-            # be careful about the difference
-            if gene_call['partial']:
+            if gene_call['call_type'] != coding:
                 for nt_position in range(start, stop):
                     nt_position_info_list[nt_position] = 8
                 continue
