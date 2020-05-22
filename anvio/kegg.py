@@ -945,7 +945,36 @@ class KeggRunHMMs(KeggContext):
             hmmer.clean_tmp_dirs()
 
 
-class KeggMetabolismEstimator(KeggContext):
+class KeggEstimatorArgs():
+    def __init__(self, args, format_args_for_single_estimator=False):
+        """A base class to assign arguments for KeggMetabolism estimator classes.
+
+        Parameters
+        ==========
+        format_args_for_single_estimator: bool
+            This is a special case where an args instance is generated to be passed to the
+            single estimator from within multi estimator. More specifically, the multi estimator
+            class is nothing but one that iterates through all contigs DBs
+            given to it using the single estimator class. So it needs to create instances of
+            single estimators, and collect results at upstream. The problem is, if a single
+            estimator is initiated with the args of a multi estimator, the sanity check will
+            go haywire. This flag nullifies most common offenders.
+        """
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.metagenome_mode = True if A('metagenome_mode') else False
+        self.completeness_threshold = A('module_completion_threshold') or 0.75
+        self.output_file_prefix = A('output_file_prefix') or "kegg-metabolism"
+        self.write_dict_to_json = True if A('get_raw_data_as_json') else False
+        self.json_output_file_path = A('get_raw_data_as_json')
+        self.store_json_without_estimation = True if A('store_json_without_estimation') else False
+        self.estimate_from_json = A('estimate_from_json') or None
+        self.output_modes = A('kegg_output_modes') or "kofam_hits,complete_modules"
+        self.custom_output_headers = A('custom_output_headers') or None
+
+
+
+class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
     """ Class for reconstructing/estimating metabolism based on hits to KEGG databases.
 
     ==========
@@ -964,16 +993,9 @@ class KeggMetabolismEstimator(KeggContext):
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.bin_ids_file = A('bin_ids_file')
-        self.metagenome_mode = True if A('metagenome_mode') else False
-        self.completeness_threshold = A('module_completion_threshold') or 0.75
-        self.output_file_prefix = A('output_file_prefix') or "kegg-metabolism"
         self.contigs_db_project_name = "Unknown"
-        self.write_dict_to_json = True if A('get_raw_data_as_json') else False
-        self.json_output_file_path = A('get_raw_data_as_json')
-        self.store_json_without_estimation = True if A('store_json_without_estimation') else False
-        self.estimate_from_json = A('estimate_from_json') or None
-        self.output_modes = A('kegg_output_modes') or "kofam_hits,complete_modules"
-        self.custom_output_headers = A('custom_output_headers') or None
+
+        KeggEstimatorArgs.__init__(self, self.args)
 
         self.name_header = None
         if self.profile_db_path and not self.metagenome_mode:
