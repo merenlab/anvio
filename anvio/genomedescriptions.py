@@ -227,12 +227,12 @@ class GenomeDescriptions(object):
         self.progress.new('Setting up genome hash dicts', progress_total_items=len(self.genomes))
         for genome_name in self.external_genome_names:
             self.progress.update("working on %s (external)" % (genome_name), increment=True)
-            g_hash = self.get_genome_hash_for_external_genome(self.genomes[genome_name])
+            g_hash = str(self.get_genome_hash_for_external_genome(self.genomes[genome_name]))
             self.genomes[genome_name]['genome_hash'] = g_hash
             self.genome_hash_to_genome_name[g_hash] = genome_name
         for genome_name in self.internal_genome_names:
             self.progress.update("working on %s (internal)" % (genome_name), increment=True)
-            g_hash = self.get_genome_hash_for_internal_genome(self.genomes[genome_name])
+            g_hash = str(self.get_genome_hash_for_internal_genome(self.genomes[genome_name]))
             self.genomes[genome_name]['genome_hash'] = g_hash
             self.genome_hash_to_genome_name[g_hash] = genome_name
         self.progress.end()
