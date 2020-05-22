@@ -1,0 +1,45 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+
+import anvio
+import anvio.kegg as kegg
+
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import time_program
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Iva Veseli"
+__email__ = "iveseli@uchicago.edu"
+__provides__ = ["kegg-db",]
+__description__ = "Download and setup KEGG KOfam HMM profiles."
+
+@time_program
+def main(args):
+    setup = kegg.KeggSetup(args)
+    setup.setup_profiles()
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__description__)
+    groupI = parser.add_argument_group('POSSIBLE INPUT', 'Not required for this program to run, but could be useful.')
+    groupI.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
+    groupI.add_argument(*anvio.A('reset'), **anvio.K('reset'))
+    groupI.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        main(args)
+
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-1)

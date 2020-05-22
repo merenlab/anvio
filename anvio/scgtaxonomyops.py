@@ -17,7 +17,6 @@ import pandas as pd
 import multiprocessing
 import scipy.sparse as sps
 
-from tabulate import tabulate
 from collections import OrderedDict, Counter
 
 import anvio
@@ -1256,7 +1255,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck):
 
                 table.append([hit['gene_name'], str(hit['gene_callers_id']), str(hit['percent_identity']), taxon_text])
 
-            print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+            anvio.TABULATE(table, header)
         else:
             self.run.info_single("No hits :/")
 
@@ -1537,7 +1536,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck):
         if not self.metagenome_mode:
             table = sorted(table, key=lambda x: (int(x[1]), int(x[2])), reverse=True)
 
-        print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+        anvio.TABULATE(table, header)
 
 
     def store_scg_taxonomy_super_dict(self, scg_taxonomy_super_dict):
@@ -1626,7 +1625,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck):
         scg_name = list(scgs_dict.values())[0]['gene_name']
 
         # the might for loop to go through all taxonomic levels one by one
-        for level in constants.ctx.levels_of_taxonomy[::-1]:
+        for level in self.ctx.levels_of_taxonomy[::-1]:
             # setting the data group early on:
             data_group = '%s_%s' % (scg_name, level[2:])
             self.progress.update('Working on %s-level data' % level)
@@ -1639,17 +1638,17 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck):
                     # the most highly resolved level of taxonomy that is not null for this
                     # particular scg taxonomy
                     i = 0
-                    for i in range(constants.ctx.levels_of_taxonomy.index(level), 0, -1):
-                        if scgs_dict[gene_callers_id][constants.ctx.levels_of_taxonomy[i]]:
+                    for i in range(self.ctx.levels_of_taxonomy.index(level), 0, -1):
+                        if scgs_dict[gene_callers_id][self.ctx.levels_of_taxonomy[i]]:
                             break
 
                     # just some abbreviations
-                    l = constants.ctx.levels_of_taxonomy[i][2:]
-                    m = scgs_dict[gene_callers_id][constants.ctx.levels_of_taxonomy[i]]
+                    l = self.ctx.levels_of_taxonomy[i][2:]
+                    m = scgs_dict[gene_callers_id][self.ctx.levels_of_taxonomy[i]]
 
                     # if the best level we found in the previous step is matching to the level
                     # set by the main for loop, we're good to go with that name:
-                    if level == constants.ctx.levels_of_taxonomy[i]:
+                    if level == self.ctx.levels_of_taxonomy[i]:
                         taxon_name = m
                     # otherwise we will try to replace that None name with something that is more
                     # sensible:
@@ -2236,7 +2235,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
             for hit in hits:
                 table.append([str(hit['percent_identity']), str(hit['bitscore']), hit['accession'], ' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy])])
 
-            print(tabulate(table, headers=header, tablefmt="fancy_grid", numalign="right"))
+            anvio.TABULATE(table, header)
         else:
             self.run.info_single("No hits :/")
 

@@ -784,8 +784,8 @@ function Chart(options){
                                                 <tr><td>Departure from consensus</td><td>' + d.value['departure_from_consensus'].toFixed(4) +'</td></tr> \
                                                 <tr><td>Competing nucleotides</td><td>' + d.value['competing_nts'] +'</td></tr> \
                                                 <tr><td>Corresponding gene call</td><td>' + ((d.value['corresponding_gene_call'] == -1) ? 'No gene or in partial gene': d.value['corresponding_gene_call']) +'</td></tr> \
-                                                <tr><td>Codon order in gene</td><td>' + ((d.value['codon_order_in_gene'] == -1) ? 'No gene or in partial gene': d.value['codon_order_in_gene']) +'</td></tr> \
-                                                <tr><td>Base position in codon</td><td>' + ((d.value['base_pos_in_codon'] == 0) ? 'No gene or in partial gene': d.value['base_pos_in_codon']) +'</td></tr> \
+                                                <tr><td>Codon order in gene</td><td>' + ((d.value['codon_order_in_gene'] == -1) ? 'No gene or in noncoding gene': d.value['codon_order_in_gene']) +'</td></tr> \
+                                                <tr><td>Base position in codon</td><td>' + ((d.value['base_pos_in_codon'] == 0) ? 'No gene or in noncoding gene': d.value['base_pos_in_codon']) +'</td></tr> \
                                                 <tr><td>Coverage</td><td>' + d.value['coverage'] +'</td></tr> \
                                             </table> \
                                             <h3>Counts</h3> \

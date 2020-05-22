@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- coding: utf-8
+#!/usr/bin/env python # -*- coding: utf-8
 # pylint: disable=line-too-long
 
 """Classes to work with ngrams of contig functions.
@@ -8,20 +7,23 @@ These are classes to deconstruct loci into ngrams. They are used
 to analyze conserved genes and synteny structures across loci.
 """
 
+import sys
 import pandas as pd
 
 from collections import Counter
 
 import anvio
+import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
-import anvio.tables as t
+import anvio.panops as panops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+import anvio.genomestorage as genomestorage
 import anvio.genomedescriptions as genomedescriptions
 
+from anvio.dbops import PanDatabase
 from anvio.errors import ConfigError
-
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -43,7 +45,7 @@ class NGram(object):
     args : argparse.Namespace
         For examples, arguments accepted by anvi-analyze-syntenty
 
-    skip_sanity_check : bool, False
+    skip_sanity_check : bool, false
         If True, sanity_check will not be called.
 
     Notes
@@ -64,15 +66,85 @@ class NGram(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.annotation_source = A('annotation_source')
         self.window_range = A('ngram_window_range') or "2:3"
-        self.in_in_unknowns_mode = A('analyze_unknown_functions')
+        self.is_in_unknowns_mode = A('analyze_unknown_functions')
         self.output_file = A('output_file')
-        self.genomes = genomedescriptions.GenomeDescriptions(self.args)
-        self.genomes.load_genomes_descriptions(init=False)
+        self.skip_init_functions = A('skip_init_functions')
+        self.genome_names_to_focus = A('genome_names')
+        self.ngram_source = A("ngram_source")
 
+        self.annotation_source_dict = {}
+
+        self.pan_db_path = A('pan_db')
+
+        if self.annotation_source and self.pan_db_path:
+            self.annotation_sources = [self.annotation_source, 'gene_clusters']
+
+        if self.pan_db_path:
+            self.pan_db = PanDatabase(self.pan_db_path)
+
+            self.p_meta = self.pan_db.meta
+
+            self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if 'creation_date' in self.p_meta else 'unknown'
+            self.p_meta['genome_names'] = sorted([s.strip() for s in self.p_meta['external_genome_names'].split(',') + self.p_meta['internal_genome_names'].split(',') if s])
+            self.p_meta['num_genomes'] = len(self.p_meta['genome_names'])
+            self.genome_names = self.p_meta['genome_names']
+            self.gene_clusters_gene_alignments_available = self.p_meta['gene_alignments_computed']
+        else:
+            self.pan_db = None
+
+        self.genomes_storage_path = A('genomes_storage')
+
+        # confirm genome-storage and pangenome hashes match of pangenome is provided
+        if self.pan_db:
+            self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
+                                                               self.p_meta['genomes_storage_hash'],
+                                                               genome_names_to_focus=self.p_meta['genome_names'],
+                                                               skip_init_functions=self.skip_init_functions,
+                                                               run=self.run,
+                                                               progress=self.progress)
+        else:
+            self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
+                                                               skip_init_functions=self.skip_init_functions,
+                                                               run=self.run,
+                                                               progress=self.progress)
+
+        # list-annotation-resources
+        self.list_annotation_sources = A('list_annotation_sources')
+        self.gene_function_source_set = self.genomes_storage.db.get_table_as_dataframe('gene_function_calls').source.unique()
+        if self.list_annotation_sources:
+            self.run.info('Available functional annotation sources', ', '.join(self.gene_function_source_set))
+            sys.exit()
+ 
         # This houses the ngrams' data
         self.ngram_attributes_list = []
 
-        self.num_contigs_in_external_genomes_with_genes = 0
+        # Focus on specfic set of genomes
+        if self.genome_names_to_focus:
+            if filesnpaths.is_file_exists(self.genome_names_to_focus, dont_raise=True):
+                self.genome_names_to_focus = utils.get_column_data_from_TAB_delim_file(self.genome_names_to_focus, column_indices=[0], expected_number_of_fields=1)[0]
+            else:
+                self.genome_names_to_focus = [g.strip() for g in self.genome_names_to_focus.split(',')]
+
+            self.run.warning("A subset of genome names is found, and anvi'o will focus only on to those.")
+
+            self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path, storage_hash=None, genome_names_to_focus=self.genome_names_to_focus)
+            self.genomes = self.genomes_storage.get_genomes_dict()
+
+            self.external_genome_names = [g for g in self.genomes if self.genomes[g]['external_genome']]
+            self.internal_genome_names = [g for g in self.genomes if not self.genomes[g]['external_genome']]
+
+            self.hash_to_genome_name = {}
+            for genome_name in self.genomes:
+                self.hash_to_genome_name[self.genomes[genome_name]['genome_hash']] = genome_name
+
+            # number of genomes in genome-storage
+            self.num_contigs_in_external_genomes_with_genes = len(self.genomes)
+
+        # number of genomes in genome-storage
+        if self.genome_names_to_focus:
+            self.num_contigs_in_external_genomes_with_genes = len(self.genome_names_to_focus)
+        else:   
+            self.num_contigs_in_external_genomes_with_genes = len(self.genomes_storage.get_all_genome_names())
 
         if not skip_sanity_check:
             self.sanity_check()
@@ -87,17 +159,21 @@ class NGram(object):
     def sanity_check(self):
         """Sanity_check will confirm input for NGram class"""
 
-        # checking if the annotation source is common accross all contigs databases
-        if self.annotation_source not in self.genomes.function_annotation_sources:
+        # checking if the annotation source is common across all contigs databases
+        if self.annotation_source and self.annotation_source not in self.gene_function_source_set:
             raise ConfigError("The annotation source you requested does not appear to be in all of "
                               "the contigs databases from the external-genomes file. "
                               "Please confirm your annotation-source and that all contigs databases have it :)")
+
+        if (self.annotation_source and self.pan_db) and not self.ngram_source:
+            raise ConfigError("anvi-analyze-synteny needs to know which annotation source to slice Ngrams with. "
+                              "Please use the --ngram-source flag to declare one :)")
 
         if not self.args.output_file:
             raise ConfigError("You should provide an output file name.")
 
         # checking window-range input
-        if ":" not in self.window_range:
+        if self.window_range.count(':') != 1:
             raise ConfigError("anvi'o would love to slice and dice your loci, but the "
                               "Format of window_range must be x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
 
@@ -111,98 +187,220 @@ class NGram(object):
             raise ConfigError("anvi'o would love to slice and dice your loci, but the "
                               "window-range needs to be from small to big :)")
 
-        # Must contain 2 integers for window
+        # Window-range must contain 2 integers for window
         if len(self.window_range) > 2 or not isinstance(self.window_range[0], int) or not isinstance(self.window_range[1], int):
             raise ConfigError("anvi'o would love to slice and dice your loci, but... the "
                               "window_range must only contain 2 integers and be formated as x:y (e.g. Window sizes 2 to 4 would be denoted as: 2:4)")
 
         # Loop through each contigs db, test that each contig contains at least as many genes as max window size and confirm every contig has annotations
-        # Set the self.num_contigs_in_external_genomes_with_genes variable
-        for contigs_db_name in self.genomes.external_genomes_dict:
-            # extract contigsDB path
-            contigs_db_path = self.genomes.external_genomes_dict[contigs_db_name]["contigs_db_path"]
+        for contigs_db_name in self.genomes_storage.get_genomes_dict():
 
-            # Confirm appropriate window size
-            genes_and_functions_list = self.get_genes_and_functions_from_contigs_db(contigs_db_path)
-            num_genes = len(genes_and_functions_list)
+            gene_caller_ids = self.genomes_storage.get_gene_caller_ids(contigs_db_name)
+            num_genes = len(gene_caller_ids)
 
             if self.window_range[1] > num_genes:
-                raise ConfigError("The largest window size you requested (%d) is larger than the number of genes found on this contig: %s" % \
-                    (self.window_range[1], self.genomes.external_genomes_dict[contigs_db_name]["name"]))
-
-            # Confirm all contigs have annotations
-            contigs_db = dbops.ContigsDatabase(contigs_db_path)
-            genes_in_contigs = contigs_db.db.get_table_as_dataframe('genes_in_contigs')
-            all_contigs_in_db = contigs_db.db.get_table_as_dataframe('contigs_basic_info')['contig']
-
-            self.num_contigs_in_external_genomes_with_genes += genes_in_contigs['contig'].nunique()
-
-            contigs_without_genes = []
-            for contig in all_contigs_in_db:
-                if contig not in set(genes_in_contigs['contig'].unique()):
-                    contigs_without_genes.append(contig)
-
-            if len(contigs_without_genes):
-                self.run.warning("Just so you know, %d contigs in %s had no genes. Here are the the first 5: %s" % \
-                                  (len(contigs_without_genes), contigs_db_name, ''.join([str(x) for x in contigs_without_genes[:5]])))
+                raise ConfigError("The largest window size you requested (%d) is larger than the number of genes found on this genome: %s" % \
+                    (self.window_range[1], contigs_db_name))
 
 
-    def populate_genes(self):
+    def populate_ngram_attributes(self):
         """Iterates through all contigs and use self.count_synteny to count all ngrams in that contig.
 
         This populates the self.ngram_attributes_list, where each element looks like:
-        (ngram, count, contigs_db_name, contig_name, n)
-
+        (ngram, count, contigs_db_name, contig_name, N)
         """
 
+        # Get gene cluster info from panDB
+        if self.pan_db:
+            gene_cluster_frequencies_dataframe = self.pan_db.db.get_table_as_dataframe('gene_clusters')
+
+        self.run.warning("Anvi'o is now looking for Ngrams in your contigs!", lc='green')
+
+        self.run.info_single("What do we say to loci that appear to have no coherent synteny patterns...? Not today! ⚔️", nl_before=1, nl_after=1)
+
         genes_and_functions_list = []
-        for contigs_db_name in self.genomes.external_genomes_dict:
-            # Extract file path
-            contigs_db_path = self.genomes.external_genomes_dict[contigs_db_name]["contigs_db_path"]
+        for contigs_db_name in self.genomes_storage.get_genomes_dict():
 
-            # Get list of genes and functions
-            genes_and_functions_list = self.get_genes_and_functions_from_contigs_db(contigs_db_path)
+            # Get list of genes-callers-ids
+            gene_caller_ids_list = list(self.genomes_storage.get_gene_caller_ids(contigs_db_name))
 
-            # Get unique list of the contigs from this contigsDB (there could be more than one)
-            contigs_set = set(([entry[2] for entry in genes_and_functions_list]))
+            # Use gene_caller_ids_list to get functions table
+            gene_function_call_df = self.genomes_storage.db.get_table_as_dataframe('gene_function_calls')
 
-            for contig_name in contigs_set:
-                contig_function_list = []
+            # Create dict for annotate Ngrams
+            if self.annotation_source:
+                self.gene_caller_id_to_accession_dict = self.get_genes_and_functions_dict(contigs_db_name, gene_function_call_df)
+                self.annotation_source_dict[self.annotation_source] = self.gene_caller_id_to_accession_dict
 
-                # Extract gene_callers_id and gene_function_accession from genes_and_functions_list using contig_name
-                # genes_and_functions_list has multiple contigs gene info in it, so we filter one contig at a time
-                # (contig_ID = name of contig in genes_and_functions_list)
-                for gene_callers_id, gene_function_accession, contig_ID in genes_and_functions_list:
-                    if contig_name == contig_ID:
-                        contig_function_list.append([gene_callers_id,gene_function_accession])
+            if self.pan_db:
+                self.gene_caller_id_to_gene_cluster_dict = self.get_gene_cluster_dict(contigs_db_name, gene_cluster_frequencies_dataframe)
+                self.annotation_source_dict['gene_clusters'] = self.gene_caller_id_to_gene_cluster_dict
 
-                # Iterate over range of window sizes and run synteny algorithm to count occurrences of ngrams in a contig
-                for n in range(self.window_range[0],self.window_range[1]):
-                    function_list = [entry[1] for entry in contig_function_list]
-                    ngram_counts_dict = self.count_synteny(function_list, n)
+            # Iterate over range of window sizes and run synteny algorithm to count occurrences of ngrams in a contig
+            for N in range(*self.window_range):
+                ngram_counts_dict, annotations_dict = self.count_synteny(N, gene_caller_ids_list)
 
-                    # add results of this window size, contig pairing to ngram attributes
-                    for ngram, count in ngram_counts_dict.items():
-                        self.ngram_attributes_list.append([ngram, count, contigs_db_name, contig_name, n])
+                for ngram, count in ngram_counts_dict.items():
+
+                    for annotation_source, annotation in annotations_dict[ngram].items():
+                        if annotation_source == self.ngram_source:
+                            pass
+                        else:
+                            self.ngram_attributes_list.append([ngram, count, annotations_dict[ngram][annotation_source], contigs_db_name, N])
+
+    def count_synteny(self, N, gene_caller_ids_list):
+        """This method counts synteny patterns of size N on a contig
+
+        This method counts synteny patterns of size N on a contig by taking a window of
+        gene-callers-ids, annotating it, ordering it consistently, and then counting its occurence
+        on the contig.
+
+        Parameters
+        ==========
+        n : int
+            A window size to extract a ngram
+
+        gene_caller_ids_list: list
+            list of all gene-callers-ids  on a contig
+
+        Returns
+        =======
+        ngram_counts_dict : dict
+            A dict of ngram counts on a contig A tuple of annotations {ngram:count}
+
+        Notes
+        =====
+        This function assumes that the input list of gene-callers-ids are in the order of which they
+        occur on the contig
+        """
+
+        ngram_counts_dict = Counter({})
+        annotations_dict = {}
+        gene_callers_id_windows = self.get_windows(N, gene_caller_ids_list)
+        for window in gene_callers_id_windows:
+
+            annotated_window_dict = self.annotate_window(window)
+            if self.ngram_source:
+                ngram = self.order_window(annotated_window_dict[self.ngram_source])
+            elif self.annotation_source:
+                ngram = self.order_window(annotated_window_dict[self.annotation_source])
+            else:
+                ngram = self.order_window(annotated_window_dict['gene_clusters'])
+
+            # flip annotation if the ngram was flipped
+            if ngram[1] == True:
+                annotated_window_dict_ordered = {}
+                for annotation_source, annotation in annotated_window_dict.items():
+                    if annotation_source == self.ngram_source:
+                        pass
+                    else:
+                        annotated_window_flipped = annotation[::-1]
+                        annotated_window_dict_ordered[annotation_source] = annotated_window_flipped
+            else:
+                pass
+
+            ngram_counts_dict[ngram[0]] += 1
+            annotations_dict[ngram[0]] = annotated_window_dict
+
+        return ngram_counts_dict, annotations_dict
+
+
+    def annotate_window(self, window):
+        """This method annotates a gene-callers-id window
+
+        This method will annotate a gene-callers-id window based using annotation sources provided
+        by the user (e.g. COGs, pan_db)
+
+        Parameters
+        ==========
+        window : tuple
+            A tuple of gene gene-callers-ids that represents an unannotated Ngram
+
+        Returns
+        =======
+        ngram_gene_clusters : tuple
+            A tuple of annotations
+        """
+
+        # Annotate window based on user input
+        gene_annotation_dict = {}
+        for annotation_source, annotations_dict in self.annotation_source_dict.items():
+            ngram_annotation = tuple([annotations_dict[g] for g in window])
+            gene_annotation_dict[annotation_source] = ngram_annotation 
+
+        return gene_annotation_dict
+
+
+    def order_window(self, annotated_window):
+        """This method orients an annotated_window in a consistent order
+
+        This method is to make sure that all Ngrams are ordered in the same direction. For example,
+        we want to count A-B-C and C-B-A as the same Ngram.
+
+        Parameters
+        ==========
+        annotated_window : tuple
+            A tuple of annotations accessions
+
+        Returns
+        =======
+        ngram : tuple
+            A tuple Ngram that is correctly oriented
+        """
+
+        original_order = annotated_window
+        flipped_order = annotated_window[::-1]
+
+        if original_order[0] < flipped_order[0]:
+            ngram = original_order
+            flipped = False
+        else:
+            ngram = flipped_order
+            flipped = True
+
+        ngram = [ngram, flipped]
+
+        return ngram
 
 
     def convert_to_df(self):
         """Takes self.ngram_attributes_list and returns a pandas dataframe"""
 
         ngram_count_df_list = []
-
         for ngram_attribute in self.ngram_attributes_list:
             ngram = "::".join(map(str, list(ngram_attribute[0])))
-            df = pd.DataFrame(columns=['ngram', 'count', 'contig_db_name','contig_name','N','number_of_loci'])
-            df = df.append({'ngram': ngram,
-                            'count': ngram_attribute[1],
-                            'contig_db_name': ngram_attribute[2],
-                            'contig_name':ngram_attribute[3],
-                            'N':ngram_attribute[4],
-                            'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
+            annotation = "::".join(map(str, list(ngram_attribute[2])))
+            if self.pan_db and self.annotation_source:
+                df = pd.DataFrame(columns=['ngram','count', 'annotation', 'contig_db_name', 'N', 'number_of_loci'])
+                df = df.append({'ngram': ngram,
+                                'count': ngram_attribute[1],
+                                'annotation': annotation,
+                                'contig_db_name': ngram_attribute[3],
+                                'N':ngram_attribute[4],
+                                'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
+            elif self.pan_db and not self.annotation_source:
+                ngram = "::".join(map(str, list(ngram_attribute[0])))
+                df = pd.DataFrame(columns=['ngram','count', 'contig_db_name', 'N', 'number_of_loci'])
+                df = df.append({'ngram': ngram,
+                                'count': ngram_attribute[1],
+                                'contig_db_name': ngram_attribute[3],
+                                'N':ngram_attribute[4],
+                                'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
+            else:
+                ngram = "::".join(map(str, list(ngram_attribute[0])))
+                df = pd.DataFrame(columns=['ngram','count', 'contig_db_name', 'N', 'number_of_loci'])
+                df = df.append({'ngram': ngram,
+                                'count': ngram_attribute[1],
+                                'contig_db_name': ngram_attribute[3],
+                                'N':ngram_attribute[4],
+                                'number_of_loci':self.num_contigs_in_external_genomes_with_genes}, ignore_index=True)
+
             ngram_count_df_list.append(df)
 
         ngram_count_df_final = pd.concat(ngram_count_df_list)
+
+        if not self.is_in_unknowns_mode:
+            ngram_count_df_final = ngram_count_df_final[~ngram_count_df_final['ngram'].str.contains("unknown-function" or "no-gene-cluster-annotation")]
 
         return ngram_count_df_final
 
@@ -210,13 +408,13 @@ class NGram(object):
     def report_ngrams_to_user(self):
         """Counts ngrams per contig and reports as tab-delimited file"""
 
-        self.populate_genes()
+        self.populate_ngram_attributes()
         df = self.convert_to_df()
         df.to_csv(self.output_file, sep = '\t', index=False)
         self.run.info("Ngram table", self.output_file)
 
 
-    def get_genes_and_functions_from_contigs_db(self, contigs_db_path):
+    def get_genes_and_functions_dict(self, contigs_db_name, gene_function_call_df):
         """This method will extract a list of gene attributes from each contig within a contigsDB.
 
         Returns
@@ -226,87 +424,94 @@ class NGram(object):
         """
 
         # get contigsDB
-        contigs_db = dbops.ContigsDatabase(contigs_db_path)
-        
-        # extract contigs names
-        genes_in_contigs = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
-        
-        # extract annotations and filter for the sources designated by user using self.annotation_source
-        annotations_dict = contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name)
-        annotations_dict = utils.get_filtered_dict(annotations_dict, 'source', set([self.annotation_source]))
+        gene_function_call_df_filtered = gene_function_call_df[(gene_function_call_df['genome_name'] == contigs_db_name) & (gene_function_call_df['source'] == self.annotation_source)]
+        gene_callers_id_to_accession_dict = gene_function_call_df_filtered[['gene_callers_id','accession']].set_index('gene_callers_id')['accession'].to_dict()
 
-        # Make dict with gene-caller-id:accession
-        gene_callers_id_to_accession_dict = {entry['gene_callers_id']: entry['accession'] for entry in annotations_dict.values()}
+        gene_caller_ids_list = self.genomes_storage.get_gene_caller_ids(contigs_db_name)
 
         # Make list of lists containing gene attributes. If there is not annotation add one in!
         genes_and_functions_list = [] # List of lists [gene-caller-id, accessions, contig-name]
         counter = 0
-        for gene_callers_id in genes_in_contigs: 
+        for gene_callers_id in gene_caller_ids_list:
             list_of_gene_attributes = []
 
             if gene_callers_id in gene_callers_id_to_accession_dict:
                 accession = gene_callers_id_to_accession_dict[gene_callers_id]
                 accession = accession.replace(" ","")
-                contig_name = genes_in_contigs[gene_callers_id]['contig']
-                list_of_gene_attributes.extend((gene_callers_id, accession, contig_name))
+                list_of_gene_attributes.extend((gene_callers_id, accession))
                 genes_and_functions_list.append(list_of_gene_attributes)
             else:
                 # adding in "unknown annotation" if there is none
                 accession = "unknown-function"
-                contig_name = genes_in_contigs[counter]['contig']
-                list_of_gene_attributes.extend((counter,accession,contig_name))
+                list_of_gene_attributes.extend((counter, accession))
                 genes_and_functions_list.append(list_of_gene_attributes)
-            counter = counter + 1
+            counter += 1
 
-        return genes_and_functions_list
+        gene_caller_id_to_accession_dict = {}
+        for entry in genes_and_functions_list:
+            gene_caller_id_to_accession_dict[entry[0]] = entry[1]
+
+        return gene_caller_id_to_accession_dict
 
 
-    def count_synteny(self, function_list, n):
+    def get_gene_cluster_dict(self, contigs_db_name, gene_cluster_frequencies_dataframe):
+        gene_cluster_frequencies_dataframe_filtered = gene_cluster_frequencies_dataframe[gene_cluster_frequencies_dataframe['genome_name'] == contigs_db_name]
+        gene_callers_id_to_gene_cluster_id_dict = gene_cluster_frequencies_dataframe_filtered[['gene_caller_id','gene_cluster_id']].set_index('gene_caller_id')['gene_cluster_id'].to_dict()
+
+        gene_caller_ids_list = self.genomes_storage.get_gene_caller_ids(contigs_db_name)
+
+        # Make list of lists containing gene cluster attributes. If there is not annotation add one in!
+        genes_cluster_list = [] # List of lists [gene-caller-id, gene-cluster-id, contig-name]
+        counter = 0
+        for gene_callers_id in gene_caller_ids_list:
+            list_of_gene_attributes = []
+
+            if gene_callers_id in gene_callers_id_to_gene_cluster_id_dict:
+                gene_cluster_id = gene_callers_id_to_gene_cluster_id_dict[gene_callers_id]
+                gene_cluster_id = gene_cluster_id.replace(" ","")
+                list_of_gene_attributes.extend((gene_callers_id, gene_cluster_id))
+                genes_cluster_list.append(list_of_gene_attributes)
+            else:
+                # adding in "unknown annotation" if there is none
+                gene_cluster_id = "no-gene-cluster-annotation"
+                list_of_gene_attributes.extend((counter, gene_cluster_id))
+                genes_cluster_list.append(list_of_gene_attributes)
+            counter += 1
+
+        gene_caller_id_to_gene_cluster_dict = {}
+        for entry in genes_cluster_list:
+            gene_caller_id_to_gene_cluster_dict[entry[0]] = entry[1]
+
+        return gene_caller_id_to_gene_cluster_dict
+
+
+    def get_windows(self, N, gene_caller_ids_list):
         """This method will count NGrams in contigs
 
-        This method will interate through a dict of contigs {contig_name: genes_and_functions_list} count NGrams
-        in each contig using a sliding window of size N. The final output will be a dictionary {ngram:count}
+        This method will use a sliding window of size N to extract gene-callers-id windows.
+        The final output will be a list of windows of size N.
 
         Parameters
         ==========
-        function_list : list
-            A list of gene functions as they appear in the contig
+        gene_caller_ids_list : list
+            A list of gene gene-callers-ids as they appear in the contig
 
         n : int
             A window size to extract a ngram
 
         Returns
         =======
-        NGramFreq_dict : dict
-            A dict where each key is list of genes that represent an ngram and the value is the count in that contig
-
-        Notes
-        =====
-        Future goal: Need to return counts for 1 contig at a time and
-        give back a dictionary with contig {contig_name: {ngram:count}}
+        gene_callers_id_windows : list
+            A list of n sized windows of gene-callers-ids from a contig
         """
 
-        ngram_frequencies_dict = Counter({})
-        for i in range(0, len(function_list) - n + 1):
-            # window = sorted(function_list[i:i + n])
+        gene_callers_id_windows = []
+        for i in range(0, len(gene_caller_ids_list) - N + 1):
+
             # extract window
-            window = function_list[i:i + n]
+            window = tuple(gene_caller_ids_list[i:i + N])
 
-            # order the window based arbitrarily based on the first gene in the synteny being smallest
-            original_order = window
-            flipped_order = window[::-1]
-            if original_order[0] < flipped_order[0]:
-                window = original_order
-            else:
-                window = flipped_order
+            gene_callers_id_windows.append(window)
 
-            ngram = tuple(window)
-
-            if not self.in_in_unknowns_mode and "unknown-function" in ngram: # conditional to record NGrams with unk functions
-                continue
-            else:
-                # if ngram is not in dictionary add it, if it is add + 1
-                ngram_frequencies_dict[ngram] +=  1
-
-        return ngram_frequencies_dict
+        return gene_callers_id_windows
 

@@ -38,10 +38,10 @@ requirements:
     - illumina-utils
     - tabulate
     - numba
+    - paste
     # these three are critical versions. any changes must be
     # tested with extra attention:
     - pyani ==0.2.10
-    - cherrypy ==8.0.0
     - snakemake-minimal ==5.10.0
 test:
   commands:

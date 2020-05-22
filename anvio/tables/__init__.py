@@ -14,8 +14,8 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-contigs_db_version = "14"
-profile_db_version = "32"
+contigs_db_version = "16"
+profile_db_version = "33"
 genes_db_version = "5"
 pan_db_version = "13"
 auxiliary_data_version = "2"
@@ -24,6 +24,7 @@ genomes_storage_vesion = "6"
 tRNAseq_db_version = "1"
 trnaseeds_db_version = "1"
 workflow_config_version = "1"
+kegg_modules_db_version = "1"
 
 versions_for_db_types = {'contigs': contigs_db_version,
                          'profile': profile_db_version,
@@ -71,8 +72,8 @@ splits_info_table_types                = ['text' ,     'numeric     ','numeric',
 # following tables deal with open reading frames found in contigs by a gene caller (such as prodigal), and their functional annotations and stuff.
 
 genes_in_contigs_table_name             = 'genes_in_contigs'
-genes_in_contigs_table_structure        = ['gene_callers_id', 'contig', 'start' , 'stop'  , 'direction', 'partial', 'source', 'version']
-genes_in_contigs_table_types            = [    'numeric'    ,  'text' ,'numeric','numeric',   'text'   , 'numeric',  'text' ,   'text' ]
+genes_in_contigs_table_structure        = ['gene_callers_id', 'contig', 'start' , 'stop'  , 'direction', 'partial', 'call_type', 'source', 'version']
+genes_in_contigs_table_types            = [    'numeric'    ,  'text' ,'numeric','numeric',   'text'   , 'numeric',  'numeric' ,  'text' ,   'text' ]
 
 genes_in_splits_table_name             = 'genes_in_splits'
 genes_in_splits_table_structure        = ['entry_id', 'split', 'gene_callers_id', 'start_in_split', 'stop_in_split', 'percentage_in_split']
@@ -130,6 +131,14 @@ nt_position_info_table_name            = 'nt_position_info'
 nt_position_info_table_structure       = ['contig_name', 'position_info']
 nt_position_info_table_types           = [    'str'    ,      'blob'    ]
 
+nucleotide_additional_data_table_name      = 'nucleotide_additional_data'
+nucleotide_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
+nucleotide_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
+
+amino_acid_additional_data_table_name      = 'amino_acid_additional_data'
+amino_acid_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
+amino_acid_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
+
 gene_level_coverage_stats_table_name      = 'gene_level_coverage_stats'
 gene_level_coverage_stats_table_structure = ['entry_id', 'gene_callers_id', 'sample_name', 'mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std', 'gene_coverage_values_per_nt', 'non_outlier_positions']
 gene_level_coverage_stats_table_types     = [ 'numeric',     'numeric'    ,     'text'   ,    'numeric'   ,  'numeric' ,         'numeric'          ,          'numeric'        ,             'blob'           ,          'blob'        ]
@@ -169,8 +178,8 @@ variable_codons_table_structure      = ['entry_id', 'sample_id', 'corresponding_
 variable_codons_table_types          = [ 'numeric',    'text'  ,        'numeric'         ,       'numeric'      ,    'text'  ,          'numeric'        , 'numeric' ] + ['numeric'] * len(codons)
 
 variable_nts_table_name              = 'variable_nucleotides'
-variable_nts_table_structure         = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'pos_in_contig', 'corresponding_gene_call', 'in_partial_gene_call', 'in_complete_gene_call', 'base_pos_in_codon', 'codon_order_in_gene', 'coverage', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'departure_from_reference', 'competing_nts', 'reference'] + nucleotides
-variable_nts_table_types             = [ 'numeric',    'text'  ,    'text'   , 'numeric',    'numeric'   ,        'numeric'         ,       'numeric'       ,       'numeric'        ,       'numeric'    ,       'numeric'      , 'numeric' ,          'bool'       ,          'bool'        ,          'numeric'        ,      'text'    ,    'text'  ] + ['numeric'] * len(nucleotides)
+variable_nts_table_structure         = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'pos_in_contig', 'corresponding_gene_call', 'in_noncoding_gene_call', 'in_coding_gene_call', 'base_pos_in_codon', 'codon_order_in_gene', 'coverage', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'departure_from_reference', 'competing_nts', 'reference'] + nucleotides
+variable_nts_table_types             = [ 'numeric',    'text'  ,    'text'   , 'numeric',    'numeric'   ,        'numeric'         ,       'numeric'         ,     'numeric'        ,       'numeric'    ,       'numeric'      , 'numeric' ,          'bool'       ,          'bool'        ,          'numeric'        ,      'text'    ,    'text'  ] + ['numeric'] * len(nucleotides)
 
 indels_table_name                    = 'indels'
 indels_table_structure               = ['entry_id', 'sample_id', 'split_name', 'type', 'sequence', 'start_in_contig', 'start_in_split', 'length' , 'coverage']

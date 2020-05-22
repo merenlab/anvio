@@ -18,15 +18,23 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['genes-db', 'pan-db', 'profile-db']
-__provides__ = ['misc-data-items-txt', 'misc-data-layers-txt', 'misc-data-layer-orders-txt']
+__requires__ = ['genes-db', 'pan-db', 'profile-db', 'contigs-db']
+__provides__ = ['misc-data-items-txt', 'misc-data-layers-txt', 'misc-data-layer-orders-txt', 'misc-data-nucleotides-txt', 'misc-data-amino-acids-txt']
 __description__ = "Export additional data or order tables in pan or profile databases for items or layers."
-
 
 run = terminal.Run()
 
 
 def main(args):
+    d = args.__dict__
+    if not d['contigs_db'] and not d['pan_or_profile_db']:
+        raise ConfigError("Please provide either a contigs database (--contigs-db) or a profile/pan "
+                          "database (--pan-or-profile-db)")
+
+    if d['contigs_db'] and d['pan_or_profile_db']:
+        raise ConfigError("You provided a contigs db (--contigs-db) and a profile/pan "
+                          "db (--pan-or-profile-db). Please provide only one.")
+
     table_for_additional_data = MiscDataTableFactory(args)
     table_for_additional_data.export(output_file_path=args.output_file)
 
@@ -34,10 +42,15 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__description__)
 
-    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
-    parser.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
-    parser.add_argument(*anvio.A('target-data-group'), **anvio.K('target-data-group'))
-    parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    group1 = parser.add_argument_group('Database input', "Provide 1 of these")
+    group2 = parser.add_argument_group('Details', "Everything else.")
+
+    group1.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
+    group1.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+
+    group2.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
+    group2.add_argument(*anvio.A('target-data-group'), **anvio.K('target-data-group'))
+    group2.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
 
     args = anvio.get_args(parser)
 

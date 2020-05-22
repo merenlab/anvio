@@ -3,7 +3,6 @@
 
 import sys
 import anvio.profiler as profiler
-import anvio.terminal as terminal
 
 import anvio
 from anvio.errors import ConfigError, FilesNPathsError

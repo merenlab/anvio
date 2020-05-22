@@ -306,14 +306,12 @@ class Auxiliary:
                         'start': self.split.per_position_info['gene_start'][accessor],
                         'stop': self.split.per_position_info['gene_stop'][accessor],
                         'direction': 'f' if self.split.per_position_info['forward'][accessor] else 'r',
-                        'partial': self.split.per_position_info['in_partial_gene_call'][accessor],
-                        'is_coding': 1 if self.split.per_position_info['base_pos_in_codon'][accessor] else 0,
+                        'call_type': constants.gene_call_types['CODING'] if self.split.per_position_info['in_coding_gene_call'][accessor] else 2,
                     }
 
                 gene_call = gene_calls[gene_id]
 
-                if gene_call['partial'] or not gene_call['is_coding']:
-                    # We can't handle partial gene calls bc we do not know the frame
+                if gene_call['call_type'] != constants.gene_call_types['CODING']:
                     # We cannot handle non-coding genes because they have no frame
                     continue
 
@@ -648,6 +646,8 @@ class GenbankToAnvio:
 
         # dumping gene if "location" section contains any of these: "join" means the
         # gene call spans multiple contigs; "<" or ">" means the gene call runs off a contig
+        # FIXME join does not necessarily mean the gene call spans multiple columns. See the first
+        # gene here to see an instance where this is not true: https://www.ncbi.nlm.nih.gov/nuccore/MN908947
         self.location_terms_to_exclude = ["join", "<", ">"]
 
 
@@ -772,6 +772,7 @@ class GenbankToAnvio:
                                                            'stop': end,
                                                            'direction': direction,
                                                            'partial': 0,
+                                                           'call_type': 1,
                                                            'source': self.source,
                                                            'version': self.version}
                 num_genes_reported += 1
@@ -806,7 +807,7 @@ class GenbankToAnvio:
         if len(output_gene_calls):
             utils.store_dict_as_TAB_delimited_file(output_gene_calls,
                                                    self.output_gene_calls_path,
-                                                   headers=["gene_callers_id", "contig", "start", "stop", "direction", "partial", "source", "version"])
+                                                   headers=["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version"])
             self.run.info('External gene calls file', self.output_gene_calls_path)
 
             utils.store_dict_as_TAB_delimited_file(output_functions,
