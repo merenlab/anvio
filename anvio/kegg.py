@@ -972,6 +972,9 @@ class KeggEstimatorArgs():
         self.output_modes = A('kegg_output_modes') or "kofam_hits,complete_modules"
         self.custom_output_headers = A('custom_output_headers') or None
 
+        if format_args_for_single_estimator:
+            # to fool a single estimator into passing sanity checks, nullify args here
+            pass
 
 
 class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
