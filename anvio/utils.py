@@ -1965,7 +1965,12 @@ def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop
         # have any confidence in it. The sequence is returned
         return None, candidates[frame_best]['sequence']
 
-    return frame_best, candidates[frame_best]['sequence']
+    amino_acid_sequence = candidates[frame_best]['sequence']
+
+    # if the best amino acid sequence ends with a stop codon, remove it.
+    amino_acid_sequence = amino_acid_sequence[:-1] if amino_acid_sequence.endswith('*') else amino_acid_sequence
+
+    return frame_best, amino_acid_sequence
 
 
 def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
@@ -1980,9 +1985,9 @@ def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
         start of the split
     """
 
-    if gene_call['partial']:
-        raise ConfigError("get_codon_order_to_nt_positions_dict: this simply will not work "
-                           "for partial gene calls, and this on *is* a partial one.")
+    if gene_call['call_type'] != constants.gene_call_types['CODING']:
+        raise ConfigError("utils.get_codon_order_to_nt_positions_dict :: this simply will not work "
+                           "for noncoding gene calls, and gene caller id %d is noncoding." % gene_call['gene_callers_id'])
 
     start = gene_call['start'] - subtract_by
     stop = gene_call['stop'] - subtract_by

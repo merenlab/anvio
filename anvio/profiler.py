@@ -589,8 +589,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             'corresponding_gene_call',
             'codon_order_in_gene',
             'base_pos_in_codon',
-            'in_partial_gene_call',
-            'in_complete_gene_call',
+            'in_noncoding_gene_call',
+            'in_coding_gene_call',
         ]
 
         if self.profile_SCVs:

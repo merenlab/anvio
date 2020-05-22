@@ -12,6 +12,7 @@ import anvio.tables as t
 import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
@@ -283,6 +284,7 @@ class TablesForHMMHits(Table):
             additional_gene_calls[next_id] = {'contig': e['contig_name'],
                                               'start': start,
                                               'stop': stop,
+                                              'call_type': constants.gene_call_types['NONCODING'] if skip_amino_acid_sequences else constants.gene_call_types['CODING'],
                                               'direction': direction,
                                               'partial': partial,
                                               'source': source,
