@@ -38,7 +38,7 @@ class Migrater(object):
         if not args.migrate_dbs_safely and not args.migrate_dbs_quickly:
             raise ConfigError("You must choose either `--migrate-dbs-safely` or `--migrate-dbs-quickly`. Anvi'o would "
                               "have chosen one for you, but our lawyers suggested that it may put our life savings in "
-                              "in jeopardy.")
+                              "jeopardy.")
 
         if args.migrate_dbs_safely and args.migrate_dbs_quickly:
             raise ConfigError("Please don't as anvi'o to migrate your databases both safely and quickly :/")
