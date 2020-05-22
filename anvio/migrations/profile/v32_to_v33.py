@@ -17,10 +17,6 @@ progress = terminal.Progress()
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
 
-variable_nts_table_name      = 'variable_nucleotides'
-variable_nts_table_structure = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'pos_in_contig', 'corresponding_gene_call', 'in_noncoding_gene_call', 'in_coding_gene_call', 'base_pos_in_codon', 'codon_order_in_gene', 'coverage', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'departure_from_reference', 'competing_nts', 'reference'] + nucleotides
-variable_nts_table_types     = [ 'numeric',    'text'  ,    'text'   , 'numeric',    'numeric'   ,        'numeric'         ,       'numeric'         ,     'numeric'        ,       'numeric'    ,       'numeric'      , 'numeric' ,          'bool'       ,          'bool'        ,          'numeric'        ,      'text'    ,    'text'  ] + ['numeric'] * len(nucleotides)
-
 def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
@@ -45,6 +41,7 @@ def migrate(db_path):
 
     progress.new('Updating DB')
 
+    variable_nts_table_name = 'variable_nucleotides'
     if variable_nts_table_name in tables_in_db:
         progress.update('Renaming columns in variability table...')
         profile_db._exec("""ALTER TABLE %s RENAME COLUMN in_partial_gene_call TO in_noncoding_gene_call;""" % variable_nts_table_name)
@@ -57,7 +54,9 @@ def migrate(db_path):
     progress.end()
 
     if is_full_profile:
-        run.info_single("Your profile db is now %s." % next_version, nl_after=1, nl_before=1, mc='green')
+        run.info_single("Your profile db is now %s. This update renamed two column names in the `variabile_nucleotides` table "
+                        "of your profile database (`in_partial_gene_call` has become `in_noncoding_gene_call`, and "
+                        "`in_complete_gene_call` has become `in_complete_gene_call`" % next_version, nl_after=1, nl_before=1, mc='green')
     else:
         run.info_single("Your profile db is now version %s. But essentially nothing really happened to your "
                         "database since it was a blank profile (which is OK, move along)." \
