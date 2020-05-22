@@ -1142,7 +1142,7 @@ class LocusSplitter:
 
         # similarly, here we will store external gene calls so there will be no gene calling during
         # the generation of the contigs database
-        headers = ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'source', 'version']
+        headers = ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version']
         utils.store_dict_as_TAB_delimited_file(gene_calls, locus_external_gene_calls, headers=headers)
 
         # this is where magic happens. we ask anvi'o to create a contigs database for us.

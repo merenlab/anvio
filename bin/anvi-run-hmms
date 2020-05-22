@@ -67,7 +67,7 @@ def main(args):
         # sources will be loaded from defaults.
         pass
 
-    search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use=args.num_threads, just_do_it=args.just_do_it)
+    search_tables = TablesForHMMHits(args.contigs_db, num_threads_to_use=args.num_threads, just_do_it=args.just_do_it, hmm_program_to_use=args.hmmer_program)
     search_tables.populate_search_tables(sources)
 
     if not args.hmm_profile_dir and not args.installed_hmm_profile and args.also_scan_trnas:
@@ -100,6 +100,7 @@ if __name__ == '__main__':
     groupD = parser.add_argument_group("PERFORMANCE", "Stuff everyone forgets to set and then get upset with how slow "
                                                       "science goes.")
     groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupD.add_argument(*anvio.A('hmmer-program'), **anvio.K('hmmer-program'))
 
     groupE = parser.add_argument_group("AUTHORITY", "Because you are the boss.")
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))

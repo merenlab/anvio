@@ -614,8 +614,8 @@ class VariabilitySuper(VariabilityFilter, object):
             ],
             'gene_info': [
                 ('corresponding_gene_call', int),
-                ('in_partial_gene_call', int),
-                ('in_complete_gene_call', int),
+                ('in_noncoding_gene_call', int),
+                ('in_coding_gene_call', int),
                 ('base_pos_in_codon', int),
                 ('codon_order_in_gene', int),
                 ('codon_number', int),
@@ -1975,7 +1975,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
                 gene_length = self.get_gene_length(corresponding_gene_call)
                 codon_order_in_gene = unique_pos_identifier_to_codon_order_in_gene[unique_pos_identifier]
 
-                in_partial_gene_call, in_complete_gene_call, base_pos_in_codon = self.get_nt_position_info(contig_name_name, pos_in_contig)
+                in_noncoding_gene_call, in_coding_gene_call, base_pos_in_codon = self.get_nt_position_info(contig_name_name, pos_in_contig)
 
                 for sample_id in splits_to_consider_dict[split][pos]:
                     new_entries[next_available_entry_id] = {'entry_id': next_available_entry_id,
@@ -1985,8 +1985,8 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
                                                             'A': 0, 'T': 0, 'C': 0, 'G': 0, 'N': 0,
                                                             'pos': pos,
                                                             'pos_in_contig': pos_in_contig,
-                                                            'in_partial_gene_call': in_partial_gene_call,
-                                                            'in_complete_gene_call': in_complete_gene_call,
+                                                            'in_noncoding_gene_call': in_noncoding_gene_call,
+                                                            'in_coding_gene_call': in_coding_gene_call,
                                                             'base_pos_in_codon': base_pos_in_codon,
                                                             'coverage': split_coverage_across_samples[sample_id][pos],
                                                             'sample_id': sample_id,
@@ -2668,7 +2668,7 @@ class VariabilityFixationIndex(object):
             self.v = variability_engines[self.engine](args_for_variability_class, p=self.progress, r=self.run)
 
         self.items_dict = {
-            'NT': [nt for nt in constants.nucleotides if nt != 'N'],
+            'NT': constants.nucleotides,
             'CDN': constants.codons,
             'AA': constants.amino_acids
         }
@@ -2714,7 +2714,7 @@ class VariabilityFixationIndex(object):
         output_file_path = self.v.output_file_path
 
         self.progress.new('Saving output')
-        self.progress.update('...'.format(output_file_path))
+        self.progress.update('...')
         utils.store_dataframe_as_TAB_delimited_file(self.fst_matrix, output_file_path, include_index=True, index_label='')
         self.run.info('Output', output_file_path, progress = self.progress)
         self.progress.end()

@@ -1,0 +1,50 @@
+---
+layout: page 
+title: {{ program.name }} [program]
+categories: [anvio]
+comments: false
+image:
+  featurerelative: ../../../images/header.png
+  display: true
+---
+
+{{ program.description }}
+
+{% verbatim %}
+{% include _toc.html %}
+<div id="svg" class="subnetwork"></div>
+{% capture network_path %}{{ "network.json" }}{% endcapture %}
+{% capture network_height %}{{ 300 }}{% endcapture %}
+{% include _project-anvio-graph.html %}
+{% endverbatim %}
+
+[Back to help main page](../../)
+
+## Provides
+
+<p style="text-align: left" markdown="1">{% for name, path in program.provides %}<span class="artifact-p">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+
+## Requires or uses
+
+<p style="text-align: left" markdown="1">{% for name, path in program.requires %}<span class="artifact-r">[{{name}}]({{path}}){% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+
+## Usage
+
+{% if program.usage %}
+{{ program.usage|safe }}
+
+{:.notice}
+Edit [this file](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs/{{program.name}}.md) to update this information.
+{% else %}
+{:.notice}
+**No one has described the usage of this program** :/ If you would like to contribute, please see previous examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs), and feel free to add a Markdown formatted file in that directory named "{{program.name}}.md". For a template, you can use the markdown file for `anvi-gen-contigs-database`. THANK YOU!
+{% endif %}
+
+## Additional Resources
+
+{% for text, url in program.resources %}
+* [{{text}}]({{url}})
+{% endfor %}
+
+{:.notice}
+Are you aware of resources that may help users better understand the utility of this program? Please feel free to edit [this file](https://github.com/merenlab/anvio/tree/master/bin/{{program.name}}) on GitHub. If you are not sure how to do that, find the `__resources__` tag in [this file](https://github.com/merenlab/anvio/blob/master/bin/anvi-interactive) to see an example.

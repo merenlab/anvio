@@ -3,10 +3,13 @@
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away.."""
 
+import os
 import sys
 import json
 import copy
 import platform
+
+from tabulate import tabulate
 
 # yes, this library is imported but never used, but don't remove it
 # unless you want to explode `bottle`:
@@ -20,6 +23,7 @@ FORCE = '--force' in sys.argv
 QUIET = '--quiet' in sys.argv
 NO_PROGRESS = '--no-progress' in sys.argv
 FIX_SAD_TABLES = '--fix-sad-tables' in sys.argv
+DOCS_PATH = os.path.join(os.path.dirname(__file__), 'docs')
 
 def P(d, dont_exit=False):
     """Poor man's debug output printer during debugging."""
@@ -28,6 +32,13 @@ def P(d, dont_exit=False):
 
     if not dont_exit:
         sys.exit()
+
+
+def TABULATE(table, header):
+    """Encoding-safe `tabulate`"""
+
+    tablefmt = "fancy_grid" if sys.stdout.encoding == "UTF-8" else "grid"
+    print(tabulate(table, headers=header, tablefmt=tablefmt, numalign="right"))
 
 
 # Make sure the Python environment hasn't changed since the installation (happens more often than you'd think
@@ -285,10 +296,13 @@ D = {
                      "(a unique integer number for each gene call, start from 1), 'contig' (the contig name the gene call is found), "
                      "'start' (start position, integer), 'stop' (stop position, integer), 'direction' (the direction of the gene open reading "
                      "frame; can be 'f' or 'r'), 'partial' (whether it is a complete gene call, or a partial one; must be 1 for partial "
-                     "calls, and 0 for complete calls), 'source' (the gene caller), and 'version' (the version of the gene caller, i.e., "
-                     "v2.6.7 or v1.0). An additional 'optional' column is 'aa_sequence' to explicitly define the amino acid seqeuence of "
-                     "a gene call so anvi'o does not attempt to translate the DNA sequence itself. An EXAMPLE FILE (with the non-mandatory "
-                     "'aa_sequence' column (so feel free to take it out for your own case)) can be found at the URL https://bit.ly/2qEEHuQ"}
+                     "calls, and 0 for complete calls), 'call_type' (1 if it is coding, 2 if it is noncoding, or 3 if it is unknown (only gene "
+                     "calls with call_type = 1 will have amino acid sequences translated)), 'source' (the gene caller), "
+                     "and 'version' (the version of the gene caller, i.e., v2.6.7 or v1.0). An additional 'optional' column is 'aa_sequence'"
+                     " to explicitly define the amino acid seqeuence of a gene call so anvi'o does not attempt to translate the "
+                     "DNA sequence itself. An EXAMPLE FILE (with the optional 'aa_sequence' column (so feel free to take it out "
+                     "for your own case)) can be found at the URL https://bit.ly/2qEEHuQ. If you are providing external gene calls, "
+                     "please also see the flag `--skip-predict-frame`."}
                 ),
     'external-genomes': (
             ['-e', '--external-genomes'],
@@ -343,11 +357,24 @@ D = {
              'action': 'store_true',
              'help': "This is only relevant when you have an external gene calls file. If anvi'o figures out that your custom gene calls "
                      "result in amino acid sequences with stop codons in the middle, it will complain about it. You can use this flag "
-                     "to tell anvi'o to don't check for internal stop codons, EVEN THOUGH IT MEANS THERE IS MOST LIKELY SOMETHING "
-                     "WRONG WITH YOUR EXTERNAL GENE CALLS FILE. Anvi'o will understand that sometimes we don't want to care, and will "
+                     "to tell anvi'o to don't check for internal stop codons, Even though this shouldn't happen in theory, we understand "
+                     "that it almost always does. In these cases, anvi'o understands that sometimes we don't want to care, and will "
                      "not judge you. Instead, it will replace every stop codon residue in the amino acid sequence with an 'X' character. "
                      "Please let us know if you used this and things failed, so we can tell you that you shouldn't have really used it "
                      "if you didn't like failures at the first place (smiley)."}
+                ),
+    'skip-predict-frame': (
+            ['--skip-predict-frame'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When you have provide an external gene calls file, anvi'o will predict the correct frame for gene calls as best as it can by "
+                     "using a previously-generated Markov model that is trained using the uniprot50 database (see this for details: "
+                     "https://github.com/merenlab/anvio/pull/1428), UNLESS there is an `aa_sequence` entry for a given gene call in the external "
+                     "gene calls file. Please note that PREDICTING FRAMES MAY CHANGE START/STOP POSITIONS OF YOUR GENE CALLS SLIGHTLY, if "
+                     "those that are in the external gene calls file are not describing proper gene calls according to the model. "
+                     "If you use this flag, anvi'o will not rely on any model and will attempt to translate your DNA sequences by solely "
+                     "relying upon start/stop positions in the file, but it will complain about sequences start/stop positions of which are "
+                     "not divisible by 3."}
                 ),
     'get-samples-stats-only': (
             ['--get-samples-stats-only'],
@@ -716,6 +743,14 @@ D = {
                      "program with superuser privileges. If you don't have superuser privileges, then you can "
                      "use this parameter to tell anvi'o the location you wish to use to setup your database."}
                 ),
+    'kegg-data-dir': (
+            ['--kegg-data-dir'],
+            {'default': None,
+             'type': str,
+             'help': "The directory path for your KEGG setup, which will include things like \
+                      KOfam profiles and KEGG MODULE data. Anvi'o will try to use the default path\
+                      if you do not specify anything."}
+                ),
     'hide-outlier-SNVs': (
             ['--hide-outlier-SNVs'],
             {'default': False,
@@ -727,6 +762,18 @@ D = {
                      "(although it is clearly the best to see everything, no one will judge you if you end "
                      "up using this flag) (plus, there may or may not be some historical data on this here: "
                      "https://github.com/meren/anvio/issues/309)."}
+                ),
+    'hmmer-program': (
+            ['--hmmer-program'],
+            {'type': str,
+            'required': False,
+             'help': "Which of the HMMER programs to use to run HMMs (hmmscan or hmmsearch). By default "
+                     "anvi'o will use hmmscan for typical HMM operations like those in anvi-run-hmms (as these "
+                     "tend to scan a very large number of genes against a relatively small number of HMMs), "
+                     "but if you are using this program to scan a very large number of HMMs, hmmsearch might "
+                     "be a better choice for performance. For this reason, hmmsearch is the default in operations like "
+                     "anvi-run-pfams and anvi-run-kegg-kofams. See this article for a discussion on the performance "
+                     "of these two programs: https://cryptogenomicon.org/2011/05/27/hmmscan-vs-hmmsearch-speed-the-numerology/"}
                 ),
     'hmm-source': (
             ['--hmm-source'],
@@ -2292,6 +2339,61 @@ D = {
              'help': "Provide if working with INSeq/Tn-Seq genomic data. With this, all gene level "
                      "coverage stats will be calculated using INSeq/Tn-Seq statistical methods."}
                 ),
+    'migrate-dbs-safely': (
+            ['--migrate-dbs-safely'],
+            {'required': False,
+             'action': 'store_true',
+             'default': False,
+             'help': "If you chose this, anvi'o will first create a copy of your original database. If something "
+                     "goes wrong, it will restore the original. If everything works, it will remove the old copy. "
+                     "IF YOU HAVE DATABASES THAT ARE VERY LARGE OR IF YOU ARE MIGRATING MANY MANY OF THEM THIS "
+                     "OPTION WILL ADD A HUGE I/O BURDEN ON YOUR SYSTEM. But still. Safety is safe."}
+                ),
+    'migrate-dbs-quickly': (
+            ['--migrate-dbs-quickly'],
+            {'required': False,
+             'action': 'store_true',
+             'default': False,
+             'help': "If you chose this, anvi'o will migrate your databases in place. It will be much faster (and arguably "
+                     "more fun) than the safe option, but if something goes wrong, you will lose data. During the first "
+                     "five years of anvi'o development not a single user lost data using our migration scripts as far as "
+                     "we know. But there is always a first, and today might be your lucky day."}
+                ),
+    'module-completion-threshold': (
+            ['--module-completion-threshold'],
+            {'default': 0.75,
+             'metavar': 'NUM',
+             'type': float,
+             'help': "This threshold defines the point at which we consider a KEGG module to be 'complete' or "
+                     "'present' in a given genome or bin. It is the fraction of steps that must be complete in "
+                     " in order for the entire module to be marked complete. The default is %(default)g."}
+                ),
+    'get-raw-data-as-json': (
+            ['--get-raw-data-as-json'],
+            {'default': None,
+            'metavar': 'FILENAME_PREFIX',
+            'type': str,
+            'help': "If you want the raw metabolism estimation data dictionary in JSON-format, provide a filename prefix to this argument."
+                    "The program will then output a file with the .json extension containing this data."}
+                ),
+    'store-json-without-estimation': (
+            ['--store-json-without-estimation'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "This flag is used to control what is stored in the JSON-formatted metabolism data dictionary. When this flag is provided alongside the "
+                    "--get-raw-data-as-json flag, the JSON file will be created without running metabolism estimation, and "
+                    "that file will consequently include only information about KOfam hits and gene calls. The idea is that you can "
+                    "then modify this file as you like and re-run this program using the flag --estimate-from-json."}
+                ),
+    'estimate-from-json': (
+            ['--estimate-from-json'],
+            {'default': None,
+            'metavar': 'FILE_PATH',
+            'type': str,
+            'help': "If you have a JSON file containing KOfam hits and gene call information from your contigs database "
+                    "(such as a file produced using the --get-raw-data-as-json flag), you can provide that file to this flag "
+                    "and KEGG metabolism estimates will be computed from the information within instead of from a contigs database."}
+                ),
 }
 
 # two functions that works with the dictionary above.
@@ -2328,8 +2430,12 @@ def set_version():
            t.auxiliary_data_version, \
            t.genomes_storage_vesion, \
            t.structure_db_version, \
+<<<<<<< HEAD
            t.tRNAseq_db_version, \
         #    t.trnaseeds_db_version
+=======
+           t.kegg_modules_db_version
+>>>>>>> 3d29a0b0ee23c58abaf8ed6e2d7184435b6745e8
 
 
 def get_version_tuples():
@@ -2342,7 +2448,8 @@ def get_version_tuples():
             ("Auxiliary data storage version", __auxiliary_data_version__),
             ("Pan DB version", __pan__version__),
             ("Genome data storage version", __genomes_storage_version__),
-            ("Structure DB version", __structure__version__)]
+            ("Structure DB version", __structure__version__),
+            ("KEGG Modules DB version", __kegg_modules_version__)]
 
 
 def print_version():
@@ -2355,6 +2462,7 @@ def print_version():
     run.info("Genome data storage version", __genomes_storage_version__)
     run.info("Auxiliary data storage version", __auxiliary_data_version__)
     run.info("Structure DB version", __structure__version__)
+    run.info("Kegg Modules DB version", __kegg_modules_version__)
 
 
 __version__, \
@@ -2366,8 +2474,13 @@ __genes__version__, \
 __auxiliary_data_version__, \
 __genomes_storage_version__ , \
 __structure__version__, \
+<<<<<<< HEAD
 __tRNAseq__version__ = set_version()
 # __trnaseeds__version__ = set_version()
+=======
+__kegg_modules_version__ = set_version()
+
+>>>>>>> 3d29a0b0ee23c58abaf8ed6e2d7184435b6745e8
 
 if '-v' in sys.argv or '--version' in sys.argv:
     print_version()

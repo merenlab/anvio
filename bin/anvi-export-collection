@@ -22,7 +22,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['profile-db']
+__requires__ = ['profile-db', 'collection']
 __provides__ = ['collection-txt']
 __description__ = "Export a collection from an anvi'o database"
 

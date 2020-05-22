@@ -34,6 +34,7 @@ J = lambda x, y: os.path.join(x, y)
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 warnings.simplefilter(action='ignore', category=PDBConstructionWarning)
 
+
 class StructureDatabase(object):
     """Structure database operations"""
 
@@ -1163,7 +1164,7 @@ class ContactMap(object):
         contact_map = np.zeros((len(structure), len(structure)))
         for i, residue1 in enumerate(structure):
             for j, residue2 in enumerate(structure):
-                if i < j:
+                if i > j:
                     contact_map[i, j] = contact_map[j, i]
                 else:
                     contact_map[i, j] = self.distances_methods_dict[distance_method](residue1, residue2)

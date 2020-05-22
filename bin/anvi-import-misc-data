@@ -6,6 +6,7 @@ import sys
 import argparse
 
 import anvio
+import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.miscdata import MiscDataTableFactory
@@ -18,15 +19,27 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
 __resources__ = [("A primer on anvi'o misc data tables", "http://merenlab.org/2017/12/11/additional-data-tables/")]
-__requires__ = ['genes-db', 'pan-db', 'profile-db', 'misc-data-items-txt', 'dendrogram', 'phylogeny', 'misc-data-layers-txt', 'misc-data-layer-orders-txt']
-__provides__ = ['misc-data-items', 'misc-data-layers', 'misc-data-layer-orders']
+__requires__ = ['genes-db', 'pan-db', 'profile-db', 'contigs-db', 'misc-data-items-txt', 'dendrogram', 'phylogeny', 'misc-data-layers-txt', 'misc-data-layer-orders-txt', 'misc-data-nucleotides-txt',  'misc-data-amino-acids-txt']
+__provides__ = ['misc-data-items', 'misc-data-layers', 'misc-data-layer-orders', 'misc-data-nucleotides', 'misc-data-amino-acids']
 __description__ = ("Populate additional data or order tables in pan or profile databases for "
-                   "items or layers (the Swiss army knife-level serious stuff).")
+                   "items and layers, OR additional data in contigs databases for nucleotides "
+                   "and amino acids (the Swiss army knife-level serious stuff).")
 
 
+@terminal.time_program
 def main(args):
     # - you're ugly.
     # - no u :(
+
+    d = args.__dict__
+    if not d['contigs_db'] and not d['pan_or_profile_db']:
+        raise ConfigError("Please provide either a contigs database (--contigs-db) or a profile/pan "
+                          "database (--pan-or-profile-db)")
+
+    if d['contigs_db'] and d['pan_or_profile_db']:
+        raise ConfigError("You provided a contigs db (--contigs-db) and a profile/pan "
+                          "db (--pan-or-profile-db). Please provide only one.")
+
     MiscDataTableFactory(args).populate_from_file(args.data_file)
 
 
@@ -39,11 +52,16 @@ if __name__ == '__main__':
                         when we say "it is not complicated"). You need to read the online documentation if this is your first\
                         time with this.')
 
-    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
-    parser.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
-    parser.add_argument(*anvio.A('target-data-group'), **anvio.K('target-data-group'))
-    parser.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))
-    parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    group1 = parser.add_argument_group('Database input', "Provide 1 of these")
+    group2 = parser.add_argument_group('Details', "Everything else.")
+
+    group1.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
+    group1.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+
+    group2.add_argument(*anvio.A('target-data-table'), **anvio.K('target-data-table', {'required': True}))
+    group2.add_argument(*anvio.A('target-data-group'), **anvio.K('target-data-group'))
+    group2.add_argument(*anvio.A('transpose'), **anvio.K('transpose'))
+    group2.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = anvio.get_args(parser)
 

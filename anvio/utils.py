@@ -6,13 +6,13 @@
 import os
 import sys
 import gzip
+import tarfile
 import time
 import copy
 import socket
 import shutil
 import smtplib
 import hashlib
-import Bio.PDB as PDB
 import textwrap
 import linecache
 import webbrowser
@@ -23,6 +23,7 @@ import urllib.request, urllib.error, urllib.parse
 
 import numpy as np
 import pandas as pd
+import Bio.PDB as PDB
 
 from numba import jit
 from collections import Counter
@@ -381,6 +382,20 @@ def gzip_decompress_file(input_file_path, output_file_path=None, keep_original=T
 
     return output_file_path
 
+def tar_extract_file(input_file_path, output_file_path=None, keep_original=True):
+    filesnpaths.is_file_tar_file(input_file_path)
+
+    if not output_file_path:
+        raise ConfigError("The tar_extract_file function is displeased because an output file path has not been specified. "
+                          "If you are seeing this message, you are probably a developer, so go fix your code please, and "
+                          "everyone will be happy then.")
+
+    tf = tarfile.open(input_file_path)
+    tf.extractall(path = output_file_path)
+
+    if not keep_original:
+        os.remove(input_file_path)
+
 
 class RunInDirectory(object):
     """ Run any block of code in a specified directory. Return to original directory
@@ -540,18 +555,32 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
     return output_path
 
 
-def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None):
-    '''
-        Store a dictionary of dictionaries as a TAB-delimited file.
-        input:
-            d - dictionary of dictionaries
-            output_path - output path
-            headers - headers of the secondary dictionary to include (by default include all)
-                      these are the columns that will be included in the output file (this
-                      doesn't include the first column which is the keys of the major dictionary)
-            file_obj - file_object to use for writing
-            key_header - the header for the first column (by default: 'key')
-    '''
+def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None, header_item_conversion_dict=None):
+    """Store a dictionary of dictionaries as a TAB-delimited file.
+
+    Parameters
+    ==========
+    d: dictionary
+        A dictionary of dictionaries where each first order key represents a row,
+        and each key in the subdictionary represents a column.
+    output_path: string
+        Output path for the TAB delmited file.path
+    headers: list
+        Headers of the subdictionary to include (by default include all)
+        these are the columns that will be included in the output file (this
+        doesn't include the first column which is the keys of the major dictionary)
+    file_obj: file_object
+        A file object ot write (instead of the output file path)
+    key_header: string
+        The header for the first column ('key' if None)
+    header_item_conversion_dict: dictionary
+        To replace the column names at the time of writing.
+
+    Returns
+    =======
+    output_path
+    """
+
     if not file_obj:
         filesnpaths.is_output_file_writable(output_path)
 
@@ -564,7 +593,17 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
     if not headers:
         headers = [key_header] + sorted(list(d.values())[0].keys())
 
-    f.write('%s\n' % '\t'.join(headers))
+    # write header after converting column names (if necessary)
+    if header_item_conversion_dict:
+        missing_headers = [h for h in headers[1:] if h not in header_item_conversion_dict]
+        if len(missing_headers):
+            raise ConfigError("Your header item conversion dict is missing keys for one or "
+                              "more headers :/ Here is a list of those that do not have any "
+                              "entry in the dictionary you sent: '%s'." % (', '.join(missing_headers)))
+        header_text = '\t'.join([headers[0]] + [header_item_conversion_dict[h] for h in headers[1:]])
+    else:
+        header_text = '\t'.join(headers)
+    f.write('%s\n' % header_text)
 
     if not keys_order:
         keys_order = sorted(d.keys())
@@ -1771,22 +1810,14 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
     return list_of_codons
 
 
-def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=False):
-    sequence = sequence.upper()
-
-    if len(sequence) % 3.0 != 0:
-        raise ConfigError("The sequence corresponds to the gene callers id '%s' does not seem to "
-                           "have proper number of nucleotides to be translated :/ Here it is: %s" % (gene_callers_id, sequence))
-
-    translated_sequence = ''
-
-    for i in range(0, len(sequence), 3):
-        single_letter_code = constants.AA_to_single_letter_code[constants.codon_to_AA[sequence[i:i + 3]]]
-
-        if not single_letter_code:
-            single_letter_code = 'X'
-
-        translated_sequence += single_letter_code
+def get_translated_sequence_for_gene_call(sequence, gene_callers_id, return_with_stops=False):
+    try:
+        translated_sequence = translate(sequence)
+    except ConfigError:
+        raise ConfigError("The sequence corresponding to the gene callers id '%s' has %d nucleotides, "
+                          "which is indivisible by 3. This is bad because it is now ambiguous which codon "
+                          "frame should be used for translation into an amino acid sequence. Here is "
+                          "the culprit sequence: %s" % (gene_callers_id, len(sequence), sequence))
 
     if translated_sequence.endswith('*'):
         if return_with_stops:
@@ -1795,6 +1826,151 @@ def get_DNA_sequence_translated(sequence, gene_callers_id, return_with_stops=Fal
             translated_sequence = translated_sequence[:-1]
 
     return translated_sequence
+
+
+def translate(sequence):
+    """Translate a sequence. As stupid as possible.
+
+    Returns
+    =======
+    amino_acid_sequence : str
+        Amino acid sequence of sequence. If translation of codon is unknown, X is used. All stop
+        codons are included and represented as *.
+
+    Notes
+    =====
+    - Raises error if indivisible by 3
+    - Consider smarter functions: utils.get_translated_sequence_for_gene_call,
+      utils.get_most_likely_translation_frame
+    """
+
+    N = len(sequence)
+    sequence = sequence.upper()
+    translated_sequence = []
+
+    if N % 3:
+        raise ConfigError("utils.translate :: sequence is not divisible by 3: %s" % sequence)
+
+    for i in range(0, N, 3):
+        aa = constants.AA_to_single_letter_code[constants.codon_to_AA[sequence[i:i + 3]]] or 'X'
+        translated_sequence.append(aa)
+
+    return ''.join(translated_sequence)
+
+
+def get_most_likely_translation_frame(sequence, model=None, null_prob=None, stop_prob=None, log_likelihood_cutoff=2):
+    """Predict the translation frame with a markov model of amino acid sequences
+
+    Parameters
+    ==========
+    sequence : str
+        A DNA sequence
+
+    model : numpy array, None
+        A numpy array of transition probabilities. For an example, see
+        anvio/data/seq_transition_models/AA/3rd_order.npy
+
+    null_prob : float, None
+        When a markov state contains an unspecified amino acid (X), what probability transition should
+        be applied to it? To be as uninformative as possible, if None, null_prob is set to the median
+        transition probability of the model.
+
+    stop_prob : float, None
+        When a markov state contains a stop codon, what transition probability should
+        be applied to it? Since internal stop codons are exceedingly rare, if None, stop_prob is set
+        to be 1/1,000,000th the probability of the minimum transition probability of the model.
+
+    log_likelihood_cutoff : float, 2
+        If the best frame has a log likelihood with respect to the second best frame that is less
+        than this value, the frame is set to None, which is to say, anvi'o is not confident enough
+        to tell you the frame. The amino acid sequence is still returned. The default is 2, which
+        means the probability of the first should be at least 10^2 times the probability of the
+        competing frame
+
+    Returns
+    =======
+    frame, amino_acid_sequence : int, str
+        frame is the number of shifted nucleotides that produced the most likely frame and is either
+        0, 1, or 2. amino_acid_sequence is the translated sequence. If less than log_likelihood_cutoff,
+        None is returned as the frame
+    """
+
+    N = len(sequence)
+    if N == 3:
+         # Save ourselves the effort
+        return 0, translate(sequence)
+    elif N < 3:
+        raise ConfigError("utils.get_most_likely_translation_frame :: sequence has a length less than 3 "
+                          "so there is nothing to translate.")
+
+    if model is None:
+        default_model_path = os.path.join(os.path.dirname(anvio.__file__), 'data/seq_transition_models/AA/fourth_order.npy')
+        model = np.load(default_model_path)
+
+    order = len(model.shape)
+    null_prob = stop_prob if stop_prob is not None else np.median(model)
+    stop_prob = stop_prob if stop_prob is not None else model.min()/1e6
+
+    aas = [constants.AA_to_single_letter_code[aa] for aa in constants.amino_acids if aa != 'STP']
+    aa_to_array_index = {aa: i for i, aa in enumerate(aas)}
+
+    # Collect all of the candidate sequences
+
+    candidates = {}
+    for frame in range(3):
+        frame_seq = sequence[frame:]
+
+        remainder = len(frame_seq) % 3
+        if remainder:
+            frame_seq = frame_seq[:-remainder]
+
+        if not frame_seq:
+            continue
+
+        candidates[frame] = {
+            'sequence': translate(frame_seq),
+            'log_prob': 0,
+        }
+
+    # Calculate the log probability of each candidate
+
+    smallest_seq_length = min([len(candidate['sequence']) for candidate in candidates.values()])
+
+    for frame in candidates:
+        # Some of the candidates will be one AA smaller. To not skew values, we truncate each
+        # candidate to the length of the smallest candidate
+        seq = candidates[frame]['sequence'][:smallest_seq_length]
+
+        trans_probs = np.zeros(smallest_seq_length - order)
+
+        for codon_order in range(smallest_seq_length - order):
+            state = seq[codon_order:codon_order+order]
+
+            if '*' in state:
+                trans_probs[codon_order] = stop_prob
+            elif 'X' in state:
+                trans_probs[codon_order] = null_prob
+            else:
+                state_as_indices = tuple([aa_to_array_index[aa] for aa in state])
+                trans_probs[codon_order] = model[state_as_indices]
+
+        candidates[frame]['log_prob'] = np.sum(np.log10(trans_probs))
+
+    frame_second, frame_best = sorted(candidates, key=lambda frame: candidates[frame]['log_prob'])[-2:]
+    log_prob_best = candidates[frame_best]['log_prob']
+    log_prob_second = candidates[frame_second]['log_prob']
+
+    if (log_prob_best - log_prob_second) < log_likelihood_cutoff:
+        # Frame is not league's better than the competing frame, which it should be if we are to
+        # have any confidence in it. The sequence is returned
+        return None, candidates[frame_best]['sequence']
+
+    amino_acid_sequence = candidates[frame_best]['sequence']
+
+    # if the best amino acid sequence ends with a stop codon, remove it.
+    amino_acid_sequence = amino_acid_sequence[:-1] if amino_acid_sequence.endswith('*') else amino_acid_sequence
+
+    return frame_best, amino_acid_sequence
 
 
 def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
@@ -1809,9 +1985,9 @@ def get_codon_order_to_nt_positions_dict(gene_call, subtract_by=0):
         start of the split
     """
 
-    if gene_call['partial']:
-        raise ConfigError("get_codon_order_to_nt_positions_dict: this simply will not work "
-                           "for partial gene calls, and this on *is* a partial one.")
+    if gene_call['call_type'] != constants.gene_call_types['CODING']:
+        raise ConfigError("utils.get_codon_order_to_nt_positions_dict :: this simply will not work "
+                           "for noncoding gene calls, and gene caller id %d is noncoding." % gene_call['gene_callers_id'])
 
     start = gene_call['start'] - subtract_by
     stop = gene_call['stop'] - subtract_by
@@ -2376,7 +2552,7 @@ def store_dict_as_FASTA_file(d, output_file_path, wrap_from=200):
     return True
 
 
-def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_names_to_export=None, splits_mode=False, rna_alphabet=False, truncate=True):
+def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_names_to_export=None, splits_mode=False, rna_alphabet=False, truncate=True, just_do_it=False, run=run):
     """Export sequences from a contigs database."""
     filesnpaths.is_output_file_writable(output_file_path)
 
@@ -2395,18 +2571,31 @@ def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_name
         else:
             seq_names_to_export = sorted(contig_sequences_dict.keys())
     else:
-        if splits_mode:
-            pass
-        else:
-            missing_names = [contig_name for contig_name in seq_names_to_export if contig_name not in contig_sequences_dict]
-            if len(missing_names):
-                if len(missing_names) == len(seq_names_to_export):
-                    raise ConfigError("None of the sequence names you have requested were found in this contigs database :/ "
-                                      "This is kind of impressive.")
-                else:
-                    raise ConfigError("The sequence names you have requested include those that are not in the contigs "
-                                      "database, which correspond to %d of %d names you've sent." % (len(missing_names), len(seq_names_to_export)))
+        contig_names = [contig_name for contig_name in seq_names_to_export if contig_name in contig_sequences_dict]
+        split_names = [split_name for split_name in seq_names_to_export if split_name in splits_info_dict]
+        missing_names = [name for name in seq_names_to_export if name not in contig_names and name not in split_names]
 
+        if splits_mode:
+          mode = "splits"
+          appropriate_seq_names = split_names
+
+        else: 
+          mode = "contigs"
+          appropriate_seq_names = contig_names
+
+        if len(appropriate_seq_names) < len(seq_names_to_export):
+          if just_do_it:
+              run.warning("Not all the sequences you requested are %s in this CONTIGS.db. %d names are contigs, "
+                          "%d are splits, and %d are neither. BUT you're in just-do-it mode and we know you're in charge, so we'll "
+                          "proceed using any appropriate names." % \
+                          (mode, len(contig_names), len(split_names), len(missing_names),))
+              seq_names_to_export = appropriate_seq_names 
+          else:
+              raise ConfigError("Not all the sequences you requested are %s in this CONTIGS.db. %d names are contigs, "
+                                "%d are splits, and %d are neither. If you want to live on the edge and try to "
+                                "proceed using any appropriate names, try out the `--just-do-it` flag." % \
+                                (mode, len(contig_names), len(split_names), len(missing_names)))
+        
     for seq_name in seq_names_to_export:
         if splits_mode:
             s = splits_info_dict[seq_name]
@@ -2961,13 +3150,12 @@ def get_HMM_sources_dictionary(source_dirs=[]):
 
 
 def check_misc_data_keys_for_format(data_keys_list):
-    """A function to make sure user-provided misc data keys are compatible
-       with the current version of anvi'o. Housekeeping BS."""
+    """Ensure user-provided misc data keys are compatible with the current version of anvi'o"""
 
     if not data_keys_list:
         return
 
-    # findout whether the user data contains the older implementation of stacked
+    # find out whether the user data contains the older implementation of stacked
     # bar data type
     obsolete_stackedbar_keys = [k for k in data_keys_list if k.find('!') > -1 and k.find(';') > -1]
 
@@ -3024,7 +3212,7 @@ def get_missing_programs_for_hmm_analysis():
 
 def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
     if not collection_name or not bin_name:
-        raise ConfigError("Genes database must be associted with a collection name and a bin name :/")
+        raise ConfigError("Genes database must be associated with a collection name and a bin name :/")
 
     return os.path.join(os.path.dirname(profile_db_path), 'GENES', '%s-%s.db' % (collection_name, bin_name))
 
@@ -3235,6 +3423,11 @@ def is_genes_db(db_path):
         raise ConfigError("'%s' is not an anvi'o genes database." % db_path)
     return True
 
+def is_kegg_modules_db(db_path):
+    if get_db_type(db_path) != 'modules':
+        raise ConfigError("'%s' is not an anvi'o KEGG modules database." % db_path)
+    return True
+
 
 def is_profile_db_merged(profile_db_path):
     is_profile_db(profile_db_path)
@@ -3291,6 +3484,9 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
 
     return True
 
+# # FIXME
+# def is_external_genomes_compatible_with_pan_database(pan_db_path, external_genomes_path):
+
 
 def download_file(url, output_file_path, progress=progress, run=run):
     filesnpaths.is_output_file_writable(output_file_path)
@@ -3328,7 +3524,7 @@ def download_file(url, output_file_path, progress=progress, run=run):
     f.close()
 
     progress.end()
-    run.info('Downloaded succesfully', output_file_path)
+    run.info('Downloaded successfully', output_file_path)
 
 
 def get_remote_file_content(url, gzipped=False):
@@ -3396,7 +3592,6 @@ def download_protein_structure(protein_code, output_path=None, chain=None, raise
     if chain is not None:
         class ChainSelect(PDB.Select):
             def accept_chain(self, chain_obj):
-                x = 1 if chain_obj.get_id() == chain else 0
                 return 1 if chain_obj.get_id() == chain else 0
 
         p = PDB.PDBParser()
@@ -3500,6 +3695,7 @@ def check_h5py_module():
 
     try:
         import h5py
+        h5py.__version__
     except:
         raise ConfigError("Please install the Python module `h5py` manually for this migration task to continue. "
                           "The reason why the standard anvi'o installation did not install module is complicated, "
@@ -3654,4 +3850,3 @@ class Mailer:
         self.progress.end()
 
         self.run.info('E-mail', 'Successfully sent to "%s"' % to)
-

@@ -1502,7 +1502,7 @@ class Bin:
             # if the user asked for it, report amino acid sequences as well
             if self.summary.report_aa_seqs_for_gene_calls:
                 try:
-                    d[gene_callers_id]['aa_sequence'] = utils.get_DNA_sequence_translated(dna_sequence, gene_callers_id)
+                    d[gene_callers_id]['aa_sequence'] = utils.get_translated_sequence_for_gene_call(dna_sequence, gene_callers_id)
                 except:
                     d[gene_callers_id]['aa_sequence'] = ''
 

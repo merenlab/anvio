@@ -13,6 +13,8 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError, GenesDBError
 from anvio.tables.tableops import Table
 
+from math import floor
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -24,17 +26,21 @@ __email__ = "a.murat.eren@gmail.com"
 __status__ = "Development"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
-pp = terminal.pretty_print
-
-
 class AdditionalAndOrderDataBaseClass(Table, object):
     """This is a base class for common operations between order and additional data classes."""
 
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.db_path = A('pan_or_profile_db') or A('profile_db') or A('pan_db')
+
+        acceptable_db_inputs = ('pan_or_profile_db', 'profile_db', 'pan_db', 'contigs_db')
+
+        # FIXME This is a first-come, first-serve business. As of now, it is the programmer's
+        # responsibility to ensure they are not passing more inputs than they need.
+        for db_input in acceptable_db_inputs:
+            self.db_path = A(db_input)
+
+            if self.db_path is not None:
+                break
 
         # We just set the path for the database we are going to be working with. but if we seem to
         # be in 'gene mode', then the actual database we want to work with through this module is
@@ -52,14 +58,13 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                                    "object that wanted to initiate anvi'o operations for 'gene mode', which is a special "
                                    "mode of operation where gene-level coverage statistics per collection is "
                                    "read from a special database. In this mode anvi'o also tries to initialize "
-                                   "additional data tables from the genes database, instesad of the profile "
+                                   "additional data tables from the genes database, instead of the profile "
                                    "database with which it is associated. However, in the current run, it seems the "
                                    "genes database has not yet been initiated for the collection '%s' and bin '%s'. "
                                    "Probably this will be handled by a higher power, and the genes database will "
                                    "be generated automatically, but this very part of the code has no idea how to "
                                    "deal with this awkward situation, hence throwing this exception and waves its hand "
                                    "to you from a wild wild corner of the anvi'o codebase." % (A('collection_name'), A('bin_id')))
-                self.db_path = None
 
         self.just_do_it = A('just_do_it')
         self.target_data_group_set_by_user = A('target_data_group') or None
@@ -68,19 +73,38 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         if not self.db_path:
             raise ConfigError("The AdditionalAndOrderDataBaseClass is inherited with an args object that did not "
                               "contain any database path :/ Even though any of the following would "
-                              "have worked: `pan_or_profile_db`, `profile_db`, `pan_db` :(")
+                              "have worked: %s :(" % ', '.join(["'%s'" % x for x in acceptable_db_inputs]))
 
         if not self.table_name:
             raise ConfigError("The AdditionalAndOrderDataBaseClass does not know anything about the table it should "
                               "be working with.")
 
-        utils.is_pan_or_profile_db(self.db_path, genes_db_is_also_accepted=True)
         self.db_type = utils.get_db_type(self.db_path)
+
+        if self.db_type in ['pan', 'profile', 'genes']:
+            utils.is_pan_or_profile_db(self.db_path, genes_db_is_also_accepted=True)
+
+            if self.target_table not in ['layers', 'items', 'layer_orders']:
+                raise ConfigError("The only target data table names possible for DBs of type '%s' are 'layers' "
+                                  "and 'items'" % self.db_type)
+
+        elif self.db_type == 'contigs':
+            utils.is_contigs_db(self.db_path)
+
+            if self.target_table not in ['nucleotides', 'amino_acids']:
+                raise ConfigError("The only target data table names possible for DBs of type '%s' are 'nucleotides' "
+                                  "and 'amino_acids'" % self.db_type)
+
         self.db_version = utils.get_required_version_for_db(self.db_path)
+
+        self.progress.new("Fetching existing data keys from database")
+        self.progress.update("...")
 
         database = db.DB(self.db_path, self.db_version)
         self.additional_data_keys = database.get_single_column_from_table(self.table_name, 'data_key')
         database.disconnect()
+
+        self.progress.end()
 
         Table.__init__(self, self.db_path, self.db_version, self.run, self.progress)
 
@@ -94,13 +118,17 @@ class AdditionalAndOrderDataBaseClass(Table, object):
     def populate_from_file(self, additional_data_file_path, skip_check_names=None):
 
         if skip_check_names is None and utils.is_blank_profile(self.db_path):
-            # FIXME: this BS is here because blank abvi'o profiles do not know what items they have,
+            # FIXME: this BS is here because blank anvi'o profiles do not know what items they have,
             #        hence the utils.get_all_item_names_from_the_database function eventually explodes if we
             #        don't skip check names.
             skip_check_names = True
 
+        self.progress.new("Processing input")
+
+        self.progress.update("Checking integrity of input file")
         filesnpaths.is_file_tab_delimited(additional_data_file_path)
 
+        self.progress.update("Loading input file into memory")
         data_keys = utils.get_columns_of_TAB_delim_file(additional_data_file_path)
         data_dict = utils.get_TAB_delimited_file_as_dictionary(additional_data_file_path)
 
@@ -117,6 +145,9 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                               "It does not seem to have any additional keys for data :/" \
                                             % (self.target_table, additional_data_file_path))
 
+        self.progress.end()
+        self.run.info_single("%s successfully loaded" % additional_data_file_path, nl_after=1, nl_before=1)
+
         if self.target_table == 'layer_orders':
             OrderDataBaseClass.add(self, data_dict, skip_check_names)
         else:
@@ -124,7 +155,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
 
     def remove(self, data_keys_list=[], data_groups_list=[]):
-        '''Give this guy a list of keys or groups for additional data, and watch their demise.'''
+        """Give this guy a list of keys or groups for additional data, and watch their demise."""
 
         if not isinstance(data_keys_list, list) or not isinstance(data_groups_list, list):
             raise ConfigError("The remove function in AdditionalDataBaseClass wants you to watch "
@@ -134,7 +165,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         if data_keys_list and data_groups_list:
             raise ConfigError("You seem to be interested in removing both data keys and data groups from "
                               "misc data tables. Using both of these parameters is quite risky, so anvi'o "
-                              "would like you to use only one of them at a time. Apologeies.")
+                              "would like you to use only one of them at a time. Apologies.")
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
@@ -150,7 +181,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         additional_data_keys = sorted(database.get_single_column_from_table(self.table_name, 'data_key', unique=True))
 
         if not len(additional_data_keys):
-            self.run.info_single('There is nothing to remove --the %s additional data table is already empty :(' % self.target_table)
+            self.run.info_single('There is nothing to remove--the %s additional data table is already empty :(' % self.target_table)
             database.disconnect()
             return
 
@@ -212,7 +243,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
     def export(self, output_file_path):
         filesnpaths.is_output_file_writable(output_file_path)
 
-        if self.target_table in ['layers', 'items']:
+        if self.target_table in ['layers', 'items', 'nucleotides', 'amino_acids']:
             keys, data = AdditionalDataBaseClass.get(self)
             if keys:
                 if len(self.available_group_names) - 1:
@@ -244,14 +275,14 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         NOPE = lambda: self.run.info_single("There are no additional data for '%s' in this database :/" \
-                                                    % (self.target_table), nl_before=1, nl_after=1, mc='red')
+                                                % (self.target_table), nl_before=1, nl_after=1, mc='red')
 
         additional_data_keys = {}
         # here is where things get tricky. if we are dealing with additional data layers or items, we will have
         # data groups that are not relevant for order data. this will affect the listing of data keys in either
         # of these table types. hence we get group names first here, and then will do a bunch of if/else checks
         # based on their availability
-        if self.target_table in ['layers', 'items']:
+        if self.target_table in ['layers', 'items', 'nucleotides', 'amino_acids']:
             if not self.available_group_names:
                 NOPE()
                 return
@@ -341,11 +372,12 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             raise ConfigError("The data that claims to be a layer order data do not seem to be one.")
 
         if data_keys_list:
-            for item_or_layer_name in data_dict:
+            # data_name is an item name, layer name, nucleotide identifier, or amino acid identifier
+            for data_name in data_dict:
                 for key in data_keys_list:
-                    if key not in data_dict[item_or_layer_name]:
+                    if key not in data_dict[data_name]:
                         raise ConfigError("Your data dictionary fails the sanity check since at least one item in it (i.e., %s) is "
-                                          "missing any data for the key '%s'." % (item_or_layer_name, key))
+                                          "missing any data for the key '%s'." % (data_name, key))
 
 
 class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
@@ -458,11 +490,12 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
 
     def add(self, data_dict, skip_check_names=False):
-        """
-            The default function to add data into the orders table.
+        """The default function to add data into the orders table.
 
-             * `data_dict`: this variable for layer orders is expected to follow this format:
-
+        Parameters
+        ==========
+        data_dict : dict
+            This variable for layer orders is expected to follow this format:
                   d = {
                           'data_key_01': {'data_type': 'newick',
                                           'data_value': '(item_or_layer_name_01:0.0370199,(item_or_layer_name_02:0.0227268,item_or_layer_name_01:0.0227268)Int3:0.0370199);'
@@ -501,7 +534,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
                 self.remove(keys_already_in_db)
             else:
-                run.info('Data keys already in the db', ', '.join(keys_already_in_db), nl_before=2, mc='red')
+                self.run.info('Data keys already in the db', ', '.join(keys_already_in_db), nl_before=2, mc='red')
 
                 raise ConfigError("Some of the keys in your new order data appear to be in the database already. If you "
                                   "want to replace those in the database with the ones in your new data use the "
@@ -549,9 +582,10 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
     """Implements additional data ops base class.
 
-       See TableForItemAdditionalData or TableForLayerAdditionalData for usage example.
-
-       See AdditionalAndOrderDataBaseClass for inherited functionality.
+    Notes
+    =====
+    - See TableForItemAdditionalData or TableForLayerAdditionalData for usage example.
+    - See AdditionalAndOrderDataBaseClass for inherited functionality.
     """
 
     def __init__(self, args):
@@ -559,24 +593,27 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
         self.available_group_names = self.get_group_names()
 
+        self.storage_buffer = []
+
 
     def check_target_data_group(self):
         """A function to check whether the data group set is among the available ones.
 
-           The reason this function is a separate one and it is not being called by the
-           init function of the base class is because the user *can* set a new data group
-           name when they want to 'import' things into the database. So, while exporting
-           data or displaying data will require the requested data group to be a proper one,
-           it is better to check that explicitly."""
+        The reason this function is a separate one and it is not being called by the
+        init function of the base class is because the user *can* set a new data group
+        name when they want to 'import' things into the database. So, while exporting
+        data or displaying data will require the requested data group to be a proper one,
+        it is better to check that explicitly.
+        """
 
         if self.target_data_group not in self.available_group_names:
             raise ConfigError("You (or the programmer) requested to initiate the additional data table for '%s' with "
                               "the data group '%s', which is not really in that table :/ If it helps at all, "
                               "the target table happened to have these ones instead: %s. What to do now? If you are "
-                              "here becasue the last command you run was something like 'show me all the data in misc' "
+                              "here because the last command you run was something like 'show me all the data in misc' "
                               "data tables, then you may try to be more specific by explicitly defining your target "
                               "data table. If you think you have already been as sepecific as you could be, then anvi'o "
-                              "is as frustrated as you are right now :(" %\
+                              "is as frustrated as you are right now :(" % \
                                     (self.target_table, self.target_data_group, ', '.join(['"%s"' % d for d in self.available_group_names])))
 
 
@@ -607,7 +644,8 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         ==========
         additional_data_keys_requested : list, []
             Which keys are requested? If [], all are assumed. Read as "data_keys_requested", they
-            "additional" because they are fetched from additional layers data table
+            "additional" because they are fetched from 'layer_additional_data', 'item_additional_data',
+            'amino_acid_additional_data', or 'nucleotide_additional_data' tables.
 
         Returns
         =======
@@ -698,7 +736,10 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
     def add(self, data_dict, data_keys_list, skip_check_names=False):
         """Function to add data into the item additional data table.
 
-           * `data_dict`: a dictionary for items or layers additional should follow this format:
+        Parameters
+        ==========
+        data_dict : dict
+            A dictionary for items or layers additional should follow this format:
 
                 d = {
                         'item_or_layer_name_01': {'data_key_01': value,
@@ -711,11 +752,10 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                         (...)
                     }
 
-           * `data_keys_list`: is a list of keys one or more of which should appear for each item
-                               in `data_dict`.
+        data_keys_list : list
+            A list of keys one or more of which should appear for each item in `data_dict`.
         """
-
-        if self.target_table not in ['items', 'layers']:
+        if self.target_table not in ['items', 'layers', 'nucleotides', 'amino_acids']:
             raise ConfigError("You are using an AdditionalDataBaseClass instance to add %s data into your %s database. But "
                               "you know what? You can't do that :/ Someone made a mistake somewhere. If you are a user, "
                               "check your flags to make sure you are targeting the right data table. If you are a programmer, "
@@ -769,36 +809,59 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                              "you will not blame anvi'o for your poorly prepared data, but choose between yourself or "
                              "Obama." % (self.target_table, self.db_type))
         else:
-            if self.target_table == 'layers':
-                TableForLayerAdditionalData.check_names(self, data_dict)
-            elif self.target_table == 'items':
-                TableForItemAdditionalData.check_names(self, data_dict)
-            else:
-                raise ConfigError("Congratulations, you managed to hit an uncharted are in anvi'o. It is cerrtainly very "
+            if self.target_table not in table_classes:
+                raise ConfigError("Congratulations, you managed to hit an uncharted are in anvi'o. It is certainly very "
                                   "curious how you got here unless you are trying to implement a new functionality. Are "
                                   "you? What *IS* it? IS IT FUN?")
 
-        db_entries = []
+            table_classes[self.target_table].check_names(self, data_dict)
+
         self.set_next_available_id(self.table_name)
-        for item_name in data_dict:
+
+        num_entries = len(data_dict)
+
+        self.progress.new("Adding data to DB", progress_total_items=num_entries)
+
+        for i, item_name in enumerate(data_dict):
+            if (i % 100000) == 0:
+                self.progress.increment(increment_to=i)
+                self.progress.update('%d / %d Rows ⚙  | Writing to DB 💾 ...' % (i, num_entries))
+
+                self.store_buffer()
+                self.storage_buffer = []
+
+                self.progress.update('%d / %d Rows ⚙  ...' % (i, num_entries))
+
             for key in data_keys_list:
-                db_entries.append(tuple([self.next_id(self.table_name),
-                                         item_name,
-                                         key,
-                                         data_dict[item_name][key],
-                                         key_types[key],
-                                         self.target_data_group]))
+                self.storage_buffer.append(tuple([self.next_id(self.table_name),
+                                           item_name,
+                                           key,
+                                           data_dict[item_name][key],
+                                           key_types[key],
+                                           self.target_data_group]))
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % self.table_name, db_entries)
-        database.disconnect()
+        self.progress.increment(increment_to=num_entries)
+        self.progress.update('%d / %d Rows ⚙  | Writing to DB 💾 ...' % (num_entries, num_entries))
 
+        self.store_buffer()
+        self.storage_buffer = []
+
+        self.progress.end()
 
         self.run.warning('', 'NEW DATA', lc='green')
         self.run.info('Database', self.db_type)
         self.run.info('Data group', self.target_data_group)
         self.run.info('Data table', self.target_table)
         self.run.info('New data keys', '%s.' % (', '.join(data_keys_list)), nl_after=1)
+
+
+    def store_buffer(self):
+        if not len(self.storage_buffer):
+            return
+
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % self.table_name, self.storage_buffer)
+        database.disconnect()
 
 
     def get_all(self):
@@ -820,11 +883,14 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
 
 class TableForItemAdditionalData(AdditionalDataBaseClass):
+    """Maintains the item additional data table in anvi'o pan and profile databases.
+
+    Notes
+    =====
+    - Related issue: https://github.com/merenlab/anvio/issues/662.
     """
-       This is the class where we maintain the item additional data table in anvi'o
-       pan and profile databases. Related issue: https://github.com/merenlab/anvio/issues/662.
-    """
-    def __init__(self, args, r=run, p=progress):
+
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
         self.run = r
         self.progress = p
 
@@ -862,17 +928,16 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
 
 
 class TableForLayerAdditionalData(AdditionalDataBaseClass):
+    """Maintains the layer additional data table in anvi'o pan and profile databases.
+
+    Notes
+    =====
+    - Once upon a time there was something called an anvi'o samples database. This
+      is one of two tables that made it irrelevant. Related issue on the topic:
+      https://github.com/merenlab/anvio/issues/674.
     """
-       This is the class where we maintain the layer additional data table in anvi'o
-       pan and profile databases.
 
-       Once upon a time there was something called an anvi'o samples database. This
-       is one of two tables that made it irrelevant.
-
-       Related issue: https://github.com/merenlab/anvio/issues/674.
-    """
-
-    def __init__(self, args, r=run, p=progress):
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
         self.run = r
         self.progress = p
 
@@ -918,12 +983,9 @@ class TableForLayerAdditionalData(AdditionalDataBaseClass):
 
 
 class TableForLayerOrders(OrderDataBaseClass):
-    """
-       This is the class where we maintain the layer order data table in anvi'o pan and profile
-       databases.
-    """
+    """Maintains the layer order data table in anvi'o pan and profile databases."""
 
-    def __init__(self, args, r=run, p=progress):
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
         self.run = r
         self.progress = p
 
@@ -961,13 +1023,161 @@ class TableForLayerOrders(OrderDataBaseClass):
                                                                                ', '.join(layers_in_db)))
 
 
-class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalData, TableForLayerOrders):
-    """Gives seamless access to additional data or order tables in pan or profile databases.
+class TableForNucleotideAdditionalData(AdditionalDataBaseClass):
+    """Maintains 'nucleotide_additional_data' table in anvi'o contigs databases"""
 
-       Create an instance with args.target_data_table = [items|layers|layer_orders], and you will be golden.
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
+        self.run = r
+        self.progress = p
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.table_name = A('table_name') or t.nucleotide_additional_data_table_name
+
+        self.target_table = 'nucleotides'
+
+        AdditionalDataBaseClass.__init__(self, args)
+
+
+    def check_names(self, data_dict):
+        """Compares data key values found in the data dict to the ones in the db"""
+
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+        # A dict of {<contig_name>: <contig_length>, ...}
+        contig_lengths = dict(database.get_some_columns_from_table(t.contigs_info_table_name, 'contig,length'))
+
+        is_format_good = lambda key: len(key.split('::')) == 2
+
+        not_in_db = set()
+
+        # These tables could be millions of entries. We do not bother compiling a prettified list of
+        # their badly formatted table. If it's wrong we complain immediately.
+        for i, data_key in enumerate(data_dict):
+            if not is_format_good(data_key):
+                raise ConfigError("The data key '%s' (entry #%d) is not properly formatted. It should "
+                                  "have the format <contig_name>::<position_in_contig>, e.g. "
+                                  "contig_000001::125 would be an entry for contig_000001 at the "
+                                  "125th position of the sequence (The first letter in the sequence "
+                                  "has the position 0, not 1)." % (data_key, i+1))
+
+            contig, pos = data_key.split('::')
+            pos = int(pos)
+
+            if contig not in contig_lengths:
+                not_in_db.add(data_key)
+
+            elif pos < 0 or pos >= contig_lengths[contig]:
+                raise ConfigError("The data key '%s' (entry #%d) is not properly formatted. The contig "
+                                  "'%s' exists in the database, but the position %d falls outside of "
+                                  "the contig, which has a length of %d." % \
+                                  (data_key, i+1, contig, pos, contig_lengths[contig]))
+
+        if len(not_in_db):
+            example = next(iter(not_in_db))
+            msg = ("Listen up! %d of %d entries in your additional data specified contigs that are *only* "
+                   "in your data--that means these contigs don't exist in the %s database you are "
+                   "working with. For example, the data key '%s' corresponds to the contig '%s', which "
+                   "is non-existent in this database." % (len(not_in_db),
+                                                          len(data_dict),
+                                                          self.db_type,
+                                                          example,
+                                                          example.split('::')[0]))
+
+            if self.just_do_it:
+                self.run.warning(msg + ".. But since you asked anvi'o to keep its mouth shut, it removed the ones that "
+                                 "were not in your database from your input data, hoping that the rest of your "
+                                 "probably very dubious operation will go just fine :/")
+
+                for data_key in not_in_db:
+                    data_dict.pop(data_key)
+            else:
+                raise ConfigError(msg + " If you want to proceed anyways, rerun with the --just-do-it flag.")
+
+        database.disconnect()
+
+
+class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
+    """Maintains 'amino_acid_additional_data' table in anvi'o contigs databases"""
+
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
+        self.run = r
+        self.progress = p
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.table_name = A('table_name') or t.amino_acid_additional_data_table_name
+
+        self.target_table = 'amino_acids'
+
+        AdditionalDataBaseClass.__init__(self, args)
+
+
+    def check_names(self, data_dict):
+        """Compares data key values found in the data dict to the ones in the db
+
+        FIXME This is an unforgiving function, i.e. --just-do-it does nothing
+        """
+
+        def get_gene_lengths(source):
+            """Return dict of gene_caller_id: length pairs for a given source"""
+            return {
+                k: floor((v['stop'] - v['start']) / 3)
+                for k, v in database.get_some_rows_from_table_as_dict(
+                    t.genes_in_contigs_table_name,
+                    where_clause="source = '%s'" % source
+                ).items()
+            }
+
+        gene_lengths_by_source = {}
+
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+        is_format_good = lambda key: len(key.split('::')) == 3
+
+        # These tables could be millions of entries. We do not bother compiling a prettified list of
+        # their badly formatted table. If it's wrong we complain immediately.
+        for i, data_key in enumerate(data_dict):
+            if not is_format_good(data_key):
+                raise ConfigError("The data key '%s' (entry #%d) is not properly formatted. It should "
+                                  "have the format <gene_caller>::<gene_callers_id>::<codon_order_in_gene>, "
+                                  "e.g. prodigal::1248::122 would be an entry for the 122nd amino acid "
+                                  "(0-indexed) in gene 1248 of gene set identified with prodigal." % \
+                                  (data_key, i+1))
+
+            gene_caller, gene_callers_id, codon_order_in_gene = data_key.split('::')
+            gene_callers_id = int(gene_callers_id)
+            codon_order_in_gene = int(codon_order_in_gene)
+
+            if gene_caller not in gene_lengths_by_source:
+                try:
+                    gene_lengths_by_source[gene_caller] = get_gene_lengths(gene_caller)
+                except ConfigError:
+                    raise ConfigError("At least one of your data entries in your additional data specifies a gene "
+                                      "caller that is absent in your contigs database... For example, "
+                                      "the data key '%s' (entry #%d) corresponds to the gene caller '%s', "
+                                      "which is non-existent in this database..." % \
+                                      (data_key, i+1, gene_caller))
+
+            if gene_callers_id not in gene_lengths_by_source[gene_caller]:
+                raise ConfigError("There is a problem with data key '%s' (entry #%d). It specifies gene callers "
+                                  "ID %d, which does not exist for this gene source." % \
+                                  (data_key, i+1, gene_callers_id))
+
+            if codon_order_in_gene < 0 or codon_order_in_gene >= gene_lengths_by_source[gene_caller][gene_callers_id]:
+                raise ConfigError("There is a problem with data key '%s' (entry #%d). It specifies codon_order_in_gene "
+                                  "%d, which falls outside of gene %d (its length is %d)." % \
+                                  (data_key, i+1, codon_order_in_gene, gene_callers_id, gene_lengths_by_source[gene_caller][gene_callers_id]))
+
+        database.disconnect()
+
+
+class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalData, TableForLayerOrders):
+    """Gives seamless access to additional data or order tables in pan/profile/contigs databases.
+
+    Create an instance with args.target_data_table =
+    [items|layers|layer_orders|nucleotides|amino_acids], and you will be golden.
     """
 
-    def __init__(self, args, r=run, p=progress):
+    def __init__(self, args, r=terminal.Run(), p=terminal.Progress()):
         self.run = r
         self.progress = p
 
@@ -978,15 +1188,18 @@ class MiscDataTableFactory(TableForItemAdditionalData, TableForLayerAdditionalDa
             raise ConfigError("When creating an instance from the MiscDataTableFactory class, the `args` object "
                               "must contain the `target_data_table` variable.")
 
-        if target_data_table == 'items':
-            TableForItemAdditionalData.__init__(self, args, r=self.run, p=self.progress)
-        elif target_data_table == 'layers':
-            TableForLayerAdditionalData.__init__(self, args, r=self.run, p=self.progress)
-        elif target_data_table == 'layer_orders':
-            TableForLayerOrders.__init__(self, args, r=self.run, p=self.progress)
-        else:
+        try:
+            table_classes[target_data_table].__init__(self, args, r=self.run, p=self.progress)
+        except KeyError:
             raise ConfigError("MiscDataTableFactory does not know about target data tables for '%s' :( "
-                              "You can go to the online documentation, or you can try either 'items', 'layers', "
-                              "or 'layer_orders'" % target_data_table)
+                              "You can go to the online documentation, or you can try any of %s" % \
+                              (target_data_table, ', '.join(["'%s'" % table for table in table_classes])))
 
 
+table_classes = {
+    'items': TableForItemAdditionalData,
+    'layers': TableForLayerAdditionalData,
+    'layer_orders': TableForLayerOrders,
+    'nucleotides': TableForNucleotideAdditionalData,
+    'amino_acids': TableForAminoAcidAdditionalData,
+}

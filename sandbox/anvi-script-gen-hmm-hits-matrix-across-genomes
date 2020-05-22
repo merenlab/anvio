@@ -64,7 +64,10 @@ def main(args):
             d[genome_name][gene_name] = 0
 
     for hit in s.hmm_hits.values():
-        d[s.genome_hash_to_genome_name[hit['genome_hash']]][hit['gene_name']] += 1
+        genome_hash = hit['genome_hash']
+        genome_name = s.genome_hash_to_genome_name[genome_hash]
+        gene_name = hit['gene_name']
+        d[genome_name][gene_name] += 1
 
     utils.store_dict_as_TAB_delimited_file(d, output_file_path, headers=['genome_or_bin'] + sorted(gene_names_in_source))
 
