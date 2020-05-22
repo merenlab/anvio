@@ -534,7 +534,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
                 self.remove(keys_already_in_db)
             else:
-                run.info('Data keys already in the db', ', '.join(keys_already_in_db), nl_before=2, mc='red')
+                self.run.info('Data keys already in the db', ', '.join(keys_already_in_db), nl_before=2, mc='red')
 
                 raise ConfigError("Some of the keys in your new order data appear to be in the database already. If you "
                                   "want to replace those in the database with the ones in your new data use the "
