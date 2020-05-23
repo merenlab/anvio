@@ -427,6 +427,22 @@ class Auxiliary:
         Parameters
         ==========
         bam : bamops.BAMFileObject
+
+        Notes
+        =====
+        - This isn't the best place to put this, but it needs to be stated somewhere. The convention
+          for the start position of an insertion is defined like so:
+
+              pos_in_contig ...0123456 789
+              reference     ...CTACTAC TAC...
+              read              TACTAC TAC
+              insertion               └──ACTG
+
+          In this case, the start position of the insertion in the contig is 6. The insertion
+          _follows_ the position it is defined by. This is opposite to IGV, in which the insertion
+          _precedes_ the position it is defined by.
+        - For deletions, there is no such ambiguity in the start position, since the deletion starts
+          on a reference position, not inbetween two reference positions
         """
 
         if not self.skip_INDEL_profiling:
