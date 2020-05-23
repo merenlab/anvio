@@ -1,5 +1,5 @@
 ---
-layout: page 
+layout: page
 title: {{ program.name }} [program]
 categories: [anvio]
 comments: false
@@ -8,7 +8,9 @@ image:
   display: true
 ---
 
-{{ program.description }}
+{{ program.description }}.
+
+See **[program help menu](../../../vignette#{{ program.name }})** or go back to the **[main page](../../)** of anvi'o programs and artifacts.
 
 {% verbatim %}
 {% include _toc.html %}
@@ -17,8 +19,6 @@ image:
 {% capture network_height %}{{ 300 }}{% endcapture %}
 {% include _project-anvio-graph.html %}
 {% endverbatim %}
-
-[Back to help main page](../../)
 
 ## Provides
 
