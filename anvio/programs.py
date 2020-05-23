@@ -343,7 +343,7 @@ class Program:
 class Artifact:
     """A class to describe an anvi'o artifact"""
 
-    def __init__(self, artifact_id, internal=True, optional=True, single=True):
+    def __init__(self, artifact_id, provided_by_anvio=True, optional=True, single=True):
         if artifact_id not in ANVIO_ARTIFACTS:
             raise ConfigError("Ehem. Anvi'o does not know about artifact '%s'. There are two was this could happen: "
                               "one, you've made a typo (easy to fix), two, you've just updated __provides__ or __requires__ "
@@ -355,7 +355,8 @@ class Artifact:
         self.id = artifact_id
         self.name = artifact['name']
         self.type = artifact['type']
-        self.internal = artifact['internal']
+        self.provided_by_anvio = artifact['provided_by_anvio']
+        self.provided_by_user = artifact['provided_by_user']
 
         # attributes set by the context master
         self.single = single
@@ -706,11 +707,11 @@ class ProgramsNetwork(AnvioPrograms):
         for artifact in all_artifacts:
             types_seen.add(artifact.type)
             network_dict["nodes"].append({"size": artifacts_seen[artifact.id],
-                                          "score": 0.5 if artifact.internal else 1,
-                                          "color": '#00AA00' if artifact.internal else "#AA0000",
+                                          "score": 0.5 if artifact.provided_by_anvio else 1,
+                                          "color": '#00AA00' if artifact.provided_by_anvio else "#AA0000",
                                           "id": artifact.id,
                                           "name": artifact.name,
-                                          "internal": True if artifact.internal else False,
+                                          "provided_by_anvio": True if artifact.provided_by_anvio else False,
                                           "type": artifact.type})
             node_indices[artifact.id] = index
             index += 1
