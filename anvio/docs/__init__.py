@@ -422,6 +422,12 @@ ANVIO_ARTIFACTS ={
         "name": "VARIABILITY PROFILE",
         "type": "CONCEPT",
         "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "variability-profile-txt": {
+        "name": "VARIABILITY PROFILE",
+        "type": "TXT",
+        "provided_by_anvio": True,
         "provided_by_user": True
     },
     "codon-frequencies-txt": {

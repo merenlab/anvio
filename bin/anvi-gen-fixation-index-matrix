@@ -19,7 +19,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
-__requires__ = ['contigs-db', 'profile-db', 'structure-db', 'bin']
+__requires__ = ['contigs-db', 'profile-db', 'structure-db', 'bin', 'variability-profile-txt']
 __provides__ = ['fixation-index-matrix']
 __resources__ = [
     (
