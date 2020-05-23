@@ -32,17 +32,17 @@ ANVIO_ARTIFACTS ={
     "concatenated-gene-alignment-fasta": {
         "name": "CONCATENATED GENE ALIGNMENT",
         "type": "FASTA",
-        "internal": False
+        "internal": True
     },
     "short-reads-fasta": {
         "name": "SHORT READS",
         "type": "FASTA",
-        "internal": False
+        "internal": True
     },
     "genes-fasta": {
         "name": "GENES",
         "type": "FASTA",
-        "internal": False
+        "internal": True
     },
     "bam-file": {
         "name": "BAM FILE",
@@ -65,13 +65,13 @@ ANVIO_ARTIFACTS ={
         "internal": False
     },
     "structure-db": {
-        "name": "STRUCTURE",
+        "name": "PROTEIN STRUCTURES",
         "type": "DB",
         "internal": True
     },
     "pdb-db": {
         "name": "PDB DB",
-        "type": "CONCEPT",
+        "type": "DB",
         "internal": True
     },
     "kegg-db": {
@@ -102,12 +102,12 @@ ANVIO_ARTIFACTS ={
     "contigs-stats": {
         "name": "CONTIGS STATS",
         "type": "STATS",
-        "internal": False
+        "internal": True
     },
     "svg": {
         "name": "SVG",
         "type": "SVG",
-        "internal": False
+        "internal": True
     },
     "bin": {
         "name": "BIN",
@@ -162,7 +162,7 @@ ANVIO_ARTIFACTS ={
     "misc-data-items": {
         "name": "ITEMS DATA",
         "type": "CONCEPT",
-        "internal": False
+        "internal": True
     },
     "misc-data-layers-txt": {
         "name": "LAYERS DATA",
@@ -172,7 +172,7 @@ ANVIO_ARTIFACTS ={
     "misc-data-layers": {
         "name": "LAYERS DATA",
         "type": "CONCEPT",
-        "internal": False
+        "internal": True
     },
     "misc-data-nucleotides-txt": {
         "name": "NUCLEOTIDES DATA",
@@ -182,7 +182,7 @@ ANVIO_ARTIFACTS ={
     "misc-data-nucleotides": {
         "name": "NUCLEOTIDES DATA",
         "type": "CONCEPT",
-        "internal": False
+        "internal": True
     },
     "misc-data-amino-acids-txt": {
         "name": "AMINO_ACIDS DATA",
@@ -192,7 +192,7 @@ ANVIO_ARTIFACTS ={
     "misc-data-amino-acids": {
         "name": "AMINO_ACIDS DATA",
         "type": "CONCEPT",
-        "internal": False
+        "internal": True
     },
     "misc-data-layers-category": {
         "name": "LAYERS DATA CATEGORY",
@@ -202,32 +202,32 @@ ANVIO_ARTIFACTS ={
     "genome-similarity": {
         "name": "GENOME SIMILARITY",
         "type": "CONCEPT",
-        "internal": False
-    },
-    "misc-data-layer-orders": {
-        "name": "LAYER ORDERS DATA",
-        "type": "CONCEPT",
-        "internal": False
-    },
-    "misc-data-item-orders": {
-        "name": "ITEM ORDERS DATA",
-        "type": "CONCEPT",
-        "internal": False
+        "internal": True
     },
     "misc-data-layer-orders-txt": {
         "name": "LAYER ORDERS DATA",
         "type": "TXT",
         "internal": False
     },
+    "misc-data-layer-orders": {
+        "name": "LAYER ORDERS DATA",
+        "type": "CONCEPT",
+        "internal": True
+    },
     "misc-data-item-orders-txt": {
         "name": "LAYER ORDERS DATA",
         "type": "TXT",
         "internal": False
     },
+    "misc-data-item-orders": {
+        "name": "ITEM ORDERS DATA",
+        "type": "CONCEPT",
+        "internal": True
+    },
     "dendrogram": {
         "name": "DENDROGRAM",
         "type": "NEWICK",
-        "internal": False
+        "internal": True
     },
     "metapangenome": {
         "name": "METAPANGENOME",
@@ -237,7 +237,7 @@ ANVIO_ARTIFACTS ={
     "oligotypes": {
         "name": "OLIGOTYPES",
         "type": "CONCEPT",
-        "internal": False
+        "internal": True
     },
     "linkmers-txt": {
         "name": "LINKMERS",
@@ -247,7 +247,7 @@ ANVIO_ARTIFACTS ={
     "phylogeny": {
         "name": "PHYLOGENY",
         "type": "NEWICK",
-        "internal": False
+        "internal": True
     },
     "gene-calls-txt": {
         "name": "GENE CALLS",
@@ -267,7 +267,7 @@ ANVIO_ARTIFACTS ={
     "functional-enrichment-txt": {
         "name": "ENRICHED FUNCTIONS",
         "type": "TXT",
-        "internal": False
+        "internal": True
     },
     "kegg-functions": {
         "name": "KOFAM FUNCTIONS",
@@ -337,12 +337,12 @@ ANVIO_ARTIFACTS ={
     "coverages-txt": {
         "name": "COVERAGES",
         "type": "TXT",
-        "internal": False
+        "internal": True
     },
     "genome-distance-txt": {
         "name": "DISTANCE ESTIMATES",
         "type": "TXT",
-        "internal": False
+        "internal": True
     },
     "genome-distance": {
         "name": "DISTANCE ESTIMATES",
@@ -352,22 +352,22 @@ ANVIO_ARTIFACTS ={
     "variability-profile": {
         "name": "VARIABILITY PROFILE",
         "type": "CONCEPT",
-        "internal": False
+        "internal": True
     },
     "codon-frequencies-txt": {
         "name": "CODON FREQUENCIES",
         "type": "TXT",
-        "internal": False
+        "internal": True
     },
     "aa-frequencies-txt": {
         "name": "AA FREQUENCIES",
         "type": "TXT",
-        "internal": False
+        "internal": True 
     },
     "fixation-index-matrix": {
         "name": "FIXATION INDEX MATRIX",
         "type": "TXT",
-        "internal": False
+        "internal": True
     },
     "summary": {
         "name": "STATIC SUMMARY",
@@ -377,7 +377,7 @@ ANVIO_ARTIFACTS ={
     "split-bins": {
         "name": "SPLIT BINS",
         "type": "CONCEPT",
-        "internal": False
+        "internal": True
     },
     "state": {
         "name": "INTERACTIVE STATE",
@@ -392,7 +392,7 @@ ANVIO_ARTIFACTS ={
     "state-json": {
         "name": "INTERACTIVE STATE",
         "type": "JSON",
-        "internal": False
+        "internal": True
     },
     "kegg-metabolism": {
         "name": "KEGG METABOLISM ESTIMATES",
