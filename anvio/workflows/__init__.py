@@ -482,29 +482,36 @@ class WorkflowSuperClass:
             internal_genomes_file = self.get_param_value_from_config('internal_genomes')
             external_genomes_file = self.get_param_value_from_config('external_genomes')
 
-            fasta_txt_file = self.get_param_value_from_config('fasta_txt')
-            if fasta_txt_file and not external_genomes_file:
-                raise ConfigError('You provided a fasta_txt, but didn\'t specify a path for an external-genomes file. '
-                                  'If you wish to use external genomes, you must specify a name for the external-genomes '
-                                  'file, using the "external_genomes" parameter in your config file. Just to clarify: '
-                                  'the external genomes file doesn\'t have to exist, since we will create it for you, \
-                                   by using the information you supplied in the "fasta_txt" file, but you must specify \
-                                   a name for the external-genomes file. For example, you could use "external_genomes": "external-genomes.txt", \
-                                   but feel free to be creative.')
-
             if not internal_genomes_file and not external_genomes_file:
                 raise ConfigError('You must provide either an external genomes file or internal genomes file')
+
+            fasta_txt_file = self.get_param_value_from_config('fasta_txt')
+            if fasta_txt_file:
+                if not external_genomes_file:
+                    raise ConfigError("You provided a fasta_txt, but didn't specify a path for an external-genomes file. "
+                                      "If you wish to use external genomes, you must specify a name for the external-genomes "
+                                      "file, using the `external_genomes` parameter in your config file. Just to clarify: "
+                                      "the external genomes file DOESN'T HAVE TO EXIST. Anvi'o can create it for you by "
+                                      "using the information you supplied in the `fasta_txt` file, but you still must specify "
+                                      "a name for the external-genomes file. For example, you could use \"external_genomes\": \"external-genomes.txt\" "
+                                      "(but feel free to be creative with the naming of your external-genomes file).")
+
+                filesnpaths.is_file_tab_delimited(fasta_txt_file)
+
             # here we do a little trick to make sure the rule can expect either one or both
             d = {"internal_genomes_file": external_genomes_file,
-                                                              "external_genomes_file": internal_genomes_file}
+                 "external_genomes_file": internal_genomes_file}
 
             if internal_genomes_file:
-                filesnpaths.is_file_exists(internal_genomes_file)
+                filesnpaths.is_file_tab_delimited(internal_genomes_file)
                 d['internal_genomes_file'] = internal_genomes_file
 
             if external_genomes_file:
                 if not filesnpaths.is_file_exists(external_genomes_file, dont_raise=True):
                     run.warning('There is no file %s. No worries, one will be created for you.' % external_genomes_file)
+                else:
+                    filesnpaths.is_file_tab_delimited
+
                 d['external_genomes_file'] = external_genomes_file
 
             return d
