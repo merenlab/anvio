@@ -154,7 +154,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         # loading the samples.txt file
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
-        filesnpaths.is_file_exists(self.samples_txt_file)
+        filesnpaths.is_file_tab_delimited(self.samples_txt_file)
         try:
             # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
             self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
