@@ -546,7 +546,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError("Sorry, there are no states to show in manual mode :/")
 
         if self.tree:
-            filesnpaths.is_proper_newick(self.tree)
+            filesnpaths.is_file_exists(self.tree)
             newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
             self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(newick_tree_text))
         elif tree_order_found_in_db:
