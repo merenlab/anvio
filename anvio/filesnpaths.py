@@ -35,7 +35,7 @@ allowed_chars = constants.allowed_chars.replace('.', '').replace('-', '')
 is_bad_column_name = lambda col: len([char for char in col if char not in allowed_chars])
 
 
-def is_proper_newick(newick_data, dont_raise=False):
+def is_proper_newick(newick_data, dont_raise=False, names_with_only_digits_ok=False):
     try:
         tree = Tree(newick_data, format=1)
 
@@ -56,6 +56,12 @@ def is_proper_newick(newick_data, dont_raise=False):
         else:
             raise FilesNPathsError("Your tree doesn't seem to be properly formatted. Here is what ETE had "
                                    "to say about this: '%s'. Pity :/" % e)
+
+    names_with_only_digits = [n.name for n in tree.get_leaves() if n.name.isdigit()]
+    if len(names_with_only_digits) and not names_with_only_digits_ok:
+        raise FilesNPathsError("Your tree contains names that are composed of only digits (like this one: '%s'). Sadly, anvi'o "
+                               "is not happy with such names in newick trees or clustering dendrograms :( Anvi'o developers "
+                               "apologize for the inconvenience." % (names_with_only_digits[0]))
 
     return True
 
