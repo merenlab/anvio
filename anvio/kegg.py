@@ -27,6 +27,7 @@ from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileDatabase
 from anvio.constants import KEGG_SETUP_INTERVAL
+from anvio.genomedescriptions import MetagenomeDescriptions
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
