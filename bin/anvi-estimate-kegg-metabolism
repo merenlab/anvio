@@ -22,15 +22,20 @@ __description__ = "Reconstructs metabolic pathways and estimates pathway complet
 
 @time_program
 def main(args):
-    m = kegg.KeggMetabolismEstimator(args)
 
     if args.list_available_modes:
+        m = kegg.KeggMetabolismEstimator(args)
         m.list_output_modes()
         sys.exit()
     elif args.list_available_output_headers:
+        m = kegg.KeggMetabolismEstimator(args)
         m.list_output_headers()
         sys.exit()
     else:
+        if args.metagenomes:
+            m = kegg.KeggMetabolismEstimatorMulti(args)
+        else:
+            m = kegg.KeggMetabolismEstimator(args)
         m.estimate_metabolism()
 
 if __name__ == '__main__':
