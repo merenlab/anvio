@@ -2430,12 +2430,8 @@ def set_version():
            t.auxiliary_data_version, \
            t.genomes_storage_vesion, \
            t.structure_db_version, \
-<<<<<<< HEAD
            t.tRNAseq_db_version, \
-        #    t.trnaseeds_db_version
-=======
            t.kegg_modules_db_version
->>>>>>> 3d29a0b0ee23c58abaf8ed6e2d7184435b6745e8
 
 
 def get_version_tuples():
@@ -2474,13 +2470,9 @@ __genes__version__, \
 __auxiliary_data_version__, \
 __genomes_storage_version__ , \
 __structure__version__, \
-<<<<<<< HEAD
-__tRNAseq__version__ = set_version()
-# __trnaseeds__version__ = set_version()
-=======
+__tRNAseq__version__, \
 __kegg_modules_version__ = set_version()
 
->>>>>>> 3d29a0b0ee23c58abaf8ed6e2d7184435b6745e8
 
 if '-v' in sys.argv or '--version' in sys.argv:
     print_version()
