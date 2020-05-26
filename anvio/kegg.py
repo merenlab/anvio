@@ -973,12 +973,12 @@ class KeggEstimatorArgs():
         self.custom_output_headers = A('custom_output_headers') or None
 
         if format_args_for_single_estimator:
-            # to fool a single estimator into passing sanity checks, nullify args here
+            # to fool a single estimator into passing sanity checks, nullify multi estimator args here
             pass
 
 
 class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
-    """ Class for reconstructing/estimating metabolism based on hits to KEGG databases.
+    """ Class for reconstructing/estimating metabolism for a SINGLE contigs DB based on hits to KEGG databases.
 
     ==========
     args: Namespace object
@@ -2250,6 +2250,30 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         data_for_visualization[bin][mnum][key] = value
 
         return data_for_visualization
+
+
+class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
+    """Class for reconstructing/estimating metabolism for multiple contigs DBs at a time.
+
+    Iterates through the provided DBs and estimates metabolism for each one using the KeggMetabolismEstimator class.
+
+    ==========
+    args: Namespace object
+        All the arguments supplied by user to anvi-estimate-kegg-metabolism
+    """
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        KeggEstimatorArgs.__init__(self, self.args)
+
+
+    def estimate_metabolism(self):
+        """A driver function to run metabolism estimation on each provided contigs DB."""
+
+        pass
 
 
 class KeggModulesDatabase(KeggContext):
