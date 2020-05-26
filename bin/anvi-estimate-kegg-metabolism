@@ -55,8 +55,13 @@ if __name__ == '__main__':
     groupP.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     groupP.add_argument(*anvio.A('bin-ids-file'), **anvio.K('bin-ids-file'))
 
-    groupC = parser.add_argument_group('OUTPUT', "Parameters for controlling estimation output. The output will be TAB-delimited files which by \
-                                                 default are prefixed with 'kegg-metabolism', but you can of course change that name here.")
+    groupM = parser.add_argument_group('INPUT #3', "If you have multiple contigs databases to work with, you can put them all into a metagenomes file "
+                                                   "(both isolate genomes and metagenomes can go in this file for the purposes of this script). Then "
+                                                   "anvi'o will run estimation separately on each database and generate a single output file for all.")
+    groupM.add_argument(*anvio.A('metagenomes'), **anvio.K('metagenomes'))
+
+    groupC = parser.add_argument_group('OUTPUT', "Parameters for controlling estimation output. The output will be TAB-delimited files which by "
+                                                 "default are prefixed with 'kegg-metabolism', but you can of course change that name here.")
     groupC.add_argument(*anvio.A('module-completion-threshold'), **anvio.K('module-completion-threshold'))
     groupC.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
     groupC.add_argument(*anvio.A('kegg-output-modes'), **anvio.K('kegg-output-modes'))
