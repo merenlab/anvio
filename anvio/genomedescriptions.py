@@ -662,16 +662,25 @@ class MetagenomeDescriptions(object):
 
 
     def read_paths_from_input_file(self):
-        """Reads metagenome files, populates self.metagenomes"""
+        """Reads metagenome files, populates self.metagenomes
+
+        The flag for_metabolism should be True if this class is being used for metabolism estimation.
+        """
 
         columns = utils.get_columns_of_TAB_delim_file(self.input_file_for_metagenomes)
 
         if 'profile_db_path' in columns:
-            fields_for_metagenomes_input = ['name', 'contigs_db_path', 'profile_db_path']
+            if self.for_metabolism:
+                fields_for_metagenomes_input = ['name', 'contigs_db_path', 'profile_db_path', 'collection_name']
+            else:
+                fields_for_metagenomes_input = ['name', 'contigs_db_path', 'profile_db_path']
             self.profile_dbs_available = True
         else:
             fields_for_metagenomes_input = ['name', 'contigs_db_path']
             self.profile_dbs_available = False
+
+        if 'metagenome_mode' in columns:
+            fields_for_metagenomes_input.append('metagenome_mode')
 
         self.metagenomes_dict = utils.get_TAB_delimited_file_as_dictionary(self.input_file_for_metagenomes, expected_fields=fields_for_metagenomes_input) if self.input_file_for_metagenomes else {}
 
