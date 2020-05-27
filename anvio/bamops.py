@@ -333,6 +333,21 @@ class Read:
     def __repr__(self):
         """Fancy output for viewing a read's alignment in relation to the reference"""
 
+        read, ref = self.alignment_as_string_pair()
+
+        lines = [
+            '<%s.%s object at %s>' % (self.__class__.__module__, self.__class__.__name__, hex(id(self))),
+            ' ├── start, end : [%s, %s)' % (self.reference_start, self.reference_end),
+            ' ├── cigartuple : %s' % [tuple(row) for row in self.cigartuples],
+            ' ├── read       : %s' % ''.join(read),
+            ' └── reference  : %s' % ''.join(ref),
+        ]
+
+        return '\n'.join(lines)
+
+
+    def alignment_as_string_pair(self):
+        """Only for visualization purposes--very slow"""
         ref, read, pos_ref, pos_read = [], [], 0, 0
         for _, length, consumes_read, consumes_ref in iterate_cigartuples(self.cigartuples, constants.cigar_consumption):
             if consumes_read:
@@ -347,15 +362,7 @@ class Read:
             else:
                 ref.extend(['-'] * length)
 
-        lines = [
-            '<%s.%s object at %s>' % (self.__class__.__module__, self.__class__.__name__, hex(id(self))),
-            ' ├── start, end : [%s, %s)' % (self.reference_start, self.reference_end),
-            ' ├── cigartuple : %s' % [tuple(row) for row in self.cigartuples],
-            ' ├── read       : %s' % ''.join(read),
-            ' └── reference  : %s' % ''.join(ref),
-        ]
-
-        return '\n'.join(lines)
+        return ''.join(read), ''.join(ref)
 
 
     def trim(self, trim_by, side='left'):
