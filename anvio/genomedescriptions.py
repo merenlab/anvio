@@ -601,7 +601,13 @@ class GenomeDescriptions(object):
 
 
 class MetagenomeDescriptions(object):
-    def __init__(self, args=None, run=run, progress=progress):
+    def __init__(self, args=None, metabolism_checks=False, run=run, progress=progress):
+        """A multi-purpose descriptions class for handling multiple contigs DBs at once.
+
+        If using this class for KEGG metabolism estimation, metabolism_checks should be set to True to
+        ensure the proper sanity checks are done.
+        """
+
         self.args = args
         self.run = run
         self.progress = progress
@@ -609,9 +615,13 @@ class MetagenomeDescriptions(object):
         self.metagenomes = {}
         self.metagenomes_dict = None
         self.profile_dbs_available = False
+        self.for_metabolism = metabolism_checks
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.input_file_for_metagenomes = A('metagenomes')
+
+        if metabolism_checks:
+            self.sanity_checks_for_metabolism()
 
         if self.input_file_for_metagenomes:
             self.read_paths_from_input_file()
@@ -621,7 +631,34 @@ class MetagenomeDescriptions(object):
         names = utils.get_column_data_from_TAB_delim_file(self.input_file_for_metagenomes, [0])[0][1:]
 
         if len(names) != len(set(names)):
-            raise ConfigError("Each entry in your metagenomes file must e unique :/")
+            raise ConfigError("Each entry in your metagenomes file must be unique :/")
+
+
+    def sanity_checks_for_metabolism(self):
+        """This function makes sure the file format is A-OK for metabolism estimation purposes.
+
+        The legal header combos for metabolism are:
+        1) name + contigs db (isolate genomes only)
+        2) name + contigs db + metagenome mode (isolate genomes and/or unbinned metagenomes)
+        3) name + contigs db + profile db + collection (isolate genomes and/or binned metagenomes)
+        4) name + contigs db + profile db + collection + metagenome mode (isolate genomes, unbinned metagenomes, and/or binned metagenomes)
+        """
+
+        columns = utils.get_columns_of_TAB_delim_file(self.input_file_for_metagenomes, include_first_column=True)
+
+        if anvio.DEBUG:
+            self.run.info("Metagenomes file", self.input_file_for_metagenomes)
+            self.run.info("Columns found in metagenomes file", ", ".join(columns))
+
+        if 'name' not in columns or 'contigs_db_path' not in columns:
+            raise ConfigError("The minimum your metagenomes file must contain is a 'name' column and a 'contigs_db_path' column, "
+                              "but we can't find one or both of these. Please fix your file. :/")
+        if 'profile_db_path' in columns and 'collection_name' not in columns:
+            raise ConfigError("Your metagenomes file contains a 'profile_db_path' column but not a 'collection_name' column. "
+                              "Unfortunately, you need both of these to proceed with metabolism estimation for bins.")
+        if 'collection_name' in columns and 'profile_db_path' not in columns:
+            raise ConfigError("Your metagenomes file contains a 'collection_name' column but not a 'profile_db_path' column. "
+                              "Unfortunately, you need both of these to proceed with metabolism estimation for bins.")
 
 
     def read_paths_from_input_file(self):
