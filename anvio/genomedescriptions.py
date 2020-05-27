@@ -704,8 +704,17 @@ class MetagenomeDescriptions(object):
                     raise ConfigError("Bad news: anvi'o was loading metagenome desriptions, and it run into an empty path for "
                                       "the metagenome %s. How did this happen? HOW? :(" % metagenome_name)
 
-                if not path.startswith('/'):
+                if not path.startswith('/') and not path == 'None':
                     self.metagenomes[metagenome_name][db_path_var] = os.path.abspath(os.path.join(os.path.dirname(self.input_file_for_metagenomes), path))
+
+            # we allow users to avoid providing a profiles db/collection name by setting these to 'None' for certain metabolism estimation cases
+            # here we will convert those to actual None values
+            if self.for_metabolism:
+                for var in ['collection_name', 'profile_db_path']:
+                    if var not in self.metagenomes[metagenome_name]:
+                        continue
+                    elif self.metagenomes[metagenome_name][var] == 'None':
+                        self.metagenomes[metagenome_name][var] = None
 
             # while we are going through all genomes and reconstructing self.metagenomes for the first time,
             # let's add the 'name' attribute in it as well.'
