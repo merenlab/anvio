@@ -972,10 +972,11 @@ class KeggEstimatorArgs():
         self.estimate_from_json = A('estimate_from_json') or None
         self.output_modes = A('kegg_output_modes') or "kofam_hits,complete_modules"
         self.custom_output_headers = A('custom_output_headers') or None
+        self.metagenomes_file = A('metagenomes') or None
 
         if format_args_for_single_estimator:
             # to fool a single estimator into passing sanity checks, nullify multi estimator args here
-            pass
+            self.metagenomes = None
 
 
 class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
@@ -2270,11 +2271,26 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         KeggEstimatorArgs.__init__(self, self.args)
 
+        self.metagenomes = None
+
+
+    def init_metagenomes(self):
+        self.progress.new("Initializing contigs DBs")
+        self.progress.update("...")
+        g = MetagenomeDescriptions(self.args, metabolism_checks=True, run=self.run, progress=self.progress)
+        g.load_metagenome_descriptions()
+
+        self.metagenomes = copy.deepcopy(g.metagenomes)
+        self.metagenome_names = copy.deepcopy(g.metagenome_names)
+
 
     def estimate_metabolism(self):
         """A driver function to run metabolism estimation on each provided contigs DB."""
 
-        pass
+        if not self.metagenomes:
+            self.init_metagenomes()
+        self.run.info("Metagenomes file", self.metagenomes_file)
+        self.run.info("Num Contigs DBs in file", len(self.metagenome_names))
 
 
 class KeggModulesDatabase(KeggContext):
