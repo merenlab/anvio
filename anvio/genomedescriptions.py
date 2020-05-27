@@ -747,8 +747,8 @@ class MetagenomeDescriptions(object):
     def sanity_check(self):
         """Make sure self.metagenomes is good to go"""
 
-        if self.profile_dbs_available:
-            non_single_profiles = [m for m in self.metagenomes if utils.is_profile_db_merged(self.metagenomes[m]['profile_db_path'])
+        if not self.for_metabolism and self.profile_dbs_available:
+            non_single_profiles = [m for m in self.metagenomes if self.metagenomes[m]['profile_db_path'] and utils.is_profile_db_merged(self.metagenomes[m]['profile_db_path'])
                                                                   and not utils.is_blank_profile(self.metagenomes[m]['profile_db_path'])]
 
             if len(non_single_profiles):
