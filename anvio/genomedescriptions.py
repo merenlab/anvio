@@ -707,9 +707,10 @@ class MetagenomeDescriptions(object):
                 if not path.startswith('/') and not path == 'None':
                     self.metagenomes[metagenome_name][db_path_var] = os.path.abspath(os.path.join(os.path.dirname(self.input_file_for_metagenomes), path))
 
-            # we allow users to avoid providing a profiles db/collection name by setting these to 'None' for certain metabolism estimation cases
-            # here we will convert those to actual None values
+
             if self.for_metabolism:
+                # we allow users to avoid providing a profiles db/collection name by setting these to 'None' for certain metabolism estimation cases
+                # here we will convert those to actual None values
                 for var in ['collection_name', 'profile_db_path']:
                     if var not in self.metagenomes[metagenome_name]:
                         continue
@@ -724,6 +725,16 @@ class MetagenomeDescriptions(object):
                     if self.metagenomes[metagenome_name]['collection_name'] and not self.metagenomes[metagenome_name]['profile_db_path']:
                         raise ConfigError("You've provided a collection name (%s) for metagenome %s, but the profiles DB appears to be 'None'. This "
                                           "will not work. :/" % (self.metagenomes[metagenome_name]['collection_name'], metagenome_name))
+
+                # metagenome mode must be a boolean
+                if 'metagenome_mode' in self.metagenomes[metagenome_name]:
+                    if self.metagenomes[metagenome_name]['metagenome_mode'] == 'True':
+                        self.metagenomes[metagenome_name]['metagenome_mode'] = True
+                    elif self.metagenomes[metagenome_name]['metagenome_mode'] == 'False':
+                        self.metagenomes[metagenome_name]['metagenome_mode'] = False
+                    else:
+                        raise ConfigError("The field 'metagenome_mode' for contigs DB %s is %s, but it should be either True or False."
+                                          % (metagenome_name, self.metagenomes[metagenome_name]['metagenome_mode']))
 
             # while we are going through all genomes and reconstructing self.metagenomes for the first time,
             # let's add the 'name' attribute in it as well.'
