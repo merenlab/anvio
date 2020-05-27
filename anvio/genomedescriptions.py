@@ -716,6 +716,15 @@ class MetagenomeDescriptions(object):
                     elif self.metagenomes[metagenome_name][var] == 'None':
                         self.metagenomes[metagenome_name][var] = None
 
+                # both must be None or both must be not None for a given contigs db
+                if 'collection_name' in self.metagenomes[metagenome_name] and 'profile_db_path' in self.metagenomes[metagenome_name]:
+                    if not self.metagenomes[metagenome_name]['collection_name'] and self.metagenomes[metagenome_name]['profile_db_path']:
+                        raise ConfigError("You've provided a profiles DB (%s) for metagenome %s, but the collection name appears to be 'None'. This "
+                                          "will not work. :/" % (self.metagenomes[metagenome_name]['profile_db_path'], metagenome_name))
+                    if self.metagenomes[metagenome_name]['collection_name'] and not self.metagenomes[metagenome_name]['profile_db_path']:
+                        raise ConfigError("You've provided a collection name (%s) for metagenome %s, but the profiles DB appears to be 'None'. This "
+                                          "will not work. :/" % (self.metagenomes[metagenome_name]['collection_name'], metagenome_name))
+
             # while we are going through all genomes and reconstructing self.metagenomes for the first time,
             # let's add the 'name' attribute in it as well.'
             self.metagenomes[metagenome_name]['name'] = metagenome_name
