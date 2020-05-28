@@ -647,7 +647,6 @@ class MetagenomeDescriptions(object):
         columns = utils.get_columns_of_TAB_delim_file(self.input_file_for_metagenomes, include_first_column=True)
 
         if anvio.DEBUG:
-            self.run.info("Metagenomes file", self.input_file_for_metagenomes)
             self.run.info("Columns found in metagenomes file", ", ".join(columns))
 
         if 'name' not in columns or 'contigs_db_path' not in columns:
