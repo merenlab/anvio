@@ -2315,12 +2315,9 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         for mode, mode_meta in self.available_modes.items():
             self.run.info(mode, mode_meta['description'])
 
+    def update_available_headers_for_multi(self):
+        """This function updates the available headers dictionary to reflect all possibilities in the multiple DB case."""
 
-    def list_output_headers(self):
-        """This function prints out the available output headers for the 'custom' output mode"""
-
-        # include all possibilities for genome/bin/metagenome name in the output since we don't know which cases
-        # we will find in the metagenomes file
         self.available_headers["genome_name"] = {
                                         'cdict_key': None,
                                         'description': "Name of genome in which we find KOfam hits and/or KEGG modules"
@@ -2333,6 +2330,14 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                         'cdict_key': None,
                                         'description': "Name of metagenome in which we find KOfam hits and/or KEGG modules"
                                         }
+
+
+    def list_output_headers(self):
+        """This function prints out the available output headers for the 'custom' output mode"""
+
+        # include all possibilities for genome/bin/metagenome name in the output since we don't know which cases
+        # we will find in the metagenomes file
+        self.update_available_headers_for_multi()
 
         run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
 
@@ -2368,6 +2373,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         if self.metagenomes[metagenome_name]['profile_db_path']:
             args.profile_db = self.metagenomes[metagenome_name]['profile_db_path']
             args.collection_name = self.metagenomes[metagenome_name]['collection_name']
+
+        self.update_available_headers_for_multi()
 
         return args
 
