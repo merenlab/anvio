@@ -601,13 +601,7 @@ class GenomeDescriptions(object):
 
 
 class MetagenomeDescriptions(object):
-    def __init__(self, args=None, metabolism_checks=False, run=run, progress=progress):
-        """A multi-purpose descriptions class for handling multiple contigs DBs at once.
-
-        If using this class for KEGG metabolism estimation, metabolism_checks should be set to True to
-        ensure the proper sanity checks are done.
-        """
-
+    def __init__(self, args=None, run=run, progress=progress):
         self.args = args
         self.run = run
         self.progress = progress
@@ -615,13 +609,9 @@ class MetagenomeDescriptions(object):
         self.metagenomes = {}
         self.metagenomes_dict = None
         self.profile_dbs_available = False
-        self.for_metabolism = metabolism_checks
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.input_file_for_metagenomes = A('metagenomes')
-
-        if metabolism_checks:
-            self.sanity_checks_for_metabolism()
 
         if self.input_file_for_metagenomes:
             self.read_paths_from_input_file()
@@ -631,74 +621,31 @@ class MetagenomeDescriptions(object):
         names = utils.get_column_data_from_TAB_delim_file(self.input_file_for_metagenomes, [0])[0][1:]
 
         if len(names) != len(set(names)):
-            raise ConfigError("Each entry in your metagenomes file must be unique :/")
-
-
-    def sanity_checks_for_metabolism(self):
-        """This function makes sure the file format is A-OK for metabolism estimation purposes.
-
-        The legal header combos for metabolism are:
-        1) name + contigs db (isolate genomes only)
-        2) name + contigs db + metagenome mode (isolate genomes and/or unbinned metagenomes)
-        3) name + contigs db + profile db + collection (isolate genomes and/or binned metagenomes)
-        4) name + contigs db + profile db + collection + metagenome mode (isolate genomes, unbinned metagenomes, and/or binned metagenomes)
-        """
-
-        columns = utils.get_columns_of_TAB_delim_file(self.input_file_for_metagenomes, include_first_column=True)
-
-        if anvio.DEBUG:
-            self.run.info("Columns found in metagenomes file", ", ".join(columns))
-
-        if 'name' not in columns or 'contigs_db_path' not in columns:
-            raise ConfigError("The minimum your metagenomes file must contain is a 'name' column and a 'contigs_db_path' column, "
-                              "but we can't find one or both of these. Please fix your file. :/")
-        if 'profile_db_path' in columns and 'collection_name' not in columns:
-            raise ConfigError("Your metagenomes file contains a 'profile_db_path' column but not a 'collection_name' column. "
-                              "Unfortunately, you need both of these to proceed with metabolism estimation for bins.")
-        if 'collection_name' in columns and 'profile_db_path' not in columns:
-            raise ConfigError("Your metagenomes file contains a 'collection_name' column but not a 'profile_db_path' column. "
-                              "Unfortunately, you need both of these to proceed with metabolism estimation for bins.")
+            raise ConfigError("Each entry in your metagenomes file must e unique :/")
 
 
     def read_paths_from_input_file(self):
-        """Reads metagenome files, populates self.metagenomes
-
-        The flag for_metabolism should be True if this class is being used for metabolism estimation.
-        """
+        """Reads metagenome files, populates self.metagenomes"""
 
         columns = utils.get_columns_of_TAB_delim_file(self.input_file_for_metagenomes)
 
         if 'profile_db_path' in columns:
-            if self.for_metabolism:
-                fields_for_metagenomes_input = ['name', 'contigs_db_path', 'profile_db_path', 'collection_name']
-            else:
-                fields_for_metagenomes_input = ['name', 'contigs_db_path', 'profile_db_path']
+            fields_for_metagenomes_input = ['name', 'contigs_db_path', 'profile_db_path']
             self.profile_dbs_available = True
         else:
             fields_for_metagenomes_input = ['name', 'contigs_db_path']
             self.profile_dbs_available = False
 
-        if 'metagenome_mode' in columns:
-            fields_for_metagenomes_input.append('metagenome_mode')
-
         self.metagenomes_dict = utils.get_TAB_delimited_file_as_dictionary(self.input_file_for_metagenomes, expected_fields=fields_for_metagenomes_input) if self.input_file_for_metagenomes else {}
 
 
-    def load_metagenome_descriptions(self, skip_functions=False, init=True, full_mode=False):
-        """Load metagenome descriptions
-
-        PARAMETERS
-        ==========
-        full_mode : boolean
-            if False, only keys with non-None values for all metagenomes will be included in the final dictionary
-            if True, all keys will be included, even if some metagenomes have a None value for a given key
-        """
+    def load_metagenome_descriptions(self, skip_functions=False, init=True):
+        """Load metagenome descriptions"""
 
         # start with a sanity check to make sure name are distinct
         self.names_check()
 
         self.metagenome_names = list(self.metagenomes_dict.keys())
-        keys_with_none_vals = set()
 
         for metagenome_name in self.metagenomes_dict:
             self.metagenomes[metagenome_name] = self.metagenomes_dict[metagenome_name]
@@ -711,59 +658,12 @@ class MetagenomeDescriptions(object):
                     raise ConfigError("Bad news: anvi'o was loading metagenome desriptions, and it run into an empty path for "
                                       "the metagenome %s. How did this happen? HOW? :(" % metagenome_name)
 
-                if not path.startswith('/') and not path == 'None':
+                if not path.startswith('/'):
                     self.metagenomes[metagenome_name][db_path_var] = os.path.abspath(os.path.join(os.path.dirname(self.input_file_for_metagenomes), path))
-
-                if path == 'None':
-                    keys_with_none_vals.add(db_path_var)
-
-            # check other keys that can have None values
-            for key in ['collection_name']:
-                if key not in self.metagenomes[metagenome_name]:
-                    continue
-                if self.metagenomes[metagenome_name][key] == 'None':
-                    keys_with_none_vals.add(key)
-
-
-            if self.for_metabolism:
-                # we allow users to avoid providing a profiles db/collection name by setting these to 'None' for certain metabolism estimation cases
-                # here we will convert those to actual None values
-                for var in ['collection_name', 'profile_db_path']:
-                    if var not in self.metagenomes[metagenome_name]:
-                        continue
-                    elif self.metagenomes[metagenome_name][var] == 'None':
-                        self.metagenomes[metagenome_name][var] = None
-
-                # both must be None or both must be not None for a given contigs db
-                if 'collection_name' in self.metagenomes[metagenome_name] and 'profile_db_path' in self.metagenomes[metagenome_name]:
-                    if not self.metagenomes[metagenome_name]['collection_name'] and self.metagenomes[metagenome_name]['profile_db_path']:
-                        raise ConfigError("You've provided a profiles DB (%s) for metagenome %s, but the collection name appears to be 'None'. This "
-                                          "will not work. :/" % (self.metagenomes[metagenome_name]['profile_db_path'], metagenome_name))
-                    if self.metagenomes[metagenome_name]['collection_name'] and not self.metagenomes[metagenome_name]['profile_db_path']:
-                        raise ConfigError("You've provided a collection name (%s) for metagenome %s, but the profiles DB appears to be 'None'. This "
-                                          "will not work. :/" % (self.metagenomes[metagenome_name]['collection_name'], metagenome_name))
-
-                # metagenome mode must be a boolean
-                if 'metagenome_mode' in self.metagenomes[metagenome_name]:
-                    if self.metagenomes[metagenome_name]['metagenome_mode'] == 'True':
-                        self.metagenomes[metagenome_name]['metagenome_mode'] = True
-                    elif self.metagenomes[metagenome_name]['metagenome_mode'] == 'False':
-                        self.metagenomes[metagenome_name]['metagenome_mode'] = False
-                    else:
-                        raise ConfigError("The field 'metagenome_mode' for contigs DB %s is %s, but it should be either True or False."
-                                          % (metagenome_name, self.metagenomes[metagenome_name]['metagenome_mode']))
 
             # while we are going through all genomes and reconstructing self.metagenomes for the first time,
             # let's add the 'name' attribute in it as well.'
             self.metagenomes[metagenome_name]['name'] = metagenome_name
-
-        # if we aren't in full mode, we get rid of any keys that have null values for at least one metagenome
-        if not full_mode and keys_with_none_vals:
-            for key in keys_with_none_vals:
-                for m in self.metagenomes_dict:
-                    self.metagenomes_dict[m].pop(key)
-                if key == 'profile_db_path':
-                    self.profile_dbs_available = False
 
         # add hashes for each metagenome in the self.metagenomes dict.
         self.metagenome_hash_to_metagenome_name = {}
@@ -792,8 +692,8 @@ class MetagenomeDescriptions(object):
     def sanity_check(self):
         """Make sure self.metagenomes is good to go"""
 
-        if not self.for_metabolism and self.profile_dbs_available:
-            non_single_profiles = [m for m in self.metagenomes if self.metagenomes[m]['profile_db_path'] and utils.is_profile_db_merged(self.metagenomes[m]['profile_db_path'])
+        if self.profile_dbs_available:
+            non_single_profiles = [m for m in self.metagenomes if utils.is_profile_db_merged(self.metagenomes[m]['profile_db_path'])
                                                                   and not utils.is_blank_profile(self.metagenomes[m]['profile_db_path'])]
 
             if len(non_single_profiles):
