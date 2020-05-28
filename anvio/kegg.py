@@ -2310,6 +2310,38 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         self.metagenomes = None
 
 
+    def list_output_modes(self):
+        """This function prints out the available output modes for the metabolism estimation script."""
+        run.warning(None, header="AVAILABLE OUTPUT MODES", lc="green")
+
+        for mode, mode_meta in self.available_modes.items():
+            self.run.info(mode, mode_meta['description'])
+
+
+    def list_output_headers(self):
+        """This function prints out the available output headers for the 'custom' output mode"""
+
+        # include all possibilities for genome/bin/metagenome name in the output since we don't know which cases
+        # we will find in the metagenomes file
+        self.available_headers["genome_name"] = {
+                                        'cdict_key': None,
+                                        'description': "Name of genome in which we find KOfam hits and/or KEGG modules"
+                                        }
+        self.available_headers["bin_name"] = {
+                                        'cdict_key': None,
+                                        'description': "Name of bin in which we find KOfam hits and/or KEGG modules"
+                                        }
+        self.available_headers["metagenome_name"] = {
+                                        'cdict_key': None,
+                                        'description': "Name of metagenome in which we find KOfam hits and/or KEGG modules"
+                                        }
+
+        run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
+
+        for header, header_meta in self.available_headers.items():
+            self.run.info(header, header_meta['description'])
+
+
     def init_metagenomes(self):
 
         self.progress.new("Initializing contigs DBs")
