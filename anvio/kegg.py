@@ -1985,12 +1985,23 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return new_kegg_metabolism_superdict
 
 
-    def estimate_metabolism(self, for_visualization=False):
-        """This is the driver function for estimating metabolism.
+    def estimate_metabolism(self, skip_storing_data=False):
+        """This is the driver function for estimating metabolism for a single contigs DB.
 
         It will decide what to do based on whether the input contigs DB is a genome or metagenome.
         It returns the metabolism superdict which contains a metabolism completion dictionary for each genome/bin in the contigs db.
         The metabolism completion dictionary is keyed by KEGG module number, with a few exceptions for summary data (ie, 'num_complete_modules').
+
+        PARAMETERS
+        ==========
+        skip_storing_data : boolean
+            set to True if we don't want the metabolism data dictionary to be stored as a file (useful when using this function
+            for on-the-fly visualization or for calling estimation from a multi estimator class)
+
+        RETURNS
+        =======
+        kegg_metabolism_superdict : dictionary of dictionaries of dictionaries
+            a complex data structure containing the metabolism estimation data for each genome/bin in the contigs DB
         """
 
         kegg_metabolism_superdict = {}
@@ -2012,7 +2023,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 raise ConfigError("This class doesn't know how to deal with that yet :/")
 
-        if not self.store_json_without_estimation and not for_visualization:
+        self.kegg_modules_db.disconnect()
+
+        if not self.store_json_without_estimation and not skip_storing_data:
             self.store_kegg_metabolism_superdict(kegg_metabolism_superdict)
         if self.write_dict_to_json:
             self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json")
@@ -2239,7 +2252,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # add keys to this list to include the data in the visualization dictionary
         module_data_keys_for_visualization = ['percent_complete']
 
-        metabolism_dict = self.estimate_metabolism(for_visualization=True)
+        metabolism_dict = self.estimate_metabolism(skip_storing_data=True)
         data_for_visualization = {}
 
         for bin, mod_dict in metabolism_dict.items():
