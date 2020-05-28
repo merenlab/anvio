@@ -2079,6 +2079,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             The output dictionary whose format is compatible for printing to a tab-delimited file
         """
 
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet)
+
         # use the kofam_hits output mode header set by default
         if not headers_to_include:
             headers_to_include = set(["unique_id", self.name_header, "kegg_module", "module_is_complete", "module_completeness",
@@ -2205,6 +2207,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             raise ConfigError("We don't know the corresponding key in metabolism completeness dict for header %s." % (h))
                         d[unique_id][h] = c_dict[h_cdict_key]
                     unique_id += 1
+
+        self.kegg_modules_db.disconnect()
 
         return d
 
