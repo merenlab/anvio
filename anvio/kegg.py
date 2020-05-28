@@ -1995,7 +1995,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         kegg_metabolism_superdict = {}
 
-        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=True)
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet)
 
         if self.estimate_from_json:
             kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
