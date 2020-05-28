@@ -39,6 +39,8 @@ __email__ = "iveseli@uchicago.edu"
 
 run = terminal.Run()
 progress = terminal.Progress()
+run_quiet = terminal.Run(log_file_path=None, verbose=False)
+progress_quiet = terminal.Progress(verbose=False)
 pp = terminal.pretty_print
 
 
@@ -2283,6 +2285,36 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         self.metagenomes = copy.deepcopy(g.metagenomes)
         self.metagenome_names = copy.deepcopy(g.metagenome_names)
 
+        self.progress.end()
+
+
+    def get_metabolism_super_dict_multi(self):
+        """The function that calls metabolism on each individual contigs db and aggregates the results into one dictionary."""
+
+        metabolism_super_dict = {}
+
+        total_num_metagenomes = len(self.metagenome_names)
+        self.progress.new("Estimating metabolism for contigs DBs", progress_total_items=total_num_metagenomes)
+
+        for metagenome_name in self.metagenome_names:
+            args = KeggEstimatorArgs(self.args, format_args_for_single_estimator=True)
+
+            args.contigs_db = self.metagenomes[metagenome_name]['contigs_db_path']
+            if self.metagenomes[metagenome_name]['metagenome_mode']:
+                args.metagenome_mode = self.metagenomes[metagenome_name]['metagenome_mode']
+            if self.metagenomes[metagenome_name]['profile_db_path']:
+                args.profile_db = self.metagenomes[metagenome_name]['profile_db_path']
+                args.collection_name = self.metagenomes[metagenome_name]['collection_name']
+
+            self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, total_num_metagenomes, metagenome_name))
+            metabolism_super_dict[metagenome_name] = KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism()
+
+            self.progress.increment()
+
+        self.progress.end()
+
+        return metabolism_super_dict
+
 
     def estimate_metabolism(self):
         """A driver function to run metabolism estimation on each provided contigs DB."""
@@ -2291,6 +2323,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.init_metagenomes()
         self.run.info("Metagenomes file", self.metagenomes_file)
         self.run.info("Num Contigs DBs in file", len(self.metagenome_names))
+
+        kegg_metabolism_superdict_multi = self.get_metabolism_super_dict_multi()
 
 
 class KeggModulesDatabase(KeggContext):
