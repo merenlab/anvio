@@ -1068,6 +1068,8 @@ class KeggEstimatorArgs():
         self.estimate_from_json = A('estimate_from_json') or None
         self.output_modes = A('kegg_output_modes') or A('output_modes') or "kofam_hits,complete_modules"
         self.custom_output_headers = A('custom_output_headers') or None
+        self.external_genomes_file = A('external_genomes') or None
+        self.internal_genomes_file = A('internal_genomes') or None
         self.metagenomes_file = A('metagenomes') or None
 
         # output modes and headers that we can handle
@@ -2306,6 +2308,13 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         KeggEstimatorArgs.__init__(self, self.args)
 
         self.metagenomes = None
+
+        # input sanity checks
+        if (self.external_genomes_file and (self.internal_genomes_file or self.metagenomes_file)) \
+            or (self.internal_genomes_file and (self.external_genomes_file or self.metagenomes_file)) \
+            or (self.metagenomes_file and (self.external_genomes_file or self.internal_genomes_file)):
+                raise ConfigError("Multiple file inputs were provided. Please choose only one at a time to make "
+                                  "things easier on everybody.")
 
 
     def list_output_modes(self):
