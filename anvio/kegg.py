@@ -1995,7 +1995,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         kegg_metabolism_superdict = {}
 
-        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=True)
 
         if self.estimate_from_json:
             kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
@@ -2342,6 +2342,9 @@ class KeggModulesDatabase(KeggContext):
         self.progress = progress
         self.quiet = quiet
 
+        if anvio.DEBUG:
+            self.run.info("Modules DB quiet param", self.quiet)
+
         # init the base class for access to shared paths and such
         KeggContext.__init__(self, args)
 
@@ -2355,8 +2358,9 @@ class KeggModulesDatabase(KeggContext):
             utils.is_kegg_modules_db(self.db_path)
             self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=False)
 
-            self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
-            self.run.info('Kegg Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
+            if not self.quiet:
+                self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
+                self.run.info('Kegg Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
 
             days_since_created = self.get_days_since_creation()
             if not self.quiet and days_since_created >= KEGG_SETUP_INTERVAL:
