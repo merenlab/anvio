@@ -2431,7 +2431,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                 self.run.info("Output header list for db %s" % metagenome_name, header_list)
             if not header_list:
                 raise ConfigError("Oh, dear. You've come all this way only to realize that we don't know which headers to use "
-                                  "for the %s output mode. Something is terribly wrong, and it is probably a developer's fault. :("
+                                  "for the %s output mode. Something is terribly wrong. Perhaps you should try telling us what "
+                                  "headers to use with the --custom-output-headers flag. If that doesn't work, contact the developers. :)"
                                   % (output_mode))
             single_dict = single_estimator.generate_output_dict(kegg_superdict_multi[metagenome_name], headers_to_include=header_list, only_complete_modules=self.available_modes[output_mode]["only_complete"])
 
