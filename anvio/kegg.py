@@ -1066,34 +1066,33 @@ class KeggEstimatorArgs():
         self.json_output_file_path = A('get_raw_data_as_json')
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
         self.estimate_from_json = A('estimate_from_json') or None
-        self.output_modes = A('kegg_output_modes') or "kofam_hits,complete_modules"
+        self.output_modes = A('kegg_output_modes') or A('output_modes') or "kofam_hits,complete_modules"
         self.custom_output_headers = A('custom_output_headers') or None
         self.metagenomes_file = A('metagenomes') or None
 
-
-        # output modes that we can handle
+        # output modes and headers that we can handle
         self.available_modes = OUTPUT_MODES
-
-        # parse requested output modes and make sure we can handle them all
-        self.output_modes = self.output_modes.split(",")
-        if anvio.DEBUG:
-            run.info("Output Modes", ", ".join(self.output_modes))
-        illegal_modes = set(self.output_modes).difference(set(self.available_modes.keys()))
-        if illegal_modes:
-            raise ConfigError("You have requested some output modes that we cannot handle. The offending modes "
-                              "are: %s. Please use the flag --list-available-modes to see which ones are acceptable."
-                              % (", ".join(illegal_modes)))
-
-        # dict containing matrix headers of information that we can output in custom mode
-        # key corresponds to key in output dictionary (generated in store_kegg_metabolism_superdict)
-        # dictionary contains its key in module-level completion dictionary (if any)
-        # and description of the information to print when listing available headers
         self.available_headers = OUTPUT_HEADERS
-
 
         if format_args_for_single_estimator:
             # to fool a single estimator into passing sanity checks, nullify multi estimator args here
             self.metagenomes = None
+
+        # parse requested output modes if necessary
+        if isinstance(self.output_modes, str):
+            # parse requested output modes and make sure we can handle them all
+            self.output_modes = self.output_modes.split(",")
+
+        # parse requested output headers if necessary
+        if self.custom_output_headers and isinstance(self.custom_output_headers, str):
+            self.custom_output_headers = self.custom_output_headers.split(",")
+
+            if "unique_id" not in self.custom_output_headers:
+                self.custom_output_headers = ["unique_id"] + self.custom_output_headers
+            elif self.custom_output_headers.index("unique_id") != 0:
+                self.custom_output_headers.remove("unique_id")
+                self.custom_output_headers = ["unique_id"] + self.custom_output_headers
+            self.available_modes['custom']['headers'] = self.custom_output_headers
 
 
 class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
@@ -1136,9 +1135,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         'description': "Name of genome/bin/metagenome in which we find KOfam hits and/or KEGG modules"
                                         }
 
-
+        # input options sanity checks
         if not self.estimate_from_json and not self.contigs_db_path:
-            raise ConfigError("NO INPUT PROVIDED. You must provide (at least) a contigs database to this program, unless you are using the --estimate-from-json "
+            raise ConfigError("NO INPUT PROVIDED. You must provide (at least) a contigs database or genomes file to this program, unless you are using the --estimate-from-json "
                               "flag, in which case you must provide a JSON-formatted file.")
 
         self.bin_ids_to_process = None
@@ -1165,19 +1164,24 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             raise ConfigError("It is impossible to both estimate metabolism from JSON data and produce a JSON file without estimation at the same time... "
                               "anvi'o is judging you SO hard right now.")
 
-
         if self.profile_db_path:
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
+        # output options sanity checks
+        if anvio.DEBUG:
+            run.info("Output Modes", ", ".join(self.output_modes))
+        illegal_modes = set(self.output_modes).difference(set(self.available_modes.keys()))
+        if illegal_modes:
+            raise ConfigError("You have requested some output modes that we cannot handle. The offending modes "
+                              "are: %s. Please use the flag --list-available-modes to see which ones are acceptable."
+                              % (", ".join(illegal_modes)))
         if self.custom_output_headers and "custom" not in self.output_modes:
             raise ConfigError("You seem to have provided a list of custom headers without actually requesting the 'custom' output "
                               "mode. We think perhaps you missed something, so we are stopping you right there.")
         if "custom" in self.output_modes and not self.custom_output_headers:
             raise ConfigError("You have requested 'custom' output mode, but haven't told us what headers to include in that output. "
                               "You should be using the --custom-output-headers flag to do this.")
-        # parse requested output headers and make sure we can handle them all
         if self.custom_output_headers:
-            self.custom_output_headers = self.custom_output_headers.split(",")
             if anvio.DEBUG:
                 self.run.info("Custom Output Headers", ", ".join(self.custom_output_headers))
             illegal_headers = set(self.custom_output_headers).difference(set(self.available_headers.keys()))
@@ -1185,12 +1189,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 raise ConfigError("You have requested some output headers that we cannot handle. The offending ones "
                                   "are: %s. Please use the flag --list-available-output-headers to see which ones are acceptable."
                                   % (", ".join(illegal_headers)))
-            if "unique_id" not in self.custom_output_headers:
-                self.custom_output_headers = ["unique_id"] + self.custom_output_headers
-            elif self.custom_output_headers.index("unique_id") != 0:
-                self.custom_output_headers.remove("unique_id")
-                self.custom_output_headers = ["unique_id"] + self.custom_output_headers
-            self.available_modes['custom']['headers'] = self.custom_output_headers
 
 
         # init the base class
