@@ -282,9 +282,9 @@ class Auxiliary:
                     # given a value of -1, so gene_id_per_nt_in_read looks like [42, 42, 42, 42, -1,
                     # ..., -1, 42, 42]. The portion of the read after the consecutive -1's will be
                     # trimmed and not included. The solution to this problem is to better manage
-                    # which genes we include for SCV analysis. Resolving issue
-                    # https://github.com/merenlab/anvio/issues/1358 would enable a more elegant
-                    # scenario, where this would not happen.
+                    # which genes we include for SCV analysis, but the problem is that the
+                    # vectorized data we use for gene information (nt_position_info) has these
+                    # overlapping gene segments pre-baked in.
                     gene_overlap_start, gene_overlap_stop = utils.get_constant_value_blocks(gene_id_per_nt_in_read, gene_id)[0]
                     gene_overlap_start += read.reference_start
                     gene_overlap_stop += read.reference_start - 1
