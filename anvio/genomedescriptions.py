@@ -685,13 +685,21 @@ class MetagenomeDescriptions(object):
         self.metagenomes_dict = utils.get_TAB_delimited_file_as_dictionary(self.input_file_for_metagenomes, expected_fields=fields_for_metagenomes_input) if self.input_file_for_metagenomes else {}
 
 
-    def load_metagenome_descriptions(self, skip_functions=False, init=True):
-        """Load metagenome descriptions"""
+    def load_metagenome_descriptions(self, skip_functions=False, init=True, full_mode=False):
+        """Load metagenome descriptions
+
+        PARAMETERS
+        ==========
+        full_mode : boolean
+            if False, only keys with non-None values for all metagenomes will be included in the final dictionary
+            if True, all keys will be included, even if some metagenomes have a None value for a given key
+        """
 
         # start with a sanity check to make sure name are distinct
         self.names_check()
 
         self.metagenome_names = list(self.metagenomes_dict.keys())
+        keys_with_none_vals = set()
 
         for metagenome_name in self.metagenomes_dict:
             self.metagenomes[metagenome_name] = self.metagenomes_dict[metagenome_name]
@@ -706,6 +714,16 @@ class MetagenomeDescriptions(object):
 
                 if not path.startswith('/') and not path == 'None':
                     self.metagenomes[metagenome_name][db_path_var] = os.path.abspath(os.path.join(os.path.dirname(self.input_file_for_metagenomes), path))
+
+                if path == 'None':
+                    keys_with_none_vals.add(db_path_var)
+
+            # check other keys that can have None values
+            for key in ['collection_name']:
+                if key not in self.metagenomes[metagenome_name]:
+                    continue
+                if self.metagenomes[metagenome_name][key] == 'None':
+                    keys_with_none_vals.add(key)
 
 
             if self.for_metabolism:
@@ -739,6 +757,14 @@ class MetagenomeDescriptions(object):
             # while we are going through all genomes and reconstructing self.metagenomes for the first time,
             # let's add the 'name' attribute in it as well.'
             self.metagenomes[metagenome_name]['name'] = metagenome_name
+
+        # if we aren't in full mode, we get rid of any keys that have null values for at least one metagenome
+        if not full_mode and keys_with_none_vals:
+            for key in keys_with_none_vals:
+                for m in self.metagenomes_dict:
+                    self.metagenomes_dict[m].pop(key)
+                if key == 'profile_db_path':
+                    self.profile_dbs_available = False
 
         # add hashes for each metagenome in the self.metagenomes dict.
         self.metagenome_hash_to_metagenome_name = {}
