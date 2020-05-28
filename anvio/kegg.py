@@ -2315,7 +2315,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         self.progress.new("Initializing contigs DBs")
         self.progress.update("...")
         g = MetagenomeDescriptions(self.args, metabolism_checks=True, run=self.run, progress=self.progress)
-        g.load_metagenome_descriptions()
+        g.load_metagenome_descriptions(full_mode=True)
 
         self.metagenomes = copy.deepcopy(g.metagenomes)
         self.metagenome_names = copy.deepcopy(g.metagenome_names)
