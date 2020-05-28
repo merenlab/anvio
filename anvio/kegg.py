@@ -2294,6 +2294,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
 
     def init_metagenomes(self):
+
         self.progress.new("Initializing contigs DBs")
         self.progress.update("...")
         g = MetagenomeDescriptions(self.args, metabolism_checks=True, run=self.run, progress=self.progress)
@@ -2305,7 +2306,26 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         self.progress.end()
 
 
-    def get_metabolism_super_dict_multi(self):
+    def get_args_for_single_estimator(self, metagenome_name):
+        """Returns args formatted for an instance of KeggMetabolismEstimator that will work on a metagenome. Very tricksy."""
+
+        args = KeggEstimatorArgs(self.args, format_args_for_single_estimator=True)
+
+        if metagenome_name not in self.metagenomes:
+            raise ConfigError("We cannot initialize a single estimator for the contigs DB '%s' because it is not in the metagenomes dictionary."
+                              % (metagenome_name))
+
+        args.contigs_db = self.metagenomes[metagenome_name]['contigs_db_path']
+        if self.metagenomes[metagenome_name]['metagenome_mode']:
+            args.metagenome_mode = self.metagenomes[metagenome_name]['metagenome_mode']
+        if self.metagenomes[metagenome_name]['profile_db_path']:
+            args.profile_db = self.metagenomes[metagenome_name]['profile_db_path']
+            args.collection_name = self.metagenomes[metagenome_name]['collection_name']
+
+        return args
+
+
+    def get_metabolism_superdict_multi(self):
         """The function that calls metabolism on each individual contigs db and aggregates the results into one dictionary."""
 
         metabolism_super_dict = {}
