@@ -389,12 +389,22 @@ class Auxiliary:
             )
 
             # By design, we include SCVs only if they contain a SNV--filter out those that do not
-            cdn_profile.filter(self.get_codon_orders_that_contain_SNVs(gene_id))
-            cdn_profile.process(skip_competing_items=True)
+            codon_orders_that_contain_SNVs = self.get_codon_orders_that_contain_SNVs(gene_id)
+            if len(codon_orders_that_contain_SNVs):
+                # Only keep those that contain SNVs
+                cdn_profile.filter(codon_orders_that_contain_SNVs)
+            else:
+                # No codon orders contain SNVs
+                continue
 
-            self.split.SCV_profiles[gene_id] = cdn_profile.d
-
-            self.split.num_SCV_entries[gene_id] = len(cdn_profile.d['coverage'])
+            if cdn_profile.process(skip_competing_items=True):
+                # Processing allele counts yielded a non-zero number of codons being kept
+                self.split.SCV_profiles[gene_id] = cdn_profile.d
+                self.split.num_SCV_entries[gene_id] = len(cdn_profile.d['coverage'])
+            else:
+                # There were no codon positions worth keeping. We do not add this gene to
+                # self.split.SCV_profiles
+                pass
 
 
     def get_codon_orders_that_contain_SNVs(self, gene_id):
