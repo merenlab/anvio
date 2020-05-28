@@ -44,6 +44,99 @@ run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 pp = terminal.pretty_print
 
+"""Some critical constants for metabolism estimation output formatting."""
+OUTPUT_MODES = {'kofam_hits': {
+                            'output_suffix': "kofam_hits.txt",
+                            'headers': ["unique_id", "kegg_module", "module_is_complete",
+                                        "module_completeness", "path_id", "path", "path_completeness",
+                                        "kofam_hit", "gene_caller_id", "contig"],
+                            'only_complete': False,
+                            'description': "Information on each KOfam hit in the contigs DB"
+                            },
+                        'complete_modules': {
+                            'output_suffix': "complete_modules.txt",
+                            'headers': ["unique_id", "kegg_module","module_completeness",
+                                        "module_name", "module_class", "module_category", "module_subcategory"],
+                            'only_complete': True,
+                            'description': "Modules whose percent completeness was over the completeness threshold"
+                            },
+                        'module': {
+                            'output_suffix': "modules.txt",
+                            'headers': ["unique_id", "kegg_module","module_completeness"],
+                            'only_complete': False,
+                            'description': "Completeness information on all KEGG modules"
+                            },
+                        'custom': {
+                            'output_suffix': "custom_matrix.txt",
+                            'headers': None,
+                            'only_complete': False,
+                            'description': "A custom tab-delimited output file where you choose the included data using --custom-output-headers"
+                            }
+                        }
+# dict containing matrix headers of information that we can output in custom mode
+# key corresponds to key in output dictionary (generated in store_kegg_metabolism_superdict)
+# dictionary contains its key in module-level completion dictionary (if any)
+# and description of the information to print when listing available headers
+OUTPUT_HEADERS = {'unique_id' : {
+                                'cdict_key': None,
+                                'description': "Just an integer that keeps our data organized. No real meaning here. Always included in output, so no need to specify it on the command line"
+                                },
+                          'kegg_module' : {
+                                'cdict_key': None,
+                                'description': "KEGG module number"
+                                },
+                          'module_is_complete' : {
+                                'cdict_key': 'complete',
+                                'description': "Whether a KEGG module is considered complete or not based on its percent completeness and the completeness threshold"
+                                },
+                          'module_completeness' : {
+                                'cdict_key': 'percent_complete',
+                                'description': "Percent completeness of a KEGG module"
+                                },
+                          'module_name' : {
+                                'cdict_key': None,
+                                'description': "English name/description of a KEGG module"
+                                },
+                          'module_class' : {
+                                'cdict_key': None,
+                                'description': "Metabolism class of a KEGG module"
+                                },
+                          'module_category' : {
+                                'cdict_key': None,
+                                'description': "Metabolism category of a KEGG module"
+                                },
+                          'module_subcategory' : {
+                                'cdict_key': None,
+                                'description': "Metabolism subcategory of a KEGG module"
+                                },
+                          'gene_caller_id': {
+                                'cdict_key': None,
+                                'description': "Gene caller ID of a KOfam hit in the contigs DB"
+                                },
+                          'kofam_hit' : {
+                                'cdict_key': 'kofam_hits',
+                                'description': "KO number of a KOfam hit"
+                                },
+                          'contig' : {
+                                'cdict_key': 'genes_to_contigs',
+                                'description': "Contig that a KOfam hit is found on"
+                                },
+                          'path_id' : {
+                                'cdict_key': None,
+                                'description': "Integer ID for a path through a KEGG module. Again, no real meaning and just for data organization"
+                                },
+                          'path' : {
+                                'cdict_key': 'paths',
+                                'description': "A path through a KEGG module (a linear sequence of KOs that together represent each metabolic step "
+                                               "in the module. Most modules have several of these due to KO redundancy)"
+                                },
+                          'path_completeness' : {
+                                'cdict_key': 'pathway_completeness',
+                                'description': "Percent completeness of a particular path through a KEGG module"
+                                },
+                          }
+
+
 
 class KeggContext(object):
     """The purpose of this base class is to define shared functions and file paths for all KEGG operations."""
@@ -979,34 +1072,7 @@ class KeggEstimatorArgs():
 
 
         # output modes that we can handle
-        self.available_modes = {'kofam_hits': {
-                                    'output_suffix': "kofam_hits.txt",
-                                    'headers': ["unique_id", "kegg_module", "module_is_complete",
-                                                "module_completeness", "path_id", "path", "path_completeness",
-                                                "kofam_hit", "gene_caller_id", "contig"],
-                                    'only_complete': False,
-                                    'description': "Information on each KOfam hit in the contigs DB"
-                                    },
-                                'complete_modules': {
-                                    'output_suffix': "complete_modules.txt",
-                                    'headers': ["unique_id", "kegg_module","module_completeness",
-                                                "module_name", "module_class", "module_category", "module_subcategory"],
-                                    'only_complete': True,
-                                    'description': "Modules whose percent completeness was over the completeness threshold"
-                                    },
-                                'module': {
-                                    'output_suffix': "modules.txt",
-                                    'headers': ["unique_id", "kegg_module","module_completeness"],
-                                    'only_complete': False,
-                                    'description': "Completeness information on all KEGG modules"
-                                    },
-                                'custom': {
-                                    'output_suffix': "custom_matrix.txt",
-                                    'headers': None,
-                                    'only_complete': False,
-                                    'description': "A custom tab-delimited output file where you choose the included data using --custom-output-headers"
-                                    }
-                                }
+        self.available_modes = OUTPUT_MODES
 
         # parse requested output modes and make sure we can handle them all
         self.output_modes = self.output_modes.split(",")
@@ -1022,64 +1088,7 @@ class KeggEstimatorArgs():
         # key corresponds to key in output dictionary (generated in store_kegg_metabolism_superdict)
         # dictionary contains its key in module-level completion dictionary (if any)
         # and description of the information to print when listing available headers
-        self.available_headers = {'unique_id' : {
-                                        'cdict_key': None,
-                                        'description': "Just an integer that keeps our data organized. No real meaning here. Always included in output, so no need to specify it on the command line"
-                                        },
-                                  'kegg_module' : {
-                                        'cdict_key': None,
-                                        'description': "KEGG module number"
-                                        },
-                                  'module_is_complete' : {
-                                        'cdict_key': 'complete',
-                                        'description': "Whether a KEGG module is considered complete or not based on its percent completeness and the completeness threshold"
-                                        },
-                                  'module_completeness' : {
-                                        'cdict_key': 'percent_complete',
-                                        'description': "Percent completeness of a KEGG module"
-                                        },
-                                  'module_name' : {
-                                        'cdict_key': None,
-                                        'description': "English name/description of a KEGG module"
-                                        },
-                                  'module_class' : {
-                                        'cdict_key': None,
-                                        'description': "Metabolism class of a KEGG module"
-                                        },
-                                  'module_category' : {
-                                        'cdict_key': None,
-                                        'description': "Metabolism category of a KEGG module"
-                                        },
-                                  'module_subcategory' : {
-                                        'cdict_key': None,
-                                        'description': "Metabolism subcategory of a KEGG module"
-                                        },
-                                  'gene_caller_id': {
-                                        'cdict_key': None,
-                                        'description': "Gene caller ID of a KOfam hit in the contigs DB"
-                                        },
-                                  'kofam_hit' : {
-                                        'cdict_key': 'kofam_hits',
-                                        'description': "KO number of a KOfam hit"
-                                        },
-                                  'contig' : {
-                                        'cdict_key': 'genes_to_contigs',
-                                        'description': "Contig that a KOfam hit is found on"
-                                        },
-                                  'path_id' : {
-                                        'cdict_key': None,
-                                        'description': "Integer ID for a path through a KEGG module. Again, no real meaning and just for data organization"
-                                        },
-                                  'path' : {
-                                        'cdict_key': 'paths',
-                                        'description': "A path through a KEGG module (a linear sequence of KOs that together represent each metabolic step "
-                                                       "in the module. Most modules have several of these due to KO redundancy)"
-                                        },
-                                  'path_completeness' : {
-                                        'cdict_key': 'pathway_completeness',
-                                        'description': "Percent completeness of a particular path through a KEGG module"
-                                        },
-                                  }
+        self.available_headers = OUTPUT_HEADERS
 
 
         if format_args_for_single_estimator:
