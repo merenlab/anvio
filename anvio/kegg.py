@@ -12,6 +12,7 @@ import json
 import time
 import hashlib
 from scipy import stats
+import pandas as pd
 
 import anvio
 import anvio.db as db
@@ -2334,23 +2335,70 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         self.progress.new("Estimating metabolism for contigs DBs", progress_total_items=total_num_metagenomes)
 
         for metagenome_name in self.metagenome_names:
-            args = KeggEstimatorArgs(self.args, format_args_for_single_estimator=True)
-
-            args.contigs_db = self.metagenomes[metagenome_name]['contigs_db_path']
-            if self.metagenomes[metagenome_name]['metagenome_mode']:
-                args.metagenome_mode = self.metagenomes[metagenome_name]['metagenome_mode']
-            if self.metagenomes[metagenome_name]['profile_db_path']:
-                args.profile_db = self.metagenomes[metagenome_name]['profile_db_path']
-                args.collection_name = self.metagenomes[metagenome_name]['collection_name']
-
+            args = self.get_args_for_single_estimator(metagenome_name)
             self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, total_num_metagenomes, metagenome_name))
-            metabolism_super_dict[metagenome_name] = KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism()
+            metabolism_super_dict[metagenome_name] = KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(skip_storing_data=True)
 
             self.progress.increment()
+            self.progress.reset()
 
         self.progress.end()
 
         return metabolism_super_dict
+
+
+    def get_metabolism_superdict_multi_as_data_frame(self, kegg_superdict_multi_output_version):
+        """Converts the metabolism data (already formatted for output) into a data frame for easier processing."""
+
+        self.progress.new("Data dict to dataframe")
+        self.progress.update("Bleep very complex stuff bloop")
+
+        df = pd.DataFrame.from_dict({(i,j): kegg_superdict_multi_output_version[i][j]
+                                        for i in kegg_superdict_multi_output_version.keys()
+                                        for j in kegg_superdict_multi_output_version[i].keys()}, orient='index')
+        df.reset_index(inplace=True)
+        df.rename(columns={"level_0": "db_name"}, inplace=True)
+        df.drop(['level_1'], axis=1, inplace=True)
+
+        self.progress.end()
+
+        return df
+
+
+    def get_metabolism_superdict_multi_for_output(self, kegg_superdict_multi, as_data_frame=False):
+        """Arrange the multi-contigs DB metabolism data into a better format for printing"""
+
+        kegg_metabolism_superdict_multi_output_version = {}
+
+        for metagenome_name in kegg_superdict_multi:
+            args = self.get_args_for_single_estimator(metagenome_name)
+            single_dict = KeggMetabolismEstimator(args, run=run_quiet).generate_output_dict(kegg_superdict_multi[metagenome_name])
+
+            kegg_metabolism_superdict_multi_output_version[metagenome_name] = single_dict
+
+        if as_data_frame:
+            return self.get_metabolism_superdict_multi_as_data_frame(kegg_metabolism_superdict_multi_output_version)
+        else:
+            return kegg_metabolism_superdict_multi_output_version
+
+
+    def store_metabolism_superdict_multi_long_format(self, kegg_superdict_multi):
+        """Stores the multi-contigs DB metabolism data in long format (tab-delmited file)"""
+
+        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, as_data_frame=True)
+
+        output_file_path = self.output_file_prefix + '-LONG-FORMAT.txt'
+        df.to_csv(output_file_path, index=True, index_label="unique_id", sep='\t', na_rep='NA')
+
+        self.run.info("Long-format output", output_file_path)
+
+
+    def store_metabolism_superdict_multi(self, kegg_superdict_multi):
+        """This function arranges the metabolism superdict for each contigs db into one dictionary for output."""
+
+        # if matrix mode, store in matrix format such that module completeness, presence/absence, redundancy, etc is a separate matrix
+
+        self.store_metabolism_superdict_multi_long_format(kegg_superdict_multi)
 
 
     def estimate_metabolism(self):
@@ -2361,7 +2409,9 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         self.run.info("Metagenomes file", self.metagenomes_file)
         self.run.info("Num Contigs DBs in file", len(self.metagenome_names))
 
-        kegg_metabolism_superdict_multi = self.get_metabolism_super_dict_multi()
+        kegg_metabolism_superdict_multi = self.get_metabolism_superdict_multi()
+
+        self.store_metabolism_superdict_multi(kegg_metabolism_superdict_multi)
 
 
 class KeggModulesDatabase(KeggContext):
