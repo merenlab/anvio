@@ -2339,18 +2339,21 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
     def update_available_headers_for_multi(self):
         """This function updates the available headers dictionary to reflect all possibilities in the multiple DB case."""
 
-        self.available_headers["genome_name"] = {
-                                        'cdict_key': None,
-                                        'description': "Name of genome in which we find KOfam hits and/or KEGG modules"
-                                        }
-        self.available_headers["bin_name"] = {
-                                        'cdict_key': None,
-                                        'description': "Name of bin in which we find KOfam hits and/or KEGG modules"
-                                        }
-        self.available_headers["metagenome_name"] = {
-                                        'cdict_key': None,
-                                        'description': "Name of metagenome in which we find KOfam hits and/or KEGG modules"
-                                        }
+        if self.name_header == 'genome_name':
+            self.available_headers["genome_name"] = {
+                                            'cdict_key': None,
+                                            'description': "Name of genome in which we find KOfam hits and/or KEGG modules"
+                                            }
+        elif self.name_header == 'bin_name':
+            self.available_headers["bin_name"] = {
+                                            'cdict_key': None,
+                                            'description': "Name of bin in which we find KOfam hits and/or KEGG modules"
+                                            }
+        elif self.name_header == 'metagenome_name':
+            self.available_headers["metagenome_name"] = {
+                                            'cdict_key': None,
+                                            'description': "Name of metagenome in which we find KOfam hits and/or KEGG modules"
+                                            }
 
 
     def list_output_headers(self):
