@@ -1121,12 +1121,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         KeggEstimatorArgs.__init__(self, self.args)
 
         self.name_header = None
-        if self.profile_db_path and not self.metagenome_mode:
+        if self.metagenome_mode:
+            self.name_header = 'metagenome_name'
+        elif self.profile_db_path and not self.metagenome_mode:
             self.name_header = 'bin_name'
         elif not self.profile_db_path and not self.metagenome_mode:
             self.name_header = 'genome_name'
-        elif self.metagenome_mode:
-            self.name_header = 'metagenome_name'
 
         # update available modes and headers with appropriate genome/bin/metagenome identifier
         for m in self.available_modes:
@@ -2319,6 +2319,14 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             or (self.metagenomes_file and (self.external_genomes_file or self.internal_genomes_file)):
                 raise ConfigError("Multiple file inputs were provided. Please choose only one at a time to make "
                                   "things easier on everybody.")
+
+        # set name header
+        if self.metagenomes_file:
+            self.name_header = 'metagenome_name'
+        elif self.external_genomes_file:
+            self.name_header = 'genome_name'
+        elif self.internal_genomes_file:
+            self.name_header = 'bin_name'
 
 
     def list_output_modes(self):
