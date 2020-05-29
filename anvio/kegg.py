@@ -1078,7 +1078,7 @@ class KeggEstimatorArgs():
 
         if format_args_for_single_estimator:
             # to fool a single estimator into passing sanity checks, nullify multi estimator args here
-            self.metagenomes = None
+            self.databases = None
 
         # parse requested output modes if necessary
         if isinstance(self.output_modes, str):
@@ -2311,7 +2311,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         KeggEstimatorArgs.__init__(self, self.args)
 
-        self.metagenomes = None
+        self.databases = None
 
         # input sanity checks
         if (self.external_genomes_file and (self.internal_genomes_file or self.metagenomes_file)) \
@@ -2360,32 +2360,29 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
     def init_metagenomes(self):
 
-        self.progress.new("Initializing contigs DBs")
-        self.progress.update("...")
-        g = MetagenomeDescriptions(self.args, metabolism_checks=True, run=self.run, progress=self.progress)
-        g.load_metagenome_descriptions(full_mode=True)
+        g = MetagenomeDescriptions(self.args, run=self.run, progress=self.progress)
+        g.load_metagenome_descriptions()
 
-        self.metagenomes = copy.deepcopy(g.metagenomes)
-        self.metagenome_names = copy.deepcopy(g.metagenome_names)
+        # enforce metagenome mode
+        if not self.metagenome_mode:
+            self.metagenome_mode = True
 
-        self.progress.end()
+        self.databases = copy.deepcopy(g.metagenomes)
+        self.database_names = copy.deepcopy(g.metagenome_names)
 
 
-    def get_args_for_single_estimator(self, metagenome_name):
-        """Returns args formatted for an instance of KeggMetabolismEstimator that will work on a metagenome. Very tricksy."""
+    def get_args_for_single_estimator(self, db_name):
+        """Returns args formatted for an instance of KeggMetabolismEstimator that will work on a contigs DB. Very tricksy."""
 
         args = KeggEstimatorArgs(self.args, format_args_for_single_estimator=True)
 
-        if metagenome_name not in self.metagenomes:
+        if db_name not in self.databases:
             raise ConfigError("We cannot initialize a single estimator for the contigs DB '%s' because it is not in the metagenomes dictionary."
-                              % (metagenome_name))
+                              % (db_name))
 
-        args.contigs_db = self.metagenomes[metagenome_name]['contigs_db_path']
-        if self.metagenomes[metagenome_name]['metagenome_mode']:
-            args.metagenome_mode = self.metagenomes[metagenome_name]['metagenome_mode']
-        if self.metagenomes[metagenome_name]['profile_db_path']:
-            args.profile_db = self.metagenomes[metagenome_name]['profile_db_path']
-            args.collection_name = self.metagenomes[metagenome_name]['collection_name']
+        args.contigs_db = self.databases[db_name]['contigs_db_path']
+        if 'profile_db_path' in self.databases[db_name]:
+            args.profile_db = self.databases[db_name]['profile_db_path']
 
         self.update_available_headers_for_multi()
 
@@ -2397,10 +2394,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         metabolism_super_dict = {}
 
-        total_num_metagenomes = len(self.metagenome_names)
+        total_num_metagenomes = len(self.database_names)
         self.progress.new("Estimating metabolism for contigs DBs", progress_total_items=total_num_metagenomes)
 
-        for metagenome_name in self.metagenome_names:
+        for metagenome_name in self.database_names:
             args = self.get_args_for_single_estimator(metagenome_name)
             self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, total_num_metagenomes, metagenome_name))
             metabolism_super_dict[metagenome_name] = KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(skip_storing_data=True)
