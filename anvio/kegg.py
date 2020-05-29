@@ -2305,6 +2305,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         self.run = run
         self.progress = progress
 
+        if args.contigs_db:
+            raise ConfigError("You appear to have provided both an input text file and a contigs database, and "
+                              "now anvi'o is not quite sure which one to work on. Please choose only one. :) ")
+
         KeggEstimatorArgs.__init__(self, self.args)
 
         self.metagenomes = None
