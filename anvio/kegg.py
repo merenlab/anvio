@@ -2482,10 +2482,24 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
     def estimate_metabolism(self):
         """A driver function to run metabolism estimation on each provided contigs DB."""
 
-        if not self.metagenomes:
-            self.init_metagenomes()
-        self.run.info("Metagenomes file", self.metagenomes_file)
-        self.run.info("Num Contigs DBs in file", len(self.metagenome_names))
+        if not self.databases:
+            self.progress.new("Initializing contigs DBs")
+            self.progress.update("...")
+            if self.metagenomes_file:
+                self.run.info("Metagenomes file", self.metagenomes_file)
+                self.init_metagenomes()
+            elif self.external_genomes_file:
+                self.run.info("External genomes file", self.external_genomes_file)
+            elif self.internal_genomes_file:
+                self.run.info("Internal genomes file", self.internal_genomes_file)
+            else:
+                self.progress.reset()
+                raise ConfigError("Whooops. We are not sure how you got to this point without an input file, "
+                                  "but you did, and now we have to crash becasue we cannot estimate metabolism "
+                                  "without inputs. :/")
+            self.progress.end()
+            self.run.info("Num Contigs DBs in file", len(self.database_names))
+            self.run.info('Metagenome Mode', self.metagenome_mode)
 
         kegg_metabolism_superdict_multi = self.get_metabolism_superdict_multi()
 
