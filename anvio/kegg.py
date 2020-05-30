@@ -2371,7 +2371,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
     def init_metagenomes(self):
 
-        g = MetagenomeDescriptions(self.args, run=self.run, progress=self.progress)
+        g = MetagenomeDescriptions(self.args, run=self.run, progress=self.progress, enforce_single_profiles=False)
         g.load_metagenome_descriptions()
 
         # enforce metagenome mode
