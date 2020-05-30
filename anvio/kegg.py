@@ -1156,7 +1156,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             raise ConfigError("You have requested metabolism estimation for a bin or set of bins, but you haven't provided "
                               "a profiles database. Unfortunately, this just does not work. Please try again.")
 
-        if self.profile_db_path and not self.collection_name:
+        if not self.metagenome_mode and self.profile_db_path and not self.collection_name:
             raise ConfigError("If you provide a profiles DB, you should also provide a collection name.")
 
         if self.store_json_without_estimation and not self.json_output_file_path:
