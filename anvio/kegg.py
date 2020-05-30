@@ -2411,6 +2411,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         args.contigs_db = self.databases[db_name]['contigs_db_path']
         if 'profile_db_path' in self.databases[db_name]:
             args.profile_db = self.databases[db_name]['profile_db_path']
+        if 'collection_id' in self.databases[db_name]:
+            args.collection_name = self.databases[db_name]['collection_id']
+        if 'bin_id' in self.databases[db_name]:
+            args.bin_id = self.databases[db_name]['bin_id']
 
         args.metagenome_mode = self.metagenome_mode
 
