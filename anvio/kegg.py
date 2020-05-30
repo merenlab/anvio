@@ -28,7 +28,7 @@ from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileDatabase
 from anvio.constants import KEGG_SETUP_INTERVAL
-from anvio.genomedescriptions import MetagenomeDescriptions
+from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -2382,6 +2382,22 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         self.database_names = copy.deepcopy(g.metagenome_names)
 
 
+    def init_external_internal_genomes(self):
+
+        g = GenomeDescriptions(self.args, run=self.run, progress=progress_quiet)
+        g.load_genomes_descriptions(skip_functions=True)
+
+        # metagenome mode must be off
+        if self.metagenome_mode:
+            self.metagenome_mode = False
+
+        self.databases = copy.deepcopy(g.genomes)
+        if self.external_genomes_file:
+            self.database_names = copy.deepcopy(g.external_genome_names)
+        else:
+            self.database_names = copy.deepcopy(g.internal_genome_names)
+
+
     def get_args_for_single_estimator(self, db_name):
         """Returns args formatted for an instance of KeggMetabolismEstimator that will work on a contigs DB. Very tricksy."""
 
@@ -2503,8 +2519,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                 self.init_metagenomes()
             elif self.external_genomes_file:
                 self.run.info("External genomes file", self.external_genomes_file)
+                self.init_external_internal_genomes()
             elif self.internal_genomes_file:
                 self.run.info("Internal genomes file", self.internal_genomes_file)
+                self.init_external_internal_genomes()
             else:
                 self.progress.reset()
                 raise ConfigError("Whooops. We are not sure how you got to this point without an input file, "
