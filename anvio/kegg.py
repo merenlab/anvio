@@ -2520,12 +2520,15 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.progress.new("Initializing contigs DBs")
             self.progress.update("...")
             if self.metagenomes_file:
+                self.progress.reset()
                 self.run.info("Metagenomes file", self.metagenomes_file)
                 self.init_metagenomes()
             elif self.external_genomes_file:
+                self.progress.reset()
                 self.run.info("External genomes file", self.external_genomes_file)
                 self.init_external_internal_genomes()
             elif self.internal_genomes_file:
+                self.progress.reset()
                 self.run.info("Internal genomes file", self.internal_genomes_file)
                 self.init_external_internal_genomes()
             else:
