@@ -1152,7 +1152,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             filesnpaths.is_file_exists(self.bin_ids_file)
             self.bin_ids_to_process = [line.strip() for line in open(self.bin_ids_file).readlines()]
 
-        if self.bin_id or self.bin_ids_file or self.collection_name and not self.profile_db_path:
+
+        if (self.bin_id or self.bin_ids_file or self.collection_name) and not self.profile_db_path:
             raise ConfigError("You have requested metabolism estimation for a bin or set of bins, but you haven't provided "
                               "a profiles database. Unfortunately, this just does not work. Please try again.")
 
