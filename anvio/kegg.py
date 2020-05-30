@@ -2395,6 +2395,8 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         if 'profile_db_path' in self.databases[db_name]:
             args.profile_db = self.databases[db_name]['profile_db_path']
 
+        args.metagenome_mode = self.metagenome_mode
+
         self.update_available_headers_for_multi()
 
         return args
