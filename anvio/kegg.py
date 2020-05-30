@@ -2321,6 +2321,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                 raise ConfigError("Multiple file inputs were provided. Please choose only one at a time to make "
                                   "things easier on everybody.")
 
+        if args.estimate_from_json or args.store_json_without_estimation or args.get_raw_data_as_json:
+            raise ConfigError("You've provided some JSON parameters. We are sorry to say that these parameters don't "
+                              "work for input files with multiple contigs DBs. :( ")
+
         # set name header
         if self.metagenomes_file:
             self.name_header = 'metagenome_name'
