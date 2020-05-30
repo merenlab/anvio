@@ -1207,7 +1207,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                               "`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case "
                               "since you also cannot run `anvi-run-kegg-kofams` without first having run KEGG setup. But fine. Hopefully "
                               "you now know what you need to do to make this message go away." % ("MODULES.db", self.kegg_data_dir))
-        kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
+        kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
 
         # here we load the contigs DB just for sanity check purposes.
         # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
@@ -2024,7 +2024,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         kegg_metabolism_superdict = {}
 
-        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet)
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
 
         if self.estimate_from_json:
             kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
@@ -2097,7 +2097,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             The output dictionary whose format is compatible for printing to a tab-delimited file
         """
 
-        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet)
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
 
         # use the kofam_hits output mode header set by default
         if not headers_to_include:
@@ -2417,6 +2417,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             args.bin_id = self.databases[db_name]['bin_id']
 
         args.metagenome_mode = self.metagenome_mode
+        args.quiet = True
 
         self.update_available_headers_for_multi()
 
