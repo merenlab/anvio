@@ -11,35 +11,7 @@ that will record a sequence of genes of size N to form an Ngram (similar to a km
 a tsv with counts for each Ngram per contig provided. The resulting Ngram count table can then be used
 to analyze the presence and absence of groups of genes by the user.
 
-To test this code run:
-
-            >>> cd anvio/anvio/tests
-            >>> ./run_all_tests.sh
-            >>> output_dir=sandbox/test-output
-
-            # make a external-genomesfile
-            >>> echo -e "name\tcontigs_db_path\ng01\t$output_dir/01.db\ng02\t$output_dir/02.db\ng03\t$output_dir/03.db" > $output_dir/external-genomes-file.txt
-
-            Default test that ignores ngrams with unknown functions:
-
-            >>> anvi-analyze-synteny -e $output_dir/external-genomes-file.txt \
-                                     --annotation-source COG_FUNCTION \
-                                     --window-range 2:3 \
-                                     -o $output_dir/synteny_output_no_unknowns.tsv
-
-            >>> anvi-analyze-synteny -e $output_dir/external-genomes-file.txt \
-                                     --annotation-source COG_FUNCTION \
-                                     --window-range 2:3 \
-                                     -o $output_dir/synteny_output_with_unknowns.tsv \
-                                     --analyze-unknown-functions
-
-            Unknown-function-mode test that records ngrams with unknown functions:\
-
-            >>> anvi-analyze-synteny -e $output_dir/external-genomes-cps.txt \
-                                     --annotation-source COG_FUNCTION \
-                                     --window-range 2:3 \
-                                     -o $output_dir/tsv.txt \
-                                     --analyze-unknown-functions
+See anvio/docs/programs/anvi-analyze-synteny.md for more information and how to create simple test cases.
 """
 
 import sys
@@ -59,16 +31,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Matthew S. Schechter"
 __email__ = "mschechter@uchicago.edu"
-__requires__ = ['genomes-storage-db']
+__requires__ = ['genomes-storage-db', 'functions', 'pan-db']
 __provides__ = ['ngrams']
-__description__ = ("This program helps you extract synteny patterns from a group of similar loci or genomes. This "
-                   "is accomplished by deconstructing contigs into Ngrams (group of neighboring genes of which N is the number of genes) "
-                   "using a sliding window method. Once completed, anvi'o will export a table with Ngrams "
-                   "for you to work with. If more than one annotation source is provided, please designate which annotation_source "
-                   "anvio should use to make the Ngrams with using the --ngram-source parameter (e.g. gene_clusters, COG_FUNCTION). By default anvi'o will ignore Ngrams "
-                   "that contain genes without annotations. If you would like to override this, you can use the --analyze-unknown-functions flag.")
-
-
+__description__ = ("Extract ngrams, as in 'co-occurring genes in synteny', from genomes")
 
 run = terminal.Run()
 progress = terminal.Progress()
