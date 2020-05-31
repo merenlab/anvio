@@ -26,13 +26,13 @@ ANVIO_ARTIFACTS ={
         "name": "CONTIGS",
         "type": "FASTA",
         "provided_by_anvio": True,
-        "provided_by_user":True 
+        "provided_by_user":True
     },
     "external-gene-calls": {
         "name": "EXTERNAL GENE CALLS",
         "type": "TXT",
         "provided_by_anvio": False,
-        "provided_by_user":True 
+        "provided_by_user":True
     },
     "concatenated-gene-alignment-fasta": {
         "name": "CONCATENATED GENE ALIGNMENT",
@@ -56,19 +56,19 @@ ANVIO_ARTIFACTS ={
         "name": "BAM FILE",
         "type": "BAM",
         "provided_by_anvio": False,
-        "provided_by_user":True 
+        "provided_by_user":True
     },
     "protein-structure": {
         "name": "PDB FILE",
         "type": "TXT",
         "provided_by_anvio": False,
-        "provided_by_user":True 
+        "provided_by_user":True
     },
     "raw-bam-file": {
         "name": "RAW BAM FILE",
         "type": "BAM",
         "provided_by_anvio": False,
-        "provided_by_user":True 
+        "provided_by_user":True
     },
     "locus-fasta": {
         "name": "LOCUS",
@@ -146,13 +146,13 @@ ANVIO_ARTIFACTS ={
         "name": "COLLECTION",
         "type": "TXT",
         "provided_by_anvio": True,
-        "provided_by_user":True 
+        "provided_by_user":True
     },
     "hmm-source": {
         "name": "HMM SOURCE",
         "type": "HMM",
         "provided_by_anvio": True,
-        "provided_by_user":True 
+        "provided_by_user":True
     },
     "hmm-profile": {
         "name": "HMM PROFILE",
@@ -188,7 +188,7 @@ ANVIO_ARTIFACTS ={
         "name": "ITEMS DATA",
         "type": "TXT",
         "provided_by_anvio": True,
-        "provided_by_user":True 
+        "provided_by_user":True
     },
     "misc-data-items": {
         "name": "ITEMS DATA",
