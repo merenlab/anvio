@@ -1068,6 +1068,7 @@ class KeggEstimatorArgs():
         self.estimate_from_json = A('estimate_from_json') or None
         self.output_modes = A('kegg_output_modes') or A('output_modes') or "kofam_hits,complete_modules"
         self.custom_output_headers = A('custom_output_headers') or None
+        self.matrix_format = True if A('matrix_format') else False
         self.external_genomes_file = A('external_genomes') or None
         self.internal_genomes_file = A('internal_genomes') or None
         self.metagenomes_file = A('metagenomes') or None
@@ -1079,6 +1080,7 @@ class KeggEstimatorArgs():
         if format_args_for_single_estimator:
             # to fool a single estimator into passing sanity checks, nullify multi estimator args here
             self.databases = None
+            self.matrix_format = False # we won't be storing data from the single estimator anyway
 
         # parse requested output modes if necessary
         if isinstance(self.output_modes, str):
@@ -1173,6 +1175,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # output options sanity checks
         if anvio.DEBUG:
             run.info("Output Modes", ", ".join(self.output_modes))
+            run.info("Matrix format", self.matrix_format)
         illegal_modes = set(self.output_modes).difference(set(self.available_modes.keys()))
         if illegal_modes:
             raise ConfigError("You have requested some output modes that we cannot handle. The offending modes "

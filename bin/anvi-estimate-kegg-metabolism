@@ -75,6 +75,10 @@ if __name__ == '__main__':
     groupC.add_argument(*anvio.A('list-available-modes'), **anvio.K('list-available-modes'))
     groupC.add_argument(*anvio.A('custom-output-headers'), **anvio.K('custom-output-headers'))
     groupC.add_argument(*anvio.A('list-available-output-headers'), **anvio.K('list-available-output-headers'))
+    groupC.add_argument(*anvio.A('matrix-format'), **anvio.K('matrix-format', {'help': "If you want to generate the output in several sparse matrices instead "
+                                                                                   "of one file, use this flag. In each matrix, contigs DBs will be arranged in "
+                                                                                   "columns and KEGG modules in rows. This output option is especially "
+                                                                                   "appropriate for input option #3."}))
 
     groupD = parser.add_argument_group('DEBUG', "Parameters to use if you think something fishy is going on or otherwise want to exert more control. Go for it.")
     groupD.add_argument(*anvio.A('get-raw-data-as-json'), **anvio.K('get-raw-data-as-json'))
