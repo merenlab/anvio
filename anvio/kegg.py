@@ -2525,12 +2525,45 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Long-format output", output_file_path)
 
 
+    def store_metabolism_superdict_multi_matrix_format(self, kegg_superdict_multi):
+        """Stores the multi-contigs DB metabolism data in several matrices.
+
+        Contigs DBs are arranged in columns and KEGG modules are arranged in rows.
+        Each module statistic (ie, completeness, presence/absence) will be in a different file.
+        """
+
+        # we use module output mode because that gets us all the relevant information in the dataframe
+        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, output_mode="module", as_data_frame=True)
+        df.set_index(['db_name', 'kegg_module'], inplace=True)
+
+
+        # module stats that each will be put in separate matrix file
+        # stat is key, corresponding header in df is value
+        module_matrix_stats = {"completeness" : "module_completeness", "presence" : "module_is_complete"}
+
+        for stat, header in module_matrix_stats.items():
+            matrix = sps.coo_matrix((df[header], (df.index.labels[1], df.index.labels[0]))).todense().tolist()
+
+            cols = df.index.levels[0].tolist()
+            rows = df.index.levels[1].tolist()
+
+            output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat)
+
+            with open(output_file_path, 'w') as output:
+                output.write('\t'.join(cols) + '\n')
+                for i in range(0, len(matrix)):
+                    output.write('\t'.join([rows[i]] + ['%.2f' % c for c in matrix[i]]) + '\n')
+
+            self.run.info('Output matrix for "%s"' % stat, output_file_path)
+
+
     def store_metabolism_superdict_multi(self, kegg_superdict_multi):
         """This function arranges the metabolism superdict for each contigs db into one dictionary for output."""
 
-        # if matrix mode, store in matrix format such that module completeness, presence/absence, redundancy, etc is a separate matrix
-
-        self.store_metabolism_superdict_multi_long_format(kegg_superdict_multi)
+        if self.matrix_format:
+            self.store_metabolism_superdict_multi_matrix_format(kegg_superdict_multi)
+        else:
+            self.store_metabolism_superdict_multi_long_format(kegg_superdict_multi)
 
 
     def estimate_metabolism(self):
