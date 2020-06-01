@@ -1197,10 +1197,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                   % (", ".join(illegal_headers)))
 
         if self.matrix_format:
-            self.run.warning("You seem to want output in matrix format despite having only a single contigs database to work "
-                             "with. This is fine, but you do know that your matrices will each have only one column, right? Doesn't "
-                             "make much sense to anvi'o. Perhaps you meant to use an input file with multiple databases instead. "
-                             " Anyhow, now is your chance to quietly go figure out what you are really doing.")
+            raise ConfigError("You seem to want output in matrix format despite having only a single contigs database to work "
+                             "with. You do know that your matrices would each have only one column, right? Since that doesn't "
+                             "make much sense, we think perhaps you meant to use an input file with multiple databases instead. "
+                             "Anyhow, now is your chance to quietly go figure out what you are really doing.")
 
 
         # init the base class
