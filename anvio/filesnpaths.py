@@ -35,7 +35,7 @@ allowed_chars = constants.allowed_chars.replace('.', '').replace('-', '')
 is_bad_column_name = lambda col: len([char for char in col if char not in allowed_chars])
 
 
-def is_proper_newick(newick_data, dont_raise=False):
+def is_proper_newick(newick_data, dont_raise=False, names_with_only_digits_ok=False):
     try:
         tree = Tree(newick_data, format=1)
 
@@ -57,21 +57,30 @@ def is_proper_newick(newick_data, dont_raise=False):
             raise FilesNPathsError("Your tree doesn't seem to be properly formatted. Here is what ETE had "
                                    "to say about this: '%s'. Pity :/" % e)
 
+    names_with_only_digits = [n.name for n in tree.get_leaves() if n.name.isdigit()]
+    if len(names_with_only_digits) and not names_with_only_digits_ok:
+        raise FilesNPathsError("Your tree contains names that are composed of only digits (like this one: '%s'). Sadly, anvi'o "
+                               "is not happy with such names in newick trees or clustering dendrograms :( Anvi'o developers "
+                               "apologize for the inconvenience." % (names_with_only_digits[0]))
+
     return True
 
 
 def is_proper_external_gene_calls_file(file_path):
     is_file_tab_delimited(file_path)
 
-    headers_proper = ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'source', 'version', 'aa_sequence']
+    headers_proper = ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version', 'aa_sequence']
+    call_types_allowed = set(list(constants.gene_call_types.values()))
 
     with open(file_path, 'rU') as input_file:
         headers = input_file.readline().strip().split('\t')
 
-        if len(headers) == 9:
+        if len(headers) == 10:
             missing_headers = [h for h in headers_proper if h not in headers]
-        elif len(headers) == 8:
+            has_aa_sequences = True
+        elif len(headers) == 9:
             missing_headers = [h for h in headers_proper[:-1] if h not in headers]
+            has_aa_sequences = False
         else:
             raise FilesNPathsError("Your external gene calls file does not contain the right number of columns :/ Here is how "
                                    "your header line should look like (the `aa_sequence` is optional): '%s'." % ', '.join(headers_proper))
@@ -85,8 +94,13 @@ def is_proper_external_gene_calls_file(file_path):
             if not line:
                 break
 
-            fields = line.strip().split('\t')
-            start, stop = int(fields[2]), int(fields[3])
+            fields = line.strip('\n').split('\t')
+
+            try:
+                start, stop = int(fields[2]), int(fields[3])
+            except ValueError:
+                raise FilesNPathsError("All start/stop positions in an external gene calls file must contain integer values (duh). "
+                                       "Guess whose file has gene calls with start/stop positions of nope?")
 
             if start < 0:
                 raise FilesNPathsError("At least one gene call in your external genes file ('%s') contains a start position "
@@ -96,10 +110,24 @@ def is_proper_external_gene_calls_file(file_path):
                                        "But we are burdened to act as adults here :(" % (fields[0]))
 
             if start >= stop:
-                raise FilesNPathsError("At least one gene call in your external genes file ('%s') has a stop "
+                raise FilesNPathsError("At least one gene call in your external genes calls file ('%s') has a stop "
                                        "position that is not larger than the start position. No, says anvi'o. "
                                        "If you need to reverse your genes, the way to do it is to use the `direction`"
                                        "column as it is instructed on our web resources." % (fields[0]))
+            try:
+                call_type = int(fields[6])
+            except ValueError:
+                raise FilesNPathsError("Values in the call_type column must be integers :/ Please see "
+                                       "http://merenlab.org/software/anvio/help/artifacts/external-gene-calls/")
+
+            if call_type not in call_types_allowed:
+                raise FilesNPathsError("Each call type in an external gene calls file must have a value of either "
+                                       "of these: '%s'." % (', '.join([str(e) for e in sorted(list(call_types_allowed))])))
+
+            if call_type is not constants.gene_call_types["CODING"] and has_aa_sequences and len(fields[9].strip()) > 0:
+                raise FilesNPathsError("At least one gene call in your external gene calls file ('%s') has amino acid "
+                                       "sequence listed despite the fact that it is not marked as 'coding' (1) in `call_type` "
+                                       "column. Not OK." % fields[0])
 
     return True
 

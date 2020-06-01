@@ -25,6 +25,16 @@ anvi-gen-contigs-database -f %(contigs-fasta)s \
 {{ codestart }}
 anvi-gen-contigs-database -f %(contigs-fasta)s \
                           -o %(contigs-db)s \
-                          -e %(external-gene-calls)s
+                          --external-gene-calls %(external-gene-calls)s
 {{ codestop }}
 
+See %(external-gene-calls)s for the description and formatting requirements of this file.
+
+If user-provided or anvi'o-calculated amino acid sequences contain internal stop codons, anvi'o will yield an error. The following command will persist through this error:
+
+{{ codestart }}
+anvi-gen-contigs-database -f %(contigs-fasta)s \
+                          -o %(contigs-db)s \
+                          --external-gene-calls %(external-gene-calls)s \
+                          --ignore-internal-stop-codons
+{{ codestop }}

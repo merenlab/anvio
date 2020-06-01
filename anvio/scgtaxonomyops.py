@@ -1725,7 +1725,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck):
                          "framework is using only %d SCGs to estimate taxonomy. Which means, even a highly complete bin "
                          "may be missing all of them. In which case, the coverage of that bin will be `None` across all "
                          "your samples. The best way to prevent any misleading insights is take these results with a "
-                         "huge grain of salt, and use the `anvi-summarize` output for critical applications.",
+                         "huge grain of salt, and use the `anvi-summarize` output for critical applications." % len(self.ctx.SCGs),
                          header="FRIENDLY REMINDER", lc="blue")
 
         return bin_avg_coverages_across_samples_dict

@@ -87,15 +87,15 @@ class ReportCodonFrequencies:
             self.c.init_contig_sequences()
 
         residue_frequencies = {}
-        partial_genes_skipped = set([])
+        noncoding_genes_skipped = set([])
 
         F = utils.get_list_of_AAs_for_gene_call if self.return_AA_frequencies_instead else utils.get_list_of_codons_for_gene_call
 
         for gene_callers_id in self.gene_caller_ids:
             gene_call = self.c.genes_in_contigs_dict[gene_callers_id]
 
-            if gene_call['partial']:
-                partial_genes_skipped.add(gene_callers_id)
+            if gene_call['call_type'] != constants.gene_call_types['CODING']:
+                noncoding_genes_skipped.add(gene_callers_id)
                 continue
 
             residue_frequencies[gene_callers_id] = Counter(F(gene_call, self.c.contig_sequences))
@@ -120,9 +120,9 @@ class ReportCodonFrequencies:
             self.item_name_conversion_dict = dict([(codon, '%s-%s' % (constants.codon_to_AA[codon], codon)) for codon in codons_used])
 
 
-        if len(partial_genes_skipped):
+        if len(noncoding_genes_skipped):
             self.run.warning("%d of %d genes were skipped and will not be in the final report since they were "
-                            "'partial' gene calls." % (len(partial_genes_skipped), len(self.gene_caller_ids)))
+                            "'noncoding' gene calls." % (len(noncoding_genes_skipped), len(self.gene_caller_ids)))
 
         if not len(residue_frequencies):
             raise ConfigError("Anvi'o has no residue frequencies to work with :(")

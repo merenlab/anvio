@@ -6,6 +6,7 @@ import os
 import sys
 import glob
 import json
+import argparse
 import importlib
 
 from collections import Counter
@@ -171,7 +172,7 @@ class AnvioPrograms:
 
         if self.program_names_to_focus:
             self.program_names_to_focus = [p.strip() for p in self.program_names_to_focus.split(',')]
-            run.info("Program names to focus", len(self.program_names_to_focus))
+            self.run.info("Program names to focus", len(self.program_names_to_focus))
 
             self.all_program_filepaths = [p for p in self.all_program_filepaths if os.path.basename(p) in self.program_names_to_focus]
 
@@ -198,19 +199,21 @@ class AnvioPrograms:
 
             program = Program(program_filepath, r=self.run, p=self.progress)
 
-            program_usage_information_path = os.path.join(self.docs_path, 'programs/%s.md' % (program.name))
+            program_usage_information_path = os.path.join(anvio.DOCS_PATH, 'programs/%s.md' % (program.name))
 
             if program.meta_info['provides']['value'] or program.meta_info['requires']['value']:
                 programs_with_provides_requires_info.add(program.name)
             else:
                 programs_without_provides_requires_info.add(program.name)
 
-            # learn about the usage statement of the program
-            if os.path.exists(program_usage_information_path):
-                program.usage = self.read_anvio_markdown(program_usage_information_path)
-                programs_with_usage_info.add(program.name)
-            else:
-                programs_without_usage_info.add(program.name)
+            # learn about the usage statement of the program if you have access to reading
+            # markdown reader function:
+            if hasattr(self, 'read_anvio_markdown'):
+                if os.path.exists(program_usage_information_path):
+                    program.usage = self.read_anvio_markdown(program_usage_information_path)
+                    programs_with_usage_info.add(program.name)
+                else:
+                    programs_without_usage_info.add(program.name)
 
             if not (program.meta_info['provides']['value'] or program.meta_info['requires']['value']) and not okay_if_no_meta:
                 try:
@@ -241,7 +244,7 @@ class AnvioPrograms:
                              "Here is a complete list of programs that are missing usage statements: %s " % \
                                         (len(self.all_program_filepaths),
                                          len(programs_without_provides_requires_info),
-                                         self.docs_path, 
+                                         anvio.DOCS_PATH, 
                                          ', '.join(programs_without_provides_requires_info)),
                              nl_after=1, nl_before=1)
 
@@ -340,17 +343,20 @@ class Program:
 class Artifact:
     """A class to describe an anvi'o artifact"""
 
-    def __init__(self, artifact_id, internal=True, optional=True, single=True):
+    def __init__(self, artifact_id, provided_by_anvio=True, optional=True, single=True):
         if artifact_id not in ANVIO_ARTIFACTS:
             raise ConfigError("Ehem. Anvi'o does not know about artifact '%s'. There are two was this could happen: "
-                              "one, you made a type (easy to fix), two, you just added a new program into anvi'o "
-                              "but have not yet updated `anvio/programs.py`." % artifact_id)
+                              "one, you've made a typo (easy to fix), two, you've just updated __provides__ or __requires__ "
+                              "statement in an anvi'o program with an artifact that does not exist and have not yet updated "
+                              "`anvio/programs.py` (which is also easy to fix). Please consider also adding a description of "
+                              "this artifact under anvio/docs/artifacts while you are at it :)" % artifact_id)
 
         artifact = ANVIO_ARTIFACTS[artifact_id]
         self.id = artifact_id
         self.name = artifact['name']
         self.type = artifact['type']
-        self.internal = artifact['internal']
+        self.provided_by_anvio = artifact['provided_by_anvio']
+        self.provided_by_user = artifact['provided_by_user']
 
         # attributes set by the context master
         self.single = single
@@ -391,12 +397,12 @@ class AnvioArtifacts:
 
         artifacts_with_descriptions = set([])
         artifacts_without_descriptions = set([])
-    
+
         for artifact in ANVIO_ARTIFACTS:
             self.artifacts_info[artifact] = {'required_by': [], 'provided_by': [], 'description': None}
 
             # learn about the description of the artifact
-            artifact_description_path = os.path.join(self.docs_path, 'artifacts/%s.md' % (artifact))
+            artifact_description_path = os.path.join(anvio.DOCS_PATH, 'artifacts/%s.md' % (artifact))
             if os.path.exists(artifact_description_path):
                 self.artifacts_info[artifact]['description'] = self.read_anvio_markdown(artifact_description_path)
                 artifacts_with_descriptions.add(artifact)
@@ -417,7 +423,7 @@ class AnvioArtifacts:
                                  "full list of artifacts that are not yet explained: %s." \
                                         % (len(ANVIO_ARTIFACTS),
                                            len(artifacts_without_descriptions),
-                                           self.docs_path,
+                                           anvio.DOCS_PATH,
                                            ', '.join(artifacts_without_descriptions)), nl_after=1, nl_before=1)
 
 
@@ -439,8 +445,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_directory_path = A("output_dir") or 'ANVIO-HELP'
 
-        self.docs_path = os.path.join(os.path.dirname(anvio.__file__), 'docs')
-        if not os.path.exists(self.docs_path):
+        if not os.path.exists(anvio.DOCS_PATH):
             raise ConfigError("The anvi'o docs path is not where it should be :/ Something funny is going on.")
 
         filesnpaths.gen_output_directory(self.output_directory_path, delete_if_exists=True, dont_warn=True)
@@ -510,7 +515,10 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
 
     def read_anvio_markdown(self, file_path):
-        """Reads markdown descriptions filling in anvi'o variables"""
+        """Reads markdown descriptions filling in anvi'o variables.
+
+        Basically a lot of l_l83Я 1337 Я0XX0ЯZ stuff's going on down there, so you better run while you can.
+        """
 
         filesnpaths.is_file_plain_text(file_path)
 
@@ -519,6 +527,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
 
         markdown_content = open(file_path).read()
 
+        # this is quite a big deal thing to do here:
         try:
             markdown_content = markdown_content % self.anvio_markdown_variables_conversion_dict
         except KeyError as e:
@@ -531,11 +540,29 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             self.progress.end()
             raise ConfigError("Something went wrong while working with '%s' :/ This is what we know: '%s'." % (file_path, e))
 
+        # now we have replaced anvi'o variables with markdown links, it is time to replace
+        # hyphens in anvi'o codeblocks with HTML hyphens so markdown does not freakout when it is
+        # time to visualize these and replace -- characters with en dash.
+        markdwon_lines = markdown_content.split('\n')
+        line_nums_for_codestart_tags = [i for i in range(0, len(markdwon_lines)) if markdwon_lines[i].strip() == "{{ codestart }}"]
+        line_nums_for_codestop_tags = [i for i in range(0, len(markdwon_lines)) if markdwon_lines[i].strip() == "{{ codestop }}"]
+
+        if len(line_nums_for_codestart_tags) != len(line_nums_for_codestop_tags):
+            raise ConfigError("The number of {{ codestart }} tags do not match to the number of {{ codestop }} tags :/")
+
+
+        for line_start, line_end in list(zip(line_nums_for_codestart_tags, line_nums_for_codestop_tags)):
+            for line_num in range(line_start + 1, line_end):
+                markdwon_lines[line_num] = markdwon_lines[line_num].replace("-", "&#45;").replace("*", "&#42;").replace("==", "&#61;&#61;")
+
+        # all lines are processed: merge them back into a single text:
+        markdown_content = '\n'.join(markdwon_lines)
+
+        # now we have a proper markdown, it is time to remove anvi'o {{ codestart }} and {{ codestop }} blocks.
         markdown_content = markdown_content.replace("""{{ codestart }}""", """<div class="codeblock" markdown="1">""")
         markdown_content = markdown_content.replace("""{{ codestop }}""", """</div>""")
-        markdown_content = markdown_content.replace("""-""", """&#45;""")
 
-
+        # return it like a pro.
         return markdown_content
 
 
@@ -608,6 +635,10 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
             output_file_path = os.path.join(program_output_dir, 'index.md')
             open(output_file_path, 'w').write(SummaryHTMLOutput(d, r=run, p=progress).render())
 
+            # create the program network, too
+            program_network = ProgramsNetwork(argparse.Namespace(output_file=os.path.join(program_output_dir, "network.json"), program_names_to_focus=program_name), r=terminal.Run(verbose=False))
+            program_network.generate()
+
 
     def generate_index_page(self):
         d = {'programs': [(p, 'programs/%s' % p, self.programs[p].meta_info['description']['value']) for p in self.programs],
@@ -642,7 +673,14 @@ class ProgramsNetwork(AnvioPrograms):
         self.report_network()
 
 
-    def report_network(self):
+    def report_network(self, program_name=None):
+        """Reports an association network for anvi'o programs and artifacs
+
+        By default this function will report a network for all programs, unless the user
+        set args.program_names_to_focus to a list of programs, in which case the function
+        will focus only on that program and its artifats, reporting a sub-network.
+        """
+
         artifact_names_seen = set([])
         artifacts_seen = Counter({})
         all_artifacts = []
@@ -669,11 +707,11 @@ class ProgramsNetwork(AnvioPrograms):
         for artifact in all_artifacts:
             types_seen.add(artifact.type)
             network_dict["nodes"].append({"size": artifacts_seen[artifact.id],
-                                          "score": 0.5 if artifact.internal else 1,
-                                          "color": '#00AA00' if artifact.internal else "#AA0000",
+                                          "score": 0.5 if artifact.provided_by_anvio else 1,
+                                          "color": '#00AA00' if artifact.provided_by_anvio else "#AA0000",
                                           "id": artifact.id,
                                           "name": artifact.name,
-                                          "internal": True if artifact.internal else False,
+                                          "provided_by_anvio": True if artifact.provided_by_anvio else False,
                                           "type": artifact.type})
             node_indices[artifact.id] = index
             index += 1

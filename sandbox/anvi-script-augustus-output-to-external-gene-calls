@@ -76,6 +76,7 @@ def main(args):
                                         'stop': (int(gene_call[4]) - 1) if gene_call[6] == '+' else int(gene_call[4]),
                                         'direction': 'f' if gene_call[6] == '+' else 'r',
                                         'partial': 0,
+                                        'call_type': 1,
                                         'source': 'AUGUSTUS',
                                         'version': 'v3.3.3',
                                         'aa_sequence': ''}
@@ -102,7 +103,7 @@ def main(args):
                 continue
 
     progress.update("Storing the output ...")
-    u.store_dict_as_TAB_delimited_file(gene_calls, args.output_file, ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'source', 'version', 'aa_sequence'])
+    u.store_dict_as_TAB_delimited_file(gene_calls, args.output_file, ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version', 'aa_sequence'])
     progress.end()
 
     run.info("Anvi'o external genes file output", args.output_file, mc='green')
