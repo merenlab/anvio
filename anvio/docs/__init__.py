@@ -7,391 +7,481 @@ ANVIO_ARTIFACTS ={
     "pan-db": {
         "name": "PAN",
         "type": "DB",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "contigs-db": {
         "name": "CONTIGS",
         "type": "DB",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "fasta": {
         "name": "REGULAR FASTA",
         "type": "FASTA",
-        "internal": False
+        "provided_by_anvio": False,
+        "provided_by_user": True
     },
     "contigs-fasta": {
         "name": "CONTIGS",
         "type": "FASTA",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user":True
     },
     "external-gene-calls": {
         "name": "EXTERNAL GENE CALLS",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": False,
+        "provided_by_user":True
     },
     "concatenated-gene-alignment-fasta": {
         "name": "CONCATENATED GENE ALIGNMENT",
         "type": "FASTA",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "short-reads-fasta": {
         "name": "SHORT READS",
         "type": "FASTA",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "genes-fasta": {
         "name": "GENES",
         "type": "FASTA",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "bam-file": {
         "name": "BAM FILE",
         "type": "BAM",
-        "internal": False
+        "provided_by_anvio": False,
+        "provided_by_user":True
     },
     "protein-structure": {
         "name": "PDB FILE",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": False,
+        "provided_by_user":True
     },
     "raw-bam-file": {
         "name": "RAW BAM FILE",
         "type": "BAM",
-        "internal": False
+        "provided_by_anvio": False,
+        "provided_by_user":True
     },
     "locus-fasta": {
         "name": "LOCUS",
         "type": "FASTA",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "structure-db": {
-        "name": "STRUCTURE",
+        "name": "PROTEIN STRUCTURES",
         "type": "DB",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "pdb-db": {
         "name": "PDB DB",
-        "type": "CONCEPT",
-        "internal": True
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "kegg-db": {
         "name": "KEGG DB",
         "type": "DB",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "single-profile-db": {
         "name": "SINGLE PROFILE",
         "type": "DB",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "profile-db": {
         "name": "PROFILE",
         "type": "DB",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "genes-db": {
         "name": "GENES",
         "type": "DB",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "genomes-storage-db": {
         "name": "GENOMES STORAGE",
         "type": "DB",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "contigs-stats": {
         "name": "CONTIGS STATS",
         "type": "STATS",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "svg": {
         "name": "SVG",
         "type": "SVG",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "bin": {
         "name": "BIN",
         "type": "BIN",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "collection": {
         "name": "COLLECTION",
         "type": "COLLECTION",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "collection-txt": {
         "name": "COLLECTION",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user":True
     },
     "hmm-source": {
         "name": "HMM SOURCE",
         "type": "HMM",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user":True
     },
     "hmm-profile": {
         "name": "HMM PROFILE",
         "type": "CONCEPT",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "completion": {
+        "name": "COMPLETION",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "cogs-data": {
         "name": "COGs DATA",
         "type": "DATA",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "pfams-data": {
         "name": "PFAMs DATA",
         "type": "DATA",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "trna-genes": {
         "name": "TRNA GENES",
         "type": "CONCEPT",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "misc-data-items-txt": {
         "name": "ITEMS DATA",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user":True
     },
     "misc-data-items": {
         "name": "ITEMS DATA",
         "type": "CONCEPT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "misc-data-layers-txt": {
         "name": "LAYERS DATA",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "misc-data-layers": {
         "name": "LAYERS DATA",
         "type": "CONCEPT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "misc-data-nucleotides-txt": {
         "name": "NUCLEOTIDES DATA",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "misc-data-nucleotides": {
         "name": "NUCLEOTIDES DATA",
         "type": "CONCEPT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "misc-data-amino-acids-txt": {
         "name": "AMINO_ACIDS DATA",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "misc-data-amino-acids": {
         "name": "AMINO_ACIDS DATA",
         "type": "CONCEPT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "misc-data-layers-category": {
         "name": "LAYERS DATA CATEGORY",
         "type": "CONCEPT",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "genome-similarity": {
         "name": "GENOME SIMILARITY",
         "type": "CONCEPT",
-        "internal": False
-    },
-    "misc-data-layer-orders": {
-        "name": "LAYER ORDERS DATA",
-        "type": "CONCEPT",
-        "internal": False
-    },
-    "misc-data-item-orders": {
-        "name": "ITEM ORDERS DATA",
-        "type": "CONCEPT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "misc-data-layer-orders-txt": {
         "name": "LAYER ORDERS DATA",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
+    "misc-data-layer-orders": {
+        "name": "LAYER ORDERS DATA",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "misc-data-item-orders-txt": {
         "name": "LAYER ORDERS DATA",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
+    "misc-data-item-orders": {
+        "name": "ITEM ORDERS DATA",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "dendrogram": {
         "name": "DENDROGRAM",
         "type": "NEWICK",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "metapangenome": {
         "name": "METAPANGENOME",
         "type": "CONCEPT",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "oligotypes": {
         "name": "OLIGOTYPES",
         "type": "CONCEPT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "linkmers-txt": {
         "name": "LINKMERS",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": False,
+        "provided_by_user": True
     },
     "phylogeny": {
         "name": "PHYLOGENY",
         "type": "NEWICK",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "gene-calls-txt": {
         "name": "GENE CALLS",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "functions": {
         "name": "GENE FUNCTIONS",
         "type": "CONCEPT",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "functions-txt": {
         "name": "GENE FUNCTIONS",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "functional-enrichment-txt": {
         "name": "ENRICHED FUNCTIONS",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "kegg-functions": {
         "name": "KOFAM FUNCTIONS",
         "type": "CONCEPT",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "interactive": {
         "name": "INTERACTIVE DISPLAY",
         "type": "DISPLAY",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "view-data": {
         "name": "VIEW DATA",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "layer-taxonomy": {
         "name": "LAYER TAXONOMY",
         "type": "CONCEPT",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "layer-taxonomy-txt": {
         "name": "LAYER TAXONOMY",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "gene-taxonomy": {
         "name": "GENE TAXONOMY",
         "type": "CONCEPT",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "gene-taxonomy-txt": {
         "name": "GENE TAXONOMY",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "genome-taxonomy": {
         "name": "GENOME TAXONOMY",
         "type": "CONCEPT",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "genome-taxonomy-txt": {
         "name": "GENOME TAXONOMY",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": False,
+        "provided_by_user": False
     },
     "scgs-taxonomy-db": {
         "name": "SCG TAXONOMY DB",
         "type": "CONCEPT",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "scgs-taxonomy": {
         "name": "SCG TAXONOMY",
         "type": "CONCEPT",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "external-genomes": {
         "name": "EXTERNAL GENOMES",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": False,
+        "provided_by_user": True
     },
     "internal-genomes": {
         "name": "INTERNAL GENOMES",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": False,
+        "provided_by_user": True
     },
     "coverages-txt": {
         "name": "COVERAGES",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "genome-distance-txt": {
         "name": "DISTANCE ESTIMATES",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "genome-distance": {
         "name": "DISTANCE ESTIMATES",
         "type": "CONCEPT",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "variability-profile": {
         "name": "VARIABILITY PROFILE",
         "type": "CONCEPT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "variability-profile-txt": {
+        "name": "VARIABILITY PROFILE",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "codon-frequencies-txt": {
         "name": "CODON FREQUENCIES",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "aa-frequencies-txt": {
         "name": "AA FREQUENCIES",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True ,
+        "provided_by_user": False
     },
     "fixation-index-matrix": {
         "name": "FIXATION INDEX MATRIX",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "summary": {
         "name": "STATIC SUMMARY",
         "type": "SUMMARY",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "split-bins": {
         "name": "SPLIT BINS",
         "type": "CONCEPT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "state": {
         "name": "INTERACTIVE STATE",
         "type": "CONCEPT",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "ngrams": {
         "name": "NGRAM",
         "type": "CONCEPT",
-        "internal": True
+        "provided_by_anvio": True,
+        "provided_by_user": False
     },
     "state-json": {
         "name": "INTERACTIVE STATE",
         "type": "JSON",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "kegg-metabolism": {
         "name": "KEGG METABOLISM ESTIMATES",
         "type": "TXT",
-        "internal": False
+        "provided_by_anvio": True,
+        "provided_by_user": False
     }
 }

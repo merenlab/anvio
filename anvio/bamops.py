@@ -333,6 +333,21 @@ class Read:
     def __repr__(self):
         """Fancy output for viewing a read's alignment in relation to the reference"""
 
+        read, ref = self.alignment_as_string_pair()
+
+        lines = [
+            '<%s.%s object at %s>' % (self.__class__.__module__, self.__class__.__name__, hex(id(self))),
+            ' ├── start, end : [%s, %s)' % (self.reference_start, self.reference_end),
+            ' ├── cigartuple : %s' % [tuple(row) for row in self.cigartuples],
+            ' ├── read       : %s' % ''.join(read),
+            ' └── reference  : %s' % ''.join(ref),
+        ]
+
+        return '\n'.join(lines)
+
+
+    def alignment_as_string_pair(self):
+        """Only for visualization purposes--very slow"""
         ref, read, pos_ref, pos_read = [], [], 0, 0
         for _, length, consumes_read, consumes_ref in iterate_cigartuples(self.cigartuples, constants.cigar_consumption):
             if consumes_read:
@@ -347,15 +362,7 @@ class Read:
             else:
                 ref.extend(['-'] * length)
 
-        lines = [
-            '<%s.%s object at %s>' % (self.__class__.__module__, self.__class__.__name__, hex(id(self))),
-            ' ├── start, end : [%s, %s)' % (self.reference_start, self.reference_end),
-            ' ├── cigartuple : %s' % [tuple(row) for row in self.cigartuples],
-            ' ├── read       : %s' % ''.join(read),
-            ' └── reference  : %s' % ''.join(ref),
-        ]
-
-        return '\n'.join(lines)
+        return ''.join(read), ''.join(ref)
 
 
     def trim(self, trim_by, side='left'):
@@ -399,10 +406,12 @@ class Read:
 
             if side == 'left':
                 self.query_sequence = self.query_sequence[trim_by:]
+                self.reference_sequence = self.reference_sequence[trim_by:]
                 self.reference_start += trim_by
 
             else:
                 self.query_sequence = self.query_sequence[:-trim_by]
+                self.reference_sequence = self.reference_sequence[:-trim_by]
                 self.reference_end -= trim_by
 
             return
@@ -412,10 +421,12 @@ class Read:
 
         (self.cigartuples,
          self.query_sequence,
+         self.reference_sequence,
          self.reference_start,
          self.reference_end) = _trim(self.cigartuples,
                                      constants.cigar_consumption,
                                      self.query_sequence,
+                                     self.reference_sequence,
                                      self.reference_start,
                                      self.reference_end,
                                      trim_by,
@@ -1198,7 +1209,7 @@ def _get_aligned_sequence_and_reference_positions(cigartuples, query_sequence, r
 
 
 @jit(nopython=True)
-def _trim(cigartuples, cigar_consumption, query_sequence, reference_start, reference_end, trim_by, side):
+def _trim(cigartuples, cigar_consumption, query_sequence, reference_sequence, reference_start, reference_end, trim_by, side):
 
     cigartuples = cigartuples[::-1, :] if side == 1 else cigartuples
 
@@ -1245,12 +1256,14 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_start, refer
     if side == 1:
         cigartuples = cigartuples[::-1]
         query_sequence = query_sequence[:-read_positions_trimmed]
+        reference_sequence = reference_sequence[:-ref_positions_trimmed]
         reference_end -= ref_positions_trimmed
     else:
         cigartuples = cigartuples
         query_sequence = query_sequence[read_positions_trimmed:]
+        reference_sequence = reference_sequence[ref_positions_trimmed:]
         reference_start += ref_positions_trimmed
 
-    return cigartuples, query_sequence, reference_start, reference_end
+    return cigartuples, query_sequence, reference_sequence, reference_start, reference_end
 
 

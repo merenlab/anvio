@@ -4,12 +4,13 @@ Developers and contributors at the University of Chicago
 A. Murat Eren (a.murat.eren at gmail dot com)
 Özcan Esen (ozcanesen at gmail dot com)
 Evan Kiefl (kiefl.evan at gmail dot com)
+Iva Veseli (iveseli at uchicago.edu)
 Matthew Schechter (mschechter at uchicago dot edu)
 Mahmoud Yousef (mahmoudyousef at uchicago dot edu)
+Isaac Fink (iafink at uchicago dot edu)
 Andrea Watson (andreawatson at uchicago dot edu)
-Florian Trigodet (trigodet dot florian at gmail dot com)
-Iva Veseli (iveseli at uchicago.edu)
 Emily Fogarty (efogarty at uchicago dot edu)
+Florian Trigodet (trigodet dot florian at gmail dot com)
 
 ===============================================================================
 Developers and contributors at large
@@ -31,7 +32,6 @@ John Eppley                University of Hawaiʻi at Mānoa     United States
 S. Çağlar Onur             DigitalOcean, Inc.                 United States
 Dan Utter                  Harvard University                 United States
 Tom Delmont                Genoscope                          France
-Isaac Fink                 University of Chicago              United States
 Finlay Maguire             Dalhousie University               Canada
 M. Fauzi Haroon            Harvard University                 United States
 Elmar Pruesse              University of Colorado Denver      United States

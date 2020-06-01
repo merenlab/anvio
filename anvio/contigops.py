@@ -282,9 +282,9 @@ class Auxiliary:
                     # given a value of -1, so gene_id_per_nt_in_read looks like [42, 42, 42, 42, -1,
                     # ..., -1, 42, 42]. The portion of the read after the consecutive -1's will be
                     # trimmed and not included. The solution to this problem is to better manage
-                    # which genes we include for SCV analysis. Resolving issue
-                    # https://github.com/merenlab/anvio/issues/1358 would enable a more elegant
-                    # scenario, where this would not happen.
+                    # which genes we include for SCV analysis, but the problem is that the
+                    # vectorized data we use for gene information (nt_position_info) has these
+                    # overlapping gene segments pre-baked in.
                     gene_overlap_start, gene_overlap_stop = utils.get_constant_value_blocks(gene_id_per_nt_in_read, gene_id)[0]
                     gene_overlap_start += read.reference_start
                     gene_overlap_stop += read.reference_start - 1
@@ -306,14 +306,12 @@ class Auxiliary:
                         'start': self.split.per_position_info['gene_start'][accessor],
                         'stop': self.split.per_position_info['gene_stop'][accessor],
                         'direction': 'f' if self.split.per_position_info['forward'][accessor] else 'r',
-                        'partial': self.split.per_position_info['in_partial_gene_call'][accessor],
-                        'is_coding': 1 if self.split.per_position_info['base_pos_in_codon'][accessor] else 0,
+                        'call_type': constants.gene_call_types['CODING'] if self.split.per_position_info['in_coding_gene_call'][accessor] else 2,
                     }
 
                 gene_call = gene_calls[gene_id]
 
-                if gene_call['partial'] or not gene_call['is_coding']:
-                    # We can't handle partial gene calls bc we do not know the frame
+                if gene_call['call_type'] != constants.gene_call_types['CODING']:
                     # We cannot handle non-coding genes because they have no frame
                     continue
 
@@ -391,12 +389,22 @@ class Auxiliary:
             )
 
             # By design, we include SCVs only if they contain a SNV--filter out those that do not
-            cdn_profile.filter(self.get_codon_orders_that_contain_SNVs(gene_id))
-            cdn_profile.process(skip_competing_items=True)
+            codon_orders_that_contain_SNVs = self.get_codon_orders_that_contain_SNVs(gene_id)
+            if len(codon_orders_that_contain_SNVs):
+                # Only keep those that contain SNVs
+                cdn_profile.filter(codon_orders_that_contain_SNVs)
+            else:
+                # No codon orders contain SNVs
+                continue
 
-            self.split.SCV_profiles[gene_id] = cdn_profile.d
-
-            self.split.num_SCV_entries[gene_id] = len(cdn_profile.d['coverage'])
+            if cdn_profile.process(skip_competing_items=True):
+                # Processing allele counts yielded a non-zero number of codons being kept
+                self.split.SCV_profiles[gene_id] = cdn_profile.d
+                self.split.num_SCV_entries[gene_id] = len(cdn_profile.d['coverage'])
+            else:
+                # There were no codon positions worth keeping. We do not add this gene to
+                # self.split.SCV_profiles
+                pass
 
 
     def get_codon_orders_that_contain_SNVs(self, gene_id):
@@ -429,6 +437,10 @@ class Auxiliary:
         Parameters
         ==========
         bam : bamops.BAMFileObject
+
+        Notes
+        =====
+        See `variability-profile` artifact under anvio/docs/artifacts for details.
         """
 
         if not self.skip_INDEL_profiling:
@@ -774,6 +786,7 @@ class GenbankToAnvio:
                                                            'stop': end,
                                                            'direction': direction,
                                                            'partial': 0,
+                                                           'call_type': 1,
                                                            'source': self.source,
                                                            'version': self.version}
                 num_genes_reported += 1
@@ -808,7 +821,7 @@ class GenbankToAnvio:
         if len(output_gene_calls):
             utils.store_dict_as_TAB_delimited_file(output_gene_calls,
                                                    self.output_gene_calls_path,
-                                                   headers=["gene_callers_id", "contig", "start", "stop", "direction", "partial", "source", "version"])
+                                                   headers=["gene_callers_id", "contig", "start", "stop", "direction", "partial", "call_type", "source", "version"])
             self.run.info('External gene calls file', self.output_gene_calls_path)
 
             utils.store_dict_as_TAB_delimited_file(output_functions,

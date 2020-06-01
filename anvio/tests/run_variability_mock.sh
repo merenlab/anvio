@@ -156,12 +156,22 @@ anvi-gen-fixation-index-matrix -V test-output/variability_NT_no_quince.txt \
                                --engine NT
 
 INFO "diff between test-output/fixation_NT_external.txt and test-output/fixation_NT.txt (should be same)"
-diff test-output/fixation_NT.txt test-output/fixation_NT_external.txt
+cat test-output/fixation_NT.txt
+cat test-output/fixation_NT_external.txt
 
 INFO "comparison between test-output/fixation_NT_external_no_quince.txt and test-output/fixation_NT_external.txt"
 INFO "(the value should be the same but the order of the samples becomes arbitrary)"
 cat test-output/fixation_NT_external_no_quince.txt
 cat test-output/fixation_NT_external.txt
+
+INFO "anvi-gen-fixation-index-matrix for NT with external table no quince"
+rm -rf test-output/pn_ps_ratio_output
+anvi-script-calculate-pn-ps-ratio -a test-output/variability_AA.txt \
+                                  -b test-output/variability_CDN.txt \
+                                  -c test-output/single_contig.db \
+                                  -o test-output/pn_ps_ratio_output \
+                                  -m 10 \
+                                  -i 3
 
 INFO "Do you want the interactive interface? Run the following:"
 

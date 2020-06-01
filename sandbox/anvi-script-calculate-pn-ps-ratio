@@ -18,6 +18,7 @@ import anvio
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -73,15 +74,16 @@ def load_variability(args, contigs_db):
     df = pd.concat([var_dict['CDN'].data, var_dict['AA'].data], ignore_index=True)
 
     # identify gene calls that are partial
-    gene_caller_ids_for_partial_gene_calls = [g for g in df['corresponding_gene_call'].unique() if contigs_db.genes_in_contigs_dict[g]['partial']]
+    gene_caller_ids_for_noncoding_gene_calls = [g for g in df['corresponding_gene_call'].unique()
+                                                if contigs_db.genes_in_contigs_dict[g]['call_type'] != constants.gene_call_types['CODING']]
 
 
-    if gene_caller_ids_for_partial_gene_calls:
-        df.drop(df[df['corresponding_gene_call'].isin(gene_caller_ids_for_partial_gene_calls)].index, inplace=True)
+    if gene_caller_ids_for_noncoding_gene_calls:
+        df.drop(df[df['corresponding_gene_call'].isin(gene_caller_ids_for_noncoding_gene_calls)].index, inplace=True)
 
         progress.reset()
-        run.warning("%d of your gene calls were 'partial', and were removed from downstream analyses. Here is the complete list of "
-                    "gene calls that were removed: '%s'." % (len(gene_caller_ids_for_partial_gene_calls), ', '.join([str(g) for g in gene_caller_ids_for_partial_gene_calls])))
+        run.warning("%d of your gene calls were 'noncoding', and were removed from downstream analyses. Here is the complete list of "
+                    "gene calls that were removed: '%s'." % (len(gene_caller_ids_for_noncoding_gene_calls), ', '.join([str(g) for g in gene_caller_ids_for_noncoding_gene_calls])))
 
     progress.end()
 

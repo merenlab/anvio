@@ -20,9 +20,9 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
-__requires__ = ['contigs-db']
+__requires__ = ['contigs-db', 'functions']
 __provides__ = ['functions-txt']
-__description__ = "Export gene function calls from an anvi'o contigs database"
+__description__ = "Export functions of genes from an anvi'o contigs database for a given annotation source "
 
 run = terminal.Run()
 progress = terminal.Progress()

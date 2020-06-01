@@ -103,8 +103,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                         "--skip-SNV-profiling", "--profile-SCVs", "--description",
                                                         "--skip-hierarchical-clustering", "--distance", "--linkage", "--min-contig-length",
                                                         "--min-mean-coverage", "--min-coverage-for-variability", "--cluster-contigs",
-                                                        "--contigs-of-interest", "--queue-size", "--write-buffer-size-per-thread", "--max-contig-length",
-                                                        "--max-coverage-depth"]
+                                                        "--contigs-of-interest", "--queue-size", "--write-buffer-size-per-thread", "--max-contig-length"]
         rule_acceptable_params_dict['merge_fastas_for_co_assembly'] = []
         rule_acceptable_params_dict['merge_fastqs_for_co_assembly'] = []
         rule_acceptable_params_dict['anvi_merge'] = ["--sample-name", "--description", "--skip-hierarchical-clustering",
@@ -155,7 +154,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         # loading the samples.txt file
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
-        filesnpaths.is_file_exists(self.samples_txt_file)
+        filesnpaths.is_file_tab_delimited(self.samples_txt_file)
         try:
             # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
             self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
