@@ -62,7 +62,7 @@ OUTPUT_MODES = {'kofam_hits': {
                     },
                 'module': {
                     'output_suffix': "modules.txt",
-                    'headers': ["unique_id", "kegg_module","module_completeness"],
+                    'headers': ["unique_id", "kegg_module", "module_completeness", "module_is_complete"],
                     'only_complete': False,
                     'description': "Completeness information on all KEGG modules"
                     },
