@@ -2334,6 +2334,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             raise ConfigError("You've provided some JSON parameters. We are sorry to say that these parameters don't "
                               "work for input files with multiple contigs DBs. :( ")
 
+        # output sanity checks
+        if self.matrix_format and args.kegg_output_modes:
+            raise ConfigError("Please request EITHER long-format output modes OR matrix format. When you ask for both "
+                              "like this, anvi'o is confused. :) ")
+
         # set name header
         if self.metagenomes_file:
             self.name_header = 'metagenome_name'
