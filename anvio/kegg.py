@@ -2122,7 +2122,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if illegal_headers:
             raise ConfigError("Some unavailable headers were requested. These include: %s" % (", ".join(illegal_headers)))
 
-        keys_not_in_superdict = set(["unique_id", "genome_name", "bin_name", "metagenome_name", "kegg_module"])
+        keys_not_in_superdict = set(["unique_id", "genome_name", "bin_name", "metagenome_name", "kegg_module", "db_name"])
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory"])
         path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
         remaining_headers = headers_to_include.difference(keys_not_in_superdict)
@@ -2359,6 +2359,10 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
     def update_available_headers_for_multi(self):
         """This function updates the available headers dictionary to reflect all possibilities in the multiple DB case."""
 
+        self.available_headers["db_name"] = {
+                                        'cdict_key': None,
+                                        'description': "Name of contigs DB. Always included in output, so no need to specify on the command line"
+        }
         if self.name_header == 'genome_name':
             self.available_headers["genome_name"] = {
                                             'cdict_key': None,
