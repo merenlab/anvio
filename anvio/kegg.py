@@ -11,8 +11,9 @@ import statistics
 import json
 import time
 import hashlib
-from scipy import stats
 import pandas as pd
+import scipy.sparse as sps
+from scipy import stats
 
 import anvio
 import anvio.db as db
