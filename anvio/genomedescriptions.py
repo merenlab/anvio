@@ -601,10 +601,11 @@ class GenomeDescriptions(object):
 
 
 class MetagenomeDescriptions(object):
-    def __init__(self, args=None, run=run, progress=progress):
+    def __init__(self, args=None, run=run, progress=progress, enforce_single_profiles=True):
         self.args = args
         self.run = run
         self.progress = progress
+        self.enforce_single_profiles = enforce_single_profiles
 
         self.metagenomes = {}
         self.metagenomes_dict = None
@@ -692,7 +693,7 @@ class MetagenomeDescriptions(object):
     def sanity_check(self):
         """Make sure self.metagenomes is good to go"""
 
-        if self.profile_dbs_available:
+        if self.profile_dbs_available and self.enforce_single_profiles:
             non_single_profiles = [m for m in self.metagenomes if utils.is_profile_db_merged(self.metagenomes[m]['profile_db_path'])
                                                                   and not utils.is_blank_profile(self.metagenomes[m]['profile_db_path'])]
 
