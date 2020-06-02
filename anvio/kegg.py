@@ -57,7 +57,7 @@ OUTPUT_MODES = {'kofam_hits': {
                 'modules': {
                     'output_suffix': "modules.txt",
                     'headers': ["unique_id", "kegg_module", "module_name", "module_class", "module_category",
-                                "module_subcategory", "module_completeness", "module_is_complete",
+                                "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
                                 "kofam_hits_in_module", "gene_caller_ids_in_module"],
                     'only_complete': False,
                     'description': "Completeness information on all KEGG modules"
@@ -105,6 +105,11 @@ OUTPUT_HEADERS = {'unique_id' : {
                         'cdict_key': None,
                         'description': "Metabolism subcategory of a KEGG module"
                         },
+                  'module_definition' : {
+                        'cdict_key': None,
+                        'description': "KEGG-formatted definition of a KEGG module. Describes the metabolic pathway "
+                                       "in terms of the KOS that belong to the module"
+                        },
                   'gene_caller_ids_in_module': {
                         'cdict_key': None,
                         'description': "Comma-separated list of gene caller IDs of KOfam hits in a module"
@@ -142,7 +147,7 @@ OUTPUT_HEADERS = {'unique_id' : {
                   'path_completeness' : {
                         'cdict_key': 'pathway_completeness',
                         'description': "Percent completeness of a particular path through a KEGG module. If you choose this header, each line "
-                                       "in the output file will be a KOfam hit""
+                                       "in the output file will be a KOfam hit"
                         },
                   }
 
@@ -2133,7 +2138,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         keys_not_in_superdict = set(["unique_id", "genome_name", "bin_name", "metagenome_name", "kegg_module", "db_name",
                                      "kofam_hits_in_module", "gene_caller_ids_in_module"])
-        module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory"])
+        module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition"])
         path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
         remaining_headers = headers_to_include.difference(keys_not_in_superdict)
         remaining_headers = remaining_headers.difference(module_level_headers)
@@ -2160,6 +2165,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 module_class = mnum_class_dict["class"]
                 module_cat = mnum_class_dict["category"]
                 module_subcat = mnum_class_dict["subcategory"]
+                module_def = "\"" + self.kegg_modules_db.get_kegg_module_definition(mnum) + "\""
 
                 # handle path- and ko-level information
                 if headers_to_include.intersection(path_and_ko_level_headers):
@@ -2206,6 +2212,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                     d[unique_id]["module_category"] = module_cat
                                 if "module_subcategory" in headers_to_include:
                                     d[unique_id]["module_subcategory"] = module_subcat
+                                if "module_definition" in headers_to_include:
+                                    d[unique_id]["module_definition"] = module_def
 
                                 # everything else at c_dict level
                                 for h in remaining_headers:
@@ -2235,6 +2243,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         d[unique_id]["module_category"] = module_cat
                     if "module_subcategory" in headers_to_include:
                         d[unique_id]["module_subcategory"] = module_subcat
+                    if "module_definition" in headers_to_include:
+                        d[unique_id]["module_definition"] = module_def
 
                     # comma-separated lists of KOs and gene calls in module
                     if "kofam_hits_in_module" in headers_to_include:
@@ -3130,6 +3140,13 @@ class KeggModulesDatabase(KeggContext):
         # there should only be one CLASS line per module, so we extract the first list element
         class_value = self.get_data_value_entries_for_module_by_data_name(mnum, "CLASS")[0]
         return self.parse_kegg_class_value(class_value)
+
+
+    def get_kegg_module_definition(self, mnum):
+        """This function returns module DEFINITION fields as one string"""
+
+        def_lines = self.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
+        return " ".join(def_lines)
 
 
     def unroll_module_definition(self, mnum):
