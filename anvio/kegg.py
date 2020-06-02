@@ -2526,7 +2526,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         RETURNS
         =======
-        that same data, but in a Pandas data frame 
+        that same data, but in a Pandas data frame
         """
 
         self.progress.new("Data dict to dataframe")
@@ -2609,7 +2609,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """
 
         # we use module output mode because that gets us all the relevant information in the dataframe
-        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, output_mode="module", as_data_frame=True)
+        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, output_mode="modules", as_data_frame=True)
         df.set_index(['db_name', 'kegg_module'], inplace=True)
 
 
@@ -2620,7 +2620,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         for stat, header in module_matrix_stats.items():
             matrix = sps.coo_matrix((df[header], (df.index.labels[1], df.index.labels[0]))).todense().tolist()
 
-            cols = df.index.levels[0].tolist()
+            cols = ["module"] + df.index.levels[0].tolist()
             rows = df.index.levels[1].tolist()
 
             output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat)
