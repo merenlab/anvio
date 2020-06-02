@@ -111,7 +111,8 @@ OUTPUT_HEADERS = {'unique_id' : {
                         },
                   'gene_caller_id': {
                         'cdict_key': None,
-                        'description': "Gene caller ID of a single KOfam hit in the contigs DB. If you choose this header, each line in the output file will be a KOfam hit"
+                        'description': "Gene caller ID of a single KOfam hit in the contigs DB. If you choose this header, each "
+                                       "line in the output file will be a KOfam hit"
                         },
                   'kofam_hits_in_module' : {
                         'cdict_key': None,
@@ -119,24 +120,29 @@ OUTPUT_HEADERS = {'unique_id' : {
                         },
                   'kofam_hit' : {
                         'cdict_key': 'kofam_hits',
-                        'description': "KO number of a single KOfam hit. If you choose this header, each line in the output file will be a KOfam hit"
+                        'description': "KO number of a single KOfam hit. If you choose this header, each line in the output file "
+                                       "will be a KOfam hit"
                         },
                   'contig' : {
                         'cdict_key': 'genes_to_contigs',
-                        'description': "Contig that a KOfam hit is found on"
+                        'description': "Contig that a KOfam hit is found on. If you choose this header, each line in the output "
+                                       "file will be a KOfam hit"
                         },
                   'path_id' : {
                         'cdict_key': None,
-                        'description': "Integer ID for a path through a KEGG module. Again, no real meaning and just for data organization"
+                        'description': "Integer ID for a path through a KEGG module. No real meaning and just for data organization. "
+                                       "If you choose this header, each line in the output file will be a KOfam hit"
                         },
                   'path' : {
                         'cdict_key': 'paths',
                         'description': "A path through a KEGG module (a linear sequence of KOs that together represent each metabolic step "
-                                       "in the module. Most modules have several of these due to KO redundancy)"
+                                       "in the module. Most modules have several of these due to KO redundancy). If you choose this header, "
+                                       "each line in the output file will be a KOfam hit"
                         },
                   'path_completeness' : {
                         'cdict_key': 'pathway_completeness',
-                        'description': "Percent completeness of a particular path through a KEGG module"
+                        'description': "Percent completeness of a particular path through a KEGG module. If you choose this header, each line "
+                                       "in the output file will be a KOfam hit""
                         },
                   }
 
