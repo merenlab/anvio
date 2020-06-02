@@ -54,16 +54,11 @@ OUTPUT_MODES = {'kofam_hits': {
                     'only_complete': False,
                     'description': "Information on each KOfam hit in the contigs DB"
                     },
-                'complete_modules': {
-                    'output_suffix': "complete_modules.txt",
-                    'headers': ["unique_id", "kegg_module","module_completeness",
-                                "module_name", "module_class", "module_category", "module_subcategory"],
-                    'only_complete': True,
-                    'description': "Modules whose percent completeness was over the completeness threshold"
-                    },
-                'module': {
+                'modules': {
                     'output_suffix': "modules.txt",
-                    'headers': ["unique_id", "kegg_module", "module_completeness", "module_is_complete"],
+                    'headers': ["unique_id", "kegg_module", "module_name", "module_class", "module_category",
+                                "module_subcategory", "module_completeness", "module_is_complete",
+                                "kofam_hits_in_module", "gene_caller_ids_in_module"],
                     'only_complete': False,
                     'description': "Completeness information on all KEGG modules"
                     },
@@ -110,13 +105,21 @@ OUTPUT_HEADERS = {'unique_id' : {
                         'cdict_key': None,
                         'description': "Metabolism subcategory of a KEGG module"
                         },
+                  'gene_caller_ids_in_module': {
+                        'cdict_key': None,
+                        'description': "Comma-separated list of gene caller IDs of KOfam hits in a module"
+                        },
                   'gene_caller_id': {
                         'cdict_key': None,
-                        'description': "Gene caller ID of a KOfam hit in the contigs DB"
+                        'description': "Gene caller ID of a single KOfam hit in the contigs DB. If you choose this header, each line in the output file will be a KOfam hit"
+                        },
+                  'kofam_hits_in_module' : {
+                        'cdict_key': None,
+                        'description': "Comma-separated list of KOfam hits in a module"
                         },
                   'kofam_hit' : {
                         'cdict_key': 'kofam_hits',
-                        'description': "KO number of a KOfam hit"
+                        'description': "KO number of a single KOfam hit. If you choose this header, each line in the output file will be a KOfam hit"
                         },
                   'contig' : {
                         'cdict_key': 'genes_to_contigs',
@@ -1067,7 +1070,7 @@ class KeggEstimatorArgs():
         self.json_output_file_path = A('get_raw_data_as_json')
         self.store_json_without_estimation = True if A('store_json_without_estimation') else False
         self.estimate_from_json = A('estimate_from_json') or None
-        self.output_modes = A('kegg_output_modes') or A('output_modes') or "kofam_hits,complete_modules"
+        self.output_modes = A('kegg_output_modes') or A('output_modes') or "modules"
         self.custom_output_headers = A('custom_output_headers') or None
         self.matrix_format = True if A('matrix_format') else False
         self.external_genomes_file = A('external_genomes') or None
@@ -2122,7 +2125,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if illegal_headers:
             raise ConfigError("Some unavailable headers were requested. These include: %s" % (", ".join(illegal_headers)))
 
-        keys_not_in_superdict = set(["unique_id", "genome_name", "bin_name", "metagenome_name", "kegg_module", "db_name"])
+        keys_not_in_superdict = set(["unique_id", "genome_name", "bin_name", "metagenome_name", "kegg_module", "db_name",
+                                     "kofam_hits_in_module", "gene_caller_ids_in_module"])
         module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory"])
         path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
         remaining_headers = headers_to_include.difference(keys_not_in_superdict)
@@ -2225,6 +2229,15 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         d[unique_id]["module_category"] = module_cat
                     if "module_subcategory" in headers_to_include:
                         d[unique_id]["module_subcategory"] = module_subcat
+
+                    # comma-separated lists of KOs and gene calls in module
+                    if "kofam_hits_in_module" in headers_to_include:
+                        kos_in_mod = c_dict['kofam_hits'].keys()
+                        d[unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod)
+                    if "gene_caller_ids_in_module" in headers_to_include:
+                        gcids_in_mod = c_dict['genes_to_contigs'].keys()
+                        gcids_in_mod = [str(x) for x in gcids_in_mod]
+                        d[unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
 
                     # everything else at c_dict level
                     for h in remaining_headers:
