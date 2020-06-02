@@ -64,8 +64,9 @@ OUTPUT_MODES = {'kofam_hits': {
                     'headers': ["unique_id", "kegg_module", "module_name", "module_class", "module_category",
                                 "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
                                 "kofam_hits_in_module", "gene_caller_ids_in_module"],
-                    'only_complete': False,
-                    'description': "Completeness information on all KEGG modules"
+                    'only_complete': True,
+                    'description': "Completeness information on KEGG modules. Only modules whose completeness is above the "
+                                   "threshold will be included, but you include all modules by running with --module-completion-threshold 0"
                     },
                 'custom': {
                     'output_suffix': "custom_matrix.txt",
