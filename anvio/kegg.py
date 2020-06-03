@@ -2363,6 +2363,9 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         KeggEstimatorArgs.__init__(self, self.args)
 
+        if anvio.DEBUG:
+            self.run.info("Completeness threshold: multi estimator", self.module_completion_threshold)
+
         self.databases = None
 
         # input sanity checks
@@ -2498,6 +2501,9 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         args.quiet = True
 
         self.update_available_headers_for_multi()
+
+        if anvio.DEBUG:
+            self.run.info("Completeness threshold: single estimator", args.module_completion_threshold)
 
         return args
 
