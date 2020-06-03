@@ -861,6 +861,7 @@ class KeggSetup(KeggContext):
             self.download_profiles()
             self.decompress_files()
             self.download_modules()
+            self.download_pathways()
             self.setup_ko_dict()
             self.run_hmmpress()
             self.setup_modules_db()
