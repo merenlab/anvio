@@ -1081,7 +1081,7 @@ class KeggEstimatorArgs():
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.metagenome_mode = True if A('metagenome_mode') else False
-        self.completeness_threshold = A('module_completion_threshold') or 0.75
+        self.module_completion_threshold = A('module_completion_threshold') or 0.75
         self.output_file_prefix = A('output_file_prefix') or "kegg-metabolism"
         self.write_dict_to_json = True if A('get_raw_data_as_json') else False
         self.json_output_file_path = A('get_raw_data_as_json')
@@ -1094,9 +1094,14 @@ class KeggEstimatorArgs():
         self.internal_genomes_file = A('internal_genomes') or None
         self.metagenomes_file = A('metagenomes') or None
 
+        # if necessary, assign 0 completion threshold, which evaluates to False above
+        if A('module_completion_threshold') == 0:
+            self.module_completion_threshold = 0.0
+
         # output modes and headers that we can handle
         self.available_modes = OUTPUT_MODES
         self.available_headers = OUTPUT_HEADERS
+
 
         if format_args_for_single_estimator:
             # to fool a single estimator into passing sanity checks, nullify multi estimator args here
@@ -1197,6 +1202,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if anvio.DEBUG:
             run.info("Output Modes", ", ".join(self.output_modes))
             run.info("Matrix format", self.matrix_format)
+            run.info("Module completeness threshold", self.module_completion_threshold)
         illegal_modes = set(self.output_modes).difference(set(self.available_modes.keys()))
         if illegal_modes:
             raise ConfigError("You have requested some output modes that we cannot handle. The offending modes "
@@ -1609,7 +1615,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if anvio.DEBUG and len(meta_dict_for_bin[mnum]["most_complete_paths"]) > 1:
             self.run.warning("Found %d complete paths for module %s with completeness %s. " % (len(meta_dict_for_bin[mnum]["most_complete_paths"]), mnum, meta_dict_for_bin[mnum]["percent_complete"]),
                             header='DEBUG OUTPUT', lc='yellow')
-        over_complete_threshold = True if meta_dict_for_bin[mnum]["percent_complete"] >= self.completeness_threshold else False
+        over_complete_threshold = True if meta_dict_for_bin[mnum]["percent_complete"] >= self.module_completion_threshold else False
         meta_dict_for_bin[mnum]["complete"] = over_complete_threshold
         meta_dict_for_bin[mnum]["present_nonessential_kos"] = module_nonessential_kos
         if over_complete_threshold:
@@ -1670,7 +1676,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         else:
             meta_dict_for_bin[mod]["most_complete_paths"] = []
 
-        now_complete = True if meta_dict_for_bin[mod]["percent_complete"] >= self.completeness_threshold else False
+        now_complete = True if meta_dict_for_bin[mod]["percent_complete"] >= self.module_completion_threshold else False
         meta_dict_for_bin[mod]["complete"] = now_complete
         if now_complete:
             meta_dict_for_bin["num_complete_modules"] += 1
@@ -1876,7 +1882,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                  % (", ".join(mods_with_unassociated_ko)))
 
         self.run.info("Bin name", bin_name)
-        self.run.info("Module completion threshold", self.completeness_threshold)
+        self.run.info("Module completion threshold", self.module_completion_threshold)
         self.run.info("Number of complete modules", metabolism_dict_for_list_of_splits["num_complete_modules"])
         if complete_mods:
             self.run.info("Complete modules", ", ".join(complete_mods))
