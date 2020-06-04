@@ -6,7 +6,7 @@ Given a properly annotated %(contigs-db)s, this program determines which KOs are
 
 ## Running metabolism estimation on a single contigs database
 
-There are several possible inputs to this program. For single genomes - isolate genomes or MAGs - you can provide a %(contigs-db)s. If your %(contigs-db)s describes a metagenome rather than a single genome, you can provide the flag `--metagenome-mode`. In metagenome mode, KOfam hits in the %(contigs-db)s are analyzed as though they belong to one collective genome, despite the fact that the sequences represent multiple different populations. Alternatively, if you have binned your metagenome sequences into separate populations and would like metabolism estimation to be run separately on each bin, you can provide a %(profile-db)s and a %(collection)s.
+There are several possible inputs to this program. For single genomes - isolate genomes or MAGs, for example - you can provide a %(contigs-db)s. If your %(contigs-db)s describes a metagenome rather than a single genome, you can provide the flag `--metagenome-mode`. In metagenome mode, KOfam hits in the %(contigs-db)s are analyzed as though they belong to one collective genome, despite the fact that the sequences represent multiple different populations. Alternatively, if you have binned your metagenome sequences into separate populations and would like metabolism estimation to be run separately on each bin, you can provide a %(profile-db)s and a %(collection)s.
 
 ### Estimation for a single genome
 
@@ -56,7 +56,7 @@ anvi-estimate-metabolism -e external-genomes.txt
 
 ### Estimation for multiple metagenomes
 
-Multiple metagenomes can be analyzed with the same command by providing a metagenomes input file. Metagenome mode will be used to analyze each contigs database in the file.
+Multiple metagenomes can be analyzed with the same command by providing a metagenomes input file. Metagenome mode will be used to analyze each contigs database in the file. To see the required format for the external genomes file, see %(metagenomes)s.
 
 {{ codestart }}
 anvi-estimate-metabolism -M metagenomes.txt
