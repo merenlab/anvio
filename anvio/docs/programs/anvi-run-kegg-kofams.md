@@ -4,7 +4,7 @@ Briefly, what this program does is extract all the gene calls from the %(contigs
 
 Many HMM hits will be found, most of them weak. The weak hits will by default be eliminated according to the score thresholds provided by KEGG; that is, only hits with scores above the threshold for a given KO profile will be annotated in the %(contigs-db)s. It is perfectly normal to notice that the number of raw hits found is many, many times larger than the number of annotated KO hits in your database.
 
-In the %(contigs-db)s functions table, annotated KO hits will have the source `KOfam`.
+In the %(contigs-db)s functions table, annotated KO hits (%(kegg-functions)s) will have the source `KOfam`.
 
 Running this program is a pre-requisite for metabolism estimation with %(anvi-estimate-kegg-metabolism)s. Note that if you are planning to run metabolism estimation, it must be run with the same %(kegg-db)s that is used in this program to annotate KOfam hits.
 
