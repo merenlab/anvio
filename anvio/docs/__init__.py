@@ -394,6 +394,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
+    "metagenomes": {
+        "name": "METAGENOMES",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "coverages-txt": {
         "name": "COVERAGES",
         "type": "TXT",
