@@ -1,6 +1,6 @@
-Output text files produced by %(anvi-estimate-kegg-metabolism)s that describe the presence of metabolic pathways in a %(contigs-db)s.
+Output text files produced by %(anvi-estimate-metabolism)s that describe the presence of metabolic pathways in a %(contigs-db)s.
 
-Depending on the output options used when running %(anvi-estimate-kegg-metabolism)s, these files will have different formats.
+Depending on the output options used when running %(anvi-estimate-metabolism)s, these files will have different formats.
 
 ## Long format output modes
 
@@ -37,11 +37,11 @@ unique_id | db_name | kofam_hit | gene_caller_id | contig | path_id | path | pat
 1 | E_faecalis_6240 | K01834 | 2646 | Enterococcus_faecalis_6240_contig_00003_chromosome | 0 | K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873 | 0.8 | Enterococcus_faecalis_6240 | M00001 | 1.0 | True
 ...|...|...|...|...|...|...|...|...|...|...|...
 
-The 'custom' output mode will have user-defined content and the suffix `custom.txt`. See %(anvi-estimate-kegg-metabolism)s for an example command to work with this mode.
+The 'custom' output mode will have user-defined content and the suffix `custom.txt`. See %(anvi-estimate-metabolism)s for an example command to work with this mode.
 
 ## Matrix format output
 
-Matrix format is an output option when %(anvi-estimate-kegg-metabolism)s is working with multiple contigs databases at once. The purpose of this output mode is to generate matrices of KEGG module statistics for easy visualization. Currently, the output of this mode includes a module completeness matrix, and a matrix of binary module presence/absence values. In these matrices, each row is a KEGG module and each column is an input %(contigs-db).
+Matrix format is an output option when %(anvi-estimate-metabolism)s is working with multiple contigs databases at once. The purpose of this output mode is to generate matrices of KEGG module statistics for easy visualization. Currently, the output of this mode includes a module completeness matrix, and a matrix of binary module presence/absence values. In these matrices, each row is a KEGG module and each column is an input %(contigs-db).
 
 Here is an example of a module completeness matrix:
 module | bin_1 | bin_2 | bin_3 | bin_4 | bin_5 | bin_6

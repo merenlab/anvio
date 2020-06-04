@@ -6,7 +6,7 @@ Many HMM hits will be found, most of them weak. The weak hits will by default be
 
 In the %(contigs-db)s functions table, annotated KO hits (%(kegg-functions)s) will have the source `KOfam`.
 
-Running this program is a pre-requisite for metabolism estimation with %(anvi-estimate-kegg-metabolism)s. Note that if you are planning to run metabolism estimation, it must be run with the same %(kegg-db)s that is used in this program to annotate KOfam hits.
+Running this program is a pre-requisite for metabolism estimation with %(anvi-estimate-metabolism)s. Note that if you are planning to run metabolism estimation, it must be run with the same %(kegg-db)s that is used in this program to annotate KOfam hits.
 
 ### Standard usage
 

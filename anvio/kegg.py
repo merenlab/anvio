@@ -1131,7 +1131,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
     ==========
     args: Namespace object
-        All the arguments supplied by user to anvi-estimate-kegg-metabolism
+        All the arguments supplied by user to anvi-estimate-metabolism
     """
 
     def __init__(self, args, run=run, progress=progress):
@@ -2350,7 +2350,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
     ==========
     args: Namespace object
-        All the arguments supplied by user to anvi-estimate-kegg-metabolism
+        All the arguments supplied by user to anvi-estimate-metabolism
     """
 
     def __init__(self, args, run=run, progress=progress):
