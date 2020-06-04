@@ -41,7 +41,7 @@ The 'custom' output mode will have user-defined content and the suffix `custom.t
 
 ## Matrix format output
 
-Matrix format is an output option when %(anvi-estimate-metabolism)s is working with multiple contigs databases at once. The purpose of this output mode is to generate matrices of KEGG module statistics for easy visualization. Currently, the output of this mode includes a module completeness matrix, and a matrix of binary module presence/absence values. In these matrices, each row is a KEGG module and each column is an input %(contigs-db).
+Matrix format is an output option when %(anvi-estimate-metabolism)s is working with multiple contigs databases at once. The purpose of this output mode is to generate matrices of KEGG module statistics for easy visualization. Currently, the output of this mode includes a module completeness matrix, and a matrix of binary module presence/absence values. In these matrices, each row is a KEGG module and each column is an input %(contigs-db)s.
 
 Here is an example of a module completeness matrix:
 | module | bin_1 | bin_2 | bin_3 | bin_4 | bin_5 | bin_6 |
