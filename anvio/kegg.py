@@ -69,7 +69,7 @@ OUTPUT_MODES = {'kofam_hits': {
                                    "threshold will be included, but you include all modules by running with --module-completion-threshold 0"
                     },
                 'custom': {
-                    'output_suffix': "custom_matrix.txt",
+                    'output_suffix': "custom.txt",
                     'headers': None,
                     'only_complete': False,
                     'description': "A custom tab-delimited output file where you choose the included data using --custom-output-headers"
