@@ -548,7 +548,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         line_nums_for_codestop_tags = [i for i in range(0, len(markdwon_lines)) if markdwon_lines[i].strip() == "{{ codestop }}"]
 
         if len(line_nums_for_codestart_tags) != len(line_nums_for_codestop_tags):
-            raise ConfigError("The number of {{ codestart }} tags do not match to the number of {{ codestop }} tags :/")
+            raise ConfigError("In %s, the number of {{ codestart }} tags do not match to the number of {{ codestop }} tags :/" % file_path)
 
 
         for line_start, line_end in list(zip(line_nums_for_codestart_tags, line_nums_for_codestop_tags)):
