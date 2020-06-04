@@ -244,7 +244,7 @@ class AnvioPrograms:
                              "Here is a complete list of programs that are missing usage statements: %s " % \
                                         (len(self.all_program_filepaths),
                                          len(programs_without_provides_requires_info),
-                                         anvio.DOCS_PATH, 
+                                         anvio.DOCS_PATH,
                                          ', '.join(programs_without_provides_requires_info)),
                              nl_after=1, nl_before=1)
 
@@ -348,7 +348,7 @@ class Artifact:
             raise ConfigError("Ehem. Anvi'o does not know about artifact '%s'. There are two was this could happen: "
                               "one, you've made a typo (easy to fix), two, you've just updated __provides__ or __requires__ "
                               "statement in an anvi'o program with an artifact that does not exist and have not yet updated "
-                              "`anvio/programs.py` (which is also easy to fix). Please consider also adding a description of "
+                              "`anvio/docs/__init__.py` (which is also easy to fix). Please consider also adding a description of "
                               "this artifact under anvio/docs/artifacts while you are at it :)" % artifact_id)
 
         artifact = ANVIO_ARTIFACTS[artifact_id]
