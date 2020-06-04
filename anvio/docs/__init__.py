@@ -151,10 +151,10 @@ ANVIO_ARTIFACTS ={
     "hmm-source": {
         "name": "HMM SOURCE",
         "type": "HMM",
-        "provided_by_anvio": True,
+        "provided_by_anvio": False,
         "provided_by_user":True
     },
-    "hmm-profile": {
+    "hmm-hits": {
         "name": "HMM PROFILE",
         "type": "CONCEPT",
         "provided_by_anvio": True,
@@ -175,12 +175,6 @@ ANVIO_ARTIFACTS ={
     "pfams-data": {
         "name": "PFAMs DATA",
         "type": "DATA",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "trna-genes": {
-        "name": "TRNA GENES",
-        "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
