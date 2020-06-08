@@ -879,9 +879,12 @@ class KeggRunHMMs(KeggContext):
         self.args = args
         self.run = run
         self.progress = progress
-        self.contigs_db_path = args.contigs_db
-        self.num_threads = args.num_threads
-        self.hmm_program = args.hmmer_program or 'hmmsearch'
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
+        self.num_threads = A('num_threads')
+        self.hmm_program = A('hmmer_program') or 'hmmsearch'
+        self.keep_all_hits = True if A('keep_all_hits') else False
         self.ko_dict = None # should be set up by setup_ko_dict()
 
         # init the base class
@@ -993,7 +996,11 @@ class KeggRunHMMs(KeggContext):
 
         # parse hmmscan output
         parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
-        search_results_dict = parser.get_search_results(noise_cutoff_dict=self.ko_dict)
+        if self.keep_all_hits:
+            run.info_single("All HMM hits will be kept regardless of score.")
+            search_results_dict = parser.get_search_results()
+        else:
+            search_results_dict = parser.get_search_results(noise_cutoff_dict=self.ko_dict)
 
         # add functions and KEGG modules info to database
         functions_dict = {}

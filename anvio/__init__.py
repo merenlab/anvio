@@ -2398,6 +2398,13 @@ D = {
             'action': 'store_true',
             'help': "Use this flag to see the available output headers."}
                 ),
+    'keep-all-hits': (
+            ['--keep-all-hits'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "If you use this flag, anvi'o will not get rid of any raw HMM hits, even those that "
+                    "are below the score threshold."}
+                ),
 }
 
 # two functions that works with the dictionary above.
