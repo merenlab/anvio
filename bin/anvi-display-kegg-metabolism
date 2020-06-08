@@ -21,8 +21,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
-__requires__ = ['contigs-db']  #TODO: update after development
-__provides__ = ['kegg-metabolism', 'interactive']
+__requires__ = ['contigs-db', "kegg-db", "kegg-functions", "profile-db", "collection", "bin"]
+__provides__ = ['interactive']
 __description__ = "Start the anvi'o interactive interactive for viewing KEGG metabolism data"
 
 run = terminal.Run()

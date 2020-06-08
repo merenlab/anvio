@@ -2185,7 +2185,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 module_class = mnum_class_dict["class"]
                 module_cat = mnum_class_dict["category"]
                 module_subcat = mnum_class_dict["subcategory"]
-                module_def = "\"" + self.kegg_modules_db.get_kegg_module_definition(mnum) + "\""
+                module_def = '"' + self.kegg_modules_db.get_kegg_module_definition(mnum) + '"'
 
                 # handle path- and ko-level information
                 if headers_to_include.intersection(path_and_ko_level_headers):

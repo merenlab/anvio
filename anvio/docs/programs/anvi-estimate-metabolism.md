@@ -64,7 +64,7 @@ anvi-estimate-metabolism -M metagenomes.txt
 
 ### Estimation for multiple bins in different metagenomes
 
-If you have multiple bins (also known as %(internal-genomes)s across different collections or even different metagenomes, they can be analyzed with the same command by providing an internal genomes file to %(anvi-estimate-metabolism)s. To see the required format for the external genomes file, see %(internal-genomes)s.
+If you have multiple bins (also known as %(internal-genomes)s) across different collections or even different metagenomes, they can be analyzed with the same command by providing an internal genomes file to %(anvi-estimate-metabolism)s. To see the required format for the external genomes file, see %(internal-genomes)s.
 
 {{ codestart }}
 anvi-estimate-metabolism -i internal-genomes.txt
@@ -96,6 +96,8 @@ anvi-estimate-metabolism -c CONTIGS.db -O my-cool-prefix
 This program has two major output options - long format (tab-delimited) output files and matrices.
 
 Long format output has several preset "modes" as well as a "custom" mode in which the user can define the contents of the output file. Multiple modes can be used at once, and each requested "mode" will result in a separate output file. The default output mode is "modules" mode.
+
+You can find more details on the output format by looking at %(kegg-metabolism)s.
 
 ### Viewing available output modes
 
@@ -135,5 +137,3 @@ Matrix format is only available when working with multiple contigs databases. Se
 {{ codestart }}
 anvi-estimate-metabolism -i internal-genomes.txt --matrix-format
 {{ codestop }}
-
-You can find more details on the output format by looking at %(kegg-metabolism)s.
