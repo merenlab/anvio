@@ -137,10 +137,9 @@ class Prodigal:
 
         A = lambda x: (args.__dict__[x] if x in args.__dict__ else None) if args else None
         self.prodigal_translation_table = A('prodigal_translation_table')
-
         self.num_threads = A('num_threads')
 
-        self.run.info('No. threads for gene calling', self.num_threads)
+        self.run.info('Num threads for gene calling', self.num_threads)
 
         self.parser = None
         self.installed_version = None
@@ -149,6 +148,7 @@ class Prodigal:
                                   'v2.60': self.__parser_1}
 
         self.check_version()
+
 
     def __parser_1(self, defline):
         """parses this:
@@ -346,7 +346,7 @@ class Prodigal:
                          "properly credit their work.", lc='green', header="CITATION")
 
         self.progress.new('Processing')
-        self.progress.update('Identifying ORFs in contigs ...')
+        self.progress.update('Identifying ORFs using %s' % (('%d threads.' % self.num_threads) if self.num_threads > 1 else 'a single thread (boo).'))
 
         threads = run_commands_in_threads(prodigal_commands, run_command_wrapper, log_file_path, NUM_RETRIES)
 
