@@ -9,7 +9,6 @@ import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 
-
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
@@ -21,13 +20,12 @@ __requires__ = ['contigs-fasta', 'external-gene-calls']
 __provides__ = ['contigs-db']
 __description__ = "Generate a new anvi'o contigs database."
 
-
 run = terminal.Run()
 progress = terminal.Progress()
 
-
 if __name__ == '__main__':
     import argparse
+
     parser = argparse.ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('MANDATORY INPUTS', 'Things you really need to provide to be in business.')
@@ -39,6 +37,7 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('description'), **anvio.K('description'))
     groupB.add_argument(*anvio.A('split-length'), **anvio.K('split-length'))
     groupB.add_argument(*anvio.A('kmer-size'), **anvio.K('kmer-size'))
+    groupB.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
     groupC = parser.add_argument_group('GENES IN CONTIGS', 'Expert thingies.')
     groupC.add_argument(*anvio.A('skip-gene-calling'), **anvio.K('skip-gene-calling'))
@@ -51,7 +50,7 @@ if __name__ == '__main__':
     args = anvio.get_args(parser)
 
     try:
-        a = dbops.ContigsDatabase(args.output_db_path, run, progress, quiet=False, skip_init = True)
+        a = dbops.ContigsDatabase(args.output_db_path, run, progress, quiet=False, skip_init=True)
         a.create(args)
     except ConfigError as e:
         print(e)
