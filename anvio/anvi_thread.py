@@ -1,5 +1,5 @@
 # coding: utf-8
-"""Interface to Prodigal."""
+"""A lightly modified Thread sublcass.  Tracks the return values of Thread's target."""
 
 import anvio
 
