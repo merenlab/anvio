@@ -734,7 +734,7 @@ class KeggSetup(KeggContext):
         """This function creates the Modules DB from the KEGG Module files."""
 
         try:
-            mod_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, module_dictionary=self.module_dict, run=run, progress=progress)
+            mod_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
             mod_db.create()
         except Exception as e:
             print(e)
@@ -2702,10 +2702,11 @@ class KeggModulesDatabase(KeggContext):
     Kegg Module files.
     """
 
-    def __init__(self, db_path, args, module_dictionary=None, run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, args, module_dictionary=None, pathway_dictionary=None, run=run, progress=progress, quiet=False):
         self.db = None
         self.db_path = db_path
         self.module_dict = module_dictionary
+        self.pathway_dict = pathway_dictionary
         self.run = run
         self.progress = progress
         self.quiet = quiet
@@ -2744,6 +2745,10 @@ class KeggModulesDatabase(KeggContext):
             if not self.module_dict:
                 raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a modules dictionary. This "
                                   "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
+            if not self.pathway_dict:
+                raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a pathway dictionary. This "
+                                  "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
+
 
     def touch(self):
         """Creates an empty Modules database on disk, and sets `self.db` to access to it.
