@@ -3,7 +3,6 @@
 
 import os
 import io
-import gzip
 import shutil
 import glob
 from threading import Thread, Lock
