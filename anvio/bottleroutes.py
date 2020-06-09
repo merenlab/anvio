@@ -839,7 +839,8 @@ class BottleApplication(Bottle):
         items_order_entry = self.interactive.p_meta['item_orders'][order_name]
         items_order = None
         if items_order_entry['type'] == 'newick':
-            items_order = utils.get_names_order_from_newick_tree(items_order_entry['data'])
+            names_with_only_digits_ok = self.interactive.mode == 'gene'
+            items_order = utils.get_names_order_from_newick_tree(items_order_entry['data'], names_with_only_digits_ok=names_with_only_digits_ok)
         else:
             items_order = items_order_entry['data']
 

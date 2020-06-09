@@ -282,7 +282,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             default_item_order = self.p_meta['item_orders'][self.p_meta['available_item_orders'][0]]
 
         if default_item_order['type'] == 'newick':
-            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_item_order['data'], reverse=True)
+            # anvi'o complains about newick trees with items names of which are composed of
+            # integers. but in the case of gene mode, all items will have integer names as
+            # gene caller ids in anvi'o are always integers
+            names_with_only_digits_ok = self.mode == 'gene'
+
+            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_item_order['data'], reverse=True, names_with_only_digits_ok=names_with_only_digits_ok)
         elif default_item_order['type'] == 'basic':
             self.displayed_item_names_ordered = default_item_order['data']
         else:
