@@ -429,9 +429,9 @@ class MultipleRuns:
                 for sample_name in coverages_dict:
                     merged_split_coverage_values.append(split_name, sample_name, coverages_dict[sample_name])
 
+            merged_split_coverage_values.store()
             sample_split_coverage_values.close()
 
-        merged_split_coverage_values.store()
         merged_split_coverage_values.close()
 
         self.progress.end()
