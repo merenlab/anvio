@@ -358,6 +358,9 @@ class MultipleRuns:
 
             for tpl in sample_variable_nts_table:
                 entry = tuple([variable_nts_table.next_id(tables.variable_nts_table_name)] + list(tpl[1:]))
+
+                # append_entry will automatically store and empty the buffer if the number of
+                # entries exceeds variable_nts_table.max_num_entries_in_storage_buffer
                 variable_nts_table.append_entry(entry)
 
         variable_nts_table.store()
@@ -373,6 +376,9 @@ class MultipleRuns:
 
             for tpl in sample_variable_codons_table:
                 entry = tuple([variable_codons_table.next_id(tables.variable_codons_table_name)] + list(tpl[1:]))
+
+                # append_entry will automatically store and empty the buffer if the number of
+                # entries exceeds variable_codons_table.max_num_entries_in_storage_buffer
                 variable_codons_table.append_entry(entry)
 
         variable_codons_table.store()
@@ -388,6 +394,9 @@ class MultipleRuns:
 
             for tpl in sample_indels_table:
                 entry = tuple([indels_table.next_id(tables.indels_table_name)] + list(tpl[1:]))
+
+                # append_entry will automatically store and empty the buffer if the number of
+                # entries exceeds indels_table.max_num_entries_in_storage_buffer
                 indels_table.append_entry(entry)
 
         indels_table.store()
