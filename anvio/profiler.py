@@ -625,26 +625,30 @@ class BAMProfiler(dbops.ContigsSuperclass):
         bam_file = bamops.BAMFileObject(self.input_file_path)
 
         while True:
-            index = available_index_queue.get(True)
-            contig_name = self.contig_names[index]
-            contig_length = self.contig_lengths[index]
+            try:
+                index = available_index_queue.get(True)
+                contig_name = self.contig_names[index]
+                contig_length = self.contig_lengths[index]
 
-            contig = self.process_contig(bam_file, contig_name, contig_length)
-            output_queue.put(contig)
+                contig = self.process_contig(bam_file, contig_name, contig_length)
+                output_queue.put(contig)
 
-            if contig is not None:
-                # We mark these for deletion the next time garbage is collected
-                for split in contig.splits:
-                    del split.coverage
-                    del split.auxiliary
-                    del split
-                del contig.splits[:]
-                del contig.coverage
-                del contig
+                if contig is not None:
+                    # We mark these for deletion the next time garbage is collected
+                    for split in contig.splits:
+                        del split.coverage
+                        del split.auxiliary
+                        del split
+                    del contig.splits[:]
+                    del contig.coverage
+                    del contig
+            except Exception as e:
+                # This thread encountered an error. We send the error back to the main thread which
+                # will terminate the job.
+                output_queue.put(e)
 
-        # we are closing this object here for clarity, although w
-        # are not really closing it since the code never reaches here
-        # and the worker is killed by its parent:
+        # we are closing this object here for clarity, although we are not really closing it since
+        # the code never reaches here and the worker is killed by its parent:
         bam_file.close()
         return
 
@@ -823,8 +827,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         available_index_queue = manager.Queue()
         output_queue = manager.Queue(self.queue_size)
 
-        # put contig indices into the queue to be read from within
-        # the worker
+        # put contig indices into the queue to be read from within the worker
         for i in range(0, self.num_contigs):
             available_index_queue.put(i)
 
@@ -848,6 +851,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         while received_contigs < self.num_contigs:
             try:
                 contig = output_queue.get()
+
+                if isinstance(contig, Exception):
+                    # If thread returns an exception, we raise it and kill the main thread.
+                    raise contig
 
                 # if we have a contig back, it means we are good to go with it,
                 # otherwise it is garbage.
@@ -890,6 +897,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
             except KeyboardInterrupt:
                 self.run.info_single("Anvi'o profiler received SIGINT, terminating all processes...", nl_before=2)
                 break
+
+            except Exception as worker_error:
+                # An exception was thrown in one of the profile workers. We kill all processes in this case
+                self.progress.end()
+                for proc in processes:
+                    proc.terminate()
+                raise worker_error
 
         for proc in processes:
             proc.terminate()
