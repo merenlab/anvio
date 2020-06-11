@@ -870,6 +870,9 @@ class StructureSuperclass(object):
         if not self.full_modeller_output:
             return
 
+        if 'modeller' not in structure_info:
+            return
+
         output_gene_dir = os.path.join(self.full_modeller_output, structure_info['modeller']['corresponding_gene_call'])
         shutil.move(structure_info['modeller']['directory'], output_gene_dir)
 
