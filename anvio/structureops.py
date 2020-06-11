@@ -26,7 +26,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 import anvio.drivers.MODELLER as MODELLER
 
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.dbops import ContigsSuperclass
 
 J = lambda x, y: os.path.join(x, y)
@@ -770,6 +770,17 @@ class StructureSuperclass(object):
             set([corresponding_gene_call]),
             quiet=True
         )
+
+        try:
+            filesnpaths.is_file_fasta_formatted(target_fasta_path)
+        except FilesNPathsError:
+            self.run.warning("You wanted to model a structure for gene ID %d, but the exported FASTA file "
+                             "is not what anvi'o considers a FASTA formatted file. The reason why this "
+                             "occassionally happens has not been investigated, but if it is any consolation, "
+                             "it is not your fault. You may want to try again, and maybe it will work. Or "
+                             "maybe it will not. Regardless, at this time anvi'o cannot model the gene. "
+                             "Here is the temporary fasta file path: %s " % (corresponding_gene_call, target_fasta_path))
+            return structure_info
 
         if self.skip_gene_if_not_clean(corresponding_gene_call, target_fasta_path):
             return structure_info
