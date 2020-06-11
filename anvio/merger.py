@@ -421,16 +421,18 @@ class MultipleRuns:
 
         # fill coverages in from all samples
         for input_profile_db_path in self.profile_dbs_info_dict:
-            self.progress.update(input_profile_db_path)
-            sample_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(AUX(input_profile_db_path), self.contigs_db_hash)
+            # FIXME
+            with terminal.TimeCode(success_msg=input_profile_db_path):
+                self.progress.update(input_profile_db_path)
+                sample_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(AUX(input_profile_db_path), self.contigs_db_hash)
 
-            for split_name in self.split_names:
-                coverages_dict = sample_split_coverage_values.get(split_name)
-                for sample_name in coverages_dict:
-                    merged_split_coverage_values.append(split_name, sample_name, coverages_dict[sample_name])
+                for split_name in self.split_names:
+                    coverages_dict = sample_split_coverage_values.get(split_name)
+                    for sample_name in coverages_dict:
+                        merged_split_coverage_values.append(split_name, sample_name, coverages_dict[sample_name])
 
-            merged_split_coverage_values.store()
-            sample_split_coverage_values.close()
+                merged_split_coverage_values.store()
+                sample_split_coverage_values.close()
 
         merged_split_coverage_values.close()
 
