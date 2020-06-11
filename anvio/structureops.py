@@ -511,9 +511,14 @@ class StructureSuperclass(object):
     @staticmethod
     def worker(self, available_index_queue, output_queue):
         while True:
-            corresponding_gene_call = available_index_queue.get(True)
-            structure_info = self.process_gene(corresponding_gene_call)
-            output_queue.put(structure_info)
+            try:
+                corresponding_gene_call = available_index_queue.get(True)
+                structure_info = self.process_gene(corresponding_gene_call)
+                output_queue.put(structure_info)
+            except Exception as e:
+                # This thread encountered an error. We send the error back to the main thread which
+                # will terminate the job.
+                output_queue.put(e)
 
         # Code never reaches here because worker is terminated by main thread
         return
@@ -613,6 +618,10 @@ class StructureSuperclass(object):
             try:
                 structure_info = output_queue.get()
 
+                if isinstance(structure_info, Exception):
+                    # If thread returns an exception, we raise it and kill the main thread.
+                    raise structure_info
+
                 corresponding_gene_call = structure_info['corresponding_gene_call']
 
                 # Add it to the storage buffer
@@ -653,6 +662,13 @@ class StructureSuperclass(object):
             except KeyboardInterrupt:
                 self.run.info_single("Anvi'o received SIGINT, terminating all processes...", nl_before=2)
                 break
+
+            except Exception as worker_error:
+                # An exception was thrown in one of the profile workers. We kill all processes in this case
+                self.progress.end()
+                for proc in processes:
+                    proc.terminate()
+                raise worker_error
 
         for proc in processes:
             proc.terminate()
