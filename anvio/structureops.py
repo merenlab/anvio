@@ -26,7 +26,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 import anvio.drivers.MODELLER as MODELLER
 
-from anvio.errors import ConfigError
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.dbops import ContigsSuperclass
 
 J = lambda x, y: os.path.join(x, y)
@@ -511,9 +511,14 @@ class StructureSuperclass(object):
     @staticmethod
     def worker(self, available_index_queue, output_queue):
         while True:
-            corresponding_gene_call = available_index_queue.get(True)
-            structure_info = self.process_gene(corresponding_gene_call)
-            output_queue.put(structure_info)
+            try:
+                corresponding_gene_call = available_index_queue.get(True)
+                structure_info = self.process_gene(corresponding_gene_call)
+                output_queue.put(structure_info)
+            except Exception as e:
+                # This thread encountered an error. We send the error back to the main thread which
+                # will terminate the job.
+                output_queue.put(e)
 
         # Code never reaches here because worker is terminated by main thread
         return
@@ -613,6 +618,10 @@ class StructureSuperclass(object):
             try:
                 structure_info = output_queue.get()
 
+                if isinstance(structure_info, Exception):
+                    # If thread returns an exception, we raise it and kill the main thread.
+                    raise structure_info
+
                 corresponding_gene_call = structure_info['corresponding_gene_call']
 
                 # Add it to the storage buffer
@@ -653,6 +662,13 @@ class StructureSuperclass(object):
             except KeyboardInterrupt:
                 self.run.info_single("Anvi'o received SIGINT, terminating all processes...", nl_before=2)
                 break
+
+            except Exception as worker_error:
+                # An exception was thrown in one of the profile workers. We kill all processes in this case
+                self.progress.end()
+                for proc in processes:
+                    proc.terminate()
+                raise worker_error
 
         for proc in processes:
             proc.terminate()
@@ -755,6 +771,17 @@ class StructureSuperclass(object):
             quiet=True
         )
 
+        try:
+            filesnpaths.is_file_fasta_formatted(target_fasta_path)
+        except FilesNPathsError:
+            self.run.warning("You wanted to model a structure for gene ID %d, but the exported FASTA file "
+                             "is not what anvi'o considers a FASTA formatted file. The reason why this "
+                             "occassionally happens has not been investigated, but if it is any consolation, "
+                             "it is not your fault. You may want to try again, and maybe it will work. Or "
+                             "maybe it will not. Regardless, at this time anvi'o cannot model the gene. "
+                             "Here is the temporary fasta file path: %s " % (corresponding_gene_call, target_fasta_path))
+            return structure_info
+
         if self.skip_gene_if_not_clean(corresponding_gene_call, target_fasta_path):
             return structure_info
 
@@ -852,6 +879,9 @@ class StructureSuperclass(object):
         """Dump all raw modeller output into output_gene_dir if self.full_modeller_output"""
 
         if not self.full_modeller_output:
+            return
+
+        if 'modeller' not in structure_info:
             return
 
         output_gene_dir = os.path.join(self.full_modeller_output, structure_info['modeller']['corresponding_gene_call'])

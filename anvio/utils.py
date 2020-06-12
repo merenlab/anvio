@@ -888,8 +888,8 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
         return open(file_path, 'rU').readline().strip('\n').split('\t')[1:]
 
 
-def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False):
-    filesnpaths.is_proper_newick(newick_tree)
+def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False, names_with_only_digits_ok=False):
+    filesnpaths.is_proper_newick(newick_tree, names_with_only_digits_ok=names_with_only_digits_ok)
 
     tree = Tree(newick_tree, format=newick_format)
 

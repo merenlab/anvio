@@ -82,8 +82,18 @@ class BAMFileObject(pysam.AlignmentFile):
             if start - read.reference_start > 0:
                 read.trim(trim_by=(start - read.reference_start), side='left')
 
+                if read.reference_start >= end:
+                    # You may find this line unnecessary. However in extreme fringe cases, this
+                    # condition *can* be met, please see https://github.com/merenlab/anvio/issues/1436
+                    continue
+
             if read.reference_end - end > 0:
                 read.trim(trim_by=(read.reference_end - end), side='right')
+
+                if read.reference_end <= start:
+                    # You may find this line unnecessary. However in extreme fringe cases, this
+                    # condition *can* be met, please see https://github.com/merenlab/anvio/issues/1436
+                    continue
 
             yield read
 
@@ -128,8 +138,18 @@ class BAMFileObject(pysam.AlignmentFile):
             if start - read.reference_start > 0:
                 read.trim(trim_by=(start - read.reference_start), side='left')
 
+                if read.reference_start >= end:
+                    # You may find this line unnecessary. However in extreme fringe cases, this
+                    # condition *can* be met, please see https://github.com/merenlab/anvio/issues/1436
+                    continue
+
             if read.reference_end - end > 0:
                 read.trim(trim_by=(read.reference_end - end), side='right')
+
+                if read.reference_end <= start:
+                    # You may find this line unnecessary. However in extreme fringe cases, this
+                    # condition *can* be met, please see https://github.com/merenlab/anvio/issues/1436
+                    continue
 
             yield read
 
@@ -371,6 +391,7 @@ class Read:
         Modifies the attributes:
 
             query_sequence
+            reference_sequence
             cigartuples
             reference_start
             reference_end
