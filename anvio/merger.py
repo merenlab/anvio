@@ -417,22 +417,24 @@ class MultipleRuns:
 
             return None
 
-        self.progress.new('Merging split coverage data')
+        self.progress.new('Merging split coverage data', progress_total_items=len(self.profile_dbs_info_dict))
 
         # fill coverages in from all samples
-        for input_profile_db_path in self.profile_dbs_info_dict:
-            # FIXME
-            with terminal.TimeCode(success_msg=input_profile_db_path):
-                self.progress.update(input_profile_db_path)
-                sample_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(AUX(input_profile_db_path), self.contigs_db_hash)
+        for i, input_profile_db_path in enumerate(sorted(list(self.profile_dbs_info_dict.keys()))):
+            self.progress.update("(%d/%d) %s" % (i, len(self.profile_dbs_info_dict), input_profile_db_path))
+            sample_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(AUX(input_profile_db_path), self.contigs_db_hash)
 
-                for split_name in self.split_names:
-                    coverages_dict = sample_split_coverage_values.get(split_name)
-                    for sample_name in coverages_dict:
-                        merged_split_coverage_values.append(split_name, sample_name, coverages_dict[sample_name])
+            for split_name in self.split_names:
+                coverages_dict = sample_split_coverage_values.get(split_name)
 
-                merged_split_coverage_values.store()
-                sample_split_coverage_values.close()
+                for sample_name in coverages_dict:
+                    # If input_profile_db_path is a single profile, coverages_dict has only one
+                    # sample_name
+                    merged_split_coverage_values.append(split_name, sample_name, coverages_dict[sample_name])
+
+            merged_split_coverage_values.store()
+            sample_split_coverage_values.close()
+            self.progress.increment()
 
         merged_split_coverage_values.close()
 
