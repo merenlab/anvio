@@ -164,6 +164,7 @@ class DB:
 
         source_db = DB(source_db_path, None, ignore_version=True)
         data = source_db.get_all_rows_from_table(table_name)
+        source_db.disconnect()
 
         if not len(data):
             return
