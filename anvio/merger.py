@@ -352,9 +352,13 @@ class MultipleRuns:
 
 
     def merge_variable_nts_tables(self):
+        self.progress.new('Merging SNV tables', progress_total_items=self.num_profile_dbs)
+
         variable_nts_table = TableForVariability(self.merged_profile_db_path, progress=self.progress)
 
-        for input_profile_db_path in self.profile_dbs_info_dict:
+        for i, input_profile_db_path in enumerate(self.profile_dbs_info_dict):
+            self.progress.update('(%d/%d) %s' % (i, self.num_profile_dbs, input_profile_db_path))
+
             sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
             sample_variable_nts_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_nts_table_name, tables.variable_nts_table_structure)
             sample_profile_db.disconnect()
@@ -366,7 +370,11 @@ class MultipleRuns:
                 # entries exceeds variable_nts_table.max_num_entries_in_storage_buffer
                 variable_nts_table.append_entry(entry)
 
+            self.progress.increment()
+
         variable_nts_table.store()
+
+        self.progress.end()
 
 
     def merge_variable_codons_tables(self):
@@ -555,10 +563,7 @@ class MultipleRuns:
         self.merge_split_coverage_data()
 
         if self.SNVs_profiled:
-            self.progress.new('Merging variable positions tables')
-            self.progress.update('...')
             self.merge_variable_nts_tables()
-            self.progress.end()
         else:
             self.run.warning("SNVs were not profiled, variable nucleotides positions "
                              "tables will be empty in the merged profile database.")
