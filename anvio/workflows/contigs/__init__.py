@@ -45,7 +45,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                            'anvi_import_taxonomy_for_genes', 'anvi_run_scg_taxonomy', 'anvi_run_trna_scan', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
                            'annotate_contigs_database', 'anvi_get_sequences_for_gene_calls', 'emapper',
                            'anvi_script_run_eggnog_mapper', 'gunzip_fasta', 'reformat_external_gene_calls_table',
-                           'reformat_external_functions', 'import_external_functions', 'anvi_run_pfams'])
+                           'reformat_external_functions', 'import_external_functions', 'anvi_run_pfams', 'anvi_run_kegg_kofams'])
 
         self.general_params.extend(["fasta_txt"])
 
@@ -56,6 +56,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                     "anvi_gen_contigs_database": {"--project-name": "{group}"},
                                     "centrifuge": {"threads": 2},
                                     "anvi_run_hmms": {"run": True, "threads": 5},
+                                    "anvi_run_kegg_kofams": {"run": False, "threads": 4},
                                     "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
                                     "anvi_run_scg_taxonomy": {"run": True, "threads": 6},
                                     'anvi_run_trna_scan': {"run": True, "threads": 6},
@@ -72,6 +73,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir', '--also-scan-trnas']
 
         self.rule_acceptable_params_dict['anvi_run_pfams'] = ['run', '--pfam-data-dir']
+
+        self.rule_acceptable_params_dict['anvi_run_kegg_kofams'] = ['run', '--kegg-data-dir', '--hmmer-program', '--keep-all-hits']
 
         self.rule_acceptable_params_dict['centrifuge'] = ['run', 'db']
 
@@ -146,6 +149,10 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         if self.get_param_value_from_config(["anvi_run_ncbi_cogs", "run"]) == True:
             optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "anvi_run_ncbi_cogs-{group}.done"))
+
+        run_anvi_run_kofams = self.get_param_value_from_config(["anvi_run_kegg_kofams", "run"]) == True
+        if run_anvi_run_kofams:
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "anvi_run_kegg_kofams-{group}.done"))
 
         run_anvi_run_scg_taxonomy = self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]) == True
         if run_anvi_run_scg_taxonomy:
