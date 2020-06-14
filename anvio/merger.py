@@ -66,6 +66,7 @@ class MultipleRuns:
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
         self.profiles = []
+        self.num_profile_dbs = None
         self.split_names = None
         self.sample_ids_found_in_input_dbs = []
         self.normalization_multiplier = {}
@@ -274,6 +275,8 @@ class MultipleRuns:
                               "with your input :/ Here are the sample names in case you would like to find out which ones occur "
                               "more than once: '%s'" % (', '.join(self.sample_ids_found_in_input_dbs)))
 
+        self.num_profile_dbs = len(self.profile_dbs_info_dict)
+
         # test open the contigs database (and learn its hash while doing it) to make sure we don't have
         # a deal breaker just yet
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, quiet=True)
@@ -315,21 +318,21 @@ class MultipleRuns:
         if len(hashes_for_profile_dbs) != 1:
             if None in hashes_for_profile_dbs:
                 raise ConfigError("It seems there is at least one run in the mix that was profiled using an "
-                                         "contigs database, and at least one other that was profiled without using "
-                                         "one. This is not good. All runs must be profiled using the same contigs "
-                                         "database, or all runs must be profiled without a contigs database :/")
+                                  "contigs database, and at least one other that was profiled without using "
+                                  "one. This is not good. All runs must be profiled using the same contigs "
+                                  "database, or all runs must be profiled without a contigs database :/")
             else:
                 raise ConfigError("It seems these runs were profiled using different contigs databases (or "
-                                         "different versions of the same contigs database). All runs must be "
-                                         "profiled using the same contigs database, or all runs must be profiled "
-                                         "without a contigs database :/")
+                                  "different versions of the same contigs database). All runs must be "
+                                  "profiled using the same contigs database, or all runs must be profiled "
+                                  "without a contigs database :/")
 
 
         # make sure the hash for contigs db is identical across all profile databases:
         if list(hashes_for_profile_dbs)[0] != contigs_db_hash:
             raise ConfigError("The contigs database you provided, which is identified with hash '%s', does "
-                                     "not seem to match the run profiles you are trying to merge, which share the "
-                                     "hash identifier of '%s'. What's up with that?" % (contigs_db_hash, list(hashes_for_profile_dbs)[0]))
+                              "not seem to match the run profiles you are trying to merge, which share the "
+                              "hash identifier of '%s'. What's up with that?" % (contigs_db_hash, list(hashes_for_profile_dbs)[0]))
 
         # do we have a description file?
         if self.description_file_path:
@@ -417,11 +420,11 @@ class MultipleRuns:
 
             return None
 
-        self.progress.new('Merging split coverage data', progress_total_items=len(self.profile_dbs_info_dict))
+        self.progress.new('Merging split coverage data', progress_total_items=self.num_profile_dbs)
 
         # fill coverages in from all samples
         for i, input_profile_db_path in enumerate(self.profile_dbs_info_dict):
-            self.progress.update("(%d/%d) %s" % (i, len(self.profile_dbs_info_dict), input_profile_db_path))
+            self.progress.update("(%d/%d) %s" % (i, self.num_profile_dbs, input_profile_db_path))
             merged_split_coverage_values.db.copy_paste('split_coverages', AUX(input_profile_db_path), append=True)
             self.progress.increment()
 
@@ -557,7 +560,8 @@ class MultipleRuns:
             self.merge_variable_nts_tables()
             self.progress.end()
         else:
-            self.run.warning("SNVs were not profiled, variable nt positions tables will be empty in the merged profile database.")
+            self.run.warning("SNVs were not profiled, variable nucleotides positions "
+                             "tables will be empty in the merged profile database.")
 
         if self.SCVs_profiled:
             self.progress.new('Merging variable codons tables')
@@ -565,7 +569,8 @@ class MultipleRuns:
             self.merge_variable_codons_tables()
             self.progress.end()
         else:
-            self.run.warning("Codon frequencies were not profiled, hence, these tables will be empty in the merged profile database.")
+            self.run.warning("Codon frequencies were not profiled, hence, these tables "
+                             "will be empty in the merged profile database.")
 
         if self.INDELs_profiled:
             self.progress.new('Merging indels tables')
