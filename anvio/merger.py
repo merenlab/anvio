@@ -425,6 +425,7 @@ class MultipleRuns:
             merged_split_coverage_values.db.copy_paste('split_coverages', AUX(input_profile_db_path), append=True)
             self.progress.increment()
 
+        self.progress.update('Creating table index...')
         merged_split_coverage_values.close()
 
         self.progress.end()
