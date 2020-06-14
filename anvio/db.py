@@ -153,16 +153,25 @@ class DB:
         self.set_meta_value(key, value)
 
 
-    def copy_paste(self, table_name, source_db_path):
-        """Copy `table_name` data from another database (`source_db_path`) into yourself"""
+    def copy_paste(self, table_name, source_db_path, append=False):
+        """Copy `table_name` data from another database (`source_db_path`) into yourself
+
+        Arguments
+        =========
+        append : bool, False
+            If True, the table is appened to the source DB, rather than replaced.
+        """
 
         source_db = DB(source_db_path, None, ignore_version=True)
         data = source_db.get_all_rows_from_table(table_name)
+        source_db.disconnect()
 
         if not len(data):
             return
 
-        self._exec('''DELETE FROM %s''' % table_name)
+        if not append:
+            self._exec('''DELETE FROM %s''' % table_name)
+
         self._exec_many('''INSERT INTO %s VALUES(%s)''' % (table_name, ','.join(['?'] * len(data[0]))), data)
 
 

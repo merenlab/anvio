@@ -38,10 +38,11 @@ class AuxiliaryDataForSplitCoverages(object):
         self.run = run
         self.progress = progress
         self.coverage_entries = []
+        self.create_new = create_new
 
-        self.db = db.DB(self.db_path, self.version, new_database=create_new)
+        self.db = db.DB(self.db_path, self.version, new_database=self.create_new)
 
-        if create_new:
+        if self.create_new:
             self.create_tables()
 
         if not ignore_hash:
@@ -54,8 +55,6 @@ class AuxiliaryDataForSplitCoverages(object):
         self.db.set_meta_value('creation_date', time.time())
 
         self.db.create_table(t.split_coverages_table_name, t.split_coverages_table_structure, t.split_coverages_table_types)
-
-        self.db._exec("""CREATE INDEX IF NOT EXISTS covering_index ON %s(split_name, sample_name)""" % (t.split_coverages_table_name))
 
 
     def check_hash(self):
@@ -126,4 +125,19 @@ class AuxiliaryDataForSplitCoverages(object):
 
 
     def close(self):
+        """Carries out teardown operations for the table
+
+        An index is created on (split_name, sample_name) if self.create_new == True and if one
+        doesn't already exist.
+
+        Notes
+        =====
+        - For fast accession, it is important to have an index for the table. However, INSERT
+          operations are very slow for tables with indices. Hence, the index is created in this
+          teardown method, rather than when the table is first created.
+        """
+
+        if self.create_new:
+            self.db._exec("""CREATE INDEX IF NOT EXISTS covering_index ON %s(split_name, sample_name)""" % (t.split_coverages_table_name))
+
         self.db.disconnect()
