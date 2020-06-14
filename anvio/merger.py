@@ -763,7 +763,8 @@ class MultipleRuns:
 
 
     def read_atomic_data_tables(self):
-        """reads atomic data for contigs and splits from the database into a dict"""
+        """Reads atomic data for contigs and splits from the database into a dict"""
+
         atomic_data_table_for_each_run = {}
 
         for target in ['contigs', 'splits']:
