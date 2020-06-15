@@ -10,8 +10,6 @@ Exports
 """
 
 # todo check args of everything!
-# todo somewhere assert that the lengths of everything match up (eg commands and number of threads)
-
 
 import abc
 import anvio
