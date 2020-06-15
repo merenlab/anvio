@@ -28,6 +28,7 @@ import Bio.PDB as PDB
 from numba import jit
 from collections import Counter
 from email.mime.text import MIMEText
+from typing import Any
 
 import anvio
 import anvio.db as db
@@ -3813,3 +3814,8 @@ class Mailer:
         self.progress.end()
 
         self.run.info('E-mail', 'Successfully sent to "%s"' % to)
+
+
+def class_name(thing: Any) -> str:
+    """Returns the name of the class of `thing` as a str."""
+    return type(thing).__name__
