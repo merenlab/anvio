@@ -1058,7 +1058,7 @@ def get_indices_for_outlier_values(c):
 
 
 def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, median=None):
-    """Return boolean array of whether values are outliers (True means yes)
+    """Return boolean array of whether values are outliers (True means outlier)
 
     Modified from Joe Kington's (https://stackoverflow.com/users/325565/joe-kington)
     implementation computing absolute deviation around the median.
@@ -1066,7 +1066,7 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
     Parameters
     ==========
     values : array-like
-        An numobservations by numdimensions array of observations
+        A num_observations by num_dimensions array of observations.
 
     threshold : number, None
         The modified z-score to use as a thresholdold. Observations with
@@ -1074,12 +1074,41 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
         than this value will be classified as outliers.
 
     median : array-like, None
-        Pass median value of values if you already calculated it to save time
+        Pass median of values if you already calculated it to save time.
 
     Returns
     =======
     mask : numpy array (dtype=bool)
-        A numobservations-length boolean array.
+        A num_observations-length boolean array. True means outlier
+
+    Examples
+    ========
+
+    Create an array with 5 manually created outliers:
+
+    >>> import numpy as np
+    >>> import anvio.utils as utils
+    >>> array = 10*np.ones(30) + np.random.rand(30)
+    >>> array[5] = -10
+    >>> array[9] = -10
+    >>> array[12] = -10
+    >>> array[15] = -10
+    >>> array[23] = -10
+    >>> mask = utils.get_list_of_outliers(array, threshold=5)
+    >>> print(mask)
+    [False False False False False  True False False False  True False False
+     True False False  True False False False False False False False  True
+     False False False False False False]
+
+    As can be seen, mask returns a numpy array of True/False values, where True corresponds to
+    outlier values.
+
+    >>> print(outlier_indices)
+    >>> outlier_indices = np.where(mask == True)[0]
+    [ 5  9 12 15 23]
+
+    The `True` values indeed occur at the indices where the values hand been manually changed to
+    represent outliers.
 
     References
     ==========

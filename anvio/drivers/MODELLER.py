@@ -829,13 +829,19 @@ class MODELLER:
 def check_MODELLER(executable=None):
     """Test if MODELLER is going to work.
 
-    Exists outside of the class MODELLER so it does not have to be checked everytime. Checks the
-    executable exists, that a license exists, and can produce the expected output of a modeller
-    executable.
+    Checks the executable exists, that a license exists, and can produce the expected output of a
+    modeller executable. Exists outside of the class MODELLER so it does not have to be checked
+    everytime the class is initialized. 
+
+    Parameters
+    ==========
+    executable : str, None
+        The string representation of a binary MODELLER program. E.g "mod9.21". If None,
+        up_to_date_modeller_exec is chosen and tested.
 
     Returns
     =======
-    output : executable, str
+    executable : str
         Returns the executable that you _should_ use, which is not necessarily what is input
     """
 
