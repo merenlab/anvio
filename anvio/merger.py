@@ -426,10 +426,41 @@ class MultipleRuns:
         self.progress.end()
 
 
-    def merge_split_coverage_data(self):
-        output_file_path = os.path.join(self.output_directory, 'AUXILIARY-DATA.db')
-        merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file_path, self.contigs_db_hash, create_new=True)
+    def _concatenate_single_profile_tables(self, merged_db, table_name, is_auxiliary=False):
+        """Concatenates alike tables from the single profile DBs
 
+        If the table has `entry_id` as a key, it will be recalculated after concatenation to ensure
+        each row is given a unique entry_id.
+
+        Parameters
+        ==========
+        merged_db : db.DB
+            The merged database that tables are being concatenated to.
+
+        table_name : str
+            The name of the tables that are being concatenated.
+
+        is_auxiliary : bool, False
+            If True, the tables are assumed to exist in the AUXILIARY-DATA DBs, rather than the
+            PROFILE DBs.
+        """
+
+        self.progress.new("Merging '%s' tables" % table_name, progress_total_items=self.num_profile_dbs)
+
+        if is_auxiliary:
+            PATH = lambda x: os.path.join(os.path.dirname(x), 'AUXILIARY-DATA.db')
+        else:
+            PATH = lambda x: x
+
+        for i, input_profile_db_path in enumerate(self.profile_dbs_info_dict):
+            self.progress.update("(%d/%d) %s" % (i, self.num_profile_dbs, input_profile_db_path))
+            merged_db.copy_paste(table_name, PATH(input_profile_db_path), append=True)
+            self.progress.increment()
+
+        self.progress.end()
+
+
+    def merge_split_coverage_data(self):
         AUX = lambda x: os.path.join(os.path.dirname(x), 'AUXILIARY-DATA.db')
 
         if False in [filesnpaths.is_file_exists(AUX(p), dont_raise=True) for p in self.profile_dbs_info_dict]:
@@ -441,17 +472,14 @@ class MultipleRuns:
 
             return None
 
-        self.progress.new('Merging split coverage data', progress_total_items=self.num_profile_dbs)
+        output_file_path = os.path.join(self.output_directory, 'AUXILIARY-DATA.db')
+        merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file_path, self.contigs_db_hash, create_new=True)
 
-        # fill coverages in from all samples
-        for i, input_profile_db_path in enumerate(self.profile_dbs_info_dict):
-            self.progress.update("(%d/%d) %s" % (i, self.num_profile_dbs, input_profile_db_path))
-            merged_split_coverage_values.db.copy_paste('split_coverages', AUX(input_profile_db_path), append=True)
-            self.progress.increment()
+        self._concatenate_single_profile_tables(merged_split_coverage_values.db, table_name='split_coverages', is_auxiliary=True)
 
-        self.progress.update('Creating table index...')
+        self.progress.new('Creating index for `split_coverages` table')
+        self.progress.update('...')
         merged_split_coverage_values.close()
-
         self.progress.end()
 
 
