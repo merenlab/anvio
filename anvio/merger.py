@@ -748,13 +748,19 @@ class MultipleRuns:
         atomic_data_table_for_each_run = {}
 
         for target in ['contigs', 'splits']:
-            atomic_data_table_for_each_run[target] = {}
+            self.progress.new("Fetching atomic %s tables" % target, progress_total_items=self.num_profile_dbs)
 
+            atomic_data_table_for_each_run[target] = {}
             target_table = 'atomic_data_%s' % target
 
-            for input_profile_db_path in self.profile_dbs_info_dict:
+            for i, input_profile_db_path in enumerate(self.profile_dbs_info_dict):
+                self.progress.update("(%d/%d) %s" % (i, self.num_profile_dbs, input_profile_db_path))
+                self.progress.increment()
+
                 db = anvio.db.DB(input_profile_db_path, utils.get_required_version_for_db(input_profile_db_path))
                 atomic_data_table_for_each_run[target][input_profile_db_path] = db.get_table_as_dict(target_table)
+
+            self.progress.end()
 
         atomic_data_table_fields = db.get_table_structure('atomic_data_splits')
         db.disconnect()
