@@ -3040,10 +3040,67 @@ class KeggModulesDatabase(KeggContext):
 
         self.progress.end()
 
-        # warn user about parsing errors
+
+        # setup KEGG pathways
+        self.progress.new("Loading %s KEGG pathways into Modules DB..." % len(self.pathway_dict.keys()))
+
+        # sanity check that we setup the modules previously.
+        # It shouldn't be a problem since this function should only be called during the setup process after modules download, but just in case.
+        if not os.path.exists(self.pathway_data_dir) or len(self.pathway_dict.keys()) == 0:
+            raise ConfigError("Appparently, the Kegg Pathways were not correctly setup and now all sorts of things are broken. The "
+                              "Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone "
+                              "except maybe developers, so if you do not fall into that category you are likely in deep doo-doo. "
+                              "Maybe re-running setup with --reset will work? (if not, you probably should email/Slack/telepathically "
+                              "cry out for help to the developers). Anyway, if this helps make things any clearer, the number of pathways "
+                              "in the pathway dictionary is currently %s" % len(self.pathway_dict.keys()))
+
+        # init the pathways table
+        path_table = KeggModulesTable(self.pathway_table_name)
+
+        num_pathways_parsed = 0
+        for pnum in self.pathway_dict.keys():
+            self.progress.update("Parsing KEGG Pathway %s" % pnum)
+            path_file_path = os.path.join(self.pathway_data_dir, pnum)
+            f = open(path_file_path, 'rU')
+
+            prev_data_name_field = None
+            for line in f.readlines():
+                line = line.strip('\n')
+                line_number += 1
+
+                # check for last line ///. We don't want to send the last line to the parsing function because it will break.
+                # we also check here that the line is not entirely blank (this happens sometimes in KEGG modules, inexplicably)
+                if not line == '///' and re.search(r"\S+", line):
+                    # parse the line into a tuple
+                    entries_tuple_list = None
+                    # here is the tricky bit about parsing these files. Not all lines start with the data_name field; those that don't start with a space.
+                    # if this is the case, we need to tell the parsing function what the previous data_name field has been.
+                    if line[0] == ' ':
+                        entries_tuple_list = self.parse_kegg_modules_line(line, pnum, line_number, prev_data_name_field)
+                    else:
+                        entries_tuple_list = self.parse_kegg_modules_line(line, pnum, line_number)
+
+                    prev_data_name_field = entries_tuple_list[0][0]
+
+                    for name, val, definition, line in entries_tuple_list:
+                        # append_and_store will collect db entries and store every 10000 at a time
+                        mod_table.append_and_store(self.db, pnum, name, val, definition, line)
+
+
+                f.close()
+
+            num_pathways_parsed += 1
+        # once we are done parsing all pathways, we store whatever db entries remain in the db_entries list
+        # this is necessary because append_and_store() above only stores every 10000 entries
+        self.progress.update("Storing final batch of pathway entries into DB")
+        mod_table.store(self.db)
+
+        self.progress.end()
+
+        # warn user about any parsing errors
         if anvio.DEBUG:
-            self.run.warning("Several parsing errors were encountered while building the KEGG Modules DB. "
-                             "Below you will see which modules threw each type of parsing error. Note that modules which "
+            self.run.warning("Several parsing errors were encountered while building the KEGG Modules DB. Below you "
+                             "will see which modules/pathways threw each type of parsing error. Note that modules/pathways which "
                              "threw multiple errors will occur in the list as many times as it threw each error.")
             self.run.info("Bad line splitting (usually due to rogue or missing spaces)", self.parsing_error_dict["bad_line_splitting"])
             self.run.info("Bad KEGG code format (not corrected; possibly problematic)", self.parsing_error_dict["bad_kegg_code_format"])
@@ -3051,7 +3108,7 @@ class KeggModulesDatabase(KeggContext):
             self.run.warning("First things first - don't panic. Several parsing errors were encountered while building the KEGG Modules DB. "
                              "But that is probably okay, because if you got to this point it is likely that we already fixed all of them "
                              "ourselves. So don't worry too much. Below you will see how many of each type of error was encountered. If "
-                             "you would like to see which modules threw these errors, please re-run the setup using the --debug flag (you "
+                             "you would like to see which modules/pathways threw these errors, please re-run the setup using the --debug flag (you "
                              "will also probably need the --reset flag). When doing so, you will also see which lines caused issues; this "
                              "can be a lot of output, so you can suppress the line-specific output with the --quiet flag if that makes things "
                              "easier to read. So, in summary: You can probably ignore this warning. But if you want more info: run setup again "
@@ -3063,6 +3120,7 @@ class KeggModulesDatabase(KeggContext):
         # give some run info
         self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
         self.run.info('Number of KEGG modules', num_modules_parsed, quiet=self.quiet)
+        self.run.info('Number of KEGG pathways', num_pathways_parsed, quiet=self.quiet)
         self.run.info('Number of entries', mod_table.get_total_entries(), quiet=self.quiet)
         self.run.info('Number of parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
         self.run.info('Number of parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
@@ -3070,6 +3128,7 @@ class KeggModulesDatabase(KeggContext):
         # record some useful metadata
         self.db.set_meta_value('db_type', 'modules')
         self.db.set_meta_value('num_modules', num_modules_parsed)
+        self.db.set_meta_value('num_pathways', num_pathways_parsed)
         self.db.set_meta_value('total_entries', mod_table.get_total_entries())
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('hash', self.get_db_content_hash())
