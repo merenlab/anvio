@@ -163,16 +163,21 @@ class DB:
         """
 
         source_db = DB(source_db_path, None, ignore_version=True)
-        data = source_db.get_all_rows_from_table(table_name)
-        source_db.disconnect()
+        num_entries_in_source = source_db.get_row_counts_from_table(table_name)
 
-        if not len(data):
+        if not num_entries_in_source:
             return
+
+        # we are done with the source DB python object. The rest we do in SQL
+        # for huge performance gains
+        source_db.disconnect()
 
         if not append:
             self._exec('''DELETE FROM %s''' % table_name)
 
-        self._exec_many('''INSERT INTO %s VALUES(%s)''' % (table_name, ','.join(['?'] * len(data[0]))), data)
+        self._exec('''ATTACH "%s" AS source_db''' % source_db_path)
+        self._exec('''INSERT INTO main.%s SELECT * FROM source_db.%s''' % (table_name, table_name))
+        self._exec('''DETACH DATABASE "source_db"''')
 
 
     def get_max_value_in_column(self, table_name, column_name, value_if_empty=None, return_min_instead=False):
