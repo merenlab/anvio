@@ -2722,6 +2722,10 @@ class KeggModulesDatabase(KeggContext):
         self.module_table_name = "kegg_modules"
         self.module_table_structure = ['module', 'data_name', 'data_value', 'data_definition', 'line']
         self.module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
+        # pathways table info
+        self.pathway_table_name = "kegg_pathways"
+        self.pathway_table_structure = ['pathway', 'data_name', 'data_value', 'data_definition', 'line']
+        self.pathway_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
 
         if os.path.exists(self.db_path):
             utils.is_kegg_modules_db(self.db_path)
@@ -2766,6 +2770,7 @@ class KeggModulesDatabase(KeggContext):
         self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=True)
 
         self.db.create_table(self.module_table_name, self.module_table_structure, self.module_table_types)
+        self.db.create_table(self.pathway_table_name, self.pathway_table_structure, self.pathway_table_types)
 
 
     def data_vals_sanity_check(self, data_vals, current_data_name, current_module_num):
