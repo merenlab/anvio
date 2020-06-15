@@ -9,6 +9,7 @@ import os
 import argparse
 
 import anvio
+import anvio.db as db
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.tables as tables
@@ -351,81 +352,6 @@ class MultipleRuns:
             utils.check_sample_id(self.sample_id)
 
 
-    def merge_variable_nts_tables(self):
-        self.progress.new('Merging nucleotide variants', progress_total_items=self.num_profile_dbs)
-
-        variable_nts_table = TableForVariability(self.merged_profile_db_path, progress=self.progress)
-
-        for i, input_profile_db_path in enumerate(self.profile_dbs_info_dict):
-            self.progress.update('(%d/%d) %s' % (i, self.num_profile_dbs, input_profile_db_path))
-
-            sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
-            sample_variable_nts_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_nts_table_name, tables.variable_nts_table_structure)
-            sample_profile_db.disconnect()
-
-            for tpl in sample_variable_nts_table:
-                entry = tuple([variable_nts_table.next_id(tables.variable_nts_table_name)] + list(tpl[1:]))
-
-                # append_entry will automatically store and empty the buffer if the number of
-                # entries exceeds variable_nts_table.max_num_entries_in_storage_buffer
-                variable_nts_table.append_entry(entry)
-
-            self.progress.increment()
-
-        variable_nts_table.store()
-        self.progress.end()
-
-
-    def merge_variable_codons_tables(self):
-        self.progress.new('Merging codon variants', progress_total_items=self.num_profile_dbs)
-
-        variable_codons_table = TableForCodonFrequencies(self.merged_profile_db_path, progress=self.progress)
-
-        for i, input_profile_db_path in enumerate(self.profile_dbs_info_dict):
-            self.progress.update('(%d/%d) %s' % (i, self.num_profile_dbs, input_profile_db_path))
-
-            sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
-            sample_variable_codons_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_codons_table_name, tables.variable_codons_table_structure)
-            sample_profile_db.disconnect()
-
-            for tpl in sample_variable_codons_table:
-                entry = tuple([variable_codons_table.next_id(tables.variable_codons_table_name)] + list(tpl[1:]))
-
-                # append_entry will automatically store and empty the buffer if the number of
-                # entries exceeds variable_codons_table.max_num_entries_in_storage_buffer
-                variable_codons_table.append_entry(entry)
-
-            self.progress.increment()
-
-        variable_codons_table.store()
-        self.progress.end()
-
-
-    def merge_indels_tables(self):
-        self.progress.new('Merging indels', progress_total_items=self.num_profile_dbs)
-
-        indels_table = TableForIndels(self.merged_profile_db_path, progress=self.progress)
-
-        for i, input_profile_db_path in enumerate(self.profile_dbs_info_dict):
-            self.progress.update('(%d/%d) %s' % (i, self.num_profile_dbs, input_profile_db_path))
-
-            sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
-            sample_indels_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.indels_table_name, tables.indels_table_structure)
-            sample_profile_db.disconnect()
-
-            for tpl in sample_indels_table:
-                entry = tuple([indels_table.next_id(tables.indels_table_name)] + list(tpl[1:]))
-
-                # append_entry will automatically store and empty the buffer if the number of
-                # entries exceeds indels_table.max_num_entries_in_storage_buffer
-                indels_table.append_entry(entry)
-
-            self.progress.increment()
-
-        indels_table.store()
-        self.progress.end()
-
-
     def _concatenate_single_profile_tables(self, merged_db, table_name, is_auxiliary=False):
         """Concatenates alike tables from the single profile DBs
 
@@ -435,7 +361,8 @@ class MultipleRuns:
         Parameters
         ==========
         merged_db : db.DB
-            The merged database that tables are being concatenated to.
+            The merged database that tables are being concatenated to. Should be either a profile DB
+            or an auxiliary DB (see is_auxiliary).
 
         table_name : str
             The name of the tables that are being concatenated.
@@ -454,10 +381,35 @@ class MultipleRuns:
 
         for i, input_profile_db_path in enumerate(self.profile_dbs_info_dict):
             self.progress.update("(%d/%d) %s" % (i, self.num_profile_dbs, input_profile_db_path))
-            merged_db.copy_paste(table_name, PATH(input_profile_db_path), append=True)
             self.progress.increment()
+            merged_db.copy_paste(table_name, PATH(input_profile_db_path), append=True)
 
         self.progress.end()
+
+        if 'entry_id' in merged_db.get_table_structure(table_name):
+            # entry_ids need to be made unique
+            self.progress.new("Merging '%s' tables" % table_name)
+            self.progress.update("Updating entry_ids")
+            merged_db.reset_entry_id(table_name)
+            self.progress.end()
+
+
+    def merge_variant_tables(self, table_name):
+        """For merging variable_nts_table_name, variable_codons_table_name, and indels_table_name tables"""
+
+        accepted_input = [
+            tables.variable_nts_table_name,
+            tables.variable_codons_table_name,
+            tables.indels_table_name
+        ]
+
+        if table_name not in accepted_input:
+            raise ConfigError("MultipleRuns.merge_variant_tables :: table_name can only be one of "
+                              "%s" % ','.join(["'"+x+"'" for x in accepted_input]))
+
+        database = db.DB(self.merged_profile_db_path, utils.get_required_version_for_db(self.merged_profile_db_path))
+        self._concatenate_single_profile_tables(database, table_name, is_auxiliary=False)
+        database.disconnect()
 
 
     def merge_split_coverage_data(self):
@@ -604,19 +556,19 @@ class MultipleRuns:
         self.merge_split_coverage_data()
 
         if self.SNVs_profiled:
-            self.merge_variable_nts_tables()
+            self.merge_variant_tables(tables.variable_nts_table_name)
         else:
             self.run.warning("SNVs were not profiled, variable nucleotides positions "
                              "tables will be empty in the merged profile database.")
 
         if self.SCVs_profiled:
-            self.merge_variable_codons_tables()
+            self.merge_variant_tables(tables.variable_codons_table_name)
         else:
             self.run.warning("Codon frequencies were not profiled, hence, these tables "
                              "will be empty in the merged profile database.")
 
         if self.INDELs_profiled:
-            self.merge_indels_tables()
+            self.merge_variant_tables(tables.indels_table_name)
         else:
             self.run.warning("Indels were not profiled, hence, these tables will be empty in the merged profile database.")
 
