@@ -637,30 +637,30 @@ class DB:
     def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False, row_num_as_key=False):
         """This is similar to get_table_as_dict, but much less general.
 
-           get_table_as_dict can do a lot, but it first reads all data into the memory to operate on it.
-           In some cases the programmer may like to access to only a small fraction of entries in a table
-           by using `WHERE column = value` notation, which is not possible with the more generalized
-           function.
+        get_table_as_dict can do a lot, but it first reads all data into the memory to operate on it.
+        In some cases the programmer may like to access to only a small fraction of entries in a table
+        by using `WHERE column = value` notation, which is not possible with the more generalized
+        function.
 
-           Parameters
-           ==========
-           table_name: str
-                which table to get rows from
-           where_clause: str
-                SQL-style where clause for row selection
-           error_if_no_data: bool
-                if true, this function will raise an error if no data is selected from the table. otherwise, it will
-                quietly return the empty dictionary
-           string_the_key: bool
-                if true, the row number will be converted to a string before being used as a key in the dictionary
-           row_num_as_key: bool
-                added as parameter so this function works for KEGG MODULES.db, which does not have unique IDs in the
-                first column. If True, the returned dictionary will be keyed by integers from 0 to (# rows returned - 1)
+        Parameters
+        ==========
+        table_name: str
+             which table to get rows from
+        where_clause: str
+             SQL-style where clause for row selection
+        error_if_no_data: bool
+             if true, this function will raise an error if no data is selected from the table. otherwise, it will
+             quietly return the empty dictionary
+        string_the_key: bool
+             if true, the row number will be converted to a string before being used as a key in the dictionary
+        row_num_as_key: bool
+             added as parameter so this function works for KEGG MODULES.db, which does not have unique IDs in the
+             first column. If True, the returned dictionary will be keyed by integers from 0 to (# rows returned - 1)
 
-           Returns
-           =======
-           results_dict: dictionary
-                contains the requested rows from the table
+        Returns
+        =======
+        results_dict: dictionary
+             contains the requested rows from the table
         """
 
         results_dict = {}
