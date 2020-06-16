@@ -59,7 +59,7 @@ class TableForVariability(Table):
         self.db_entries.append(entry)
 
         if len(self.db_entries) > self.max_num_entries_in_storage_buffer:
-            # everytime we are here, the contenst of self.db_entries will be stored in the
+            # everytime we are here, the contents of self.db_entries will be stored in the
             # database
             self.store()
 

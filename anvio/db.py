@@ -153,24 +153,57 @@ class DB:
         self.set_meta_value(key, value)
 
 
-    def copy_paste(self, table_name, source_db_path):
-        """Copy `table_name` data from another database (`source_db_path`) into yourself"""
+    def copy_paste(self, table_name, source_db_path, append=False):
+        """Copy `table_name` data from another database (`source_db_path`) into yourself
+
+        Arguments
+        =========
+        append : bool, False
+            If True, the table is appened to the source DB, rather than replaced.
+        """
 
         source_db = DB(source_db_path, None, ignore_version=True)
-        data = source_db.get_all_rows_from_table(table_name)
+        num_entries_in_source = source_db.get_row_counts_from_table(table_name)
 
-        if not len(data):
+        if not num_entries_in_source:
             return
 
-        self._exec('''DELETE FROM %s''' % table_name)
-        self._exec_many('''INSERT INTO %s VALUES(%s)''' % (table_name, ','.join(['?'] * len(data[0]))), data)
+        # we are done with the source DB python object. The rest we do in SQL
+        # for huge performance gains
+        source_db.disconnect()
+
+        if not append:
+            self._exec('''DELETE FROM %s''' % table_name)
+
+        self._exec('''ATTACH "%s" AS source_db''' % source_db_path)
+        self._exec('''INSERT INTO main.%s SELECT * FROM source_db.%s''' % (table_name, table_name))
+        self._exec('''DETACH DATABASE "source_db"''')
+
+
+    def reset_entry_id(self, table_name):
+        """Rewrite entry_id column as sequential integers. Complain if entry_id doesn't exist
+
+        Notes
+        =====
+        - Every SQLite table contains an implicit column, ROWID, that is the row number of the
+          entry. We take advantage of that here.
+        """
+
+        if 'entry_id' not in self.get_table_structure(table_name):
+            raise ConfigError("DB.reset_entry_id :: %s does not have entry_id as a column" % table_name)
+
+        self._exec('''UPDATE %s SET entry_id = ROWID-1''' % table_name)
 
 
     def get_max_value_in_column(self, table_name, column_name, value_if_empty=None, return_min_instead=False):
-        """
-        value_if_empty, default = None:
+        """Get the maximum OR minimum column value in a table
+
+        Parameters
+        ==========
+        value_if_empty : object, None
             If not None and table has no entries, value returned is value_if_empty.
         """
+
         response = self._exec("""SELECT %s(%s) FROM %s""" % ('MIN' if return_min_instead else 'MAX', column_name, table_name))
         rows = response.fetchall()
 
@@ -463,6 +496,9 @@ class DB:
         # new ones to avoid key information to not be overwritten due to the lack of unique entry ids which become keys for
         # the data dictionary). in other cases there are no ways to fix it, such as for HMM tables.. The ACTUAL SOLUTION to\
         # this is to remove `entry_id` columns from every table in anvi'o, and using SQLite indexes as entry ids.
+        #
+        # NOTE from the future
+        # Every SQLite table has an implicit column called ROWID. Does this solve our problem?
         if table_name not in tables.tables_without_unique_entry_ids:
             unique_keys = set([r[0] for r in rows])
             if len(unique_keys) != len(rows):
@@ -601,30 +637,30 @@ class DB:
     def get_some_rows_from_table_as_dict(self, table_name, where_clause, error_if_no_data=True, string_the_key=False, row_num_as_key=False):
         """This is similar to get_table_as_dict, but much less general.
 
-           get_table_as_dict can do a lot, but it first reads all data into the memory to operate on it.
-           In some cases the programmer may like to access to only a small fraction of entries in a table
-           by using `WHERE column = value` notation, which is not possible with the more generalized
-           function.
+        get_table_as_dict can do a lot, but it first reads all data into the memory to operate on it.
+        In some cases the programmer may like to access to only a small fraction of entries in a table
+        by using `WHERE column = value` notation, which is not possible with the more generalized
+        function.
 
-           Parameters
-           ==========
-           table_name: str
-                which table to get rows from
-           where_clause: str
-                SQL-style where clause for row selection
-           error_if_no_data: bool
-                if true, this function will raise an error if no data is selected from the table. otherwise, it will
-                quietly return the empty dictionary
-           string_the_key: bool
-                if true, the row number will be converted to a string before being used as a key in the dictionary
-           row_num_as_key: bool
-                added as parameter so this function works for KEGG MODULES.db, which does not have unique IDs in the
-                first column. If True, the returned dictionary will be keyed by integers from 0 to (# rows returned - 1)
+        Parameters
+        ==========
+        table_name: str
+             which table to get rows from
+        where_clause: str
+             SQL-style where clause for row selection
+        error_if_no_data: bool
+             if true, this function will raise an error if no data is selected from the table. otherwise, it will
+             quietly return the empty dictionary
+        string_the_key: bool
+             if true, the row number will be converted to a string before being used as a key in the dictionary
+        row_num_as_key: bool
+             added as parameter so this function works for KEGG MODULES.db, which does not have unique IDs in the
+             first column. If True, the returned dictionary will be keyed by integers from 0 to (# rows returned - 1)
 
-           Returns
-           =======
-           results_dict: dictionary
-                contains the requested rows from the table
+        Returns
+        =======
+        results_dict: dictionary
+             contains the requested rows from the table
         """
 
         results_dict = {}
