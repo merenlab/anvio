@@ -3173,7 +3173,7 @@ class KeggModulesDatabase(KeggContext):
 
                     for name, val, definition, line in entries_tuple_list:
                         # append_and_store will collect db entries and store every 10000 at a time
-                        mod_table.append_and_store(self.db, pnum, name, val, definition, line)
+                        path_table.append_and_store(self.db, pnum, name, val, definition, line)
 
 
                 f.close()
@@ -3182,7 +3182,7 @@ class KeggModulesDatabase(KeggContext):
         # once we are done parsing all pathways, we store whatever db entries remain in the db_entries list
         # this is necessary because append_and_store() above only stores every 10000 entries
         self.progress.update("Storing final batch of pathway map entries into DB")
-        mod_table.store(self.db)
+        path_table.store(self.db)
 
         self.progress.end()
 
@@ -3210,7 +3210,8 @@ class KeggModulesDatabase(KeggContext):
         self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
         self.run.info('Number of KEGG modules', num_modules_parsed, quiet=self.quiet)
         self.run.info('Number of KEGG pathway maps', num_pathways_parsed, quiet=self.quiet)
-        self.run.info('Number of entries', mod_table.get_total_entries(), quiet=self.quiet)
+        self.run.info('Number of module entries', mod_table.get_total_entries(), quiet=self.quiet)
+        self.run.info('Number of pathway map entries', path_table.get_total_entries(), quiet=self.quiet)
         self.run.info('Number of parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
         self.run.info('Number of parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
 
@@ -3218,7 +3219,8 @@ class KeggModulesDatabase(KeggContext):
         self.db.set_meta_value('db_type', 'modules')
         self.db.set_meta_value('num_modules', num_modules_parsed)
         self.db.set_meta_value('num_pathways', num_pathways_parsed)
-        self.db.set_meta_value('total_entries', mod_table.get_total_entries())
+        self.db.set_meta_value('total_module_entries', mod_table.get_total_entries())
+        self.db.set_meta_value('total_module_entries', path_table.get_total_entries())
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('hash', self.get_db_content_hash()) # TODO: update hash with pathway info
 
