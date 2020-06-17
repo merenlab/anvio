@@ -35,7 +35,6 @@ class TableForCodonFrequencies(Table):
 
         self.num_entries = 0
         self.db_entries = []
-        self.set_next_available_id(t.variable_codons_table_name)
 
         self.max_num_entries_in_storage_buffer = 15000
 
@@ -53,12 +52,10 @@ class TableForCodonFrequencies(Table):
         Parameters
         ==========
         entry : sequence
-            values in order they are in the table, entry_id excluded (it will be appended in the
-            body of this function)
+            values in order they are in the table)
         """
 
-        db_entry = (self.next_id(t.variable_codons_table_name), *entry)
-        self.db_entries.append(db_entry)
+        self.db_entries.append(entry)
         self.num_entries += 1
 
         if len(self.db_entries) >= self.max_num_entries_in_storage_buffer:
