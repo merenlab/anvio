@@ -2780,7 +2780,7 @@ class KeggModulesDatabase(KeggContext):
         between different fields). So here we check if the values that we parsed look like they are the right format, without any extra bits.
         Each data name (ORTHOLOGY, DEFINITION, etc) has a different format to check for.
 
-        Note that we don't check the following data name types: NAME, CLASS, REFERENCE
+        Note that we don't check several data name types, which are listed in the data_names_to_skip_checking variable.
 
         WARNING: The error checking and correction is by no means perfect and may well fail when KEGG is next updated. :(
 
@@ -2912,9 +2912,9 @@ class KeggModulesDatabase(KeggContext):
 
 
     def data_vals_sanity_check_pathway(self, data_vals, current_data_name, current_pathway_num):
-        """This function checks if the data values were correctly parsed from a line in a KEGG pathway file.
+        """This function checks if the data values were correctly parsed from a line in a KEGG pathway map file.
 
-        This is essentially the same as the above function, but for pathways instead of modules. We are just checking
+        This is essentially the same as the above function, but for pathway maps instead of modules. We are just checking
         for formatting issues.
 
         WARNING: The error checking and correction is by no means perfect and may well fail when KEGG is next updated. :(
