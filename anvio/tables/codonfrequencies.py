@@ -52,7 +52,7 @@ class TableForCodonFrequencies(Table):
         Parameters
         ==========
         entry : sequence
-            values in order they are in the table)
+            Values in the order they are in tables.variable_codons_table_structure
         """
 
         self.db_entries.append(entry)
