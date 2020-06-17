@@ -3131,12 +3131,12 @@ class KeggModulesDatabase(KeggContext):
 
 
         # setup KEGG pathways
-        self.progress.new("Loading %s KEGG pathways into Modules DB..." % len(self.pathway_dict.keys()))
+        self.progress.new("Loading %s KEGG pathway maps into Modules DB..." % len(self.pathway_dict.keys()))
 
         # sanity check that we setup the modules previously.
         # It shouldn't be a problem since this function should only be called during the setup process after modules download, but just in case.
         if not os.path.exists(self.pathway_data_dir) or len(self.pathway_dict.keys()) == 0:
-            raise ConfigError("Appparently, the Kegg Pathways were not correctly setup and now all sorts of things are broken. The "
+            raise ConfigError("Appparently, the Kegg Pathway Maps were not correctly setup and now all sorts of things are broken. The "
                               "Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone "
                               "except maybe developers, so if you do not fall into that category you are likely in deep doo-doo. "
                               "Maybe re-running setup with --reset will work? (if not, you probably should email/Slack/telepathically "
@@ -3148,7 +3148,7 @@ class KeggModulesDatabase(KeggContext):
 
         num_pathways_parsed = 0
         for pnum in self.pathway_dict.keys():
-            self.progress.update("Parsing KEGG Pathway %s" % pnum)
+            self.progress.update("Parsing KEGG Pathway Map %s" % pnum)
             path_file_path = os.path.join(self.pathway_data_dir, pnum)
             f = open(path_file_path, 'rU')
 
@@ -3181,7 +3181,7 @@ class KeggModulesDatabase(KeggContext):
             num_pathways_parsed += 1
         # once we are done parsing all pathways, we store whatever db entries remain in the db_entries list
         # this is necessary because append_and_store() above only stores every 10000 entries
-        self.progress.update("Storing final batch of pathway entries into DB")
+        self.progress.update("Storing final batch of pathway map entries into DB")
         mod_table.store(self.db)
 
         self.progress.end()
@@ -3189,7 +3189,7 @@ class KeggModulesDatabase(KeggContext):
         # warn user about any parsing errors
         if anvio.DEBUG:
             self.run.warning("Several parsing errors were encountered while building the KEGG Modules DB. Below you "
-                             "will see which modules/pathways threw each type of parsing error. Note that modules/pathways which "
+                             "will see which modules/pathway maps threw each type of parsing error. Note that modules/pathway maps which "
                              "threw multiple errors will occur in the list as many times as it threw each error.")
             self.run.info("Bad line splitting (usually due to rogue or missing spaces)", self.parsing_error_dict["bad_line_splitting"])
             self.run.info("Bad KEGG code format (not corrected; possibly problematic)", self.parsing_error_dict["bad_kegg_code_format"])
@@ -3197,11 +3197,11 @@ class KeggModulesDatabase(KeggContext):
             self.run.warning("First things first - don't panic. Several parsing errors were encountered while building the KEGG Modules DB. "
                              "But that is probably okay, because if you got to this point it is likely that we already fixed all of them "
                              "ourselves. So don't worry too much. Below you will see how many of each type of error was encountered. If "
-                             "you would like to see which modules/pathways threw these errors, please re-run the setup using the --debug flag (you "
+                             "you would like to see which modules/pathway maps threw these errors, please re-run the setup using the --debug flag (you "
                              "will also probably need the --reset flag). When doing so, you will also see which lines caused issues; this "
                              "can be a lot of output, so you can suppress the line-specific output with the --quiet flag if that makes things "
                              "easier to read. So, in summary: You can probably ignore this warning. But if you want more info: run setup again "
-                             "with --reset --debug --quiet to see exactly which modules had issues, or run with --reset --debug to see exactly "
+                             "with --reset --debug --quiet to see exactly which modules/pathway maps had issues, or run with --reset --debug to see exactly "
                              "which lines in which modules had issues. Now, here is a kiss for you because you have been so patient and good with anvi'o 😚")
             self.run.info("Bad line splitting (usually due to rogue or missing spaces)", len(self.parsing_error_dict["bad_line_splitting"]))
             self.run.info("Bad KEGG code format (usually not correctable)", len(self.parsing_error_dict["bad_kegg_code_format"]))
@@ -3209,7 +3209,7 @@ class KeggModulesDatabase(KeggContext):
         # give some run info
         self.run.info('Modules database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
         self.run.info('Number of KEGG modules', num_modules_parsed, quiet=self.quiet)
-        self.run.info('Number of KEGG pathways', num_pathways_parsed, quiet=self.quiet)
+        self.run.info('Number of KEGG pathway maps', num_pathways_parsed, quiet=self.quiet)
         self.run.info('Number of entries', mod_table.get_total_entries(), quiet=self.quiet)
         self.run.info('Number of parsing errors (corrected)', self.num_corrected_errors, quiet=self.quiet)
         self.run.info('Number of parsing errors (uncorrected)', self.num_uncorrected_errors, quiet=self.quiet)
