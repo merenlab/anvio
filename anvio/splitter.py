@@ -243,8 +243,8 @@ class XSplitter(object):
     def is_dbs_identical(self, source_db_path, target_db_path):
         """Check whether the two dbs have identical table names"""
 
-        source_db = db.DB(source_db_path, None, ignore_version=True)
-        target_db = db.DB(target_db_path, None, ignore_version=True)
+        source_db = db.DB(source_db_path, None, ignore_version=True, skip_rowid_prepend=True)
+        target_db = db.DB(target_db_path, None, ignore_version=True, skip_rowid_prepend=True)
 
         source_tables = set(source_db.get_table_names())
         target_tables = set(target_db.get_table_names())
@@ -278,7 +278,7 @@ class XSplitter(object):
 
 
             self.progress.update("Table '%s' .. reading data" % table_name)
-            source_db = db.DB(source_db_path, None, ignore_version=True)
+            source_db = db.DB(source_db_path, None, ignore_version=True, skip_rowid_prepend=True)
             data = source_db.get_some_rows_from_table(table_name, where_clause)
             source_db.disconnect()
 
@@ -286,7 +286,7 @@ class XSplitter(object):
                 continue
 
             self.progress.update("Table '%s' .. writing data" % table_name)
-            target_db = db.DB(target_db_path, None, ignore_version=True)
+            target_db = db.DB(target_db_path, None, ignore_version=True, skip_rowid_prepend=True)
             target_db._exec_many('''INSERT INTO %s VALUES(%s)''' % (table_name, ','.join(['?'] * len(data[0]))), data)
             target_db.disconnect()
 
@@ -1033,7 +1033,7 @@ class LocusSplitter:
         locus_stop = self.contigs_db.genes_in_contigs_dict[last_gene_of_the_block]['stop']
 
         # being a performance nerd here yes
-        contig_sequence = db.DB(self.input_contigs_db_path, None, ignore_version=True) \
+        contig_sequence = db.DB(self.input_contigs_db_path, None, ignore_version=True, skip_rowid_prepend=True) \
                             .get_some_rows_from_table(t.contig_sequences_table_name,
                                                       where_clause="contig='%s'" % contig_name)[0][1]
 
@@ -1168,7 +1168,7 @@ class LocusSplitter:
         where_clause = "gene_callers_id in (%s)" % ', '.join(['"%d"' % g for g in gene_caller_id_conversion_dict])
 
         # a lousy anonymous function to read data from tables given the gene calls of interest
-        R = lambda table_name: db.DB(self.input_contigs_db_path, None, ignore_version=True) \
+        R = lambda table_name: db.DB(self.input_contigs_db_path, None, ignore_version=True, skip_rowid_prepend=True) \
                                               .get_some_rows_from_table_as_dict(table_name,
                                                                                 where_clause=where_clause,
                                                                                 error_if_no_data=False)
@@ -1204,7 +1204,7 @@ class LocusSplitter:
 
         entries = [(gene_caller_id_conversion_dict[g], amino_acid_sequences[g]['sequence']) for g in amino_acid_sequences]
 
-        locus_db = db.DB(locus_output_db_path, None, ignore_version=True)
+        locus_db = db.DB(locus_output_db_path, None, ignore_version=True, skip_rowid_prepend=True)
         locus_db._exec("DELETE FROM %s" % t.gene_amino_acid_sequences_table_name)
         locus_db.insert_many(t.gene_amino_acid_sequences_table_name, entries=entries)
         locus_db.disconnect()
