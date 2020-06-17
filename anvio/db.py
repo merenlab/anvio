@@ -89,6 +89,15 @@ class DB:
                                       "deal with v%s). You can migrate your database without losing any data using the program `anvi-migrate`."\
                                                % (self.db_path, self.version, client_version))
 
+            bad_tables = [table_name for table_name in self.get_table_names() if table_name not in tables.requires_unique_entry_id]
+            if len(bad_tables):
+                raise ConfigError("You better be a programmer tinkering with anvi'o databases adding new tables or something. Otherwise we "
+                                  "have quite a serious problem :/ Each table in a given anvi'o database must have an entry in the "
+                                  "anvio/tables/__init__.py dictionary `requires_unique_entry_id` to explicitly define whether anvi'o "
+                                  "should add a unique entry id for its contents upon retreival as a dictionary. The following tables "
+                                  "in this database do not satisfy that: '%s'. You can solve this problem by adding an entry into that "
+                                  "dictionary." % (', '.join(bad_tables)))
+
 
     def get_version(self):
         try:
