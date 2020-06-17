@@ -391,7 +391,12 @@ class DB:
 
 
     def get_all_rows_from_table(self, table_name):
-        response = self._exec('''SELECT * FROM %s''' % table_name)
+        response = self._exec('''SELECT %s FROM %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name))
+        return response.fetchall()
+
+
+    def get_some_rows_from_table(self, table_name, where_clause):
+        response = self._exec('''SELECT %s FROM %s WHERE %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name, where_clause))
         return response.fetchall()
 
 
@@ -407,11 +412,6 @@ class DB:
     def remove_some_rows_from_table(self, table_name, where_clause):
         self._exec('''DELETE FROM %s WHERE %s''' % (table_name, where_clause))
         self.commit()
-
-
-    def get_some_rows_from_table(self, table_name, where_clause):
-        response = self._exec('''SELECT * FROM %s WHERE %s''' % (table_name, where_clause))
-        return response.fetchall()
 
 
     def get_single_column_from_table(self, table, column, unique=False, where_clause=None):
