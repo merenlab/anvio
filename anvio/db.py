@@ -451,6 +451,9 @@ class DB:
 
 
     def get_table_as_dict(self, table_name, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True, log_norm_numeric_values=False):
+        if self.ROWID_PREPENDS_ROW_DATA(table_name):
+            table_structure = ['entry_id'] + self.get_table_structure(table_name)
+        else:
             table_structure = self.get_table_structure(table_name)
 
         columns_to_return = list(range(0, len(table_structure)))
@@ -562,6 +565,7 @@ class DB:
         #
         #----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8-----
 
+
         results_dict = {}
 
         if keys_of_interest:
@@ -615,7 +619,10 @@ class DB:
             Raise an error if the dataframe has 0 rows. Checked after where_clause.
         """
 
-        table_structure = self.get_table_structure(table_name)
+        if self.ROWID_PREPENDS_ROW_DATA(table_name):
+            table_structure = ['entry_id'] + self.get_table_structure(table_name)
+        else:
+            table_structure = self.get_table_structure(table_name)
 
         if not columns_of_interest:
             columns_of_interest = table_structure
@@ -672,10 +679,14 @@ class DB:
 
         results_dict = {}
 
-        table_structure = self.get_table_structure(table_name)
+        if self.ROWID_PREPENDS_ROW_DATA(table_name):
+            table_structure = ['entry_id'] + self.get_table_structure(table_name)
+        else:
+            table_structure = self.get_table_structure(table_name)
+
         columns_to_return = list(range(0, len(table_structure)))
 
-        rows = self._exec('''SELECT * FROM %s WHERE %s''' % (table_name, where_clause)).fetchall()
+        rows = self.get_some_rows_from_table(table_name, where_clause)
 
         row_num = 0
         for row in rows:
