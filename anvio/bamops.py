@@ -232,7 +232,7 @@ class Read:
 
         0th column = reference position
         1st column = query sequence
-        2nd column = mapping type (0, 1, or 2)
+        2nd column = mapping type (0=mapped, 1=read insertion, or 2=read deletion)
         3rd column = reference sequence
         """
 
