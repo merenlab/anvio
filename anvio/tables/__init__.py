@@ -40,8 +40,8 @@ versions_for_db_types = {'contigs': contigs_db_version,
 ####################################################################################################
 
 pan_gene_clusters_table_name           = 'gene_clusters'
-pan_gene_clusters_table_structure      = ['entry_id', 'gene_caller_id', 'gene_cluster_id', 'genome_name', 'alignment_summary']
-pan_gene_clusters_table_types          = ['numeric' ,     'numeric'   ,      'str'       ,     'str'    ,        'str'       ]
+pan_gene_clusters_table_structure      = ['gene_caller_id', 'gene_cluster_id', 'genome_name', 'alignment_summary']
+pan_gene_clusters_table_types          = [    'numeric'   ,      'str'       ,     'str'    ,        'str'       ]
 
 
 ####################################################################################################
@@ -71,16 +71,16 @@ genes_in_contigs_table_structure        = ['gene_callers_id', 'contig', 'start' 
 genes_in_contigs_table_types            = [    'numeric'    ,  'text' ,'numeric','numeric',   'text'   , 'numeric',  'numeric' ,  'text' ,   'text' ]
 
 genes_in_splits_table_name             = 'genes_in_splits'
-genes_in_splits_table_structure        = ['entry_id', 'split', 'gene_callers_id', 'start_in_split', 'stop_in_split', 'percentage_in_split']
-genes_in_splits_table_types            = [ 'numeric',  'text',      'numeric'   ,    'numeric'    ,    'numeric'   ,       'numeric'      ]
+genes_in_splits_table_structure        = ['split', 'gene_callers_id', 'start_in_split', 'stop_in_split', 'percentage_in_split']
+genes_in_splits_table_types            = [ 'text',      'numeric'   ,    'numeric'    ,    'numeric'   ,       'numeric'      ]
 
 gene_amino_acid_sequences_table_name      = 'gene_amino_acid_sequences'
 gene_amino_acid_sequences_table_structure = ['gene_callers_id', 'sequence']
 gene_amino_acid_sequences_table_types     = [     'numeric'   ,   'text'  ]
 
 gene_function_calls_table_name         = 'gene_functions'
-gene_function_calls_table_structure    = ['entry_id', 'gene_callers_id', 'source', 'accession', 'function', 'e_value']
-gene_function_calls_table_types        = [ 'numeric',     'numeric'    ,  'text' ,    'text'  ,   'text'  , 'numeric']
+gene_function_calls_table_structure    = ['gene_callers_id', 'source', 'accession', 'function', 'e_value']
+gene_function_calls_table_types        = [    'numeric'    ,  'text' ,    'text'  ,   'text'  , 'numeric']
 
 taxon_names_table_name                 = 'taxon_names'
 taxon_names_table_structure            = ['taxon_id', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
@@ -103,32 +103,32 @@ hmm_hits_table_structure               = ['entry_id', 'source', 'gene_unique_ide
 hmm_hits_table_types                   = [ 'numeric',  'text' ,          'text'         ,      'numeric'   ,   'text'   ,     'text'   , 'numeric']
 
 hmm_hits_splits_table_name             = 'hmm_hits_in_splits'
-hmm_hits_splits_table_structure        = ['entry_id', 'hmm_hit_entry_id', 'split', 'percentage_in_split', 'source']
-hmm_hits_splits_table_types            = [ 'numeric',      'numeric'    ,  'text',       'numeric'      ,  'text' ]
+hmm_hits_splits_table_structure        = ['hmm_hit_entry_id', 'split', 'percentage_in_split', 'source']
+hmm_hits_splits_table_types            = [     'numeric'    ,  'text',       'numeric'      ,  'text' ]
 
 scg_taxonomy_table_name                = 'scg_taxonomy'
-scg_taxonomy_table_structure           = ['entry_id', 'gene_callers_id', 'gene_name', 'accession', 'percent_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
-scg_taxonomy_table_types               = ['numeric' ,     'numeric'    ,    'text'  ,    'text'  ,       'text'      ,   'text'  ,   'text'  ,   'text' ,  'text'  ,   'text'  ,   'text' ,   'text'   ]
+scg_taxonomy_table_structure           = ['gene_callers_id', 'gene_name', 'accession', 'percent_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+scg_taxonomy_table_types               = [    'numeric'    ,    'text'  ,    'text'  ,       'text'      ,   'text'  ,   'text'  ,   'text' ,  'text'  ,   'text'  ,   'text' ,   'text'   ]
 
 nt_position_info_table_name            = 'nt_position_info'
 nt_position_info_table_structure       = ['contig_name', 'position_info']
 nt_position_info_table_types           = [    'str'    ,      'blob'    ]
 
 nucleotide_additional_data_table_name      = 'nucleotide_additional_data'
-nucleotide_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
-nucleotide_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
+nucleotide_additional_data_table_structure = ['item_name', 'data_key', 'data_value', 'data_type', 'data_group']
+nucleotide_additional_data_table_types     = [   'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
 
 amino_acid_additional_data_table_name      = 'amino_acid_additional_data'
-amino_acid_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
-amino_acid_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
+amino_acid_additional_data_table_structure = ['item_name', 'data_key', 'data_value', 'data_type', 'data_group']
+amino_acid_additional_data_table_types     = [   'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
 
 gene_level_coverage_stats_table_name      = 'gene_level_coverage_stats'
-gene_level_coverage_stats_table_structure = ['entry_id', 'gene_callers_id', 'sample_name', 'mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std', 'gene_coverage_values_per_nt', 'non_outlier_positions']
-gene_level_coverage_stats_table_types     = [ 'numeric',     'numeric'    ,     'text'   ,    'numeric'   ,  'numeric' ,         'numeric'          ,          'numeric'        ,             'blob'           ,          'blob'        ]
+gene_level_coverage_stats_table_structure = ['gene_callers_id', 'sample_name', 'mean_coverage', 'detection', 'non_outlier_mean_coverage', 'non_outlier_coverage_std', 'gene_coverage_values_per_nt', 'non_outlier_positions']
+gene_level_coverage_stats_table_types     = [    'numeric'    ,     'text'   ,    'numeric'   ,  'numeric' ,         'numeric'          ,          'numeric'        ,             'blob'           ,          'blob'        ]
 
 gene_level_inseq_stats_table_name      = 'gene_level_inseq_stats'
-gene_level_inseq_stats_table_structure = ['entry_id', 'gene_callers_id', 'sample_name', 'mean_coverage', 'insertions', 'insertions_normalized', 'mean_disruption', 'below_disruption', 'gene_coverage_values_per_nt']
-gene_level_inseq_stats_table_types     = [ 'numeric',     'numeric'    ,     'text'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,      'numeric'   ,      'numeric'    ,              'blob'          ]
+gene_level_inseq_stats_table_structure = ['gene_callers_id', 'sample_name', 'mean_coverage', 'insertions', 'insertions_normalized', 'mean_disruption', 'below_disruption', 'gene_coverage_values_per_nt']
+gene_level_inseq_stats_table_types     = [    'numeric'    ,     'text'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,      'numeric'   ,      'numeric'    ,              'blob'          ]
 
 ####################################################################################################
 #
@@ -141,32 +141,32 @@ item_orders_table_structure          = ['name', 'type', 'data', 'additional']
 item_orders_table_types              = ['text', 'text', 'text',    'text'   ]
 
 item_additional_data_table_name      = 'item_additional_data'
-item_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
-item_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
+item_additional_data_table_structure = ['item_name', 'data_key', 'data_value', 'data_type', 'data_group']
+item_additional_data_table_types     = [   'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
 
 layer_orders_table_name              = 'layer_orders'
 layer_orders_table_structure         = ['data_key', 'data_type', 'data_value']
 layer_orders_table_types             = [  'text'  ,    'text'  ,    'text'   ]
 
 layer_additional_data_table_name      = 'layer_additional_data'
-layer_additional_data_table_structure = ['entry_id', 'item_name', 'data_key', 'data_value', 'data_type', 'data_group']
-layer_additional_data_table_types     = [ 'numeric',    'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
+layer_additional_data_table_structure = ['item_name', 'data_key', 'data_value', 'data_type', 'data_group']
+layer_additional_data_table_types     = [   'text'  ,   'text'  ,    'text'   ,    'text'  ,    'text'   ]
 
 states_table_name                    = 'states'
 states_table_structure               = ['name', 'content', 'last_modified']
 states_table_types                   = ['text',  'text'  ,      'text'    ]
 
 variable_codons_table_name           = 'variable_codons'
-variable_codons_table_structure      = ['entry_id', 'sample_id', 'corresponding_gene_call', 'codon_order_in_gene', 'reference', 'departure_from_reference', 'coverage'] + codons
-variable_codons_table_types          = [ 'numeric',    'text'  ,        'numeric'         ,       'numeric'      ,    'text'  ,          'numeric'        , 'numeric' ] + ['numeric'] * len(codons)
+variable_codons_table_structure      = ['sample_id', 'corresponding_gene_call', 'codon_order_in_gene', 'reference', 'departure_from_reference', 'coverage'] + codons
+variable_codons_table_types          = [   'text'  ,        'numeric'         ,       'numeric'      ,    'text'  ,          'numeric'        , 'numeric' ] + ['numeric'] * len(codons)
 
 variable_nts_table_name              = 'variable_nucleotides'
-variable_nts_table_structure         = ['entry_id', 'sample_id', 'split_name',   'pos'  , 'pos_in_contig', 'corresponding_gene_call', 'in_noncoding_gene_call', 'in_coding_gene_call', 'base_pos_in_codon', 'codon_order_in_gene', 'coverage', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'departure_from_reference', 'competing_nts', 'reference'] + nucleotides
-variable_nts_table_types             = [ 'numeric',    'text'  ,    'text'   , 'numeric',    'numeric'   ,        'numeric'         ,       'numeric'         ,     'numeric'        ,       'numeric'    ,       'numeric'      , 'numeric' ,          'bool'       ,          'bool'        ,          'numeric'        ,      'text'    ,    'text'  ] + ['numeric'] * len(nucleotides)
+variable_nts_table_structure         = ['sample_id', 'split_name',   'pos'  , 'pos_in_contig', 'corresponding_gene_call', 'in_noncoding_gene_call', 'in_coding_gene_call', 'base_pos_in_codon', 'codon_order_in_gene', 'coverage', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'departure_from_reference', 'competing_nts', 'reference'] + nucleotides
+variable_nts_table_types             = [   'text'  ,    'text'   , 'numeric',    'numeric'   ,        'numeric'         ,       'numeric'         ,     'numeric'        ,       'numeric'    ,       'numeric'      , 'numeric' ,          'bool'       ,          'bool'        ,          'numeric'        ,      'text'    ,    'text'  ] + ['numeric'] * len(nucleotides)
 
 indels_table_name                    = 'indels'
-indels_table_structure               = ['entry_id', 'sample_id', 'split_name', 'type', 'sequence', 'start_in_contig', 'start_in_split', 'length' , 'coverage']
-indels_table_types                   = ['numeric' , 'text'     , 'text'      , 'text', 'text'    , 'numeric'        , 'numeric'       , 'numeric', 'numeric' ]
+indels_table_structure               = ['sample_id', 'split_name', 'type', 'sequence', 'start_in_contig', 'start_in_split', 'length' , 'coverage']
+indels_table_types                   = ['text'     , 'text'      , 'text', 'text'    , 'numeric'        , 'numeric'       , 'numeric', 'numeric' ]
 
 views_table_name                     = 'views'
 views_table_structure                = ['view_id', 'target_table']
@@ -191,16 +191,16 @@ collections_info_table_structure      = ['collection_name', 'num_splits', 'num_b
 collections_info_table_types          = [      'text'     ,  'numeric'  ,  'numeric',    'text'  ]
 
 collections_bins_info_table_name      = 'collections_bins_info'
-collections_bins_info_table_structure = ['entry_id', 'collection_name', 'bin_name', 'source', 'html_color']
-collections_bins_info_table_types     = [ 'numeric',       'text'     ,   'text'  ,  'text' ,    'text'   ]
+collections_bins_info_table_structure = ['collection_name', 'bin_name', 'source', 'html_color']
+collections_bins_info_table_types     = [      'text'     ,   'text'  ,  'text' ,    'text'   ]
 
 collections_contigs_table_name        = 'collections_of_contigs'
-collections_contigs_table_structure   = ['entry_id', 'collection_name', 'contig', 'bin_name']
-collections_contigs_table_types       = [ 'numeric',       'text'     ,  'text' ,   'text'  ]
+collections_contigs_table_structure   = ['collection_name', 'contig', 'bin_name']
+collections_contigs_table_types       = [      'text'     ,  'text' ,   'text'  ]
 
 collections_splits_table_name         = 'collections_of_splits'
-collections_splits_table_structure    = ['entry_id', 'collection_name', 'split', 'bin_name']
-collections_splits_table_types        = [ 'numeric',       'text'     , 'text' ,   'text'  ]
+collections_splits_table_structure    = ['collection_name', 'split', 'bin_name']
+collections_splits_table_types        = [      'text'     , 'text' ,   'text'  ]
 
 
 ####################################################################################################
@@ -243,16 +243,16 @@ pdb_data_table_structure  = ['corresponding_gene_call', 'pdb_content']
 pdb_data_table_types      = [         'integer'       ,    'blob'    ]
 
 templates_table_name       = 'templates'
-templates_table_structure  = ['entry_id' , 'corresponding_gene_call' , 'pdb_id' , 'chain_id' , 'ppi']
-templates_table_types      = ['integer'  , 'integer'                 , 'text'   , 'text'     , 'real']
+templates_table_structure  = ['corresponding_gene_call' , 'pdb_id' , 'chain_id' , 'ppi']
+templates_table_types      = ['integer'                 , 'text'   , 'text'     , 'real']
 
 models_table_name       = 'models'
-models_table_structure  = ['entry_id' , 'corresponding_gene_call' , 'molpdf' , 'GA341_score' , 'DOPE_score' , 'picked_as_best']
-models_table_types      = ['integer'  , 'integer'                 , 'real'   , 'real'        , 'real'       , 'integer']
+models_table_structure  = ['corresponding_gene_call' , 'molpdf' , 'GA341_score' , 'DOPE_score' , 'picked_as_best']
+models_table_types      = ['integer'                 , 'real'   , 'real'        , 'real'       , 'integer']
 
 residue_info_table_name       = 'residue_info'
-residue_info_table_structure  = ['entry_id', 'corresponding_gene_call', 'codon_order_in_gene', 'contact_numbers', 'codon', 'amino_acid', 'codon_number', 'sec_struct' , 'rel_solvent_acc' , 'phi'  , 'psi'  , 'NH_O_1_index' , 'NH_O_1_energy' , 'O_NH_1_index' , 'O_NH_1_energy' , 'NH_O_2_index' , 'NH_O_2_energy' , 'O_NH_2_index' , 'O_NH_2_energy']
-residue_info_table_types      = ['integer',         'integer'        ,        'integer'     ,   'text'          , 'text',  'text',       'integer',      'text'       , 'real'            , 'real' , 'real' , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real']
+residue_info_table_structure  = ['corresponding_gene_call', 'codon_order_in_gene', 'contact_numbers', 'codon', 'amino_acid', 'codon_number', 'sec_struct' , 'rel_solvent_acc' , 'phi'  , 'psi'  , 'NH_O_1_index' , 'NH_O_1_energy' , 'O_NH_1_index' , 'O_NH_1_energy' , 'NH_O_2_index' , 'NH_O_2_energy' , 'O_NH_2_index' , 'O_NH_2_energy']
+residue_info_table_types      = [        'integer'        ,        'integer'     ,   'text'          , 'text',  'text',       'integer',      'text'       , 'real'            , 'real' , 'real' , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real'          , 'integer'      , 'real']
 
 ####################################################################################################
 #
