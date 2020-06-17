@@ -43,12 +43,19 @@ def get_list_in_chunks(input_list, num_items_in_each_chunk=5000):
 
 
 class DB:
-    def __init__(self, db_path, client_version, new_database=False, ignore_version=False, run=terminal.Run(), progress=terminal.Progress()):
+    def __init__(self, db_path, client_version, new_database=False, ignore_version=False, skip_rowid_prepend=False, run=terminal.Run(), progress=terminal.Progress()):
         self.db_path = db_path
         self.version = None
 
         self.run = run
         self.progress = progress
+
+        # these anonymous functions report whether the ROWID will be added
+        # to its rows read from the database or not. if the first column of a given
+        # table does not contain unique variables, anvi'o prepends the ROWID of each
+        # column to index 0, unless `skip_rowid_prepend` is True
+        self.ROWID_PREPENDS_ROW_DATA = lambda table_name: False if skip_rowid_prepend else tables.requires_unique_entry_id[table_name]
+        self.PROPER_SELECT_STATEMENT = lambda table_name: 'ROWID as "entry_id", *' if self.ROWID_PREPENDS_ROW_DATA(table_name) else '*'
 
         if new_database:
             filesnpaths.is_output_file_writable(db_path)
