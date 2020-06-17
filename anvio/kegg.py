@@ -2718,10 +2718,14 @@ class KeggModulesDatabase(KeggContext):
         KeggContext.__init__(self, args)
 
         # modules table info
-        # I wonder if these should be moved to the tables __init__.py at some point?
-        self.module_table_name = "kegg_modules"
-        self.module_table_structure = ['module', 'data_name', 'data_value', 'data_definition', 'line']
-        self.module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
+        self.module_table_name = t.module_table_name
+        self.module_table_structure = t.module_table_structure
+        self.module_table_types = t.module_table_types
+
+        # pathway maps table info
+        self.pathway_table_name = t.pathway_table_name
+        self.pathway_table_structure = t.pathway_table_structure
+        self.pathway_table_types = t.pathway_table_types
 
         if os.path.exists(self.db_path):
             utils.is_kegg_modules_db(self.db_path)
