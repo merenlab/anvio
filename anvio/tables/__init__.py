@@ -256,6 +256,20 @@ residue_info_table_types      = [        'integer'        ,        'integer'    
 
 ####################################################################################################
 #
+#     TABLE DESCRIPTIONS FOR THE KEGG MODULES DB
+#
+####################################################################################################
+
+module_table_name = "kegg_modules"
+module_table_structure = ['module', 'data_name', 'data_value', 'data_definition', 'line']
+module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
+
+pathway_table_name = "kegg_pathway_maps"
+pathway_table_structure = ['pathway_map', 'data_name', 'data_value', 'data_definition', 'line']
+pathway_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
+
+####################################################################################################
+#
 #     META META META
 #
 ####################################################################################################
@@ -328,4 +342,6 @@ requires_unique_entry_id = {
     gene_info_table_name: False,
     genome_gene_function_calls_table_name: False,
     pdb_data_table_name: False,
+    module_table_name: False,
+    pathway_table_name: False,
 }
