@@ -2911,7 +2911,84 @@ class KeggModulesDatabase(KeggContext):
         return is_ok, corrected_vals, corrected_def
 
 
-    def parse_kegg_modules_line(self, line, current_module, line_num=None, current_data_name=None, error_dictionary=None):
+    def data_vals_sanity_check_pathway(self, data_vals, current_data_name, current_pathway_num):
+        """This function checks if the data values were correctly parsed from a line in a KEGG pathway file.
+
+        This is essentially the same as the above function, but for pathways instead of modules. We are just checking
+        for formatting issues.
+
+        WARNING: The error checking and correction is by no means perfect and may well fail when KEGG is next updated. :(
+
+        PARAMETERS
+        ==========
+        data_vals : str
+            the data values field (split from the kegg pathway line)
+        current_data_name : str
+            which data name we are working on. It should never be None because we should have already figured this out by parsing the line.
+        current_pathway_num : str
+            which pathway we are working on. We need this to keep track of which pathways throw parsing errors.
+
+        RETURNS
+        =======
+        is_ok : bool
+            whether the values look correctly formatted or not
+        """
+
+        is_ok = True
+        is_corrected = False
+        corrected_vals = None
+        corrected_def = None
+
+        data_names_to_skip_checking = ['NAME', 'COMMENT', 'REFERENCE']
+
+        if not current_data_name:
+            raise ConfigError("data_vals_sanity_check_pathway() cannot be performed when the current data name is None. Something was not right "
+                              "when parsing the KEGG pathway map line.")
+        elif current_data_name == "ENTRY" or current_data_name == "PATHWAY_MAP":
+            # example format: ko01100 for reference pathway highlighting KOs
+            # example format: map00010 for manually drawn reference pathway
+            if (data_vals[0:2] != 'ko' or len(data_vals) != 7) and (data_vals[0:3] != 'map' or len(data_vals) != 8):
+                is_ok = False
+                self.parsing_error_dict['bad_kegg_code_format'].append(current_pathway_num)
+        elif current_data_name not in data_names_to_skip_checking:
+            raise ConfigError("This is just a catch to see what types of information we haven't been processing "
+                              "in data_vals_sanity_check_pathway(). The current module num is %s and the current data name "
+                              "is %s " % (current_pathway_num, current_data_name))
+
+
+        if not is_ok and not is_corrected:
+            self.num_uncorrected_errors += 1
+            if self.just_do_it:
+                self.progress.reset()
+                self.run.warning("While parsing, anvi'o found an uncorrectable issue with a KEGG Pathway Map line in pathway map %s, but "
+                                 "since you used the --just-do-it flag, anvi'o will quietly ignore this issue and add the line "
+                                 "to the MODULES.db anyway. Please be warned that this may break things downstream. In case you "
+                                 "are interested, the line causing this issue has data name %s and data value %s."
+                                 % (current_pathway_num, current_data_name, data_vals))
+                is_ok = True # let's pretend that everything is alright so that the next function will take the original parsed values
+
+            else:
+                raise ConfigError("While parsing, anvi'o found an uncorrectable issue with a KEGG Pathway Map line in pathway map %s. The "
+                                  "current data name is %s, here is the incorrectly-formatted data value field: %s. If you think "
+                                  "this is totally fine and want to ignore errors like this, please re-run the setup with the "
+                                  "--just-do-it flag. But if you choose to do that of course we are obliged to inform you that things "
+                                  "may eventually break as a result." % (current_pathway_num, current_data_name, data_vals))
+
+        if is_corrected:
+            self.num_corrected_errors += 1
+            if anvio.DEBUG and not self.quiet:
+                self.progress.reset()
+                self.run.warning("While parsing a KEGG Pathway Map line, we found an issue with the formatting. We did our very best to parse "
+                                 "the line correctly, but please check that it looks right to you by examining the following values.")
+                self.run.info("Incorrectly parsed data value field", data_vals)
+                self.run.info("Corrected data values", corrected_vals)
+                self.run.info("Corrected data definition", corrected_def)
+
+        return is_ok, corrected_vals, corrected_def
+
+
+    def parse_kegg_modules_line(self, line, current_module, line_num=None, current_data_name=None, error_dictionary=None,
+        sanity_check_func="module"):
         """This function parses information from one line of a KEGG module file.
 
         These files have fields separated by 2 or more spaces. Fields can include data name (not always), data value (always), and data definition (not always).
