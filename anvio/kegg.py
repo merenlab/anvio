@@ -286,7 +286,7 @@ class KeggSetup(KeggContext):
         All the arguments supplied by user to anvi-setup-kegg-kofams
     """
 
-    def __init__(self, args, run=run, progress=progress):
+    def __init__(self, args, run=run, progress=progress, skip_sanity_checks=False):
         self.args = args
         self.run = run
         self.progress = progress
@@ -299,7 +299,7 @@ class KeggSetup(KeggContext):
 
         filesnpaths.is_output_dir_writable(os.path.dirname(self.kegg_data_dir))
 
-        if not args.reset and not anvio.DEBUG:
+        if not args.reset and not anvio.DEBUG and not skip_sanity_checks:
             self.is_database_exists()
 
         if not self.kegg_archive_path:
