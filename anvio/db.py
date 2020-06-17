@@ -450,8 +450,7 @@ class DB:
         return self.get_all_rows_from_table(table_name)
 
 
-    def get_table_as_dict(self, table_name, table_structure=None, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True, log_norm_numeric_values=False):
-        if not table_structure:
+    def get_table_as_dict(self, table_name, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True, log_norm_numeric_values=False):
             table_structure = self.get_table_structure(table_name)
 
         columns_to_return = list(range(0, len(table_structure)))
