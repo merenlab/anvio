@@ -3007,6 +3007,8 @@ class KeggModulesDatabase(KeggContext):
             which line number we are working on. We need this to keep track of which entities come from the same line of the file.
         current_data_name : str
             which data name we are working on. If this is None, we need to parse this info from the first field in the line.
+        sanity_check_func : str
+            this string tells us what type of file we are working with, which tells us which sanity check function to use
 
         RETURNS
         =======
@@ -3034,7 +3036,10 @@ class KeggModulesDatabase(KeggContext):
         # so no matter the situation, data value is field 1 and data definition (if any) is field 2
         data_vals = fields[1]
         # need to sanity check data value field because SOME modules don't follow the 2-space separation formatting
-        vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check_module(data_vals, current_data_name, current_module)
+        if sanity_check_func == 'module':
+            vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check_module(data_vals, current_data_name, current_module)
+        elif sanity_check_func == 'pathway':
+            vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check_pathway(data_vals, current_data_name, current_module)
 
         if vals_are_okay and len(fields) > 2: # not all lines have a definition field
             data_def = fields[2]
@@ -3160,9 +3165,9 @@ class KeggModulesDatabase(KeggContext):
                     # here is the tricky bit about parsing these files. Not all lines start with the data_name field; those that don't start with a space.
                     # if this is the case, we need to tell the parsing function what the previous data_name field has been.
                     if line[0] == ' ':
-                        entries_tuple_list = self.parse_kegg_modules_line(line, pnum, line_number, prev_data_name_field)
+                        entries_tuple_list = self.parse_kegg_modules_line(line, pnum, line_number, prev_data_name_field, sanity_check_func="pathway")
                     else:
-                        entries_tuple_list = self.parse_kegg_modules_line(line, pnum, line_number)
+                        entries_tuple_list = self.parse_kegg_modules_line(line, pnum, line_number, sanity_check_func="pathway")
 
                     prev_data_name_field = entries_tuple_list[0][0]
 
