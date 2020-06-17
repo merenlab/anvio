@@ -816,8 +816,6 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
             table_classes[self.target_table].check_names(self, data_dict)
 
-        self.set_next_available_id(self.table_name)
-
         num_entries = len(data_dict)
 
         self.progress.new("Adding data to DB", progress_total_items=num_entries)
@@ -833,12 +831,11 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                 self.progress.update('%d / %d Rows ⚙  ...' % (i, num_entries))
 
             for key in data_keys_list:
-                self.storage_buffer.append(tuple([self.next_id(self.table_name),
-                                           item_name,
-                                           key,
-                                           data_dict[item_name][key],
-                                           key_types[key],
-                                           self.target_data_group]))
+                self.storage_buffer.append(tuple([item_name,
+                                                  key,
+                                                  data_dict[item_name][key],
+                                                  key_types[key],
+                                                  self.target_data_group]))
 
         self.progress.increment(increment_to=num_entries)
         self.progress.update('%d / %d Rows ⚙  | Writing to DB 💾 ...' % (num_entries, num_entries))
@@ -860,7 +857,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             return
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % self.table_name, self.storage_buffer)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % self.table_name, self.storage_buffer)
         database.disconnect()
 
 

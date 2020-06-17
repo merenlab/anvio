@@ -39,11 +39,6 @@ class TablesForCollections(Table):
 
         Table.__init__(self, self.db_path, self.version, run, progress)
 
-        # set these dudes so we have access to unique IDs:
-        self.set_next_available_id(t.collections_bins_info_table_name)
-        self.set_next_available_id(t.collections_contigs_table_name)
-        self.set_next_available_id(t.collections_splits_table_name)
-
 
     def delete(self, collection_name):
         utils.is_this_name_OK_for_database('collection name', collection_name, stringent=False)
@@ -60,8 +55,8 @@ class TablesForCollections(Table):
             database._exec('''DELETE FROM %s WHERE collection_name = "%s" AND \
                                                    bin_name = "%s"''' % (table_name, collection_name, bin_name))
 
-        self.run.warning('All previous entries for "%s" of "%s" is being removed from "%s"' % 
-                        (bin_name,collection_name, ', '.join(tables_to_clear)))
+        self.run.warning('All previous entries for "%s" of "%s" is being removed from "%s"'\
+                    % (bin_name,collection_name, ', '.join(tables_to_clear)))
 
         database.disconnect()
 
@@ -105,15 +100,15 @@ class TablesForCollections(Table):
                 bins_info_dict[bin_name] = {'html_color': colors[bin_name], 'source': 'UNKNOWN'}
 
         # populate bins info table.
-        db_entries = [(self.next_id(t.collections_bins_info_table_name), collection_name, b, bins_info_dict[b]['source'], bins_info_dict[b]['html_color']) for b in bin_names]
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.collections_bins_info_table_name, db_entries)
+        db_entries = [(collection_name, b, bins_info_dict[b]['source'], bins_info_dict[b]['html_color']) for b in bin_names]
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_bins_info_table_name, db_entries)
 
         # populate splits table
         db_entries = []
         for bin_name in collection_dict:
             for split_name in collection_dict[bin_name]:
-                db_entries.append(tuple([self.next_id(t.collections_splits_table_name), collection_name, split_name, bin_name]))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_splits_table_name, db_entries)
+                db_entries.append(tuple([collection_name, split_name, bin_name]))
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?)''' % t.collections_splits_table_name, db_entries)
         num_splits = len(db_entries)
 
 
@@ -184,7 +179,6 @@ class TablesForCollections(Table):
             else:
                 contigs_processed.add(contig_name)
 
-            db_entry = tuple([self.next_id(t.collections_contigs_table_name), collection_name, contig_name, split_to_bin_name[split_name]])
-            db_entries_for_contigs.append(db_entry)
+            db_entries_for_contigs.append(tuple([collection_name, contig_name, split_to_bin_name[split_name]]))
 
         return db_entries_for_contigs

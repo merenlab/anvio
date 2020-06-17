@@ -48,21 +48,20 @@ class TableForGeneClusters(Table):
 
         Table.__init__(self, self.db_path, anvio.__pan__version__, run, progress)
 
-        self.set_next_available_id(t.pan_gene_clusters_table_name)
-
         self.entries = []
 
 
     def add(self, entry_dict):
-        self.entries.append([entry_dict[key] for key in t.pan_gene_clusters_table_structure[1:]])
+        self.entries.append([entry_dict[key] for key in t.pan_gene_clusters_table_structure])
 
 
     def store(self):
         self.delete_contents_of_table(t.pan_gene_clusters_table_name, warning=False)
 
-        db_entries = [tuple([self.next_id(t.pan_gene_clusters_table_name)] + entry) for entry in self.entries]
+        db_entries = [tuple(entry) for entry in self.entries]
+
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.pan_gene_clusters_table_name, db_entries)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.pan_gene_clusters_table_name, db_entries)
         database.disconnect()
 
 
