@@ -286,6 +286,7 @@ requires_unique_entry_id = {
     'variability_contigs': False,
     'gene_cluster_frequencies': False,
     'gene_cluster_presence_absence': False,
+    'clusters': False,
     pan_gene_clusters_table_name: True,
     genes_in_splits_table_name: True,
     gene_function_calls_table_name: True,
