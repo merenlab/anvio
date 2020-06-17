@@ -173,7 +173,7 @@ class StructureDatabase(object):
                                these files probably belong to different projects.' % (actual_db_hash, self.db_hash))
 
 
-    def store(self, table_name, key=None):
+    def store(self, table_name):
         """Stores entries placed in self.entries[table_name], then empties self.entries[table_name]"""
 
         rows_data = self.entries[table_name]
@@ -183,7 +183,7 @@ class StructureDatabase(object):
             self.entries[table_name] = []
 
         elif type(rows_data) == pd.core.frame.DataFrame:
-            self.db.insert_rows_from_dataframe(table_name, rows_data, raise_if_no_columns=False, key=key)
+            self.db.insert_rows_from_dataframe(table_name, rows_data, raise_if_no_columns=False)
             self.entries[table_name] = pd.DataFrame({})
 
         else:
@@ -823,9 +823,8 @@ class StructureSuperclass(object):
         residue_annotation_for_gene = pd.concat(results, axis=1, sort=True)
 
         # add corresponding_gene_call and codon_order_in_gene as 0th and 1st columns
-        residue_annotation_for_gene.insert(0, "entry_id", list(range(residue_annotation_for_gene.shape[0])))
-        residue_annotation_for_gene.insert(1, "corresponding_gene_call", corresponding_gene_call)
-        residue_annotation_for_gene.insert(2, "codon_order_in_gene", residue_annotation_for_gene.index)
+        residue_annotation_for_gene.insert(0, "corresponding_gene_call", corresponding_gene_call)
+        residue_annotation_for_gene.insert(1, "codon_order_in_gene", residue_annotation_for_gene.index)
 
         return residue_annotation_for_gene
 
@@ -906,10 +905,9 @@ class StructureSuperclass(object):
         # templates is always added, even when structure was not modelled
         templates = pd.DataFrame(modeller_out['templates'])
         templates.insert(0, 'corresponding_gene_call', corresponding_gene_call)
-        templates = templates.reset_index().rename(columns={'index': 'entry_id'})
         self.structure_db.entries[t.templates_table_name] = \
             self.structure_db.entries[t.templates_table_name].append(templates)
-        self.structure_db.store(t.templates_table_name, key='entry_id')
+        self.structure_db.store(t.templates_table_name)
 
         # entries that are only added if a structure was modelled
         if modeller_out['structure_exists']:
@@ -917,10 +915,9 @@ class StructureSuperclass(object):
             # models
             models = pd.DataFrame(modeller_out['models'])
             models.insert(0, 'corresponding_gene_call', corresponding_gene_call)
-            models = models.reset_index().rename(columns={'index': 'entry_id'})
             self.structure_db.entries[t.models_table_name] = \
                 self.structure_db.entries[t.models_table_name].append(models)
-            self.structure_db.store(t.models_table_name, key="entry_id")
+            self.structure_db.store(t.models_table_name)
 
             # pdb file data
             pdb_file = open(modeller_out['best_model_path'], 'rb')
@@ -933,7 +930,7 @@ class StructureSuperclass(object):
             # residue_info
             self.structure_db.entries[t.residue_info_table_name] = \
                 self.structure_db.entries[t.residue_info_table_name].append(structure_info['residue_info'])
-            self.structure_db.store(t.residue_info_table_name, key='entry_id')
+            self.structure_db.store(t.residue_info_table_name)
 
 
 
