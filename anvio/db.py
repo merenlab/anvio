@@ -196,21 +196,6 @@ class DB:
         self._exec('''DETACH DATABASE "source_db"''')
 
 
-    def reset_entry_id(self, table_name):
-        """Rewrite entry_id column as sequential integers. Complain if entry_id doesn't exist
-
-        Notes
-        =====
-        - Every SQLite table contains an implicit column, ROWID, that is the row number of the
-          entry. We take advantage of that here.
-        """
-
-        if 'entry_id' not in self.get_table_structure(table_name):
-            raise ConfigError("DB.reset_entry_id :: %s does not have entry_id as a column" % table_name)
-
-        self._exec('''UPDATE %s SET entry_id = ROWID-1''' % table_name)
-
-
     def get_max_value_in_column(self, table_name, column_name, value_if_empty=None, return_min_instead=False):
         """Get the maximum OR minimum column value in a table
 
