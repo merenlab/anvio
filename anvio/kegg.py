@@ -2773,7 +2773,7 @@ class KeggModulesDatabase(KeggContext):
         self.db.create_table(self.pathway_table_name, self.pathway_table_structure, self.pathway_table_types)
 
 
-    def data_vals_sanity_check(self, data_vals, current_data_name, current_module_num):
+    def data_vals_sanity_check_module(self, data_vals, current_data_name, current_module_num):
         """This function checks if the data values were correctly parsed from a line in a KEGG module file.
 
         This is a sadly necessary step because some KEGG module file lines are problematic and don't follow the right format (ie, 2+ spaces
@@ -2805,7 +2805,7 @@ class KeggModulesDatabase(KeggContext):
         corrected_def = None
 
         if not current_data_name:
-            raise ConfigError("data_vals_sanity_check() cannot be performed when the current data name is None. Something was not right "
+            raise ConfigError("data_vals_sanity_check_module() cannot be performed when the current data name is None. Something was not right "
                               "when parsing the KEGG module line.")
         elif current_data_name == "ENTRY":
             # example format: M00175
@@ -2950,7 +2950,7 @@ class KeggModulesDatabase(KeggContext):
         # so no matter the situation, data value is field 1 and data definition (if any) is field 2
         data_vals = fields[1]
         # need to sanity check data value field because SOME modules don't follow the 2-space separation formatting
-        vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check(data_vals, current_data_name, current_module)
+        vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check_module(data_vals, current_data_name, current_module)
 
         if vals_are_okay and len(fields) > 2: # not all lines have a definition field
             data_def = fields[2]
