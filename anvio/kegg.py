@@ -2804,6 +2804,8 @@ class KeggModulesDatabase(KeggContext):
         corrected_vals = None
         corrected_def = None
 
+        data_names_to_skip_checking = ['NAME', 'CLASS', 'COMMENT', 'REFERENCE', 'BRITE']
+
         if not current_data_name:
             raise ConfigError("data_vals_sanity_check_module() cannot be performed when the current data name is None. Something was not right "
                               "when parsing the KEGG module line.")
@@ -2871,6 +2873,11 @@ class KeggModulesDatabase(KeggContext):
             if data_vals[0:2] != "RM" or len(data_vals) != 5:
                 is_ok = False
                 self.parsing_error_dict['bad_kegg_code_format'].append(current_module_num)
+        elif current_data_name not in data_names_to_skip_checking:
+            raise ConfigError("This error is just a catch to see what types of information we haven't been processing "
+                              "in the data_vals_sanity_check_module() function. The current module num is %s and the current data name "
+                              "is %s. P.S. If you are not a developer and have no idea why you are seeing this message, please "
+                              "let the developers know of this issue." % (current_module_num, current_data_name))
 
 
         if not is_ok and not is_corrected:
