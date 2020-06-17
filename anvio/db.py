@@ -482,6 +482,7 @@ class DB:
         #
         # SAD TABLES BEGIN
         #
+        # NOTE from the past:
         # FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
         # this is one of the most critical design mistakes that remain in anvi'o. we set `entry_id` values
         # in table classes depending on the data that will be entered into the database. this is how it goes:
@@ -500,7 +501,13 @@ class DB:
         #
         # NOTE from the future
         # Every SQLite table has an implicit column called ROWID. Does this solve our problem?
-        if table_name not in tables.tables_without_unique_entry_ids:
+        #
+        # NOTE from a more recent future: we no longer have the entry_id problem for most talbes .. except
+        # the hmm_hits table. the reason it has to be there is because we need to know the precise entry ids for
+        # hmm hits to be able to track them in splits. there probably are better ways to do that. So here I am leaving
+        # a FIXME. once this is resolved, the entry_id routines in Table base calss can be deleted safely. until then,
+        # we will suffer from race contditions occasionally, and this embarrassment will stay here in the code..
+        if table_name == tables.hmm_hits_table_name:
             unique_keys = set([r[0] for r in rows])
             if len(unique_keys) != len(rows):
                 if anvio.FIX_SAD_TABLES:
