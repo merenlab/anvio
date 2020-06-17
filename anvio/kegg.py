@@ -3077,7 +3077,7 @@ class KeggModulesDatabase(KeggContext):
                               "in the module dictionary is currently %s" % len(self.module_dict.keys()))
 
         # init the Modules table
-        mod_table = KeggModulesTable(self.module_table_name)
+        mod_table = KeggModulesTable(mod_table_name=self.module_table_name)
 
         # keep track of errors encountered while parsing
         self.parsing_error_dict = {"bad_line_splitting" : [], "bad_kegg_code_format" : []}
@@ -3144,7 +3144,7 @@ class KeggModulesDatabase(KeggContext):
                               "in the pathway dictionary is currently %s" % len(self.pathway_dict.keys()))
 
         # init the pathways table
-        path_table = KeggModulesTable(self.pathway_table_name)
+        path_table = KeggModulesTable(mod_table_name=self.pathway_table_name)
 
         num_pathways_parsed = 0
         for pnum in self.pathway_dict.keys():
@@ -3567,7 +3567,7 @@ class KeggModulesDatabase(KeggContext):
 class KeggModulesTable:
     """This class defines operations for creating the KEGG Modules table in Modules.db"""
 
-    def __init__(self, mod_table_name = None):
+    def __init__(self, mod_table_name=None):
         """"""
         self.db_entries = []
         self.total_entries = 0
