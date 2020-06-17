@@ -94,7 +94,7 @@ class DB:
                 raise ConfigError("You better be a programmer tinkering with anvi'o databases adding new tables or something. Otherwise we "
                                   "have quite a serious problem :/ Each table in a given anvi'o database must have an entry in the "
                                   "anvio/tables/__init__.py dictionary `requires_unique_entry_id` to explicitly define whether anvi'o "
-                                  "should add a unique entry id for its contents upon retreival as a dictionary. The following tables "
+                                  "should add a unique entry id for its contents upon retrieval as a dictionary. The following tables "
                                   "in this database do not satisfy that: '%s'. You can solve this problem by adding an entry into that "
                                   "dictionary." % (', '.join(bad_tables)))
 
