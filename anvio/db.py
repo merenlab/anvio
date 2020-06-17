@@ -628,9 +628,9 @@ class DB:
             columns_of_interest = table_structure
 
         if where_clause:
-            results_df = pd.read_sql('''SELECT * FROM "%s" WHERE %s''' % (table_name, where_clause), self.conn, columns=table_structure)
+            results_df = pd.read_sql('''SELECT %s FROM "%s" WHERE %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name, where_clause), self.conn, columns=table_structure)
         else:
-            results_df = pd.read_sql('''SELECT * FROM "%s"''' % table_name, self.conn, columns=table_structure)
+            results_df = pd.read_sql('''SELECT %s FROM "%s"''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name), self.conn, columns=table_structure)
 
         if results_df.empty and error_if_no_data:
             raise ConfigError("DB.get_table_as_dataframe :: The dataframe requested is empty")
