@@ -156,7 +156,7 @@ class GenomeStorage(object):
                                                              'genome_name = "%s" and gene_callers_id = "%s"' % (genome_name, gene_caller_id))
 
                 for row in functions:
-                    self.gene_info[genome_name][gene_caller_id]['functions'][row[3]] = "%s|||%s" % (row[4], row[5])
+                    self.gene_info[genome_name][gene_caller_id]['functions'][row[2]] = "%s|||%s" % (row[3], row[4])
 
         self.progress.end()
 
