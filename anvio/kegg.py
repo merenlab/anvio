@@ -479,7 +479,7 @@ class KeggSetup(KeggContext):
         filesnpaths.is_file_plain_text(self.kegg_pathway_file)
 
         f = open(self.kegg_pathway_file, 'rU')
-        self.progress.new("Parsing KEGG Pathway file")
+        self.progress.new("Parsing KEGG Pathway Map file")
 
         current_category = None
         current_subcategory = None
@@ -2723,8 +2723,8 @@ class KeggModulesDatabase(KeggContext):
         self.module_table_structure = ['module', 'data_name', 'data_value', 'data_definition', 'line']
         self.module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
         # pathways table info
-        self.pathway_table_name = "kegg_pathways"
-        self.pathway_table_structure = ['pathway', 'data_name', 'data_value', 'data_definition', 'line']
+        self.pathway_table_name = "kegg_pathway_maps"
+        self.pathway_table_structure = ['pathway_map', 'data_name', 'data_value', 'data_definition', 'line']
         self.pathway_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
 
         if os.path.exists(self.db_path):
