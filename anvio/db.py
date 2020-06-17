@@ -504,11 +504,11 @@ class DB:
         # NOTE from the future
         # Every SQLite table has an implicit column called ROWID. Does this solve our problem?
         #
-        # NOTE from a more recent future: we no longer have the entry_id problem for most talbes .. except
+        # NOTE from a more recent future: we no longer have the entry_id problem for most tables .. except
         # the hmm_hits table. the reason it has to be there is because we need to know the precise entry ids for
         # hmm hits to be able to track them in splits. there probably are better ways to do that. So here I am leaving
-        # a FIXME. once this is resolved, the entry_id routines in Table base calss can be deleted safely. until then,
-        # we will suffer from race contditions occasionally, and this embarrassment will stay here in the code..
+        # a FIXME. once this is resolved, the entry_id routines in Table base class can be deleted safely. until then,
+        # we will suffer from race conditions occasionally, and this embarrassment will stay here in the code..
         if table_name == tables.hmm_hits_table_name:
             unique_keys = set([r[0] for r in rows])
             if len(unique_keys) != len(rows):
