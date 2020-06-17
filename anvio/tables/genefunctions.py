@@ -75,7 +75,7 @@ class TableForGeneFunctions(Table):
                                     % (len(gene_function_sources_in_db), len(gene_function_sources),
                                        len(gene_function_sources), ', '.join(gene_function_sources)))
 
-            # clean the table and reset the next available ids
+            # clean the table
             database._exec('''DELETE FROM %s''' % (t.gene_function_calls_table_name))
 
             # set the sources
