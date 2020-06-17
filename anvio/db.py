@@ -291,7 +291,7 @@ class DB:
             return self._exec_many(query, entries)
 
 
-    def insert_rows_from_dataframe(self, table_name, dataframe, raise_if_no_columns=True, key=None):
+    def insert_rows_from_dataframe(self, table_name, dataframe, raise_if_no_columns=True):
         """Insert rows from a dataframe
 
         Parameters
@@ -299,23 +299,6 @@ class DB:
         raise_if_no_columns : bool, True
             If True, if dataframe has no columns (e.g. dataframe = pd.DataFrame({})), this function
             returns without raising error.
-
-        key : list-like, None
-            If table is meant to have a column with unique and sequential entries, the
-            column name should be passed so appended rows retain sequential order. E.g., consider
-
-                           Table                                dataframe
-                entry_id   value1   value2            entry_id    value1    value2
-                0          yes      30                0           no        2
-                1          yes      23
-
-            Depending if key=None or key="entry_id", the result is different:
-
-                        key = None                         key = "entry_id"
-                entry_id   value1   value2            entry_id   value1   value2
-                0          yes      30                0          yes      30
-                1          yes      23                1          yes      23
-                0          no       2                 2          no       2
 
         Notes
         =====
@@ -351,10 +334,10 @@ class DB:
         """
 
         if table_name not in self.get_table_names():
-            raise ConfigError("insert_rows_from_dataframe :: A table with the name {} does "
-                              "not exist in the database you requested. {} are the tables "
-                              "existent in the database".\
-                               format(table_name, ", ".join(self.get_table_names())))
+            raise ConfigError("insert_rows_from_dataframe :: A table with the name %s does "
+                              "not exist in the database you requested. %s are the tables "
+                              "existent in the database" \
+                               % (table_name, ", ".join(self.get_table_names())))
 
         if not list(dataframe.columns) and not raise_if_no_columns:
             # if the dataframe has no colums, we just return
@@ -367,21 +350,10 @@ class DB:
 
         if set(dataframe.columns) != set(self.get_table_structure(table_name)):
             raise ConfigError("insert_rows_from_dataframe :: The columns in the dataframe "
-                              "do not equal the columns (structure) of the requested table. "
+                              "do not equal the columns of the requested table. "
                               "The columns from each are respectively ({}); and ({}).".\
                                format(", ".join(list(dataframe.columns)),
                                       ", ".join(self.get_table_structure(table_name))))
-
-        if key and key not in dataframe.columns:
-            raise ConfigError("insert_rows_from_dataframe :: key ({}) is not a column of your "
-                              "dataframe. The columns in your dataframe are [{}].".\
-                               format(key, ", ".join(list(dataframe.columns))))
-
-        elif key:
-            start = self.get_max_value_in_column(table_name, key, value_if_empty=-1) + 1
-            end = start + dataframe.shape[0]
-            key_values = list(range(start, end))
-            dataframe[key] = key_values
 
         # conform to the column order of the table structure
         dataframe = dataframe[self.get_table_structure(table_name)]
