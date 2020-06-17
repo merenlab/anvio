@@ -19,7 +19,7 @@ genes_db_version = "5"
 pan_db_version = "14"
 auxiliary_data_version = "2"
 structure_db_version = "1"
-genomes_storage_vesion = "6"
+genomes_storage_vesion = "7"
 workflow_config_version = "1"
 kegg_modules_db_version = "1"
 
