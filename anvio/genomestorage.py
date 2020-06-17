@@ -56,7 +56,6 @@ class GenomeStorage(object):
         self.genome_info_entries = []
         self.gene_info_entries = []
         self.gene_functions_entries = []
-        self.gene_functions_entry_id = 0
 
         if create_new:
             self.create_tables()
@@ -121,7 +120,6 @@ class GenomeStorage(object):
 
         self.num_genomes = len(self.genome_names)
         self.functions_are_available = self.db.get_meta_value('functions_are_available')
-        self.gene_functions_entry_id = self.db.get_max_value_in_column(t.genome_gene_function_calls_table_name, 'entry_id')
 
         ## load the data
         self.progress.update('Loading genomes basic info...')
@@ -239,9 +237,9 @@ class GenomeStorage(object):
 
                 if gene_caller_id in functions_dict:
                     for source in functions_dict[gene_caller_id]:
-                        self.add_gene_function_annotation(genome_name, 
-                                                          gene_caller_id, 
-                                                          source, 
+                        self.add_gene_function_annotation(genome_name,
+                                                          gene_caller_id,
+                                                          source,
                                                           functions_dict[gene_caller_id][source])
 
                 num_gene_calls_added += 1
@@ -265,8 +263,8 @@ class GenomeStorage(object):
         self.update_storage_hash()
 
         self.run.info('The new genomes storage', '%s (v%s, signature: %s)' % (self.storage_path, self.version, self.get_storage_hash()))
-        self.run.info('Number of genomes', '%s (internal: %s, external: %s)' % (pp(len(genome_descriptions.genomes)), 
-                                                                                pp(len(genome_descriptions.internal_genome_names)), 
+        self.run.info('Number of genomes', '%s (internal: %s, external: %s)' % (pp(len(genome_descriptions.genomes)),
+                                                                                pp(len(genome_descriptions.internal_genome_names)),
                                                                                 pp(len(genome_descriptions.external_genome_names))))
         self.run.info('Number of gene calls', '%s' % pp(num_gene_calls_added_total))
         self.run.info('Number of partial gene calls', '%s' % pp(num_partial_gene_calls_total))
@@ -299,9 +297,8 @@ class GenomeStorage(object):
             return
 
         accession, function, e_value = annotation
-        values = (genome_name, self.gene_functions_entry_id, gene_caller_id, source, accession, function, e_value, )
+        values = (genome_name, gene_caller_id, source, accession, function, e_value, )
 
-        self.gene_functions_entry_id += 1
         self.gene_functions_entries.append(values)
 
 
@@ -337,7 +334,7 @@ class GenomeStorage(object):
         self.is_known_genome(genome_name)
         self.is_known_gene_call(genome_name, gene_caller_id)
 
-        column_name = 'dna_sequence' if report_DNA_sequences else 'aa_sequence' 
+        column_name = 'dna_sequence' if report_DNA_sequences else 'aa_sequence'
 
         return self.gene_info[genome_name][gene_caller_id][column_name]
 
