@@ -2967,9 +2967,11 @@ class KeggModulesDatabase(KeggContext):
             if (data_vals[0:2] != 'ko' or len(data_vals) != 7) and (data_vals[0:3] != 'map' or len(data_vals) != 8):
                 is_ok = False
                 self.parsing_error_dict['bad_kegg_code_format'].append(current_pathway_num)
-        elif current_data_name[0:11] == "PATHWAY_MAP":
+        elif current_data_name[0:11] == "PATHWAY_MAP" or current_data_name[0:11] == "REL_PATHWAY":
             # example (full line): PATHWAY_MAP map00010  Glycolysis / Gluconeogenesis
             # these will typically have a parsing issue because there is only one space between PATHWAY_MAP and the map number
+            # example (full line): REL_PATHWAY ko00010  Glycolysis / Gluconeogenesis
+            # these will have a parsing issue on the first line because there is only one space between REL_PATHWAY and the map number
             if (data_vals[0:2] != 'ko' or len(data_vals) != 7) and (data_vals[0:3] != 'map' or len(data_vals) != 8):
                 is_ok = False
                 self.parsing_error_dict['bad_line_splitting'].append(current_pathway_num)
