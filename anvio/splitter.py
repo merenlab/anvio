@@ -1168,7 +1168,7 @@ class LocusSplitter:
         where_clause = "gene_callers_id in (%s)" % ', '.join(['"%d"' % g for g in gene_caller_id_conversion_dict])
 
         # a lousy anonymous function to read data from tables given the gene calls of interest
-        R = lambda table_name: db.DB(self.input_contigs_db_path, None, ignore_version=True, skip_rowid_prepend=True) \
+        R = lambda table_name: db.DB(self.input_contigs_db_path, None, ignore_version=True) \
                                               .get_some_rows_from_table_as_dict(table_name,
                                                                                 where_clause=where_clause,
                                                                                 error_if_no_data=False)
