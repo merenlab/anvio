@@ -2968,7 +2968,7 @@ class KeggModulesDatabase(KeggContext):
                 is_ok = False
                 self.parsing_error_dict['bad_kegg_code_format'].append(current_pathway_num)
         elif current_data_name[0:11] == "PATHWAY_MAP":
-            # example: PATHWAY_MAP map00010  Glycolysis / Gluconeogenesis
+            # example (full line): PATHWAY_MAP map00010  Glycolysis / Gluconeogenesis
             # these will typically have a parsing issue because there is only one space between PATHWAY_MAP and the map number
             if (data_vals[0:2] != 'ko' or len(data_vals) != 7) and (data_vals[0:3] != 'map' or len(data_vals) != 8):
                 is_ok = False
@@ -2983,6 +2983,11 @@ class KeggModulesDatabase(KeggContext):
                     is_corrected = False
                 else:
                     is_corrected = True
+        elif current_data_name == "MODULE":
+            # example format: M00001
+            if data_vals[0] != 'M' or len(data_vals) != 6:
+                is_ok = False
+                self.parsing_error_dict['bad_kegg_code_format'].append(current_module_num)
         elif current_data_name not in data_names_to_skip_checking:
             raise ConfigError("This is just a catch to see what types of information we haven't been processing "
                               "in data_vals_sanity_check_pathway(). The current pathway num is %s and the current data name "
