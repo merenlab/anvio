@@ -2954,6 +2954,7 @@ class KeggModulesDatabase(KeggContext):
         is_corrected = False
         corrected_vals = None
         corrected_def = None
+        corrected_name = None
 
         data_names_to_skip_checking = ['NAME', 'COMMENT', 'REFERENCE']
 
@@ -3012,11 +3013,15 @@ class KeggModulesDatabase(KeggContext):
                 self.progress.reset()
                 self.run.warning("While parsing a KEGG Pathway Map line, we found an issue with the formatting. We did our very best to parse "
                                  "the line correctly, but please check that it looks right to you by examining the following values.")
+                self.run.info("Possibly incorrect data name field", current_data_name)
                 self.run.info("Incorrectly parsed data value field", data_vals)
+                self.run.info("Corrected data name", corrected_name)
                 self.run.info("Corrected data values", corrected_vals)
                 self.run.info("Corrected data definition", corrected_def)
+        else:
+            corrected_name = current_data_name
 
-        return is_ok, corrected_vals, corrected_def
+        return is_ok, corrected_name, corrected_vals, corrected_def
 
 
     def parse_kegg_modules_line(self, line, current_module, line_num=None, current_data_name=None, error_dictionary=None,
@@ -3071,7 +3076,8 @@ class KeggModulesDatabase(KeggContext):
         if sanity_check_func == 'module':
             vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check_module(data_vals, current_data_name, current_module)
         elif sanity_check_func == 'pathway':
-            vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check_pathway(data_vals, current_data_name, current_module)
+            vals_are_okay, corrected_name, corrected_vals, corrected_def = self.data_vals_sanity_check_pathway(data_vals, current_data_name, current_module)
+            current_data_name = corrected_name
 
         if vals_are_okay and len(fields) > 2: # not all lines have a definition field
             data_def = fields[2]
