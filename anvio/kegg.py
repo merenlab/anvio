@@ -2987,7 +2987,7 @@ class KeggModulesDatabase(KeggContext):
             # example format: M00001
             if data_vals[0] != 'M' or len(data_vals) != 6:
                 is_ok = False
-                self.parsing_error_dict['bad_kegg_code_format'].append(current_module_num)
+                self.parsing_error_dict['bad_kegg_code_format'].append(current_pathway_num)
         elif current_data_name not in data_names_to_skip_checking:
             raise ConfigError("This is just a catch to see what types of information we haven't been processing "
                               "in data_vals_sanity_check_pathway(). The current pathway num is %s and the current data name "
