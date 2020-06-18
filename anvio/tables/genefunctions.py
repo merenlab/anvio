@@ -37,8 +37,6 @@ class TableForGeneFunctions(Table):
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, run, progress)
 
-        self.set_next_available_id(t.gene_function_calls_table_name)
-
 
     def add_empty_sources_to_functional_sources(self, gene_function_sources):
         if type(gene_function_sources) is not set:
@@ -77,9 +75,8 @@ class TableForGeneFunctions(Table):
                                     % (len(gene_function_sources_in_db), len(gene_function_sources),
                                        len(gene_function_sources), ', '.join(gene_function_sources)))
 
-            # clean the table and reset the next available ids
+            # clean the table
             database._exec('''DELETE FROM %s''' % (t.gene_function_calls_table_name))
-            self.reset_next_available_id_for_table(t.gene_function_calls_table_name)
 
             # set the sources
             database.remove_meta_key_value_pair('gene_function_sources')
@@ -120,14 +117,14 @@ class TableForGeneFunctions(Table):
 
 
         # push the data
-        db_entries = [tuple([self.next_id(t.gene_function_calls_table_name)] + [functions_dict[v][h] for h in t.gene_function_calls_table_structure[1:]]) for v in functions_dict]
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % t.gene_function_calls_table_name, db_entries)
+        db_entries = [tuple([functions_dict[v][h] for h in t.gene_function_calls_table_structure]) for v in functions_dict]
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.gene_function_calls_table_name, db_entries)
 
         # disconnect like a pro.
         database.disconnect()
 
         self.run.info('Gene functions', '%d function calls from %d sources for %d unique gene calls has\
-                                        been added to the contigs database.' % \
+                                         been added to the contigs database.' % \
                                             (len(functions_dict), len(gene_function_sources), unique_num_genes))
 
 

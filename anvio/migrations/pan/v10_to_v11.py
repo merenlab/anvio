@@ -61,10 +61,8 @@ def migrate(db_path):
     for table_name in ['layer_additional_data', 'item_additional_data']:
         new_table = divide_stackedbar_to_multiple_entries(pan_db.get_table_as_dict(table_name))
         pan_db._exec("DELETE FROM '%s'" % table_name)
-        new_entry_counter = 0
         for entry_id in new_table:
-            pan_db.insert(table_name, (new_entry_counter, *new_table[entry_id].values()))
-            new_entry_counter += 1
+            pan_db.insert(table_name, tuple(new_table[entry_id].values()))
 
     # set the version
     pan_db.remove_meta_key_value_pair('version')

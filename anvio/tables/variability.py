@@ -35,7 +35,6 @@ class TableForVariability(Table):
 
         self.num_entries = self.get_num_entries()
         self.db_entries = []
-        self.set_next_available_id(t.variable_nts_table_name)
 
         # after getting an instance, we don't want things to keep accumulating
         # in memory. the purpose of the following variable is to ensure whenever
@@ -74,8 +73,7 @@ class TableForVariability(Table):
             body of this function)
         """
 
-        db_entry = (self.next_id(t.variable_nts_table_name), *entry)
-        self.db_entries.append(db_entry)
+        self.db_entries.append(entry)
         self.num_entries += 1
 
         if len(self.db_entries) >= self.max_num_entries_in_storage_buffer:
@@ -89,7 +87,7 @@ class TableForVariability(Table):
             return
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_nts_table_name, self.db_entries)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.variable_nts_table_name, self.db_entries)
         database.disconnect()
 
         if anvio.DEBUG:

@@ -310,7 +310,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                     # We reorder to the profiles in the order they will appear in the output table
                     split.SCV_profiles[gene_callers_id] = OrderedDict(
-                        [(col, split.SCV_profiles[gene_callers_id][col]) for col in t.variable_codons_table_structure[1:]]
+                        [(col, split.SCV_profiles[gene_callers_id][col]) for col in t.variable_codons_table_structure]
                     )
 
                     entries = zip(*split.SCV_profiles[gene_callers_id].values())
@@ -331,7 +331,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                 # We reorder to the profiles in the order they will appear in the output table
                 split.SNV_profiles = OrderedDict(
-                    [(col, split.SNV_profiles[col]) for col in t.variable_nts_table_structure[1:]]
+                    [(col, split.SNV_profiles[col]) for col in t.variable_nts_table_structure]
                 )
 
                 entries = zip(*split.SNV_profiles.values())
