@@ -2960,12 +2960,28 @@ class KeggModulesDatabase(KeggContext):
         if not current_data_name:
             raise ConfigError("data_vals_sanity_check_pathway() cannot be performed when the current data name is None. Something was not right "
                               "when parsing the KEGG pathway map line.")
-        elif current_data_name == "ENTRY" or current_data_name == "PATHWAY_MAP":
+        elif current_data_name == "ENTRY":
             # example format: ko01100 for reference pathway highlighting KOs
             # example format: map00010 for manually drawn reference pathway
             if (data_vals[0:2] != 'ko' or len(data_vals) != 7) and (data_vals[0:3] != 'map' or len(data_vals) != 8):
                 is_ok = False
                 self.parsing_error_dict['bad_kegg_code_format'].append(current_pathway_num)
+        elif current_data_name[0:11] == "PATHWAY_MAP":
+            # example: PATHWAY_MAP map00010  Glycolysis / Gluconeogenesis
+            # these will typically have a parsing issue because there is only one space between PATHWAY_MAP and the map number
+            if (data_vals[0:2] != 'ko' or len(data_vals) != 7) and (data_vals[0:3] != 'map' or len(data_vals) != 8):
+                is_ok = False
+                self.parsing_error_dict['bad_line_splitting'].append(current_pathway_num)
+
+                # try to fix it by splitting data name on first space
+                corrected_def = data_vals
+                split_data_name = current_data_name.split(" ", maxsplit=1)
+                corrected_vals = split_data_name[1]
+                corrected_name = split_data_name[0]
+                if (corrected_vals[0:2] != 'ko' or len(corrected_vals) != 7) and (corrected_vals[0:3] != 'map' or len(corrected_vals) != 8):
+                    is_corrected = False
+                else:
+                    is_corrected = True
         elif current_data_name not in data_names_to_skip_checking:
             raise ConfigError("This is just a catch to see what types of information we haven't been processing "
                               "in data_vals_sanity_check_pathway(). The current pathway num is %s and the current data name "
