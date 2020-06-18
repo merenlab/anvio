@@ -431,7 +431,7 @@ class VariabilityFilter:
     def is_df_exists(self):
         try:
             self.df = getattr(self, self.name)
-        except AttributeError as e:
+        except AttributeError:
             self.append_info_log("%s is an object" % self.name, False)
             raise ConfigError("VariabilityFilter :: You tried to filter the object `%s` which is "
                               "not an attribute of VariabilitySuper or its parent classes." \
@@ -780,7 +780,7 @@ class VariabilitySuper(VariabilityFilter, object):
            method.
         """
         # use class-wide attribute if no parameters is passed
-        if sample_ids_of_interest_path is "":
+        if sample_ids_of_interest_path == "":
             sample_ids_of_interest_path = self.sample_ids_of_interest_path
 
         if sample_ids_of_interest_path:
@@ -800,7 +800,7 @@ class VariabilitySuper(VariabilityFilter, object):
            inheriting this method.
         """
         # use class-wide attributes if no parameters are passed
-        if genes_of_interest_path is "" and gene_caller_ids is "":
+        if genes_of_interest_path == "" and gene_caller_ids == "":
             genes_of_interest_path = self.genes_of_interest_path
             gene_caller_ids = self.gene_caller_ids
 
@@ -833,7 +833,7 @@ class VariabilitySuper(VariabilityFilter, object):
         """
 
         # use class-wide attributes if no parameters are passed
-        if split_source is "" and splits_of_interest_path is "":
+        if split_source == "" and splits_of_interest_path == "":
             split_source = self.split_source
             splits_of_interest_path = self.splits_of_interest_path
 
@@ -847,7 +847,7 @@ class VariabilitySuper(VariabilityFilter, object):
             # Edit: it exploded slightly :( I am ashamed of this code
             try:
                 splits_of_interest = list(set([self.gene_callers_id_to_split_name_dict[g] for g in (self.genes_of_interest or self.gene_caller_ids)]))
-            except KeyError as e:
+            except KeyError:
                 raise ConfigError("Some of the gene caller IDs you provided are not in your contigs database...")
 
         elif split_source == "bin_id":
@@ -942,6 +942,7 @@ class VariabilitySuper(VariabilityFilter, object):
         if self.engine not in ['NT', 'CDN', 'AA']:
             raise ConfigError("Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
         self.table_structure = t.variable_nts_table_structure if self.engine ==  'NT' else t.variable_codons_table_structure
+        self.table_structure = ['entry_id'] + self.table_structure
 
         # set items of interest
         self.get_items()
@@ -2682,8 +2683,6 @@ class VariabilityFixationIndex(object):
 
 
     def fill_missing_entries(self, pairwise_data, sample_1, sample_2):
-        missing_data = {column: [] for column in pairwise_data.columns}
-
         data_sample_1 = pairwise_data[pairwise_data['sample_id'] == sample_1].set_index('unique_pos_identifier', drop=True)
         data_sample_2 = pairwise_data[pairwise_data['sample_id'] == sample_2].set_index('unique_pos_identifier', drop=True)
 

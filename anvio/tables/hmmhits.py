@@ -71,7 +71,6 @@ class TablesForHMMHits(Table):
 
         if not initializing_for_deletion:
             self.set_next_available_id(t.hmm_hits_table_name)
-            self.set_next_available_id(t.hmm_hits_splits_table_name)
 
     def check_sources(self, sources):
         sources_in_db = list(hmmops.SequencesForHMMHits(self.db_path).hmm_hits_info.keys())
@@ -402,7 +401,7 @@ class TablesForHMMHits(Table):
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.hmm_hits_table_name, db_entries)
 
         db_entries = self.process_splits(search_results_dict)
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.hmm_hits_splits_table_name, db_entries)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.hmm_hits_splits_table_name, db_entries)
 
         database.disconnect()
 
@@ -440,7 +439,7 @@ class TablesForHMMHits(Table):
                         stop_in_split = (split_stop if hit_stop > split_stop else hit_stop) - split_start
                         percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
 
-                        db_entry = tuple([self.next_id(t.hmm_hits_splits_table_name), hit['hmm_hit_entry_id'], split_name, percentage_in_split, hit['source']])
+                        db_entry = tuple([hit['hmm_hit_entry_id'], split_name, percentage_in_split, hit['source']])
                         db_entries_for_splits.append(db_entry)
 
         return db_entries_for_splits

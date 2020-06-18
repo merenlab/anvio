@@ -100,9 +100,9 @@ class DatabaseInfo:
             self.db_self = database.get_table_as_dict("self")
 
             database.disconnect()
-        except:
-            raise ConfigError("Are you sure '%s' is a database file? Because, you know, probably "
-                              "it is not at all :(" % self.db_path)
+        except Exception as e:
+            raise ConfigError("Anvi'o has some concerns regarding '%s' and thinks it may not be a database file "
+                              "since some libraries complained about it downstream. Here is what they said: %s." % (self.db_path, e))
 
 
     def set_key_value(self):
