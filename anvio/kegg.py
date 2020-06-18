@@ -2797,6 +2797,12 @@ class KeggModulesDatabase(KeggContext):
         =======
         is_ok : bool
             whether the values look correctly formatted or not
+        corrected_vals : str
+            if we were able to correct the formatting, this returns the correct data values field. Will be
+            None if values were okay
+        corrected_def : str
+            if we were able to correct the formatting, this returns the correct data definition field. Will be
+            None if definition was okay (or nonexistent)
         """
 
         is_ok = True
@@ -2932,6 +2938,16 @@ class KeggModulesDatabase(KeggContext):
         =======
         is_ok : bool
             whether the values look correctly formatted or not
+        corrected_name : str
+            if we were able to correct the formatting, this returns the corrected data name field. If the data name
+            was okay, this will return the original data name. It cannot return None because this value is always
+            used to update the data name field downstream
+        corrected_vals : str
+            if we were able to correct the formatting, this returns the correct data values field. Will be
+            None if values were okay
+        corrected_def : str
+            if we were able to correct the formatting, this returns the correct data definition field. Will be
+            None if definition was okay (or nonexistent)
         """
 
         is_ok = True
@@ -2952,7 +2968,7 @@ class KeggModulesDatabase(KeggContext):
                 self.parsing_error_dict['bad_kegg_code_format'].append(current_pathway_num)
         elif current_data_name not in data_names_to_skip_checking:
             raise ConfigError("This is just a catch to see what types of information we haven't been processing "
-                              "in data_vals_sanity_check_pathway(). The current module num is %s and the current data name "
+                              "in data_vals_sanity_check_pathway(). The current pathway num is %s and the current data name "
                               "is %s " % (current_pathway_num, current_data_name))
 
 
