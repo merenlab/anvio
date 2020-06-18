@@ -347,12 +347,12 @@ named_category_colors = {
     'TSA'      : '#0000AA',
     'TNC'      : '#00AA00',
     'TNA'      : '#00d1ca',
-    'NaN'      : '#73727a'
-    'K'        : '#233B43'
-    'KWP'      : '#556C74'
-    'GU'       : '#65ADC2'
-    'EU'       : '#E84646'
-    'SINGL'    : '#BCC8CC'
+    'NaN'      : '#73727a',
+    'K'        : '#233B43',
+    'KWP'      : '#556C74',
+    'GU'       : '#65ADC2',
+    'EU'       : '#E84646',
+    'SINGL'    : '#BCC8CC',
     'DISC'     : '#BCC8CC'
 };
 
