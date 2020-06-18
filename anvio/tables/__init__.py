@@ -348,7 +348,7 @@ requires_unique_entry_id = {
     split_coverages_table_name: False,
     genome_info_table_name: False,
     gene_info_table_name: False,
-    genome_gene_function_calls_table_name: False,
+    genome_gene_function_calls_table_name: True,
     pdb_data_table_name: False,
     module_table_name: False,
     pathway_table_name: False,
