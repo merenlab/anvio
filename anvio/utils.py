@@ -21,6 +21,7 @@ import tracemalloc
 import configparser
 import urllib.request, urllib.error, urllib.parse
 
+import itertools as it
 import numpy as np
 import pandas as pd
 import Bio.PDB as PDB
@@ -1405,17 +1406,21 @@ def get_split_start_stops_with_gene_calls(contig_length, split_length, gene_star
     if contig_length < 2 * split_length:
         return [(0, contig_length)]
 
-    non_coding_positions_in_contig = set(range(0, contig_length))
+    coding_positions_in_contig = []
 
-    # trim from the beginning and the end. we don't want to end up creating very short pieces
-    non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(0, int(split_length / 2))))
-    non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(contig_length - int(split_length / 2), contig_length)))
+    # Pretend the beginning and end are coding (even if they aren't) so that we prevent very short pieces.
+    for position in it.chain(range(int(split_length / 2)), range(contig_length - int(split_length / 2), contig_length)):
+        coding_positions_in_contig.append(position)
 
-    # remove positions that code for genes
+    # Track positions that code for genes.
     for gene_unique_id, start, stop in gene_start_stops:
         start = start - 5
         stop = stop + 5
-        non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(start, stop)))
+
+        for position in range(start, stop):
+            coding_positions_in_contig.append(position)
+
+    non_coding_positions_in_contig = set(range(contig_length)) - set(coding_positions_in_contig)
 
     # what would be our break points in an ideal world? compute an initial list of break
     # points based on the length of the contig and desired split size:
