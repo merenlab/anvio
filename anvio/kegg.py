@@ -3000,6 +3000,19 @@ class KeggModulesDatabase(KeggContext):
             if data_vals[0] != 'D' or len(data_vals) != 6:
                 is_ok = False
                 self.parsing_error_dict['bad_kegg_code_format'].append(current_pathway_num)
+        elif current_data_name[0:11] == "DESCRIPTION":
+            # example: DESCRIPTION Carbon metabolism is the most basic aspect of life ...
+            # these will always have parsing error because there is only one space between DESCRIPTION and the text
+            if not data_vals:
+                is_ok = False
+                self.parsing_error_dict['bad_line_splitting'].append(current_pathway_num)
+
+                # try to fix it by splitting data name on first space
+                split_data_name = current_data_name.split(" ", maxsplit=1)
+                corrected_vals = split_data_name[1]
+                corrected_name = split_data_name[0]
+                is_corrected = True
+
         elif current_data_name not in data_names_to_skip_checking:
             raise ConfigError("This is just a catch to see what types of information we haven't been processing "
                               "in data_vals_sanity_check_pathway(). The current pathway num is %s and the current data name "
@@ -3088,7 +3101,9 @@ class KeggModulesDatabase(KeggContext):
             current_data_name = fields[0]
         # note that if data name is known, first field still exists but is actually the empty string ''
         # so no matter the situation, data value is field 1 and data definition (if any) is field 2
-        data_vals = fields[1]
+        # one exception to this: DESCRIPTION fields in pathway map files have only one field due to parsing errors :/
+        if len(fields) > 1:
+            data_vals = fields[1]
         # need to sanity check data value field because SOME modules don't follow the 2-space separation formatting
         if sanity_check_func == 'module':
             vals_are_okay, corrected_vals, corrected_def = self.data_vals_sanity_check_module(data_vals, current_data_name, current_module)
