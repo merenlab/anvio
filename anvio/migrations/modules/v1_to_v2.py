@@ -11,13 +11,25 @@ import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 
+current_version, next_version = [x[1:] for x in __name__.split('_to_')]
 
 run = terminal.Run()
 progress = terminal.Progress()
 
 
 def migrate(db_path):
-    pass
+    if db_path is None:
+        raise ConfigError("No database path is given.")
+
+    utils.is_modules_db(db_path)
+
+    # make sure the current version is 1
+    contigs_db = db.DB(db_path, None, ignore_version = True)
+    if str(contigs_db.get_version()) != current_version:
+        contigs_db.disconnect()
+        raise ConfigError("Version of this modules database is not %s (hence, "
+                          "this script cannot really do anything)." % current_version)
+    
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade KEGG Modules database from version 1 to version 2')
