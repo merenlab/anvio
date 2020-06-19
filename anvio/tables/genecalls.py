@@ -528,10 +528,10 @@ class TablesForGeneCalls(Table):
         self.progress.new('Processing')
         self.progress.update('Entering %d gene calls into the db ...' % (len(gene_calls_dict)))
 
-        db_entries = [tuple([entry_id] + [gene_calls_dict[entry_id][h] for h in t.genes_in_contigs_table_structure[1:]]) for entry_id in gene_calls_dict]
+        db_entries = [tuple([gene_callers_id] + [gene_calls_dict[gene_callers_id][h] for h in t.genes_in_contigs_table_structure[1:]]) for gene_callers_id in gene_calls_dict]
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % t.genes_in_contigs_table_name, db_entries)
 
-        db_entries = [tuple([entry_id] + [amino_acid_sequences[entry_id]]) for entry_id in gene_calls_dict]
+        db_entries = [tuple([gene_callers_id, amino_acid_sequences[gene_callers_id]]) for gene_callers_id in gene_calls_dict]
         database._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.gene_amino_acid_sequences_table_name, db_entries)
 
         self.progress.end()
@@ -542,13 +542,12 @@ class TablesForGeneCalls(Table):
     def populate_genes_in_splits_tables(self, gene_calls_dict=None):
         utils.is_contigs_db(self.db_path)
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
-        self.set_next_available_id(t.genes_in_splits_table_name)
         self.init_gene_calls_dict()
 
         if not gene_calls_dict:
             gene_calls_dict = self.gene_calls_dict
 
-        genes_in_splits = GenesInSplits(entry_id_start=self.next_id(t.genes_in_splits_table_name))
+        genes_in_splits = GenesInSplits()
         # build a dictionary for fast access to all genes identified within a contig
         gene_calls_in_contigs_dict = {}
         for gene_callers_id in gene_calls_dict:
@@ -606,21 +605,19 @@ class TablesForGeneCalls(Table):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         # push entries for genes in splits table
-        db_entries = [tuple([entry_id] + [genes_in_splits.splits_to_prots[entry_id][h] for h in t.genes_in_splits_table_structure[1:]]) for entry_id in genes_in_splits.splits_to_prots]
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % t.genes_in_splits_table_name, db_entries)
+        db_entries = [[d[h] for h in t.genes_in_splits_table_structure] for d in genes_in_splits.d]
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.genes_in_splits_table_name, db_entries)
 
         # disconnect
         database.disconnect()
 
 
 class GenesInSplits:
-    def __init__(self, entry_id_start=0):
-        self.entry_id = entry_id_start
-        self.splits_to_prots = {}
+    def __init__(self):
+        self.d = []
 
 
     def add(self, split_name, split_start, split_end, gene_callers_id, prot_start, prot_end):
-
         gene_length = prot_end - prot_start
 
         if gene_length <= 0:
@@ -633,11 +630,8 @@ class GenesInSplits:
         stop_in_split = (split_end if prot_end > split_end else prot_end) - split_start
         percentage_in_split = (stop_in_split - start_in_split) * 100.0 / gene_length
 
-        self.splits_to_prots[self.entry_id] = {'split': split_name,
-                                               'gene_callers_id': gene_callers_id,
-                                               'start_in_split': start_in_split,
-                                               'stop_in_split': stop_in_split,
-                                               'percentage_in_split': percentage_in_split}
-        self.entry_id += 1
-
-
+        self.d.append({'split': split_name,
+                       'gene_callers_id': gene_callers_id,
+                       'start_in_split': start_in_split,
+                       'stop_in_split': stop_in_split,
+                       'percentage_in_split': percentage_in_split})

@@ -323,6 +323,8 @@ class ClusteringConfiguration:
 
                 self.matrix_paths[alias] = tmp_file_path
 
+                dbc.disconnect()
+
 
     def sanity_check(self, config):
         filesnpaths.is_file_exists(self.input_directory)

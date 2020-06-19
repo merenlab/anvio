@@ -43,12 +43,19 @@ def get_list_in_chunks(input_list, num_items_in_each_chunk=5000):
 
 
 class DB:
-    def __init__(self, db_path, client_version, new_database=False, ignore_version=False, run=terminal.Run(), progress=terminal.Progress()):
+    def __init__(self, db_path, client_version, new_database=False, ignore_version=False, skip_rowid_prepend=False, run=terminal.Run(), progress=terminal.Progress()):
         self.db_path = db_path
         self.version = None
 
         self.run = run
         self.progress = progress
+
+        # these anonymous functions report whether the ROWID will be added
+        # to its rows read from the database or not. if the first column of a given
+        # table does not contain unique variables, anvi'o prepends the ROWID of each
+        # column to index 0, unless `skip_rowid_prepend` is True
+        self.ROWID_PREPENDS_ROW_DATA = lambda table_name: False if skip_rowid_prepend else tables.requires_unique_entry_id[table_name]
+        self.PROPER_SELECT_STATEMENT = lambda table_name: 'ROWID as "entry_id", *' if self.ROWID_PREPENDS_ROW_DATA(table_name) else '*'
 
         if new_database:
             filesnpaths.is_output_file_writable(db_path)
@@ -81,6 +88,15 @@ class DB:
                     raise ConfigError("The database at '%s' is outdated (its version is v%s, but your anvi'o installation only knows how to "
                                       "deal with v%s). You can migrate your database without losing any data using the program `anvi-migrate`."\
                                                % (self.db_path, self.version, client_version))
+
+            bad_tables = [table_name for table_name in self.get_table_names() if table_name not in tables.requires_unique_entry_id]
+            if len(bad_tables):
+                raise ConfigError("You better be a programmer tinkering with anvi'o databases adding new tables or something. Otherwise we "
+                                  "have quite a serious problem :/ Each table in a given anvi'o database must have an entry in the "
+                                  "anvio/tables/__init__.py dictionary `requires_unique_entry_id` to explicitly define whether anvi'o "
+                                  "should add a unique entry id for its contents upon retrieval as a dictionary. The following tables "
+                                  "in this database do not satisfy that: '%s'. You can solve this problem by adding an entry into that "
+                                  "dictionary." % (', '.join(bad_tables)))
 
 
     def get_version(self):
@@ -180,21 +196,6 @@ class DB:
         self._exec('''DETACH DATABASE "source_db"''')
 
 
-    def reset_entry_id(self, table_name):
-        """Rewrite entry_id column as sequential integers. Complain if entry_id doesn't exist
-
-        Notes
-        =====
-        - Every SQLite table contains an implicit column, ROWID, that is the row number of the
-          entry. We take advantage of that here.
-        """
-
-        if 'entry_id' not in self.get_table_structure(table_name):
-            raise ConfigError("DB.reset_entry_id :: %s does not have entry_id as a column" % table_name)
-
-        self._exec('''UPDATE %s SET entry_id = ROWID-1''' % table_name)
-
-
     def get_max_value_in_column(self, table_name, column_name, value_if_empty=None, return_min_instead=False):
         """Get the maximum OR minimum column value in a table
 
@@ -290,7 +291,7 @@ class DB:
             return self._exec_many(query, entries)
 
 
-    def insert_rows_from_dataframe(self, table_name, dataframe, raise_if_no_columns=True, key=None):
+    def insert_rows_from_dataframe(self, table_name, dataframe, raise_if_no_columns=True):
         """Insert rows from a dataframe
 
         Parameters
@@ -298,23 +299,6 @@ class DB:
         raise_if_no_columns : bool, True
             If True, if dataframe has no columns (e.g. dataframe = pd.DataFrame({})), this function
             returns without raising error.
-
-        key : list-like, None
-            If table is meant to have a column with unique and sequential entries, the
-            column name should be passed so appended rows retain sequential order. E.g., consider
-
-                           Table                                dataframe
-                entry_id   value1   value2            entry_id    value1    value2
-                0          yes      30                0           no        2
-                1          yes      23
-
-            Depending if key=None or key="entry_id", the result is different:
-
-                        key = None                         key = "entry_id"
-                entry_id   value1   value2            entry_id   value1   value2
-                0          yes      30                0          yes      30
-                1          yes      23                1          yes      23
-                0          no       2                 2          no       2
 
         Notes
         =====
@@ -350,10 +334,10 @@ class DB:
         """
 
         if table_name not in self.get_table_names():
-            raise ConfigError("insert_rows_from_dataframe :: A table with the name {} does "
-                              "not exist in the database you requested. {} are the tables "
-                              "existent in the database".\
-                               format(table_name, ", ".join(self.get_table_names())))
+            raise ConfigError("insert_rows_from_dataframe :: A table with the name %s does "
+                              "not exist in the database you requested. %s are the tables "
+                              "existent in the database" \
+                               % (table_name, ", ".join(self.get_table_names())))
 
         if not list(dataframe.columns) and not raise_if_no_columns:
             # if the dataframe has no colums, we just return
@@ -366,21 +350,10 @@ class DB:
 
         if set(dataframe.columns) != set(self.get_table_structure(table_name)):
             raise ConfigError("insert_rows_from_dataframe :: The columns in the dataframe "
-                              "do not equal the columns (structure) of the requested table. "
+                              "do not equal the columns of the requested table. "
                               "The columns from each are respectively ({}); and ({}).".\
                                format(", ".join(list(dataframe.columns)),
                                       ", ".join(self.get_table_structure(table_name))))
-
-        if key and key not in dataframe.columns:
-            raise ConfigError("insert_rows_from_dataframe :: key ({}) is not a column of your "
-                              "dataframe. The columns in your dataframe are [{}].".\
-                               format(key, ", ".join(list(dataframe.columns))))
-
-        elif key:
-            start = self.get_max_value_in_column(table_name, key, value_if_empty=-1) + 1
-            end = start + dataframe.shape[0]
-            key_values = list(range(start, end))
-            dataframe[key] = key_values
 
         # conform to the column order of the table structure
         dataframe = dataframe[self.get_table_structure(table_name)]
@@ -390,7 +363,12 @@ class DB:
 
 
     def get_all_rows_from_table(self, table_name):
-        response = self._exec('''SELECT * FROM %s''' % table_name)
+        response = self._exec('''SELECT %s FROM %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name))
+        return response.fetchall()
+
+
+    def get_some_rows_from_table(self, table_name, where_clause):
+        response = self._exec('''SELECT %s FROM %s WHERE %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name, where_clause))
         return response.fetchall()
 
 
@@ -406,11 +384,6 @@ class DB:
     def remove_some_rows_from_table(self, table_name, where_clause):
         self._exec('''DELETE FROM %s WHERE %s''' % (table_name, where_clause))
         self.commit()
-
-
-    def get_some_rows_from_table(self, table_name, where_clause):
-        response = self._exec('''SELECT * FROM %s WHERE %s''' % (table_name, where_clause))
-        return response.fetchall()
 
 
     def get_single_column_from_table(self, table, column, unique=False, where_clause=None):
@@ -449,8 +422,10 @@ class DB:
         return self.get_all_rows_from_table(table_name)
 
 
-    def get_table_as_dict(self, table_name, table_structure=None, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True, log_norm_numeric_values=False):
-        if not table_structure:
+    def get_table_as_dict(self, table_name, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True, log_norm_numeric_values=False):
+        if self.ROWID_PREPENDS_ROW_DATA(table_name):
+            table_structure = ['entry_id'] + self.get_table_structure(table_name)
+        else:
             table_structure = self.get_table_structure(table_name)
 
         columns_to_return = list(range(0, len(table_structure)))
@@ -481,6 +456,7 @@ class DB:
         #
         # SAD TABLES BEGIN
         #
+        # NOTE from the past:
         # FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME FIXME
         # this is one of the most critical design mistakes that remain in anvi'o. we set `entry_id` values
         # in table classes depending on the data that will be entered into the database. this is how it goes:
@@ -499,7 +475,13 @@ class DB:
         #
         # NOTE from the future
         # Every SQLite table has an implicit column called ROWID. Does this solve our problem?
-        if table_name not in tables.tables_without_unique_entry_ids:
+        #
+        # NOTE from a more recent future: we no longer have the entry_id problem for most tables .. except
+        # the hmm_hits table. the reason it has to be there is because we need to know the precise entry ids for
+        # hmm hits to be able to track them in splits. there probably are better ways to do that. So here I am leaving
+        # a FIXME. once this is resolved, the entry_id routines in Table base class can be deleted safely. until then,
+        # we will suffer from race conditions occasionally, and this embarrassment will stay here in the code..
+        if table_name == tables.hmm_hits_table_name:
             unique_keys = set([r[0] for r in rows])
             if len(unique_keys) != len(rows):
                 if anvio.FIX_SAD_TABLES:
@@ -555,6 +537,7 @@ class DB:
         #
         #----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8----->8-----
 
+
         results_dict = {}
 
         if keys_of_interest:
@@ -608,15 +591,18 @@ class DB:
             Raise an error if the dataframe has 0 rows. Checked after where_clause.
         """
 
-        table_structure = self.get_table_structure(table_name)
+        if self.ROWID_PREPENDS_ROW_DATA(table_name):
+            table_structure = ['entry_id'] + self.get_table_structure(table_name)
+        else:
+            table_structure = self.get_table_structure(table_name)
 
         if not columns_of_interest:
             columns_of_interest = table_structure
 
         if where_clause:
-            results_df = pd.read_sql('''SELECT * FROM "%s" WHERE %s''' % (table_name, where_clause), self.conn, columns=table_structure)
+            results_df = pd.read_sql('''SELECT %s FROM "%s" WHERE %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name, where_clause), self.conn, columns=table_structure)
         else:
-            results_df = pd.read_sql('''SELECT * FROM "%s"''' % table_name, self.conn, columns=table_structure)
+            results_df = pd.read_sql('''SELECT %s FROM "%s"''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name), self.conn, columns=table_structure)
 
         if results_df.empty and error_if_no_data:
             raise ConfigError("DB.get_table_as_dataframe :: The dataframe requested is empty")
@@ -665,10 +651,14 @@ class DB:
 
         results_dict = {}
 
-        table_structure = self.get_table_structure(table_name)
+        if self.ROWID_PREPENDS_ROW_DATA(table_name):
+            table_structure = ['entry_id'] + self.get_table_structure(table_name)
+        else:
+            table_structure = self.get_table_structure(table_name)
+
         columns_to_return = list(range(0, len(table_structure)))
 
-        rows = self._exec('''SELECT * FROM %s WHERE %s''' % (table_name, where_clause)).fetchall()
+        rows = self.get_some_rows_from_table(table_name, where_clause)
 
         row_num = 0
         for row in rows:

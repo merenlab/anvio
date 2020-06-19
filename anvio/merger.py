@@ -20,9 +20,6 @@ import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
-from anvio.tables.indels import TableForIndels
-from anvio.tables.variability import TableForVariability
-from anvio.tables.codonfrequencies import TableForCodonFrequencies
 from anvio.tables.miscdata import TableForLayerOrders, TableForLayerAdditionalData
 from anvio.tables.views import TablesForViews
 
@@ -385,13 +382,6 @@ class MultipleRuns:
             merged_db.copy_paste(table_name, PATH(input_profile_db_path), append=True)
 
         self.progress.end()
-
-        if 'entry_id' in merged_db.get_table_structure(table_name):
-            # entry_ids need to be made unique
-            self.progress.new("Merging '%s' tables" % table_name)
-            self.progress.update("Updating entry_ids")
-            merged_db.reset_entry_id(table_name)
-            self.progress.end()
 
 
     def merge_variant_tables(self, table_name):

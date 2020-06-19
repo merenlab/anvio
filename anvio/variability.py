@@ -5,13 +5,9 @@
 
 import copy
 import numpy as np
-import pandas as pd
-
-from collections import Counter
 
 import anvio
 
-from anvio.constants import nucleotides
 from anvio.errors import ConfigError
 
 
@@ -355,7 +351,7 @@ class ProcessCodonCounts(ProcessAlleleCounts):
         self.rename_key('competing_items', 'competing_codons')
         self.rename_key('pos', 'codon_order_in_gene')
 
-
+# FIXME: it seems the following classes are redundant and should be removed? Ping @evan
 class ProcessNucleotideCounts(ProcessAlleleCounts):
     def __init__(self, *args, **kwargs):
         ProcessAlleleCounts.__init__(self, *args, **kwargs)

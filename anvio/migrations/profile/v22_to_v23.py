@@ -266,20 +266,7 @@ class TableForLayerOrders(OrderDataBaseClass):
 
 
 def check_samples_db_status():
-    if 'ANVIO_SAMPLES_DB' not in os.environ:
-        raise ConfigError("Your migration did not finish, and your profile database is still at %s. We are sorry for the "
-                          "frustration in advance, but this will be very simple if you read this message carefully. This upgrade "
-                          "needs to know where your anvi'o samples database is, if you have one, via an environmental variable. "
-                          "If you don't have a samples database associated with this project, or if you want to simply skip it, "
-                          "you can run the migration program again this way, and your migration will continue: "
-                          "'ANVIO_SAMPLES_DB=SKIP anvi-migrate YOUR_PROFILE_DB_PATH' (note that there are no space characters "
-                          "between either sides of '='). If you have a samples database, you can tell anvi'o the location of it "
-                          "using the same environmental variable: 'ANVIO_SAMPLES_DB=YOUR_SAMPLES_DB_PATH anvi-migrate "
-                          "YOUR_PROFILE_DB_PATH'. If you are curious, this was necessary because there may be multiple samples "
-                          "databases for a given project, or a samples database may be at any location and may have any name." \
-                            % current_version)
-
-    if os.environ['ANVIO_SAMPLES_DB'] == 'SKIP':
+    if 'ANVIO_SAMPLES_DB' not in os.environ or os.environ['ANVIO_SAMPLES_DB'] == 'SKIP':
         samples_db_path = None
     else:
         samples_db_path = os.environ['ANVIO_SAMPLES_DB']
