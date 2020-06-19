@@ -90,7 +90,7 @@ def migrate(db_path):
 
     run.info_single("Your contigs db is now %s. This update carried one more issue into the graveyard "
                     "of bad design decisions we've made years ago by altering %d tables in your database." \
-                            % (current_version, len(tables)), nl_after=1, nl_before=1, mc='green')
+                            % (next_version, len(tables)), nl_after=1, nl_before=1, mc='green')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='A simple script to upgrade CONTIGS.db from version %s to version %s' % (current_version, next_version))
