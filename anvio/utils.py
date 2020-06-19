@@ -3376,6 +3376,13 @@ def is_structure_db(db_path):
     return True
 
 
+def is_modules_db(db_path):
+    filesnpaths.is_file_exists(db_path)
+    if get_db_type(db_path) != 'modules':
+        raise ConfigError("'%s' is not an anvi'o modules database." % db_path)
+    return True
+
+
 def is_blank_profile(db_path):
     if get_db_type(db_path) != 'profile':
         return False
