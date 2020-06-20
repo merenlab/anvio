@@ -3,6 +3,7 @@
 """ Table schemas for databases."""
 
 from anvio.constants import codons, nucleotides, essential_genome_info, db_formatted_tRNA_feature_names
+from anvio.trnaidentifier import THREEPRIME_VARIANT_LIST
 
 import itertools
 
@@ -281,6 +282,14 @@ tRNAseq_sequences_table_name            = 'sequences'
 tRNAseq_sequences_table_structure       = ['name', 'replicate_names', 'replicate_count', 'sequence']
 tRNAseq_sequences_table_types           = ['str' , 'str'            , 'numeric'        , 'str']
 
+tRNAseq_acceptor_table_name             = 'acceptor'
+tRNAseq_acceptor_table_structure        = ['name', 'grouped_names', 'group_count', 'sequence_without_acceptor'] + [threeprime_variant + '_count' for threeprime_variant in THREEPRIME_VARIANT_LIST]
+tRNAseq_acceptor_table_types            = ['str' , 'str'          , 'numeric'    , 'str'                      ] + ['numeric' for _ in THREEPRIME_VARIANT_LIST]
+
+tRNAseq_subsequence_table_name          = 'subsequence_relations'
+tRNAseq_subsequence_table_structure     = ['name', 'subsequence_names', 'subsequence_count', 'average_subsequence_multiplicity'] + [threeprime_variant + '_count' for threeprime_variant in THREEPRIME_VARIANT_LIST]
+tRNAseq_subsequence_table_types         = ['str' , 'str'              , 'numeric'          , 'numeric'                         ] + ['numeric' for _ in THREEPRIME_VARIANT_LIST]
+
 tRNAseq_info_table_name                 = 'basic_info'
 tRNAseq_info_table_structure            = ['name', 'is_mature', 'is_long_read', 'is_charged', 'anticodon_sequence', 'amino_acid', 'sequence_length', 'features_start', 'features_stop', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature', 'num_extra_threeprime', 'alpha_start', 'alpha_stop', 'beta_start', 'beta_stop']
 tRNAseq_info_table_types                = ['str' , 'bool'     , 'bool'        , 'bool'      , 'str'               , 'str'       , 'numeric'        , 'numeric'       , 'numeric'      , 'numeric'      , 'numeric'        , 'numeric'   , 'numeric'     , 'numeric'                              , 'numeric'             , 'numeric'    , 'numeric'   , 'numeric'   , 'numeric']
@@ -297,9 +306,18 @@ tRNAseq_unpaired_table_name             = 'unpaired_nucleotides'
 tRNAseq_unpaired_table_structure        = ['name', 'fiveprime_pos', 'threeprime_pos', 'observed_fiveprime_nucleotide', 'observed_threeprime_nucleotide']
 tRNAseq_unpaired_table_types            = ['str' , 'numeric'      , 'numeric'       , 'str'                          , 'str']
 
+
 tRNAseq_long_sequences_table_name       = 'long_sequences'
 tRNAseq_long_sequences_table_structure  = ['name', 'replicate_names', 'replicate_count', 'sequence']
 tRNAseq_long_sequences_table_types      = ['str' , 'str'            , 'numeric'        , 'str']
+
+tRNAseq_long_acceptor_table_name        = 'long_acceptor'
+tRNAseq_long_acceptor_table_structure   = ['name', 'grouped_names', 'group_count', 'sequence_without_acceptor'] + [threeprime_variant + '_count' for threeprime_variant in THREEPRIME_VARIANT_LIST]
+tRNAseq_long_acceptor_table_types       = ['str' , 'str'          , 'numeric'    , 'str'                      ] + ['numeric' for _ in THREEPRIME_VARIANT_LIST]
+
+tRNAseq_long_subsequence_table_name     = 'long_subsequence_relations'
+tRNAseq_long_subsequence_table_structure= ['name', 'subsequence_names', 'subsequence_count', 'average_subsequence_multiplicity'] + [threeprime_variant + '_count' for threeprime_variant in THREEPRIME_VARIANT_LIST]
+tRNAseq_long_subsequence_table_types    = ['str' , 'str'              , 'numeric'          , 'numeric'                         ] + ['numeric' for _ in THREEPRIME_VARIANT_LIST]
 
 tRNAseq_long_info_table_name            = 'long_basic_info'
 tRNAseq_long_info_table_structure       = ['name', 'is_mature', 'is_long_read', 'is_charged', 'anticodon_sequence', 'amino_acid', 'sequence_length', 'features_start', 'features_stop', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature', 'num_extra_threeprime', 'alpha_start', 'alpha_stop', 'beta_start', 'beta_stop']

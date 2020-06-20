@@ -1,8 +1,6 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
-"""
-    Classes to define and work with anvi'o tRNA-seq workflows.
-"""
+""" Classes to define and work with anvi'o tRNA-seq workflows. """
 
 
 import os
@@ -42,10 +40,8 @@ class tRNASeqWorkflow(WorkflowSuperClass):
             'gen_qc_report',
             'anvi_reformat_fasta',
             'anvi_gen_tRNAseq_database',
-            'get_unique_tRNA_fasta'])
-            # 'prefix_derep_tRNA_fasta',
-            # 'map_tRNA',
-            # 'anvi_condense_clusters'])
+            'map_tRNA_against_self',
+            'anvi_agglomerate'])
 
         self.general_params.extend(['samples_txt']) # general section of config file
 
@@ -68,7 +64,11 @@ class tRNASeqWorkflow(WorkflowSuperClass):
         rule_acceptable_params_dict['anvi_gen_tRNAseq_database'] = [
             '--charging-recorded',
             '--trust-fasta',
+            '--only-report-tRNA',
             '--verbose']
+        rule_acceptable_params_dict['map_tRNA_against_self'] = [
+            'run',
+            '--max-possible-alignments']
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
         # Default values for certain accessible parameters
@@ -88,8 +88,13 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                 '--simplify-names': True},
             'anvi_gen_tRNAseq_database': {
                 '--charging-recorded': False,
+                '--only-report-tRNA': False,
                 '--trust-fasta': False,
                 '--verbose': False,
+                'threads': 1},
+            'map_tRNA_against_self': {
+                'run': True,
+                '--max-possible-alignments': 50,
                 'threads': 1}})
 
         self.dirs_dict.update({'QC_DIR': '01_QC', 'IDENT_DIR': '02_IDENT'})
@@ -101,6 +106,7 @@ class tRNASeqWorkflow(WorkflowSuperClass):
 
         self.run_iu_merge_pairs = self.get_param_value_from_config(['iu_merge_pairs', 'run'])
         self.run_anvi_reformat_fasta = self.get_param_value_from_config(['anvi_reformat_fasta', 'run'])
+        self.run_map_tRNA_against_self = self.get_param_value_from_config(['map_tRNA_against_self', 'run'])
         self.gzip_iu_merge_pairs_output = self.get_param_value_from_config(['iu_merge_pairs', '--gzip-output'])
         self.gzip_anvi_reformat_fasta_output = self.get_param_value_from_config(['anvi_reformat_fasta', '--gzip-output'])
 
@@ -143,7 +149,13 @@ class tRNASeqWorkflow(WorkflowSuperClass):
 
         for sample_split_prefix in self.sample_split_prefixes:
             target_files.append(
-                os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "-unique_tRNA.fasta"))
+                os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "-tRNAseq.db"))
+            target_files.append(
+                os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "-seeds.fasta"))
+            target_files.append(
+                os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "-seed_replicates.txt"))
+            target_files.append(
+                os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "-nontRNA.fasta"))
 
         if self.run_iu_merge_pairs:
             target_files.append(
@@ -154,7 +166,17 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                 target_files.append(
                     os.path.join(self.dirs_dict['QC_DIR'], sample_split_prefix + "-reformat_report.txt"))
 
+        if self.run_map_tRNA_against_self:
+            for sample_split_prefix in self.sample_split_prefixes:
+                target_files.append(
+                    os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "-agglomerated.fasta"))
+                target_files.append(
+                    os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "-agglomerated.bam"))
+                target_files.append(
+                    os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "-agglomerated.bam.bai"))
+
         return target_files
+
 
     def check_samples_txt(self):
 
@@ -195,14 +217,14 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                     ', '.join(sorted(set(unknown_split_types)))))
 
         if self.run_iu_merge_pairs:
-            fastq_names = self.sample_info['r1'].tolist() + self.sample_info['r2'].tolist()
-            bad_fastq_paths = [s for s in fastq_names if not filesnpaths.is_file_exists(s, dont_raise=True)]
+            fastq_paths = self.sample_info['r1'].tolist() + self.sample_info['r2'].tolist()
+            bad_fastq_paths = [s for s in fastq_paths if not filesnpaths.is_file_exists(s, dont_raise=True)]
             if bad_fastq_paths:
                 raise ConfigError(
                     "The following FASTQ files in the samples_txt file, '%s', cannot be found: %s."
                     % (self.samples_txt_file, ', '.join(bad_fastq_paths)))
             bad_fastq_names = [
-                s for s in fastq_names
+                s for s in fastq_paths
                 if (not s.endswith('.fq')
                     and not s.endswith('.fq.gz')
                     and not s.endswith('.fastq')
@@ -215,22 +237,24 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                     "Here are the first 5 such files that have unconventional file extensions: %s."
                     % (self.samples_txt_file, ', '.join(bad_fastq_names[:5])))
         else:
-            fasta_names = self.sample_info['fasta'].tolist()
-            bad_fasta_paths = [s for s in fasta_names if not filesnpaths.is_file_exists(s, dont_raise=True)]
+            fasta_paths = self.sample_info['fasta'].tolist()
+
+            bad_fasta_paths = [s for s in fasta_paths if not filesnpaths.is_file_exists(s, dont_raise=True)]
             if bad_fasta_paths:
                 raise ConfigError(
                     "The following FASTA files in the samples_txt file, '%s', cannot be found: %s."
                     % (self.samples_txt_file, ', '.join(bad_fasta_paths)))
+
             bad_fasta_names = [
-                s for s in fasta_names
+                s for s in fasta_paths
                 if (not s.endswith('.fa')
                     and not s.endswith('.fa.gz')
                     and not s.endswith('.fasta')
                     and not s.endswith('.fasta.gz'))]
             if bad_fasta_names:
                 run.warning(
-                    "Some of the sequence files in the samples_txt file, '%s', "
-                    "do not end with '.fa', '.fa.gz', '.fasta' or '.fasta. "
+                    "Some of the FASTA files in the samples_txt file, '%s', "
+                    "do not end with '.fa', '.fa.gz', 'fasta' or '.fasta.gz'. "
                     "That's okay, but Anvi'o decided it should warn you. "
                     "Here are the first 5 such files that have unconventional file extensions: %s."
                     % (self.samples_txt_file, ', '.join(bad_fasta_names[:5])))
@@ -244,7 +268,7 @@ class tRNASeqWorkflow(WorkflowSuperClass):
         """
 
         if self.fasta_paths:
-            return self.fasta_paths
+            return self.fasta_paths[self.sample_split_prefixes.index(wildcards.sample_split_prefix)]
         return os.path.join(self.dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_MERGED")
 
 
@@ -257,4 +281,4 @@ class tRNASeqWorkflow(WorkflowSuperClass):
 
         if self.run_anvi_reformat_fasta:
             return os.path.join(self.dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "-reformatted.fasta")
-        return self.fasta_paths
+        return self.fasta_paths[self.sample_split_prefixes.index(wildcards.sample_split_prefix)]

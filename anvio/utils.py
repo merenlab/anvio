@@ -2271,39 +2271,6 @@ def check_contig_names(contig_names, dont_raise=False):
     return True
 
 
-def check_tRNAseq_names(tRNAseq_names, dont_raise=False):
-    all_characters_in_tRNAseq_names = set(''.join(tRNAseq_names))
-    characters_anvio_doesnt_like = [
-        c for c in all_characters_in_tRNAseq_names if c not in constants.allowed_chars]
-    if len(characters_anvio_doesnt_like):
-        if dont_raise:
-            return False
-        raise ConfigError(
-            "Anvi'o does not like the name of at least one tRNA seed sequence, "
-            "as it contains the following verboten characters: %s. "
-            "Please ensure that the characters in the names are limited "
-            "to ASCII letters and digits. "
-            "Names can also contain underscore ('_'), dash ('-') and dot ('.') characters. "
-            % ", ".join(['"%s"' % c for c in characters_anvio_doesnt_like]))
-    return True
-
-
-# def check_trnaseed_names(trnaseed_names, dont_raise=False):
-#     all_characters_in_trnaseed_names = set(''.join(trnaseed_names))
-#     characters_anvio_doesnt_like = [c for c in all_characters_in_trnaseed_names if c not in constants.allowed_chars]
-#     if len(characters_anvio_doesnt_like):
-#         if dont_raise:
-#             return False
-        
-#         raise ConfigError("anvio does not like the name of at least one tRNA seed sequence, as it contains the following\
-#                             verboten characters: %s. Please ensure that the characters in the names\
-#                             are limited to ASCII letters and digits. Names can also contain\
-#                             underscore ('_'), dash ('-') and dot ('.') characters." \
-#                                 % ", ".join(['"%s"' % c for c in characters_anvio_doesnt_like]))
-        
-#     return True
-
-
 def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
     """genome_desc is an instance of GenomeDescriptions"""
 

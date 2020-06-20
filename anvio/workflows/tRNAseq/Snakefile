@@ -15,12 +15,16 @@ __email__ = "samuelmiller10@gmail.com"
 
 
 import argparse
-import anvio.workflows as w
-import anvio.terminal as terminal
-import anvio.utils as u
-
 import os
 import pandas as pd
+import shutil
+import tempfile
+
+import anvio
+import anvio.db
+import anvio.terminal as terminal
+import anvio.utils as u
+import anvio.workflows as w
 
 from anvio.workflows.tRNAseq import tRNASeqWorkflow
 from anvio.errors import ConfigError
@@ -175,104 +179,78 @@ rule anvi_gen_tRNAseq_database:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-anvi_gen_tRNAseq_database.log")
     input: M.get_input_for_anvi_gen_tRNAseq_database
-    output: db = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-tRNAseq.db")
+    output:
+        db = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-tRNAseq.db"),
+        fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-seeds.fasta"),
+        replicate_txt = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-seed_replicates.txt"),
+        nontRNA_fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-nontRNA.fasta")
     threads: M.T('anvi_gen_tRNAseq_database')
     resources: nodes = M.T('anvi_gen_tRNAseq_database')
     params:
         charging_recorded = M.get_rule_param('anvi_gen_tRNAseq_database', '--charging-recorded'), # tRNA-seq chemistry can record amino acid charging
         trust_fasta = M.get_rule_param('anvi_gen_tRNAseq_database', '--trust-fasta'), # save time by skipping basic FASTA format checks
+        only_report_tRNA = M.get_rule_param('anvi_gen_tRNAseq_database', '--only-report-tRNA'), # do not produce a file of sequences not identified as tRNA
         verbose = M.get_rule_param('anvi_gen_tRNAseq_database', '--verbose')
     run:
         if input[0].endswith('.gz'):
             decompressed_fasta = gunzip_fasta(input[0], log[0])
         else:
             decompressed_fasta = input[0]
-        shell("anvi-gen-trnaseq-database -f %s -o {output.db} {params.charging_recorded} {params.trust_fasta} -T {threads} {params.verbose}" % decompressed_fasta)
+        shell("anvi-gen-trnaseq-database -f %s -n {wildcards.sample_split_prefix} -o {output.db} {params.charging_recorded} {params.trust_fasta} {params.only_report_tRNA} -T {threads} {params.verbose}" % decompressed_fasta)
         if input[0].endswith('.gz'):
             os.remove(decompressed_fasta)
 
 
-rule get_unique_tRNA_fasta:
-    ''' Recover a FASTA file of unique tRNA sequences '''
-    # Remove the acceptor feature and any nucleotides 3' of the acceptor,
-    # replacing with a uniform 3'-CCA acceptor.
-    # A 3' sequence beside CCA is not biological but an artifact of the experiment.
+rule map_tRNA_against_self:
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-get_unique_tRNA_fasta.log")
-    input: rules.anvi_gen_tRNAseq_database.output.db
-    output: fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-unique_tRNA.fasta")
-    threads: M.T('get_unique_tRNA_fasta')
-    resources: nodes = M.T('get_unique_tRNA_fasta')
-    run:
-        db = anvio.db.DB(input[0], '1')
-        names = db.get_single_column_from_table('sequences', 'name')
-        seqs = db.get_single_column_from_table('sequences', 'sequence')
-        acceptor_starts = db.get_single_column_from_table('features', 'acceptor_start')
-        seqs = [seq[: acceptor_start] + 'CCA' for seq, acceptor_start in zip(seqs, acceptor_starts)]
-        with open(output.fasta, 'w') as outf:
-            for name, seq in zip(names, seqs):
-                outf.write(">%s\n" % name)
-                outf.write("%s\n" % seq)
-
-
-rule prefix_derep_tRNA_fasta:
-    ''' Cluster fragmentary tRNA reads that are subsequences of other reads '''
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-prefix_derep_tRNA_seeds.log")
-    input: fasta = rules.get_unique_tRNA_fasta.output.fasta
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-map_tRNA_to_itself.log")
+    input: fasta = rules.anvi_gen_tRNAseq_database.output.fasta
     output:
-        fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}_PREFIX_DEREP_TRNA.fasta"),
-        uc = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}_UC_PREFIX_DEREP_TRNA.tsv")
-    threads: M.T('prefix_derep_tRNA_fasta')
-    resources: nodes = M.T('prefix_derep_tRNA_fasta')
-    run:
-        # All reads end in "CCA", so prefix dereplication should proceed from the 3' end.
-        revcomp_filepath = os.path.join(dirs_dict['IDENT_DIR'], "%s_REVCOMP.fasta" % wildcards.sample_split_prefix)
-        shell("vsearch --fastx_revcomp {input.fasta} --fastaout %s --fasta_width 0 >> {log} 2>&1" % revcomp_filepath)
-        revcomp_prefix_derep_filepath = os.path.join(dirs_dict['IDENT_DIR'], "%s_REVCOMP_PREFIX_DEREP.fasta" % wildcards.sample_split_prefix)
-        shell("vsearch --derep_prefix %s --output %s --uc {output.uc} --minseqlength 1 --fasta_width 0 --threads {threads} >> {log} 2>&1" % (revcomp_filepath, revcomp_prefix_derep_filepath))
-        os.remove(revcomp_filepath)
-        shell("vsearch --fastx_revcomp %s --fastaout {output.fasta} --fasta_width 0 >> {log} 2>&1" % revcomp_prefix_derep_filepath)
-        os.remove(revcomp_prefix_derep_filepath)
-
-
-rule map_tRNA:
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-map_tRNA.log")
-    input: fasta = rules.prefix_derep_tRNA_fasta.output.fasta
-    output:
-        bam = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}.bam"),
-        bam_index = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}.bam.bai")
+        sam = temp(os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}.sam")),
+        raw_bam = temp(os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-raw.bam")),
+        bam = temp(os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}.bam")),
+        bam_index = temp(os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}.bam.bai"))
     threads: M.T('map_tRNA')
     resources: nodes = M.T('map_tRNA')
+    params: max_possible_alignments = M.get_param_value_from_config(['map_tRNA_against_self', '--max-possible-alignments'])
     run:
-        shell("bowtie2-build -f {input_fasta} %s >> {log} 2>&1" % os.path.splitext(output.bam)[0])
-        sam_filepath = os.path.join(dirs_dict['IDENT_DIR'], "%s.sam" % wildcards.sample_split_prefix)
-        # Use prohibitively high gap penalties to ensure reads can only map with a mismatch and not gap in the alignment.
-        shell("bowtie2 -x %s -f {input.fasta} -S %s --very-sensitive -N 1 -k 2 --rdg 100,3 --rfg 100,3 -p {threads} >> {log} 2>&1" % (os.path.splitext(output.bam)[0], sam_filepath))
-        raw_bam_filepath = os.path.splitext(output.bam)[0] + "_RAW.bam"
-        shell("samtools view -bS %s -o %s -F 4 >> {log} 2>&1" % (sam_filepath, raw_bam_filepath))
-        os.remove(sam_filepath)
-        shell("anvi-init-bam %s -o {output.bam} -T {threads} >> {log} 2>&1" % raw_bam_filepath)
-        os.remove(raw_bam_filepath)
+        index_dir = os.path.join(tempfile.gettempdir(), "BAM_INDEX-" + wildcards.sample_split_prefix)
+        os.mkdir(index_dir)
+        index_path = os.path.join(index_dir, wildcards.sample_split_prefix)
+        shell("bowtie2-build -f {input.fasta} %s >> {log} 2>&1" % index_path)
+        # Use prohibitively high gap penalties to ensure reads can only map with a mismatch and not gaps in the alignment.
+        # Use the longest possible subsequence seed length, 32, to prioritize mapping sensitivity to specificity.
+        # Allow up to one mismatch per subsequence seed.
+        # This means that an average tRNA, length 75, can align to another average tRNA with 2-3 nucleotide substitutions.
+        # Up to two alignments are reported per sequence -- the first alignment is the sequence mapping to itself.
+        shell("bowtie2 -x %s -f {input.fasta} -S {output.sam} -L 32 -N 1 -k {params.max_possible_alignments} --rdg 100,3 --rfg 100,3 -p {threads} >> {log} 2>&1" % index_path)
+        shell("samtools view -bS {output.sam} -o {output.raw_bam} -F 4 >> {log} 2>&1")
+        shell("anvi-init-bam {output.raw_bam} -o {output.bam} -T {threads} >> {log} 2>&1")
+        shutil.rmtree(index_dir)
 
 
-rule anvi_condense_clusters:
+rule anvi_agglomerate:
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-anvi_condense_clusters.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-anvi_agglomerate.log")
     input:
-        bam = rules.map_tRNA.output.bam,
-        trnaseqdb = rules.anvi_gen_tRNAseq_database.output
+        fasta = rules.anvi_gen_tRNAseq_database.output.fasta,
+        replicate_txt = rules.anvi_gen_tRNAseq_database.output.replicate_txt,
+        bam = rules.map_tRNA_against_self.output.bam,
+        bam_index = rules.map_tRNA_against_self.output.bam_index
     output:
-        bam = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}_CONDENSED.bam"),
-        bam_index = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}_CONDENSED.bam.bai")
-    threads: M.T('anvi-condense-clusters')
-    resources: nodes = M.T('anvi_condense_clusters')
-    shell: "anvi-condense-clusters {input.bam} {output.bam} {input.trnaseqdb} >> {log} 2>&1"
+        fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-agglomerated.fasta"),
+        bam = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-agglomerated.bam"),
+        bam_index = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-agglomerated.bam.bai")
+    threads: M.T('anvi_agglomerate')
+    resources: nodes = M.T('anvi_agglomerate')
+    params: max_possible_alignments = M.get_param_value_from_config(['map_tRNA_against_self', '--max-possible-alignments'])
+    run:
+        shell("anvi-agglomerate -f {input.fasta} -b {input.bam} -F {output.fasta} -B {output.bam} -r {input.replicate_txt} -m {params.max_possible_alignments} >> {log} 2>&1")
 
 
 if 'workflows/tRNAseq' in workflow.included[0]:
-    # check if all program dependencies are met. for this line to be effective,
-    # there should be an initial dry run step (which is the default behavior of
-    # the `WorkflowSuperClass`, so you are most likely covered).
+    # Check if all program dependencies are met.
+    # For this line to be effective,
+    # there should be an initial dry run step --
+    # which is the default behavior of `WorkflowSuperClass`, so you are most likely covered.
     M.check_workflow_program_dependencies(workflow, dont_raise=True)
