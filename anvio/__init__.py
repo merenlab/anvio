@@ -2560,7 +2560,6 @@ def get_version_tuples():
             ("Profile DB version", __profile__version__),
             ("Contigs DB version", __contigs__version__),
             ("tRNA-seq DB version", __tRNAseq__version__),
-        #     ("tRNA Seeds DB version", __trnaseeds__version__),
             ("Genes DB version", __genes__version__),
             ("Auxiliary data storage version", __auxiliary_data_version__),
             ("Pan DB version", __pan__version__),
