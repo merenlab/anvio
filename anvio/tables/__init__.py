@@ -34,7 +34,6 @@ versions_for_db_types = {'contigs': contigs_db_version,
                          'genomestorage': genomes_storage_vesion,
                          'auxiliary data for coverages': auxiliary_data_version,
                          'tRNAseq': tRNAseq_db_version,
-                         'trnaseeds': trnaseeds_db_version,
                          'config': workflow_config_version}
 
 
@@ -98,18 +97,6 @@ splits_taxonomy_table_types            = [ 'text',  'numeric',]
 genes_taxonomy_table_name              = 'genes_taxonomy'
 genes_taxonomy_table_structure         = ['gene_callers_id', 'taxon_id',]
 genes_taxonomy_table_types             = [    'numeric'    ,  'numeric',]
-
-# trnaseeds_sequences_table_name         = 'trnaseeds_sequences'
-# trnaseeds_sequences_table_structure    = ['trnaseed', 'sequence']
-# trnaseeds_sequences_table_types        = ['str'     , 'str'     ]
-
-# trnaseeds_taxonomy_table_name          = 'trnaseeds_taxonomy'
-# trnaseeds_taxonomy_table_structure     = ['trnaseed', 'taxon_id']
-# trnaseeds_taxonomy_table_types         = ['str'     , 'numeric' ]
-
-# trnaseeds_info_table_name                = 'trnaseeds_basic_info'
-# trnaseeds_info_table_structure           = ['trnaseed', 'length' ]
-# trnaseeds_info_table_types               = ['str'     , 'numeric']
 
 hmm_hits_info_table_name               = 'hmm_hits_info'
 hmm_hits_info_table_structure          = ['source', 'ref' , 'search_type', 'domain', 'genes']
