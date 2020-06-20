@@ -76,12 +76,11 @@ def main(args):
 
     progress.new('Exporting annotations')
     progress.update('...')
-    headers = t.gene_function_calls_table_structure[1:]
     output = open(args.output_file, 'w')
-    output.write('\t'.join(headers) + '\n')
+    output.write('\t'.join(t.gene_function_calls_table_structure) + '\n')
     num_entries_reported = 0
     for entry in list(annotations_dict.values()):
-        output.write('\t'.join([str(entry[key]) for key in t.gene_function_calls_table_structure[1:]]) + '\n')
+        output.write('\t'.join([str(entry[key]) for key in t.gene_function_calls_table_structure]) + '\n')
         num_entries_reported += 1
     output.close()
     progress.end()
