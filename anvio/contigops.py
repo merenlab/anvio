@@ -282,9 +282,9 @@ class Auxiliary:
                     # given a value of -1, so gene_id_per_nt_in_read looks like [42, 42, 42, 42, -1,
                     # ..., -1, 42, 42]. The portion of the read after the consecutive -1's will be
                     # trimmed and not included. The solution to this problem is to better manage
-                    # which genes we include for SCV analysis. Resolving issue
-                    # https://github.com/merenlab/anvio/issues/1358 would enable a more elegant
-                    # scenario, where this would not happen.
+                    # which genes we include for SCV analysis, but the problem is that the
+                    # vectorized data we use for gene information (nt_position_info) has these
+                    # overlapping gene segments pre-baked in.
                     gene_overlap_start, gene_overlap_stop = utils.get_constant_value_blocks(gene_id_per_nt_in_read, gene_id)[0]
                     gene_overlap_start += read.reference_start
                     gene_overlap_stop += read.reference_start - 1
@@ -389,12 +389,22 @@ class Auxiliary:
             )
 
             # By design, we include SCVs only if they contain a SNV--filter out those that do not
-            cdn_profile.filter(self.get_codon_orders_that_contain_SNVs(gene_id))
-            cdn_profile.process(skip_competing_items=True)
+            codon_orders_that_contain_SNVs = self.get_codon_orders_that_contain_SNVs(gene_id)
+            if len(codon_orders_that_contain_SNVs):
+                # Only keep those that contain SNVs
+                cdn_profile.filter(codon_orders_that_contain_SNVs)
+            else:
+                # No codon orders contain SNVs
+                continue
 
-            self.split.SCV_profiles[gene_id] = cdn_profile.d
-
-            self.split.num_SCV_entries[gene_id] = len(cdn_profile.d['coverage'])
+            if cdn_profile.process(skip_competing_items=True):
+                # Processing allele counts yielded a non-zero number of codons being kept
+                self.split.SCV_profiles[gene_id] = cdn_profile.d
+                self.split.num_SCV_entries[gene_id] = len(cdn_profile.d['coverage'])
+            else:
+                # There were no codon positions worth keeping. We do not add this gene to
+                # self.split.SCV_profiles
+                pass
 
 
     def get_codon_orders_that_contain_SNVs(self, gene_id):
@@ -427,6 +437,10 @@ class Auxiliary:
         Parameters
         ==========
         bam : bamops.BAMFileObject
+
+        Notes
+        =====
+        See `variability-profile` artifact under anvio/docs/artifacts for details.
         """
 
         if not self.skip_INDEL_profiling:

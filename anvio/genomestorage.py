@@ -56,7 +56,6 @@ class GenomeStorage(object):
         self.genome_info_entries = []
         self.gene_info_entries = []
         self.gene_functions_entries = []
-        self.gene_functions_entry_id = 0
 
         if create_new:
             self.create_tables()
@@ -121,7 +120,6 @@ class GenomeStorage(object):
 
         self.num_genomes = len(self.genome_names)
         self.functions_are_available = self.db.get_meta_value('functions_are_available')
-        self.gene_functions_entry_id = self.db.get_max_value_in_column(t.genome_gene_function_calls_table_name, 'entry_id')
 
         ## load the data
         self.progress.update('Loading genomes basic info...')
@@ -134,8 +132,39 @@ class GenomeStorage(object):
         num_genes = self.db.get_row_counts_from_table(t.gene_info_table_name, where_clause)
         self.progress.new('Loading gene info', progress_total_items=num_genes)
 
+        # ------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------8<------
+        # If the user wants functions to be initialized, anvi'o will have to make a very challenging lookup
+        # to fill into self.gene_info dictionary information for each functional source for each gene callers
+        # id in each genome in the pangenome. The following code prepares a dictionary and a lookup table
+        # for fast access in the expense of some memory space. the previous code was making SQL queries for
+        # each gene callers id / genome pair. which is not too bad for small pangenomes with small number of
+        # functional sources. but when the pangenome and the number of functional sources grow, the time
+        # required for each call grows exponentially. just to give an example, the prochlorococcus pangenome
+        # took 34 minutes to initialize functions following the `anvi-display-pan` command. the following code
+        # reduces that 2 seconds.
+        if not self.skip_init_functions:
+            self.progress.update("Loading functions table into memory")
+            functions_table = self.db.get_table_as_dict(t.genome_gene_function_calls_table_name)
+
+            self.progress.update("Preparing the lookup dictionary")
+            # probably the following would have been much more elegant with pandas, but I am not sure
+            # if the lookup performance would be comparable. sorry for not trying first.
+            F = {}
+            for entry_id in functions_table:
+                genome_name, gene_callers_id = functions_table[entry_id]['genome_name'], functions_table[entry_id]['gene_callers_id']
+
+                if genome_name not in F:
+                    F[genome_name] = {}
+
+                if gene_callers_id not in F[genome_name]:
+                    F[genome_name][gene_callers_id] = set([])
+
+                F[genome_name][gene_callers_id].add(entry_id)
+        # ------>8------>8------>8------>8------>8------>8------>8------>8------>8------>8------>8------>8------>8------>8
+
+        # main loop that fills in `self.gene_info` dictionary:
         for gene_num, gene_info_tuple in enumerate(self.db.get_some_rows_from_table(t.gene_info_table_name, where_clause)):
-            genome_name, gene_caller_id, aa_sequence, dna_sequence, partial, length = gene_info_tuple
+            genome_name, gene_callers_id, aa_sequence, dna_sequence, partial, length = gene_info_tuple
 
             if gene_num % 100 == 0:
                 self.progress.increment(increment_to = gene_num)
@@ -144,7 +173,7 @@ class GenomeStorage(object):
             if genome_name not in self.gene_info:
                 self.gene_info[genome_name] = {}
 
-            self.gene_info[genome_name][gene_caller_id] = {
+            self.gene_info[genome_name][gene_callers_id] = {
                 'aa_sequence': aa_sequence,
                 'dna_sequence': dna_sequence,
                 'partial': partial,
@@ -152,13 +181,16 @@ class GenomeStorage(object):
                 'functions': {}
             }
 
-
             if not self.skip_init_functions:
-                functions = self.db.get_some_rows_from_table(t.genome_gene_function_calls_table_name,
-                                                             'genome_name = "%s" and gene_callers_id = "%s"' % (genome_name, gene_caller_id))
+                try:
+                    entry_ids_for_genome_gene = F[genome_name][gene_callers_id]
+                except:
+                    # probably we are looking one without any functions
+                    entry_ids_for_genome_gene = []
 
-                for row in functions:
-                    self.gene_info[genome_name][gene_caller_id]['functions'][row[3]] = "%s|||%s" % (row[4], row[5])
+                for entry_id in entry_ids_for_genome_gene:
+                    source, accession, function = functions_table[entry_id]['source'], functions_table[entry_id]['accession'], functions_table[entry_id]['function']
+                    self.gene_info[genome_name][gene_callers_id]['functions'][source] = "%s|||%s" % (accession, function)
 
         self.progress.end()
 
@@ -239,9 +271,9 @@ class GenomeStorage(object):
 
                 if gene_caller_id in functions_dict:
                     for source in functions_dict[gene_caller_id]:
-                        self.add_gene_function_annotation(genome_name, 
-                                                          gene_caller_id, 
-                                                          source, 
+                        self.add_gene_function_annotation(genome_name,
+                                                          gene_caller_id,
+                                                          source,
                                                           functions_dict[gene_caller_id][source])
 
                 num_gene_calls_added += 1
@@ -265,8 +297,8 @@ class GenomeStorage(object):
         self.update_storage_hash()
 
         self.run.info('The new genomes storage', '%s (v%s, signature: %s)' % (self.storage_path, self.version, self.get_storage_hash()))
-        self.run.info('Number of genomes', '%s (internal: %s, external: %s)' % (pp(len(genome_descriptions.genomes)), 
-                                                                                pp(len(genome_descriptions.internal_genome_names)), 
+        self.run.info('Number of genomes', '%s (internal: %s, external: %s)' % (pp(len(genome_descriptions.genomes)),
+                                                                                pp(len(genome_descriptions.internal_genome_names)),
                                                                                 pp(len(genome_descriptions.external_genome_names))))
         self.run.info('Number of gene calls', '%s' % pp(num_gene_calls_added_total))
         self.run.info('Number of partial gene calls', '%s' % pp(num_partial_gene_calls_total))
@@ -299,9 +331,8 @@ class GenomeStorage(object):
             return
 
         accession, function, e_value = annotation
-        values = (genome_name, self.gene_functions_entry_id, gene_caller_id, source, accession, function, e_value, )
+        values = (genome_name, gene_caller_id, source, accession, function, e_value, )
 
-        self.gene_functions_entry_id += 1
         self.gene_functions_entries.append(values)
 
 
@@ -337,7 +368,7 @@ class GenomeStorage(object):
         self.is_known_genome(genome_name)
         self.is_known_gene_call(genome_name, gene_caller_id)
 
-        column_name = 'dna_sequence' if report_DNA_sequences else 'aa_sequence' 
+        column_name = 'dna_sequence' if report_DNA_sequences else 'aa_sequence'
 
         return self.gene_info[genome_name][gene_caller_id][column_name]
 

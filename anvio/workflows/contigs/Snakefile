@@ -343,6 +343,20 @@ rule anvi_run_pfams:
     shell: " anvi-run-pfams -c {input} {params.pfam_data_dir} -T {threads} >> {log} 2>&1"
 
 
+rule anvi_run_kegg_kofams:
+    version: 1.0
+    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_run_kegg_kofams.log")
+    input: ancient(M.get_contigs_db_path())
+    output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "anvi_run_kegg_kofams-{group}.done"))
+    params:
+        kegg_data_dir = M.get_rule_param('anvi_run_kegg_kofams', '--kegg-data-dir'),
+        hmmer_program = M.get_rule_param('anvi_run_kegg_kofams', '--hmmer-program'),
+        keep_all_hits = M.get_rule_param('anvi_run_kegg_kofams', '--keep-all-hits')
+    threads: M.T('anvi_run_kegg_kofams')
+    resources: nodes = M.T('anvi_run_kegg_kofams')
+    shell: "anvi-run-kegg-kofams -c {input} {params.kegg_data_dir} {params.hmmer_program} {params.keep_all_hits} -T {threads} >> {log} 2>&1"
+
+
 rule anvi_run_ncbi_cogs:
     version: anvio.__contigs__version__
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_ncbi_cogs.log"

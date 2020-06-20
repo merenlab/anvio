@@ -35,8 +35,6 @@ class TableForSCGTaxonomy(Table):
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
 
-        self.set_next_available_id(t.scg_taxonomy_table_name)
-
 
     def add(self, blastp_search_output):
         """Incrementally adds new hits to a contigs database.
@@ -54,7 +52,7 @@ class TableForSCGTaxonomy(Table):
                 continue
 
             for scg_hit in scg_hits:
-                entries.append([self.next_id(t.scg_taxonomy_table_name), gene_callers_id, scg_name] + [scg_hit[f] for f in t.scg_taxonomy_table_structure[3:]])
+                entries.append([gene_callers_id, scg_name] + [scg_hit[f] for f in t.scg_taxonomy_table_structure[2:]])
 
         self.database.insert_many(t.scg_taxonomy_table_name, entries)
         self.database.disconnect()

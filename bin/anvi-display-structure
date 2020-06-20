@@ -20,7 +20,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Özcan Esen"
 __email__ = "ozcanesen@gmail.com"
-__requires__ = ['structure-db', 'variability-profile', 'contigs-db', 'profile-db']
+__requires__ = ['structure-db', 'variability-profile-txt', 'contigs-db', 'profile-db']
 __provides__ = ['interactive', 'summary']
 __description__ = "Interactively visualize sequence variants on protein structures"
 

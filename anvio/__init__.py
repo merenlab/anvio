@@ -821,9 +821,17 @@ D = {
             ['--kegg-data-dir'],
             {'default': None,
              'type': str,
-             'help': "The directory path for your KEGG setup, which will include things like \
-                      KOfam profiles and KEGG MODULE data. Anvi'o will try to use the default path\
-                      if you do not specify anything."}
+             'help': "The directory path for your KEGG setup, which will include things like "
+                     "KOfam profiles and KEGG MODULE data. Anvi'o will try to use the default path "
+                     "if you do not specify anything."}
+                ),
+    'kegg-archive': (
+            ['--kegg-archive'],
+            {'default': None,
+             'type': str,
+             'help': "The path to an archived KEGG directory. If you provide this parameter, anvi'o will set up "
+                     "the KEGG data directory from the archive rather than downloading and building it from "
+                     "the KEGG website."}
                 ),
     'hide-outlier-SNVs': (
             ['--hide-outlier-SNVs'],
@@ -2467,6 +2475,45 @@ D = {
             'help': "If you have a JSON file containing KOfam hits and gene call information from your contigs database "
                     "(such as a file produced using the --get-raw-data-as-json flag), you can provide that file to this flag "
                     "and KEGG metabolism estimates will be computed from the information within instead of from a contigs database."}
+                ),
+    'kegg-output-modes': (
+            ['--kegg-output-modes'],
+            {'default': None,
+            'metavar': 'MODES',
+            'type': str,
+            'help': "Use this flag to indicate what information you want in the kegg metabolism output files, by "
+                    "providing a comma-separated list of output modes (each 'mode' you provide will result in a "
+                    "different output file, all with the same prefix). The default output modes are 'kofam_hits' and "
+                    "'complete_modules'. To see a list of available output modes, run this script with the flag "
+                    "--list-available-modes."}
+                ),
+    'list-available-modes': (
+            ['--list-available-modes'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "Use this flag to see the available output modes and their descriptions."}
+                ),
+    'custom-output-headers': (
+            ['--custom-output-headers'],
+            {'default': None,
+            'metavar': 'HEADERS',
+            'type': str,
+            'help': "For use with the 'custom' output mode. Provide a comma-separated list of headers to include "
+                    "in the output matrix. To see a list of available headers, run this script with the flag "
+                    "--list-available-output-headers."}
+                ),
+    'list-available-output-headers': (
+            ['--list-available-output-headers'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "Use this flag to see the available output headers."}
+                ),
+    'keep-all-hits': (
+            ['--keep-all-hits'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "If you use this flag, anvi'o will not get rid of any raw HMM hits, even those that "
+                    "are below the score threshold."}
                 ),
 }
 

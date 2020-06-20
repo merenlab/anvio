@@ -23,6 +23,7 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.structureops as structureops
 import anvio.variabilityops as variabilityops
+import anvio.kegg as kegg
 
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
@@ -281,7 +282,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             default_item_order = self.p_meta['item_orders'][self.p_meta['available_item_orders'][0]]
 
         if default_item_order['type'] == 'newick':
-            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_item_order['data'], reverse=True)
+            # anvi'o complains about newick trees with items names of which are composed of
+            # integers. but in the case of gene mode, all items will have integer names as
+            # gene caller ids in anvi'o are always integers
+            names_with_only_digits_ok = self.mode == 'gene'
+
+            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_item_order['data'], reverse=True, names_with_only_digits_ok=names_with_only_digits_ok)
         elif default_item_order['type'] == 'basic':
             self.displayed_item_names_ordered = default_item_order['data']
         else:
@@ -546,7 +552,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError("Sorry, there are no states to show in manual mode :/")
 
         if self.tree:
-            filesnpaths.is_proper_newick(self.tree)
+            filesnpaths.is_file_exists(self.tree)
             newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
             self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(newick_tree_text))
         elif tree_order_found_in_db:
@@ -2360,6 +2366,24 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         for item in var.items:
             columns_to_drop.extend([x for x in columns if x.startswith(item)])
         var.merged.drop(labels=columns_to_drop, axis=1, inplace=True)
+
+
+class MetabolismInteractive():
+    def __init__(self, args, run=run, progress=progress):
+        self.mode = "metabolism"
+
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.contigs_db_path = A('contigs_db') #TODO delete if we don't need this
+
+        self.estimator = kegg.KeggMetabolismEstimator(args)
+
+
+    def get_metabolism_data(self):
+        return self.estimator.get_metabolism_data_for_visualization()
 
 
 class ContigsInteractive():

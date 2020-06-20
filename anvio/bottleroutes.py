@@ -183,6 +183,7 @@ class BottleApplication(Bottle):
         self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
         self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
+        self.route('/data/get_metabolism',                     callback=self.get_metabolism)
 
 
     def run_application(self, ip, port):
@@ -195,9 +196,14 @@ class BottleApplication(Bottle):
                                     % {'wsgi': self._wsgi_for_bottle})
 
         try:
-            with terminal.SuppressAllOutput():
+            # allow output to terminal when debugging
+            if anvio.DEBUG:
                 server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': self._wsgi_for_bottle})
                 server_process.start()
+            else:
+                with terminal.SuppressAllOutput():
+                    server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': self._wsgi_for_bottle})
+                    server_process.start()
 
             url = "http://%s:%d" % (ip, port)
 
@@ -245,6 +251,8 @@ class BottleApplication(Bottle):
             homepage = 'contigs.html'
         elif self.interactive.mode == 'structure':
             homepage = 'structure.html'
+        elif self.interactive.mode == 'metabolism':
+            homepage = 'metabolism.html'
         elif self.interactive.mode == 'inspect':
             redirect('/app/charts.html?id=%s&show_snvs=true&rand=%s' % (self.interactive.inspect_split_name, self.random_hash(8)))
 
@@ -831,7 +839,8 @@ class BottleApplication(Bottle):
         items_order_entry = self.interactive.p_meta['item_orders'][order_name]
         items_order = None
         if items_order_entry['type'] == 'newick':
-            items_order = utils.get_names_order_from_newick_tree(items_order_entry['data'])
+            names_with_only_digits_ok = self.interactive.mode == 'gene'
+            items_order = utils.get_names_order_from_newick_tree(items_order_entry['data'], names_with_only_digits_ok=names_with_only_digits_ok)
         else:
             items_order = items_order_entry['data']
 
@@ -1307,6 +1316,10 @@ class BottleApplication(Bottle):
         return json.dumps(self.interactive.get_column_info(gene_callers_id, engine))
 
 
+    def get_metabolism(self):
+        return json.dumps(self.interactive.get_metabolism_data())
+
+
     def get_structure(self, gene_callers_id):
         return json.dumps(self.interactive.get_structure(gene_callers_id))
 
@@ -1400,4 +1413,3 @@ class BottleApplication(Bottle):
             return json.dumps({'status': 1, 'message': message})
 
         return json.dumps(output)
-

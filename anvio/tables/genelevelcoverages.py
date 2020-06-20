@@ -62,7 +62,6 @@ class TableForGeneLevelCoverages(Table):
         Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run=self.run, progress=self.progress)
 
         self.num_entries = 0
-        self.set_next_available_id(self.table_name)
 
         self.collection_name = db.DB(self.db_path, None, ignore_version=True).get_meta_value('collection_name')
         self.bin_name = db.DB(self.db_path, None, ignore_version=True).get_meta_value('bin_name')
@@ -195,16 +194,16 @@ class TableForGeneLevelCoverages(Table):
                 entry = data[gene_callers_id][sample_name]
 
                 d = []
-                for h in self.table_structure[1:]:
+                for h in self.table_structure:
                     if h in ['gene_coverage_values_per_nt', 'non_outlier_positions']:
                         d.append(utils.convert_numpy_array_to_binary_blob(np.array(entry[h]), 'uint16'))
                     else:
                         d.append(entry[h])
 
-                db_entries.append(tuple([self.next_id(self.table_name)] + d), )
+                db_entries.append(tuple(d), )
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?)''' % self.table_name, db_entries)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % self.table_name, db_entries)
 
         for parameter in self.parameters:
             database.remove_meta_key_value_pair(parameter)
