@@ -35,15 +35,15 @@ def main(args):
     progress.update('...')
     contigs_db = dbops.ContigsDatabase(args.contigs_db)
     annotation_sources = contigs_db.meta['gene_function_sources']
-    annotations_dict = contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name)
+    functions_dict = contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name)
     contigs_db.disconnect()
     progress.end()
 
     if not annotation_sources:
-        raise ConfigError("This contigs database does not have any functional annotations :/")
+        raise ConfigError("This contigs database does not have any functional functions :/")
 
     if args.list_annotation_sources:
-        run.warning('', 'ANNOTATION SOURCE%s FOUND' % 'S' if len(annotation_sources) > 1 else '', lc='yellow')
+        run.warning('', 'FUNCTIONAL ANNOTATION SOURCE%s FOUND' % 'S' if len(annotation_sources) > 1 else '', lc='yellow')
         for annotation_source in annotation_sources:
             if annotation_source == annotation_sources[-1]:
                 run.info_single('%s' % annotation_source, nl_after=1)
@@ -69,23 +69,23 @@ def main(args):
         run.info('Requested sources', '%s.' % (', '.join(requested_sources)))
 
         progress.new('Initializing')
-        progress.update('Filtering the annotations dict ...')
-        annotations_dict = utils.get_filtered_dict(annotations_dict, 'source', set(requested_sources))
+        progress.update('Filtering the functions dict ...')
+        functions_dict = utils.get_filtered_dict(functions_dict, 'source', set(requested_sources))
         progress.end()
 
 
-    progress.new('Exporting annotations')
+    progress.new('Exporting functions')
     progress.update('...')
     output = open(args.output_file, 'w')
     output.write('\t'.join(t.gene_function_calls_table_structure) + '\n')
     num_entries_reported = 0
-    for entry in list(annotations_dict.values()):
+    for entry in list(functions_dict.values()):
         output.write('\t'.join([str(entry[key]) for key in t.gene_function_calls_table_structure]) + '\n')
         num_entries_reported += 1
     output.close()
     progress.end()
 
-    run.info('Number of annotations reported', num_entries_reported, mc='green')
+    run.info('Number of functions reported', num_entries_reported, mc='green')
     run.info('Output file', args.output_file)
 
 
