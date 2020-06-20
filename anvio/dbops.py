@@ -2041,7 +2041,7 @@ class PanSuperclass(object):
         if not gene_clusters_dict:
             if not self.gene_clusters_initialized:
                 raise ConfigError("You need to initialize the gene clusters dictionary if you want to apply filters on it. "
-                                  "See relevant memeber functions in your instance of PanSuperClass.")
+                                  "See relevant memeber functions in your instance of PanSuperclass.")
 
             gene_clusters_dict = copy.deepcopy(self.gene_clusters)
 

@@ -11,6 +11,8 @@ import statistics
 import json
 import time
 import hashlib
+import pandas as pd
+import scipy.sparse as sps
 from scipy import stats
 
 import anvio
@@ -27,6 +29,7 @@ from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileDatabase
 from anvio.constants import KEGG_SETUP_INTERVAL
+from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -38,7 +41,122 @@ __email__ = "iveseli@uchicago.edu"
 
 run = terminal.Run()
 progress = terminal.Progress()
+run_quiet = terminal.Run(log_file_path=None, verbose=False)
+progress_quiet = terminal.Progress(verbose=False)
 pp = terminal.pretty_print
+
+"""Some critical constants for metabolism estimation output formatting."""
+# dict containing possible output modes
+# output_suffix should be unique to a mode so that multiple output modes can be used at once
+# headers list describes which information to include in the output file; see OUTPUT_HEADERS dict below for more info
+# only_complete flag indicates whether to only include modules over completeness threshold in the output file
+# description is what is printed when --list-available-modes parameter is used
+OUTPUT_MODES = {'kofam_hits': {
+                    'output_suffix': "kofam_hits.txt",
+                    'headers': ["unique_id", "kegg_module", "module_is_complete",
+                                "module_completeness", "path_id", "path", "path_completeness",
+                                "kofam_hit", "gene_caller_id", "contig"],
+                    'only_complete': False,
+                    'description': "Information on each KOfam hit in the contigs DB"
+                    },
+                'modules': {
+                    'output_suffix': "modules.txt",
+                    'headers': ["unique_id", "kegg_module", "module_name", "module_class", "module_category",
+                                "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
+                                "kofam_hits_in_module", "gene_caller_ids_in_module"],
+                    'only_complete': True,
+                    'description': "Completeness information on KEGG modules. Only modules whose completeness is above the "
+                                   "threshold will be included, but you include all modules by running with --module-completion-threshold 0"
+                    },
+                'custom': {
+                    'output_suffix': "custom.txt",
+                    'headers': None,
+                    'only_complete': False,
+                    'description': "A custom tab-delimited output file where you choose the included data using --custom-output-headers"
+                    }
+                }
+# dict containing matrix headers of information that we can output in custom mode
+# key corresponds to the header's key in output dictionary (returned from generate_output_dict() function)
+# cdict_key is the header's key in module-level completion dictionary (if any)
+# description is printed when --list-available-output-headers parameter is used
+OUTPUT_HEADERS = {'unique_id' : {
+                        'cdict_key': None,
+                        'description': "Just an integer that keeps our data organized. No real meaning here. Always included in output, so no need to specify it on the command line"
+                        },
+                  'kegg_module' : {
+                        'cdict_key': None,
+                        'description': "KEGG module number"
+                        },
+                  'module_is_complete' : {
+                        'cdict_key': 'complete',
+                        'description': "Whether a KEGG module is considered complete or not based on its percent completeness and the completeness threshold"
+                        },
+                  'module_completeness' : {
+                        'cdict_key': 'percent_complete',
+                        'description': "Percent completeness of a KEGG module"
+                        },
+                  'module_name' : {
+                        'cdict_key': None,
+                        'description': "English name/description of a KEGG module"
+                        },
+                  'module_class' : {
+                        'cdict_key': None,
+                        'description': "Metabolism class of a KEGG module"
+                        },
+                  'module_category' : {
+                        'cdict_key': None,
+                        'description': "Metabolism category of a KEGG module"
+                        },
+                  'module_subcategory' : {
+                        'cdict_key': None,
+                        'description': "Metabolism subcategory of a KEGG module"
+                        },
+                  'module_definition' : {
+                        'cdict_key': None,
+                        'description': "KEGG-formatted definition of a KEGG module. Describes the metabolic pathway "
+                                       "in terms of the KOS that belong to the module"
+                        },
+                  'gene_caller_ids_in_module': {
+                        'cdict_key': None,
+                        'description': "Comma-separated list of gene caller IDs of KOfam hits in a module"
+                        },
+                  'gene_caller_id': {
+                        'cdict_key': None,
+                        'description': "Gene caller ID of a single KOfam hit in the contigs DB. If you choose this header, each "
+                                       "line in the output file will be a KOfam hit"
+                        },
+                  'kofam_hits_in_module' : {
+                        'cdict_key': None,
+                        'description': "Comma-separated list of KOfam hits in a module"
+                        },
+                  'kofam_hit' : {
+                        'cdict_key': 'kofam_hits',
+                        'description': "KO number of a single KOfam hit. If you choose this header, each line in the output file "
+                                       "will be a KOfam hit"
+                        },
+                  'contig' : {
+                        'cdict_key': 'genes_to_contigs',
+                        'description': "Contig that a KOfam hit is found on. If you choose this header, each line in the output "
+                                       "file will be a KOfam hit"
+                        },
+                  'path_id' : {
+                        'cdict_key': None,
+                        'description': "Integer ID for a path through a KEGG module. No real meaning and just for data organization. "
+                                       "If you choose this header, each line in the output file will be a KOfam hit"
+                        },
+                  'path' : {
+                        'cdict_key': 'paths',
+                        'description': "A path through a KEGG module (a linear sequence of KOs that together represent each metabolic step "
+                                       "in the module. Most modules have several of these due to KO redundancy). If you choose this header, "
+                                       "each line in the output file will be a KOfam hit"
+                        },
+                  'path_completeness' : {
+                        'cdict_key': 'pathway_completeness',
+                        'description': "Percent completeness of a particular path through a KEGG module. If you choose this header, each line "
+                                       "in the output file will be a KOfam hit"
+                        },
+                  }
+
 
 
 class KeggContext(object):
@@ -47,7 +165,8 @@ class KeggContext(object):
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         # default data directory will be called KEGG and will store the KEGG Module data as well
-        self.kegg_data_dir = A('kegg_data_dir') or os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
+        self.default_kegg_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG')
+        self.kegg_data_dir = A('kegg_data_dir') or self.default_kegg_dir
         self.orphan_data_dir = os.path.join(self.kegg_data_dir, "orphan_data")
         self.module_data_dir = os.path.join(self.kegg_data_dir, "modules")
         self.hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
@@ -171,6 +290,7 @@ class KeggSetup(KeggContext):
         self.args = args
         self.run = run
         self.progress = progress
+        self.kegg_archive_path = args.kegg_archive
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -182,11 +302,12 @@ class KeggSetup(KeggContext):
         if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
 
-        filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
-        filesnpaths.gen_output_directory(self.hmm_data_dir, delete_if_exists=args.reset)
-        filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
-        filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
-        filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
+        if not self.kegg_archive_path:
+            filesnpaths.gen_output_directory(self.kegg_data_dir, delete_if_exists=args.reset)
+            filesnpaths.gen_output_directory(self.hmm_data_dir, delete_if_exists=args.reset)
+            filesnpaths.gen_output_directory(self.orphan_data_dir, delete_if_exists=args.reset)
+            filesnpaths.gen_output_directory(self.module_data_dir, delete_if_exists=args.reset)
+            filesnpaths.gen_output_directory(self.pathway_data_dir, delete_if_exists=args.reset)
 
         # ftp path for HMM profiles and KO list
             # for ko list, add /ko_list.gz to end of url
@@ -238,9 +359,16 @@ class KeggSetup(KeggContext):
 
         self.run.info("Kofam Profile Database URL", self.database_url)
 
-        for file_name in self.files.keys():
-            utils.download_file(self.database_url + '/' + file_name,
-                os.path.join(self.kegg_data_dir, file_name), progress=self.progress, run=self.run)
+        try:
+            for file_name in self.files.keys():
+                utils.download_file(self.database_url + '/' + file_name,
+                    os.path.join(self.kegg_data_dir, file_name), progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download KEGG KOfam profiles from the KEGG website. Something "
+                              "likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
 
 
     def process_module_file(self):
@@ -311,7 +439,9 @@ class KeggSetup(KeggContext):
                                       "made the file unparseable. It is likely that an update to KEGG has broken "
                                       "things such that anvi'o doesn't know what is going on anymore. Sad, we know. :( "
                                       "Please contact the developers to see if this is a fixable issue, and in the "
-                                      "meantime use an older version of the KEGG data directory (if you have one)." % (self.kegg_module_file, first_char))
+                                      "meantime use an older version of the KEGG data directory (if you have one). "
+                                      "If we cannot fix it, we may be able to provide you with a legacy KEGG "
+                                      "data archive that you can use to setup KEGG with the --kegg-archive flag." % (self.kegg_module_file, first_char))
         self.progress.end()
 
 
@@ -382,7 +512,9 @@ class KeggSetup(KeggContext):
                                       "made the file unparseable. It is likely that an update to KEGG has broken "
                                       "things such that anvi'o doesn't know what is going on anymore. Sad, we know. :( "
                                       "Please contact the developers to see if this is a fixable issue, and in the "
-                                      "meantime use an older version of the KEGG data directory (if you have one)." % (self.kegg_pathway_file, first_char))
+                                      "meantime use an older version of the KEGG data directory (if you have one). "
+                                      "If we cannot fix it, we may be able to provide you with a legacy KEGG "
+                                      "data archive that you can use to setup KEGG with the --kegg-archive flag." % (self.kegg_pathway_file, first_char))
         self.progress.end()
 
 
@@ -396,7 +528,14 @@ class KeggSetup(KeggContext):
         self.run.info("KEGG Module Database URL", self.kegg_rest_api_get)
 
         # download the kegg module file, which lists all modules
-        utils.download_file(self.kegg_module_download_path, self.kegg_module_file, progress=self.progress, run=self.run)
+        try:
+            utils.download_file(self.kegg_module_download_path, self.kegg_module_file, progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download the KEGG Module htext file from the KEGG website. Something "
+                              "likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
 
         # get module dict
         self.process_module_file()
@@ -414,7 +553,10 @@ class KeggSetup(KeggContext):
             last_line = f.readline().strip('\n')
             if not last_line == '///':
                 raise ConfigError("The KEGG module file %s was not downloaded properly. We were expecting the last line in the file "
-                                  "to be '///', but instead it was %s." % (file_path, last_line))
+                                  "to be '///', but instead it was %s. Formatting of these files may have changed on the KEGG website. "
+                                  "Please contact the developers to see if this is a fixable issue. If it isn't, we may be able to "
+                                  "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
+                                  % (file_path, last_line))
 
 
     def download_pathways(self):
@@ -428,7 +570,14 @@ class KeggSetup(KeggContext):
         self.run.info("KEGG Pathway Database URL", self.kegg_rest_api_get)
 
         # download the kegg pathway file, which lists all modules
-        utils.download_file(self.kegg_pathway_download_path, self.kegg_pathway_file, progress=self.progress, run=self.run)
+        try:
+            utils.download_file(self.kegg_pathway_download_path, self.kegg_pathway_file, progress=self.progress, run=self.run)
+        except Exception as e:
+            print(e)
+            raise ConfigError("Anvi'o failed to download the KEGG Pathway htext file from the KEGG website. Something "
+                              "likely changed on the KEGG end. Please contact the developers to see if this is "
+                              "a fixable issue. If it isn't, we may be able to provide you with a legacy KEGG "
+                              "data archive that you can use to setup KEGG with the --kegg-archive flag.")
 
         # get pathway dict
         self.process_pathway_file()
@@ -446,7 +595,10 @@ class KeggSetup(KeggContext):
             last_line = f.readline().strip('\n')
             if not last_line == '///':
                 raise ConfigError("The KEGG pathway file %s was not downloaded properly. We were expecting the last line in the file "
-                                  "to be '///', but instead it was %s." % (file_path, last_line))
+                                  "to be '///', but instead it was %s. Formatting of these files may have changed on the KEGG website. "
+                                  "Please contact the developers to see if this is a fixable issue. If it isn't, we may be able to "
+                                  "provide you with a legacy KEGG data archive that you can use to setup KEGG with the --kegg-archive flag."
+                                  % (file_path, last_line))
 
 
     def decompress_files(self):
@@ -480,7 +632,9 @@ class KeggSetup(KeggContext):
                 if not os.path.exists(hmm_path):
                     raise ConfigError("The KOfam HMM profile at %s does not exist. This probably means that something went wrong "
                                       "while downloading the KOfam database. Please run `anvi-setup-kegg-kofams` with the --reset "
-                                      "flag." % (hmm_path))
+                                      "flag. If that still doesn't work, please contact the developers to see if the issue is fixable. "
+                                      "If it isn't, we may be able to provide you with a legacy KEGG data archive that you can use to "
+                                      "setup KEGG with the --kegg-archive flag." % (hmm_path))
 
 
     def move_orphan_files(self):
@@ -577,10 +731,121 @@ class KeggSetup(KeggContext):
 
 
     def setup_modules_db(self):
-        """This function creates the Modules DB from the Kegg Module files."""
+        """This function creates the Modules DB from the KEGG Module files."""
 
-        mod_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, module_dictionary=self.module_dict, run=run, progress=progress)
-        mod_db.create()
+        try:
+            mod_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, run=run, progress=progress)
+            mod_db.create()
+        except Exception as e:
+            print(e)
+            raise ConfigError("While attempting to build the MODULES.db, anvi'o encountered an error, which should be printed above. "
+                              "If you look at that error and it seems like something you cannot handle, please contact the developers "
+                              "for assistance, as it may be possible that a recent update to KEGG has broken our setup process. If that "
+                              "is the case, we may be able to provide you with a legacy KEGG data archive that you can use to set up "
+                              "KEGG with the --kegg-archive flag, while we try to fix things. :) ")
+
+
+    def kegg_archive_is_ok(self, unpacked_archive_path):
+        """This function checks the structure and contents of an unpacked KEGG archive and returns True if it is as expected.
+
+        Please note that we check for existence of the files that are necessary to run KEGG scripts, but we don't check the file
+        formats. This means that people could technically trick this function into returning True by putting a bunch of crappy files
+        with the right names/paths into the archive file. But what would be the point of that?
+
+        We also don't care about the contents of certain folders (ie modules) because they are not being directly used
+        when running KEGG scripts. In the case of modules, all the information should already be in the MODULES.db so we don't
+        waste our time checking that all the module files are there. We only check that the directory is there. If later changes
+        to the implementation require the direct use of the files in these folders, then this function should be updated
+        to check for those.
+        """
+
+        is_ok = True
+
+        # check top-level files and folders
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        expected_directories_and_files = [self.orphan_data_dir,
+                                          self.module_data_dir,
+                                          self.hmm_data_dir,
+                                          #self.pathway_data_dir,   #TODO: uncomment me when we start incorporating pathways
+                                          self.ko_list_file_path,
+                                          self.kegg_module_file,
+                                          #self.kegg_pathway_file,  #TODO: uncomment me when we start incorporating pathways
+                                          self.kegg_modules_db_path]
+        for f in expected_directories_and_files:
+            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
+            if not os.path.exists(path_to_f_in_archive):
+                is_ok = False
+                if anvio.DEBUG:
+                    self.run.warning("The KEGG archive does not contain the folllowing expected file or directory: %s"
+                                     % (path_to_f_in_archive))
+
+        # check hmm files
+        path_to_hmms_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(self.hmm_data_dir))
+        kofam_hmm_basename = os.path.basename(self.kofam_hmm_file_path)
+        expected_hmm_files = [kofam_hmm_basename]
+        for h in expected_hmm_files:
+            path_to_h_in_archive = os.path.join(path_to_hmms_in_archive, h)
+            if not os.path.exists(path_to_h_in_archive):
+                is_ok = False
+                if anvio.DEBUG:
+                    self.run.warning("The KEGG archive does not contain the folllowing expected hmm file: %s"
+                                     % (path_to_h_in_archive))
+            expected_extensions = ['.h3f', '.h3i', '.h3m', '.h3p']
+            for ext in expected_extensions:
+                path_to_expected_hmmpress_file = path_to_h_in_archive + ext
+                if not os.path.exists(path_to_expected_hmmpress_file):
+                    is_ok = False
+                    if anvio.DEBUG:
+                        self.run.warning("The KEGG archive does not contain the folllowing expected `hmmpress` output: %s"
+                                         % (path_to_expected_hmmpress_file))
+
+        return is_ok
+
+
+    def setup_from_archive(self):
+        """This function sets up the KEGG data directory from an archive of a previously-setup KEGG data directory.
+
+        To do so, it unpacks the archive and checks its structure and that all required components are there.
+        """
+
+        self.run.info("KEGG archive", self.kegg_archive_path)
+        self.progress.new('Unzipping KEGG archive file...')
+        if not self.kegg_archive_path.endswith("tar.gz"):
+            self.progress.reset()
+            raise ConfigError("The provided archive file %s does not appear to be an archive at all. Perhaps you passed "
+                              "the wrong file to anvi'o?" % (self.kegg_archive_path))
+        unpacked_archive_name = "KEGG_archive_unpacked"
+        utils.tar_extract_file(self.kegg_archive_path, output_file_path=unpacked_archive_name, keep_original=True)
+
+        self.progress.update('Checking KEGG archive structure and contents...')
+        archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
+        self.progress.end()
+        if archive_is_ok:
+            if os.path.exists(self.kegg_data_dir) and self.kegg_data_dir != self.default_kegg_dir:
+                raise ConfigError("You are attempting to set up KEGG from a KEGG data archive in a non-default data directory (%s) which already exists. "
+                                  "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to get rid of "
+                                  "directories that have been specified with --kegg-data-dir. If you really want to get rid of this "
+                                  "directory and replace it with the KEGG archive data, then please remove the directory yourself using "
+                                  "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
+                                  "the safest way to handle things." % (self.kegg_data_dir, self.kegg_data_dir))
+            elif os.path.exists(self.kegg_data_dir):
+                shutil.rmtree(self.kegg_data_dir)
+            path_to_kegg_in_archive = os.path.join(unpacked_archive_name, "KEGG")
+            shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
+            shutil.rmtree(unpacked_archive_name)
+
+        else:
+            debug_output = "We kept the unpacked archive for you to take a look at it. It is at %s and you may want " \
+                           "to delete it after you are done checking its contents." % os.path.abspath(unpacked_archive_name)
+            if not anvio.DEBUG:
+                shutil.rmtree(unpacked_archive_name)
+                debug_output = "The unpacked archive has been deleted, but you can re-run the script with the --debug " \
+                               "flag to keep it if you want to see its contents."
+            else:
+                self.run.warning("The unpacked archive file %s was kept for debugging purposes. You may want to "
+                                 "clean it up after you are done looking through it." % (os.path.abspath(unpacked_archive_name)))
+            raise ConfigError("The provided archive file %s does not appear to be a KEGG data directory, so anvi'o is unable "
+                              "to use it. %s" % (self.kegg_archive_path, debug_output))
 
 
     def setup_profiles(self):
@@ -590,12 +855,16 @@ class KeggSetup(KeggContext):
         It also downloads and processes the KEGG Module files into the MODULES.db.
         """
 
-        self.download_profiles()
-        self.decompress_files()
-        self.download_modules()
-        self.setup_ko_dict()
-        self.run_hmmpress()
-        self.setup_modules_db()
+        if self.kegg_archive_path:
+            self.setup_from_archive()
+        else:
+            self.download_profiles()
+            self.decompress_files()
+            self.download_modules()
+            self.download_pathways()
+            self.setup_ko_dict()
+            self.run_hmmpress()
+            self.setup_modules_db()
 
 
 class KeggRunHMMs(KeggContext):
@@ -610,9 +879,12 @@ class KeggRunHMMs(KeggContext):
         self.args = args
         self.run = run
         self.progress = progress
-        self.contigs_db_path = args.contigs_db
-        self.num_threads = args.num_threads
-        self.hmm_program = args.hmmer_program or 'hmmsearch'
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
+        self.num_threads = A('num_threads')
+        self.hmm_program = A('hmmer_program') or 'hmmsearch'
+        self.keep_all_hits = True if A('keep_all_hits') else False
         self.ko_dict = None # should be set up by setup_ko_dict()
 
         # init the base class
@@ -724,7 +996,11 @@ class KeggRunHMMs(KeggContext):
 
         # parse hmmscan output
         parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
-        search_results_dict = parser.get_search_results(noise_cutoff_dict=self.ko_dict)
+        if self.keep_all_hits:
+            run.info_single("All HMM hits will be kept regardless of score.")
+            search_results_dict = parser.get_search_results()
+        else:
+            search_results_dict = parser.get_search_results(noise_cutoff_dict=self.ko_dict)
 
         # add functions and KEGG modules info to database
         functions_dict = {}
@@ -795,12 +1071,74 @@ class KeggRunHMMs(KeggContext):
             hmmer.clean_tmp_dirs()
 
 
-class KeggMetabolismEstimator(KeggContext):
-    """ Class for reconstructing/estimating metabolism based on hits to KEGG databases.
+class KeggEstimatorArgs():
+    def __init__(self, args, format_args_for_single_estimator=False, run=run, progress=progress):
+        """A base class to assign arguments for KeggMetabolism estimator classes.
+
+        Parameters
+        ==========
+        format_args_for_single_estimator: bool
+            This is a special case where an args instance is generated to be passed to the
+            single estimator from within multi estimator. More specifically, the multi estimator
+            class is nothing but one that iterates through all contigs DBs
+            given to it using the single estimator class. So it needs to create instances of
+            single estimators, and collect results at upstream. The problem is, if a single
+            estimator is initiated with the args of a multi estimator, the sanity check will
+            go haywire. This flag nullifies most common offenders.
+        """
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.metagenome_mode = True if A('metagenome_mode') else False
+        self.module_completion_threshold = A('module_completion_threshold') or 0.75
+        self.output_file_prefix = A('output_file_prefix') or "kegg-metabolism"
+        self.write_dict_to_json = True if A('get_raw_data_as_json') else False
+        self.json_output_file_path = A('get_raw_data_as_json')
+        self.store_json_without_estimation = True if A('store_json_without_estimation') else False
+        self.estimate_from_json = A('estimate_from_json') or None
+        self.output_modes = A('kegg_output_modes') or A('output_modes') or "modules"
+        self.custom_output_headers = A('custom_output_headers') or None
+        self.matrix_format = True if A('matrix_format') else False
+        self.external_genomes_file = A('external_genomes') or None
+        self.internal_genomes_file = A('internal_genomes') or None
+        self.metagenomes_file = A('metagenomes') or None
+
+        # if necessary, assign 0 completion threshold, which evaluates to False above
+        if A('module_completion_threshold') == 0:
+            self.module_completion_threshold = 0.0
+
+        # output modes and headers that we can handle
+        self.available_modes = OUTPUT_MODES
+        self.available_headers = OUTPUT_HEADERS
+
+
+        if format_args_for_single_estimator:
+            # to fool a single estimator into passing sanity checks, nullify multi estimator args here
+            self.databases = None
+            self.matrix_format = False # we won't be storing data from the single estimator anyway
+
+        # parse requested output modes if necessary
+        if isinstance(self.output_modes, str):
+            # parse requested output modes and make sure we can handle them all
+            self.output_modes = self.output_modes.split(",")
+
+        # parse requested output headers if necessary
+        if self.custom_output_headers and isinstance(self.custom_output_headers, str):
+            self.custom_output_headers = self.custom_output_headers.split(",")
+
+            if "unique_id" not in self.custom_output_headers:
+                self.custom_output_headers = ["unique_id"] + self.custom_output_headers
+            elif self.custom_output_headers.index("unique_id") != 0:
+                self.custom_output_headers.remove("unique_id")
+                self.custom_output_headers = ["unique_id"] + self.custom_output_headers
+            self.available_modes['custom']['headers'] = self.custom_output_headers
+
+
+class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
+    """ Class for reconstructing/estimating metabolism for a SINGLE contigs DB based on hits to KEGG databases.
 
     ==========
     args: Namespace object
-        All the arguments supplied by user to anvi-estimate-kegg-metabolism
+        All the arguments supplied by user to anvi-estimate-metabolism
     """
 
     def __init__(self, args, run=run, progress=progress):
@@ -814,17 +1152,30 @@ class KeggMetabolismEstimator(KeggContext):
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
         self.bin_ids_file = A('bin_ids_file')
-        self.metagenome_mode = True if A('metagenome_mode') else False
-        self.completeness_threshold = A('module_completion_threshold') or 0.75
-        self.output_file_prefix = A('output_file_prefix') or "kegg-metabolism"
         self.contigs_db_project_name = "Unknown"
-        self.write_dict_to_json = True if A('get_raw_data_as_json') else False
-        self.json_output_file_path = A('get_raw_data_as_json')
-        self.store_json_without_estimation = True if A('store_json_without_estimation') else False
-        self.estimate_from_json = A('estimate_from_json') or None
 
+        KeggEstimatorArgs.__init__(self, self.args)
+
+        self.name_header = None
+        if self.metagenome_mode:
+            self.name_header = 'metagenome_name'
+        elif self.profile_db_path and not self.metagenome_mode:
+            self.name_header = 'bin_name'
+        elif not self.profile_db_path and not self.metagenome_mode:
+            self.name_header = 'genome_name'
+
+        # update available modes and headers with appropriate genome/bin/metagenome identifier
+        for m in self.available_modes:
+            if m != 'custom':
+                self.available_modes[m]['headers'].insert(1, self.name_header)
+        self.available_headers[self.name_header] = {
+                                        'cdict_key': None,
+                                        'description': "Name of genome/bin/metagenome in which we find KOfam hits and/or KEGG modules"
+                                        }
+
+        # input options sanity checks
         if not self.estimate_from_json and not self.contigs_db_path:
-            raise ConfigError("NO INPUT PROVIDED. You must provide (at least) a contigs database to this program, unless you are using the --estimate-from-json "
+            raise ConfigError("NO INPUT PROVIDED. You must provide (at least) a contigs database or genomes file to this program, unless you are using the --estimate-from-json "
                               "flag, in which case you must provide a JSON-formatted file.")
 
         self.bin_ids_to_process = None
@@ -837,11 +1188,12 @@ class KeggMetabolismEstimator(KeggContext):
             filesnpaths.is_file_exists(self.bin_ids_file)
             self.bin_ids_to_process = [line.strip() for line in open(self.bin_ids_file).readlines()]
 
-        if self.bin_id or self.bin_ids_file or self.collection_name and not self.profile_db_path:
+
+        if (self.bin_id or self.bin_ids_file or self.collection_name) and not self.profile_db_path:
             raise ConfigError("You have requested metabolism estimation for a bin or set of bins, but you haven't provided "
                               "a profiles database. Unfortunately, this just does not work. Please try again.")
 
-        if self.profile_db_path and not self.collection_name:
+        if not self.metagenome_mode and self.profile_db_path and not self.collection_name:
             raise ConfigError("If you provide a profiles DB, you should also provide a collection name.")
 
         if self.store_json_without_estimation and not self.json_output_file_path:
@@ -851,9 +1203,39 @@ class KeggMetabolismEstimator(KeggContext):
             raise ConfigError("It is impossible to both estimate metabolism from JSON data and produce a JSON file without estimation at the same time... "
                               "anvi'o is judging you SO hard right now.")
 
-
         if self.profile_db_path:
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+
+        # output options sanity checks
+        if anvio.DEBUG:
+            run.info("Output Modes", ", ".join(self.output_modes))
+            run.info("Matrix format", self.matrix_format)
+            run.info("Module completeness threshold", self.module_completion_threshold)
+        illegal_modes = set(self.output_modes).difference(set(self.available_modes.keys()))
+        if illegal_modes:
+            raise ConfigError("You have requested some output modes that we cannot handle. The offending modes "
+                              "are: %s. Please use the flag --list-available-modes to see which ones are acceptable."
+                              % (", ".join(illegal_modes)))
+        if self.custom_output_headers and "custom" not in self.output_modes:
+            raise ConfigError("You seem to have provided a list of custom headers without actually requesting the 'custom' output "
+                              "mode. We think perhaps you missed something, so we are stopping you right there.")
+        if "custom" in self.output_modes and not self.custom_output_headers:
+            raise ConfigError("You have requested 'custom' output mode, but haven't told us what headers to include in that output. "
+                              "You should be using the --custom-output-headers flag to do this.")
+        if self.custom_output_headers:
+            if anvio.DEBUG:
+                self.run.info("Custom Output Headers", ", ".join(self.custom_output_headers))
+            illegal_headers = set(self.custom_output_headers).difference(set(self.available_headers.keys()))
+            if illegal_headers:
+                raise ConfigError("You have requested some output headers that we cannot handle. The offending ones "
+                                  "are: %s. Please use the flag --list-available-output-headers to see which ones are acceptable."
+                                  % (", ".join(illegal_headers)))
+
+        if self.matrix_format:
+            raise ConfigError("You seem to want output in matrix format despite having only a single contigs database to work "
+                             "with. You do know that your matrices would each have only one column, right? Since that doesn't "
+                             "make much sense, we think perhaps you meant to use an input file with multiple databases instead. "
+                             "Anyhow, now is your chance to quietly go figure out what you are really doing.")
 
 
         # init the base class
@@ -869,7 +1251,48 @@ class KeggMetabolismEstimator(KeggContext):
                               "`anvi-setup-kegg-kofams`, though we are not sure how you got to this point in that case "
                               "since you also cannot run `anvi-run-kegg-kofams` without first having run KEGG setup. But fine. Hopefully "
                               "you now know what you need to do to make this message go away." % ("MODULES.db", self.kegg_data_dir))
-        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args)
+        kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
+
+        # here we load the contigs DB just for sanity check purposes.
+        # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+        self.contigs_db_project_name = contigs_db.meta['project_name']
+
+        # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
+        if 'modules_db_hash' not in contigs_db.meta:
+            raise ConfigError("Based on the contigs DB metadata, the contigs DB that you are working with has not been annotated with hits to the "
+                              "KOfam database, so there are no KOs to estimate metabolism from. Please run `anvi-run-kegg-kofams` on this contigs DB "
+                              "before you attempt to run this script again.")
+        contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
+        mod_db_hash = kegg_modules_db.db.get_meta_value('hash')
+        if contigs_db_mod_hash != mod_db_hash:
+            raise ConfigError("The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now. "
+                              "Perhaps you updated your KEGG setup after running `anvi-run-kegg-kofams` on this contigs DB? Or maybe you have multiple KEGG data "
+                              "directories set up on your computer, and the one you are using now is different from the one that you used for `anvi-run-kegg-kofams`? "
+                              "Well. The solution to the first problem is to re-run `anvi-run-kegg-kofams` on the contigs DB (%s) using the updated MODULES.db "
+                              "(located in the KEGG data directory %s). The solution to the second problem is to specify the appropriate KEGG data directory using "
+                              "the --kegg-data-dir flag. If neither of those things make this work, then you should contact the developers to see if they can help you "
+                              "figure this out. For those who need this information, the Modules DB used to annotate this contigs database previously had the "
+                              "following hash: %s. And the hash of the current Modules DB is: %s" % (self.contigs_db_path, self.kegg_data_dir, contigs_db_mod_hash, mod_db_hash))
+        contigs_db.disconnect()
+        kegg_modules_db.disconnect()
+
+
+    def list_output_modes(self):
+        """This function prints out the available output modes for the metabolism estimation script."""
+        run.warning(None, header="AVAILABLE OUTPUT MODES", lc="green")
+
+        for mode, mode_meta in self.available_modes.items():
+            self.run.info(mode, mode_meta['description'])
+
+
+    def list_output_headers(self):
+        """This function prints out the available output headers for the 'custom' output mode"""
+        run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
+
+        for header, header_meta in self.available_headers.items():
+            self.run.info(header, header_meta['description'])
+
 
     def init_hits_and_splits(self):
         """This function loads KOfam hits, gene calls, splits, and contigs from the contigs DB.
@@ -888,20 +1311,6 @@ class KeggMetabolismEstimator(KeggContext):
 
         self.progress.new('Loading data from Contigs DB')
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
-        self.contigs_db_project_name = contigs_db.meta['project_name']
-
-        # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
-        contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
-        mod_db_hash = self.kegg_modules_db.db.get_meta_value('hash')
-        if contigs_db_mod_hash != mod_db_hash:
-            raise ConfigError("The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now. "
-                                "Perhaps you updated your KEGG setup after running `anvi-run-kegg-kofams` on this contigs DB? Or maybe you have multiple KEGG data "
-                                "directories set up on your computer, and the one you are using now is different from the one that you used for `anvi-run-kegg-kofams`? "
-                                "Well. The solution to the first problem is to re-run `anvi-run-kegg-kofams` on the contigs DB (%s) using the updated MODULES.db "
-                                "(located in the KEGG data directory %s). The solution to the second problem is to specify the appropriate KEGG data directory using "
-                                "the --kegg-data-dir flag. If neither of those things make this work, then you should contact the developers to see if they can help you "
-                                "figure this out." % (self.contigs_db_path, self.kegg_data_dir))
-
         genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "gene_callers_id, split")
         genes_in_contigs = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, "gene_callers_id, contig")
         kofam_hits = contigs_db.db.get_some_columns_from_table(t.gene_function_calls_table_name, "gene_callers_id, accession",
@@ -979,6 +1388,12 @@ class KeggMetabolismEstimator(KeggContext):
             self.run.info('Bin ID', self.bin_id)
         elif self.bin_ids_file:
             self.run.info('Bin IDs file', self.bin_ids_file)
+
+        if not self.quiet and not len(kofam_hits):
+            self.run.warning("Hmmm. No KOfam hits were found in this contigs DB, so all metabolism estimate outputs will be empty. This is fine, and "
+                             "could even be biologically correct. But we thought we'd mention it just in case you thought it was weird. "
+                             "Other, technical reasons that this could have happened include: 1) you didn't annotate with `anvi-run-kegg-kofams` "
+                             "and 2) you imported KEGG functional annotations but the 'source' was not 'KOfam'.")
 
         return kofam_gene_split_contig
 
@@ -1208,7 +1623,7 @@ class KeggMetabolismEstimator(KeggContext):
         if anvio.DEBUG and len(meta_dict_for_bin[mnum]["most_complete_paths"]) > 1:
             self.run.warning("Found %d complete paths for module %s with completeness %s. " % (len(meta_dict_for_bin[mnum]["most_complete_paths"]), mnum, meta_dict_for_bin[mnum]["percent_complete"]),
                             header='DEBUG OUTPUT', lc='yellow')
-        over_complete_threshold = True if meta_dict_for_bin[mnum]["percent_complete"] >= self.completeness_threshold else False
+        over_complete_threshold = True if meta_dict_for_bin[mnum]["percent_complete"] >= self.module_completion_threshold else False
         meta_dict_for_bin[mnum]["complete"] = over_complete_threshold
         meta_dict_for_bin[mnum]["present_nonessential_kos"] = module_nonessential_kos
         if over_complete_threshold:
@@ -1269,7 +1684,7 @@ class KeggMetabolismEstimator(KeggContext):
         else:
             meta_dict_for_bin[mod]["most_complete_paths"] = []
 
-        now_complete = True if meta_dict_for_bin[mod]["percent_complete"] >= self.completeness_threshold else False
+        now_complete = True if meta_dict_for_bin[mod]["percent_complete"] >= self.module_completion_threshold else False
         meta_dict_for_bin[mod]["complete"] = now_complete
         if now_complete:
             meta_dict_for_bin["num_complete_modules"] += 1
@@ -1283,7 +1698,7 @@ class KeggMetabolismEstimator(KeggContext):
         naive redundancy = # extra hits / len(path) where a hit is "extra" if it is not the first hit to the KO.
         """
 
-        extra_hits = [num_ko_hits_in_path_dict[ko] - 1 for ko in num_ko_hits_in_path_dict if num_ko_hits_in_path_dict[ko] > 1 ]
+        extra_hits = [num_ko_hits_in_path_dict[ko] - 1 if num_ko_hits_in_path_dict[ko] > 1 else 0 for ko in num_ko_hits_in_path_dict]
         return sum(extra_hits)/len(num_ko_hits_in_path_dict.keys())
 
 
@@ -1295,6 +1710,7 @@ class KeggMetabolismEstimator(KeggContext):
         added to this 'base' redundancy to get the overall path redundancy.
         """
 
+        accepted_aggregation_measures = ["average", "median", "weighted_sum", "geometric_mean"]
         extra_hits = [num_ko_hits_in_path_dict[ko] - 1 if num_ko_hits_in_path_dict[ko] > 1 else 0 for ko in num_ko_hits_in_path_dict]
         base_redundancy = min(extra_hits) # number of extra copies of path that are 100% complete
         extra_copy_completeness = []
@@ -1317,12 +1733,31 @@ class KeggMetabolismEstimator(KeggContext):
                     aggregated_completeness += 1/(c+1) * extra_copy_completeness[c]
             elif aggregation_measure == "geometric_mean":
                 aggregated_completeness = stats.gmean(extra_copy_completeness)
-            elif aggregation_measure == "knee":
-                raise ConfigError("aggregation measure 'knee' not implemented yet")
             else:
-                raise ConfigError("The function compute_copywise_redundancy_for_path() doesn't know how to handle the aggregation measure '%s'", aggregation_measure)
+                raise ConfigError("The function compute_copywise_redundancy_for_path() doesn't know how to handle the aggregation measure '%s'. "
+                                  "Accepted aggregation measures include: %s " % (aggregation_measure, ", ".join(accepted_aggregation_measures)))
 
         return (base_redundancy + aggregated_completeness), extra_copy_completeness
+
+
+    def compute_entropy_weighted_redundancy_for_bin(self, num_ko_hits_in_path_dict):
+        """This function computes naive redundancy but weights it by the entropy of the hit distribution."""
+
+        extra_hits = [num_ko_hits_in_path_dict[ko] - 1 if num_ko_hits_in_path_dict[ko] > 1 else 0 for ko in num_ko_hits_in_path_dict]
+        total_extra_hits = sum(extra_hits)
+        num_kos = len(num_ko_hits_in_path_dict.keys())
+        naive_redundancy = total_extra_hits/num_kos
+        if all(e == 0 for e in extra_hits):
+            return 0.0
+        entropy = stats.entropy(extra_hits)
+        max_entropy_distribution = [total_extra_hits // num_kos] * num_kos
+        for i in range(total_extra_hits % num_kos):
+            max_entropy_distribution[i] += 1
+        max_entropy = stats.entropy(max_entropy_distribution)
+        # avoid divide by 0
+        max_entropy += 1e-20
+
+        return naive_redundancy * entropy/max_entropy
 
 
     def compute_module_redundancy_for_bin(self, mnum, meta_dict_for_bin):
@@ -1346,6 +1781,7 @@ class KeggMetabolismEstimator(KeggContext):
         meta_dict_for_bin[mnum]["copywise_completeness_distributions"] = []
         meta_dict_for_bin[mnum]["copywise_median"] = []
         meta_dict_for_bin[mnum]["copywise_weighted-sum"] = []
+        meta_dict_for_bin[mnum]["entropy_weighted"] = []
 
         paths_of_highest_completeness = meta_dict_for_bin[mnum]["most_complete_paths"]
         if not paths_of_highest_completeness:
@@ -1370,6 +1806,7 @@ class KeggMetabolismEstimator(KeggContext):
             meta_dict_for_bin[mnum]["copywise_weighted-sum"].append(cw_ws_redundancy)
             cw_gm_redundancy, copy_completeness_distribution = self.compute_copywise_redundancy_for_path(num_hits_per_kofam, aggregation_measure="geometric_mean")
             meta_dict_for_bin[mnum]["copywise_weighted-sum"].append(cw_gm_redundancy)
+            meta_dict_for_bin[mnum]["entropy_weighted"].append(self.compute_entropy_weighted_redundancy_for_bin(num_hits_per_kofam))
 
         return
 
@@ -1453,7 +1890,7 @@ class KeggMetabolismEstimator(KeggContext):
                                  % (", ".join(mods_with_unassociated_ko)))
 
         self.run.info("Bin name", bin_name)
-        self.run.info("Module completion threshold", self.completeness_threshold)
+        self.run.info("Module completion threshold", self.module_completion_threshold)
         self.run.info("Number of complete modules", metabolism_dict_for_list_of_splits["num_complete_modules"])
         if complete_mods:
             self.run.info("Complete modules", ", ".join(complete_mods))
@@ -1610,15 +2047,28 @@ class KeggMetabolismEstimator(KeggContext):
         return new_kegg_metabolism_superdict
 
 
-    def estimate_metabolism(self):
-        """This is the driver function for estimating metabolism.
+    def estimate_metabolism(self, skip_storing_data=False):
+        """This is the driver function for estimating metabolism for a single contigs DB.
 
         It will decide what to do based on whether the input contigs DB is a genome or metagenome.
         It returns the metabolism superdict which contains a metabolism completion dictionary for each genome/bin in the contigs db.
         The metabolism completion dictionary is keyed by KEGG module number, with a few exceptions for summary data (ie, 'num_complete_modules').
+
+        PARAMETERS
+        ==========
+        skip_storing_data : boolean
+            set to True if we don't want the metabolism data dictionary to be stored as a file (useful when using this function
+            for on-the-fly visualization or for calling estimation from a multi estimator class)
+
+        RETURNS
+        =======
+        kegg_metabolism_superdict : dictionary of dictionaries of dictionaries
+            a complex data structure containing the metabolism estimation data for each genome/bin in the contigs DB
         """
 
         kegg_metabolism_superdict = {}
+
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
 
         if self.estimate_from_json:
             kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
@@ -1635,14 +2085,18 @@ class KeggMetabolismEstimator(KeggContext):
             else:
                 raise ConfigError("This class doesn't know how to deal with that yet :/")
 
-        if not self.store_json_without_estimation:
+        self.kegg_modules_db.disconnect()
+
+        if not self.store_json_without_estimation and not skip_storing_data:
             self.store_kegg_metabolism_superdict(kegg_metabolism_superdict)
         if self.write_dict_to_json:
             self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json")
 
+        return kegg_metabolism_superdict
 
-    def store_kegg_metabolism_superdict(self, kegg_superdict):
-        """This function writes the metabolism superdict to a tab-delimited file, and also generates a file summarizing the complete modules.
+
+    def generate_output_dict(self, kegg_superdict, headers_to_include=None, only_complete_modules=False):
+        """This dictionary converts the metabolism superdict to a two-level dict containing desired headers for output.
 
         The metabolism superdict is a three-to-four-level dictionary. The first three levels are: genomes/metagenomes/bins, modules, and module completion information.
         The module completion dictionary also has some dictionaries in it, and those make up the fourth level.
@@ -1670,76 +2124,190 @@ class KeggMetabolismEstimator(KeggContext):
         where each bin-module-path-kofam_hit-gene_caller_id is keyed by an arbitrary integer. There will be a lot of redundant information
         in the rows.
 
-        The complete modules summary file includes only a portion of the information in the metabolism dictionary. Its purpose is to give the user
-        quick access to the complete modules in each bin. Every bin-module pair in this file is keyed by an arbitrary integer (with no relation to the
-        id in the other file).
+        PARAMETERS
+        ==========
+        kegg_superdict : dictionary of dictionaries of dictionaries
+            The metabolism superdict containing KO hit and KEGG module information for each bin/genome/metagenome
+
+        headers_to_include : list
+            Which headers to include in the output dictionary
+
+        only_complete_modules : boolean
+            If True, we only put information into the output dictionary for modules whose completeness is above the threshold
+
+        RETURNS
+        =======
+        d : dictionary of dictionaries
+            The output dictionary whose format is compatible for printing to a tab-delimited file
         """
 
-        hits_output_path = self.output_file_prefix + "-all_kofam_hits.txt"
-        complete_module_summary_path = self.output_file_prefix + "-complete_modules.txt"
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
 
-        name_header = None
-        if self.profile_db_path and not self.metagenome_mode:
-            name_header = "bin_name"
-        elif not self.profile_db_path and not self.metagenome_mode:
-            name_header = "genome_name"
-        elif self.metagenome_mode:
-            name_header = "metagenome_name"
+        # use the kofam_hits output mode header set by default
+        if not headers_to_include:
+            headers_to_include = set(["unique_id", self.name_header, "kegg_module", "module_is_complete", "module_completeness",
+            "path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
+        else:
+            headers_to_include = set(headers_to_include)
 
-        header_list = ["unique_id", name_header, "kegg_module", "module_is_complete", "module_completeness",
-        "path_id", "path", "path_completeness", "kofam_hit_in_path", "gene_caller_id", "contig"]
-        summary_header_list = ["unique_id", name_header, "kegg_module","module_completeness", "module_name", "module_class",
-        "module_category", "module_subcategory"]
+        # make sure all requested headers are available
+        avail_headers = set(self.available_headers.keys())
+        illegal_headers = headers_to_include.difference(avail_headers)
+        if illegal_headers:
+            raise ConfigError("Some unavailable headers were requested. These include: %s" % (", ".join(illegal_headers)))
 
+        keys_not_in_superdict = set(["unique_id", "genome_name", "bin_name", "metagenome_name", "kegg_module", "db_name",
+                                     "kofam_hits_in_module", "gene_caller_ids_in_module"])
+        module_level_headers = set(["module_name", "module_class", "module_category", "module_subcategory", "module_definition"])
+        path_and_ko_level_headers = set(["path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
+        remaining_headers = headers_to_include.difference(keys_not_in_superdict)
+        remaining_headers = remaining_headers.difference(module_level_headers)
+        remaining_headers = remaining_headers.difference(path_and_ko_level_headers)
+
+        # convert to two-level dict where unique id keys for a dictionary of information for each bin/module pair
         d = {}
-        cm_summary = {}
         unique_id = 0
-        summary_unique_id = 0
+
         for bin, mod_dict in kegg_superdict.items():
             for mnum, c_dict in mod_dict.items():
                 if mnum == "num_complete_modules":
                     continue
 
+                if anvio.DEBUG:
+                    self.run.info("Generating output for module", mnum)
 
-                if c_dict["complete"]:
-                    cm_summary[summary_unique_id] = {}
-                    cm_summary[summary_unique_id][name_header] = bin
-                    cm_summary[summary_unique_id]["kegg_module"] = mnum
-                    cm_summary[summary_unique_id]["module_completeness"] = c_dict["percent_complete"]
-                    cm_summary[summary_unique_id]["module_name"] = self.kegg_modules_db.get_module_name(mnum)
-                    mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum)
-                    cm_summary[summary_unique_id]["module_class"] = mnum_class_dict["class"]
-                    cm_summary[summary_unique_id]["module_category"] = mnum_class_dict["category"]
-                    cm_summary[summary_unique_id]["module_subcategory"] = mnum_class_dict["subcategory"]
+                if only_complete_modules and not c_dict["complete"]:
+                    continue
 
-                    summary_unique_id += 1
+                # fetch module info from db
+                module_name = self.kegg_modules_db.get_module_name(mnum)
+                mnum_class_dict = self.kegg_modules_db.get_kegg_module_class_dict(mnum)
+                module_class = mnum_class_dict["class"]
+                module_cat = mnum_class_dict["category"]
+                module_subcat = mnum_class_dict["subcategory"]
+                module_def = '"' + self.kegg_modules_db.get_kegg_module_definition(mnum) + '"'
 
-                for p_index in range(len(c_dict['paths'])):
-                    p = c_dict['paths'][p_index]
+                # handle path- and ko-level information
+                if headers_to_include.intersection(path_and_ko_level_headers):
+                    for p_index in range(len(c_dict['paths'])):
+                        p = c_dict['paths'][p_index]
 
-                    for ko in c_dict['kofam_hits']:
-                        if ko not in p:
-                            continue
+                        # handle ko-level information
+                        for ko in c_dict['kofam_hits']:
+                            if ko not in p:
+                                continue
 
-                        for gc_id in c_dict["kofam_hits"][ko]:
-                            d[unique_id] = {}
-                            d[unique_id][name_header] = bin
-                            d[unique_id]["kegg_module"] = mnum
-                            d[unique_id]["module_is_complete"] = c_dict["complete"]
-                            d[unique_id]["module_completeness"] = c_dict["percent_complete"]
-                            d[unique_id]["path_id"] = p_index
-                            d[unique_id]["path"] = ",".join(p)
-                            d[unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
-                            d[unique_id]["kofam_hit_in_path"] = ko
-                            d[unique_id]["gene_caller_id"] = gc_id
-                            d[unique_id]["contig"] = c_dict["genes_to_contigs"][gc_id]
+                            for gc_id in c_dict["kofam_hits"][ko]:
+                                d[unique_id] = {}
 
-                            unique_id += 1
+                                # kofam hit specific info
+                                if "kofam_hit" in headers_to_include:
+                                    d[unique_id]["kofam_hit"] = ko
+                                if "gene_caller_id" in headers_to_include:
+                                    d[unique_id]["gene_caller_id"] = gc_id
+                                if "contig" in headers_to_include:
+                                    d[unique_id]["contig"] = c_dict["genes_to_contigs"][gc_id]
 
-        utils.store_dict_as_TAB_delimited_file(d, hits_output_path, key_header="unique_id", headers=header_list)
-        self.run.info("Kofam hits output file", hits_output_path, nl_before=1)
-        utils.store_dict_as_TAB_delimited_file(cm_summary, complete_module_summary_path, key_header="unique_id", headers=summary_header_list)
-        self.run.info("Complete modules summary file", complete_module_summary_path)
+                                # repeated information for each hit
+                                # path specific info
+                                if "path_id" in headers_to_include:
+                                    d[unique_id]["path_id"] = p_index
+                                if "path" in headers_to_include:
+                                    d[unique_id]["path"] = ",".join(p)
+                                if "path_completeness" in headers_to_include:
+                                    d[unique_id]["path_completeness"] = c_dict["pathway_completeness"][p_index]
+
+                                # top-level keys and keys not in superdict
+                                if self.name_header in headers_to_include:
+                                    d[unique_id][self.name_header] = bin
+                                if "kegg_module" in headers_to_include:
+                                    d[unique_id]["kegg_module"] = mnum
+
+                                # module specific info
+                                if "module_name" in headers_to_include:
+                                    d[unique_id]["module_name"] = module_name
+                                if "module_class" in headers_to_include:
+                                    d[unique_id]["module_class"] = module_class
+                                if "module_category" in headers_to_include:
+                                    d[unique_id]["module_category"] = module_cat
+                                if "module_subcategory" in headers_to_include:
+                                    d[unique_id]["module_subcategory"] = module_subcat
+                                if "module_definition" in headers_to_include:
+                                    d[unique_id]["module_definition"] = module_def
+
+                                # everything else at c_dict level
+                                for h in remaining_headers:
+                                    if h not in self.available_headers.keys():
+                                        raise ConfigError("Requested header %s not available." % (h))
+                                    h_cdict_key = self.available_headers[h]['cdict_key']
+                                    if not h_cdict_key:
+                                        raise ConfigError("We don't know the corresponding key in metabolism completeness dict for header %s." % (h))
+                                    d[unique_id][h] = c_dict[h_cdict_key]
+
+                                unique_id += 1
+                else:
+                    d[unique_id] = {}
+
+                    # top-level keys and keys not in superdict
+                    if self.name_header in headers_to_include:
+                        d[unique_id][self.name_header] = bin
+                    if "kegg_module" in headers_to_include:
+                        d[unique_id]["kegg_module"] = mnum
+
+                    # module specific info
+                    if "module_name" in headers_to_include:
+                        d[unique_id]["module_name"] = module_name
+                    if "module_class" in headers_to_include:
+                        d[unique_id]["module_class"] = module_class
+                    if "module_category" in headers_to_include:
+                        d[unique_id]["module_category"] = module_cat
+                    if "module_subcategory" in headers_to_include:
+                        d[unique_id]["module_subcategory"] = module_subcat
+                    if "module_definition" in headers_to_include:
+                        d[unique_id]["module_definition"] = module_def
+
+                    # comma-separated lists of KOs and gene calls in module
+                    if "kofam_hits_in_module" in headers_to_include:
+                        kos_in_mod = c_dict['kofam_hits'].keys()
+                        d[unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod)
+                    if "gene_caller_ids_in_module" in headers_to_include:
+                        gcids_in_mod = c_dict['genes_to_contigs'].keys()
+                        gcids_in_mod = [str(x) for x in gcids_in_mod]
+                        d[unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
+
+                    # everything else at c_dict level
+                    for h in remaining_headers:
+                        if h not in self.available_headers.keys():
+                            raise ConfigError("Requested header %s not available." % (h))
+                        h_cdict_key = self.available_headers[h]['cdict_key']
+                        if not h_cdict_key:
+                            raise ConfigError("We don't know the corresponding key in metabolism completeness dict for header %s." % (h))
+                        d[unique_id][h] = c_dict[h_cdict_key]
+                    unique_id += 1
+
+        self.kegg_modules_db.disconnect()
+
+        return d
+
+
+    def store_kegg_metabolism_superdict(self, kegg_superdict):
+        """This function writes the metabolism superdict to tab-delimited files depending on which output the user requested.
+
+        The user can request a variety of output 'modes', and for each of these modes we look up the details on the output
+        format which are stored in self.available_modes, use that information to generate a dictionary of dictionaries,
+        and store that dictionary as a tab-delimited file.
+        """
+
+        for mode in self.output_modes:
+            output_path = self.output_file_prefix + "_" + self.available_modes[mode]["output_suffix"]
+            header_list = self.available_modes[mode]["headers"]
+            if not header_list:
+                raise ConfigError("Oh, dear. You've come all this way only to realize that we don't know which headers to use "
+                                  "for the %s output mode. Something is terribly wrong, and it is probably a developer's fault. :("
+                                  % (mode))
+            output_dict = self.generate_output_dict(kegg_superdict, headers_to_include=header_list, only_complete_modules=self.available_modes[mode]["only_complete"])
+            utils.store_dict_as_TAB_delimited_file(output_dict, output_path, key_header="unique_id", headers=header_list)
+            self.run.info("%s output file" % mode, output_path, nl_before=1)
 
 
     def store_metabolism_superdict_as_json(self, kegg_superdict, file_path):
@@ -1754,6 +2322,379 @@ class KeggMetabolismEstimator(KeggContext):
         self.run.info("JSON Output", file_path)
 
 
+    def get_metabolism_data_for_visualization(self):
+        """Returns a dictionary of metabolism data for visualization on the interactive interface.
+
+        This function should be called from the interactive interface class to obtain metabolism data.
+        It runs the metabolism estimation function on-the-fly to generate the data.
+        It then pulls only certain keys from the resulting dictionary and returns them to the interface.
+        """
+
+        # add keys to this list to include the data in the visualization dictionary
+        module_data_keys_for_visualization = ['percent_complete']
+
+        metabolism_dict = self.estimate_metabolism(skip_storing_data=True)
+        data_for_visualization = {}
+
+        for bin, mod_dict in metabolism_dict.items():
+            data_for_visualization[bin] = {}
+            for mnum, c_dict in mod_dict.items():
+                if mnum == "num_complete_modules":
+                    continue
+
+                data_for_visualization[bin][mnum] = {}
+                for key, value in c_dict.items():
+                    if key in module_data_keys_for_visualization:
+                        data_for_visualization[bin][mnum][key] = value
+
+        return data_for_visualization
+
+
+class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
+    """Class for reconstructing/estimating metabolism for multiple contigs DBs at a time.
+
+    Iterates through the provided DBs and estimates metabolism for each one using the KeggMetabolismEstimator class.
+
+    ==========
+    args: Namespace object
+        All the arguments supplied by user to anvi-estimate-metabolism
+    """
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        if args.contigs_db:
+            raise ConfigError("You appear to have provided both an input text file and a contigs database, and "
+                              "now anvi'o is not quite sure which one to work on. Please choose only one. :) ")
+
+        KeggEstimatorArgs.__init__(self, self.args)
+
+        if anvio.DEBUG:
+            self.run.info("Completeness threshold: multi estimator", self.module_completion_threshold)
+
+        self.databases = None
+
+        # input sanity checks
+        if (self.external_genomes_file and (self.internal_genomes_file or self.metagenomes_file)) \
+            or (self.internal_genomes_file and (self.external_genomes_file or self.metagenomes_file)) \
+            or (self.metagenomes_file and (self.external_genomes_file or self.internal_genomes_file)):
+                raise ConfigError("Multiple file inputs were provided. Please choose only one at a time to make "
+                                  "things easier on everybody.")
+
+        if args.estimate_from_json or args.store_json_without_estimation or args.get_raw_data_as_json:
+            raise ConfigError("You've provided some JSON parameters. We are sorry to say that these parameters don't "
+                              "work for input files with multiple contigs DBs. :( ")
+
+        # output sanity checks
+        if self.matrix_format and args.kegg_output_modes:
+            raise ConfigError("Please request EITHER long-format output modes OR matrix format. When you ask for both "
+                              "like this, anvi'o is confused. :) ")
+
+        # set name header
+        if self.metagenomes_file:
+            self.name_header = 'metagenome_name'
+        elif self.external_genomes_file:
+            self.name_header = 'genome_name'
+        elif self.internal_genomes_file:
+            self.name_header = 'bin_name'
+
+
+    def list_output_modes(self):
+        """This function prints out the available output modes for the metabolism estimation script."""
+
+        run.warning(None, header="AVAILABLE OUTPUT MODES", lc="green")
+
+        for mode, mode_meta in self.available_modes.items():
+            self.run.info(mode, mode_meta['description'])
+
+    def update_available_headers_for_multi(self):
+        """This function updates the available headers dictionary to reflect all possibilities in the multiple DB case."""
+
+        self.available_headers["db_name"] = {
+                                        'cdict_key': None,
+                                        'description': "Name of contigs DB. Always included in output, so no need to specify on the command line"
+        }
+        if self.name_header == 'genome_name':
+            self.available_headers["genome_name"] = {
+                                            'cdict_key': None,
+                                            'description': "Name of genome in which we find KOfam hits and/or KEGG modules"
+                                            }
+        elif self.name_header == 'bin_name':
+            self.available_headers["bin_name"] = {
+                                            'cdict_key': None,
+                                            'description': "Name of bin in which we find KOfam hits and/or KEGG modules"
+                                            }
+        elif self.name_header == 'metagenome_name':
+            self.available_headers["metagenome_name"] = {
+                                            'cdict_key': None,
+                                            'description': "Name of metagenome in which we find KOfam hits and/or KEGG modules"
+                                            }
+
+
+    def list_output_headers(self):
+        """This function prints out the available output headers for the 'custom' output mode"""
+
+        # include all possibilities for genome/bin/metagenome name in the output since we don't know which cases
+        # we will find in the metagenomes file
+        self.update_available_headers_for_multi()
+
+        run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
+
+        for header, header_meta in self.available_headers.items():
+            self.run.info(header, header_meta['description'])
+
+
+    def init_metagenomes(self):
+        """This function parses the input metagenomes file and adjusts class attributes as needed"""
+
+        g = MetagenomeDescriptions(self.args, run=self.run, progress=self.progress, enforce_single_profiles=False)
+        g.load_metagenome_descriptions()
+
+        # enforce metagenome mode
+        if not self.metagenome_mode:
+            self.metagenome_mode = True
+
+        self.databases = copy.deepcopy(g.metagenomes)
+        self.database_names = copy.deepcopy(g.metagenome_names)
+
+
+    def init_external_internal_genomes(self):
+        """This function parses the input internal/external genomes file and adjusts class attributes as needed"""
+
+        g = GenomeDescriptions(self.args, run=self.run, progress=progress_quiet)
+        g.load_genomes_descriptions(skip_functions=True)
+
+        # metagenome mode must be off
+        if self.metagenome_mode:
+            self.metagenome_mode = False
+
+        self.databases = copy.deepcopy(g.genomes)
+        if self.external_genomes_file:
+            self.database_names = copy.deepcopy(g.external_genome_names)
+        else:
+            self.database_names = copy.deepcopy(g.internal_genome_names)
+
+
+    def get_args_for_single_estimator(self, db_name):
+        """Returns args formatted for an instance of KeggMetabolismEstimator that will work on a contigs DB. Very tricksy.
+
+        PARAMETERS
+        ==========
+        db_name : string
+            the name of the contigs DB that the estimator will work on
+
+        RETURNS
+        =======
+        args : Namespace object
+            a set of arguments modified for use by a single estimator
+        """
+
+        args = KeggEstimatorArgs(self.args, format_args_for_single_estimator=True)
+
+        if db_name not in self.databases:
+            raise ConfigError("We cannot initialize a single estimator for the contigs DB '%s' because it is not in the metagenomes dictionary."
+                              % (db_name))
+
+        args.contigs_db = self.databases[db_name]['contigs_db_path']
+        if 'profile_db_path' in self.databases[db_name]:
+            args.profile_db = self.databases[db_name]['profile_db_path']
+        if 'collection_id' in self.databases[db_name]:
+            args.collection_name = self.databases[db_name]['collection_id']
+        if 'bin_id' in self.databases[db_name]:
+            args.bin_id = self.databases[db_name]['bin_id']
+
+        args.metagenome_mode = self.metagenome_mode
+        args.quiet = True
+
+        self.update_available_headers_for_multi()
+
+        if anvio.DEBUG:
+            self.run.info("Completeness threshold: single estimator", args.module_completion_threshold)
+
+        return args
+
+
+    def get_metabolism_superdict_multi(self):
+        """The function that calls metabolism on each individual contigs db and aggregates the results into one dictionary."""
+
+        metabolism_super_dict = {}
+
+        total_num_metagenomes = len(self.database_names)
+        self.progress.new("Estimating metabolism for contigs DBs", progress_total_items=total_num_metagenomes)
+
+        for metagenome_name in self.database_names:
+            args = self.get_args_for_single_estimator(metagenome_name)
+            self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, total_num_metagenomes, metagenome_name))
+            metabolism_super_dict[metagenome_name] = KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(skip_storing_data=True)
+
+            self.progress.increment()
+            self.progress.reset()
+
+        self.progress.end()
+
+        return metabolism_super_dict
+
+
+    def get_metabolism_superdict_multi_as_data_frame(self, kegg_superdict_multi_output_version):
+        """Converts the metabolism data (already formatted for output) into a data frame for easier processing.
+
+        PARAMETERS
+        ==========
+        kegg_superdict_multi_output_version : dictionary
+            the metabolism estimation data for multiple contigs DBs, already formatted nicely for printing
+
+        RETURNS
+        =======
+        that same data, but in a Pandas data frame
+        """
+
+        self.progress.new("Data dict to dataframe")
+        self.progress.update("Bleep very complex stuff bloop")
+
+        df = pd.DataFrame.from_dict({(i,j): kegg_superdict_multi_output_version[i][j]
+                                        for i in kegg_superdict_multi_output_version.keys()
+                                        for j in kegg_superdict_multi_output_version[i].keys()}, orient='index')
+        df.reset_index(inplace=True)
+        df.rename(columns={"level_0": "db_name"}, inplace=True)
+        df.drop(['level_1'], axis=1, inplace=True)
+
+        self.progress.end()
+
+        return df
+
+
+    def get_metabolism_superdict_multi_for_output(self, kegg_superdict_multi, output_mode, as_data_frame=False):
+        """Arranges the multi-contigs DB metabolism data into a better format for printing
+
+        PARAMETERS
+        ==========
+        kegg_superdict_multi : dictionary
+            the metabolism estimation data for multiple different contigs DBs
+        output_mode : string
+            which output format to use
+        as_data_frame : boolean
+            whether to return the formatted data in a data frame rather than a dictionary
+
+        RETURNS
+        =======
+        Metabolism data, either in a formatted dictionary or a data frame
+        """
+
+        kegg_metabolism_superdict_multi_output_version = {}
+
+        if output_mode not in self.available_modes:
+            raise ConfigError("While trying to format the metabolism data for the output mode '%s', we realized that this "
+                              "output mode does not, in fact, exist. Bummer." % (output_mode))
+
+        for metagenome_name in kegg_superdict_multi:
+            args = self.get_args_for_single_estimator(metagenome_name)
+            single_estimator = KeggMetabolismEstimator(args, run=run_quiet)
+
+            header_list = single_estimator.available_modes[output_mode]["headers"]
+            if anvio.DEBUG:
+                self.run.info("Output header list for db %s" % metagenome_name, header_list)
+            if not header_list:
+                raise ConfigError("Oh, dear. You've come all this way only to realize that we don't know which headers to use "
+                                  "for the %s output mode. Something is terribly wrong. Perhaps you should try telling us what "
+                                  "headers to use with the --custom-output-headers flag. If that doesn't work, contact the developers. :)"
+                                  % (output_mode))
+            single_dict = single_estimator.generate_output_dict(kegg_superdict_multi[metagenome_name], headers_to_include=header_list, only_complete_modules=self.available_modes[output_mode]["only_complete"])
+
+            kegg_metabolism_superdict_multi_output_version[metagenome_name] = single_dict
+
+        if as_data_frame:
+            return self.get_metabolism_superdict_multi_as_data_frame(kegg_metabolism_superdict_multi_output_version)
+        else:
+            return kegg_metabolism_superdict_multi_output_version
+
+
+    def store_metabolism_superdict_multi_long_format(self, kegg_superdict_multi):
+        """Stores the multi-contigs DB metabolism data in long format (tab-delimited files, one per requested output mode)"""
+
+        for mode in self.output_modes:
+            df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, output_mode=mode, as_data_frame=True)
+
+            output_file_path = self.output_file_prefix + "_" + self.available_modes[mode]["output_suffix"]
+            df.to_csv(output_file_path, index=True, index_label="unique_id", sep='\t', na_rep='NA')
+
+            self.run.info("Long-format output", output_file_path)
+
+
+    def store_metabolism_superdict_multi_matrix_format(self, kegg_superdict_multi):
+        """Stores the multi-contigs DB metabolism data in several matrices.
+
+        Contigs DBs are arranged in columns and KEGG modules are arranged in rows.
+        Each module statistic (ie, completeness, presence/absence) will be in a different file.
+        """
+
+        # we use module output mode because that gets us all the relevant information in the dataframe
+        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, output_mode="modules", as_data_frame=True)
+        df.set_index(['db_name', 'kegg_module'], inplace=True)
+
+
+        # module stats that each will be put in separate matrix file
+        # stat is key, corresponding header in df is value
+        module_matrix_stats = {"completeness" : "module_completeness", "presence" : "module_is_complete"}
+
+        for stat, header in module_matrix_stats.items():
+            matrix = sps.coo_matrix((df[header], (df.index.labels[1], df.index.labels[0]))).todense().tolist()
+
+            cols = ["module"] + df.index.levels[0].tolist()
+            rows = df.index.levels[1].tolist()
+
+            output_file_path = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat)
+
+            with open(output_file_path, 'w') as output:
+                output.write('\t'.join(cols) + '\n')
+                for i in range(0, len(matrix)):
+                    output.write('\t'.join([rows[i]] + ['%.2f' % c for c in matrix[i]]) + '\n')
+
+            self.run.info('Output matrix for "%s"' % stat, output_file_path)
+
+
+    def store_metabolism_superdict_multi(self, kegg_superdict_multi):
+        """A driver function to store metabolism data in the requested output format"""
+
+        if self.matrix_format:
+            self.store_metabolism_superdict_multi_matrix_format(kegg_superdict_multi)
+        else:
+            self.store_metabolism_superdict_multi_long_format(kegg_superdict_multi)
+
+
+    def estimate_metabolism(self):
+        """A driver function to run metabolism estimation on each provided contigs DB."""
+
+        if not self.databases:
+            self.progress.new("Initializing contigs DBs")
+            self.progress.update("...")
+            if self.metagenomes_file:
+                self.progress.reset()
+                self.run.info("Metagenomes file", self.metagenomes_file)
+                self.init_metagenomes()
+            elif self.external_genomes_file:
+                self.progress.reset()
+                self.run.info("External genomes file", self.external_genomes_file)
+                self.init_external_internal_genomes()
+            elif self.internal_genomes_file:
+                self.progress.reset()
+                self.run.info("Internal genomes file", self.internal_genomes_file)
+                self.init_external_internal_genomes()
+            else:
+                self.progress.reset()
+                raise ConfigError("Whooops. We are not sure how you got to this point without an input file, "
+                                  "but you did, and now we have to crash becasue we cannot estimate metabolism "
+                                  "without inputs. :/")
+            self.progress.end()
+            self.run.info("Num Contigs DBs in file", len(self.database_names))
+            self.run.info('Metagenome Mode', self.metagenome_mode)
+
+        kegg_metabolism_superdict_multi = self.get_metabolism_superdict_multi()
+
+        self.store_metabolism_superdict_multi(kegg_metabolism_superdict_multi)
+
+
 class KeggModulesDatabase(KeggContext):
     """To create or access a Modules DB.
 
@@ -1761,29 +2702,38 @@ class KeggModulesDatabase(KeggContext):
     Kegg Module files.
     """
 
-    def __init__(self, db_path, args, module_dictionary=None, run=run, progress=progress, quiet=False):
+    def __init__(self, db_path, args, module_dictionary=None, pathway_dictionary=None, run=run, progress=progress, quiet=False):
         self.db = None
         self.db_path = db_path
         self.module_dict = module_dictionary
+        self.pathway_dict = pathway_dictionary
         self.run = run
         self.progress = progress
         self.quiet = quiet
+
+        if anvio.DEBUG:
+            self.run.info("Modules DB quiet param", self.quiet)
 
         # init the base class for access to shared paths and such
         KeggContext.__init__(self, args)
 
         # modules table info
-        # I wonder if these should be moved to the tables __init__.py at some point?
-        self.module_table_name = "kegg_modules"
-        self.module_table_structure = ['module', 'data_name', 'data_value', 'data_definition', 'line']
-        self.module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
+        self.module_table_name = t.module_table_name
+        self.module_table_structure = t.module_table_structure
+        self.module_table_types = t.module_table_types
+
+        # pathway maps table info
+        self.pathway_table_name = t.pathway_table_name
+        self.pathway_table_structure = t.pathway_table_structure
+        self.pathway_table_types = t.pathway_table_types
 
         if os.path.exists(self.db_path):
             utils.is_kegg_modules_db(self.db_path)
             self.db = db.DB(self.db_path, anvio.__kegg_modules_version__, new_database=False)
 
-            self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
-            self.run.info('Kegg Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
+            if not self.quiet:
+                self.run.info('Modules database', 'An existing database, %s, has been loaded.' % self.db_path, quiet=self.quiet)
+                self.run.info('Kegg Modules', '%d found' % self.db.get_meta_value('num_modules'), quiet=self.quiet)
 
             days_since_created = self.get_days_since_creation()
             if not self.quiet and days_since_created >= KEGG_SETUP_INTERVAL:
@@ -1799,6 +2749,10 @@ class KeggModulesDatabase(KeggContext):
             if not self.module_dict:
                 raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a modules dictionary. This "
                                   "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
+            if not self.pathway_dict:
+                raise ConfigError("ERROR - a new KeggModulesDatabase() cannot be initialized without providing a pathway dictionary. This "
+                                  "usually happens when you try to access a Modules DB before one has been setup. Running `anvi-setup-kegg-kofams` may fix this.")
+
 
     def touch(self):
         """Creates an empty Modules database on disk, and sets `self.db` to access to it.
@@ -2007,7 +2961,8 @@ class KeggModulesDatabase(KeggContext):
         data_types_to_split = ["ORTHOLOGY","REACTION"] # lines that fall under these categories need to have data_vals split on comma
         if current_data_name in data_types_to_split:
             # here we should NOT split on any commas within parentheses
-            for val in re.split(',(?!.*\))', data_vals):
+            vals = [x for x in re.split('\(|\)|,|\+|-', data_vals) if x]
+            for val in vals:
                 line_entries.append((current_data_name, val, data_def, line_num))
         else:
             line_entries.append((current_data_name, data_vals, data_def, line_num))
@@ -2119,6 +3074,10 @@ class KeggModulesDatabase(KeggContext):
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('hash', self.get_db_content_hash())
 
+        self.db.disconnect()
+
+
+    def disconnect(self):
         self.db.disconnect()
 
 
@@ -2255,6 +3214,13 @@ class KeggModulesDatabase(KeggContext):
         # there should only be one CLASS line per module, so we extract the first list element
         class_value = self.get_data_value_entries_for_module_by_data_name(mnum, "CLASS")[0]
         return self.parse_kegg_class_value(class_value)
+
+
+    def get_kegg_module_definition(self, mnum):
+        """This function returns module DEFINITION fields as one string"""
+
+        def_lines = self.get_data_value_entries_for_module_by_data_name(mnum, "DEFINITION")
+        return " ".join(def_lines)
 
 
     def unroll_module_definition(self, mnum):

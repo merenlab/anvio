@@ -17,7 +17,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.migrations import migration_scripts
 
-__description__ = "Migrate an anvi\'o database or config file to a newer version."
+__description__ = "Migrate an anvi'o database or config file to a newer version."
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -38,12 +38,17 @@ class Migrater(object):
         if not args.migrate_dbs_safely and not args.migrate_dbs_quickly:
             raise ConfigError("You must choose either `--migrate-dbs-safely` or `--migrate-dbs-quickly`. Anvi'o would "
                               "have chosen one for you, but our lawyers suggested that it may put our life savings in "
-                              "in jeopardy.")
+                              "jeopardy.")
 
         if args.migrate_dbs_safely and args.migrate_dbs_quickly:
             raise ConfigError("Please don't as anvi'o to migrate your databases both safely and quickly :/")
 
         self.safe_mode = args.migrate_dbs_safely
+
+        try:
+            self.sqlite_version = utils.get_command_output_from_shell("sqlite3 --version")[0].decode("utf-8").split(' ')[0].split('.')
+        except:
+            self.sqlite_version = None
 
         run.info('Database Path', self.db_path)
         run.info('Detected Type', self.db_type)
@@ -55,9 +60,22 @@ class Migrater(object):
         else:
            run.info('Migration mode', "Adventurous", mc="red")
 
+        run.info('SQLite Version', '.'.join(self.sqlite_version) if self.sqlite_version else 'Unknown :/', nl_after=1, nl_before=1)
+
+        if not (int(self.sqlite_version[0]) >= 3 and int(self.sqlite_version[1]) >= 30):
+            if not args.just_do_it:
+                raise ConfigError("Anvi'o migration tool requires the installed SQLite version to be at least "
+                                  "v3.30.0. Yours seem to be %s (if this doesn't make any sense, you can take "
+                                  "a look at the output of the command 'sqlite3 --version' on your terminal). "
+                                  "You can skip this check if you use the argument `--just-do-it` with your "
+                                  "command. In which case we strongly recommend you to use `--migrate-dbs-safely` "
+                                  "flag since it will be likely for you to lose your database if something goes "
+                                  "wrong downstream." % '.'.join(self.sqlite_version) if self.sqlite_version else 'Unknown :/')
+            else:
+                run.warning("Anvi'o is skipping the version number check for SQLite. Brace yourself for impact?")
+
 
     def get_db_meta(self):
-
         if not args.just_do_it and self.db_path.split('.')[-1] not in ['db', 'h5', 'json']:
             raise ConfigError("This program only works with files that end with `.db` or `.json` extensions. "
                               "But if you sure that, this is in fact an anvi'o database or config file "

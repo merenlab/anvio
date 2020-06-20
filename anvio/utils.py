@@ -21,6 +21,7 @@ import tracemalloc
 import configparser
 import urllib.request, urllib.error, urllib.parse
 
+import itertools as it
 import numpy as np
 import pandas as pd
 import Bio.PDB as PDB
@@ -888,8 +889,8 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
         return open(file_path, 'rU').readline().strip('\n').split('\t')[1:]
 
 
-def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False):
-    filesnpaths.is_proper_newick(newick_tree)
+def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False, names_with_only_digits_ok=False):
+    filesnpaths.is_proper_newick(newick_tree, names_with_only_digits_ok=names_with_only_digits_ok)
 
     tree = Tree(newick_tree, format=newick_format)
 
@@ -1058,7 +1059,7 @@ def get_indices_for_outlier_values(c):
 
 
 def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, median=None):
-    """Return boolean array of whether values are outliers (True means yes)
+    """Return boolean array of whether values are outliers (True means outlier)
 
     Modified from Joe Kington's (https://stackoverflow.com/users/325565/joe-kington)
     implementation computing absolute deviation around the median.
@@ -1066,7 +1067,7 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
     Parameters
     ==========
     values : array-like
-        An numobservations by numdimensions array of observations
+        A num_observations by num_dimensions array of observations.
 
     threshold : number, None
         The modified z-score to use as a thresholdold. Observations with
@@ -1074,12 +1075,41 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
         than this value will be classified as outliers.
 
     median : array-like, None
-        Pass median value of values if you already calculated it to save time
+        Pass median of values if you already calculated it to save time.
 
     Returns
     =======
     mask : numpy array (dtype=bool)
-        A numobservations-length boolean array.
+        A num_observations-length boolean array. True means outlier
+
+    Examples
+    ========
+
+    Create an array with 5 manually created outliers:
+
+    >>> import numpy as np
+    >>> import anvio.utils as utils
+    >>> array = 10*np.ones(30) + np.random.rand(30)
+    >>> array[5] = -10
+    >>> array[9] = -10
+    >>> array[12] = -10
+    >>> array[15] = -10
+    >>> array[23] = -10
+    >>> mask = utils.get_list_of_outliers(array, threshold=5)
+    >>> print(mask)
+    [False False False False False  True False False False  True False False
+     True False False  True False False False False False False False  True
+     False False False False False False]
+
+    As can be seen, mask returns a numpy array of True/False values, where True corresponds to
+    outlier values.
+
+    >>> print(outlier_indices)
+    >>> outlier_indices = np.where(mask == True)[0]
+    [ 5  9 12 15 23]
+
+    The `True` values indeed occur at the indices where the values hand been manually changed to
+    represent outliers.
 
     References
     ==========
@@ -1376,17 +1406,21 @@ def get_split_start_stops_with_gene_calls(contig_length, split_length, gene_star
     if contig_length < 2 * split_length:
         return [(0, contig_length)]
 
-    non_coding_positions_in_contig = set(range(0, contig_length))
+    coding_positions_in_contig = []
 
-    # trim from the beginning and the end. we don't want to end up creating very short pieces
-    non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(0, int(split_length / 2))))
-    non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(contig_length - int(split_length / 2), contig_length)))
+    # Pretend the beginning and end are coding (even if they aren't) so that we prevent very short pieces.
+    for position in it.chain(range(int(split_length / 2)), range(contig_length - int(split_length / 2), contig_length)):
+        coding_positions_in_contig.append(position)
 
-    # remove positions that code for genes
+    # Track positions that code for genes.
     for gene_unique_id, start, stop in gene_start_stops:
         start = start - 5
         stop = stop + 5
-        non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(start, stop)))
+
+        for position in range(start, stop):
+            coding_positions_in_contig.append(position)
+
+    non_coding_positions_in_contig = set(range(contig_length)) - set(coding_positions_in_contig)
 
     # what would be our break points in an ideal world? compute an initial list of break
     # points based on the length of the contig and desired split size:

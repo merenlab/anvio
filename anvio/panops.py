@@ -289,7 +289,7 @@ class Pangenome(object):
         # two genes. minbit value reaches to 1 for hits between two genes that are almost identical.
         self_bit_scores = {}
         line_no = 1
-        self.progress.update('(initial pass of the serach results to set the self bit scores ...)')
+        self.progress.update('(initial pass of the search results to set the self bit scores ...)')
         for line in open(blastall_results):
             fields = line.strip().split('\t')
 

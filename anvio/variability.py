@@ -5,13 +5,9 @@
 
 import copy
 import numpy as np
-import pandas as pd
-
-from collections import Counter
 
 import anvio
 
-from anvio.constants import nucleotides
 from anvio.errors import ConfigError
 
 
@@ -140,8 +136,13 @@ class ProcessAlleleCounts:
     def process(self, skip_competing_items=False):
         """The main function call of this class. Populates self.d"""
 
+        if self.get_data_length() == 0:
+            return False
+
         # remove positions that have non-allowed characters in the sequence
         self.filter_or_dont(self.get_boolean_of_allowable_characters_in_reference(), kind='boolean')
+        if self.get_data_length() == 0:
+            return False
 
         if not self.sequence_as_index_provided:
             self.d['sequence_as_index'] = np.array([self.allele_to_array_index[item] for item in self.d['reference']])
@@ -151,6 +152,8 @@ class ProcessAlleleCounts:
         # Filter if some positions are not well-covered
         indices_to_keep = self.get_indices_above_coverage_threshold(self.d['coverage'], self.min_coverage)
         self.filter_or_dont(indices_to_keep)
+        if self.get_data_length() == 0:
+            return False
 
         self.d['reference_coverage'] = self.get_reference_coverage()
         self.d['departure_from_reference'] = self.get_departure_from_reference(self.d['reference_coverage'], self.d['coverage'])
@@ -158,6 +161,8 @@ class ProcessAlleleCounts:
         # Filter if some positions were not worth reporting
         indices_to_keep = self.get_positions_worth_reporting(self.d['coverage'], self.d['departure_from_reference'])
         self.filter_or_dont(indices_to_keep)
+        if self.get_data_length() == 0:
+            return False
 
         if not skip_competing_items:
             self.d['competing_items'] = self.get_competing_items(self.d['reference_coverage'], self.d['coverage'])
@@ -165,6 +170,8 @@ class ProcessAlleleCounts:
             # Filter if any competing items are None
             indices_to_keep = self.get_positions_with_competing_items(self.d['competing_items'])
             self.filter_or_dont(indices_to_keep)
+            if self.get_data_length() == 0:
+                return False
 
         # each allele gets its own key in self.d
         for index, item in self.array_index_to_allele.items():
@@ -174,6 +181,14 @@ class ProcessAlleleCounts:
         del self.d['allele_counts']
         del self.d['sequence_as_index']
         del self.d['reference_coverage']
+
+        return True
+
+
+    def get_data_length(self):
+        """Get the length of data (number of positions with alleles)"""
+
+        return len(self.d['reference'])
 
 
     def filter(self, keys):
@@ -335,5 +350,36 @@ class ProcessCodonCounts(ProcessAlleleCounts):
         ProcessAlleleCounts.process(self, *args, **kwargs)
         self.rename_key('competing_items', 'competing_codons')
         self.rename_key('pos', 'codon_order_in_gene')
+
+# FIXME: it seems the following classes are redundant and should be removed? Ping @evan
+class ProcessNucleotideCounts(ProcessAlleleCounts):
+    def __init__(self, *args, **kwargs):
+        ProcessAlleleCounts.__init__(self, *args, **kwargs)
+
+    def process(self, *args, **kwargs):
+        p = ProcessAlleleCounts.process(self, *args, **kwargs)
+        self.rename_key('competing_items', 'competing_nts')
+        return p
+
+
+class ProcessAminoAcidCounts(ProcessAlleleCounts):
+    def __init__(self, *args, **kwargs):
+        ProcessAlleleCounts.__init__(self, *args, **kwargs)
+
+    def process(self, *args, **kwargs):
+        p = ProcessAlleleCounts.process(self, *args, **kwargs)
+        self.rename_key('competing_items', 'competing_aas')
+        return p
+
+
+class ProcessCodonCounts(ProcessAlleleCounts):
+    def __init__(self, *args, **kwargs):
+        ProcessAlleleCounts.__init__(self, *args, **kwargs)
+
+    def process(self, *args, **kwargs):
+        p = ProcessAlleleCounts.process(self, *args, **kwargs)
+        self.rename_key('competing_items', 'competing_codons')
+        self.rename_key('pos', 'codon_order_in_gene')
+        return p
 
 

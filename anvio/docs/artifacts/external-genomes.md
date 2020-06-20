@@ -12,4 +12,4 @@ External genomes file format enables anvi'o to work with one or more external ge
 {:.warning}
 Please make sure names in the `name` column does not include any special characters (underscore is fine). It is also a good idea to keep these names short and descriptive as they will appear in various figures in downstream analyses.
 
-Also see, **%(internal-genomes)s**.
+Also see, **%(internal-genomes)s** and **%(metagenomes)s**.

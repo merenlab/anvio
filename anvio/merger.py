@@ -9,6 +9,7 @@ import os
 import argparse
 
 import anvio
+import anvio.db as db
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.tables as tables
@@ -19,9 +20,6 @@ import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
-from anvio.tables.indels import TableForIndels
-from anvio.tables.variability import TableForVariability
-from anvio.tables.codonfrequencies import TableForCodonFrequencies
 from anvio.tables.miscdata import TableForLayerOrders, TableForLayerAdditionalData
 from anvio.tables.views import TablesForViews
 
@@ -66,6 +64,7 @@ class MultipleRuns:
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
 
         self.profiles = []
+        self.num_profile_dbs = None
         self.split_names = None
         self.sample_ids_found_in_input_dbs = []
         self.normalization_multiplier = {}
@@ -274,6 +273,8 @@ class MultipleRuns:
                               "with your input :/ Here are the sample names in case you would like to find out which ones occur "
                               "more than once: '%s'" % (', '.join(self.sample_ids_found_in_input_dbs)))
 
+        self.num_profile_dbs = len(self.profile_dbs_info_dict)
+
         # test open the contigs database (and learn its hash while doing it) to make sure we don't have
         # a deal breaker just yet
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, quiet=True)
@@ -315,21 +316,21 @@ class MultipleRuns:
         if len(hashes_for_profile_dbs) != 1:
             if None in hashes_for_profile_dbs:
                 raise ConfigError("It seems there is at least one run in the mix that was profiled using an "
-                                         "contigs database, and at least one other that was profiled without using "
-                                         "one. This is not good. All runs must be profiled using the same contigs "
-                                         "database, or all runs must be profiled without a contigs database :/")
+                                  "contigs database, and at least one other that was profiled without using "
+                                  "one. This is not good. All runs must be profiled using the same contigs "
+                                  "database, or all runs must be profiled without a contigs database :/")
             else:
                 raise ConfigError("It seems these runs were profiled using different contigs databases (or "
-                                         "different versions of the same contigs database). All runs must be "
-                                         "profiled using the same contigs database, or all runs must be profiled "
-                                         "without a contigs database :/")
+                                  "different versions of the same contigs database). All runs must be "
+                                  "profiled using the same contigs database, or all runs must be profiled "
+                                  "without a contigs database :/")
 
 
         # make sure the hash for contigs db is identical across all profile databases:
         if list(hashes_for_profile_dbs)[0] != contigs_db_hash:
             raise ConfigError("The contigs database you provided, which is identified with hash '%s', does "
-                                     "not seem to match the run profiles you are trying to merge, which share the "
-                                     "hash identifier of '%s'. What's up with that?" % (contigs_db_hash, list(hashes_for_profile_dbs)[0]))
+                              "not seem to match the run profiles you are trying to merge, which share the "
+                              "hash identifier of '%s'. What's up with that?" % (contigs_db_hash, list(hashes_for_profile_dbs)[0]))
 
         # do we have a description file?
         if self.description_file_path:
@@ -348,55 +349,60 @@ class MultipleRuns:
             utils.check_sample_id(self.sample_id)
 
 
-    def merge_variable_nts_tables(self):
-        variable_nts_table = TableForVariability(self.merged_profile_db_path, progress=self.progress)
+    def _concatenate_single_profile_tables(self, merged_db, table_name, is_auxiliary=False):
+        """Concatenates alike tables from the single profile DBs
 
-        for input_profile_db_path in self.profile_dbs_info_dict:
-            sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
-            sample_variable_nts_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_nts_table_name, tables.variable_nts_table_structure)
-            sample_profile_db.disconnect()
+        If the table has `entry_id` as a key, it will be recalculated after concatenation to ensure
+        each row is given a unique entry_id.
 
-            for tpl in sample_variable_nts_table:
-                entry = tuple([variable_nts_table.next_id(tables.variable_nts_table_name)] + list(tpl[1:]))
-                variable_nts_table.append_entry(entry)
+        Parameters
+        ==========
+        merged_db : db.DB
+            The merged database that tables are being concatenated to. Should be either a profile DB
+            or an auxiliary DB (see is_auxiliary).
 
-        variable_nts_table.store()
+        table_name : str
+            The name of the tables that are being concatenated.
+
+        is_auxiliary : bool, False
+            If True, the tables are assumed to exist in the AUXILIARY-DATA DBs, rather than the
+            PROFILE DBs.
+        """
+
+        self.progress.new("Merging '%s' tables" % table_name, progress_total_items=self.num_profile_dbs)
+
+        if is_auxiliary:
+            PATH = lambda x: os.path.join(os.path.dirname(x), 'AUXILIARY-DATA.db')
+        else:
+            PATH = lambda x: x
+
+        for i, input_profile_db_path in enumerate(self.profile_dbs_info_dict):
+            self.progress.update("(%d/%d) %s" % (i, self.num_profile_dbs, input_profile_db_path))
+            self.progress.increment()
+            merged_db.copy_paste(table_name, PATH(input_profile_db_path), append=True)
+
+        self.progress.end()
 
 
-    def merge_variable_codons_tables(self):
-        variable_codons_table = TableForCodonFrequencies(self.merged_profile_db_path, progress=self.progress)
+    def merge_variant_tables(self, table_name):
+        """For merging variable_nts_table_name, variable_codons_table_name, and indels_table_name tables"""
 
-        for input_profile_db_path in self.profile_dbs_info_dict:
-            sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
-            sample_variable_codons_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.variable_codons_table_name, tables.variable_codons_table_structure)
-            sample_profile_db.disconnect()
+        accepted_input = [
+            tables.variable_nts_table_name,
+            tables.variable_codons_table_name,
+            tables.indels_table_name
+        ]
 
-            for tpl in sample_variable_codons_table:
-                entry = tuple([variable_codons_table.next_id(tables.variable_codons_table_name)] + list(tpl[1:]))
-                variable_codons_table.append_entry(entry)
+        if table_name not in accepted_input:
+            raise ConfigError("MultipleRuns.merge_variant_tables :: table_name can only be one of "
+                              "%s" % ','.join(["'"+x+"'" for x in accepted_input]))
 
-        variable_codons_table.store()
-
-
-    def merge_indels_tables(self):
-        indels_table = TableForIndels(self.merged_profile_db_path, progress=self.progress)
-
-        for input_profile_db_path in self.profile_dbs_info_dict:
-            sample_profile_db = dbops.ProfileDatabase(input_profile_db_path, quiet=True)
-            sample_indels_table = sample_profile_db.db.get_table_as_list_of_tuples(tables.indels_table_name, tables.indels_table_structure)
-            sample_profile_db.disconnect()
-
-            for tpl in sample_indels_table:
-                entry = tuple([indels_table.next_id(tables.indels_table_name)] + list(tpl[1:]))
-                indels_table.append_entry(entry)
-
-        indels_table.store()
+        database = db.DB(self.merged_profile_db_path, utils.get_required_version_for_db(self.merged_profile_db_path))
+        self._concatenate_single_profile_tables(database, table_name, is_auxiliary=False)
+        database.disconnect()
 
 
     def merge_split_coverage_data(self):
-        output_file_path = os.path.join(self.output_directory, 'AUXILIARY-DATA.db')
-        merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file_path, self.contigs_db_hash, create_new=True)
-
         AUX = lambda x: os.path.join(os.path.dirname(x), 'AUXILIARY-DATA.db')
 
         if False in [filesnpaths.is_file_exists(AUX(p), dont_raise=True) for p in self.profile_dbs_info_dict]:
@@ -408,23 +414,14 @@ class MultipleRuns:
 
             return None
 
-        self.progress.new('Merging split coverage data')
+        output_file_path = os.path.join(self.output_directory, 'AUXILIARY-DATA.db')
+        merged_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(output_file_path, self.contigs_db_hash, create_new=True)
 
-        # fill coverages in from all samples
-        for input_profile_db_path in self.profile_dbs_info_dict:
-            self.progress.update(input_profile_db_path)
-            sample_split_coverage_values = auxiliarydataops.AuxiliaryDataForSplitCoverages(AUX(input_profile_db_path), self.contigs_db_hash)
+        self._concatenate_single_profile_tables(merged_split_coverage_values.db, table_name='split_coverages', is_auxiliary=True)
 
-            for split_name in self.split_names:
-                coverages_dict = sample_split_coverage_values.get(split_name)
-                for sample_name in coverages_dict:
-                    merged_split_coverage_values.append(split_name, sample_name, coverages_dict[sample_name])
-
-            sample_split_coverage_values.close()
-
-        merged_split_coverage_values.store()
+        self.progress.new('Creating index for `split_coverages` table')
+        self.progress.update('...')
         merged_split_coverage_values.close()
-
         self.progress.end()
 
 
@@ -549,26 +546,19 @@ class MultipleRuns:
         self.merge_split_coverage_data()
 
         if self.SNVs_profiled:
-            self.progress.new('Merging variable positions tables')
-            self.progress.update('...')
-            self.merge_variable_nts_tables()
-            self.progress.end()
+            self.merge_variant_tables(tables.variable_nts_table_name)
         else:
-            self.run.warning("SNVs were not profiled, variable nt positions tables will be empty in the merged profile database.")
+            self.run.warning("SNVs were not profiled, variable nucleotides positions "
+                             "tables will be empty in the merged profile database.")
 
         if self.SCVs_profiled:
-            self.progress.new('Merging variable codons tables')
-            self.progress.update('...')
-            self.merge_variable_codons_tables()
-            self.progress.end()
+            self.merge_variant_tables(tables.variable_codons_table_name)
         else:
-            self.run.warning("Codon frequencies were not profiled, hence, these tables will be empty in the merged profile database.")
+            self.run.warning("Codon frequencies were not profiled, hence, these tables "
+                             "will be empty in the merged profile database.")
 
         if self.INDELs_profiled:
-            self.progress.new('Merging indels tables')
-            self.progress.update('...')
-            self.merge_indels_tables()
-            self.progress.end()
+            self.merge_variant_tables(tables.indels_table_name)
         else:
             self.run.warning("Indels were not profiled, hence, these tables will be empty in the merged profile database.")
 
@@ -743,17 +733,24 @@ class MultipleRuns:
 
 
     def read_atomic_data_tables(self):
-        """reads atomic data for contigs and splits from the database into a dict"""
+        """Reads atomic data for contigs and splits from the database into a dict"""
+
         atomic_data_table_for_each_run = {}
 
         for target in ['contigs', 'splits']:
-            atomic_data_table_for_each_run[target] = {}
+            self.progress.new("Fetching atomic %s tables" % target, progress_total_items=self.num_profile_dbs)
 
+            atomic_data_table_for_each_run[target] = {}
             target_table = 'atomic_data_%s' % target
 
-            for input_profile_db_path in self.profile_dbs_info_dict:
+            for i, input_profile_db_path in enumerate(self.profile_dbs_info_dict):
+                self.progress.update("(%d/%d) %s" % (i, self.num_profile_dbs, input_profile_db_path))
+                self.progress.increment()
+
                 db = anvio.db.DB(input_profile_db_path, utils.get_required_version_for_db(input_profile_db_path))
                 atomic_data_table_for_each_run[target][input_profile_db_path] = db.get_table_as_dict(target_table)
+
+            self.progress.end()
 
         atomic_data_table_fields = db.get_table_structure('atomic_data_splits')
         db.disconnect()

@@ -244,7 +244,7 @@ class AnvioPrograms:
                              "Here is a complete list of programs that are missing usage statements: %s " % \
                                         (len(self.all_program_filepaths),
                                          len(programs_without_provides_requires_info),
-                                         anvio.DOCS_PATH, 
+                                         anvio.DOCS_PATH,
                                          ', '.join(programs_without_provides_requires_info)),
                              nl_after=1, nl_before=1)
 
@@ -343,19 +343,20 @@ class Program:
 class Artifact:
     """A class to describe an anvi'o artifact"""
 
-    def __init__(self, artifact_id, internal=True, optional=True, single=True):
+    def __init__(self, artifact_id, provided_by_anvio=True, optional=True, single=True):
         if artifact_id not in ANVIO_ARTIFACTS:
             raise ConfigError("Ehem. Anvi'o does not know about artifact '%s'. There are two was this could happen: "
                               "one, you've made a typo (easy to fix), two, you've just updated __provides__ or __requires__ "
                               "statement in an anvi'o program with an artifact that does not exist and have not yet updated "
-                              "`anvio/programs.py` (which is also easy to fix). Please consider also adding a description of "
+                              "`anvio/docs/__init__.py` (which is also easy to fix). Please consider also adding a description of "
                               "this artifact under anvio/docs/artifacts while you are at it :)" % artifact_id)
 
         artifact = ANVIO_ARTIFACTS[artifact_id]
         self.id = artifact_id
         self.name = artifact['name']
         self.type = artifact['type']
-        self.internal = artifact['internal']
+        self.provided_by_anvio = artifact['provided_by_anvio']
+        self.provided_by_user = artifact['provided_by_user']
 
         # attributes set by the context master
         self.single = single
@@ -547,7 +548,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts):
         line_nums_for_codestop_tags = [i for i in range(0, len(markdwon_lines)) if markdwon_lines[i].strip() == "{{ codestop }}"]
 
         if len(line_nums_for_codestart_tags) != len(line_nums_for_codestop_tags):
-            raise ConfigError("The number of {{ codestart }} tags do not match to the number of {{ codestop }} tags :/")
+            raise ConfigError("In %s, the number of {{ codestart }} tags do not match to the number of {{ codestop }} tags :/" % file_path)
 
 
         for line_start, line_end in list(zip(line_nums_for_codestart_tags, line_nums_for_codestop_tags)):
@@ -706,11 +707,11 @@ class ProgramsNetwork(AnvioPrograms):
         for artifact in all_artifacts:
             types_seen.add(artifact.type)
             network_dict["nodes"].append({"size": artifacts_seen[artifact.id],
-                                          "score": 0.5 if artifact.internal else 1,
-                                          "color": '#00AA00' if artifact.internal else "#AA0000",
+                                          "score": 0.5 if artifact.provided_by_anvio else 1,
+                                          "color": '#00AA00' if artifact.provided_by_anvio else "#AA0000",
                                           "id": artifact.id,
                                           "name": artifact.name,
-                                          "internal": True if artifact.internal else False,
+                                          "provided_by_anvio": True if artifact.provided_by_anvio else False,
                                           "type": artifact.type})
             node_indices[artifact.id] = index
             index += 1

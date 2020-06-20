@@ -440,11 +440,11 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         if metagenomes_without_scg_taxonomy:
             if len(metagenomes_without_scg_taxonomy) == len(g.metagenomes):
                 self.progress.end()
-                raise ConfigError("Surprise! None of the %d genomes had no SCG taxonomy information." % len(g.genomes))
+                raise ConfigError("Surprise! None of the %d genomes had no SCG taxonomy information." % len(g.metagenomes))
             else:
                 self.progress.end()
                 raise ConfigError("%d of your %d genomes had no SCG taxonomy information. Here is the list: '%s'." % \
-                        (len(metagenomes_without_scg_taxonomy), len(g.genomes), ', '.join(metagenomes_without_scg_taxonomy)))
+                        (len(metagenomes_without_scg_taxonomy), len(g.metagenomes), ', '.join(metagenomes_without_scg_taxonomy)))
 
         self.metagenomes = copy.deepcopy(g.metagenomes)
         self.metagenome_names = copy.deepcopy(g.metagenome_names)
@@ -1725,7 +1725,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck):
                          "framework is using only %d SCGs to estimate taxonomy. Which means, even a highly complete bin "
                          "may be missing all of them. In which case, the coverage of that bin will be `None` across all "
                          "your samples. The best way to prevent any misleading insights is take these results with a "
-                         "huge grain of salt, and use the `anvi-summarize` output for critical applications.",
+                         "huge grain of salt, and use the `anvi-summarize` output for critical applications." % len(self.ctx.SCGs),
                          header="FRIENDLY REMINDER", lc="blue")
 
         return bin_avg_coverages_across_samples_dict

@@ -1,15 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""Summarizer for anvi'o pan or profile db's.
+""""""
 
-   Essentially, this program takes a collection id along with either,
-
-   - a profile database and a contigs database
-   - or a pan database and a genomes storage
-
-   and generates a static HTML output for what is described in a given
-   collection."""
-
+import os
 import sys
 
 import anvio
@@ -30,14 +23,26 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['profile-db', 'contigs-db', 'collection', 'pan-db', 'genomes-storage-db',]
 __provides__ = ['summary',]
-__description__ = "Summarize an anvi'o collection. Fun stuff."
-
+__description__ = ("Summarizer for anvi'o pan or profile db's. Essentially, this program takes a collection id along with either "
+                   "a profile database and a contigs database or a pan database and a genomes storage and generates a static HTML "
+                   "output for what is described in a given collection. The output directory will contain almost everything any "
+                   "downstream analysis may need, and can be displayed using a browser without the need for an anvi'o installation. "
+                   "For this reason alone, reporting summary outputs as supplementary data with publications is a great idea for "
+                   "transparency and reproducibility.")
 
 run = terminal.Run()
 progress = terminal.Progress()
 
 
 def main(args):
+    # bad code but a good check early on. Due to multiple inheriteance downstream, there is actually no good
+    # place to perform this check before its too much CPU time has already passed (see #1430 for an actual
+    # user complaint):
+    A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+    if A('output_dir') and not A('delete_output_directory_if_exists') and os.path.exists(A('output_dir')):
+        raise ConfigError("The output directory '%s' already exists and anvi'o is not prepared to remove it just because." % A('output_dir'))
+
+    # k, gud. lets move on with business.
     db_type = utils.get_db_type(args.pan_or_profile_db)
 
     if db_type == 'pan':
