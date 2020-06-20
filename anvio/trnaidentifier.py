@@ -21,6 +21,19 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
+THREEPRIME_VARIANT_LIST = [
+    'CCA',
+    'C', 'CC',
+    'CCC', 'CCG', 'CCT',
+    'CAA', 'CGA', 'CTA',
+    'ACA', 'GCA', 'TCA',
+    'CCAA', 'CCAC', 'CCAG', 'CCAT',
+    'CCAAA', 'CCAAC', 'CCAAG', 'CCAAT',
+    'CCACA', 'CCACC', 'CCACG', 'CCACT',
+    'CCAGA', 'CCAGC', 'CCAGG', 'CCAGT',
+    'CCATA', 'CCATC', 'CCATG', 'CCATT']
+
+
 class _TransferRNAFeature:
     conserved_nucleotides = ({}, )
 
@@ -526,8 +539,14 @@ class DLoop(_Loop):
                 raise TransferRNAIdentifierError(
                     "Your `position_21_string` was not the required 1 base long: %s"
                     % position_21_string)
-        self.alpha_seq = _Sequence(alpha_positions_string)
-        self.beta_seq = _Sequence(beta_positions_string)
+        alpha_start_index = 1
+        alpha_stop_index = alpha_start_index + len(alpha_positions_string)
+        self.alpha_seq = _Sequence(
+            alpha_positions_string, start_index=alpha_start_index, stop_index=alpha_stop_index)
+        beta_start_index = alpha_stop_index + 2
+        beta_stop_index = beta_start_index + len(beta_positions_string)
+        self.beta_seq = _Sequence(
+            beta_positions_string, start_index=beta_start_index, stop_index=beta_stop_index)
 
         super().__init__(
             (positions_14_to_15_string,
@@ -939,14 +958,16 @@ class Acceptor(_Sequence):
             stop_index=stop_index,
             cautious=cautious)
 
-        # A relatively common read error is an erroneous base in the acceptor.
-        # This appears to occur most at the 5'-C or 3'-A.
-        # These are not included in Acceptor.conserved_nucleotides,
-        # so that errors are still recorded as "unconserved."
-        # However, since they are permitted, Acceptor.meets_conserved_thresh is changed.
+        # A relatively common read "error" is an erroneous base in the acceptor.
+        # Errors seem to occur most frequently at the 5'-C or 3'-A of the CCA sequence.
+        # Possible acceptor errors are not factored into Acceptor.conserved_nucleotides,
+        # so errors are recorded as "unconserved" nucleotides.
+        # To allow for an error while num_allowed_unconserved is 0,
+        # Acceptor.meets_conserved_thresh is set to True.
         # The offending nucleotide and its position can be found in Acceptor.conserved_status.
         # An unconserved base is only allowed in a full-length acceptor at the 3' end of the read
-        # to avoid too much leeway resulting in false positive profiles.
+        # (as in, without extra 3' nucleotides beyond the acceptor)
+        # to avoid too much leeway resulting in false positive profiles of shorter sequences.
         if self.num_unconserved == 1:
             if self.num_nucleotides == 3:
                 if num_extra_threeprime == 0:
@@ -978,7 +999,6 @@ def _get_max_fiveprime_lengths(threeprime_to_fiveprime_feature_classes):
 
 def profile_wrapper(input_queue, output_queue):
     ''' Iterates a Queue of FASTA records and builds a Queue of tRNA profiles '''
-
     while True:
         # A record is a tuple of read name and sequence.
         name, read = input_queue.get(True)
@@ -1037,10 +1057,10 @@ class Profile:
                 D_loop = self.features[-self.D_loop_index - 1]
                 alpha_seq = D_loop.alpha_seq
                 beta_seq = D_loop.beta_seq
-                self.alpha_start = alpha_seq.start_index
-                self.alpha_stop = alpha_seq.stop_index
-                self.beta_start = beta_seq.start_index
-                self.beta_stop = beta_seq.stop_index
+                self.alpha_start = D_loop.start_index + alpha_seq.start_index
+                self.alpha_stop = D_loop.start_index + alpha_seq.stop_index
+                self.beta_start = D_loop.start_index + beta_seq.start_index
+                self.beta_stop = D_loop.start_index + beta_seq.stop_index
             else:
                 self.alpha_start = None
                 self.alpha_stop = None
@@ -1545,7 +1565,7 @@ class Profile:
 # E. coli tRNA-Ala-GGC-1-1: start first position of 3' strand of D stem
 # forward = 'GAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACCA'
 
-# Profile(forward)
+# profile = Profile(forward)
 # print(profile.profiled_seq)
 # print(profile.features)
 # print(profile.num_unconserved)
@@ -1555,3 +1575,5 @@ class Profile:
 # print(profile.is_fully_profiled)
 # print(profile.get_unconserved_positions())
 # print(profile.get_unpaired_positions())
+# print(profile.alpha_start)
+# print(profile.beta_start)

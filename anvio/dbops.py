@@ -21,7 +21,7 @@ import pandas as pd
 import gc
 
 from io import StringIO
-from collections import Counter
+from collections import Counter, OrderedDict
 
 import anvio
 import anvio.db as db
@@ -37,7 +37,7 @@ import anvio.genomestorage as genomestorage
 import anvio.auxiliarydataops as auxiliarydataops
 import anvio.homogeneityindex as homogeneityindex
 import anvio.trnaidentifier as trnaidentifier
-import anvio.drivers.mmseqs2 as mmseqs2
+import anvio.drivers.vsearch as vsearch
 
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
@@ -3511,8 +3511,22 @@ class PanDatabase:
         self.db.disconnect()
 
 
+THREEPRIME_VARIANT_LIST = anvio.trnaidentifier.THREEPRIME_VARIANT_LIST
+
 class tRNASeqDatabase:
-    def __init__(self, db_path, charging_recorded=False, trust_fasta=False, num_threads=1, run=run, progress=progress, quiet=True, skip_init=False):
+    def __init__(
+        self,
+        db_path,
+        charging_recorded=False,
+        num_threads=1,
+        trust_fasta=False,
+        only_report_tRNA=False,
+        skip_seed_output=False,
+        write_buffer_size=50000,
+        run=run,
+        progress=progress,
+        quiet=True,
+        skip_init=False):
 
         self.db = None
         self.db_path = db_path
@@ -3522,8 +3536,11 @@ class tRNASeqDatabase:
             trnaidentifier.set_up_charging_analysis()
         self.charging_recorded = charging_recorded
 
-        self.trust_fasta = trust_fasta
         self.num_threads = num_threads
+        self.trust_fasta = trust_fasta
+        self.report_nontRNA = not only_report_tRNA
+        self.report_seed_output = not skip_seed_output
+        self.write_buffer_size = write_buffer_size
         self.run = run
         self.progress = progress
         self.quiet = quiet
@@ -3542,15 +3559,16 @@ class tRNASeqDatabase:
 
             if 'creation_date' not in self.meta:
                 raise ConfigError(
-                    "The tRNA seeds database ('%s') seems to be corrupted :/ "
+                    "The tRNA-seq database ('%s') seems to be corrupted :/ "
                     "This happens if the process that generates the database ends prematurely. "
-                    "Most probably, you will need to generate the tRNA-seq database from scratch. "
+                    "You probably need to generate the tRNA-seq database from scratch. "
                     "Sorry!" % (self.db_path))
 
-            self.run.info('tRNA-seq database',
-                          'An existing database, %s, has been initiated.' % self.db_path,
-                          quiet=self.quiet)
-            self.run.info('Sample name', self.meta['sample_name'], quiet=self.quiet)
+            self.run.info(
+                "tRNA-seq database",
+                "An existing database, %s, has been initiated." % self.db_path,
+                quiet=self.quiet)
+            self.run.info("Sample name", self.meta['sample_name'], quiet=self.quiet)
         else:
             self.db = None
 
@@ -3565,51 +3583,78 @@ class tRNASeqDatabase:
         self.db = db.DB(self.db_path, anvio.__tRNAseq__version__, new_database=True)
 
         # creating empty default tables
-        self.db.create_table(t.tRNAseq_sequences_table_name,
-                             t.tRNAseq_sequences_table_structure,
-                             t.tRNAseq_sequences_table_types)
-        self.db.create_table(t.tRNAseq_info_table_name,
-                             t.tRNAseq_info_table_structure,
-                             t.tRNAseq_info_table_types)
-        self.db.create_table(t.tRNAseq_features_table_name,
-                             t.tRNAseq_features_table_structure,
-                             t.tRNAseq_features_table_types)
-        self.db.create_table(t.tRNAseq_unconserved_table_name,
-                             t.tRNAseq_unconserved_table_structure,
-                             t.tRNAseq_unconserved_table_types)
-        self.db.create_table(t.tRNAseq_unpaired_table_name,
-                             t.tRNAseq_unpaired_table_structure,
-                             t.tRNAseq_unpaired_table_types)
-        self.db.create_table(t.tRNAseq_long_sequences_table_name,
-                             t.tRNAseq_long_sequences_table_structure,
-                             t.tRNAseq_long_sequences_table_types)
-        self.db.create_table(t.tRNAseq_long_info_table_name,
-                             t.tRNAseq_long_info_table_structure,
-                             t.tRNAseq_long_info_table_types)
-        self.db.create_table(t.tRNAseq_long_features_table_name,
-                             t.tRNAseq_long_features_table_structure,
-                             t.tRNAseq_long_features_table_types)
-        self.db.create_table(t.tRNAseq_long_unconserved_table_name,
-                             t.tRNAseq_long_unconserved_table_structure,
-                             t.tRNAseq_long_unconserved_table_types)
-        self.db.create_table(t.tRNAseq_long_unpaired_table_name,
-                             t.tRNAseq_long_unpaired_table_structure,
-                             t.tRNAseq_long_unpaired_table_types)
+        self.db.create_table(
+            t.tRNAseq_sequences_table_name,
+            t.tRNAseq_sequences_table_structure,
+            t.tRNAseq_sequences_table_types)
+        self.db.create_table(
+            t.tRNAseq_acceptor_table_name,
+            t.tRNAseq_acceptor_table_structure,
+            t.tRNAseq_acceptor_table_types)
+        self.db.create_table(
+            t.tRNAseq_subsequence_table_name,
+            t.tRNAseq_subsequence_table_structure,
+            t.tRNAseq_subsequence_table_types)
+        self.db.create_table(
+            t.tRNAseq_info_table_name,
+            t.tRNAseq_info_table_structure,
+            t.tRNAseq_info_table_types)
+        self.db.create_table(
+            t.tRNAseq_features_table_name,
+            t.tRNAseq_features_table_structure,
+            t.tRNAseq_features_table_types)
+        self.db.create_table(
+            t.tRNAseq_unconserved_table_name,
+            t.tRNAseq_unconserved_table_structure,
+            t.tRNAseq_unconserved_table_types)
+        self.db.create_table(
+            t.tRNAseq_unpaired_table_name,
+            t.tRNAseq_unpaired_table_structure,
+            t.tRNAseq_unpaired_table_types)
+
+        self.db.create_table(
+            t.tRNAseq_long_sequences_table_name,
+            t.tRNAseq_long_sequences_table_structure,
+            t.tRNAseq_long_sequences_table_types)
+        self.db.create_table(
+            t.tRNAseq_long_acceptor_table_name,
+            t.tRNAseq_long_acceptor_table_structure,
+            t.tRNAseq_long_acceptor_table_types)
+        self.db.create_table(
+            t.tRNAseq_long_subsequence_table_name,
+            t.tRNAseq_long_subsequence_table_structure,
+            t.tRNAseq_long_subsequence_table_types)
+        self.db.create_table(
+            t.tRNAseq_long_info_table_name,
+            t.tRNAseq_long_info_table_structure,
+            t.tRNAseq_long_info_table_types)
+        self.db.create_table(
+            t.tRNAseq_long_features_table_name,
+            t.tRNAseq_long_features_table_structure,
+            t.tRNAseq_long_features_table_types)
+        self.db.create_table(
+            t.tRNAseq_long_unconserved_table_name,
+            t.tRNAseq_long_unconserved_table_structure,
+            t.tRNAseq_long_unconserved_table_types)
+        self.db.create_table(
+            t.tRNAseq_long_unpaired_table_name,
+            t.tRNAseq_long_unpaired_table_structure,
+            t.tRNAseq_long_unpaired_table_types)
 
         return self.db
 
 
     def create(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        tRNAseq_fasta = os.path.abspath(A('tRNAseq_fasta'))
+        input_fasta_path = os.path.abspath(A('tRNAseq_fasta'))
         project_name = A('project_name')
         description_file_path = A('description')
 
-        filesnpaths.is_file_fasta_formatted(tRNAseq_fasta)
-        self.run.info('Input FASTA file', tRNAseq_fasta)
+        filesnpaths.is_file_fasta_formatted(input_fasta_path)
+        self.run.info("Input FASTA file", input_fasta_path)
 
         if not project_name:
-            project_name = os.path.splitext(os.path.basename(tRNAseq_fasta))[0]
+            project_name = os.path.splitext(os.path.basename(input_fasta_path))[0]
             if project_name:
                 self.run.warning(
                     "You are generating a new Anvi'o tRNAseq database, "
@@ -3627,83 +3672,40 @@ class tRNASeqDatabase:
                     "Sorry, you must provide a project name for your tRNAseq database :/ "
                     "Anvi'o tried to make up one but failed.")
 
-        self.run.info('Name', project_name, mc='green')
-        self.run.info('Description',
-                      (os.path.abspath(description_file_path)
-                       if description_file_path else 'No description is given'),
-                      mc='green')
+        self.run.info("Name", project_name, mc='green')
+        self.run.info(
+            "Description",
+            (os.path.abspath(description_file_path)
+             if description_file_path else "No description is given"),
+            mc='green')
         if description_file_path:
             filesnpaths.is_file_plain_text(description_file_path)
             description = open(os.path.abspath(description_file_path))
         else:
             description = ''
 
+        # Avoid the computationally costly step of checking the characters in each defline
+        # with the flag, `--trust-fasta`
         if not self.trust_fasta:
-            # Make sure there are no surprises with FASTA file deflines and sequence lengths.
-            self.progress.new('Checking deflines')
-            self.progress.update('tick tock ...')
-            fasta = u.SequenceSource(tRNAseq_fasta)
-            while next(fasta):
-                if not utils.check_tRNAseq_names(fasta.id, dont_raise=True):
-                    self.progress.end()
-                    raise ConfigError(
-                        "At least one of the deflines in your FASTA file "
-                        "does not comply with the 'simple deflines' requirement of Anvi'o. "
-                        "You can either use the script, `anvi-script-reformat-fasta`, "
-                        "to take care of this issue, or read this section in the tutorial "
-                        "to understand the reason behind this requirement "
-                        "(Anvi'o is very upset for making you do this): %s"
-                        % 'http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file')
+            self.check_deflines(input_fasta_path)
 
-                try:
-                    int(fasta.id)
-                    is_int = True
-                except:
-                    is_int = False
-                if is_int:
-                    self.progress.end()
-                    raise ConfigError(
-                        "At least one of the deflines in your FASTA file "
-                        "(well, this one to be precise: '%s') looks like a number. "
-                        "For reasons we can't really justify, "
-                        "Anvi'o does not like those numeric names, "
-                        "and hereby asks you to make sure every tRNAseq name "
-                        "contains at least one alphanumeric character :/ "
-                        "Meanwhile we, the Anvi'o developers, are both surprised by and thankful for "
-                        "your endless patience with such eccentric requests. "
-                        "You the real MVP." % fasta.id)
-            fasta.close()
-            self.progress.end()
-
-        all_ids_in_FASTA = utils.get_all_ids_from_fasta(tRNAseq_fasta)
+        all_ids_in_FASTA = utils.get_all_ids_from_fasta(input_fasta_path)
         total_num_seqs = len(all_ids_in_FASTA)
         if total_num_seqs != len(set(all_ids_in_FASTA)):
             raise ConfigError(
                 "Every sequence in the input FASTA file must have a unique ID. You know...")
 
         # Dereplicate input sequences
-        rep_seq_fasta = os.path.join(self.output_dir, project_name + '-DEREP_REPSEQS.fasta')
-        cluster_filepath = os.path.join(self.output_dir, project_name + '-UC_CLUSTERS.tsv')
-        vsearch_command = [
-            'vsearch',
-            '--derep_fulllength', tRNAseq_fasta,
-            '--output', rep_seq_fasta,
-            '--uc', cluster_filepath,
-            '--minseqlength', '1', # 32 by default, which is longer than many tRNA-seq fragments
-            '--fasta_width', '0'] # sequence strings are not split between lines
-        self.progress.new("Dereplicating with VSEARCH...")
-        process = subprocess.Popen(vsearch_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = process.communicate()
-
-        if process.returncode:
-            stderr = stderr.decode().strip()
-            stderr = "\n" + "\n".join(stderr.split('\n'))
-            print(terminal.c(stderr, color='red'))
-            raise ConfigError("The VSEARCH command \"%s\" raised the error message above." % " ".join(vsearch_command))
-        self.progress.end()
-
-        total_num_rep_seqs = len(utils.get_all_ids_from_fasta(rep_seq_fasta))
-        cluster_membership_dict = self.get_cluster_membership_dict(cluster_filepath)
+        derep = vsearch.FullLengthDereplication(
+            input_fasta_path=input_fasta_path,
+            min_seq_length=1,
+            num_threads=self.num_threads,
+            run=self.run,
+            progress=self.progress)
+        derep.dereplicate()
+        rep_seq_fasta_path = derep.output_fasta_path
+        total_num_rep_seqs = len(utils.get_all_ids_from_fasta(rep_seq_fasta_path))
+        cluster_membership_dict = derep.get_cluster_membership_dict()
 
         # Create a blank tRNAseq database on disk and set self.db
         self.touch()
@@ -3717,12 +3719,17 @@ class tRNASeqDatabase:
         tRNAseq_db_hash = self.get_hash()
         self.db.set_meta_value('tRNAseq_db_hash', tRNAseq_db_hash)
 
+        if self.report_nontRNA:
+            nontRNA_fasta = u.FastaOutput(
+                os.path.join(self.output_dir, project_name + "-nontRNA.fasta"))
+
         # List of entries for each table
         tRNAseq_sequences_table_entries = []
         tRNAseq_info_table_entries = []
         tRNAseq_features_table_entries = []
         tRNAseq_unconserved_table_entries = []
         tRNAseq_unpaired_table_entries = []
+
         # Make a parallel set of tables for sequences that are longer than full-length tRNA.
         # These sequences should be treated differently than tRNA,
         # as they include a mixture of highly interesting species, such as pre-tRNA and tmRNA,
@@ -3735,8 +3742,7 @@ class tRNASeqDatabase:
 
         # Reads are identified as tRNA if they have the minimum set of features
         # from the 3' acceptor through the T loop.
-        num_features_through_T_loop = constants.db_formatted_tRNA_feature_names[::-1].index(
-            't_loop') + 1
+        num_features_through_T_loop = constants.db_formatted_tRNA_feature_names[::-1].index('t_loop') + 1
 
         num_profiled_rep_seqs = 0
         num_tRNA_seqs = 0
@@ -3749,44 +3755,52 @@ class tRNASeqDatabase:
         if self.charging_recorded:
             num_charged_tRNA_seqs = 0
             num_uncharged_tRNA_seqs = 0
+        num_unique_tRNA_seqs_normalizing_acceptor = 0
+        num_unique_long_tRNA_seqs_normalizing_acceptor = 0
+        num_subseq_dereplicated_tRNA_seqs = 0
+        num_subseq_dereplicated_long_tRNA_seqs = 0
 
 
-        chunk_size = 50000
-        num_chunks = total_num_rep_seqs // chunk_size
+        num_chunks = total_num_rep_seqs // self.write_buffer_size
         if num_chunks == 0:
             num_chunks += 1
             write_points = [total_num_rep_seqs]
         else:
-            write_points = [chunk_size * (i + 1) for i in range(num_chunks)]
+            write_points = [self.write_buffer_size * (i + 1) for i in range(num_chunks)]
             if total_num_rep_seqs % num_chunks > 0:
                 num_chunks += 1
                 write_points.append(total_num_rep_seqs)
         write_point_index = 0
 
-        fasta = u.SequenceSource(rep_seq_fasta)
+        rep_seq_fasta = u.SequenceSource(rep_seq_fasta_path)
 
         manager = multiprocessing.Manager()
         input_queue = manager.Queue()
         output_queue = manager.Queue()
         processes = [
-            multiprocessing.Process(target=trnaidentifier.profile_wrapper, args=(input_queue, output_queue))
+            multiprocessing.Process(
+                target=trnaidentifier.profile_wrapper, args=(input_queue, output_queue))
             for _ in range(self.num_threads)]
         for process in processes:
             process.start()
 
         self.progress.new('Finding tRNA sequences')
-        while fasta:
-            next(fasta)
-            input_queue.put((fasta.id, fasta.seq))
+        num_profiles_retrieved = 0
+        while next(rep_seq_fasta):
+            input_queue.put((rep_seq_fasta.id, rep_seq_fasta.seq))
             num_profiled_rep_seqs += 1
 
             if num_profiled_rep_seqs != write_points[write_point_index]:
                 continue
 
-            while not output_queue.empty():
+            while num_profiles_retrieved < num_profiled_rep_seqs:
+                num_profiles_retrieved += 1
                 tRNA_profile = output_queue.get()
 
                 if len(tRNA_profile.features) < num_features_through_T_loop:
+                    if self.report_nontRNA:
+                        nontRNA_fasta.write_id(tRNA_profile.name)
+                        nontRNA_fasta.write_seq(tRNA_profile.read)
                     continue
 
                 num_unique_tRNA_seqs += 1
@@ -3798,7 +3812,7 @@ class tRNASeqDatabase:
                 num_replicates = len(replicate_names)
                 num_tRNA_seqs += num_replicates
 
-                # Recover the nucleotides that did not fit expectations,
+                # Recover the nucleotides that did not fit expectation,
                 # either by not being the expected nucleotide or type of nucleotide
                 # or by not base pairing in a stem.
                 unconserved_info = tRNA_profile.get_unconserved_positions()
@@ -3825,12 +3839,22 @@ class tRNASeqDatabase:
                     tRNAseq_long_sequences_table_entries.append(
                         (tRNAseq_name, ','.join(replicate_names), num_replicates, tRNAseq_sequence))
 
-                    if tRNA_profile.alpha_stop is not None:
-                        alpha_stop = tRNA_profile.alpha_start - 1
+                    if tRNA_profile.alpha_start:
+                        alpha_start = tRNA_profile.alpha_start
+                    else:
+                        alpha_start = '??'
+                    if tRNA_profile.alpha_stop:
+                        alpha_stop = tRNA_profile.alpha_stop - 1
+                    else:
+                        alpha_stop = '??'
+                    if tRNA_profile.beta_start:
+                        beta_start = tRNA_profile.beta_start
+                    else:
+                        beta_start = '??'
+                    if tRNA_profile.beta_stop:
                         beta_stop = tRNA_profile.beta_stop - 1
                     else:
-                        alpha_stop = None
-                        beta_stop = None
+                        beta_stop = '??'
 
                     tRNAseq_long_info_table_entries.append((
                         tRNAseq_name,
@@ -3850,9 +3874,9 @@ class tRNASeqDatabase:
                         tRNA_profile.num_unpaired,
                         tRNA_profile.num_in_extrapolated_fiveprime_feature,
                         tRNA_profile.num_extra_threeprime,
-                        tRNA_profile.alpha_start,
+                        alpha_start,
                         alpha_stop,
-                        tRNA_profile.beta_start,
+                        beta_start,
                         beta_stop))
 
                     tRNAseq_long_features_table_entries.append(
@@ -3875,16 +3899,27 @@ class tRNASeqDatabase:
 
                     for unpaired_tuple in unpaired_info:
                         tRNAseq_long_unpaired_table_entries.append((tRNAseq_name, ) + unpaired_tuple)
-                else:
+
+                else: # tRNA sequences of "normal" length and tRNA fragments
                     tRNAseq_sequences_table_entries.append(
                         (tRNAseq_name, ','.join(replicate_names), num_replicates, tRNAseq_sequence))
 
-                    if tRNA_profile.alpha_stop is not None:
-                        alpha_stop = tRNA_profile.alpha_start - 1
+                    if tRNA_profile.alpha_start:
+                        alpha_start = tRNA_profile.alpha_start
+                    else:
+                        alpha_start = '??'
+                    if tRNA_profile.alpha_stop:
+                        alpha_stop = tRNA_profile.alpha_stop - 1
+                    else:
+                        alpha_stop = '??'
+                    if tRNA_profile.beta_start:
+                        beta_start = tRNA_profile.beta_start
+                    else:
+                        beta_start = '??'
+                    if tRNA_profile.beta_stop:
                         beta_stop = tRNA_profile.beta_stop - 1
                     else:
-                        alpha_stop = None
-                        beta_stop = None
+                        beta_stop = '??'
 
                     tRNAseq_info_table_entries.append((
                         tRNAseq_name,
@@ -3904,9 +3939,9 @@ class tRNASeqDatabase:
                         tRNA_profile.num_unpaired,
                         tRNA_profile.num_in_extrapolated_fiveprime_feature,
                         tRNA_profile.num_extra_threeprime,
-                        tRNA_profile.alpha_start,
+                        alpha_start,
                         alpha_stop,
-                        tRNA_profile.beta_start,
+                        beta_start,
                         beta_stop))
 
                     tRNAseq_features_table_entries.append(
@@ -3917,12 +3952,12 @@ class tRNASeqDatabase:
                             (len(constants.tRNA_feature_names) - len(tRNA_profile.features)))]) * 2
                         + tuple(itertools.chain(*zip(
                             [str(f.start_index) if hasattr(f, 'start_index')
-                            else ','.join(map(str, f.start_indices))
-                            for f in tRNA_profile.features],
+                             else ','.join(map(str, f.start_indices))
+                             for f in tRNA_profile.features],
                             # Convert Pythonic stop index for slicing to "real" stop index of feature
                             [str(f.stop_index - 1) if hasattr(f, 'stop_index')
-                            else ','.join(map(str, [stop_index - 1 for stop_index in f.stop_indices]))
-                            for f in tRNA_profile.features]))))
+                             else ','.join(map(str, [stop_index - 1 for stop_index in f.stop_indices]))
+                             for f in tRNA_profile.features]))))
 
                     for unconserved_tuple in unconserved_info:
                         tRNAseq_unconserved_table_entries.append((tRNAseq_name, ) + unconserved_tuple)
@@ -3932,44 +3967,51 @@ class tRNASeqDatabase:
 
                 del(tRNA_profile)
 
-            self.progress.update("%d of %d unique sequences have been profiled"
-                                 % (num_profiled_rep_seqs, total_num_rep_seqs))
+            self.progress.update(
+                "%d of %d unique sequences have been profiled" % (num_profiled_rep_seqs, total_num_rep_seqs))
 
             if len(tRNAseq_sequences_table_entries) > 0:
                 self.db._exec_many(
-                    '''INSERT INTO %s VALUES (?,?,?,?)''' % t.tRNAseq_sequences_table_name,
+                    '''INSERT INTO %s VALUES (%s)'''
+                    % (t.tRNAseq_sequences_table_name, ','.join('?' * len(t.tRNAseq_sequences_table_structure))),
                     tRNAseq_sequences_table_entries)
                 self.db._exec_many(
-                    '''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.tRNAseq_info_table_name,
+                    '''INSERT INTO %s VALUES (%s)'''
+                    % (t.tRNAseq_info_table_name, ','.join('?' * len(t.tRNAseq_info_table_structure))),
                     tRNAseq_info_table_entries)
                 self.db._exec_many(
-                    '''INSERT INTO %s VALUES (%s)''' % (
-                        t.tRNAseq_features_table_name,
-                        ','.join(len(tRNAseq_features_table_entries[0]) * '?')),
+                    '''INSERT INTO %s VALUES (%s)'''
+                    % (t.tRNAseq_features_table_name, ','.join('?' * len(t.tRNAseq_features_table_structure))),
                     tRNAseq_features_table_entries)
                 self.db._exec_many(
-                    '''INSERT INTO %s VALUES (?,?,?,?)''' % t.tRNAseq_unconserved_table_name,
+                    '''INSERT INTO %s VALUES (%s)'''
+                    % (t.tRNAseq_unconserved_table_name, ','.join('?' * len(t.tRNAseq_unconserved_table_structure))),
                     tRNAseq_unconserved_table_entries)
                 self.db._exec_many(
-                    '''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.tRNAseq_unpaired_table_name,
+                    '''INSERT INTO %s VALUES (%s)'''
+                    % (t.tRNAseq_unpaired_table_name, ','.join('?' * len(t.tRNAseq_unpaired_table_structure))),
                     tRNAseq_unpaired_table_entries)
+
             if len(tRNAseq_long_sequences_table_entries) > 0:
                 self.db._exec_many(
-                    '''INSERT INTO %s VALUES (?,?,?,?)''' % t.tRNAseq_long_sequences_table_name,
+                    '''INSERT INTO %s VALUES (%s)'''
+                    % (t.tRNAseq_long_sequences_table_name, ','.join('?' * len(t.tRNAseq_long_sequences_table_structure))),
                     tRNAseq_long_sequences_table_entries)
                 self.db._exec_many(
-                    '''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.tRNAseq_long_info_table_name,
+                    '''INSERT INTO %s VALUES (%s)'''
+                    % (t.tRNAseq_long_info_table_name, ','.join('?' * len(t.tRNAseq_long_info_table_structure))),
                     tRNAseq_long_info_table_entries)
                 self.db._exec_many(
-                    '''INSERT INTO %s VALUES (%s)''' % (
-                        t.tRNAseq_long_features_table_name,
-                        ','.join(len(tRNAseq_long_features_table_entries[0]) * '?')),
+                    '''INSERT INTO %s VALUES (%s)'''
+                    % (t.tRNAseq_long_features_table_name, ','.join('?' * len(t.tRNAseq_long_features_table_structure))),
                     tRNAseq_long_features_table_entries)
                 self.db._exec_many(
-                    '''INSERT INTO %s VALUES (?,?,?,?)''' % t.tRNAseq_long_unconserved_table_name,
+                    '''INSERT INTO %s VALUES (%s)'''
+                    % (t.tRNAseq_long_unconserved_table_name, ','.join('?' * len(t.tRNAseq_long_unconserved_table_structure))),
                     tRNAseq_long_unconserved_table_entries)
                 self.db._exec_many(
-                    '''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.tRNAseq_long_unpaired_table_name,
+                    '''INSERT INTO %s VALUES (%s)'''
+                    % (t.tRNAseq_long_unpaired_table_name, ','.join('?' * len(t.tRNAseq_long_unpaired_table_structure))),
                     tRNAseq_long_unpaired_table_entries)
 
             tRNAseq_sequences_table_entries = []
@@ -3989,69 +4031,496 @@ class tRNASeqDatabase:
             if write_point_index == len(write_points):
                 break
 
+        derep.remove_temp_files()
+        del derep
+        del cluster_membership_dict
+
         for process in processes:
             process.terminate()
 
+        # Now that reads have been processed,
+        # dereplicate tRNA sequences that are the same except for the acceptor.
+        # Count the different variants of 3' ends that were dereplicated into each unique sequence.
+        # Make tables for tRNA and "long" sequences.
+        self.progress.update("Collapsing tRNA sequences with acceptor and 3' variants")
+        self.progress.update("tick tock ...")
+
+        name_list = self.db.get_single_column_from_table('sequences', 'name')
+        seq_list = self.db.get_single_column_from_table('sequences', 'sequence')
+        acceptor_start_list = self.db.get_single_column_from_table('features', 'acceptor_start')
+        acceptorless_seq_list = [
+            seq[: acceptor_start] for seq, acceptor_start in zip(seq_list, acceptor_start_list)]
+        threeprime_seq_list = [
+            seq[acceptor_start: ] for seq, acceptor_start in zip(seq_list, acceptor_start_list)]
+        del seq_list
+        del acceptor_start_list
+        threeprime_seq_variant_dict = {}
+        # The possible 3' subsequences found in trnaidentifier
+        for name, threeprime_seq in zip(name_list, threeprime_seq_list):
+            threeprime_seq_variant_dict[name] = threeprime_seq
+        del threeprime_seq_list
+
+        derep = vsearch.FullLengthDereplication(
+            min_seq_length=1,
+            num_threads=self.num_threads,
+            run=self.run,
+            progress=self.progress)
+
+        # Create a temporary FASTA file of input sequences for dereplication.
+        derep_input_fasta = u.FastaOutput(os.path.join(derep.temp_dir, 'input_seqs.fasta'))
+        derep.input_fasta_path = derep_input_fasta.output_file_path
+        derep.temp_file_path_list.append(derep.input_fasta_path)
+        for name, seq in zip(name_list, acceptorless_seq_list):
+            derep_input_fasta.write_id(name)
+            derep_input_fasta.write_seq(seq)
+        del name_list
+        del acceptorless_seq_list
+        del derep_input_fasta
+
+        derep.dereplicate()
+        cluster_membership_dict = derep.get_cluster_membership_dict()
+        cluster_membership_iterator = iter(
+            [rep_name, member_seq_name_list]
+            for rep_name, member_seq_name_list in cluster_membership_dict.items())
+        del cluster_membership_dict
+        # Add seqs
+        rep_seq_fasta = u.SequenceSource(derep.output_fasta_path, lazy_init=False)
+        rep_seq_info_list = []
+        while next(rep_seq_fasta):
+            l = next(cluster_membership_iterator)
+            l.append(rep_seq_fasta.seq)
+            rep_seq_info_list.append(l)
+        derep.remove_temp_files()
+        del derep
+        del cluster_membership_iterator
+
+        tRNAseq_acceptor_table_entry_list = []
+        for rep_name, member_seq_name_list, rep_seq in rep_seq_info_list:
+            num_unique_tRNA_seqs_normalizing_acceptor += 1
+            threeprime_variant_count_dict = OrderedDict(
+                [(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANT_LIST])
+            for member_seq_name in member_seq_name_list:
+                threeprime_variant_count_dict[threeprime_seq_variant_dict[member_seq_name]] += 1
+            tRNAseq_acceptor_table_entry_list.append((
+                rep_name,
+                ','.join(member_seq_name_list),
+                len(member_seq_name_list),
+                rep_seq) + tuple([count for count in threeprime_variant_count_dict.values()]))
+        self.db._exec_many(
+            '''INSERT INTO %s VALUES (%s)'''
+            % (t.tRNAseq_acceptor_table_name, ','.join('?' * len(t.tRNAseq_acceptor_table_structure))),
+            tRNAseq_acceptor_table_entry_list)
+
+        del tRNAseq_acceptor_table_entry_list
+
+        gc.collect()
+
+
+        # Now dereplicate "long" acceptor-less sequences by the same process.
+        name_list = self.db.get_single_column_from_table('long_sequences', 'name')
+        seq_list = self.db.get_single_column_from_table('long_sequences', 'sequence')
+        acceptor_start_list = self.db.get_single_column_from_table('long_features', 'acceptor_start')
+        acceptorless_seq_list = [
+            seq[: acceptor_start] for seq, acceptor_start in zip(seq_list, acceptor_start_list)]
+        threeprime_seq_list = [
+            seq[acceptor_start: ] for seq, acceptor_start in zip(seq_list, acceptor_start_list)]
+        del seq_list
+        del acceptor_start_list
+        threeprime_seq_variant_dict = {}
+        for name, threeprime_seq in zip(name_list, threeprime_seq_list):
+            threeprime_seq_variant_dict[name] = threeprime_seq
+        del threeprime_seq_list
+
+        derep = vsearch.FullLengthDereplication(
+            min_seq_length=1,
+            num_threads=self.num_threads,
+            run=self.run,
+            progress=self.progress)
+
+        derep_input_fasta = u.FastaOutput(os.path.join(derep.temp_dir, 'input_seqs.fasta'))
+        derep.input_fasta_path = derep_input_fasta.output_file_path
+        derep.temp_file_path_list.append(derep.input_fasta_path)
+        for name, seq in zip(name_list, acceptorless_seq_list):
+            derep_input_fasta.write_id(name)
+            derep_input_fasta.write_seq(seq)
+        del name_list
+        del acceptorless_seq_list
+        del derep_input_fasta
+
+        derep.dereplicate()
+        cluster_membership_dict = derep.get_cluster_membership_dict()
+        cluster_membership_iterator = iter(
+            [rep_name, member_seq_name_list]
+            for rep_name, member_seq_name_list in cluster_membership_dict.items())
+        del cluster_membership_dict
+        # Add seqs
+        rep_seq_fasta = u.SequenceSource(derep.output_fasta_path)
+        rep_seq_info_list = []
+        while next(rep_seq_fasta):
+            l = next(cluster_membership_iterator)
+            l.append(rep_seq_fasta.seq)
+            rep_seq_info_list.append(l)
+        derep.remove_temp_files()
+        del derep
+        del cluster_membership_iterator
+
+        tRNAseq_long_acceptor_table_entry_list = []
+        for rep_name, member_seq_name_list, rep_seq in rep_seq_info_list:
+            num_unique_long_tRNA_seqs_normalizing_acceptor += 1
+            threeprime_variant_count_dict = OrderedDict(
+                [(threeprime_variant, 0) for threeprime_variant in THREEPRIME_VARIANT_LIST])
+            for member_seq_name in member_seq_name_list:
+                threeprime_variant_count_dict[threeprime_seq_variant_dict[member_seq_name]] += 1
+            tRNAseq_long_acceptor_table_entry_list.append((
+                rep_name,
+                ','.join(member_seq_name_list),
+                len(member_seq_name_list),
+                rep_seq) + tuple([count for count in threeprime_variant_count_dict.values()]))
+        self.db._exec_many(
+            '''INSERT INTO %s VALUES (%s)'''
+            % (t.tRNAseq_long_acceptor_table_name, ','.join('?' * len(t.tRNAseq_long_acceptor_table_structure))),
+            tRNAseq_long_acceptor_table_entry_list)
+        del tRNAseq_long_acceptor_table_entry_list
+
+        gc.collect()
+
+
+        # Then "prefix dereplicate" sequences from the 3' end of the acceptor-less sequences
+        # to produce unique acceptor-less sequences.
+
+        self.progress.update("Dereplicating tRNA sequences with 3' variants removed")
+        self.progress.update("tick tock ...")
+
+        # Get the acceptor-less sequences and reverse them,
+        # as VSEARCH prefix dereplication starts from the start of the sequence.
+        name_list = self.db.get_single_column_from_table('acceptor', 'name')
+        reversed_seq_list = [
+            seq[::-1] for seq in self.db.get_single_column_from_table('acceptor', 'sequence_without_acceptor')]
+
+        derep = vsearch.PrefixDereplication(
+            min_seq_length=1,
+            num_threads=self.num_threads,
+            run=self.run,
+            progress=self.progress)
+
+        # Create a temporary FASTA file of input sequences for prefix dereplication.
+        derep_input_fasta = u.FastaOutput(os.path.join(derep.temp_dir, 'input_seqs.fasta'))
+        derep.input_fasta_path = derep_input_fasta.output_file_path
+        derep.temp_file_path_list.append(derep.input_fasta_path)
+        for name, seq in zip(name_list, reversed_seq_list):
+            derep_input_fasta.write_id(name)
+            derep_input_fasta.write_seq(seq)
+        del derep_input_fasta
+
+        # Load the representative sequences.
+        # Subsequences that may be in more than one cluster
+        # are only associated with one cluster each in the UC file.
+        # We also want to know the total number of subsequences of each representative sequence.
+        derep.dereplicate()
+        rep_seq_fasta = u.SequenceSource(derep.output_fasta_path)
+        rep_name_list = []
+        rep_seq_list = []
+        while next(rep_seq_fasta):
+            rep_name_list.append(rep_seq_fasta.id)
+            rep_seq_list.append(rep_seq_fasta.seq)
+        derep.remove_temp_files()
+        del derep
+
+        # Each acceptor-less sequence is a seed from tRNA sequences.
+        # Get the names and counts of underlying tRNA sequences.
+        grouped_tRNA_names_list = self.db.get_single_column_from_table('acceptor', 'grouped_names')
+        group_count_list = self.db.get_single_column_from_table('acceptor', 'group_count')
+        # Get the counts of the possible 3' endings of the underlying tRNA sequences.
+        variant_count_tuples_list = self.db.get_some_columns_from_table(
+            'acceptor', ','.join([variant + '_count' for variant in THREEPRIME_VARIANT_LIST]))
+        rep_info_list = list(zip(rep_name_list, rep_seq_list))
+        # Store the number of representative sequences matched by each acceptor-less sequence.
+        match_count_dict = {}
+        # Store 5 pieces of information for each representative sequence.
+        # 1. Matching acceptor-less sequence names
+        # 2. Matching underlying tRNA sequence names
+        # 3. Matching underlying tRNA sequence count
+        # 4. 3' variant counts of underlying tRNA sequences
+        # 5. Average subsequence multiplicity
+        # = Sum(Number of underlying tRNA sequence representative sequence matches)
+        # / Number of underlying tRNA sequences
+        rep_match_info_dict = {
+            rep_name: [[], [], 0, [0 for variant in THREEPRIME_VARIANT_LIST]]
+            for rep_name in rep_name_list}
+        for seq_name, seq, grouped_tRNA_names, group_count, variant_count_tuple in zip(
+            name_list, reversed_seq_list, grouped_tRNA_names_list, group_count_list, variant_count_tuples_list):
+            match_count = 0
+            for rep_name, rep_seq in rep_info_list:
+                if len(rep_seq) < len(seq):
+                    continue
+                if seq == rep_seq[: len(seq)]:
+                    match_count += 1
+                    rep_match_info_list = rep_match_info_dict[rep_name]
+                    rep_match_info_list[0].append(seq_name)
+                    rep_match_info_list[1].extend(grouped_tRNA_names.split(','))
+                    rep_match_info_list[2] += group_count
+                    variant_count_list = rep_match_info_list[3]
+                    for i, variant_count in enumerate(variant_count_tuple):
+                        variant_count_list[i] += variant_count
+            match_count_dict[seq_name] = match_count * group_count
+        del grouped_tRNA_names_list
+        del group_count_list
+        del variant_count_tuples_list
+        del rep_info_list
+
+        for rep_name, rep_match_info_list in rep_match_info_dict.items():
+            match_count_sum = 0
+            for seq_name in rep_match_info_list[0]:
+                match_count_sum += match_count_dict[seq_name]
+            rep_match_info_list.append(match_count_sum / rep_match_info_list[2])
+        del match_count_dict
+
+        tRNAseq_subsequence_table_entry_list = []
+        for rep_name, rep_match_info_list in rep_match_info_dict.items():
+            num_subseq_dereplicated_tRNA_seqs += 1
+            tRNA_name_list = rep_match_info_list[1]
+            tRNA_count = rep_match_info_list[2]
+            variant_count_list = rep_match_info_list[3]
+            multiplicity = rep_match_info_list[4]
+            tRNAseq_subsequence_table_entry_list.append((
+                rep_name,
+                ','.join(tRNA_name_list),
+                tRNA_count,
+                multiplicity) + tuple([count for count in variant_count_list]))
+        self.db._exec_many(
+            '''INSERT INTO %s VALUES (%s)'''
+            % (t.tRNAseq_subsequence_table_name, ','.join('?' * len(t.tRNAseq_subsequence_table_structure))),
+            tRNAseq_subsequence_table_entry_list)
+        del rep_match_info_dict
+
+        if self.report_seed_output:
+            seq_dict = dict(
+                self.db.get_some_columns_from_table('acceptor', 'name,sequence_without_acceptor'))
+            seed_fasta = u.FastaOutput(os.path.join(self.output_dir, project_name + "-seeds.fasta"))
+            for tRNAseq_subsequence_table_entry in tRNAseq_subsequence_table_entry_list:
+                seq_name = tRNAseq_subsequence_table_entry[0]
+                seed_fasta.write_id(seq_name)
+                seed_fasta.write_seq(seq_dict[seq_name])
+            with open(os.path.join(self.output_dir, project_name + "-seed_replicates.txt"), 'w') as f:
+                for seq_name, tRNA_count in self.db.get_some_columns_from_table(
+                    'subsequence_relations', 'name,subsequence_count'):
+                    f.write(seq_name + "\t" + str(tRNA_count) + "\n")
+
+        del tRNAseq_subsequence_table_entry_list
+        del seq_dict
+
+        gc.collect()
+
+        # Now prefix dereplicate "long" acceptor-less sequences by the same process.
+
+        name_list = self.db.get_single_column_from_table('long_acceptor', 'name')
+        reversed_seq_list = [
+            seq[::-1] for seq in self.db.get_single_column_from_table('long_acceptor', 'sequence_without_acceptor')]
+
+        derep = vsearch.PrefixDereplication(
+            min_seq_length=1,
+            num_threads=self.num_threads,
+            run=self.run,
+            progress=self.progress)
+
+        derep_input_fasta = u.FastaOutput(os.path.join(derep.temp_dir, 'input_seqs.fasta'))
+        derep.input_fasta_path = derep_input_fasta.output_file_path
+        derep.temp_file_path_list.append(derep.input_fasta_path)
+        for name, seq in zip(name_list, reversed_seq_list):
+            derep_input_fasta.write_id(name)
+            derep_input_fasta.write_seq(seq)
+        del derep_input_fasta
+
+        derep.dereplicate()
+        rep_seq_fasta = u.SequenceSource(derep.output_fasta_path)
+        rep_name_list = []
+        rep_seq_list = []
+        while next(rep_seq_fasta):
+            rep_name_list.append(rep_seq_fasta.id)
+            rep_seq_list.append(rep_seq_fasta.seq)
+        derep.remove_temp_files()
+        del derep
+
+        grouped_tRNA_names_list = self.db.get_single_column_from_table('long_acceptor', 'grouped_names')
+        group_count_list = self.db.get_single_column_from_table('long_acceptor', 'group_count')
+        variant_count_tuples_list = self.db.get_some_columns_from_table(
+            'long_acceptor', ','.join([variant + '_count' for variant in THREEPRIME_VARIANT_LIST]))
+        rep_info_list = list(zip(rep_name_list, rep_seq_list))
+        match_count_dict = {}
+        rep_match_info_dict = {
+            rep_name: [[], [], 0, [0 for variant in THREEPRIME_VARIANT_LIST]]
+            for rep_name in rep_name_list}
+        for seq_name, seq, grouped_tRNA_names, group_count, variant_count_tuple in zip(
+            name_list, reversed_seq_list, grouped_tRNA_names_list, group_count_list, variant_count_tuples_list):
+            match_count = 0
+            for rep_name, rep_seq in rep_info_list:
+                if len(rep_seq) < len(seq):
+                    continue
+                if seq == rep_seq[: len(seq)]:
+                    match_count += 1
+                    rep_match_info_list = rep_match_info_dict[rep_name]
+                    rep_match_info_list[0].append(seq_name)
+                    rep_match_info_list[1].extend(grouped_tRNA_names.split(','))
+                    rep_match_info_list[2] += group_count
+                    variant_count_list = rep_match_info_list[3]
+                    for i, variant_count in enumerate(variant_count_tuple):
+                        variant_count_list[i] += variant_count
+            match_count_dict[seq_name] = match_count * group_count
+        del grouped_tRNA_names_list
+        del group_count_list
+        del variant_count_tuples_list
+        del rep_info_list
+
+        for rep_name, rep_match_info_list in rep_match_info_dict.items():
+            match_count_sum = 0
+            for seq_name in rep_match_info_list[0]:
+                match_count_sum += match_count_dict[seq_name]
+            rep_match_info_list.append(match_count_sum / rep_match_info_list[2])
+        del match_count_dict
+
+        tRNAseq_long_subsequence_table_entry_list = []
+        for rep_name, rep_match_info_list in rep_match_info_dict.items():
+            num_subseq_dereplicated_long_tRNA_seqs += 1
+            tRNA_name_list = rep_match_info_list[1]
+            tRNA_count = rep_match_info_list[2]
+            variant_count_list = rep_match_info_list[3]
+            multiplicity = rep_match_info_list[4]
+            tRNAseq_long_subsequence_table_entry_list.append((
+                rep_name,
+                ','.join(tRNA_name_list),
+                tRNA_count,
+                multiplicity) + tuple([count for count in variant_count_list]))
+        self.db._exec_many(
+            '''INSERT INTO %s VALUES (%s)'''
+            % (t.tRNAseq_long_subsequence_table_name, ','.join('?' * len(t.tRNAseq_long_subsequence_table_structure))),
+            tRNAseq_long_subsequence_table_entry_list)
+        del rep_match_info_dict
+        del tRNAseq_long_subsequence_table_entry_list
+
+        gc.collect()
+
         self.progress.end()
 
+
         num_seqs_processed = total_num_seqs
+        num_subseq_derep_tRNA_seqs = 0
 
         # Informative metadata
         self.db.set_meta_value('num_seqs_processed', num_seqs_processed)
         self.db.set_meta_value('num_tRNA_seqs', num_tRNA_seqs)
         self.db.set_meta_value('num_unique_tRNA_seqs', num_unique_tRNA_seqs)
-        self.db.set_meta_value('num_tRNA_seqs_containing_anticodon',
-                               num_tRNA_seqs_containing_anticodon)
+        self.db.set_meta_value('num_unique_tRNA_seqs_normalizing_acceptor', num_unique_tRNA_seqs_normalizing_acceptor)
+        self.db.set_meta_value('num_subseq_dereplicated_tRNA_seqs', num_subseq_dereplicated_tRNA_seqs)
+        self.db.set_meta_value('num_tRNA_seqs_containing_anticodon', num_tRNA_seqs_containing_anticodon)
         self.db.set_meta_value('num_mature_tRNA_seqs', num_mature_tRNA_seqs)
         self.db.set_meta_value('num_long_tRNA_reads', num_long_tRNA_reads)
-        self.db.set_meta_value('num_tRNA_seqs_with_extrapolated_fiveprime_feature',
-                               num_tRNA_seqs_with_extrapolated_fiveprime_feature)
-        self.db.set_meta_value('num_tRNA_reads_with_extra_threeprime_bases',
-                               num_tRNA_reads_with_extra_threeprime_bases)
+        self.db.set_meta_value('num_unique_long_tRNA_seqs_normalizing_acceptor', num_unique_long_tRNA_seqs_normalizing_acceptor)
+        self.db.set_meta_value('num_subseq_dereplicated_long_tRNA_seqs', num_subseq_dereplicated_long_tRNA_seqs)
+        self.db.set_meta_value('num_tRNA_seqs_with_extrapolated_fiveprime_feature', num_tRNA_seqs_with_extrapolated_fiveprime_feature)
+        self.db.set_meta_value('num_tRNA_reads_with_extra_threeprime_bases', num_tRNA_reads_with_extra_threeprime_bases)
         self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 
-        self.run.info("Number of sequences processed", num_seqs_processed)
-        self.run.info("Number of tRNA sequences identified", num_tRNA_seqs)
-        self.run.info("Number of unique tRNA sequences identified and added to the database", num_unique_tRNA_seqs)
-        self.run.info("Number of tRNA sequences containing anticodon", num_tRNA_seqs_containing_anticodon)
-        self.run.info("Number of mature tRNA sequences", num_mature_tRNA_seqs)
+
+        self.run.info("Reads processed", num_seqs_processed)
+        self.run.info(
+            "Reads identified as tRNA "
+            "(partial-length + full-length + long)",
+            num_tRNA_seqs)
+        self.run.info(
+            "Unique tRNA sequences identified "
+            "(partial-length + full-length + long)",
+            num_unique_tRNA_seqs)
+        self.run.info(
+            "Unique tRNA sequences, "
+            "normalizing acceptor and 3' end "
+            "(partial-length + full-length)",
+            num_unique_tRNA_seqs_normalizing_acceptor)
+        self.run.info(
+            "Unique tRNA sequences, "
+            "normalizing acceptor and 3' end, "
+            "then dereplicating from 3' end "
+            "(partial-length + full-length)",
+            num_subseq_dereplicated_tRNA_seqs)
+        self.run.info(
+            "Number of tRNA reads containing anticodon "
+            "(partial-length + full-length + long)",
+            num_tRNA_seqs_containing_anticodon)
+        self.run.info(
+            "Number of reads identified as mature tRNA spanning acceptor stem "
+            "(full-length)",
+            num_mature_tRNA_seqs)
         if self.charging_recorded:
-            self.run.info("Number of charged tRNA sequences", num_charged_tRNA_seqs)
-        self.run.info("Number of reads with tRNA features but significantly longer than full-length tRNA", num_long_tRNA_reads)
-        self.run.info("Number of tRNA sequences with extrapolated 5' feature", num_tRNA_seqs_with_extrapolated_fiveprime_feature)
-        self.run.info("Number of reads with extra 3' bases beyond acceptor", num_tRNA_reads_with_extra_threeprime_bases)
+            self.run.info(
+                "Number of reads identified as charged tRNA "
+                "(partial-length + full-length + long)",
+                num_charged_tRNA_seqs)
+        self.run.info(
+            "Number of reads with tRNA features but significantly longer than full-length tRNA "
+            "(long)",
+            num_long_tRNA_reads)
+        self.run.info(
+            "Number of reads with tRNA features but significantly longer than full-length tRNA, "
+            "normalizing acceptor and 3' end "
+            "(long)",
+            num_unique_long_tRNA_seqs_normalizing_acceptor)
+        self.run.info(
+            "Number of reads with tRNA features by significantly longer than full-length tRNA, "
+            "normalizing acceptor and 3' end, "
+            "then dereplicating from 3' end "
+            "(long)",
+            num_subseq_dereplicated_long_tRNA_seqs)
+        self.run.info(
+            "Number of reads identified as tRNA containing extrapolated 5' feature "
+            "(partial-length + full-length)",
+            num_tRNA_seqs_with_extrapolated_fiveprime_feature)
+        self.run.info(
+            "Number of reads identified as tRNA with extra 3' bases beyond acceptor "
+            "(partial-length + full-length + long)",
+            num_tRNA_reads_with_extra_threeprime_bases)
 
 
-    def get_cluster_membership_dict(self, cluster_filepath):
-        ''' Get a dict of cluster membership from a USEARCH cluster format (UC) file '''
+    def check_deflines(self, input_fasta_path):
+        # Make sure there are no surprises with FASTA file deflines and sequence lengths.
+        self.progress.new("Checking deflines")
+        self.progress.update("tick tock ...")
+        fasta = u.SequenceSource(input_fasta_path)
 
-        # Files with this format are produced by USEARCH and VSEARCH.
-        # The table contains mixed information in two parts.
-        # The first part (rows that come first) contains a line for each input sequence.
-        # Clusters are reported in blocks in order of cluster size, with the seed sequence being the first line (record type "S").
-        # The seed sequence line has the sequence name as the query label and an asterisk as the target label.
-        # Member sequence lines (record type "H") have the seed sequence name as the target label.
-        # The "size" column in this part means sequence length.
-        # The second part contains a line for each cluster (record type "C").
-        # The "size" column in this part means cluster size.
+        while next(fasta):
+            characters_anvio_doesnt_like = [
+                c for c in set(fasta.id) if c not in constants.allowed_chars]
 
-        cluster_df = pd.read_csv(
-            cluster_filepath,
-            sep='\t',
-            names=['record_type', 'clust_num', 'size', 'pc_ident', 'strand',
-                   'obsolete1', 'obsolete2', 'align', 'query_label', 'target_label'])
+            if len(characters_anvio_doesnt_like):
+                self.progress.end()
+                raise ConfigError(
+                    "At least one of the deflines in your FASTA file "
+                    "does not comply with the 'simple deflines' requirement of Anvi'o. "
+                    "You can either use the script, `anvi-script-reformat-fasta`, "
+                    "to take care of this issue, or read this section in the tutorial "
+                    "to understand the reason behind this requirement "
+                    "(Anvi'o is very upset for making you do this): %s"
+                    % "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file")
 
-        seq_df = cluster_df[(cluster_df['record_type'] == 'S') | (cluster_df['record_type'] == 'H')]
+            try:
+                int(fasta.id)
+                is_int = True
+            except:
+                is_int = False
+            if is_int:
+                self.progress.end()
+                raise ConfigError(
+                    "At least one of the deflines in your FASTA file "
+                    "(well, this one to be precise: '%s') looks like a number. "
+                    "For reasons we can't really justify, "
+                    "Anvi'o does not like those numeric names, "
+                    "and hereby asks you to make sure every tRNA-seq name "
+                    "contains at least one alphanumeric character :/ "
+                    "Meanwhile we, the Anvi'o developers, are both surprised by and thankful for "
+                    "your endless patience with such eccentric requests. "
+                    "You the real MVP." % fasta.id)
 
-        cluster_membership_dict = {}
-        for query_label, target_label in zip(seq_df['query_label'].tolist(), seq_df['target_label'].tolist()):
-            if target_label == '*':
-                cluster_membership_dict[query_label] = [query_label]
-            else:
-                cluster_membership_dict[target_label].append(query_label)
-
-        return cluster_membership_dict
+        fasta.close()
+        self.progress.end()
 
 
     def get_date(self):
@@ -4060,215 +4529,6 @@ class tRNASeqDatabase:
 
     def disconnect(self):
         self.db.disconnect()
-
-
-# class TRNASeedsDatabase:
-#     """To create an empty tRNA seeds database and/or access one."""
-#     def __init__(self, db_path, run=run, progress=progress, quiet=True, skip_init=False):
-#         self.db = None
-#         self.db_path = db_path
-
-#         self.run = run
-#         self.progress = progress
-#         self.quiet = quiet
-
-#         self.meta = {}
-
-#         if not skip_init:
-#             self.init()
-
-
-#     def init(self):
-#         if os.path.exists(self.db_path):
-#             utils.is_trnaseeds_db(self.db_path)
-#             self.db = db.DB(self.db_path, anvio.__trnaseeds__version__)
-#             meta_table = self.db.get_table_as_dict('self')
-#             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
-
-#             try:
-#                 for key in ['num_trnaseeds', 'total_length', 'taxonomy_was_run']:
-#                     self.meta[key] = int(self.meta[key])
-#             except KeyError:
-#                 raise ConfigError("Oh no :( There is a tRNA seeds database here at '%s', but it seems to be broken :( It is very\
-#                                    likely that the process that was trying to create this database failed, and left behind\
-#                                    this unfinished thingy (if you would like to picture its state you should imagine the baby\
-#                                    Voldemort at King's Cross). Well, anvi'o believes it is best if you make it go away with\
-#                                    fire, and try whatever you were trying before you got this error one more time with a\
-#                                    proper tRNA seeds database. End of sad news. Bye now." % self.db_path)
-
-#             if 'creation_date' not in self.meta:
-#                 raise ConfigError("The tRNA seeds database ('%s') seems to be corrupted :/ This happens if the process \
-#                                     that generates the database ends prematurely. Most probably, you will need to generate\
-#                                     the tRNA seeds database from scratch. Sorry!" % (self.db_path))
-
-#             self.run.info('tRNA seeds database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
-#             self.run.info('Number of tRNA trnaseeds', self.meta['num_trnaseeds'], quiet=self.quiet)
-#             self.run.info('Total number of nucleotides', self.meta['total_length'], quiet=self.quiet)
-
-#         else:
-#             self.db = None
-
-
-#     def get_date(self):
-#         return time.time()
-
-
-#     def get_hash(self):
-#         return 'hash' + str('%08x' % random.randrange(16**8))
-
-
-#     def touch(self):
-#         """Creates an empty tRNA seeds database on disk, and sets `self.db` to access to it.
-
-#         At some point self.db.disconnect() must be called to complete the creation of the new db."""
-
-#         is_db_ok_to_create(self.db_path, 'trnaseeds')
-
-#         self.db = db.DB(self.db_path, anvio.__trnaseeds__version__, new_database=True)
-
-#         # creating empty default tables
-#         self.db.create_table(t.trnaseeds_taxonomy_table_name, t.trnaseeds_taxonomy_table_structure, t.trnaseeds_taxonomy_table_types)
-#         self.db.create_table(t.taxon_names_table_name, t.taxon_names_table_structure, t.taxon_names_table_types)
-#         self.db.create_table(t.trnaseeds_sequences_table_name, t.trnaseeds_sequences_table_structure, t.trnaseeds_sequences_table_types)
-#         self.db.create_table(t.trnaseeds_info_table_name, t.trnaseeds_info_table_structure, t.trnaseeds_info_table_types)
-
-#         return self.db
-
-
-#     def create(self, args):
-#         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-#         trnaseeds_fasta = A('trnaseeds_fasta')
-#         project_name = A('project_name')
-#         description_file_path = A('description')
-
-#         filesnpaths.is_file_fasta_formatted(trnaseeds_fasta)
-#         trnaseeds_fasta = os.path.abspath(trnaseeds_fasta)
-
-#         # let the user see what's up
-#         self.run.info('Input FASTA file', trnaseeds_fasta)
-
-#         if not project_name:
-#             project_name = '.'.join(os.path.basename(os.path.abspath(trnaseeds_fasta)).split('.')[:-1])
-
-#             if project_name:
-#                 self.run.warning("You are generating a new anvi'o tRNA seeds database, but you are not specifying a\
-#                                   project name for it. FINE. Anvi'o, in desperation, will use the input file name\
-#                                   to set the project name for this tRNA seeds database (which is '%s'). If you are not\
-#                                   happy with that, feel free to kill and restart this process. If you are not happy\
-#                                   with this name, but you don't like killing things either, maybe next time you\
-#                                   should either name your FASTA files better, or use the `--project-name` parameter\
-#                                   to set your desired name." % project_name, "Anvi'o made things up for you")
-#             else:
-#                 raise ConfigError("Sorry, you must provide a project name for your tRNA seeds database :/ Anvi'o tried\
-#                                    to make up one, but failed.")
-
-#         self.run.info('Name', project_name, mc='green')
-#         self.run.info('Description', os.path.abspath(description_file_path) if description_file_path else 'No description is given', mc='green')
-
-#         if description_file_path:
-#             filesnpaths.is_file_plain_text(description_file_path)
-#             description = open(os.path.abspath(description_file_path), 'rU').read()
-#         else:
-#             description = ''
-
-#         # go through the FASTA file to make sure there are no surprises with deflines and sequence lengths.
-#         self.progress.new('Checking deflines and tRNA seed lengths')
-#         self.progress.update('tick tock ...')
-#         fasta = u.SequenceSource(trnaseeds_fasta)
-#         while next(fasta):
-#             if not utils.check_tRNAseq_reads(fasta.id, dont_raise=True):
-#                 self.progress.end()
-#                 raise ConfigError("At least one of the deflines in your FASTA File does not comply with the 'simple deflines'\
-#                                    requirement of anvi'o. You can either use the script `anvi-script-reformat-fasta` to take\
-#                                    care of this issue, or read this section in the tutorial to understand the reason behind\
-#                                    this requirement (anvi'o is very upset for making you do this): %s" % \
-#                                        ('http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file'))
-
-#             if len(fasta.seq) > constants.longest_known_trna_length:
-#                 self.progress.end()
-#                 raise ConfigError("At least one of the tRNA seed sequences in your input FASTA '%s' is longer than the longest known tRNA.\
-#                                    This is %d, and your tRNA sequence is like %d :/" % (trnaseeds_fasta, constants.longest_known_trna_length, len(fasta.seq)))
-
-#             try:
-#                 int(fasta.id)
-#                 is_int = True
-#             except:
-#                 is_int = False
-
-#             if is_int:
-#                 self.progress.end()
-#                 raise ConfigError("At least one of the tRNA seed sequences in your FASTA file (well, this one to be precise: '%s') looks like\
-#                                    a number. For reasons we can't really justify, anvi'o does not like those numeric names, and hereby\
-#                                    asks you to make sure every tRNA seed sequence name contains at least one alphanumeric character :/ Meanwhile we,\
-#                                    the anvi'o developers, are both surprised by and thankful for your endless patience with such eccentric\
-#                                    requests. You the real MVP." % fasta.id)
-
-#         fasta.close()
-#         self.progress.end()
-
-#         all_ids_in_FASTA = utils.get_all_ids_from_fasta(trnaseeds_fasta)
-#         total_number_of_trnaseeds = len(all_ids_in_FASTA)
-#         if total_number_of_trnaseeds != len(set(all_ids_in_FASTA)):
-#             raise ConfigError("Every tRNA seed sequence in the input FASTA file must have a unique ID. You know...")
-
-#         if not os.path.exists(trnaseeds_fasta):
-#             raise ConfigError("Creating a new tRNA seeds database requires a FASTA file with tRNA seed sequences to be provided.")
-
-#         # create a blank trnaseeds database on disk, and set the self.db
-#         self.touch()
-
-#         # know thyself
-#         self.db.set_meta_value('db_type', 'trnaseeds')
-#         self.db.set_meta_value('project_name', project_name)
-#         self.db.set_meta_value('description', description)
-
-#         # this will be the unique information that will be passed downstream whenever this db is used:
-#         trnaseeds_db_hash = self.get_hash()
-#         self.db.set_meta_value('trnaseeds_db_hash', trnaseeds_db_hash)
-
-#         # here we will process each item in the tRNA seeds fasta file.
-#         fasta = u.SequenceSource(trnaseeds_fasta)
-#         db_entries_trnaseed_sequences = []
-
-#         trnaseeds_info_table = TableForTRNASeedsInfo()
-
-#         recovered_split_lengths = []
-
-#         self.progress.new('The Stem Loop', progress_total_items=total_number_of_trnaseeds)
-#         fasta.reset()
-#         while next(fasta):
-#             self.progress.increment()
-
-#             trnaseed_name = fasta.id
-#             trnaseed_sequence = fasta.seq
-
-#             self.progress.update('tRNA seed sequence "%d" ' % fasta.pos)
-
-#             trnaseed_length = trnaseeds_info_table.append(trnaseed_name, trnaseed_sequence)
-
-#             self.progress.append('and %d nts.' % trnaseed_length)
-
-#             db_entries_trnaseed_sequences.append((trnaseed_name, trnaseed_sequence), )
-
-#         self.progress.end()
-
-#         trnaseeds_info_table.store(self.db)
-
-#         self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.trnaseeds_sequences_table_name, db_entries_trnaseed_sequences)
-
-#         # set some useful meta values:
-#         self.db.set_meta_value('num_trnaseeds', trnaseeds_info_table.total_trnaseeds)
-#         self.db.set_meta_value('total_length', trnaseeds_info_table.total_nts)
-#         self.db.set_meta_value('creation_date', self.get_date())
-#         self.disconnect()
-
-#         self.run.info('tRNA seeds database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
-#         self.run.info('Number of tRNA seeds', trnaseeds_info_table.total_trnaseeds, quiet=self.quiet)
-#         self.run.info('Total number of nucleotides', trnaseeds_info_table.total_nts, quiet=self.quiet)
-
-
-#     def disconnect(self):
-#         self.db.disconnect()
 
 
 class ContigsDatabase:
