@@ -90,7 +90,13 @@ class PfamSetup(object):
 
 
     def resolve_database_url(self):
-        page_index = 'releases/Pfam%s' % self.args.pfam_version if self.args.pfam_version else 'current_release'
+        if self.args.pfam_version:
+            page_index = 'releases/Pfam%s' % self.args.pfam_version
+            self.run.info('Attempting to use version', self.args.pfam_version)
+        else:
+            page_index = 'current_release'
+            self.run.info_single('No Pfam version specified. Using current release.')
+
         self.database_url = "http://ftp.ebi.ac.uk/pub/databases/Pfam/%s" % page_index
 
 
@@ -111,7 +117,7 @@ class PfamSetup(object):
         version = content.strip().split('\n')[0].split(':')[1].strip()
         release_date = content.strip().split('\n')[2].split(':')[1].strip()
 
-        self.run.info("Current Pfam version on EBI", "%s (%s)" % (version, release_date))
+        self.run.info("Found Pfam version", "%s (%s)" % (version, release_date))
 
 
     def download(self):
