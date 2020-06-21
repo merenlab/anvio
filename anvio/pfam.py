@@ -217,10 +217,10 @@ class Pfam(object):
 
 
     def is_database_exists(self):
-        """
-        This function verifies that pfam_data_dir contains the Pfam hmm profiles and checks whether they are compressed or not.
+        """Checks if database files exist and decompresses them if compressed
 
-        If they are compressed, we decompress them and run hmmpress.
+        This function verifies that pfam_data_dir contains the Pfam hmm profiles and checks whether
+        they are compressed or not. If they are compressed, we decompress them and run hmmpress.
         """
 
         if not (os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz')) or os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm'))):
