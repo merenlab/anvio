@@ -52,6 +52,14 @@ def read_remote_file(url, is_gzip=True):
 
 class PfamSetup(object):
     def __init__(self, args, run=run, progress=progress):
+        """Setup a Pfam database for anvi'o
+
+        Parameters
+        ==========
+        args : argparse.Namespace
+            See `bin/anvi-setup-pfams` for available arguments
+        """
+
         self.args = args
         self.run = run
         self.progress = progress
@@ -70,21 +78,25 @@ class PfamSetup(object):
         if not self.pfam_data_dir:
             self.pfam_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/Pfam')
 
-        filesnpaths.is_output_dir_writable(os.path.dirname(self.pfam_data_dir))
+        filesnpaths.is_output_dir_writable(os.path.dirname(os.path.abspath(self.pfam_data_dir)))
 
         if not args.reset and not anvio.DEBUG:
             self.is_database_exists()
 
         filesnpaths.gen_output_directory(self.pfam_data_dir, delete_if_exists=args.reset)
 
-        self.database_url = "http://ftp.ebi.ac.uk/pub/databases/Pfam/current_release"
+        self.resolve_database_url()
         self.files = ['Pfam-A.hmm.gz', 'Pfam.version.gz', 'Pfam-A.clans.tsv.gz']
+
+
+    def resolve_database_url(self):
+        page_index = 'releases/Pfam%s' % self.args.pfam_version if self.args.pfam_version else 'current_release'
+        self.database_url = "http://ftp.ebi.ac.uk/pub/databases/Pfam/%s" % page_index
 
 
     def is_database_exists(self):
         if os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm') or os.path.exists(os.path.join(self.pfam_data_dir, 'Pfam-A.hmm.gz'))):
             raise ConfigError("It seems you already have Pfam database installed in '%s', please use --reset flag if you want to re-download it." % self.pfam_data_dir)
-
 
 
     def get_remote_version(self):
