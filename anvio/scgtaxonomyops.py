@@ -240,14 +240,14 @@ class SanityCheck(object):
         if self.__class__.__name__ in ['PopulateContigsDatabaseWithSCGTaxonomy', 'SCGTaxonomyEstimatorSingle', 'SCGTaxonomyEstimatorMulti']:
             if not os.path.exists(self.ctx.SCGs_taxonomy_data_dir):
                 raise ConfigError("Anvi'o could not find the data directory for the single-copy core genes taxonomy "
-                                  "setup. You may need to run `anvi-setup-scg-databases`, or provide a directory path "
+                                  "setup. You may need to run `anvi-setup-scg-taxonomy`, or provide a directory path "
                                   "where SCG databases are set up. This is the current path anvi'o is considering (which "
                                   "can be changed via the `--scgs-taxonomy-data-dir` parameter): '%s'" % (self.ctx.SCGs_taxonomy_data_dir))
 
             if not os.path.exists(self.ctx.accession_to_taxonomy_file_path):
                 raise ConfigError("While your SCG taxonomy data dir seems to be in place, it is missing at least one critical "
                                   "file (in this case, the file to resolve accession IDs to taxon names). You may need to run "
-                                  "the program `anvi-setup-scg-databases` with the `--reset` flag to set things right again.")
+                                  "the program `anvi-setup-scg-taxonomy` with the `--reset` flag to set things right again.")
 
             ###########################################################
             # PopulateContigsDatabaseWithSCGTaxonomy
@@ -255,7 +255,7 @@ class SanityCheck(object):
             if self.__class__.__name__ in ['PopulateContigsDatabaseWithSCGTaxonomy']:
                 missing_SCG_databases = [SCG for SCG in self.ctx.SCGs if not os.path.exists(self.ctx.SCGs[SCG]['db'])]
                 if len(missing_SCG_databases):
-                    raise ConfigError("OK. It is very likley that if you run `anvi-setup-scg-databases` first you will be golden. "
+                    raise ConfigError("OK. It is very likley that if you run `anvi-setup-scg-taxonomy` first you will be golden. "
                                       "Because even though anvi'o found the directory for taxonomy headquarters, "
                                       "your setup seems to be missing %d of %d databases required for everything to work "
                                       "with the current genes configuration of this class (sources say this is a record, FYI)." % \
@@ -2054,7 +2054,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
         if len(missing_FASTA_files):
             raise ConfigError("Weird news :( Anvi'o is missing some FASTA files that were supposed to be somewhere. Since this "
                               "can't be your fault, it is not easy to advice what could be the solution to this. But you can "
-                              "always try to re-run `anvi-setup-scg-databases` with `--reset` flag.")
+                              "always try to re-run `anvi-setup-scg-taxonomy` with `--reset` flag.")
 
         self.progress.update("Decompressing FASTA files in %s" % (temp_dir))
         new_paths = dict([(SCG, utils.gzip_decompress_file(new_paths[SCG], keep_original=False)) for SCG in new_paths])
@@ -2236,7 +2236,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
 
                 if 'incompatible' in error_text:
                     raise ConfigError("Your current databases are incompatible with the diamond version you have on your computer. "
-                                      "Please run the command `anvi-setup-scg-databases --redo-databases` and come back.")
+                                      "Please run the command `anvi-setup-scg-taxonomy --redo-databases` and come back.")
                 else:
                     raise ConfigError("Bad news. The database search operation failed somewhere :( It is very hard for anvi'o "
                                       "to know what happened, but the MOST LIKELY reason is that you have a diamond version "
