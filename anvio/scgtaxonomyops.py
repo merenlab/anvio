@@ -8,6 +8,7 @@ contigs databases with taxon names, and estimate taxonomy for genomes and metagn
 import os
 import sys
 import glob
+import gzip
 import copy
 import shutil
 import hashlib
@@ -127,7 +128,7 @@ class SCGTaxonomyContext(object):
         # but these can be used for debugging.
         self.SCGs_taxonomy_data_dir = (os.path.abspath(scgs_taxonomy_data_dir) if scgs_taxonomy_data_dir else None) or (os.path.join(self.default_scgs_taxonomy_data_dir, self.target_database))
         self.msa_individual_genes_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'MSA_OF_INDIVIDUAL_SCGs')
-        self.accession_to_taxonomy_file_path = os.path.join(self.SCGs_taxonomy_data_dir, 'ACCESSION_TO_TAXONOMY.txt')
+        self.accession_to_taxonomy_file_path = os.path.join(self.SCGs_taxonomy_data_dir, 'ACCESSION_TO_TAXONOMY.txt.gz')
         self.search_databases_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'SCG_SEARCH_DATABASES')
         self.target_database_URL = scgs_taxonomy_remote_database_url or self.target_database_URL
 
@@ -145,8 +146,14 @@ class SCGTaxonomyContext(object):
             self.progress.update('...')
 
             self.accession_to_taxonomy_dict = {}
-            with open(self.accession_to_taxonomy_file_path, 'r') as taxonomy_file:
-                for accession, taxonomy_text in [l.strip('\n').split('\t') for l in taxonomy_file.readlines() if not l.startswith('#') and l]:
+            with gzip.open(self.accession_to_taxonomy_file_path, 'rb') as taxonomy_file:
+                for line in taxonomy_file.readlines():
+                    line = line.decode('utf-8')
+
+                    if line.startswith('#'):
+                        continue
+
+                    accession, taxonomy_text = line.strip('\n').split('\t')
                     # taxonomy_text kinda looks like these:
                     #
                     #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Burkholderiales;f__Burkholderiaceae;g__Alcaligenes;s__Alcaligenes faecalis_C
@@ -154,7 +161,7 @@ class SCGTaxonomyContext(object):
                     #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Pseudomonadales;f__Moraxellaceae;g__Acinetobacter;s__Acinetobacter sp1
                     #    d__Bacteria;p__Firmicutes;c__Bacilli;o__Bacillales;f__Bacillaceae_G;g__Bacillus_A;s__Bacillus_A cereus_AU
                     #    d__Bacteria;p__Firmicutes_A;c__Clostridia;o__Tissierellales;f__Helcococcaceae;g__Finegoldia;s__Finegoldia magna_H
-                    #
+
                     d = {}
                     for letter, taxon in [e.split('__', 1) for e in taxonomy_text.split(';')]:
                         if letter in self.letter_to_level:
@@ -1892,8 +1899,11 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
 
 
     def download_and_format_files(self):
+        temp_accession_to_taxonomy_file_path = '.gz'.join(self.ctx.accession_to_taxonomy_file_path.split('.gz')[:-1])
+
         # let's be 100% sure.
         os.remove(self.ctx.accession_to_taxonomy_file_path) if os.path.exists(self.ctx.accession_to_taxonomy_file_path) else None
+        os.remove(temp_accession_to_taxonomy_file_path) if os.path.exists(temp_accession_to_taxonomy_file_path) else None
 
         for remote_file_name in self.ctx.target_database_files:
             remote_file_url = '/'.join([self.ctx.target_database_URL, remote_file_name])
@@ -1909,10 +1919,15 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
                 self.progress.end()
 
             if local_file_path.endswith('_taxonomy.tsv'):
-                with open(self.ctx.accession_to_taxonomy_file_path, 'a') as f:
+                with open(temp_accession_to_taxonomy_file_path, 'a') as f:
                     f.write(open(local_file_path).read())
                     os.remove(local_file_path)
 
+        # gzip ACCESSION_TO_TAXONOMY.txt, so it stays in its forever resting place
+        # note: the following line will also remove the temporary file.
+        utils.gzip_compress_file(temp_accession_to_taxonomy_file_path, self.ctx.accession_to_taxonomy_file_path, keep_original=False)
+
+        # NEXT. learn paths for all FASTA files downloaded and unpacked
         fasta_file_paths = glob.glob(self.ctx.msa_individual_genes_dir_path + '/*.faa')
 
         if not fasta_file_paths:
