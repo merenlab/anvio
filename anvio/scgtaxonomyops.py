@@ -2132,7 +2132,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
             # even if there are no SCGs to use for taxonomy later, we did attempt ot populate the
             # contigs database, so we shall note that in the self table to make sure the error from
             # `anvi-estimate-genome-taxonomy` is not "you seem to have not run taxonomy".
-            self.tables_for_taxonomy.update_self_value()
+            self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.scg_taxonomy_database_version)
 
             # return empty handed like a goose in the job market in 2020
             return None
@@ -2151,8 +2151,8 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
         self.run.info('Num CPUs per aligment task', self.num_threads)
         self.run.info('Log file path', log_file_path)
 
-        self.tables_for_taxonomy.delete_contents_of_table(t.scg_taxonomy_table_name)
-        self.tables_for_taxonomy.update_self_value(value=False)
+        self.tables_for_taxonomy.delete_contents_of_table(t.scg_taxonomy_table_name, warning=False)
+        self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=False, database_version=None)
 
         total_num_processes = len(scg_sequences_dict)
 
@@ -2232,7 +2232,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
         self.tables_for_taxonomy.add(blastp_search_output)
 
         # time to update the self table:
-        self.tables_for_taxonomy.update_self_value()
+        self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.scg_taxonomy_database_version)
 
         self.progress.end()
 
