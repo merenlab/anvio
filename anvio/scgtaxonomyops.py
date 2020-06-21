@@ -294,9 +294,17 @@ class SanityCheck(object):
                 utils.is_contigs_db(self.contigs_db_path)
 
                 scg_taxonomy_was_run = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['scg_taxonomy_was_run']
+                scg_taxonomy_database_version = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['scg_taxonomy_database_version']
                 if not scg_taxonomy_was_run:
                     raise ConfigError("It seems the SCG taxonomy tables were not populated in this contigs database :/ Luckily it "
                                       "is easy to fix that. Please see the program `anvi-run-scg-taxonomy`.")
+
+                if scg_taxonomy_database_version != self.ctx.scg_taxonomy_database_version:
+                    raise ConfigError("The SCG taxonomy database on your computer has a different version (%s) than the SCG taxonomy information "
+                                      "stored in your contigs database (%s). Sadly, you will need to re-run SCG taxonomy on this contigs database "
+                                      "to make sure nothing funky is going on with your estimations :( If you are still here and willing to redo "
+                                      "this, the program you need is `anvi-run-scg-taxonomy`." % \
+                                                (self.ctx.scg_taxonomy_database_version, scg_taxonomy_database_version))
 
                 if self.profile_db_path:
                     utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
@@ -457,8 +465,26 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                 raise ConfigError("Surprise! None of the %d genomes had no SCG taxonomy information." % len(g.metagenomes))
             else:
                 self.progress.end()
-                raise ConfigError("%d of your %d genomes had no SCG taxonomy information. Here is the list: '%s'." % \
+                raise ConfigError("%d of your %d genomes has no SCG taxonomy information. Here is the list: '%s'." % \
                         (len(metagenomes_without_scg_taxonomy), len(g.metagenomes), ', '.join(metagenomes_without_scg_taxonomy)))
+
+        # if we are here, it means SCGs were run for all metagenomes. here we will quickly check if versions agree
+        # with each other and with the installed version of SCG taxonomy database
+        scg_taxonomy_database_versions_in_metagenomes = [g.metagenomes[m]['scg_taxonomy_database_version'] for m in g.metagenomes]
+        if len(set(scg_taxonomy_database_versions_in_metagenomes)) > 1:
+            raise ConfigError("Not all SCG taxonomy database versions across your metagenomes are identical :( It means "
+                              "the program `anvi-run-scg-taxonomy` was run on these database across different versions of "
+                              "the source database. Before you continue, you must make sure that they all agree. Which may "
+                              "require you to re-run `anvi-run-scg-taxonomy` on the ones that do have a different version "
+                              "than what is installed on your system, which is '%s' (if you run `anvi-db-info` on any contigs "
+                              "database you can learn the SCG database version of it). Anvi'o found these versions across your "
+                              "metagenomes: '%s'." % (self.ctx.scg_taxonomy_database_version, ', '.join(list(set(scg_taxonomy_database_versions_in_metagenomes)))))
+        elif scg_taxonomy_database_versions_in_metagenomes[0] != self.ctx.scg_taxonomy_database_version:
+            raise ConfigError("While all of your metagenomes agree with each other and have the SCG taxonomy database version of %s "
+                              "unfortunately it differs from what is installed on your system, which is %s :/ To fix this, you will "
+                              "to re-run the program `anvi-run-scg-taxonomy` on each one of them. We can almost feel all the way "
+                              "from here the frustration brewing over there 😬" % \
+                                        (scg_taxonomy_database_versions_in_metagenomes[0], self.ctx.scg_taxonomy_database_version))
 
         self.metagenomes = copy.deepcopy(g.metagenomes)
         self.metagenome_names = copy.deepcopy(g.metagenome_names)
