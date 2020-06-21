@@ -300,11 +300,11 @@ class SanityCheck(object):
                                       "is easy to fix that. Please see the program `anvi-run-scg-taxonomy`.")
 
                 if scg_taxonomy_database_version != self.ctx.scg_taxonomy_database_version:
-                    raise ConfigError("The SCG taxonomy database on your computer has a different version (%s) than the SCG taxonomy information "
-                                      "stored in your contigs database (%s). Sadly, you will need to re-run SCG taxonomy on this contigs database "
-                                      "to make sure nothing funky is going on with your estimations :( If you are still here and willing to redo "
-                                      "this, the program you need is `anvi-run-scg-taxonomy`." % \
-                                                (self.ctx.scg_taxonomy_database_version, scg_taxonomy_database_version))
+                    self.progress.reset()
+                    self.run.warning("The SCG taxonomy database on your computer has a different version (%s) than the SCG taxonomy information "
+                                     "stored in your contigs database (%s). This is not a problem and things will most likely continue to work "
+                                     "fine, but we wanted to let you know. You can get rid of this warning by re-running `anvi-run-scg-taxonomy` "
+                                     "on your database." % (self.ctx.scg_taxonomy_database_version, scg_taxonomy_database_version))
 
                 if self.profile_db_path:
                     utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
@@ -472,18 +472,23 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         # with each other and with the installed version of SCG taxonomy database
         scg_taxonomy_database_versions_in_metagenomes = [g.metagenomes[m]['scg_taxonomy_database_version'] for m in g.metagenomes]
         if len(set(scg_taxonomy_database_versions_in_metagenomes)) > 1:
-            raise ConfigError("Not all SCG taxonomy database versions across your metagenomes are identical :( It means "
-                              "the program `anvi-run-scg-taxonomy` was run on these database across different versions of "
-                              "the source database. Before you continue, you must make sure that they all agree. Which may "
-                              "require you to re-run `anvi-run-scg-taxonomy` on the ones that do have a different version "
-                              "than what is installed on your system, which is '%s' (if you run `anvi-db-info` on any contigs "
-                              "database you can learn the SCG database version of it). Anvi'o found these versions across your "
-                              "metagenomes: '%s'." % (self.ctx.scg_taxonomy_database_version, ', '.join(list(set(scg_taxonomy_database_versions_in_metagenomes)))))
+            self.progress.reset()
+            self.run.warning("Please note that not all SCG taxonomy database versions across your metagenomes are identical. "
+                             "This means the program `anvi-run-scg-taxonomy` was run on these database across different versions of "
+                             "the source SCG taxonomy database. This is OK and things will continue to work, but you should consider "
+                             "the fact that taxonomy estimations coming from different versions of the database may not be comparable "
+                             "anymore depending on what has changed between different versions of the database. If your purpose is not "
+                             "to compare different versions of the database, and if you would like to ensure consistency, you can re-run "
+                             "`anvi-run-scg-taxonomy` on contigs databases that have a different version than what is installed on your "
+                             "system, which is '%s' (if you run `anvi-db-info` on any contigs database you can learn the SCG database "
+                             "version of it). Anvi'o found these versions across your metagenomes: '%s'." % \
+                                        (self.ctx.scg_taxonomy_database_version, ', '.join(list(set(scg_taxonomy_database_versions_in_metagenomes)))))
         elif scg_taxonomy_database_versions_in_metagenomes[0] != self.ctx.scg_taxonomy_database_version:
-            raise ConfigError("While all of your metagenomes agree with each other and have the SCG taxonomy database version of %s "
-                              "unfortunately it differs from what is installed on your system, which is %s :/ To fix this, you will "
-                              "to re-run the program `anvi-run-scg-taxonomy` on each one of them. We can almost feel all the way "
-                              "from here the frustration brewing over there 😬" % \
+            self.progress.reset()
+            self.run.warning("While all of your metagenomes agree with each other and have the SCG taxonomy database version of %s, "
+                              "this version differs from what is installed on your system, which is %s. If you don't do anything, "
+                              "things will continue to work. But if you would like to get rid of this warning you will need to "
+                              "re-run the program `anvi-run-scg-taxonomy` on each one of them 😬" % \
                                         (scg_taxonomy_database_versions_in_metagenomes[0], self.ctx.scg_taxonomy_database_version))
 
         self.metagenomes = copy.deepcopy(g.metagenomes)
