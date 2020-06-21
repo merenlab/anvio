@@ -65,7 +65,7 @@ class HMMer:
         What this means is that every .hmm profile in the directory has an associated .h3f, .h3i, .h3m, and
         .h3p file.
 
-        PARAMETERS
+        Parameters
         ==========
         hmm_path: string
             the path at which the HMM profiles are located
@@ -112,10 +112,8 @@ class HMMer:
         tmp_dir = os.path.dirname(self.target_files_dict[target][0])
         self.run.info('Temporary work dir', tmp_dir)
 
-
         # check if all hmmpress files are in the HMM directory
         self.verify_hmmpress_output(hmm)
-
 
         workers = []
         merged_file_buffer = io.StringIO()
