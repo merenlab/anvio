@@ -129,6 +129,7 @@ class SCGTaxonomyContext(object):
         self.SCGs_taxonomy_data_dir = (os.path.abspath(scgs_taxonomy_data_dir) if scgs_taxonomy_data_dir else None) or (os.path.join(self.default_scgs_taxonomy_data_dir, self.target_database))
         self.msa_individual_genes_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'MSA_OF_INDIVIDUAL_SCGs')
         self.accession_to_taxonomy_file_path = os.path.join(self.SCGs_taxonomy_data_dir, 'ACCESSION_TO_TAXONOMY.txt.gz')
+        self.database_version_file_path = os.path.join(self.SCGs_taxonomy_data_dir, 'VERSION')
         self.search_databases_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'SCG_SEARCH_DATABASES')
         self.target_database_URL = scgs_taxonomy_remote_database_url or self.target_database_URL
 
@@ -139,6 +140,12 @@ class SCGTaxonomyContext(object):
         self.SCGs = dict([(SCG, {'db': os.path.join(self.search_databases_dir_path, SCG + '.dmnd'), 'fasta': os.path.join(self.search_databases_dir_path, SCG)}) for SCG in self.default_scgs_for_taxonomy])
 
         self.letter_to_level = dict([(l.split('_')[1][0], l) for l in self.levels_of_taxonomy])
+
+        # set version for ctx, so we know what version of the databases are on disk
+        if os.path.exists(self.database_version_file_path):
+            self.scg_taxonomy_database_version = open(self.database_version_file_path).readline().strip()
+        else:
+            self.scg_taxonomy_database_version = None
 
         self.accession_to_taxonomy_dict = None
         if os.path.exists(self.accession_to_taxonomy_file_path):
@@ -287,9 +294,17 @@ class SanityCheck(object):
                 utils.is_contigs_db(self.contigs_db_path)
 
                 scg_taxonomy_was_run = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['scg_taxonomy_was_run']
+                scg_taxonomy_database_version = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['scg_taxonomy_database_version']
                 if not scg_taxonomy_was_run:
                     raise ConfigError("It seems the SCG taxonomy tables were not populated in this contigs database :/ Luckily it "
                                       "is easy to fix that. Please see the program `anvi-run-scg-taxonomy`.")
+
+                if scg_taxonomy_database_version != self.ctx.scg_taxonomy_database_version:
+                    self.progress.reset()
+                    self.run.warning("The SCG taxonomy database on your computer has a different version (%s) than the SCG taxonomy information "
+                                     "stored in your contigs database (%s). This is not a problem and things will most likely continue to work "
+                                     "fine, but we wanted to let you know. You can get rid of this warning by re-running `anvi-run-scg-taxonomy` "
+                                     "on your database." % (self.ctx.scg_taxonomy_database_version, scg_taxonomy_database_version))
 
                 if self.profile_db_path:
                     utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
@@ -450,8 +465,31 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                 raise ConfigError("Surprise! None of the %d genomes had no SCG taxonomy information." % len(g.metagenomes))
             else:
                 self.progress.end()
-                raise ConfigError("%d of your %d genomes had no SCG taxonomy information. Here is the list: '%s'." % \
+                raise ConfigError("%d of your %d genomes has no SCG taxonomy information. Here is the list: '%s'." % \
                         (len(metagenomes_without_scg_taxonomy), len(g.metagenomes), ', '.join(metagenomes_without_scg_taxonomy)))
+
+        # if we are here, it means SCGs were run for all metagenomes. here we will quickly check if versions agree
+        # with each other and with the installed version of SCG taxonomy database
+        scg_taxonomy_database_versions_in_metagenomes = [g.metagenomes[m]['scg_taxonomy_database_version'] for m in g.metagenomes]
+        if len(set(scg_taxonomy_database_versions_in_metagenomes)) > 1:
+            self.progress.reset()
+            self.run.warning("Please note that not all SCG taxonomy database versions across your metagenomes are identical. "
+                             "This means the program `anvi-run-scg-taxonomy` was run on these database across different versions of "
+                             "the source SCG taxonomy database. This is OK and things will continue to work, but you should consider "
+                             "the fact that taxonomy estimations coming from different versions of the database may not be comparable "
+                             "anymore depending on what has changed between different versions of the database. If your purpose is not "
+                             "to compare different versions of the database, and if you would like to ensure consistency, you can re-run "
+                             "`anvi-run-scg-taxonomy` on contigs databases that have a different version than what is installed on your "
+                             "system, which is '%s' (if you run `anvi-db-info` on any contigs database you can learn the SCG database "
+                             "version of it). Anvi'o found these versions across your metagenomes: '%s'." % \
+                                        (self.ctx.scg_taxonomy_database_version, ', '.join(list(set(scg_taxonomy_database_versions_in_metagenomes)))))
+        elif scg_taxonomy_database_versions_in_metagenomes[0] != self.ctx.scg_taxonomy_database_version:
+            self.progress.reset()
+            self.run.warning("While all of your metagenomes agree with each other and have the SCG taxonomy database version of %s, "
+                              "this version differs from what is installed on your system, which is %s. If you don't do anything, "
+                              "things will continue to work. But if you would like to get rid of this warning you will need to "
+                              "re-run the program `anvi-run-scg-taxonomy` on each one of them 😬" % \
+                                        (scg_taxonomy_database_versions_in_metagenomes[0], self.ctx.scg_taxonomy_database_version))
 
         self.metagenomes = copy.deepcopy(g.metagenomes)
         self.metagenome_names = copy.deepcopy(g.metagenome_names)
@@ -2132,7 +2170,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
             # even if there are no SCGs to use for taxonomy later, we did attempt ot populate the
             # contigs database, so we shall note that in the self table to make sure the error from
             # `anvi-estimate-genome-taxonomy` is not "you seem to have not run taxonomy".
-            self.tables_for_taxonomy.update_self_value()
+            self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.scg_taxonomy_database_version)
 
             # return empty handed like a goose in the job market in 2020
             return None
@@ -2151,8 +2189,8 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
         self.run.info('Num CPUs per aligment task', self.num_threads)
         self.run.info('Log file path', log_file_path)
 
-        self.tables_for_taxonomy.delete_contents_of_table(t.scg_taxonomy_table_name)
-        self.tables_for_taxonomy.update_self_value(value=False)
+        self.tables_for_taxonomy.delete_contents_of_table(t.scg_taxonomy_table_name, warning=False)
+        self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=False, database_version=None)
 
         total_num_processes = len(scg_sequences_dict)
 
@@ -2232,7 +2270,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
         self.tables_for_taxonomy.add(blastp_search_output)
 
         # time to update the self table:
-        self.tables_for_taxonomy.update_self_value()
+        self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.scg_taxonomy_database_version)
 
         self.progress.end()
 
