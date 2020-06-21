@@ -129,6 +129,7 @@ class SCGTaxonomyContext(object):
         self.SCGs_taxonomy_data_dir = (os.path.abspath(scgs_taxonomy_data_dir) if scgs_taxonomy_data_dir else None) or (os.path.join(self.default_scgs_taxonomy_data_dir, self.target_database))
         self.msa_individual_genes_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'MSA_OF_INDIVIDUAL_SCGs')
         self.accession_to_taxonomy_file_path = os.path.join(self.SCGs_taxonomy_data_dir, 'ACCESSION_TO_TAXONOMY.txt.gz')
+        self.database_version_file_path = os.path.join(self.SCGs_taxonomy_data_dir, 'VERSION')
         self.search_databases_dir_path = os.path.join(self.SCGs_taxonomy_data_dir, 'SCG_SEARCH_DATABASES')
         self.target_database_URL = scgs_taxonomy_remote_database_url or self.target_database_URL
 
@@ -139,6 +140,12 @@ class SCGTaxonomyContext(object):
         self.SCGs = dict([(SCG, {'db': os.path.join(self.search_databases_dir_path, SCG + '.dmnd'), 'fasta': os.path.join(self.search_databases_dir_path, SCG)}) for SCG in self.default_scgs_for_taxonomy])
 
         self.letter_to_level = dict([(l.split('_')[1][0], l) for l in self.levels_of_taxonomy])
+
+        # set version for ctx, so we know what version of the databases are on disk
+        if os.path.exists(self.database_version_file_path):
+            self.scg_taxonomy_database_version = open(self.database_version_file_path).readline().strip()
+        else:
+            self.scg_taxonomy_database_version = None
 
         self.accession_to_taxonomy_dict = None
         if os.path.exists(self.accession_to_taxonomy_file_path):
