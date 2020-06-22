@@ -2041,7 +2041,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
                 shutil.rmtree(dir_path)
 
 
-class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck, PopulateContigsDatabaseWithXXXTaxonomy):
+class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck, PopulateContigsDatabaseWithTaxonomy):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
@@ -2065,4 +2065,4 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck, Popul
         SanityCheck.__init__(self)
 
         self.focus = 'scgs'
-        PopulateContigsDatabaseWithXXXTaxonomy.__init__(self, self.args)
+        PopulateContigsDatabaseWithTaxonomy.__init__(self, self.args)
