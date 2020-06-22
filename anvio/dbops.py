@@ -4188,7 +4188,6 @@ class tRNASeqDatabase:
         # to produce unique acceptor-less sequences.
 
         self.progress.update("Dereplicating tRNA sequences with 3' variants removed")
-        self.progress.update("tick tock ...")
 
         # Get the acceptor-less sequences and reverse them,
         # as VSEARCH prefix dereplication starts from the start of the sequence.
@@ -4196,101 +4195,49 @@ class tRNASeqDatabase:
         reversed_seq_list = [
             seq[::-1] for seq in self.db.get_single_column_from_table('acceptor', 'sequence_without_acceptor')]
 
-        derep = vsearch.PrefixDereplication(
-            min_seq_length=1,
-            num_threads=self.num_threads,
-            run=self.run,
-            progress=self.progress)
-
-        # Create a temporary FASTA file of input sequences for prefix dereplication.
-        derep_input_fasta = u.FastaOutput(os.path.join(derep.temp_dir, 'input_seqs.fasta'))
-        derep.input_fasta_path = derep_input_fasta.output_file_path
-        derep.temp_file_path_list.append(derep.input_fasta_path)
-        for name, seq in zip(name_list, reversed_seq_list):
-            derep_input_fasta.write_id(name)
-            derep_input_fasta.write_seq(seq)
-        del derep_input_fasta
-
-        # Load the representative sequences.
-        # Subsequences that may be in more than one cluster
-        # are only associated with one cluster each in the UC file.
-        # We also want to know the total number of subsequences of each representative sequence.
-        derep.dereplicate()
-        rep_seq_fasta = u.SequenceSource(derep.output_fasta_path)
-        rep_name_list = []
-        rep_seq_list = []
-        while next(rep_seq_fasta):
-            rep_name_list.append(rep_seq_fasta.id)
-            rep_seq_list.append(rep_seq_fasta.seq)
-        derep.remove_temp_files()
-        del derep
-
         # Each acceptor-less sequence is a seed from tRNA sequences.
         # Get the names and counts of underlying tRNA sequences.
-        grouped_tRNA_names_list = self.db.get_single_column_from_table('acceptor', 'grouped_names')
-        group_count_list = self.db.get_single_column_from_table('acceptor', 'group_count')
         # Get the counts of the possible 3' endings of the underlying tRNA sequences.
-        variant_count_tuples_list = self.db.get_some_columns_from_table(
-            'acceptor', ','.join([variant + '_count' for variant in THREEPRIME_VARIANT_LIST]))
-        rep_info_list = list(zip(rep_name_list, rep_seq_list))
-        # Store the number of representative sequences matched by each acceptor-less sequence.
-        match_count_dict = {}
-        # Store 5 pieces of information for each representative sequence.
-        # 1. Matching acceptor-less sequence names
-        # 2. Matching underlying tRNA sequence names
-        # 3. Matching underlying tRNA sequence count
-        # 4. 3' variant counts of underlying tRNA sequences
-        # 5. Average subsequence multiplicity
-        # = Sum(Number of underlying tRNA sequence representative sequence matches)
-        # / Number of underlying tRNA sequences
-        rep_match_info_dict = {
-            rep_name: [[], [], 0, [0 for variant in THREEPRIME_VARIANT_LIST]]
-            for rep_name in rep_name_list}
-        for seq_name, seq, grouped_tRNA_names, group_count, variant_count_tuple in zip(
-            name_list, reversed_seq_list, grouped_tRNA_names_list, group_count_list, variant_count_tuples_list):
-            match_count = 0
-            for rep_name, rep_seq in rep_info_list:
-                if len(rep_seq) < len(seq):
-                    continue
-                if seq == rep_seq[: len(seq)]:
-                    match_count += 1
-                    rep_match_info_list = rep_match_info_dict[rep_name]
-                    rep_match_info_list[0].append(seq_name)
-                    rep_match_info_list[1].extend(grouped_tRNA_names.split(','))
-                    rep_match_info_list[2] += group_count
-                    variant_count_list = rep_match_info_list[3]
-                    for i, variant_count in enumerate(variant_count_tuple):
-                        variant_count_list[i] += variant_count
-            match_count_dict[seq_name] = match_count * group_count
-        del grouped_tRNA_names_list
-        del group_count_list
-        del variant_count_tuples_list
-        del rep_info_list
+        extra_list = self.db.get_some_columns_from_table(
+            'acceptor', 'grouped_names,group_count,' + ','.join([variant + '_count' for variant in THREEPRIME_VARIANT_LIST]))
 
-        for rep_name, rep_match_info_list in rep_match_info_dict.items():
-            match_count_sum = 0
-            for seq_name in rep_match_info_list[0]:
-                match_count_sum += match_count_dict[seq_name]
-            rep_match_info_list.append(match_count_sum / rep_match_info_list[2])
-        del match_count_dict
+        derep = utils.SequenceDereplicator(name_list, reversed_seq_list, extra_list=extra_list)
+        hit_list, cluster_list = derep.prefix_dereplicate()
+
+        # Store
+        # Clustered tRNA sequence names
+        # Clustered tRNA sequence count
+        # Clustered tRNA 3' variant counts
+        # Average multiplicity of clustered tRNA
+        #   = Sum(Number of clustered tRNA sequence matches to ALL representative sequences)
+        #   / Number of underlying tRNA sequences
+
+        query_tRNA_hit_count_dict = {}
+        for query_name, target_name_list, extra_list in hit_list:
+            query_tRNA_hit_count_dict[query_name] = len(target_name_list) * extra_list[1]
 
         tRNAseq_subsequence_table_entry_list = []
-        for rep_name, rep_match_info_list in rep_match_info_dict.items():
+        for cluster_item in cluster_list:
             num_subseq_dereplicated_tRNA_seqs += 1
-            tRNA_name_list = rep_match_info_list[1]
-            tRNA_count = rep_match_info_list[2]
-            variant_count_list = rep_match_info_list[3]
-            multiplicity = rep_match_info_list[4]
-            tRNAseq_subsequence_table_entry_list.append((
-                rep_name,
-                ','.join(tRNA_name_list),
-                tRNA_count,
-                multiplicity) + tuple([count for count in variant_count_list]))
+            seed_name = cluster_item[0]
+            query_names = []
+            tRNA_names = []
+            tRNA_count = 0
+            variant_count_lists = []
+            for member_item in cluster_item[2]:
+                query_names.append(member_item[0])
+                extra_item = member_item[2]
+                tRNA_names.append(extra_item[0])
+                tRNA_count += extra_item[1]
+                variant_count_lists.append(extra_item[2:])
+            variant_count_tuple = tuple(map(sum, zip(*variant_count_lists)))
+            multiplicity = round(sum(query_tRNA_hit_count_dict[query_name] for query_name in query_names) / tRNA_count, 1)
+            tRNAseq_subsequence_table_entry_list.append(
+                (seed_name, ','.join(tRNA_names), tRNA_count, multiplicity) + variant_count_tuple)
         self.db._exec_many(
             '''INSERT INTO %s VALUES (%s)'''
             % (t.tRNAseq_subsequence_table_name, ','.join('?' * len(t.tRNAseq_subsequence_table_structure))),
             tRNAseq_subsequence_table_entry_list)
-        del rep_match_info_dict
 
         if self.report_seed_output:
             seq_dict = dict(
@@ -4304,98 +4251,52 @@ class tRNASeqDatabase:
                 for seq_name, tRNA_count in self.db.get_some_columns_from_table(
                     'subsequence_relations', 'name,subsequence_count'):
                     f.write(seq_name + "\t" + str(tRNA_count) + "\n")
+            del seq_dict
 
         del tRNAseq_subsequence_table_entry_list
-        del seq_dict
-
         gc.collect()
 
-        # Now prefix dereplicate "long" acceptor-less sequences by the same process.
+
+        self.progress.update("Dereplicating long tRNA sequences with 3' variants removed")
 
         name_list = self.db.get_single_column_from_table('long_acceptor', 'name')
         reversed_seq_list = [
             seq[::-1] for seq in self.db.get_single_column_from_table('long_acceptor', 'sequence_without_acceptor')]
 
-        derep = vsearch.PrefixDereplication(
-            min_seq_length=1,
-            num_threads=self.num_threads,
-            run=self.run,
-            progress=self.progress)
+        extra_list = self.db.get_some_columns_from_table(
+            'long_acceptor', 'grouped_names,group_count,' + ','.join([variant + '_count' for variant in THREEPRIME_VARIANT_LIST]))
 
-        derep_input_fasta = u.FastaOutput(os.path.join(derep.temp_dir, 'input_seqs.fasta'))
-        derep.input_fasta_path = derep_input_fasta.output_file_path
-        derep.temp_file_path_list.append(derep.input_fasta_path)
-        for name, seq in zip(name_list, reversed_seq_list):
-            derep_input_fasta.write_id(name)
-            derep_input_fasta.write_seq(seq)
-        del derep_input_fasta
+        derep = utils.SequenceDereplicator(name_list, reversed_seq_list, extra_list=extra_list)
+        hit_list, cluster_list = derep.prefix_dereplicate()
 
-        derep.dereplicate()
-        rep_seq_fasta = u.SequenceSource(derep.output_fasta_path)
-        rep_name_list = []
-        rep_seq_list = []
-        while next(rep_seq_fasta):
-            rep_name_list.append(rep_seq_fasta.id)
-            rep_seq_list.append(rep_seq_fasta.seq)
-        derep.remove_temp_files()
-        del derep
-
-        grouped_tRNA_names_list = self.db.get_single_column_from_table('long_acceptor', 'grouped_names')
-        group_count_list = self.db.get_single_column_from_table('long_acceptor', 'group_count')
-        variant_count_tuples_list = self.db.get_some_columns_from_table(
-            'long_acceptor', ','.join([variant + '_count' for variant in THREEPRIME_VARIANT_LIST]))
-        rep_info_list = list(zip(rep_name_list, rep_seq_list))
-        match_count_dict = {}
-        rep_match_info_dict = {
-            rep_name: [[], [], 0, [0 for variant in THREEPRIME_VARIANT_LIST]]
-            for rep_name in rep_name_list}
-        for seq_name, seq, grouped_tRNA_names, group_count, variant_count_tuple in zip(
-            name_list, reversed_seq_list, grouped_tRNA_names_list, group_count_list, variant_count_tuples_list):
-            match_count = 0
-            for rep_name, rep_seq in rep_info_list:
-                if len(rep_seq) < len(seq):
-                    continue
-                if seq == rep_seq[: len(seq)]:
-                    match_count += 1
-                    rep_match_info_list = rep_match_info_dict[rep_name]
-                    rep_match_info_list[0].append(seq_name)
-                    rep_match_info_list[1].extend(grouped_tRNA_names.split(','))
-                    rep_match_info_list[2] += group_count
-                    variant_count_list = rep_match_info_list[3]
-                    for i, variant_count in enumerate(variant_count_tuple):
-                        variant_count_list[i] += variant_count
-            match_count_dict[seq_name] = match_count * group_count
-        del grouped_tRNA_names_list
-        del group_count_list
-        del variant_count_tuples_list
-        del rep_info_list
-
-        for rep_name, rep_match_info_list in rep_match_info_dict.items():
-            match_count_sum = 0
-            for seq_name in rep_match_info_list[0]:
-                match_count_sum += match_count_dict[seq_name]
-            rep_match_info_list.append(match_count_sum / rep_match_info_list[2])
-        del match_count_dict
+        query_tRNA_hit_count_dict = {}
+        for query_name, target_name_list, extra_list in hit_list:
+            query_tRNA_hit_count_dict[query_name] = len(target_name_list) * extra_list[1]
 
         tRNAseq_long_subsequence_table_entry_list = []
-        for rep_name, rep_match_info_list in rep_match_info_dict.items():
+        for cluster_item in cluster_list:
             num_subseq_dereplicated_long_tRNA_seqs += 1
-            tRNA_name_list = rep_match_info_list[1]
-            tRNA_count = rep_match_info_list[2]
-            variant_count_list = rep_match_info_list[3]
-            multiplicity = rep_match_info_list[4]
-            tRNAseq_long_subsequence_table_entry_list.append((
-                rep_name,
-                ','.join(tRNA_name_list),
-                tRNA_count,
-                multiplicity) + tuple([count for count in variant_count_list]))
+            seed_name = cluster_item[0]
+            query_names = []
+            tRNA_names = []
+            tRNA_count = 0
+            variant_count_lists = []
+            for member_item in cluster_item[2]:
+                query_names.append(member_item[0])
+                extra_item = member_item[2]
+                tRNA_names.append(extra_item[0])
+                tRNA_count += extra_item[1]
+                variant_count_lists.append(extra_item[2:])
+            variant_count_tuple = tuple(map(sum, zip(*variant_count_lists)))
+            multiplicity = round(sum(query_tRNA_hit_count_dict[query_name] for query_name in query_names) / tRNA_count, 1)
+            tRNAseq_long_subsequence_table_entry_list.append(
+                (seed_name, ','.join(tRNA_names), tRNA_count, multiplicity) + variant_count_tuple)
         self.db._exec_many(
             '''INSERT INTO %s VALUES (%s)'''
             % (t.tRNAseq_long_subsequence_table_name, ','.join('?' * len(t.tRNAseq_long_subsequence_table_structure))),
             tRNAseq_long_subsequence_table_entry_list)
-        del rep_match_info_dict
-        del tRNAseq_long_subsequence_table_entry_list
 
+        del tRNAseq_long_subsequence_table_entry_list
         gc.collect()
 
         self.progress.end()
@@ -4423,59 +4324,43 @@ class tRNASeqDatabase:
 
         self.run.info("Reads processed", num_seqs_processed)
         self.run.info(
-            "Reads identified as tRNA "
-            "(partial-length + full-length + long)",
+            "Reads identified as tRNA (partial-length + full-length + long)",
             num_tRNA_seqs)
         self.run.info(
-            "Unique tRNA sequences identified "
-            "(partial-length + full-length + long)",
+            "Unique tRNA sequences identified (partial-length + full-length + long)",
             num_unique_tRNA_seqs)
         self.run.info(
-            "Unique tRNA sequences, "
-            "normalizing acceptor and 3' end "
-            "(partial-length + full-length)",
+            "Unique tRNA sequences, normalizing acceptor 3' end (partial-length + full-length)",
             num_unique_tRNA_seqs_normalizing_acceptor)
         self.run.info(
-            "Unique tRNA sequences, "
-            "normalizing acceptor and 3' end, "
-            "then dereplicating from 3' end "
-            "(partial-length + full-length)",
+            "Unique tRNA sequences, normalizing 3' end then dereplicating from 3' end (partial-length + full-length)",
             num_subseq_dereplicated_tRNA_seqs)
         self.run.info(
-            "Number of tRNA reads containing anticodon "
-            "(partial-length + full-length + long)",
+            "Number of tRNA reads containing anticodon (partial-length + full-length + long)",
             num_tRNA_seqs_containing_anticodon)
         self.run.info(
-            "Number of reads identified as mature tRNA spanning acceptor stem "
-            "(full-length)",
+            "Number of reads identified as mature tRNA spanning acceptor stem (full-length)",
             num_mature_tRNA_seqs)
         if self.charging_recorded:
             self.run.info(
-                "Number of reads identified as charged tRNA "
-                "(partial-length + full-length + long)",
+                "Number of reads identified as charged tRNA (partial-length + full-length + long)",
                 num_charged_tRNA_seqs)
         self.run.info(
-            "Number of reads with tRNA features but significantly longer than full-length tRNA "
-            "(long)",
+            "Number of reads with tRNA features but significantly longer than full-length tRNA (long)",
             num_long_tRNA_reads)
         self.run.info(
             "Number of reads with tRNA features but significantly longer than full-length tRNA, "
-            "normalizing acceptor and 3' end "
+            "normalizing 3' end "
             "(long)",
             num_unique_long_tRNA_seqs_normalizing_acceptor)
         self.run.info(
-            "Number of reads with tRNA features by significantly longer than full-length tRNA, "
-            "normalizing acceptor and 3' end, "
-            "then dereplicating from 3' end "
-            "(long)",
+            "Number of reads with tRNA features but significantly longer than full-length tRNA, normalizing 3' end then dereplicating from 3' end (long)",
             num_subseq_dereplicated_long_tRNA_seqs)
         self.run.info(
-            "Number of reads identified as tRNA containing extrapolated 5' feature "
-            "(partial-length + full-length)",
+            "Number of reads identified as tRNA containing extrapolated 5' feature (partial-length + full-length)",
             num_tRNA_seqs_with_extrapolated_fiveprime_feature)
         self.run.info(
-            "Number of reads identified as tRNA with extra 3' bases beyond acceptor "
-            "(partial-length + full-length + long)",
+            "Number of reads identified as tRNA with extra 3' bases beyond acceptor (partial-length + full-length + long)",
             num_tRNA_reads_with_extra_threeprime_bases)
 
 
