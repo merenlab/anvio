@@ -5,7 +5,7 @@ import sys
 
 import anvio
 import anvio.terminal as terminal
-import anvio.scgtaxonomyops as scgtaxonomyops
+import anvio.taxonomyops.scg as scgtaxonomyops
 
 from anvio.errors import ConfigError, FilesNPathsError
 
