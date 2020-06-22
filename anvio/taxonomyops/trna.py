@@ -6,30 +6,18 @@ databases with taxon names.
 """
 
 import os
-import sys
-import copy
 import shutil
 import hashlib
-import argparse
-import numpy as np
-import pandas as pd
-import scipy.sparse as sps
-
-from collections import OrderedDict, Counter
 
 import anvio
-import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
-import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
 from anvio.drivers.blast import BLAST
-from anvio.genomedescriptions import MetagenomeDescriptions
-from anvio.tables.miscdata import TableForLayerAdditionalData
-from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
+from anvio.dbops import ContigsDatabase
 
 from anvio.taxonomyops import AccessionIdToTaxonomy
 from anvio.taxonomyops import PopulateContigsDatabaseWithTaxonomy
