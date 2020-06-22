@@ -210,6 +210,8 @@ class HMMer:
         detected_non_ascii = False
         lines_with_non_ascii = []
 
+        # FIXME Why is this here? This is hmmer output parsing, and should be in
+        # anvio/parsers/hmmscan.py
         with open(table_output_file, 'rb') as hmm_hits_file:
             line_counter = 0
             for line_bytes in hmm_hits_file:
