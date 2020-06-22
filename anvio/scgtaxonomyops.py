@@ -8,14 +8,12 @@ contigs databases with taxon names, and estimate taxonomy for genomes and metagn
 import os
 import sys
 import glob
-import gzip
 import copy
 import shutil
 import hashlib
 import argparse
 import numpy as np
 import pandas as pd
-import multiprocessing
 import scipy.sparse as sps
 
 from collections import OrderedDict, Counter
@@ -23,7 +21,6 @@ from collections import OrderedDict, Counter
 import anvio
 import anvio.tables as t
 import anvio.utils as utils
-import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.xxxtaxonomy as xxxtaxonomy
@@ -33,8 +30,8 @@ import anvio.ccollections as ccollections
 from anvio.errors import ConfigError
 from anvio.drivers.diamond import Diamond
 from anvio.genomedescriptions import MetagenomeDescriptions
-from anvio.tables.scgtaxonomy import TableForSCGTaxonomy
 from anvio.tables.miscdata import TableForLayerAdditionalData
+from anvio.xxxtaxonomy import PopulateContigsDatabaseWithXXXTaxonomy
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
 
 
@@ -2044,7 +2041,7 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
                 shutil.rmtree(dir_path)
 
 
-class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
+class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck, PopulateContigsDatabaseWithXXXTaxonomy):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
@@ -2067,312 +2064,5 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
 
         SanityCheck.__init__(self)
 
-        self.taxonomy_dict = OrderedDict()
-
-        self.mutex = multiprocessing.Lock()
-
-
-    def get_SCG_sequences_dict_from_contigs_db(self):
-        """Returns a dictionary of all HMM hits per SCG of interest"""
-
-        contigs_db = ContigsSuperclass(self.args, r=run_quiet, p=progress_quiet)
-        splits_dict = {contigs_db.a_meta['project_name']: list(contigs_db.splits_basic_info.keys())}
-
-        s = hmmops.SequencesForHMMHits(self.args.contigs_db, sources=self.ctx.hmm_source_for_scg_taxonomy, run=run_quiet, progress=progress_quiet)
-        hmm_sequences_dict = s.get_sequences_dict_for_hmm_hits_in_splits(splits_dict, return_amino_acid_sequences=True)
-        hmm_sequences_dict = utils.get_filtered_dict(hmm_sequences_dict, 'gene_name', set(self.ctx.default_scgs_for_taxonomy))
-
-        if not len(hmm_sequences_dict):
-            return None
-
-        self.progress.reset()
-        self.run.info('Num relevant SCGs in contigs db', '%s' % (pp(len(hmm_sequences_dict))))
-
-        scg_sequences_dict = {}
-        for entry_id in hmm_sequences_dict:
-            entry = hmm_sequences_dict[entry_id]
-
-            scg_name = entry['gene_name']
-            if scg_name in scg_sequences_dict:
-                scg_sequences_dict[scg_name][entry_id] = entry
-            else:
-                scg_sequences_dict[scg_name] = {entry_id: entry}
-
-        return scg_sequences_dict
-
-
-    def populate_contigs_database(self):
-        """Populates SCG taxonomy tables in a contigs database"""
-
-        # get an instnce for the tables for taxonomy early on.
-        self.tables_for_taxonomy = TableForSCGTaxonomy(self.contigs_db_path, self.run, self.progress)
-
-        # get the dictionary that shows all hits for each SCG of interest
-        self.progress.new('Contigs bleep bloop')
-        self.progress.update('Recovering the SCGs dictionary')
-        scg_sequences_dict = self.get_SCG_sequences_dict_from_contigs_db()
-        self.progress.end()
-
-        if not scg_sequences_dict:
-            self.run.warning("This contigs database contains no single-copy core genes that are used by the "
-                             "anvi'o taxonomy headquarters in Lausanne. Somewhat disappointing but totally OK.")
-
-            # even if there are no SCGs to use for taxonomy later, we did attempt ot populate the
-            # contigs database, so we shall note that in the self table to make sure the error from
-            # `anvi-estimate-genome-taxonomy` is not "you seem to have not run taxonomy".
-            self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.scg_taxonomy_database_version)
-
-            # return empty handed like a goose in the job market in 2020
-            return None
-
-        log_file_path = filesnpaths.get_temp_file_path()
-
-        self.run.info('Taxonomy', self.ctx.accession_to_taxonomy_file_path)
-        self.run.info('Database reference', self.ctx.search_databases_dir_path)
-        self.run.info('Number of SCGs', len(scg_sequences_dict))
-
-        self.run.warning('', header='Parameters for DIAMOND blastp', lc='green')
-        self.run.info('Max number of target sequences', self.max_target_seqs)
-        self.run.info('Max e-value to report alignments', self.evalue)
-        self.run.info('Min percent identity to report alignments', self.min_pct_id)
-        self.run.info('Num aligment tasks running in parallel', self.num_parallel_processes)
-        self.run.info('Num CPUs per aligment task', self.num_threads)
-        self.run.info('Log file path', log_file_path)
-
-        self.tables_for_taxonomy.delete_contents_of_table(t.scg_taxonomy_table_name, warning=False)
-        self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=False, database_version=None)
-
-        total_num_processes = len(scg_sequences_dict)
-
-        self.progress.new('Computing SCGs aligments', progress_total_items=total_num_processes)
-        self.progress.update('Initializing %d process...' % int(self.num_parallel_processes))
-
-        manager = multiprocessing.Manager()
-        input_queue = manager.Queue()
-        output_queue = manager.Queue()
-        error_queue = manager.Queue()
-
-        blastp_search_output = []
-
-        for SCG in scg_sequences_dict:
-            sequence = ""
-            for entry in scg_sequences_dict[SCG].values():
-                if 'sequence' not in entry or 'gene_name' not in entry:
-                    raise ConfigError("The `get_filtered_dict` function got a parameter that "
-                                      "does not look like the way we expected it. This function "
-                                      "expects a dictionary that contains keys `gene_name` and `sequence`.")
-
-                sequence = sequence + ">" + str(entry['gene_callers_id']) + "\n" + entry['sequence'] + "\n"
-                entry['hits'] = []
-
-            input_queue.put([SCG, sequence])
-
-        workers = []
-        for i in range(0, int(self.num_parallel_processes)):
-            worker = multiprocessing.Process(target=self.blast_search_scgs_worker, args=(input_queue, output_queue, error_queue, log_file_path))
-
-            workers.append(worker)
-            worker.start()
-
-        num_finished_processes = 0
-        while num_finished_processes < total_num_processes:
-            # check error
-            error_text = error_queue.get()
-            if error_text:
-                self.progress.reset()
-
-                for worker in workers:
-                    worker.terminate()
-
-                if 'incompatible' in error_text:
-                    raise ConfigError("Your current databases are incompatible with the diamond version you have on your computer. "
-                                      "Please run the command `anvi-setup-scg-taxonomy --redo-databases` and come back.")
-                else:
-                    raise ConfigError("Bad news. The database search operation failed somewhere :( It is very hard for anvi'o "
-                                      "to know what happened, but the MOST LIKELY reason is that you have a diamond version "
-                                      "installed on your system that is incompatible with anvi'o :/ The best course of action for that "
-                                      "is to make sure running `diamond --version` on your terminal returns `0.9.14`. If not, "
-                                      "try to upgrade/downgrade your diamond to match this version. If you are in a conda environmnet "
-                                      "you can try running `conda install diamond=0.9.14`. Please feel free to contact us if the problem "
-                                      "persists. We apologize for the inconvenience.")
-
-            try:
-                blastp_search_output += output_queue.get()
-
-                if self.write_buffer_size > 0 and len(blastp_search_output) % self.write_buffer_size == 0:
-                    self.tables_for_taxonomy.add(blastp_search_output)
-                    blastp_search_output = []
-
-                num_finished_processes += 1
-
-                self.progress.increment(increment_to=num_finished_processes)
-                self.progress.update("%s of %s SCGs are finished in %s processes with %s threads." \
-                                        % (num_finished_processes, total_num_processes, int(self.num_parallel_processes), self.num_threads))
-
-            except KeyboardInterrupt:
-                print("Anvi'o profiler recieved SIGINT, terminating all processes...")
-                break
-
-        for worker in workers:
-            worker.terminate()
-
-        # finally the remaining hits are written to the database, and we are done
-        self.tables_for_taxonomy.add(blastp_search_output)
-
-        # time to update the self table:
-        self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.scg_taxonomy_database_version)
-
-        self.progress.end()
-
-
-    def show_hits_gene_callers_id(self, gene_callers_id, scg_name, hits):
-        self.progress.reset()
-        self.run.warning(None, header='Hits for gene caller id %s' % gene_callers_id, lc="green")
-
-        if len(hits):
-            header = ['%id', 'bitscore', 'accession', 'taxonomy']
-            table = []
-
-            self.run.info_single("For '%s'" % scg_name, nl_before=1, nl_after=1)
-
-            for hit in hits:
-                table.append([str(hit['percent_identity']), str(hit['bitscore']), hit['accession'], ' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy])])
-
-            anvio.TABULATE(table, header)
-        else:
-            self.run.info_single("No hits :/")
-
-
-    def update_dict_with_taxonomy(self, d, mode=None):
-        """Takes a dictionary that includes a key `accession` and populates the dictionary with taxonomy"""
-
-        if not mode:
-            if not 'accession' in d:
-                raise ConfigError("`add_taxonomy_to_dict` is speaking: the dictionary sent here does not have a member "
-                                  "with key `accession`.")
-
-            if d['accession'] in self.ctx.accession_to_taxonomy_dict:
-                d.update(self.ctx.accession_to_taxonomy_dict[d['accession']])
-            else:
-                d.update(self.ctx.accession_to_taxonomy_dict['unknown_accession'])
-
-        elif mode == 'list_of_dicts':
-            if len([entry for entry in d if 'accession' not in entry]):
-                raise ConfigError("`add_taxonomy_to_dict` is speaking: you have a bad formatted data here :/")
-
-            for entry in d:
-                print(self.taxonomy_dict[entry['accession']])
-
-        else:
-            raise ConfigError("An unknown mode (%s) is set to `add_taxonomy_to_dict` :/" % (mode))
-
-        return d
-
-
-    def blast_search_scgs_worker(self, input_queue, output_queue, error_queue, log_file_path):
-        """BLAST each SCG identified in the contigs database against the corresopinding
-           target local database of GTDB seqeunces
-        """
-
-        while True:
-            scg_name, fasta_formatted_scg_sequence = input_queue.get(True)
-            target_database_path = self.ctx.SCGs[scg_name]['db']
-
-            diamond = Diamond(target_database_path, run=run_quiet, progress=progress_quiet)
-            diamond.max_target_seqs = self.max_target_seqs
-            diamond.evalue = self.evalue
-            diamond.min_pct_id = self.min_pct_id
-            diamond.num_threads = self.num_threads
-            diamond.run.log_file_path = log_file_path
-
-            blastp_search_output = diamond.blastp_stdin_multi(fasta_formatted_scg_sequence)
-
-            hits_per_gene = {}
-            genes_estimation_output=[]
-
-            for blastp_hit in blastp_search_output.split('\n'):
-                if len(blastp_hit) and not blastp_hit.startswith('Query'):
-                    fields = blastp_hit.split('\t')
-
-                    try:
-                        gene_callers_id = int(fields[0])
-                        error_queue.put(None)
-                    except:
-                        error_queue.put(blastp_search_output)
-
-                    hit = dict(zip(['accession', 'percent_identity', 'bitscore'], [fields[1], float(fields[2]), float(fields[11])]))
-                    hit = self.update_dict_with_taxonomy(hit)
-
-                    if gene_callers_id not in hits_per_gene:
-                        hits_per_gene[gene_callers_id] = {}
-
-                    if scg_name not in hits_per_gene[gene_callers_id]:
-                        hits_per_gene[gene_callers_id][scg_name] = []
-
-                    hits_per_gene[gene_callers_id][scg_name].append(hit)
-                else:
-                    error_queue.put(None)
-
-            for gene_callers_id, scg_raw_hits in hits_per_gene.items():
-                if len(scg_raw_hits.keys()) > 1:
-                    self.run.warning("As crazy as it sounds, the gene callers id `%d` seems to have hit more than one SCG o_O Anvi'o will only use "
-                                     "one of them almost absolutely randomly. Here are the SCGs the gene sequence matches: '%s'" % [s for s in scg_raw_hits.keys()])
-
-                scg_name = list(scg_raw_hits.keys())[0]
-                scg_raw_hits = scg_raw_hits[scg_name]
-
-                scg_consensus_hit = self.get_consensus_hit(scg_raw_hits)
-                scg_consensus_hit['accession'] = 'CONSENSUS'
-
-                if anvio.DEBUG:
-                    # avoid race conditions when priting this information when `--debug` is true:
-                    with self.mutex:
-                        self.progress.reset()
-                        self.show_hits_gene_callers_id(gene_callers_id, scg_name, scg_raw_hits + [scg_consensus_hit])
-
-                genes_estimation_output.append([gene_callers_id, scg_name, [scg_consensus_hit]])
-
-            output_queue.put(genes_estimation_output)
-
-
-    def get_consensus_hit(self, scg_raw_hits):
-        pd.set_option('mode.chained_assignment', None)
-
-        df = pd.DataFrame.from_records(scg_raw_hits)
-
-        # remove hits that are null at the phylum level if there are still hits
-        # in the df that are not null:
-        not_null_hits = df[df.t_phylum.notnull()]
-        if len(not_null_hits):
-            df = not_null_hits
-
-        # find the max percent identity score in the df
-        max_percent_identity = max(df['percent_identity'])
-
-        # subset the data frame to those with percent identity that match to `max_percent_identity`
-        df_max_identity = df.loc[df.percent_identity == max_percent_identity]
-
-        # if some of the competing names have null species deignations, remove them from consideration
-        if len(df_max_identity.t_species.unique()) > 1:
-            df_max_identity = df_max_identity[df_max_identity.t_species.notnull()]
-
-        # find the taxonomic level where the number of unique taxon names is one
-        for taxonomic_level in self.ctx.levels_of_taxonomy[::-1]:
-            if len(df_max_identity[taxonomic_level].unique()) == 1:
-                break
-
-        # take one of the hits from `df_max_identity`, and assign None to all taxonomic levels
-        # beyond `taxonomic_level`, which, after the loop above shows the proper level of
-        # assignment for this set
-        final_hit = df_max_identity.head(1)
-        for taxonomic_level_to_nullify in self.ctx.levels_of_taxonomy[self.ctx.levels_of_taxonomy.index(taxonomic_level) + 1:]:
-            final_hit.at[0, taxonomic_level_to_nullify] = None
-
-        # FIXME: final hit is still not what we can trust. next, we should find out whether the percent identity
-        # for the level of taxonomy at `taxonomic_level` is higher than the minimum percent identity for all sequences
-        # considered that are affiliated with final_hit[taxonomic_level]
-
-        # turn it into a Python dict before returning
-        final_hit_dict = final_hit.to_dict('records')[0]
-
-        return final_hit_dict
+        self.focus = 'scgs'
+        PopulateContigsDatabaseWithXXXTaxonomy.__init__(self, self.args)
