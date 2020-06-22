@@ -209,9 +209,10 @@ class HMMer:
 
         detected_non_ascii = False
         lines_with_non_ascii = []
+        clip_description_index = None
+        clip_index_found = False
 
-        # FIXME Why is this here? This is hmmer output parsing, and should be in
-        # anvio/parsers/hmmscan.py
+        # FIXME Why is this here? This is hmmer output parsing, and should be in anvio/parsers/hmmscan.py
         with open(table_output_file, 'rb') as hmm_hits_file:
             line_counter = 0
             for line_bytes in hmm_hits_file:
@@ -223,13 +224,18 @@ class HMMer:
                     detected_non_ascii = True
 
                 if line.startswith('#'):
+                    if not clip_index_found and line.find('description') != -1:
+                        # This parser removes the description column from the data
+                        clip_description_index = line.find('description')
+                        clip_index_found = True
+
                     continue
 
                 with buffer_write_lock:
-                    merged_file_buffer.write('\t'.join(line.split()[0:18]) + '\n')
+                    merged_file_buffer.write('\t'.join(line[:clip_description_index].split()) + '\n')
 
         if detected_non_ascii:
-            self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii charachters while processing "
+            self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii characters while processing "
                              "the file '%s' and cleared them. Here are the line numbers with non-ascii charachters: %s. "
                              "You may want to check those lines with a command like \"awk 'NR==<line number>' <file path> | cat -vte\"." %
                                                  (table_output_file, ", ".join(map(str, lines_with_non_ascii))))
