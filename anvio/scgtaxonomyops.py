@@ -26,6 +26,7 @@ import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.constants as constants
+import anvio.xxxtaxonomy as xxxtaxonomy
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
@@ -139,64 +140,13 @@ class SCGTaxonomyContext(object):
         # they better point to actual files.
         self.SCGs = dict([(SCG, {'db': os.path.join(self.search_databases_dir_path, SCG + '.dmnd'), 'fasta': os.path.join(self.search_databases_dir_path, SCG)}) for SCG in self.default_scgs_for_taxonomy])
 
-        self.letter_to_level = dict([(l.split('_')[1][0], l) for l in self.levels_of_taxonomy])
-
         # set version for ctx, so we know what version of the databases are on disk
         if os.path.exists(self.database_version_file_path):
             self.scg_taxonomy_database_version = open(self.database_version_file_path).readline().strip()
         else:
             self.scg_taxonomy_database_version = None
 
-        self.accession_to_taxonomy_dict = None
-        if os.path.exists(self.accession_to_taxonomy_file_path):
-            self.progress.new("Reading the accession to taxonomy file")
-            self.progress.update('...')
-
-            self.accession_to_taxonomy_dict = {}
-            with gzip.open(self.accession_to_taxonomy_file_path, 'rb') as taxonomy_file:
-                for line in taxonomy_file.readlines():
-                    line = line.decode('utf-8')
-
-                    if line.startswith('#'):
-                        continue
-
-                    accession, taxonomy_text = line.strip('\n').split('\t')
-                    # taxonomy_text kinda looks like these:
-                    #
-                    #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Burkholderiales;f__Burkholderiaceae;g__Alcaligenes;s__Alcaligenes faecalis_C
-                    #    d__Bacteria;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Enterococcaceae;g__Enterococcus_B;s__Enterococcus_B faecalis
-                    #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Pseudomonadales;f__Moraxellaceae;g__Acinetobacter;s__Acinetobacter sp1
-                    #    d__Bacteria;p__Firmicutes;c__Bacilli;o__Bacillales;f__Bacillaceae_G;g__Bacillus_A;s__Bacillus_A cereus_AU
-                    #    d__Bacteria;p__Firmicutes_A;c__Clostridia;o__Tissierellales;f__Helcococcaceae;g__Finegoldia;s__Finegoldia magna_H
-
-                    d = {}
-                    for letter, taxon in [e.split('__', 1) for e in taxonomy_text.split(';')]:
-                        if letter in self.letter_to_level:
-                            # NOTE: This is VERY important. Here we are basically removing subclades GTDB defines for
-                            # simplicity. We may have to change this behavior later. So basically, Enterococcus_B will
-                            # become Enterococcus
-                            if '_' in taxon:
-                                if letter != 's':
-                                    d[self.letter_to_level[letter]] = '_'.join(taxon.split('_')[:-1])
-                                else:
-                                    # special treatment for species level taxonomy string.
-                                    # the genus is copied for the species level taxonomy, such as this one, 'Bacillus_A cereus', or
-                                    # species itself may have a subclade, such as this one, 'Corynebacterium aurimucosum_C', so we
-                                    # neeed to make sure the subclades are removed from all words in the species level
-                                    # taxonomy string.
-                                    d[self.letter_to_level[letter]] = ' '.join(['_'.join(word.split('_')[:-1]) if '_' in word else word for word in taxon.split(' ')])
-                            else:
-                                d[self.letter_to_level[letter]] = taxon
-                        else:
-                            self.run.warning("Some weird letter found in '%s' :(" % taxonomy_text)
-
-                    self.accession_to_taxonomy_dict[accession] = d
-
-            # let's add one more accession for all those missing accessions
-            self.accession_to_taxonomy_dict['unknown_accession'] = dict([(taxon, None) for taxon in self.levels_of_taxonomy])
-
-            self.progress.end()
-
+        self.accession_to_taxonomy_dict = xxxtaxonomy.get_accession_to_taxonomy_dict(self.accession_to_taxonomy_file_path, self.levels_of_taxonomy, self.progress, self.run)
 
 # here we create an instance for the module. the idea is to overwrite it if
 # it is necessary to overwrite some of the defaults
