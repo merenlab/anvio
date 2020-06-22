@@ -3531,7 +3531,8 @@ class ContigsDatabase:
             try:
                 for key in ['split_length', 'kmer_size', 'total_length', 'num_splits', 'num_contigs',
                             'genes_are_called', 'splits_consider_gene_calls', 'scg_taxonomy_was_run',
-                            'external_gene_calls', 'external_gene_amino_acid_seqs', 'skip_predict_frame']:
+                            'trna_taxonomy_was_run', 'external_gene_calls', 'external_gene_amino_acid_seqs',
+                            'skip_predict_frame']:
                     self.meta[key] = int(self.meta[key])
             except KeyError:
                 raise ConfigError("Oh no :( There is a contigs database here at '%s', but it seems to be broken :( It is very "
@@ -3595,6 +3596,7 @@ class ContigsDatabase:
         self.db.create_table(t.contigs_info_table_name, t.contigs_info_table_structure, t.contigs_info_table_types)
         self.db.create_table(t.nt_position_info_table_name, t.nt_position_info_table_structure, t.nt_position_info_table_types)
         self.db.create_table(t.scg_taxonomy_table_name, t.scg_taxonomy_table_structure, t.scg_taxonomy_table_types)
+        self.db.create_table(t.trna_taxonomy_table_name, t.trna_taxonomy_table_structure, t.trna_taxonomy_table_types)
         self.db.create_table(t.nucleotide_additional_data_table_name, t.nucleotide_additional_data_table_structure, t.nucleotide_additional_data_table_types)
         self.db.create_table(t.amino_acid_additional_data_table_name, t.amino_acid_additional_data_table_structure, t.amino_acid_additional_data_table_types)
 
@@ -3957,6 +3959,8 @@ class ContigsDatabase:
         self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))
         self.db.set_meta_value('scg_taxonomy_was_run', False)
         self.db.set_meta_value('scg_taxonomy_database_version', None)
+        self.db.set_meta_value('trna_taxonomy_was_run', False)
+        self.db.set_meta_value('trna_taxonomy_database_version', None)
         self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 
