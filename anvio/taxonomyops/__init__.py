@@ -62,7 +62,7 @@ class XXXTaxonomyExampleBaseClass(object):
             pass
 
 
-class PopulateContigsDatabaseWithXXXTaxonomy(object):
+class PopulateContigsDatabaseWithTaxonomy(object):
     def __init__(self, args):
         if not hasattr(self, 'focus'):
             raise ConfigError("You are lost :/ The class that initializes `PopulateContigsDatabaseWithXXXTaxonomy` must have a `focus` "
