@@ -41,6 +41,7 @@ class BLAST:
 
         self.num_threads = num_threads
         self.evalue = 1e-05
+        self.min_pct_id = 0.0
         self.overwrite_output_destinations = overwrite_output_destinations
 
         self.tmp_dir = tempfile.gettempdir()
