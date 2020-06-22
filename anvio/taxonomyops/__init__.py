@@ -434,7 +434,15 @@ class PopulateContigsDatabaseWithTaxonomy(object):
                     except:
                         error_queue.put(raw_search_output)
 
-                    hit = dict(zip(['accession', 'percent_identity', 'bitscore'], [fields[1], float(fields[2]), float(fields[11])]))
+                    # FIXME FIXME FIXME FIXME FIXME
+                    # there shold be no conditional in the following line, and " + '.1'" addition specific to the trna case
+                    # must be removed. But for that, we first need Sam to regenerate tRNA anticodon FASTA files with proper
+                    # accession ids :)
+                    if self.trna_focus:
+                        hit = dict(zip(['accession', 'percent_identity', 'bitscore'], [fields[1] + '.1', float(fields[2]), float(fields[11])]))
+                    else:
+                        hit = dict(zip(['accession', 'percent_identity', 'bitscore'], [fields[1], float(fields[2]), float(fields[11])]))
+
                     hit = self.update_dict_with_taxonomy(hit)
 
                     if gene_callers_id not in hits_per_gene:
