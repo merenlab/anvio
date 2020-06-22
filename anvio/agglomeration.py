@@ -17,6 +17,9 @@ from anvio.errors import ConfigError, FilesNPathsError
 
 from copy import deepcopy
 
+
+sys.setrecursionlimit(10000)
+
 class Agglomerator:
     def __init__(
         self,
