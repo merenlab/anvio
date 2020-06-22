@@ -23,7 +23,6 @@ import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
-import anvio.xxxtaxonomy as xxxtaxonomy
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
@@ -31,9 +30,10 @@ from anvio.errors import ConfigError
 from anvio.drivers.diamond import Diamond
 from anvio.genomedescriptions import MetagenomeDescriptions
 from anvio.tables.miscdata import TableForLayerAdditionalData
-from anvio.xxxtaxonomy import PopulateContigsDatabaseWithXXXTaxonomy
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
 
+from anvio.taxonomyops import AccessionIdToTaxonomy
+from anvio.taxonomyops import PopulateContigsDatabaseWithTaxonomy
 
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
