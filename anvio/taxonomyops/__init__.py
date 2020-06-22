@@ -90,7 +90,7 @@ class PopulateContigsDatabaseWithXXXTaxonomy(object):
         self.mutex = multiprocessing.Lock()
 
 
-    def get_XXX_sequences_dict_from_contigs_db(self):
+    def get_sequences_dict_from_contigs_db(self):
         """Returns a dictionary of all HMM hits per SCG of interest"""
 
         contigs_db = ContigsSuperclass(self.args, r=run_quiet, p=progress_quiet)
@@ -124,17 +124,17 @@ class PopulateContigsDatabaseWithXXXTaxonomy(object):
         self.progress.reset()
         self.run.info(f'Num relevant {self._ITEMS} in contigs db', '%s' % (pp(len(hmm_sequences_dict))))
 
-        xxx_sequences_dict = {}
+        item_sequences_dict = {}
         for entry_id in hmm_sequences_dict:
             entry = hmm_sequences_dict[entry_id]
 
             item_name = entry['gene_name']
-            if item_name in xxx_sequences_dict:
-                xxx_sequences_dict[item_name][entry_id] = entry
+            if item_name in item_sequences_dict:
+                item_sequences_dict[item_name][entry_id] = entry
             else:
-                xxx_sequences_dict[item_name] = {entry_id: entry}
+                item_sequences_dict[item_name] = {entry_id: entry}
 
-        return xxx_sequences_dict
+        return item_sequences_dict
 
 
     def populate_contigs_database(self):
@@ -157,10 +157,10 @@ class PopulateContigsDatabaseWithXXXTaxonomy(object):
         # get the dictionary that shows all hits for each SCG of interest
         self.progress.new('Contigs bleep bloop')
         self.progress.update(f'Recovering the {self._ITEMS} dictionary')
-        xxx_sequences_dict = self.get_XXX_sequences_dict_from_contigs_db()
+        item_sequences_dict = self.get_sequences_dict_from_contigs_db()
         self.progress.end()
 
-        if not xxx_sequences_dict:
+        if not item_sequences_dict:
             self.run.warning(f"This contigs database contains no {self._DATA} that are used by the "
                               "anvi'o taxonomy headquarters in Lausanne. Somewhat disappointing but totally OK.")
 
@@ -176,7 +176,7 @@ class PopulateContigsDatabaseWithXXXTaxonomy(object):
 
         self.run.info('Taxonomy', self.ctx.accession_to_taxonomy_file_path)
         self.run.info('Database reference', self.ctx.search_databases_dir_path)
-        self.run.info(f'Number of {self._ITEMS}', len(xxx_sequences_dict))
+        self.run.info(f'Number of {self._ITEMS}', len(item_sequences_dict))
 
         self.run.warning('', header='Parameters for search', lc='green')
         self.run.info('Max number of target sequences', self.max_target_seqs)
@@ -189,7 +189,7 @@ class PopulateContigsDatabaseWithXXXTaxonomy(object):
         self.tables_for_taxonomy.delete_contents_of_table(anvio_taxonomy_table_name, warning=False)
         self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=False, database_version=None)
 
-        total_num_processes = len(xxx_sequences_dict)
+        total_num_processes = len(item_sequences_dict)
 
         self.progress.new('Performing search', progress_total_items=total_num_processes)
         self.progress.update('Initializing %d process...' % int(self.num_parallel_processes))
@@ -201,9 +201,9 @@ class PopulateContigsDatabaseWithXXXTaxonomy(object):
 
         search_output = []
 
-        for item_name in xxx_sequences_dict:
+        for item_name in item_sequences_dict:
             sequence = ""
-            for entry in xxx_sequences_dict[item_name].values():
+            for entry in item_sequences_dict[item_name].values():
                 if 'sequence' not in entry or 'gene_name' not in entry:
                     raise ConfigError("The `get_filtered_dict` function got a parameter that "
                                       "does not look like the way we expected it. This function "
