@@ -32,13 +32,27 @@ pp = terminal.pretty_print
 
 
 class HMMer:
-    def __init__(self, target_files_dict, num_threads_to_use=1, program_to_use="hmmscan", progress=progress, run=run):
-        """A class to streamline HMM runs."""
+    def __init__(self, target_files_dict, num_threads_to_use=1, program_to_use='hmmscan', out_fmt='--tblout', progress=progress, run=run):
+        """A class to streamline HMM runs.
+
+        Parameters
+        ==========
+        out_fmt : str, '--tblout'
+            HMMer programs have different table output formats. For example, --tblout, --domtblout,
+            --pfamtblout. Currently, there are no sanity checks to stop you from picking an
+            unsupported out_fmt.
+
+        Notes
+        =====
+        - HMMer user guide: http://eddylab.org/software/hmmer/Userguide.pdf
+        """
 
         self.num_threads_to_use = num_threads_to_use
         self.program_to_use = program_to_use
         self.progress = progress
         self.run = run
+
+        self.tblout = out_fmt
 
         self.tmp_dirs = []
         self.target_files_dict = {}
@@ -141,19 +155,17 @@ class HMMer:
             self.run.info('Log file for thread %s' % thread_num, log_file)
             thread_num += 1
 
-            tblout = '--domtblout'
-
             if noise_cutoff_terms:
                 cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                             '-o', output_file, *noise_cutoff_terms.split(),
                             '--cpu', cores_per_process,
-                            tblout, table_file,
+                            self.tblout, table_file,
                             hmm, part_file]
             else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
                 cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                             '-o', output_file,
                             '--cpu', cores_per_process,
-                            tblout, table_file,
+                            self.tblout, table_file,
                             hmm, part_file]
 
             t = Thread(target=self.hmmscan_worker, args=(part_file,
