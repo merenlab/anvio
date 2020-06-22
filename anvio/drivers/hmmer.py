@@ -45,7 +45,7 @@ class HMMer:
 
         acceptable_programs = ["hmmscan", "hmmsearch"]
         if self.program_to_use not in acceptable_programs:
-            raise ConfigError("HMMer class here. You are attemptimg to use the program %s to run HMMs, but we don't recognize it. The currently "
+            raise ConfigError("HMMer class here. You are attempting to use the program %s to run HMMs, but we don't recognize it. The currently "
                               "supported programs are: %s" % (self.program_to_use, ", ".join(acceptable_programs)))
 
         for source in target_files_dict:
@@ -136,27 +136,29 @@ class HMMer:
         for part_file in self.target_files_dict[target]:
             log_file = part_file + '_log'
             output_file = part_file + '_output'
-            shitty_file = part_file + '_shitty'
+            table_file = part_file + '_table'
 
             self.run.info('Log file for thread %s' % thread_num, log_file)
             thread_num += 1
+
+            tblout = '--domtblout'
 
             if noise_cutoff_terms:
                 cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                             '-o', output_file, *noise_cutoff_terms.split(),
                             '--cpu', cores_per_process,
-                            '--tblout', shitty_file,
+                            tblout, table_file,
                             hmm, part_file]
             else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
                 cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                             '-o', output_file,
                             '--cpu', cores_per_process,
-                            '--tblout', shitty_file,
+                            tblout, table_file,
                             hmm, part_file]
 
             t = Thread(target=self.hmmscan_worker, args=(part_file,
                                                          cmd_line,
-                                                         shitty_file,
+                                                         table_file,
                                                          log_file,
                                                          merged_file_buffer,
                                                          buffer_write_lock))
@@ -184,10 +186,10 @@ class HMMer:
         return output_file_path if num_raw_hits else None
 
 
-    def hmmscan_worker(self, part_file, cmd_line, shitty_output_file, log_file, merged_file_buffer, buffer_write_lock):
+    def hmmscan_worker(self, part_file, cmd_line, table_output_file, log_file, merged_file_buffer, buffer_write_lock):
         utils.run_command(cmd_line, log_file)
 
-        if not os.path.exists(shitty_output_file):
+        if not os.path.exists(table_output_file):
             self.progress.end()
             raise ConfigError("Something went wrong with hmmscan and it failed to generate the expected output :/ Fortunately "
                               "we have this log file which should clarify the problem: '%s'. Please do not forget to include this "
@@ -196,7 +198,7 @@ class HMMer:
         detected_non_ascii = False
         lines_with_non_ascii = []
 
-        with open(shitty_output_file, 'rb') as hmm_hits_file:
+        with open(table_output_file, 'rb') as hmm_hits_file:
             line_counter = 0
             for line_bytes in hmm_hits_file:
                 line_counter += 1
@@ -216,7 +218,7 @@ class HMMer:
             self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii charachters while processing "
                              "the file '%s' and cleared them. Here are the line numbers with non-ascii charachters: %s. "
                              "You may want to check those lines with a command like \"awk 'NR==<line number>' <file path> | cat -vte\"." %
-                                                 (shitty_output_file, ", ".join(map(str, lines_with_non_ascii))))
+                                                 (table_output_file, ", ".join(map(str, lines_with_non_ascii))))
 
 
     def clean_tmp_dirs(self):
