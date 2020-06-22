@@ -51,8 +51,6 @@ class BLAST:
 
         if not self.target_fasta:
             self.target_fasta = self.query_fasta
-        elif self.target_db_path:
-            self.target_fasta = self.target_db_path
 
         self.search_program = search_program
         self.search_output_path = 'blast-search-results.txt'
