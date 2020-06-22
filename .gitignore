@@ -1,6 +1,9 @@
 .*
 *.pyc
 *.so
+*.nhr
+*.nin
+*.nsq
 /build/
 /dist/
 test-output/
