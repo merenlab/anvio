@@ -96,20 +96,27 @@ class BLAST:
                               "Please check the log file here: '%s'" % (process, self.run.log_file_path))
 
 
-    def makedb(self, output_db_path=None):
+    def makedb(self, output_db_path=None, dbtype='prot'):
+        if dbtype not in ['prot', 'nucl']:
+            raise ConfigError("The `makedb` function in `BLAST` does not know about dbtype '%s' :(" % dbtype)
+
         self.progress.new('BLAST')
         self.progress.update('creating the search database (using %d thread(s)) ...' % self.num_threads)
 
         cmd_line = ['makeblastdb',
                     '-in', self.target_fasta,
-                    '-dbtype', 'prot',
+                    '-dbtype', dbtype,
                     '-out', output_db_path or self.target_fasta]
 
         utils.run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
 
-        expected_output = (output_db_path or self.target_fasta) + '.phr'
+        if dbtype == 'prot':
+            expected_output = (output_db_path or self.target_fasta) + '.phr'
+        elif dbtype == 'nucl':
+            expected_output = (output_db_path or self.target_fasta) + '.nhr'
+
         self.check_output(expected_output, 'makeblastdb')
 
         self.run.info('blast makeblast cmd', cmd_line, quiet=True)
