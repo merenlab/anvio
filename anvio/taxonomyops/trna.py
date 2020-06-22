@@ -48,7 +48,7 @@ pp = terminal.pretty_print
 
 HASH = lambda d: str(hashlib.sha224(''.join([str(d[level]) for level in constants.levels_of_taxonomy]).encode('utf-8')).hexdigest()[0:8])
 
-class TRNATaxonomyContext(object):
+class TRNATaxonomyContext(AccessionIdToTaxonomy):
     """The purpose of this base class is ot define file paths and constants for trna taxonomy ops."""
 
     def __init__(self, trna_taxonomy_data_dir=None, scgs_taxonomy_remote_database_url=None, run=terminal.Run(), progress=terminal.Progress()):
@@ -80,13 +80,17 @@ class TRNATaxonomyContext(object):
         # they better point to actual files.
         self.anticodons = dict([(anticodon, {'db': os.path.join(self.search_databases_dir_path, anticodon)}) for anticodon in self.default_anticodons_for_taxonomy])
 
+        self.accession_to_taxonomy_dict = {}
+
         # set version for ctx, so we know what version of the databases are on disk
         if os.path.exists(self.database_version_file_path):
             self.trna_taxonomy_database_version = open(self.database_version_file_path).readline().strip()
         else:
             self.trna_taxonomy_database_version = None
 
-        self.accession_to_taxonomy_dict = xxxtaxonomy.get_accession_to_taxonomy_dict(self.accession_to_taxonomy_file_path, self.levels_of_taxonomy, self.progress, self.run)
+        # populate `self.accession_to_taxonomy_dict`
+        AccessionIdToTaxonomy.__init__(self)
+
 
 # here we create an instance for the module. the idea is to overwrite it if
 # it is necessary to overwrite some of the defaults
