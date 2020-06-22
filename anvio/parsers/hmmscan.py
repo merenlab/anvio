@@ -24,6 +24,37 @@ class HMMScan(Parser):
 
     Output specifictions of HMMER can be found in the user guide. At time of writing this,
     http://eddylab.org/software/hmmer/Userguide.pdf hosts the user guide.
+
+    Parameters
+    ==========
+    hmm_scan_hits_txt: ???
+        Undocumented FIXME
+
+    alphabet: str, 'AA'
+        Which alphabet do the HMMs use? Pick from {'AA', 'DNA', 'RNA'}
+
+    context: str, 'GENE'
+        This tells the class how the output should be parsed. Pick from {'GENE', 'CONTIG', 'DOMAIN'}.
+        This parser expects a different header in the HMMer output file depending on which `context`
+        is chosen.
+
+        GENE (hmmscan):
+            #                                                               |-- full sequence ---| |-- best 1 domain ---| |-- domain number estimation ---|
+            # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc description
+            #------------------- ---------- -------------------- ---------- --------- ------ ----- --------- ------ -----   --- --- --- --- --- --- --- --- -----------
+
+        GENE (hmmsearch):
+            #                                                               |-- full sequence ---| |-- best 1 domain ---| |-- domain number estimation ---|
+            # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc description of target
+            #------------------- ---------- -------------------- ---------- --------- ------ ----- --------- ------ -----   --- --- --- --- --- --- --- --- ---------------------
+
+        CONTIG:
+            Undocumented FIXME
+
+        DOMAIN:
+            #                                                                            --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+            # target name        accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+            #------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
     """
 
     def __init__(self, hmm_scan_hits_txt, alphabet='AA', context='GENE', program='hmmscan'):
@@ -39,6 +70,8 @@ class HMMScan(Parser):
             col_info = self.get_col_info_for_GENE_context()
         elif self.context == "CONTIG" and (self.alphabet == "DNA" or self.alphabet == "RNA"):
             col_info = self.get_col_info_for_CONTIG_context()
+        elif self.context == "DOMAIN" and self.alphabet == "AA":
+            col_info = self.get_col_info_for_DOMAIN_context()
         else:
             raise ConfigError("HMMScan driver is confused. Yor context and alphabet pair ('%s' and '%s') "
                               "does not seem to be implemented in the parser module. If you think this is "
@@ -47,12 +80,12 @@ class HMMScan(Parser):
 
         col_names, col_mapping = col_info
 
-        files_structure = {'hits':
-            {
+        files_structure = {
+            'hits': {
                 'col_names': col_names,
                 'col_mapping': col_mapping,
                 'indexing_field': -1,
-                'no_header': True
+                'no_header': True,
             },
         }
 
@@ -97,6 +130,18 @@ class HMMScan(Parser):
         return col_names, col_mapping
 
 
+    def get_col_info_for_DOMAIN_context(self):
+        """Get column names and types for DOMAIN context
+
+        See class docstring for details of the fields
+        """
+
+        #                                                                            --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+        # target name        accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
+        #------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
+        pass
+
+
     def get_search_results(self, noise_cutoff_dict = None):
         """Goes through the hits provided by `hmmscan` and generates an annotation dictionary with the relevant information about each hit.
 
@@ -120,6 +165,9 @@ class HMMScan(Parser):
 
         entry_id = 0
         num_hits_removed = 0 # a counter for the number of hits we don't add to the annotation dictionary
+
+        import pdb; pdb.set_trace()
+
         for hit in list(self.dicts['hits'].values()):
             entry = None
             if self.context == 'GENE':
