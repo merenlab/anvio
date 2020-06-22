@@ -151,6 +151,33 @@ class BLAST:
         self.run.info('BLAST results', self.search_output_path)
 
 
+    def blast_stdin(self, multisequence):
+        cmd_line = [self.search_program,
+                    '-db', self.target_fasta,
+                    '-evalue', self.evalue,
+                    '-outfmt', '6',
+                    '-num_threads', self.num_threads]
+
+        if self.max_target_seqs:
+            cmd_line += ['-max_target_seqs', self.max_target_seqs]
+
+        if self.min_pct_id:
+            cmd_line += ['-perc_identity', self.min_pct_id]
+
+        self.run.info('NCBI %s stdin cmd' % self.search_program, ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
+
+        self.progress.new('BLAST')
+        self.progress.update('running search (using %s with %d thread(s)) ...' % (self.search_program, self.num_threads))
+
+        output = utils.run_command_STDIN(cmd_line, self.run.log_file_path, multisequence, remove_log_file_if_exists=False)
+
+        self.progress.end()
+
+        self.run.info('BLAST results', '%d lines were returned from STDIN call' % len(output))
+
+        return(output)
+
+
     def ununique_search_results(self):
         self.run.info('self.names_dict is found', 'Un-uniqueing the tabular output.', quiet=True)
 
