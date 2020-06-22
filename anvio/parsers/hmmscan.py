@@ -72,6 +72,8 @@ class HMMScan(Parser):
         elif self.context == "CONTIG" and (self.alphabet == "DNA" or self.alphabet == "RNA"):
             col_info = self.get_col_info_for_CONTIG_context()
         elif self.context == "DOMAIN" and self.alphabet == "AA":
+            if program != 'hmmsearch':
+                raise ConfigError("HMMScan :: the 'DOMAIN' context is only available for hmmsearch.")
             col_info = self.get_col_info_for_DOMAIN_context()
         else:
             raise ConfigError("HMMScan driver is confused. Yor context and alphabet pair ('%s' and '%s') "
@@ -137,10 +139,33 @@ class HMMScan(Parser):
         See class docstring for details of the fields
         """
 
-        #                                                                            --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
-        # target name        accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
-        #------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
-        pass
+        col_info = [
+            ('gene_callers_id', str), # target name
+            ('f',               str), # accession
+            ('gene_length',     str), # tlen
+            ('hmm_name',        str), # query name
+            ('hmm_id',          str), # accession
+            ('hmm_length',      str), # qlen
+            ('evalue',          str), # E-value (full sequence)
+            ('bitscore',        str), # score (full sequence)
+            ('bias',            str), # bias (full sequence)
+            ('match_num',       str), # # (this domain)
+            ('num_matches',     str), # of (this domain)
+            ('dom_c_evalue',    str), # c-Evalue (this domain)
+            ('dom_i_evalue',    str), # i-Evalue (this domain)
+            ('dom_bitscore',    str), # score (this domain)
+            ('dom_bias',        str), # bias (this domain)
+            ('hmm_start',       str), # from (hmm coord)
+            ('hmm_stop',        str), # to (hmm coord)
+            ('gene_start',      str), # from (ali coord)
+            ('gene_stop',       str), # to (ali coord)
+            ('f',               str), # from (env coord)
+            ('f',               str), # to (env coord)
+            ('mean_post_prob',  str), # acc
+            ('f',               str), # description of target
+        ]
+
+        return list(zip(*col_info))
 
 
     def get_search_results(self, noise_cutoff_dict = None):
@@ -236,3 +261,4 @@ class HMMScan(Parser):
         self.run.info("Number of hits in annotation dict ", len(annotations_dict.keys()))
 
         return annotations_dict
+
