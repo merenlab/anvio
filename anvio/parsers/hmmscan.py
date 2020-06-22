@@ -20,7 +20,11 @@ run = anvio.terminal.Run()
 
 
 class HMMScan(Parser):
-    """Parse output from hmmscan and hmmsearch"""
+    """Parse output from hmmscan and hmmsearch
+
+    Output specifictions of HMMER can be found in the user guide. At time of writing this,
+    http://eddylab.org/software/hmmer/Userguide.pdf hosts the user guide.
+    """
 
     def __init__(self, hmm_scan_hits_txt, alphabet='AA', context='GENE', program='hmmscan'):
         self.alphabet = alphabet
@@ -56,8 +60,12 @@ class HMMScan(Parser):
 
 
     def get_col_info_for_GENE_context(self):
+        """Get column names and types for GENE context
+
+        See class docstring for details of the fields for AA sequence search, and DNA sequence search.
+        """
+
         if self.program == 'hmmscan':
-            # see the HMMER user guide for details of the fields for AA sequence search, and DNA sequence search.
             #                                                               |-- full sequence ---| |-- best 1 domain ---| |-- domain number estimation ---|
             # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc description
             #------------------- ---------- -------------------- ---------- --------- ------ ----- --------- ------ -----   --- --- --- --- --- --- --- --- -----------
@@ -77,6 +85,11 @@ class HMMScan(Parser):
 
 
     def get_col_info_for_CONTIG_context(self):
+        """Get column names and types for GENE context
+
+        See class docstring for details of the fields for AA sequence search, and DNA sequence search.
+        """
+
         # 'hmm_target', 'hmm_acc', 'query_id', 'query_acc', 'hmm_from', 'hmm_to', 'alignment_from', 'alignment_to', 'envelope_from', 'envelope_to', 'seq_len', 'strand', 'e_value', 'score', 'bias', 'desc']
         col_names = ['gene_name', 'gene_hmm_id', 'contig_name', 'f', 'hmm_from', 'hmm_to', 'alignment_from', 'alignment_to', 'envelope_from', 'envelope_to', 'f', 'f', 'e_value', 'f', 'f', 'f']
         col_mapping = [str, str, str, str, str, str, int, int, int, int, str, str, float, str, str, str]
