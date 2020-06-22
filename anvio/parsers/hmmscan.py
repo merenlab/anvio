@@ -1,6 +1,12 @@
 # -*- coding: utf-8
+"""Parser for HMMer's hmmscan output
 
-"""Parser for HMMer's hmmscan output"""
+Notes
+=====
+- Biopython, a dependency of anvi'o, has an HMMer parser. See
+  https://biopython.org/DIST/docs/api/Bio.SearchIO.HmmerIO-module.html. Perhaps this is more robust
+  than what we are doing here and should be considered if everything below becomes unruly.
+"""
 
 import anvio
 
@@ -38,23 +44,18 @@ class HMMScan(Parser):
         This parser expects a different header in the HMMer output file depending on which `context`
         is chosen.
 
-        GENE (hmmscan):
+        GENE:
             #                                                               |-- full sequence ---| |-- best 1 domain ---| |-- domain number estimation ---|
             # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc description
             #------------------- ---------- -------------------- ---------- --------- ------ ----- --------- ------ -----   --- --- --- --- --- --- --- --- -----------
 
-        GENE (hmmsearch):
-            #                                                               |-- full sequence ---| |-- best 1 domain ---| |-- domain number estimation ---|
-            # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc description of target
-            #------------------- ---------- -------------------- ---------- --------- ------ ----- --------- ------ -----   --- --- --- --- --- --- --- --- ---------------------
+        DOMAIN:
+            #                                                                            --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
+            # target name        accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description
+            #------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- -----------
 
         CONTIG:
             Undocumented FIXME
-
-        DOMAIN:
-            #                                                                            --- full sequence --- -------------- this domain -------------   hmm coord   ali coord   env coord
-            # target name        accession   tlen query name           accession   qlen   E-value  score  bias   #  of  c-Evalue  i-Evalue  score  bias  from    to  from    to  from    to  acc description of target
-            #------------------- ---------- ----- -------------------- ---------- ----- --------- ------ ----- --- --- --------- --------- ------ ----- ----- ----- ----- ----- ----- ----- ---- ---------------------
     """
 
     def __init__(self, hmm_scan_hits_txt, alphabet='AA', context='GENE', program='hmmscan'):
