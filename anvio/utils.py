@@ -2944,6 +2944,7 @@ def get_filtered_dict(input_dict, item, accepted_values_set):
 
 def anvio_hmm_target_term_to_alphabet_and_context(target):
     """Alphabet and context recovery from the target term in anvi'o HMM source directories."""
+
     alphabet = None
     context = None
     fields = target.split(':')

@@ -1,11 +1,15 @@
 # -*- coding: utf-8
 """Parser for HMMer's hmmscan output
 
-Notes
-=====
-- Biopython, a dependency of anvi'o, has an HMMer parser. See
-  https://biopython.org/DIST/docs/api/Bio.SearchIO.HmmerIO-module.html. Perhaps this is more robust
-  than what we are doing here and should be considered if everything below becomes unruly.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Parsing of HMMer output needs to be redesigned. This code does not actually take output from hmmer
+and parse it. It parses the output file of anvio.driver.HMMer.hmmscan_worker which preprocesses the
+output format. The responsibility of HMMer output parsing needs to be consolidated in one spot. Biopython, a
+dependency of anvi'o, has an HMMer parser. See https://biopython.org/DIST/docs/api/Bio.SearchIO.HmmerIO-module.html.
+Perhaps this is more robust solution. This design is currently hanging on by a thread.
 """
 
 import anvio
@@ -40,9 +44,9 @@ class HMMScan(Parser):
         Which alphabet do the HMMs use? Pick from {'AA', 'DNA', 'RNA'}
 
     context: str, 'GENE'
-        This tells the class how the output should be parsed. Pick from {'GENE', 'CONTIG', 'DOMAIN'}.
-        This parser expects a different header in the HMMer output file depending on which `context`
-        is chosen.
+        This tells the class how the output should be parsed. Pick from {'GENE', 'CONTIG',
+        'DOMAIN'}. Before being preprocessed by anvio.driver.HMMer.hmmscan_worker (see this module's
+        docstring), the header of the file should look like so, based on which context you use:
 
         GENE:
             #                                                               |-- full sequence ---| |-- best 1 domain ---| |-- domain number estimation ---|
@@ -103,14 +107,14 @@ class HMMScan(Parser):
 
         if self.program == 'hmmscan':
             #                                                               |-- full sequence ---| |-- best 1 domain ---| |-- domain number estimation ---|
-            # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc description
-            #------------------- ---------- -------------------- ---------- --------- ------ ----- --------- ------ -----   --- --- --- --- --- --- --- --- -----------
+            # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc
+            #------------------- ---------- -------------------- ---------- --------- ------ ----- --------- ------ -----   --- --- --- --- --- --- --- ---
             col_names = ['gene_name', 'gene_hmm_id', 'gene_callers_id', 'f', 'e_value', 'bit_score', 'f', 'f', 'dom_bit_score', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f']
             col_mapping = [str, str, int, str, float, float, str, str, float, str, str, str, str, str, str, str, str, str]
         elif self.program == 'hmmsearch':
             #                                                               |-- full sequence ---| |-- best 1 domain ---| |-- domain number estimation ---|
-            # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc description of target
-            #------------------- ---------- -------------------- ---------- --------- ------ ----- --------- ------ -----   --- --- --- --- --- --- --- --- ---------------------
+            # target name        accession  query name           accession    E-value  score  bias   E-value  score  bias   exp reg clu  ov env dom rep inc
+            #------------------- ---------- -------------------- ---------- --------- ------ ----- --------- ------ -----   --- --- --- --- --- --- --- ---
             col_names = ['gene_callers_id', 'f', 'gene_name', 'gene_hmm_id', 'e_value', 'bit_score', 'f', 'f', 'dom_bit_score', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f', 'f']
             col_mapping = [int, str, str, str, float, float, str, str, float, str, str, str, str, str, str, str, str, str]
         else:
@@ -126,9 +130,9 @@ class HMMScan(Parser):
         See class docstring for details of the fields for AA sequence search, and DNA sequence search.
         """
 
-        # 'hmm_target', 'hmm_acc', 'query_id', 'query_acc', 'hmm_from', 'hmm_to', 'alignment_from', 'alignment_to', 'envelope_from', 'envelope_to', 'seq_len', 'strand', 'e_value', 'score', 'bias', 'desc']
-        col_names = ['gene_name', 'gene_hmm_id', 'contig_name', 'f', 'hmm_from', 'hmm_to', 'alignment_from', 'alignment_to', 'envelope_from', 'envelope_to', 'f', 'f', 'e_value', 'f', 'f', 'f']
-        col_mapping = [str, str, str, str, str, str, int, int, int, int, str, str, float, str, str, str]
+        # 'hmm_target', 'hmm_acc', 'query_id', 'query_acc', 'hmm_from', 'hmm_to', 'alignment_from', 'alignment_to', 'envelope_from', 'envelope_to', 'seq_len', 'strand', 'e_value', 'score', 'bias',]
+        col_names = ['gene_name', 'gene_hmm_id', 'contig_name', 'f', 'hmm_from', 'hmm_to', 'alignment_from', 'alignment_to', 'envelope_from', 'envelope_to', 'f', 'f', 'e_value', 'f', 'f']
+        col_mapping = [str, str, str, str, str, str, int, int, int, int, str, str, float, str, str]
 
         return col_names, col_mapping
 
@@ -162,7 +166,6 @@ class HMMScan(Parser):
             ('f',               str), # from (env coord)
             ('f',               str), # to (env coord)
             ('mean_post_prob',  str), # acc
-            ('f',               str), # description of target
         ]
 
         return list(zip(*col_info))
@@ -191,8 +194,6 @@ class HMMScan(Parser):
 
         entry_id = 0
         num_hits_removed = 0 # a counter for the number of hits we don't add to the annotation dictionary
-
-        import pdb; pdb.set_trace()
 
         for hit in list(self.dicts['hits'].values()):
             entry = None
