@@ -193,6 +193,44 @@ class TRNATaxonomyArgs(object):
         self.skip_sanity_check = A('skip_sanity_check')
 
 
+class TRNATaxonomyEstimatorMulti(TRNATaxonomyArgs, SanityCheck):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress(), skip_init=False):
+        """Iterate through metagenome descriptions using TRNATaxonomyEstimatorSingle"""
+
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        # update your self args
+        TRNATaxonomyArgs.__init__(self, self.args)
+
+        # set your context
+        self.ctx = ctx
+
+        # intiate sanity check
+        SanityCheck.__init__(self)
+
+
+class TRNATaxonomyEstimatorSingle(TRNATaxonomyArgs, SanityCheck):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress(), skip_init=False):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
+        self.profile_db_path = A('profile_db')
+        self.collection_name = A('collection_name')
+        self.update_profile_db_with_taxonomy = A('update_profile_db_with_taxonomy')
+        self.bin_id = A('bin_id')
+
+        TRNATaxonomyArgs.__init__(self, self.args)
+
+        self.ctx = ctx
+
+        SanityCheck.__init__(self)
+
+
 class SetupLocalTRNATaxonomyData(TRNATaxonomyArgs, SanityCheck):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
