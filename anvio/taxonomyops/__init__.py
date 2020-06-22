@@ -61,6 +61,64 @@ class XXXTaxonomyExampleBaseClass(object):
         if self.trna_focus:
             pass
 
+class AccessionIdToTaxonomy(object):
+    """A base classs that populates `self.accession_to_taxonomy_dict`"""
+
+    def __init__(self):
+        self.accession_to_taxonomy_dict = {}
+
+        if not os.path.exists(self.accession_to_taxonomy_file_path):
+            return None
+
+        letter_to_level = dict([(l.split('_')[1][0], l) for l in self.levels_of_taxonomy])
+
+        self.progress.new("Reading the accession to taxonomy file")
+        self.progress.update('...')
+
+        with gzip.open(self.accession_to_taxonomy_file_path, 'rb') as taxonomy_file:
+            for line in taxonomy_file.readlines():
+                line = line.decode('utf-8')
+
+                if line.startswith('#'):
+                    continue
+
+                accession, taxonomy_text = line.strip('\n').split('\t')
+                # taxonomy_text kinda looks like these:
+                #
+                #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Burkholderiales;f__Burkholderiaceae;g__Alcaligenes;s__Alcaligenes faecalis_C
+                #    d__Bacteria;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Enterococcaceae;g__Enterococcus_B;s__Enterococcus_B faecalis
+                #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Pseudomonadales;f__Moraxellaceae;g__Acinetobacter;s__Acinetobacter sp1
+                #    d__Bacteria;p__Firmicutes;c__Bacilli;o__Bacillales;f__Bacillaceae_G;g__Bacillus_A;s__Bacillus_A cereus_AU
+                #    d__Bacteria;p__Firmicutes_A;c__Clostridia;o__Tissierellales;f__Helcococcaceae;g__Finegoldia;s__Finegoldia magna_H
+
+                d = {}
+                for letter, taxon in [e.split('__', 1) for e in taxonomy_text.split(';')]:
+                    if letter in letter_to_level:
+                        # NOTE: This is VERY important. Here we are basically removing subclades GTDB defines for
+                        # simplicity. We may have to change this behavior later. So basically, Enterococcus_B will
+                        # become Enterococcus
+                        if '_' in taxon:
+                            if letter != 's':
+                                d[letter_to_level[letter]] = '_'.join(taxon.split('_')[:-1])
+                            else:
+                                # special treatment for species level taxonomy string.
+                                # the genus is copied for the species level taxonomy, such as this one, 'Bacillus_A cereus', or
+                                # species itmay have a subclade, such as this one, 'Corynebacterium aurimucosum_C', so we
+                                # neeed to make sure the subclades are removed from all words in the species level
+                                # taxonomy string.
+                                d[letter_to_level[letter]] = ' '.join(['_'.join(word.split('_')[:-1]) if '_' in word else word for word in taxon.split(' ')])
+                        else:
+                            d[letter_to_level[letter]] = taxon
+                    else:
+                        self.run.warning("Some weird letter found in '%s' :(" % taxonomy_text)
+
+                self.accession_to_taxonomy_dict[accession] = d
+
+        # let's add one more accession for all those missing accessions
+        self.accession_to_taxonomy_dict['unknown_accession'] = dict([(taxon, None) for taxon in self.levels_of_taxonomy])
+
+        self.progress.end()
+
 
 class PopulateContigsDatabaseWithTaxonomy(object):
     def __init__(self, args):
@@ -452,60 +510,3 @@ class PopulateContigsDatabaseWithTaxonomy(object):
         final_hit_dict = final_hit.to_dict('records')[0]
 
         return final_hit_dict
-
-
-def get_accession_to_taxonomy_dict(accession_to_taxonomy_file_path, levels_of_taxonomy, progress, run):
-    if not os.path.exists(accession_to_taxonomy_file_path):
-        return None
-
-    letter_to_level = dict([(l.split('_')[1][0], l) for l in levels_of_taxonomy])
-
-    progress.new("Reading the accession to taxonomy file")
-    progress.update('...')
-
-    accession_to_taxonomy_dict = {}
-    with gzip.open(accession_to_taxonomy_file_path, 'rb') as taxonomy_file:
-        for line in taxonomy_file.readlines():
-            line = line.decode('utf-8')
-
-            if line.startswith('#'):
-                continue
-
-            accession, taxonomy_text = line.strip('\n').split('\t')
-            # taxonomy_text kinda looks like these:
-            #
-            #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Burkholderiales;f__Burkholderiaceae;g__Alcaligenes;s__Alcaligenes faecalis_C
-            #    d__Bacteria;p__Firmicutes;c__Bacilli;o__Lactobacillales;f__Enterococcaceae;g__Enterococcus_B;s__Enterococcus_B faecalis
-            #    d__Bacteria;p__Proteobacteria;c__Gammaproteobacteria;o__Pseudomonadales;f__Moraxellaceae;g__Acinetobacter;s__Acinetobacter sp1
-            #    d__Bacteria;p__Firmicutes;c__Bacilli;o__Bacillales;f__Bacillaceae_G;g__Bacillus_A;s__Bacillus_A cereus_AU
-            #    d__Bacteria;p__Firmicutes_A;c__Clostridia;o__Tissierellales;f__Helcococcaceae;g__Finegoldia;s__Finegoldia magna_H
-
-            d = {}
-            for letter, taxon in [e.split('__', 1) for e in taxonomy_text.split(';')]:
-                if letter in letter_to_level:
-                    # NOTE: This is VERY important. Here we are basically removing subclades GTDB defines for
-                    # simplicity. We may have to change this behavior later. So basically, Enterococcus_B will
-                    # become Enterococcus
-                    if '_' in taxon:
-                        if letter != 's':
-                            d[letter_to_level[letter]] = '_'.join(taxon.split('_')[:-1])
-                        else:
-                            # special treatment for species level taxonomy string.
-                            # the genus is copied for the species level taxonomy, such as this one, 'Bacillus_A cereus', or
-                            # species itmay have a subclade, such as this one, 'Corynebacterium aurimucosum_C', so we
-                            # neeed to make sure the subclades are removed from all words in the species level
-                            # taxonomy string.
-                            d[letter_to_level[letter]] = ' '.join(['_'.join(word.split('_')[:-1]) if '_' in word else word for word in taxon.split(' ')])
-                    else:
-                        d[letter_to_level[letter]] = taxon
-                else:
-                    run.warning("Some weird letter found in '%s' :(" % taxonomy_text)
-
-            accession_to_taxonomy_dict[accession] = d
-
-    # let's add one more accession for all those missing accessions
-    accession_to_taxonomy_dict['unknown_accession'] = dict([(taxon, None) for taxon in levels_of_taxonomy])
-
-    progress.end()
-
-    return accession_to_taxonomy_dict
