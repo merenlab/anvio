@@ -110,6 +110,10 @@ scg_taxonomy_table_name                = 'scg_taxonomy'
 scg_taxonomy_table_structure           = ['gene_callers_id', 'gene_name', 'accession', 'percent_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 scg_taxonomy_table_types               = [    'numeric'    ,    'text'  ,    'text'  ,       'text'      ,   'text'  ,   'text'  ,   'text' ,  'text'  ,   'text'  ,   'text' ,   'text'   ]
 
+trna_taxonomy_table_name                = 'trna_taxonomy'
+trna_taxonomy_table_structure           = ['gene_callers_id', 'amino_acid', 'anticodon', 'accession', 'percent_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
+trna_taxonomy_table_types               = [    'numeric'    ,    'text'   ,    'text'  ,    'text'  ,       'text'      ,   'text'  ,   'text'  ,   'text' ,  'text'  ,   'text'  ,   'text' ,   'text'   ]
+
 nt_position_info_table_name            = 'nt_position_info'
 nt_position_info_table_structure       = ['contig_name', 'position_info']
 nt_position_info_table_types           = [    'str'    ,      'blob'    ]
@@ -318,6 +322,7 @@ requires_unique_entry_id = {
     gene_function_calls_table_name: True,
     hmm_hits_splits_table_name: True,
     scg_taxonomy_table_name: True,
+    trna_taxonomy_table_name: True,
     nucleotide_additional_data_table_name: True,
     amino_acid_additional_data_table_name: True,
     gene_level_coverage_stats_table_name: True,
