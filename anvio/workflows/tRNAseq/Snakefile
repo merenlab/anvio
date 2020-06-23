@@ -17,6 +17,7 @@ __email__ = "samuelmiller10@gmail.com"
 import argparse
 import os
 import pandas as pd
+import pysam
 import shutil
 import tempfile
 
@@ -224,7 +225,7 @@ rule map_tRNA_against_self:
         # This means that an average tRNA, length 75, can align to another average tRNA with 2-3 nucleotide substitutions.
         # Up to two alignments are reported per sequence -- the first alignment is the sequence mapping to itself.
         shell("bowtie2 -x %s -f {input.fasta} -S {output.sam} -L 32 -N 1 -k {params.max_possible_alignments} --rdg 100,3 --rfg 100,3 -p {threads} >> {log} 2>&1" % index_path)
-        shell("samtools view -bS {output.sam} -o {output.raw_bam} -F 4 >> {log} 2>&1")
+        pysam.view('-bS', output.sam, '-F', '4', '-o', output.raw_bam, catch_stdout=False) # Use pysam to avoid samtools dependency
         shell("anvi-init-bam {output.raw_bam} -o {output.bam} -T {threads} >> {log} 2>&1")
         shutil.rmtree(index_dir)
 
