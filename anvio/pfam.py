@@ -345,3 +345,48 @@ class Pfam(object):
                             'like to keep it for testing purposes)', nl_before=1, nl_after=1)
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
+
+
+class HMMProfile(object):
+    """Underdeveloped class to read hmm profiles (.hmm)"""
+
+    def __init__(self, filepath):
+        self.filepath = filepath
+
+        filesnpaths.is_file_exists(self.filepath)
+
+        with open(self.filepath, 'r') as f:
+            self.profiles = f.read().split('//\n')[:-1]
+
+
+    def filter(self, by, subset, filepath):
+        """Create a new .hmm that is a subset of the instantiated .hmm
+
+        Parameters
+        ==========
+        by : str
+            Which key would you like to filter by? For example, 'NAME', 'ACC', 'LENG'
+
+        subset : set
+            For each profile, if its corresponding value of `by` matches any of the elements in this
+            set, it is included in the new .hmm file.
+
+        filepath : str
+            The path of the new file. Will raise error if file exists.
+        """
+
+        filesnpaths.is_output_file_writable(filepath, ok_if_exists=False)
+
+        with open(filepath, 'w') as out:
+            for profile in self.profiles:
+                profile_split = profile.split()
+
+                for i, word in enumerate(profile_split):
+                    if word == by:
+                        value = profile_split[i+1]
+                        break
+                else:
+                    raise ConfigError("Profile does not have a %s key. Here is the profile:\n%s" % (by, profile))
+
+                if value in subset:
+                    out.write(profile + '//\n')
