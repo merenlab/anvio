@@ -6,7 +6,6 @@ import argparse
 import re
 
 import anvio.db as db
-import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 
