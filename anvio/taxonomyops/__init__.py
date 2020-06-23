@@ -445,8 +445,8 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
                 item_name = list(raw_hits.keys())[0]
                 raw_hits = raw_hits[item_name]
 
-                onsensus_hit = self.get_consensus_hit(raw_hits)
-                onsensus_hit['accession'] = 'CONSENSUS'
+                consensus_hit = self.get_consensus_hit(raw_hits)
+                consensus_hit['accession'] = 'CONSENSUS'
 
                 if anvio.DEBUG:
                     # avoid race conditions when priting this information when `--debug` is true:
@@ -454,7 +454,7 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
                         self.progress.reset()
                         self.show_hits_gene_callers_id(gene_callers_id, item_name, raw_hits + [onsensus_hit])
 
-                genes_estimation_output.append([gene_callers_id, item_name, [onsensus_hit]])
+                genes_estimation_output.append([gene_callers_id, item_name, [consensus_hit]])
 
             output_queue.put(genes_estimation_output)
 
