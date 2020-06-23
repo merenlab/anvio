@@ -21,6 +21,7 @@ import tracemalloc
 import configparser
 import urllib.request, urllib.error, urllib.parse
 
+import itertools as it
 import numpy as np
 import pandas as pd
 import Bio.PDB as PDB
@@ -734,7 +735,7 @@ def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after
     return output_file_path
 
 
-def split_fasta(input_file_path, parts=1, prefix=None):
+def split_fasta(input_file_path, parts=1, prefix=None, shuffle=False):
     if not prefix:
         prefix = os.path.abspath(input_file_path)
 
@@ -751,24 +752,39 @@ def split_fasta(input_file_path, parts=1, prefix=None):
 
     output_files = []
 
-    for part_no in range(parts):
-        output_file = prefix + '.' + str(part_no)
+    if shuffle:
+        output_files = [f'{prefix}.{part_no}' for part_no in range(parts)]
+        output_fastas = [u.FastaOutput(file_name) for file_name in output_files]
 
-        output_fasta = u.FastaOutput(output_file)
+        # The first sequence goes to the first outfile, the second seq to the second outfile, and so on.
+        for seq_idx, (seq_id, seq) in enumerate(zip(source.ids, source.sequences)):
+            which = seq_idx % parts
+            output_fastas[which].write_id(seq_id)
+            output_fastas[which].write_seq(seq)
+            
+        for output_fasta in output_fastas:
+            output_fasta.close()
+    else:
+        for part_no in range(parts):
+            output_file = prefix + '.' + str(part_no)
 
-        chunk_start = chunk_size * part_no
-        chunk_end   = chunk_start + chunk_size
+            output_fasta = u.FastaOutput(output_file)
 
-        if (part_no + 1 == parts):
-            # if this is the last chunk make sure it contains everything till end.
-            chunk_end = length
+            chunk_start = chunk_size * part_no
+            chunk_end   = chunk_start + chunk_size
 
-        for i in range(chunk_start, chunk_end):
-            output_fasta.write_id(source.ids[i])
-            output_fasta.write_seq(source.sequences[i])
+            if (part_no + 1 == parts):
+                # if this is the last chunk make sure it contains everything till end.
+                chunk_end = length
 
-        output_fasta.close()
-        output_files.append(output_file)
+            for i in range(chunk_start, chunk_end):
+                output_fasta.write_id(source.ids[i])
+                output_fasta.write_seq(source.sequences[i])
+
+            output_fasta.close()
+            output_files.append(output_file)
+
+    source.close()
 
     return output_files
 
@@ -1405,17 +1421,21 @@ def get_split_start_stops_with_gene_calls(contig_length, split_length, gene_star
     if contig_length < 2 * split_length:
         return [(0, contig_length)]
 
-    non_coding_positions_in_contig = set(range(0, contig_length))
+    coding_positions_in_contig = []
 
-    # trim from the beginning and the end. we don't want to end up creating very short pieces
-    non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(0, int(split_length / 2))))
-    non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(contig_length - int(split_length / 2), contig_length)))
+    # Pretend the beginning and end are coding (even if they aren't) so that we prevent very short pieces.
+    for position in it.chain(range(int(split_length / 2)), range(contig_length - int(split_length / 2), contig_length)):
+        coding_positions_in_contig.append(position)
 
-    # remove positions that code for genes
+    # Track positions that code for genes.
     for gene_unique_id, start, stop in gene_start_stops:
         start = start - 5
         stop = stop + 5
-        non_coding_positions_in_contig = non_coding_positions_in_contig.difference(set(range(start, stop)))
+
+        for position in range(start, stop):
+            coding_positions_in_contig.append(position)
+
+    non_coding_positions_in_contig = set(range(contig_length)) - set(coding_positions_in_contig)
 
     # what would be our break points in an ideal world? compute an initial list of break
     # points based on the length of the contig and desired split size:
@@ -2575,7 +2595,7 @@ def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_name
           mode = "splits"
           appropriate_seq_names = split_names
 
-        else: 
+        else:
           mode = "contigs"
           appropriate_seq_names = contig_names
 
@@ -2585,13 +2605,13 @@ def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_name
                           "%d are splits, and %d are neither. BUT you're in just-do-it mode and we know you're in charge, so we'll "
                           "proceed using any appropriate names." % \
                           (mode, len(contig_names), len(split_names), len(missing_names),))
-              seq_names_to_export = appropriate_seq_names 
+              seq_names_to_export = appropriate_seq_names
           else:
               raise ConfigError("Not all the sequences you requested are %s in this CONTIGS.db. %d names are contigs, "
                                 "%d are splits, and %d are neither. If you want to live on the edge and try to "
                                 "proceed using any appropriate names, try out the `--just-do-it` flag." % \
                                 (mode, len(contig_names), len(split_names), len(missing_names)))
-        
+
     for seq_name in seq_names_to_export:
         if splits_mode:
             s = splits_info_dict[seq_name]
@@ -3373,6 +3393,13 @@ def is_profile_db(db_path):
 def is_structure_db(db_path):
     if get_db_type(db_path) != 'structure':
         raise ConfigError("'%s' is not an anvi'o structure database." % db_path)
+    return True
+
+
+def is_modules_db(db_path):
+    filesnpaths.is_file_exists(db_path)
+    if get_db_type(db_path) != 'modules':
+        raise ConfigError("'%s' is not an anvi'o modules database." % db_path)
     return True
 
 
