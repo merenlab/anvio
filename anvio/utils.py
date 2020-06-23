@@ -5,6 +5,7 @@
 
 import os
 import sys
+import ssl
 import gzip
 import tarfile
 import time
@@ -3479,15 +3480,19 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
 
     return True
 
+
 # # FIXME
 # def is_external_genomes_compatible_with_pan_database(pan_db_path, external_genomes_path):
 
 
-def download_file(url, output_file_path, progress=progress, run=run):
+def download_file(url, output_file_path, check_certificate=True, progress=progress, run=run):
     filesnpaths.is_output_file_writable(output_file_path)
 
     try:
-        response = urllib.request.urlopen(url)
+        if check_certificate:
+            response = urllib.request.urlopen(url)
+        else:
+            response = urllib.request.urlopen(url, context=ssl._create_unverified_context())
     except Exception as e:
         raise ConfigError("Something went wrong with your download attempt. Here is the "
                            "problem: '%s'" % e)
