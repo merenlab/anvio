@@ -186,10 +186,17 @@ class InteracdomeSetup(object):
     def filter_pfam(self):
         """Filter Pfam data according to whether the ACC is in the Interacdome dataset"""
 
+        interacdome_pfam_accessions = self.get_interacdome_pfam_accessions()
+
         hmm_profiles = pfam.HMMProfile(os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm'))
-        hmm_profiles.filter(by='ACC', subset=self.get_interacdome_pfam_accessions(), filepath=None)
+        hmm_profiles.filter(by='ACC', subset=interacdome_pfam_accessions, filepath=None)
 
         # hmmpresses the new .hmm
         self.pfam_setup.hmmpress_files()
+
+        # We also filter out the Pfam-A.clans.tsv file, since it is used as a catalog
+        clans_file = os.path.join(self.interacdome_data_dir, 'Pfam-A.clans.tsv')
+        clans = pd.read_csv(clans_file, sep='\t', header=None)
+        clans[clans[0].isin(interacdome_pfam_accessions)].to_csv(clans_file, sep='\t', index=False, header=False)
 
 
