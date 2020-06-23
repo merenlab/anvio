@@ -21,7 +21,7 @@ auxiliary_data_version = "2"
 structure_db_version = "2"
 genomes_storage_vesion = "7"
 workflow_config_version = "1"
-kegg_modules_db_version = "2"
+metabolic_modules_db_version = "2"
 
 versions_for_db_types = {'contigs': contigs_db_version,
                          'profile': profile_db_version,
@@ -31,7 +31,7 @@ versions_for_db_types = {'contigs': contigs_db_version,
                          'genomestorage': genomes_storage_vesion,
                          'auxiliary data for coverages': auxiliary_data_version,
                          'config': workflow_config_version,
-                         'modules': kegg_modules_db_version}
+                         'modules': metabolic_modules_db_version}
 
 
 ####################################################################################################

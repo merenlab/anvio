@@ -3074,7 +3074,7 @@ class KeggModulesDatabase(KeggContext):
         self.db.set_meta_value('total_entries', mod_table.get_total_entries())
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('hash', self.get_db_content_hash())
-        self.db.set_meta_value('version', t.kegg_modules_db_version)
+        self.db.set_meta_value('version', t.metabolic_modules_db_version)
 
         self.db.disconnect()
 
