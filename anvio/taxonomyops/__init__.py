@@ -118,6 +118,842 @@ class AccessionIdToTaxonomy(object):
         self.progress.end()
 
 
+class TaxonomyEstimatorSingle(TerminologyHelper):
+    def __init__(self, skip_init=False):
+        TerminologyHelper.__init__(self)
+
+        # update variables
+        # FIXME: there is a better way to do it.
+        self.ctx.items = self.ctx.SCGs if self.scgs_focus else self.ctx.anticodons
+        self.report_item_frequencies_path = self.report_scg_frequencies_path if self.scgs_focus else self.report_anticodon_frequencies_path
+        self.compute_item_coverages = self.compute_scg_coverages if self.scgs_focus else self.compute_anticodon_coverages
+        self.item_name_for_metagenome_mode = self.scg_name_for_metagenome_mode if self.scgs_focus else self.anticodon_for_metagenome_mode
+
+        # these dictionaries that will be initiated later
+        self.contigs_db_project_name = "Unknown"
+        self.item_name_to_gene_caller_id_dict = {}
+        self.frequency_of_items_with_taxonomy = {}
+        self.gene_callers_id_to_item_taxonomy_dict = {}
+        self.split_name_to_gene_caller_ids_dict = {}
+        self.gene_callers_id_to_split_name_dict = {}
+        self.sample_names_in_profile_db = None
+
+        self.initialized = False
+
+        self.run.info('Contigs DB', self.contigs_db_path)
+        self.run.info('Profile DB', self.profile_db_path)
+        self.run.info('Metagenome mode', self.metagenome_mode)
+        if self.metagenome_mode:
+            self.run.info(f'{self._ITEM} for metagenome', self.item_name_for_metagenome_mode)
+
+        if not skip_init:
+            self.init()
+
+
+    def init(self):
+        self.init_items_data()
+
+        if self.report_item_frequencies_path:
+            with open(self.report_item_frequencies_path, 'w') as output:
+                for item_name, frequency in self.frequency_of_items_with_taxonomy.items():
+                    output.write("%s\t%d\n" % (item_name, frequency))
+
+            self.run.info(f'{self._ITEM} frequencies in contigs db', self.report_item_frequencies_path, nl_before=1)
+            sys.exit()
+
+        if self.profile_db_path:
+            self.sample_names_in_profile_db = ProfileDatabase(self.profile_db_path).samples
+
+        self.initialized = True
+
+
+    def init_items_data(self):
+        """Initialize {self._ITEM} taxonomy for the entire contigs database"""
+
+        if not self.contigs_db_path:
+            return None
+
+        self.progress.new('Initializing')
+        self.progress.update(f'{self._ITEM} taxonomy dictionary')
+
+        for item_name in self.ctx.items:
+            self.item_name_to_gene_caller_id_dict[item_name] = set([])
+
+        if self.scgs_focus:
+            anvio_taxonomy_table_name = t.scg_taxonomy_table_name
+        elif self.trna_focus:
+            anvio_taxonomy_table_name = t.trna_taxonomy_table_name
+        else:
+            anvio_taxonomy_table_name = None
+
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+        self.contigs_db_project_name = contigs_db.meta['project_name']
+        anvio_taxonomy_table = contigs_db.db.get_table_as_dict(anvio_taxonomy_table_name)
+        genes_in_splits = contigs_db.db.get_some_columns_from_table(t.genes_in_splits_table_name, "split, gene_callers_id")
+        min_contig_length_in_contigs_db = contigs_db.db.get_max_value_in_column(t.contigs_info_table_name, "length", return_min_instead=True)
+        contigs_db.disconnect()
+
+        # this is important. before we begin, we need to filter out gene caller ids and splits from main dictionaries if
+        # they shouldn't be there. read the warning below to see the utility of this step.
+        if self.profile_db_path and self.compute_item_coverages:
+            split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
+            split_names_in_contigs_db = set([tpl[0] for tpl in genes_in_splits])
+            splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
+
+            min_contig_length_in_profile_db = ProfileDatabase(self.profile_db_path).meta['min_contig_length']
+
+            if len(splits_missing_in_profile_db):
+                self.progress.reset()
+                self.run.warning(f"Please note that anvi'o found {pp(len(split_names_in_contigs_db))} splits in your contigs database. "
+                                 f"But only {pp(len(split_names_in_profile_db))} of them appeared ot be in the profile database. As a "
+                                 f"result, anvi'o will now remove the {pp(len(splits_missing_in_profile_db))} splits that occur only in "
+                                 f"the contigs db from all downstream analyses here (if you didn't use the flag `{self._COMPUTE_COVS_FLAG}` "
+                                 f"this wouldn't have been necessary, but with the current settings this is really the best for everyone). "
+                                 f"Where is this difference coming from though? Well. This is often the case because the 'minimum contig "
+                                 f"length parameter' set during the `anvi-profile` step can exclude many contigs from downstream analyses "
+                                 f"(often for good reasons, too). For instance, in your case the minimum contig length goes as low as "
+                                 f"{pp(min_contig_length_in_contigs_db)} nts in your contigs database. Yet, the minimum contig length set "
+                                 f"in the profile databaes is {pp(min_contig_length_in_profile_db)} nts. Hence the difference. Anvi'o "
+                                 f"hopes that this explaines some things.")
+
+                self.progress.update("Removing %s splits missing form the profile db" % pp(len(splits_missing_in_profile_db)))
+                genes_in_splits = [tpl for tpl in genes_in_splits if tpl[0] not in splits_missing_in_profile_db]
+
+                # so now we know the final list of split names and gene caller ids as they are stored in the updated
+                # `genes_in_splits` variable. time to clean up the `anvio_taxonomy_table` dictionary as well.
+                final_set_of_gene_caller_ids = set([tpl[1] for tpl in genes_in_splits if tpl[0] not in splits_missing_in_profile_db])
+                entry_ids_to_remove = [entry for entry in anvio_taxonomy_table if anvio_taxonomy_table[entry]['gene_callers_id'] not in final_set_of_gene_caller_ids]
+                [anvio_taxonomy_table.pop(e) for e in entry_ids_to_remove]
+
+        # NOTE: This will modify the taxonomy strings read from the contigs database. see the
+        # function header for `trim_taxonomy_dict_entry` for more information.
+        if self.simplify_taxonomy_information:
+            self.progress.update(f'{self._DELIVERABLE} dicts ... trimming main')
+            for key in anvio_taxonomy_table:
+                anvio_taxonomy_table[key] = self.trim_taxonomy_dict_entry(anvio_taxonomy_table[key])
+
+        self.progress.update(f'{self._DELIVERABLE} dicts ... building g->tax')
+        for entry in anvio_taxonomy_table.values():
+            gene_callers_id = entry['gene_callers_id']
+            self.gene_callers_id_to_item_taxonomy_dict[gene_callers_id] = entry
+
+        self.progress.update(f'{self._DELIVERABLE} dicts ... building tax->g')
+        for entry in self.gene_callers_id_to_item_taxonomy_dict.values():
+            item_gene_name = entry[self._VARIABLE_NAME_IN_TABLE]
+            gene_callers_id = entry['gene_callers_id']
+            self.item_name_to_gene_caller_id_dict[item_gene_name].add(gene_callers_id)
+
+        self.progress.update(f'{self._DELIVERABLE} dicts ... building s->g + g->s')
+        for split_name, gene_callers_id in genes_in_splits:
+            if gene_callers_id not in self.gene_callers_id_to_item_taxonomy_dict:
+                continue
+
+            if split_name not in self.split_name_to_gene_caller_ids_dict:
+                self.split_name_to_gene_caller_ids_dict[split_name] = set()
+
+            self.split_name_to_gene_caller_ids_dict[split_name].add(gene_callers_id)
+            self.gene_callers_id_to_split_name_dict[gene_callers_id] = split_name
+
+        self.progress.end()
+
+        self.frequency_of_items_with_taxonomy = OrderedDict(sorted([(g, len(self.item_name_to_gene_caller_id_dict[g])) for g in self.item_name_to_gene_caller_id_dict], key = lambda x: x[1], reverse=True))
+
+        if self.metagenome_mode or anvio.DEBUG:
+            self.run.info_single(f"A total of %s {self._SOURCE_DATA}s with taxonomic affiliations were successfully initialized "
+                                 f"from the contigs database 🎉 Following shows the frequency of these {self._ITEMS}: %s." % \
+                                            (pp(len(self.gene_callers_id_to_item_taxonomy_dict)),
+                                             ', '.join(["%s (%d)" % (g, self.frequency_of_items_with_taxonomy[g]) \
+                                                                for g in self.frequency_of_items_with_taxonomy])), nl_before=1)
+
+
+    def trim_taxonomy_dict_entry(self, taxonomy_dict_entry):
+        """ Remove excess information from taxonomy information.
+
+        The purpose of this is to give an option to the user to simplify GTDB names, that
+        will have a text information for every level of taxonomy depending on what branches
+        genomes fit, but it is not always helpful to the user. Such as this one:
+
+             t_domain Bacteria
+             t_phylum Firmicutes
+             t_class Clostridia
+             t_order Monoglobales
+             t_family UBA1381
+             t_genus CAG-41
+             t_species CAG-41 sp900066215
+
+         in this case the user may want to get this instead:
+
+             t_domain Bacteria
+             t_phylum Firmicutes
+             t_class Clostridia
+             t_order Monoglobales
+             t_family None
+             t_genus None
+             t_species None
+
+         So this function will take a taxonomy dict entry , and will return a simplified
+         version of it if trimming is applicable.
+
+        Paremeters
+        ==========
+        taxonomy_dict_entry: dict
+            a dictionary that contains keys for all taxon names. such as this one:
+                {[...],
+                 't_domain': 'Bacteria',
+                 't_phylum': 'Firmicutes',
+                 't_class': 'Clostridia',
+                 't_order': 'Oscillospirales',
+                 't_family': 'Acutalibacteraceae',
+                 't_genus': 'Ruminococcus',
+                 't_species': 'Ruminococcus sp002491825'
+                }
+         """
+
+        # for optimization, these letters should all have three characters. if that
+        # behavior needs to change, the code down below must be updates. the purpose
+        # of this is not to have a comprehensive list of EVERY single GTDB-specific
+        # clade designations, but to make sure teh vast majority of names are covered.
+        GTDB_specific_clade_prefixes = ['CAG', 'GCA', 'UBA', 'FUL', 'PAL', '2-0', 'Fen', 'RF3', 'TAN']
+
+        taxonomic_levels_to_nullify = []
+
+        for taxonomic_level in self.ctx.levels_of_taxonomy[::-1]:
+            if not taxonomy_dict_entry[taxonomic_level]:
+                continue
+
+            if taxonomic_level == 't_species':
+                species_name = taxonomy_dict_entry[taxonomic_level].split(' ')[1]
+                try:
+                    int(species_name[2])
+                    taxonomic_levels_to_nullify.append(taxonomic_level)
+                except:
+                    None
+            else:
+                if taxonomy_dict_entry[taxonomic_level][0:3] in GTDB_specific_clade_prefixes:
+                    taxonomic_levels_to_nullify.append(taxonomic_level)
+
+        # this is the best way to make sure we are not going to nullify order, but leave behind a family name.
+        if taxonomic_levels_to_nullify:
+            level_below_which_to_nullify = min([self.ctx.levels_of_taxonomy.index(l) for l in taxonomic_levels_to_nullify])
+            for taxonomic_level in self.ctx.levels_of_taxonomy[level_below_which_to_nullify:]:
+                taxonomy_dict_entry[taxonomic_level] = None
+
+        return taxonomy_dict_entry
+
+
+    def get_blank_hit_template_dict(self):
+        hit = {}
+
+        for level in self.ctx.levels_of_taxonomy[::-1]:
+            hit[level] = None
+
+        return hit
+
+
+    def get_consensus_taxonomy(self, items_taxonomy_dict):
+        """Takes in a items_taxonomy_dict, returns a final taxonomic string that summarize all"""
+
+        if not len(items_taxonomy_dict):
+            return dict([(l, None) for l in self.ctx.levels_of_taxonomy])
+
+        pd.set_option('mode.chained_assignment', None)
+
+        item_hits = list([v for v in items_taxonomy_dict.values() if v['t_domain']])
+
+        if not len(item_hits):
+            return self.get_blank_hit_template_dict()
+
+        df = pd.DataFrame.from_records(item_hits)
+
+        # we have already stored a unique hash for taxonomy strings. here we will figure out most frequent
+        # hash values in the df
+        tax_hash_counts = df['tax_hash'].value_counts()
+        tax_hash_df = tax_hash_counts.rename_axis('tax_hash').reset_index(name='frequency')
+        max_frequency = tax_hash_df.frequency.max()
+        tax_hash_df_most_frequent = tax_hash_df[tax_hash_df.frequency == max_frequency]
+
+        if len(tax_hash_df_most_frequent.index) == 1:
+            # if there is only a single winner, we're golden
+            winner_tax_hash = tax_hash_df_most_frequent.tax_hash[0]
+
+            # get the consensus hit based on the winner hash
+            consensus_hit = df[df.tax_hash == winner_tax_hash].head(1)
+
+            # turn it into a Python dict before returning
+            return consensus_hit.to_dict('records')[0]
+        else:
+            # if there are competing hashes, we need to be more careful to decide
+            # which taxonomic level should we use to cut things off.
+            consensus_hit = self.get_blank_hit_template_dict()
+            for level in self.ctx.levels_of_taxonomy[::-1]:
+                if len(df[level].unique()) == 1:
+                    consensus_hit[level] = df[level].unique()[0]
+
+            return consensus_hit
+
+
+    def print_taxonomy_hits_in_splits(self, hits, bin_name=None):
+        self.progress.reset()
+        self.run.warning(None, header='Hits for %s' % (bin_name if bin_name else "a bunch of splits"), lc="green")
+
+        if len(hits):
+            header = [self._ITEM, 'gene', 'pct id', 'taxonomy']
+            table = []
+
+            for hit in hits:
+                taxon_text = ' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy])
+
+                # if the hit we are working on sent here as 'consensus', we will color it up a bit so it shows up
+                # more clearly in the debug output.
+                if hit[self._VARIABLE_NAME_IN_TABLE] == 'CONSENSUS':
+                    taxon_text = terminal.c(taxon_text, color='red')
+
+                    for field_name in [self._VARIABLE_NAME_IN_TABLE, 'percent_identity', 'gene_callers_id']:
+                        hit[field_name] = terminal.c(hit[field_name], color='red')
+
+                table.append([hit[self._VARIABLE_NAME_IN_TABLE], str(hit['gene_callers_id']), str(hit['percent_identity']), taxon_text])
+
+            anvio.TABULATE(table, header)
+        else:
+            self.run.info_single("No hits :/")
+
+
+    def get_taxonomy_dict(self, gene_caller_ids, bin_name=None):
+        items_taxonomy_dict = {}
+
+        improper_gene_caller_ids = [g for g in gene_caller_ids if g not in self.gene_callers_id_to_item_taxonomy_dict]
+        if improper_gene_caller_ids:
+            raise ConfigError("Something weird is going on. Somehow anvi'o has a bunch of gene caller ids for which it is "
+                              "supposed to estimate taxonomy. However, %d of them do not occur in a key dictionary. The code "
+                              "here does not know what to suggest :( Apologies." % len(improper_gene_caller_ids))
+
+        for gene_callers_id in gene_caller_ids:
+            items_taxonomy_dict[gene_callers_id] = self.gene_callers_id_to_item_taxonomy_dict[gene_callers_id]
+            items_taxonomy_dict[gene_callers_id]["tax_hash"] = HASH(self.gene_callers_id_to_item_taxonomy_dict[gene_callers_id])
+
+        return items_taxonomy_dict
+
+
+    def estimate_for_list_of_splits(self, split_names=None, bin_name=None):
+        """Estimate {self._ITEM} taxonomy for a bunch of splits that belong to a single population.
+
+           The purpose of this function is to to do critical things: identify genes we use for taxonomy in `split_names`,
+           and generate a consensus taxonomy with the assumption that these are coming from splits that represents a
+           single population.
+
+           It will return a dictionary with multiple items, including a dictionary that contains the final consensus\
+           taxonomy, another one that includes every {self._ITEM} and their raw associations with taxon names (from which the\
+           consensus taxonomy was computed), as well as information about how many {self._ITEMS} were analyzed and supported the\
+           consesnus.
+        """
+
+        if self.metagenome_mode:
+            raise ConfigError("Someone is attempting to estimate taxonomy for a set of splits using a class inherited in "
+                              "`metagenome mode`. If you are a programmer please note that it is best to use the member "
+                              "function `estimate` directly.")
+
+        consensus_taxonomy = None
+
+        gene_caller_ids_of_interest = self.get_gene_caller_ids_for_splits(split_names)
+        items_taxonomy_dict = self.get_taxonomy_dict(gene_caller_ids_of_interest)
+
+        try:
+            consensus_taxonomy = self.get_consensus_taxonomy(items_taxonomy_dict)
+            consensus_taxonomy[self._VARIABLE_NAME_IN_TABLE] = 'CONSENSUS'
+            consensus_taxonomy['percent_identity'] = '--'
+            consensus_taxonomy['gene_callers_id'] = '--'
+
+        except Exception as e:
+            self.print_taxonomy_hits_in_splits(list(items_taxonomy_dict.values()))
+
+            raise ConfigError(f"While trying to sort out the consensus taxonomy for %s anvi'o failed :( The list of {self._ITEM} taxon hits that "
+                              f"caused the failure is printed in your terminal. But the actual error message that came from the depths "
+                              f"of the codebase was this: '%s'." % (('the bin "%s"' % bin_name) if bin_name else 'a bunch of splits', e))
+
+        if anvio.DEBUG:
+            self.print_taxonomy_hits_in_splits(list(items_taxonomy_dict.values()) + [consensus_taxonomy], bin_name)
+
+        # set some useful information. `total_items` is the number of items with taxonomy found in the collection of splits. the
+        # `supporting_items` shows how many of them supports the consensus taxonomy fully
+        total_items = len(items_taxonomy_dict)
+        supporting_items = 0
+
+        consensus_taxonomy_levels_occupied = [level for level in self.ctx.levels_of_taxonomy if consensus_taxonomy[level]]
+        consensus_taxonomy_str = ' / '.join([consensus_taxonomy[level] for level in consensus_taxonomy_levels_occupied])
+
+        for item_taxonomy_hit in items_taxonomy_dict.values():
+            item_taxonomy_hit_str = ' / '.join([str(item_taxonomy_hit[level]) for level in consensus_taxonomy_levels_occupied])
+
+            if item_taxonomy_hit_str == consensus_taxonomy_str:
+                item_taxonomy_hit['supporting_consensus'] = True
+                supporting_items += 1
+            else:
+                item_taxonomy_hit['supporting_consensus'] = False
+
+        return {'consensus_taxonomy': consensus_taxonomy,
+                self._ITEMS.lower(): items_taxonomy_dict,
+                self._TOTAL_ITEMS: total_items,
+                self._SUPPORTING_ITEMS: supporting_items,
+                'metagenome_mode': False}
+
+
+    def estimate_for_bins_in_collection(self):
+        bins_taxonomy_dict = {}
+
+        bin_name_to_split_names_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
+        self.run.info_single("%s split names associated with %s bins of in collection '%s' have been "
+                             "successfully recovered 🎊" % (pp(sum([len(v) for v in bin_name_to_split_names_dict.values()])),
+                                                           pp(len(bin_name_to_split_names_dict)),
+                                                           self.collection_name), nl_before=1)
+
+        for bin_name in bin_name_to_split_names_dict:
+            split_names = bin_name_to_split_names_dict[bin_name]
+            bins_taxonomy_dict[bin_name] = self.estimate_for_list_of_splits(split_names, bin_name)
+
+        return bins_taxonomy_dict
+
+
+    def estimate_for_contigs_db_for_genome(self):
+        contigs_db_taxonomy_dict = {}
+
+        item_frequencies = self.frequency_of_items_with_taxonomy.values()
+        if len([sf for sf in item_frequencies if sf > 1]) * 100 / len(item_frequencies) > 20:
+            if self.just_do_it:
+                self.run.warning("Because you asked anvi'o to just do it, it will do it, but you seem to have too much contamination "
+                                 "in this contigs database for it to represent a genome. So probably taxonomy estimations are all "
+                                 "garbage, but hey, at least it runs?")
+            else:
+                raise ConfigError("Because you haven't used the `--metagenome-mode` flag, anvi'o was trying to treat your contigs "
+                                  "database as a genome. But there seems to be too much redundancy of single-copy core genes in this "
+                                  "contigs database to assign taxonomy with any confidence :/ A more proper way to do this is to use the "
+                                  "`--metagenome-mode` flag. Or you can also tell anvi'o to `--just-do-it`. It is your computer after "
+                                  "all :( But you should still be aware that in that case you would likely get a completely irrelevant "
+                                  "answer from this program.")
+
+        splits_in_contigs_database = self.split_name_to_gene_caller_ids_dict.keys()
+        contigs_db_taxonomy_dict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(split_names=splits_in_contigs_database,
+                                                                                                  bin_name=self.contigs_db_project_name)
+        return contigs_db_taxonomy_dict
+
+
+    def estimate_for_contigs_db_for_metagenome(self):
+        """Treat a given contigs database as a metagenome.
+
+           This function deserves some attention. It relies on a single SCG or anticodon to estimate the composition of a metagenome.
+           For instance, its sister function, `estimate_for_contigs_db_for_genome`, works with a list of splits that are
+           assumed to belong to the same genome. In which case a consensus taxonomy learned from all {self._ITEMS} is most
+           appropriate. In this case, however, we don't know which split will go together, hence, we can't pull together
+           {self._ITEMS} to learn a consensus taxonomy for independent populations in the metagenome. The best we can do is to stick
+           with a single {self._ITEM} with the hope that (1) it will cut through as many populations as possible and (2) will have
+           reasonable power to resolve taxonomy all by itself. These independent assumptions will both work in some cases
+           and both fail in others.
+        """
+
+        # we first need to decide which {self._ITEM} we should use to survey taxonomy
+        most_frequent_item = next(iter(self.frequency_of_items_with_taxonomy))
+        if self.item_name_for_metagenome_mode:
+            frequency_of_user_chosen_item = self.frequency_of_items_with_taxonomy[self.item_name_for_metagenome_mode]
+            frequency_of_most_frequent_item = self.frequency_of_items_with_taxonomy[most_frequent_item]
+
+            if frequency_of_user_chosen_item < frequency_of_most_frequent_item:
+                additional_note = f" And just so you know, there is another {self._ITEM} that was observed more times (i.e., \
+                                    {most_frequent_item}; {frequency_of_most_frequent_item} times) in this metagenome compared \
+                                    to yours (i.e., {frequency_of_most_frequent_item} times). You're the boss, of course."
+            else:
+                additional_note = ""
+
+            self.run.warning(f"As per your request anvi'o set '{self.item_name_for_metagenome_mode}' to be THE {self._SOURCE_DATA} \
+                               to survey your metagenome for its taxonomic composition.{additional_note}")
+        else:
+            self.item_name_for_metagenome_mode = most_frequent_item
+
+            self.run.warning(f"Anvi'o automatically set '{self.item_name_for_metagenome_mode}' to be THE {self._SOURCE_DATA} to "
+                             f"survey your metagenome for its taxonomic composition. If you are not happy with that, you could "
+                             f"change it with the parameter `{self._ITEM_FOR_METAGENOME_MODE_PARAM}`.")
+
+        gene_caller_ids_of_interest = self.item_name_to_gene_caller_id_dict[self.item_name_for_metagenome_mode]
+        items_taxonomy_dict = self.get_taxonomy_dict(gene_caller_ids=gene_caller_ids_of_interest,
+                                                     bin_name=self.contigs_db_project_name)
+
+        return {self.contigs_db_project_name: {self._ITEMS.lower(): items_taxonomy_dict,
+                                               'metagenome_mode': True}}
+
+
+    def get_items_taxonomy_super_dict(self):
+        """Function that returns the `items_taxonomy_super_dict` for SCGs or anticodons.
+
+           `items_taxonomy_super_dict` contains a wealth of information regarding samples, genes,
+           gene taxonomic affiliations, consensus taxonomy, and coverages of genes across samples.
+        """
+        items_taxonomy_super_dict = {}
+
+        if not self.initialized:
+            self.init()
+
+        if self.profile_db_path and not self.metagenome_mode:
+            items_taxonomy_super_dict['taxonomy'] = self.estimate_for_bins_in_collection()
+        elif not self.profile_db_path and not self.metagenome_mode:
+            items_taxonomy_super_dict['taxonomy'] = self.estimate_for_contigs_db_for_genome()
+        elif self.metagenome_mode:
+            items_taxonomy_super_dict['taxonomy'] = self.estimate_for_contigs_db_for_metagenome()
+        else:
+            raise ConfigError("This class doesn't know how to deal with that yet :/")
+
+        if self.compute_item_coverages and self.metagenome_mode:
+            items_taxonomy_super_dict['coverages'] = self.get_item_coverages_across_samples_dict_in_metagenome_mode(items_taxonomy_super_dict)
+        elif self.compute_item_coverages and not self.metagenome_mode:
+            items_taxonomy_super_dict['coverages'] = self.get_item_coverages_across_samples_dict_in_genome_mode(items_taxonomy_super_dict)
+        else:
+            items_taxonomy_super_dict['coverages'] = None
+
+        return items_taxonomy_super_dict
+
+
+    def estimate(self):
+        items_taxonomy_super_dict = self.get_items_taxonomy_super_dict()
+
+        if self.update_profile_db_with_taxonomy:
+            self.add_taxonomy_as_additional_layer_data(items_taxonomy_super_dict)
+
+        self.print_items_taxonomy_super_dict(items_taxonomy_super_dict)
+
+        if self.output_file_path:
+            self.store_items_taxonomy_super_dict(items_taxonomy_super_dict)
+
+
+    def print_items_taxonomy_super_dict(self, items_taxonomy_super_dict):
+        self.progress.reset()
+
+        if self.collection_name:
+            self.run.warning(None, header='Estimated taxonomy for collection "%s"' % self.collection_name, lc="green")
+        elif self.metagenome_mode:
+            self.run.warning(None, header='Taxa in metagenome "%s"' % self.contigs_db_project_name, lc="green")
+        else:
+            self.run.warning(None, header='Estimated taxonomy for "%s"' % self.contigs_db_project_name, lc="green")
+
+        d = self.get_print_friendly_items_taxonomy_super_dict(items_taxonomy_super_dict)
+
+        ordered_bin_names = sorted(list(d.keys()))
+
+        if self.metagenome_mode:
+            header = ['percent_identity', 'taxonomy']
+        else:
+            header = ['', self._TOTAL_ITEMS, self._SUPPORTING_ITEMS, 'taxonomy']
+
+        # if we are in `--compute-xxx-coverages` mode, and more than 5 sample names, we are in trouble since they will\
+        # unlikely fit into the display while printing them. so here we will cut it to make sure things look OK.
+        samples_not_shown = 0
+        sample_names_to_display = None
+        if self.compute_item_coverages:
+            sample_names_to_display = sorted(self.sample_names_in_profile_db)[0:5]
+            samples_not_shown = sorted(self.sample_names_in_profile_db)[5:]
+
+            header += sample_names_to_display
+
+            if samples_not_shown:
+                header += ['... %d more' % len(samples_not_shown)]
+
+            # since we know coverages and sample names, we have a chance here to order the output
+            # based on coverage. so let's do that.
+            if self.metagenome_mode:
+                sorted_bin_coverage_tuples = sorted([(bin_name, sum([d[bin_name]['coverages'][sample_name] for sample_name in self.sample_names_in_profile_db])) for bin_name in d], key=lambda x: x[1], reverse=True)
+            else:
+                sorted_bin_coverage_tuples = sorted([(bin_name, sum([(d[bin_name]['coverages'][sample_name] if d[bin_name][self._SUPPORTING_ITEMS] else 0) for sample_name in self.sample_names_in_profile_db])) for bin_name in d], key=lambda x: x[1], reverse=True)
+            ordered_bin_names = [tpl[0] for tpl in sorted_bin_coverage_tuples]
+
+
+        table = []
+        for bin_name in ordered_bin_names:
+            bin_data = d[bin_name]
+
+            # set the taxonomy text depending on how much room we have. if there are sample coverages, keep it simple,
+            # otherwise show the entire taxonomy text.
+            if self.compute_item_coverages:
+                taxon_text_l = ['(%s) %s' % (l.split('_')[1][0], bin_data[l]) for l in self.ctx.levels_of_taxonomy[::-1] if bin_data[l]]
+                taxon_text = taxon_text_l[0] if taxon_text_l else '(NA) NA'
+            else:
+                taxon_text = ' / '.join([bin_data[l] if bin_data[l] else '' for l in self.ctx.levels_of_taxonomy])
+
+            # setting up the table columns here.
+            if self.metagenome_mode:
+                row = [bin_name, str(bin_data['percent_identity']), taxon_text]
+            else:
+                row = [bin_name, str(bin_data[self._TOTAL_ITEMS]), str(bin_data[self._SUPPORTING_ITEMS]), taxon_text]
+
+            # if there are coverages, add samples to the display too
+            if self.compute_item_coverages:
+                row += [d[bin_name]['coverages'][sample_name] for sample_name in sample_names_to_display]
+
+            if samples_not_shown:
+                row += ['... %d more' % len(samples_not_shown)]
+
+            table.append(row)
+
+        # if we are not in metagenome mode let's sort the output table based on total and
+        # supporting items
+        if not self.metagenome_mode:
+            table = sorted(table, key=lambda x: (int(x[1]), int(x[2])), reverse=True)
+
+        anvio.TABULATE(table, header)
+
+
+    def store_items_taxonomy_super_dict(self, items_taxonomy_super_dict):
+        d = self.get_print_friendly_items_taxonomy_super_dict(items_taxonomy_super_dict)
+
+        if self.metagenome_mode:
+            headers = ['scg_name' if self.scgs_focus else 'anticodon', 'percent_identity']
+        else:
+            headers = ['bin_name', self._TOTAL_ITEMS, self._SUPPORTING_ITEMS]
+
+        headers += self.ctx.levels_of_taxonomy
+
+        if self.compute_item_coverages:
+            headers_for_samples = sorted(self.sample_names_in_profile_db)
+        else:
+            headers_for_samples = []
+
+        with open(self.output_file_path, 'w') as output:
+            output.write('\t'.join(headers + headers_for_samples) + '\n')
+            for item in d:
+                line = [item] + [d[item][h] for h in headers[1:]]
+
+                if self.compute_item_coverages:
+                    for sample_name in headers_for_samples:
+                        line.append(d[item]['coverages'][sample_name])
+
+                output.write('\t'.join([str(f) for f in line]) + '\n')
+
+        self.run.info("Output file", self.output_file_path, nl_before=1)
+
+
+    def get_print_friendly_items_taxonomy_super_dict(self, items_taxonomy_super_dict):
+        d = {}
+
+        if self.metagenome_mode:
+            for item_hit in items_taxonomy_super_dict['taxonomy'][self.contigs_db_project_name][self._ITEMS.lower()].values():
+                item_hit_name = '%s_%d' % (item_hit[self._VARIABLE_NAME_IN_TABLE], item_hit['gene_callers_id'])
+                d[item_hit_name] = item_hit
+
+                if self.compute_item_coverages:
+                    d[item_hit_name]['coverages'] = items_taxonomy_super_dict['coverages'][item_hit['gene_callers_id']]
+        else:
+            for bin_name in items_taxonomy_super_dict['taxonomy']:
+                d[bin_name] = items_taxonomy_super_dict['taxonomy'][bin_name]['consensus_taxonomy']
+                d[bin_name][self._TOTAL_ITEMS] = items_taxonomy_super_dict['taxonomy'][bin_name][self._TOTAL_ITEMS]
+                d[bin_name][self._SUPPORTING_ITEMS] = items_taxonomy_super_dict['taxonomy'][bin_name][self._SUPPORTING_ITEMS]
+
+                if self.compute_item_coverages:
+                    d[bin_name]['coverages'] = items_taxonomy_super_dict['coverages'][bin_name]
+
+        return d
+
+
+    def add_taxonomy_as_additional_layer_data(self, items_taxonomy_super_dict):
+        """A function that adds taxonomy to additional data tables of a given profile
+           database. This will only work in metagenome mode."""
+
+        if not self.metagenome_mode or not self.compute_item_coverages:
+            return
+
+        self.progress.new("Adding summary taxonomy for samples")
+        self.progress.update('...')
+
+        items_dict = list(items_taxonomy_super_dict['taxonomy'].values())[0][self._ITEMS.lower()]
+
+        # at this stage each items_dict entry will look like this, and most critically will
+        # have the same items
+        #
+        # "7660": {
+        #       "gene_callers_id": 7660,
+        #       "gene_name": "Ribosomal_S6",
+        #       "accession": "CONSENSUS",
+        #       "percent_identity": "98.9",
+        #       "t_domain": "Bacteria",
+        #       "t_phylum": "Firmicutes",
+        #       "t_class": "Bacilli",
+        #       "t_order": "Staphylococcales",
+        #       "t_family": "Staphylococcaceae",
+        #       "t_genus": "Staphylococcus",
+        #       "t_species": null,
+        #       "tax_hash": "b310c392"
+        #     },
+        #
+        # this will enable us to learn the which item has been used to calculate coverage
+        # information by only looking at a single entry:
+        item_name = list(items_dict.values())[0][self._VARIABLE_NAME_IN_TABLE]
+
+        # the might for loop to go through all taxonomic levels one by one
+        for level in self.ctx.levels_of_taxonomy[::-1]:
+            # setting the data group early on:
+            data_group = '%s_%s' % (item_name, level[2:])
+            self.progress.update('Working on %s-level data' % level)
+            data_dict = {}
+            data_keys_list = set([])
+            for sample_name in self.sample_names_in_profile_db:
+                data_dict[sample_name] = Counter()
+                for gene_callers_id in items_dict:
+                    # starting with a tiny hack to fill in missing values. here we first find
+                    # the most highly resolved level of taxonomy that is not null for this
+                    # particular item taxonomy
+                    i = 0
+                    for i in range(self.ctx.levels_of_taxonomy.index(level), 0, -1):
+                        if items_dict[gene_callers_id][self.ctx.levels_of_taxonomy[i]]:
+                            break
+
+                    # just some abbreviations
+                    l = self.ctx.levels_of_taxonomy[i][2:]
+                    m = items_dict[gene_callers_id][self.ctx.levels_of_taxonomy[i]]
+
+                    # if the best level we found in the previous step is matching to the level
+                    # set by the main for loop, we're good to go with that name:
+                    if level == self.ctx.levels_of_taxonomy[i]:
+                        taxon_name = m
+                    # otherwise we will try to replace that None name with something that is more
+                    # sensible:
+                    else:
+                        taxon_name = "Unknown_%s_%s_%d" % (l, m, gene_callers_id)
+
+                    # a key that will turn these data into stacked bar charts in the interface once
+                    # they are added to the database:
+                    key = '%s!%s' % (data_group, taxon_name)
+
+                    # step where we add up all the values for each identical taxon names as we build
+                    # the data dictionary:
+                    data_dict[sample_name][key] += items_taxonomy_super_dict['coverages'][gene_callers_id][sample_name]
+                    data_keys_list.add(key)
+
+            # next few lines demonstrate the power of anvi'o quite nicely:
+            self.progress.update("Updating additional data tables...")
+            args = argparse.Namespace(profile_db=self.profile_db_path, target_data_group=data_group, just_do_it=True)
+            T = TableForLayerAdditionalData(args, r=run_quiet, p=progress_quiet)
+            T.add(data_dict, list(data_keys_list))
+
+            self.progress.reset()
+
+            self.run.info_single("%s level taxonomy is added to the profile database." % (level.capitalize()))
+
+        self.progress.end()
+
+
+    def get_gene_caller_ids_for_splits(self, split_names_list):
+        """Returns gene caller ids found in a list of splits"""
+
+        gene_caller_ids_for_splits = set([])
+        for split_name in split_names_list:
+            if split_name in self.split_name_to_gene_caller_ids_dict:
+                gene_caller_ids_for_splits.update(self.split_name_to_gene_caller_ids_dict[split_name])
+
+        return gene_caller_ids_for_splits
+
+
+    def get_split_names_for_items_taxonomy_super_dict(self, items_taxonomy_super_dict):
+        """Returns a list of split names associated with items found in a items_taxonomy_super_dict."""
+
+        if self._ITEMS.lower() not in list(items_taxonomy_super_dict['taxonomy'].values())[0]:
+            raise ConfigError("Someone called this function with something that doesn't look like the kind "
+                              "of input data it was expecting (sorry for the vagueness of the message, but "
+                              "anvi'o hopes that will be able to find out why it is happening).")
+
+        split_names = set([])
+
+        for entry_name in items_taxonomy_super_dict['taxonomy']:
+            for gene_callers_id in items_taxonomy_super_dict['taxonomy'][entry_name][self._ITEMS.lower()]:
+                split_names.add(self.gene_callers_id_to_split_name_dict[gene_callers_id])
+
+        return split_names
+
+
+    def get_item_coverages_across_samples_dict_in_genome_mode(self, items_taxonomy_super_dict):
+        self.progress.reset()
+        self.run.info_single(f"Anvi'o will now attempt to recover {self._ITEM} coverages in GENOME MODE from the profile "
+                             "database, which contains %d samples." % (len(self.sample_names_in_profile_db)), nl_before=1, nl_after=1)
+
+        item_coverages_across_samples_dict = self.get_item_coverages_across_samples_dict(items_taxonomy_super_dict)
+
+        bin_avg_coverages_across_samples_dict = {}
+        for bin_name in items_taxonomy_super_dict['taxonomy']:
+            bin_avg_coverages_across_samples_dict[bin_name] = dict([(sample_name, None) for sample_name in self.sample_names_in_profile_db])
+            for sample_name in self.sample_names_in_profile_db:
+                average_coverage_across_samples = [item_coverages_across_samples_dict[gene_callers_id][sample_name] for gene_callers_id in items_taxonomy_super_dict['taxonomy'][bin_name][self._ITEMS.lower()]]
+                if average_coverage_across_samples:
+                    bin_avg_coverages_across_samples_dict[bin_name][sample_name] = np.mean(average_coverage_across_samples)
+
+        self.run.warning(f"Anvi'o has just finished recovering {self._ITEM} coverages from the profile database to estimate "
+                         f"the average coverage of your bins across your samples. Please note that anvi'o {self._DELIVERABLE} "
+                         f"framework is using only {len(self.ctx.items)} {self._ITEMS} to estimate taxonomy. Which means, even a highly complete bin "
+                         f"may be missing all of them. In which case, the coverage of that bin will be `None` across all "
+                         f"your samples. The best way to prevent any misleading insights is take these results with a "
+                         f"huge grain of salt, and use the `anvi-summarize` output for critical applications.",
+                         header="FRIENDLY REMINDER", lc="blue")
+
+        return bin_avg_coverages_across_samples_dict
+
+
+    def get_item_coverages_across_samples_dict_in_metagenome_mode(self, items_taxonomy_super_dict):
+        """Get item coverages in metagenome mode."""
+
+        if not self.metagenome_mode:
+            raise ConfigError("You're calling the wrong function. Your class is not in metagenome mode.")
+
+        self.progress.reset()
+        self.run.info_single(f"Anvi'o will now attempt to recover {self._ITEM} coverages from the profile database, which "
+                             f"contains {len(self.sample_names_in_profile_db)} samples.", nl_before=1, nl_after=1)
+
+        return self.get_item_coverages_across_samples_dict(items_taxonomy_super_dict)
+
+
+    def get_item_coverages_across_samples_dict(self, items_taxonomy_super_dict):
+        """Get item coverages"""
+        item_coverages_across_samples_dict = {}
+
+        self.progress.new('Recovering coverages')
+        self.progress.update(f'Learning all split names affiliated with {self._ITEMS} ..')
+        split_names_of_interest = self.get_split_names_for_items_taxonomy_super_dict(items_taxonomy_super_dict)
+        self.progress.end()
+
+        # initialize split coverages for splits that have anything to do with our items
+        args = copy.deepcopy(self.args)
+        args.split_names_of_interest = split_names_of_interest
+        args.collection_name = None
+        profile_db = ProfileSuperclass(args, p=self.progress, r=run_quiet)
+        profile_db.init_split_coverage_values_per_nt_dict()
+
+        # recover all gene caller ids that occur in our taxonomy estimation dictionary
+        # and ge their coverage stats from the profile super
+        gene_caller_ids_of_interest = set([])
+        for bin_name in items_taxonomy_super_dict['taxonomy']:
+            for gene_callers_id in items_taxonomy_super_dict['taxonomy'][bin_name][self._ITEMS.lower()]:
+                gene_caller_ids_of_interest.add(gene_callers_id)
+
+        # at this point we have everything. splits of interest are loaded in memory in `profile_db`, and we know
+        # which gene caller ids we are interested in recovering coverages for. the way to access to gene coverages
+        # is a bit convoluted in the dbops for historical reasons, but it is quite straightforward. the most
+        # weird part is that we need a copy of a contigs super. so we will start with that:
+        self.progress.new(f"Recovering {self._ITEM} coverages")
+        self.progress.update("Initiating the contigs super class")
+        contigs_db = ContigsSuperclass(self.args, r=run_quiet, p=progress_quiet)
+
+        for split_name in split_names_of_interest:
+            self.progress.update("Working with %s" % split_name)
+            # note for the curious: yes, here we are sending the same gene caller ids of interest over and over to
+            # the `get_gene_level_coverage_stats` for each split, but that function is smart enough to not spend any
+            # time on those gene caller ids that do not occur in the split name we are interested in.
+            all_item_stats_in_split = profile_db.get_gene_level_coverage_stats(split_name, contigs_db, gene_caller_ids_of_interest=gene_caller_ids_of_interest)
+
+            for item_stats in all_item_stats_in_split.values():
+                for entry in item_stats.values():
+                    gene_callers_id = int(entry['gene_callers_id'])
+                    sample_name = entry['sample_name']
+                    coverage = entry['non_outlier_mean_coverage']
+
+                    if gene_callers_id not in item_coverages_across_samples_dict:
+                        item_coverages_across_samples_dict[gene_callers_id] = dict([(sample_name, 0) for sample_name in self.sample_names_in_profile_db])
+
+                    item_coverages_across_samples_dict[gene_callers_id][sample_name] = coverage
+
+        self.progress.end()
+
+        return item_coverages_across_samples_dict
 
 
 class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
