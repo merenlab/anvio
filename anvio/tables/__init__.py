@@ -30,7 +30,8 @@ versions_for_db_types = {'contigs': contigs_db_version,
                          'pan': pan_db_version,
                          'genomestorage': genomes_storage_vesion,
                          'auxiliary data for coverages': auxiliary_data_version,
-                         'config': workflow_config_version}
+                         'config': workflow_config_version,
+                         'modules': kegg_modules_db_version}
 
 
 ####################################################################################################
