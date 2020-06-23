@@ -152,7 +152,7 @@ class SanityCheck(object):
 
 class TRNATaxonomyArgs(object):
     def __init__(self, args, format_args_for_single_estimator=False):
-        """A base class to fill in common arguments for SCG Taxonomy classes.
+        """A base class to fill in common arguments for tRNA Taxonomy classes.
 
         The purpose of this class is to reduce the complexity of setting member variables
         for various classes in this module so we can get away with a single multi-talented
@@ -176,9 +176,9 @@ class TRNATaxonomyArgs(object):
         self.just_do_it = A('just_do_it')
         self.simplify_taxonomy_information = A('simplify_taxonomy_information')
         self.metagenome_mode = True if A('metagenome_mode') else False
-        self.scg_name_for_metagenome_mode = A('scg_name_for_metagenome_mode')
-        self.compute_scg_coverages = A('compute_scg_coverages')
-        self.report_scg_frequencies_path = A('report_scg_frequencies')
+        self.anticodon_for_metagenome_mode = A('anticodon_for_metagenome_mode')
+        self.compute_anticodon_coverages = A('compute_anticodon_coverages')
+        self.report_anticodon_frequencies_path = A('report_anticodon_frequencies')
         self.metagenomes = A('metagenomes')
         self.user_taxonomic_level = A('taxonomic_level')
         self.matrix_format = A('matrix_format')
@@ -214,7 +214,7 @@ class TRNATaxonomyEstimatorMulti(TRNATaxonomyArgs, SanityCheck):
         SanityCheck.__init__(self)
 
 
-class TRNATaxonomyEstimatorSingle(TRNATaxonomyArgs, SanityCheck):
+class TRNATaxonomyEstimatorSingle(TRNATaxonomyArgs, SanityCheck, TaxonomyEstimatorSingle):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress(), skip_init=False):
         self.args = args
         self.run = run
@@ -232,6 +232,8 @@ class TRNATaxonomyEstimatorSingle(TRNATaxonomyArgs, SanityCheck):
         self.ctx = ctx
 
         SanityCheck.__init__(self)
+
+        TaxonomyEstimatorSingle.__init__(self, skip_init=skip_init)
 
 
 class SetupLocalTRNATaxonomyData(TRNATaxonomyArgs, SanityCheck):
