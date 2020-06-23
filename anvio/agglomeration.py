@@ -18,6 +18,7 @@ from anvio.errors import ConfigError, FilesNPathsError
 from copy import deepcopy
 
 
+# For huge datasets, the default recursion limit of 1,000 can be exceeded.
 sys.setrecursionlimit(10000)
 
 class Agglomerator:
@@ -53,6 +54,8 @@ class Agglomerator:
             self.progress = terminal.Progress()
             self.progress.new("Agglomerating sequence alignments")
         self.verbose = verbose
+
+        self.seed_count = 0
 
         self.make_entries_for_replicate_seqs = False
         self.replicate_name_dict = None
@@ -156,6 +159,8 @@ class Agglomerator:
             pysam.sort('-o', self.output_bam_path, self.raw_output_bam_path)
             pysam.index(self.output_bam_path)
             os.remove(self.raw_output_bam_path)
+
+        self.run.info("Seed sequences found", self.seed_count)
 
 
     def remap_queries(
@@ -302,6 +307,7 @@ class Agglomerator:
             # Write a FASTA file of root, or "seed", sequences.
             self.output_fasta.write_id(rn_name)
             self.output_fasta.write_seq(self.ref_seq, split=False)
+            self.seed_count += 1
 
         return
 
