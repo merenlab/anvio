@@ -319,22 +319,21 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
         self.progress.end()
 
 
-    def show_hits_gene_callers_id(self, gene_callers_id, item_name, hits):
+    def show_hits_gene_callers_id(self, gene_callers_id, gene_sequence, item_name, hits):
         self.progress.reset()
-        self.run.warning(None, header='Hits for gene caller id %s' % gene_callers_id, lc="green")
+        self.run.warning(None, header=f"Hits for '{item_name}' w/gene caller id '{gene_callers_id}'", lc="green")
+        self.run.info_single(gene_sequence, nl_after=1, level=0)
 
         if len(hits):
             header = ['%id', 'bitscore', 'accession', 'taxonomy']
             table = []
-
-            self.run.info_single("For '%s'" % item_name, nl_before=1, nl_after=1)
 
             for hit in hits:
                 table.append([str(hit['percent_identity']), str(hit['bitscore']), hit['accession'], ' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy])])
 
             anvio.TABULATE(table, header)
         else:
-            self.run.info_single("No hits :/")
+            self.run.info_single(f"No hits to anything in {self.ctx.target_database} at minimum percent identity of {self.min_pct_id} :/", nl_after=1)
 
 
     def update_dict_with_taxonomy(self, d, mode=None):
@@ -435,6 +434,11 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
                     hits_per_gene[gene_callers_id][item_name].append(hit)
                 else:
+                    if anvio.DEBUG:
+                        with self.mutex:
+                            self.progress.reset()
+                            self.show_hits_gene_callers_id(fasta_formatted_sequence.split('\n')[0][1:], fasta_formatted_sequence.split('\n')[1], item_name, [])
+
                     error_queue.put(None)
 
             for gene_callers_id, raw_hits in hits_per_gene.items():
@@ -452,7 +456,10 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
                     # avoid race conditions when priting this information when `--debug` is true:
                     with self.mutex:
                         self.progress.reset()
-                        self.show_hits_gene_callers_id(gene_callers_id, item_name, raw_hits + [onsensus_hit])
+                        self.show_hits_gene_callers_id(gene_callers_id,
+                                                       fasta_formatted_sequence.split('\n')[1],
+                                                       item_name,
+                                                       raw_hits + [consensus_hit])
 
                 genes_estimation_output.append([gene_callers_id, item_name, [consensus_hit]])
 
