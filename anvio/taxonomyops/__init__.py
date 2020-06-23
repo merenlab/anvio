@@ -1229,7 +1229,7 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
             anvio.TABULATE(table, header)
         else:
-            self.run.info_single(f"No hits to anything in {self.ctx.target_database} at minimum percent identity of {self.min_pct_id} :/", nl_after=1)
+            self.run.info_single(f"No hits to anything in {self.ctx.target_database} at minimum percent identity of {self.min_pct_id} :/", nl_after=1, mc="red")
 
 
     def update_dict_with_taxonomy(self, d, mode=None):
@@ -1330,12 +1330,13 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
                     hits_per_gene[gene_callers_id][item_name].append(hit)
                 else:
-                    if anvio.DEBUG:
-                        with self.mutex:
-                            self.progress.reset()
-                            self.show_hits_gene_callers_id(fasta_formatted_sequence.split('\n')[0][1:], fasta_formatted_sequence.split('\n')[1], item_name, [])
-
                     error_queue.put(None)
+
+            if anvio.DEBUG:
+                if not len(hits_per_gene):
+                    with self.mutex:
+                        self.progress.reset()
+                        self.show_hits_gene_callers_id(fasta_formatted_sequence.split('\n')[0][1:], fasta_formatted_sequence.split('\n')[1], item_name, [])
 
             for gene_callers_id, raw_hits in hits_per_gene.items():
                 if len(raw_hits.keys()) > 1:
