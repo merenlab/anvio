@@ -271,8 +271,11 @@ class Pfam(object):
 
     def load_catalog(self):
         catalog_path = os.path.join(self.pfam_data_dir, 'Pfam-A.clans.tsv')
-        self.function_catalog = utils.get_TAB_delimited_file_as_dictionary(catalog_path,
-            column_names=['accession', 'clan', 'unknown_column1', 'unknown_column2', 'function'])
+        self.function_catalog = utils.get_TAB_delimited_file_as_dictionary(
+            catalog_path,
+            column_names=['accession', 'clan', 'unknown_column1', 'unknown_column2', 'function'],
+            no_header=True
+        )
 
 
     def get_function_from_catalog(self, accession, ok_if_missing_from_catalog=False):
@@ -281,7 +284,7 @@ class Pfam(object):
 
         if not accession in self.function_catalog:
             if ok_if_missing_from_catalog:
-                return "Unkown function with PFAM accession %s" % accession
+                return "Unknown function with PFAM accession %s" % accession
             else:
                 raise ConfigError("It seems hmmscan found an accession id that does not exists "
                                   "in Pfam catalog: %s" % accession)
