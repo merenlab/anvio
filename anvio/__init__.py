@@ -592,6 +592,15 @@ D = {
                      "core gene to estimate the taxonomic composition within a contigs database. If you have a "
                      "different preference you can use this parameter to communicate that."}
                 ),
+    'anticodon-for-metagenome-mode': (
+            ['-S','--anticodon-for-metagenome-mode'],
+            {'default': None,
+             'type': str,
+             'metavar': 'ANTICODON',
+             'help': "When running in metagenome mode, anvi'o automatically chooses the most frequent anticodon "
+                     "to estimate the taxonomic composition within a contigs database. If you have a "
+                     "different preference you can use this parameter to communicate that."}
+                ),
     'report-scg-frequencies': (
             ['--report-scg-frequencies'],
             {'default': None,
@@ -599,6 +608,15 @@ D = {
              'metavar': 'FILE_PATH',
              'help': "Report SCG frequencies in a TAB-delimited file and quit. This is a great way to decide which "
                      "SCG name to use in metagenome mode (we often wish to use the most frequent SCG to increase the "
+                     "detection of taxa)."}
+                ),
+    'report-anticodon-frequencies': (
+            ['--report-anticodon-frequencies'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FILE_PATH',
+             'help': "Report anticodon frequencies in a TAB-delimited file and quit. This is a great way to decide which "
+                     "anticodon to use in metagenome mode (we often wish to use the most frequent anticodon to increase the "
                      "detection of taxa)."}
                 ),
     'simplify-taxonomy-information': (
@@ -616,6 +634,13 @@ D = {
              'action': 'store_true',
              'help': "When this flag is declared, anvi'o will go back to the profile database to learn coverage "
                      "statistics of single-copy core genes for which we have taxonomy information."}
+                ),
+    'compute-anticodon-coverages': (
+            ['--compute-anticodon-coverages'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When this flag is declared, anvi'o will go back to the profile database to learn coverage "
+                     "statistics of tRNA genes used for taxonomy."}
                 ),
     'update-profile-db-with-taxonomy': (
             ['--update-profile-db-with-taxonomy'],
