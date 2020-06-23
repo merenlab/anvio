@@ -67,6 +67,7 @@ class InteracdomeSetup(object):
         if not self.interacdome_data_dir:
             self.interacdome_data_dir = constants.default_interacdome_data_path
 
+        self.run.warning('', header='Setting up Interacdome', lc='yellow')
         self.run.info('Data directory', self.interacdome_data_dir)
         self.run.info('Reset contents', args.reset)
 
@@ -92,18 +93,40 @@ class InteracdomeSetup(object):
 
 
     def setup(self):
-        self.run.info_single('Downloading Interacdome tables', nl_after=1, nl_before=1)
+        self.run.warning('', header='Downloading Interacdome tables', lc='yellow')
         self.download_interacdome_files()
 
-        self.run.info_single('Downloading associated Pfam HMM profiles', nl_after=1, nl_before=1)
-        self.download_pfam_subset()
+        self.run.warning('', header='Downloading associated Pfam HMM profiles', lc='yellow')
+        self.download_pfam()
+
+        self.run.warning('', header='Filtering Pfam HMM profiles', lc='yellow')
+        self.filter_pfam()
 
 
-    def download_pfam_subset(self):
+    def filter_pfam(self):
+        hmm_profiles = pfam.HMMProfile(self.interacdome_data_dir + '/Pfam-A.hmm')
+        hmm_profiles.filter(by='ACC', subset=self.get_interacdome_pfam_accessions(), filepath=None)
+
+
+    def get_interacdome_pfam_accessions(self):
+        # Load up representable set, which is a superset of the confident set
+        return set(self.load_interacdome(dataset='representable')['acc'].tolist())
+
+
+    def load_interacdome(self, dataset='representable'):
+        """Loads either the 'representable' or the 'confident' interacdome dataset as pandas df"""
+
+        # Load up representable set, which is a superset of the confident set
+        df = pd.read_csv(os.path.join(self.interacdome_data_dir, 'representable_interactions.txt'), sep='\t', comment='#')
+        df['acc'] = df['pfam_id'].str.split('_', n=1, expand=True)[0]
+
+        return df
+
+
+    def download_pfam(self):
         """Setup the pfam data subset used by interacdome
 
         Currently, interacdome only works for pfam version 31.0, so that is the version downloaded here.
-        After downloading, the pfam hmm is filtered to only include those in the interacdome.
         """
 
         pfam_args = argparse.Namespace(
@@ -115,9 +138,6 @@ class InteracdomeSetup(object):
         pfam_setup = pfam.PfamSetup(pfam_args)
         pfam_setup.get_remote_version()
         pfam_setup.download()
-
-        # filter pfam FIXME
-        pass
 
 
     def download_interacdome_files(self):

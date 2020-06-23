@@ -350,16 +350,25 @@ class Pfam(object):
 class HMMProfile(object):
     """Underdeveloped class to read hmm profiles (.hmm)"""
 
-    def __init__(self, filepath):
+    def __init__(self, filepath, run=terminal.Run(), progress=terminal.Progress()):
+        self.run = run
+        self.progress = progress
         self.filepath = filepath
 
         filesnpaths.is_file_exists(self.filepath)
 
+        self.progress.new('HMM profile')
+        self.progress.update('Loading %s' % self.filepath)
+
         with open(self.filepath, 'r') as f:
             self.profiles = f.read().split('//\n')[:-1]
 
+        self.progress.end()
 
-    def filter(self, by, subset, filepath):
+        self.run.info('Loaded', '%d profiles' % len(self.profiles))
+
+
+    def filter(self, by, subset, filepath, ignore_version=True):
         """Create a new .hmm that is a subset of the instantiated .hmm
 
         Parameters
@@ -371,14 +380,44 @@ class HMMProfile(object):
             For each profile, if its corresponding value of `by` matches any of the elements in this
             set, it is included in the new .hmm file.
 
-        filepath : str
-            The path of the new file. Will raise error if file exists.
+        filepath : str OR None
+            The path of the new file. Will raise error if file exists. If None is passed explicitly,
+            the source .hmm file will be _replaced_ with new filtered .hmm file.
+
+        ignore_version : bool, True
+            Valid only for when by == 'ACC'. The '.' after a Pfam accession refers to the version
+            number. If True, this will be ignored such that if 'PF000001' is in the subset,
+            'PF000001.23' will _not_ be filtered out.
         """
 
-        filesnpaths.is_output_file_writable(filepath, ok_if_exists=False)
+        if ignore_version and by == 'ACC':
+            test_membership = lambda x: x.split('.')[0] in subset
+        else:
+            test_membership = lambda x: x in subset
+
+        if filepath is not None:
+            filesnpaths.is_output_file_writable(filepath, ok_if_exists=False)
+        else:
+            # overwrite source
+            filepath = self.filepath
+
+        self.run.info('source', self.filepath)
+        self.run.info('target', filepath)
+        self.run.info('filtering by', by)
+        self.run.info('num subset values', len(subset))
+
+        num_kept = 0
+        num_profiles = len(self.profiles)
+
+        self.progress.new('Filtering HMMs')
 
         with open(filepath, 'w') as out:
-            for profile in self.profiles:
+            for i, profile in enumerate(self.profiles):
+
+                if i % 100 == 0:
+                    self.progress.update('%d/%d processed' % (i, num_profiles))
+                    self.progress.increment(increment_to=i)
+
                 profile_split = profile.split()
 
                 for i, word in enumerate(profile_split):
@@ -386,7 +425,12 @@ class HMMProfile(object):
                         value = profile_split[i+1]
                         break
                 else:
-                    raise ConfigError("Profile does not have a %s key. Here is the profile:\n%s" % (by, profile))
+                    raise ConfigError("Profile does not have a '%s' key. Here is the profile:\n%s" % (by, profile))
 
-                if value in subset:
+                if test_membership(value):
+                    num_kept += 1
                     out.write(profile + '//\n')
+
+        self.progress.end()
+
+        self.run.info('profiles kept', '%d' % num_kept)
