@@ -2957,7 +2957,7 @@ class KeggModulesDatabase(KeggContext):
         corrected_def = None
         corrected_name = None
 
-        data_names_to_skip_checking = ['NAME', 'COMMENT', 'REFERENCE']
+        data_names_to_skip_checking = ['NAME', 'COMMENT', 'REFERENCE', 'CLASS']
 
         if not current_data_name:
             raise ConfigError("data_vals_sanity_check_pathway() cannot be performed when the current data name is None. Something was not right "
