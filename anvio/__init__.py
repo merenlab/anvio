@@ -601,6 +601,24 @@ D = {
                      "to estimate the taxonomic composition within a contigs database. If you have a "
                      "different preference you can use this parameter to communicate that."}
                 ),
+    'per-anticodon-output-file': (
+            ['--per-anticodon-output-file'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FILE_PATH',
+             'help': "A more detailed output file that will describe taxonomy of each anticodon in a single bin. "
+                     "When consensus taxonomy is generated per bin or genome, taxonomy for each underlying item "
+                     "is not reported. This additional optional output file will elucidate things."}
+                ),
+    'per-scg-output-file': (
+            ['--per-scg-output-file'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FILE_PATH',
+             'help': "A more detailed output file that will describe taxonomy of each scg in a single bin. "
+                     "When consensus taxonomy is generated per bin or genome, taxonomy for each underlying item "
+                     "is not reported. This additional optional output file will elucidate things."}
+                ),
     'report-scg-frequencies': (
             ['--report-scg-frequencies'],
             {'default': None,
