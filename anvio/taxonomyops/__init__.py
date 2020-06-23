@@ -742,6 +742,34 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         self.run.info("Output file", self.output_file_path, nl_before=1)
 
 
+    def store_taxonomy_per_item(self, items_taxonomy_super_dict):
+        if self.scgs_focus:
+            headers = ['bin_name', 'gene_name', 'percent_identity']
+        else:
+            headers = ['bin_name','anticodon', 'amino_acid', 'percent_identity']
+
+        headers += self.ctx.levels_of_taxonomy
+
+        if self.compute_item_coverages:
+            headers_for_samples = sorted(self.sample_names_in_profile_db)
+        else:
+            headers_for_samples = []
+
+        with open(self.per_item_output_file, 'w') as output:
+            output.write('\t'.join(headers + headers_for_samples) + '\n')
+            for bin_name in items_taxonomy_super_dict["taxonomy"]:
+                for item_entry in items_taxonomy_super_dict["taxonomy"][bin_name][self._ITEMS.lower()].values():
+                    line = [bin_name] + [item_entry[h] for h in headers[1:]]
+
+                    if self.compute_item_coverages:
+                        for sample_name in headers_for_samples:
+                            line.append(item_entry['coverages'][sample_name])
+
+                    output.write('\t'.join([str(f) for f in line]) + '\n')
+
+        self.run.info(f"A detailed {self._ITEM} output file", self.per_item_output_file)
+
+
     def get_print_friendly_items_taxonomy_super_dict(self, items_taxonomy_super_dict):
         d = {}
 
