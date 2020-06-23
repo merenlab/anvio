@@ -23,9 +23,11 @@ import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
+from anvio.pfam import Pfam
 from anvio.errors import ConfigError
 
 import os
+import copy
 import argparse
 import pandas as pd
 
@@ -36,6 +38,41 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
+
+
+class InteracdomeSuper(Pfam):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+
+        self.run = run
+        self.progress = progress
+
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        self.interacdome_data_dir = A('interacdome_data_dir', null) or constants.default_interacdome_data_path
+
+        self.interacdome_table = InteracdomeTableData(kind='representable', interacdome_data_dir=self.interacdome_data_dir)
+
+        # Init the Pfam baseclass
+        args.hmmer_program = 'hmmsearch' # Force use of hmmsearch
+        args.pfam_data_dir = self.interacdome_data_dir
+        Pfam.__init__(self, args, run=self.run, progress=self.progress)
+
+
+    def is_database_exists(self):
+        """Checks pfam database and interacdome table data exist. Overwrites Pfam.is_database_exists"""
+
+        try:
+            Pfam.is_database_exists(self)
+        except ConfigError:
+            raise ConfigError("It seems you do not have the associated Pfam data required to use "
+                              "Interacdome, please run 'anvi-setup-interacdome' to download it. Then "
+                              "run this command again.")
+
+
+    def process(self):
+        """Runs Interacdome."""
+
+        pass
 
 
 class InteracdomeTableData(object):
@@ -58,6 +95,7 @@ class InteracdomeTableData(object):
                               % (kind, ','.join(list(self.files.keys()))))
 
         self.filepath = self.files[self.kind]
+
         filesnpaths.is_file_exists(self.filepath)
 
 
