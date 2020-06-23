@@ -5,25 +5,33 @@
 """
 
 import os
+import sys
 import gzip
+import copy
+import hashlib
+import argparse
+import numpy as np
 import pandas as pd
 import multiprocessing
 
-from collections import OrderedDict
+from collections import OrderedDict, Counter
 
 import anvio
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
+import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
 from anvio.drivers.blast import BLAST
-from anvio.dbops import ContigsSuperclass
 from anvio.drivers.diamond import Diamond
 from anvio.tables.scgtaxonomy import TableForSCGTaxonomy
 from anvio.tables.trnataxonomy import TableForTRNATaxonomy
+from anvio.tables.miscdata import TableForLayerAdditionalData
+from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -38,25 +46,33 @@ run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 pp = terminal.pretty_print
 
+HASH = lambda d: str(hashlib.sha224(''.join([str(d[level]) for level in constants.levels_of_taxonomy]).encode('utf-8')).hexdigest()[0:8])
 
 class TerminologyHelper(object):
     def __init__(self):
         proper_foci = ['trnas', 'scgs']
 
-        if not hasattr(self, 'focus'):
-            raise ConfigError("You are lost :/ The class that initializes `PopulateContigsDatabaseWithXXXTaxonomy` must have a `focus` "
-                              "self variable. Focus can be one of these: %s." % ', '.join(proper_foci))
+        if not hasattr(self.ctx, 'focus'):
+            raise ConfigError("You are lost :/ Any class initializes from shared taxonomy classes "
+                              "must have a `self.ctx.focus` variable with either of these values: %s." % ', '.join(proper_foci))
 
-        if self.focus not in proper_foci:
-            raise ConfigError("Unknown focus %s :/" % (self.focus))
+        if self.ctx.focus not in proper_foci:
+            raise ConfigError("Unknown focus %s :/" % (self.ctx.focus))
 
-        self.scgs_focus = self.focus == 'scgs'
-        self.trna_focus = self.focus == 'trnas'
+        self.scgs_focus = self.ctx.focus == 'scgs'
+        self.trna_focus = self.ctx.focus == 'trnas'
 
-        self._DELIVERABLE = "SCG taxonomy" if self.scgs_focus else "tRNA taxonomy"
-        self._ITEMS = "SCGs" if self.scgs_focus else 'anticodons'
-        self._SOURCE_DATA = "single-copy core gene sequences" if self.scgs_focus else "tRNA gene sequences"
-        self._SETUP_PROGRAM = "anvi-setup-scg-taxonomy" if self.scgs_focus else "anvi-setup-trna-taxonomy"
+        C = lambda x, y: x if self.scgs_focus else y
+        self._DELIVERABLE = C("SCG taxonomy", "tRNA taxonomy")
+        self._ITEM = C("SCG", 'anticodon')
+        self._ITEMS = C("SCGs", 'anticodons')
+        self._SUPPORTING_ITEMS = C("supporting_scgs", 'supporting_anticodons')
+        self._TOTAL_ITEMS = C("total_scgs", 'total_anticodons')
+        self._SOURCE_DATA = C("single-copy core gene", "tRNA gene")
+        self._SETUP_PROGRAM = C("anvi-setup-scg-taxonomy", "anvi-setup-trna-taxonomy")
+        self._COMPUTE_COVS_FLAG = C("--compute-scg-coverages", "--compute-anticodon-coverages")
+        self._ITEM_FOR_METAGENOME_MODE_PARAM = C("--scg-name-for-metagenome-mode", "--anticodon-for-metagenome-mode")
+        self._VARIABLE_NAME_IN_TABLE = C("gene_name", "anticodon")
 
 
 class AccessionIdToTaxonomy(object):
@@ -967,7 +983,7 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
 
     def get_sequences_dict_from_contigs_db(self):
-        """Returns a dictionary of all HMM hits per SCG of interest"""
+        """Returns a dictionary of all HMM hits per SCG/anticodon of interest"""
 
         contigs_db = ContigsSuperclass(self.args, r=run_quiet, p=progress_quiet)
         splits_dict = {contigs_db.a_meta['project_name']: list(contigs_db.splits_basic_info.keys())}
@@ -1030,15 +1046,15 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
             self.tables_for_taxonomy = None
             database_version = None
 
-        # get the dictionary that shows all hits for each SCG of interest
+        # get the dictionary that shows all hits for each self._ITEM of interest
         self.progress.new('Contigs bleep bloop')
         self.progress.update(f'Recovering the {self._ITEMS} dictionary')
         item_sequences_dict = self.get_sequences_dict_from_contigs_db()
         self.progress.end()
 
         if not item_sequences_dict:
-            self.run.warning(f"This contigs database contains no {self._SOURCE_DATA} that are used by the "
-                              "anvi'o taxonomy headquarters in Lausanne. Somewhat disappointing but totally OK.")
+            self.run.warning(f"This contigs database contains no {self._SOURCE_DATA} sequences that are used by the "
+                             f"anvi'o taxonomy headquarters in Lausanne. Somewhat disappointing but totally OK.")
 
             # even if there are no SCGs to use for taxonomy later, we did attempt ot populate the
             # contigs database, so we shall note that in the self table to make sure the error from
@@ -1081,9 +1097,9 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
             sequence = ""
             for entry in item_sequences_dict[item_name].values():
                 if 'sequence' not in entry or 'gene_name' not in entry:
-                    raise ConfigError("The `get_filtered_dict` function got a parameter that "
-                                      "does not look like the way we expected it. This function "
-                                      "expects a dictionary that contains keys `gene_name` and `sequence`.")
+                    raise ConfigError(f"The `get_filtered_dict` function got a parameter that does not look like "
+                                      f"the way we expected it. This function expects a dictionary that contains "
+                                      f"keys `gene_name` and `sequence`.")
 
                 sequence = sequence + ">" + str(entry['gene_callers_id']) + "\n" + entry['sequence'] + "\n"
                 entry['hits'] = []
@@ -1109,7 +1125,7 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
                 if 'incompatible' in error_text:
                     raise ConfigError(f"Your current databases are incompatible with the diamond version you have on your computer. "
-                                       "Please run the command `{self._SETUP_PROGRAM} --redo-databases` and come back.")
+                                      f"Please run the command `{self._SETUP_PROGRAM} --redo-databases` and come back.")
                 else:
                     if self.scgs_focus:
                         raise ConfigError("Bad news. The database search operation failed somewhere :( It is very hard for anvi'o "
