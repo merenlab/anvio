@@ -144,6 +144,7 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         self.report_item_frequencies_path = self.report_scg_frequencies_path if self.scgs_focus else self.report_anticodon_frequencies_path
         self.compute_item_coverages = self.compute_scg_coverages if self.scgs_focus else self.compute_anticodon_coverages
         self.item_name_for_metagenome_mode = self.scg_name_for_metagenome_mode if self.scgs_focus else self.anticodon_for_metagenome_mode
+        self.per_item_output_file = self.per_scg_output_file if self.scgs_focus else self.per_anticodon_output_file
 
         # these dictionaries that will be initiated later
         self.contigs_db_project_name = "Unknown"
@@ -424,10 +425,13 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
                 if hit[self._VARIABLE_NAME_IN_TABLE] == 'CONSENSUS':
                     taxon_text = terminal.c(taxon_text, color='red')
 
-                    for field_name in [self._VARIABLE_NAME_IN_TABLE, 'percent_identity', 'gene_callers_id']:
+                    for field_name in field_names:
                         hit[field_name] = terminal.c(hit[field_name], color='red')
 
-                table.append([hit[self._VARIABLE_NAME_IN_TABLE], str(hit['gene_callers_id']), str(hit['percent_identity']), taxon_text])
+                if self.scgs_focus:
+                    table.append([hit[self._VARIABLE_NAME_IN_TABLE], str(hit['gene_callers_id']), str(hit['percent_identity']), taxon_text])
+                else:
+                    table.append([hit[self._VARIABLE_NAME_IN_TABLE], str(hit['amino_acid']), str(hit['gene_callers_id']), str(hit['percent_identity']), taxon_text])
 
             anvio.TABULATE(table, header)
         else:
@@ -636,6 +640,9 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         if self.output_file_path:
             self.store_items_taxonomy_super_dict(items_taxonomy_super_dict)
 
+        if self.per_item_output_file:
+            self.store_taxonomy_per_item(items_taxonomy_super_dict)
+
 
     def print_items_taxonomy_super_dict(self, items_taxonomy_super_dict):
         self.progress.reset()
@@ -717,7 +724,10 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         d = self.get_print_friendly_items_taxonomy_super_dict(items_taxonomy_super_dict)
 
         if self.metagenome_mode:
-            headers = ['scg_name' if self.scgs_focus else 'anticodon', 'percent_identity']
+            if self.scgs_focus:
+                headers = ['scg_name', 'percent_identity']
+            else:
+                headers = ['anticodon', 'amino_acid', 'percent_identity']
         else:
             headers = ['bin_name', self._TOTAL_ITEMS, self._SUPPORTING_ITEMS]
 

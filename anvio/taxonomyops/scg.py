@@ -345,6 +345,7 @@ class SCGTaxonomyArgs(object):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file_path = A('output_file')
+        self.per_scg_output_file = A('per_scg_output_file')
         self.output_file_prefix = A('output_file_prefix')
         self.just_do_it = A('just_do_it')
         self.simplify_taxonomy_information = A('simplify_taxonomy_information')
