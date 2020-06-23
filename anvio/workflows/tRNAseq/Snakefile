@@ -196,7 +196,7 @@ rule anvi_gen_tRNAseq_database:
             decompressed_fasta = gunzip_fasta(input[0], log[0])
         else:
             decompressed_fasta = input[0]
-        shell("anvi-gen-trnaseq-database -f %s -n {wildcards.sample_split_prefix} -o {output.db} {params.charging_recorded} {params.trust_fasta} {params.only_report_tRNA} -T {threads} {params.verbose}" % decompressed_fasta)
+        shell("anvi-gen-trnaseq-database -f %s -n {wildcards.sample_split_prefix} -o {output.db} {params.charging_recorded} {params.trust_fasta} {params.only_report_tRNA} -T {threads} {params.verbose} >> {log} 2>&1" % decompressed_fasta)
         if input[0].endswith('.gz'):
             os.remove(decompressed_fasta)
 
