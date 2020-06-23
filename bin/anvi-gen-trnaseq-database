@@ -52,8 +52,6 @@ if __name__ == '__main__':
             only_report_tRNA=args.only_report_tRNA,
             skip_seed_output=args.skip_seed_output,
             write_buffer_size=args.write_buffer_size,
-            run=terminal.Run(),
-            progress=terminal.Progress(),
             quiet=not args.verbose,
             skip_init=False)
         a.create(args)
