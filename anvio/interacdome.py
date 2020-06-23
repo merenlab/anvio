@@ -27,6 +27,7 @@ from anvio.errors import ConfigError
 
 import os
 import argparse
+import pandas as pd
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -50,6 +51,8 @@ class InteracdomeSetup(object):
         self.run = run
         self.progress = progress
         self.interacdome_data_dir = args.interacdome_data_dir
+
+        self.pfam_setup = None
 
         self.interacdome_files = {
             'representable_interactions.txt': 'https://interacdome.princeton.edu/session/344807c477180230032a2a3807ba47c3/download/downloadBP?w=',
@@ -94,18 +97,29 @@ class InteracdomeSetup(object):
 
     def setup(self):
         self.run.warning('', header='Downloading Interacdome tables', lc='yellow')
-        self.download_interacdome_files()
+        #self.download_interacdome_files()
 
         self.run.warning('', header='Downloading associated Pfam HMM profiles', lc='yellow')
-        self.download_pfam()
+        #self.download_pfam()
 
         self.run.warning('', header='Filtering Pfam HMM profiles', lc='yellow')
         self.filter_pfam()
 
 
-    def filter_pfam(self):
-        hmm_profiles = pfam.HMMProfile(self.interacdome_data_dir + '/Pfam-A.hmm')
-        hmm_profiles.filter(by='ACC', subset=self.get_interacdome_pfam_accessions(), filepath=None)
+    def download_interacdome_files(self):
+        """Download the confident and representable non-redundant Interacdome datasets
+
+        These datasets can be found at the interacdome webpage: https://interacdome.princeton.edu/
+        """
+
+        for path, url in self.interacdome_files.items():
+            utils.download_file(
+                url,
+                os.path.join(self.interacdome_data_dir, path),
+                check_certificate=False,
+                progress=self.progress,
+                run=self.run
+            )
 
 
     def get_interacdome_pfam_accessions(self):
@@ -135,22 +149,16 @@ class InteracdomeSetup(object):
             reset=False,
         )
 
-        pfam_setup = pfam.PfamSetup(pfam_args)
-        pfam_setup.get_remote_version()
-        pfam_setup.download()
+        self.pfam_setup = pfam.PfamSetup(pfam_args)
+        self.pfam_setup.get_remote_version()
+        self.pfam_setup.download(hmmpress_files=False)
 
 
-    def download_interacdome_files(self):
-        """Download the confident and representable non-redundant Interacdome datasets
+    def filter_pfam(self):
+        hmm_profiles = pfam.HMMProfile(os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm'))
+        hmm_profiles.filter(by='ACC', subset=self.get_interacdome_pfam_accessions(), filepath=None)
 
-        These datasets can be found at the interacdome webpage: https://interacdome.princeton.edu/
-        """
+        # hmmpresses the new .hmm
+        self.pfam_setup.hmmpress_files()
 
-        for path, url in self.interacdome_files.items():
-            utils.download_file(
-                url,
-                os.path.join(self.interacdome_data_dir, path),
-                check_certificate=False,
-                progress=self.progress,
-                run=self.run
-            )
+
