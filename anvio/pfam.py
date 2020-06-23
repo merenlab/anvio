@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""
-    This file contains PfamSetup and Pfam classes.
+"""This file contains PfamSetup and Pfam classes."""
 
-"""
 import os
 import gzip
 import shutil
@@ -187,6 +185,7 @@ class PfamSetup(object):
                 # getting rid of the log file because hmmpress was successful
                 os.remove(log_file_path)
 
+
 class Pfam(object):
     def __init__(self, args, run=run, progress=progress):
         self.args = args
@@ -300,7 +299,7 @@ class Pfam(object):
                                                                    rna_alphabet=False,
                                                                    report_aa_sequences=True)
 
-        # run hmmscan
+        # run hmmer
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
         hmm_hits_file = hmmer.run_hmmscan('Pfam', 'AA', 'GENE', None, None, len(self.function_catalog), hmm_file, None, '--cut_ga')
 
