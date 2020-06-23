@@ -414,7 +414,13 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         self.run.warning(None, header='Hits for %s' % (bin_name if bin_name else "a bunch of splits"), lc="green")
 
         if len(hits):
-            header = [self._ITEM, 'gene', 'pct id', 'taxonomy']
+            if self.scgs_focus:
+                header = [self._ITEM, 'gene', 'pct id', 'taxonomy']
+                field_names = [self._VARIABLE_NAME_IN_TABLE, 'percent_identity', 'gene_callers_id']
+            else:
+                header = [self._ITEM, 'amino_acid', 'gene', 'pct id', 'taxonomy']
+                field_names = [self._VARIABLE_NAME_IN_TABLE, 'amino_acid', 'percent_identity', 'gene_callers_id']
+
             table = []
 
             for hit in hits:
