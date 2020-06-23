@@ -57,11 +57,14 @@ class InteracdomeTableData(object):
             raise ConfigError("Unknown kind '%s' of Interacdome data. Known kinds: %s" \
                               % (kind, ','.join(list(self.files.keys()))))
 
+        self.filepath = self.files[self.kind]
+        filesnpaths.is_file_exists(self.filepath)
+
 
     def get_as_dataframe(self):
         """Return the dataset as a dataframe"""
 
-        df = pd.read_csv(os.path.join(self.interacdome_data_dir, self.files[self.kind]), sep='\t', comment='#')
+        df = pd.read_csv(os.path.join(self.interacdome_data_dir, self.filepath), sep='\t', comment='#')
         df.index = df['pfam_id'].str.split('_', n=1, expand=True)[0]
 
         return df
