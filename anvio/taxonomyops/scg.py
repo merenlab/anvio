@@ -546,7 +546,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                 args.profile_db = self.metagenomes[metagenome_name]['profile_db_path']
                 args.compute_scg_coverages = True
 
-            d = SCGTaxonomyEstimatorSingle(args, run=run_quiet).get_print_friendly_scg_taxonomy_super_dict(scg_taxonomy_super_dict_multi[metagenome_name])
+            d = SCGTaxonomyEstimatorSingle(args, run=run_quiet).get_print_friendly_items_taxonomy_super_dict(scg_taxonomy_super_dict_multi[metagenome_name])
 
             # NOTE: what is happening down below might look stupid, because it really is. items of `d` here
             # contain a dictionary with the key 'coverages' where the coverage value of a given gene or bin
@@ -903,7 +903,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                     args.scg_name_for_metagenome_mode = None
 
             self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, total_num_metagenomes, metagenome_name))
-            scg_taxonomy_super_dict[metagenome_name] = SCGTaxonomyEstimatorSingle(args, progress=progress_quiet, run=run_quiet).get_scg_taxonomy_super_dict()
+            scg_taxonomy_super_dict[metagenome_name] = SCGTaxonomyEstimatorSingle(args, progress=progress_quiet, run=run_quiet).get_items_taxonomy_super_dict()
 
             self.progress.increment()
 
@@ -928,7 +928,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
             e = SCGTaxonomyEstimatorSingle(args, progress=progress_quiet, run=run_quiet)
             for scg_name in self.ctx.default_scgs_for_taxonomy:
-                scg_frequencies[metagenome_name][scg_name] = e.frequency_of_scgs_with_taxonomy[scg_name]
+                scg_frequencies[metagenome_name][scg_name] = e.frequency_of_items_with_taxonomy[scg_name]
 
             self.progress.increment()
 
@@ -965,7 +965,7 @@ class SCGTaxonomyEstimatorSingle(SCGTaxonomyArgs, SanityCheck, TaxonomyEstimator
         SanityCheck.__init__(self)
 
         TaxonomyEstimatorSingle.__init__(self, skip_init=skip_init)
-        
+
 
 class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
