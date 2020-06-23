@@ -118,7 +118,7 @@ class PfamSetup(object):
         self.run.info("Found Pfam version", "%s (%s)" % (version, release_date))
 
 
-    def download(self):
+    def download(self, hmmpress_files=True):
         self.run.info("Database URL", self.database_url)
 
         for file_name in self.files:
@@ -127,6 +127,8 @@ class PfamSetup(object):
 
         self.confirm_downloaded_files()
         self.decompress_files()
+        if hmmpress_files:
+            self.hmmpress_files()
 
 
     def confirm_downloaded_files(self):
@@ -155,7 +157,8 @@ class PfamSetup(object):
 
 
     def decompress_files(self):
-        """Decompresses and runs hmmpress on Pfam HMM profiles."""
+        """Decompresses Pfam HMM profiles."""
+
         for file_name in self.files:
             full_path = os.path.join(self.pfam_data_dir, file_name)
 
@@ -172,6 +175,10 @@ class PfamSetup(object):
                                       "`anvi-setup-pfams` using the --reset flag." % (full_path))
                 utils.gzip_decompress_file(full_path)
                 os.remove(full_path)
+
+
+    def hmmpress_files(self):
+        """Runs hmmpress on Pfam HMM profiles."""
 
         for file_path in glob.glob(os.path.join(self.pfam_data_dir, '*.hmm')):
             cmd_line = ['hmmpress', file_path]
