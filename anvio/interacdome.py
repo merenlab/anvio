@@ -38,6 +38,35 @@ __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 
 
+class InteracdomeTableData(object):
+    """Manages query and access of the interacdome tabular data sets"""
+
+    def __init__(self, kind='representable', interacdome_data_dir=None):
+        self.kind = kind
+        self.interacdome_data_dir = interacdome_data_dir
+
+        if not self.interacdome_data_dir:
+            self.interacdome_data_dir = constants.default_interacdome_data_path
+
+        self.files = {
+            'representable': os.path.join(self.interacdome_data_dir, 'representable_interactions.txt'),
+            'confident': os.path.join(self.interacdome_data_dir, 'confident_interactions.txt'),
+        }
+
+        if kind not in self.files:
+            raise ConfigError("Unknown kind '%s' of Interacdome data. Known kinds: %s" \
+                              % (kind, ','.join(list(self.files.keys()))))
+
+
+    def get_as_dataframe(self):
+        """Return the dataset as a dataframe"""
+
+        df = pd.read_csv(os.path.join(self.interacdome_data_dir, self.files[self.kind]), sep='\t', comment='#')
+        df.index = df['pfam_id'].str.split('_', n=1, expand=True)[0]
+
+        return df
+
+
 class InteracdomeSetup(object):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         """Setup a Pfam database for anvi'o
@@ -96,11 +125,13 @@ class InteracdomeSetup(object):
 
 
     def setup(self):
+        """The main method of this class. Sets up the Interacdome data directory for usage"""
+
         self.run.warning('', header='Downloading Interacdome tables', lc='yellow')
-        #self.download_interacdome_files()
+        self.download_interacdome_files()
 
         self.run.warning('', header='Downloading associated Pfam HMM profiles', lc='yellow')
-        #self.download_pfam()
+        self.download_pfam()
 
         self.run.warning('', header='Filtering Pfam HMM profiles', lc='yellow')
         self.filter_pfam()
@@ -122,21 +153,6 @@ class InteracdomeSetup(object):
             )
 
 
-    def get_interacdome_pfam_accessions(self):
-        # Load up representable set, which is a superset of the confident set
-        return set(self.load_interacdome(dataset='representable')['acc'].tolist())
-
-
-    def load_interacdome(self, dataset='representable'):
-        """Loads either the 'representable' or the 'confident' interacdome dataset as pandas df"""
-
-        # Load up representable set, which is a superset of the confident set
-        df = pd.read_csv(os.path.join(self.interacdome_data_dir, 'representable_interactions.txt'), sep='\t', comment='#')
-        df['acc'] = df['pfam_id'].str.split('_', n=1, expand=True)[0]
-
-        return df
-
-
     def download_pfam(self):
         """Setup the pfam data subset used by interacdome
 
@@ -154,7 +170,22 @@ class InteracdomeSetup(object):
         self.pfam_setup.download(hmmpress_files=False)
 
 
+    def load_interacdome(self, kind='representable'):
+        """Loads the representable interacdome dataset as pandas df"""
+
+        data = InteracdomeTableData(kind=kind, interacdome_data_dir=self.interacdome_data_dir)
+        return data.get_as_dataframe()
+
+
+    def get_interacdome_pfam_accessions(self):
+        """Get the representable interacdome Pfam accessions"""
+
+        return set(self.load_interacdome(kind='representable').index.tolist())
+
+
     def filter_pfam(self):
+        """Filter Pfam data according to whether the ACC is in the Interacdome dataset"""
+
         hmm_profiles = pfam.HMMProfile(os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm'))
         hmm_profiles.filter(by='ACC', subset=self.get_interacdome_pfam_accessions(), filepath=None)
 
