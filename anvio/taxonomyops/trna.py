@@ -20,6 +20,7 @@ from anvio.drivers.blast import BLAST
 from anvio.dbops import ContigsDatabase
 
 from anvio.taxonomyops import AccessionIdToTaxonomy
+from anvio.taxonomyops import TaxonomyEstimatorSingle
 from anvio.taxonomyops import PopulateContigsDatabaseWithTaxonomy
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -35,6 +36,7 @@ progress_quiet = terminal.Progress(verbose=False)
 pp = terminal.pretty_print
 
 HASH = lambda d: str(hashlib.sha224(''.join([str(d[level]) for level in constants.levels_of_taxonomy]).encode('utf-8')).hexdigest()[0:8])
+
 
 class TRNATaxonomyContext(AccessionIdToTaxonomy):
     """The purpose of this base class is ot define file paths and constants for trna taxonomy ops."""
@@ -149,6 +151,124 @@ class SanityCheck(object):
                                           "your setup seems to be missing %d of %d databases required for everything to work "
                                           "with the current genes configuration of this class (sources say this is a record, FYI)." % \
                                                     (len(missing_anticodon_databases), len(self.ctx.anticodons)))
+
+            ###########################################################
+            # TRNATaxonomyEstimatorSingle
+            #
+            # Note: if something down below complains about a paramter
+            #       because that actually belongs to the multi estimator
+            #       class, you may need to set it to null in the class
+            #       TRNATaxonomyArgs for single estimator
+            #       initiation if clause
+            ###########################################################
+            if self.__class__.__name__ in ['TRNATaxonomyEstimatorSingle']:
+                if self.metagenomes:
+                    raise ConfigError("Taxonomy estimation classes have been initiated with a single contigs database, but your "
+                            "arguments also include input for metagenomes. It is a no no. Please choose either. ")
+
+                if self.output_file_prefix:
+                    raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file path "
+                                      "than an output file prefix.")
+
+                if self.output_file_path:
+                    filesnpaths.is_output_file_writable(self.output_file_path)
+
+                if self.raw_output or self.matrix_format:
+                    raise ConfigError("Haha in this mode you can't ask for the raw output or matrix format .. yet (we know that "
+                                      "the parameter space of this program is like a mine field and we are very upset about it "
+                                      "as well).")
+
+                if not self.contigs_db_path:
+                    raise ConfigError("For these things to work, you need to provide a contigs database for the anvi'o SCG "
+                                      "taxonomy workflow :(")
+
+                utils.is_contigs_db(self.contigs_db_path)
+
+                trna_taxonomy_was_run = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['trna_taxonomy_was_run']
+                trna_taxonomy_database_version = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['trna_taxonomy_database_version']
+                if not trna_taxonomy_was_run:
+                    raise ConfigError("It seems the SCG taxonomy tables were not populated in this contigs database :/ Luckily it "
+                                      "is easy to fix that. Please see the program `anvi-run-trna-taxonomy`.")
+
+                if trna_taxonomy_database_version != self.ctx.trna_taxonomy_database_version:
+                    self.progress.reset()
+                    self.run.warning("The SCG taxonomy database on your computer has a different version (%s) than the SCG taxonomy information "
+                                     "stored in your contigs database (%s). This is not a problem and things will most likely continue to work "
+                                     "fine, but we wanted to let you know. You can get rid of this warning by re-running `anvi-run-trna-taxonomy` "
+                                     "on your database." % (self.ctx.trna_taxonomy_database_version, trna_taxonomy_database_version))
+
+                if self.profile_db_path:
+                    utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+
+                if self.collection_name and not self.profile_db_path:
+                    raise ConfigError("If you are asking anvi'o to estimate taxonomy using a collection, you must also provide "
+                                      "a profile database to this program.")
+
+                if self.metagenome_mode and self.collection_name:
+                    raise ConfigError("You can't ask anvi'o to treat your contigs database as a metagenome and also give it a "
+                                      "collection.")
+
+                if self.anticodon_for_metagenome_mode and not self.metagenome_mode:
+                    raise ConfigError("If you are not running in `--metagenome-mode`, there is no use to define a anticodon for "
+                                      "this mode :/")
+
+                if self.anticodon_for_metagenome_mode and self.anticodon_for_metagenome_mode not in self.ctx.anticodons:
+                    raise ConfigError("We understand that you wish to work with '%s' to study the taxonomic make up of your contigs "
+                                      "database in metagenome mode. But then anvi'o doesn't recognize this. Here is a list for you to choose from: '%s'." \
+                                                            % (self.anticodon_for_metagenome_mode, ', '.join(self.ctx.anticodons.keys())))
+
+                if self.compute_anticodon_coverages and not self.profile_db_path:
+                    raise ConfigError("The flag `--compute-scg-coverages` is only good if there is a non-blank profile database around "
+                                      "from which anvi'o can learn coverage statistics of genes across one or more samples :/")
+
+                if self.profile_db_path and self.metagenome_mode and not self.compute_anticodon_coverages:
+                    raise ConfigError("You have a profile database and you have asked anvi'o to estimate taxonomy in metagenome mode, "
+                                      "but you are not asking anvi'o to compute SCG coverages which doesn't make much sense :/ Removing "
+                                      "the profile database from this command or addint the flag `--compute-scg-coverages` would have "
+                                      "made much more sense.")
+
+                if self.profile_db_path and not self.metagenome_mode and not self.collection_name:
+                    raise ConfigError("You have a profile database, and you are not in metagenome mode. In this case anvi'o will try to "
+                                      "estimate coverages of SCGs in bins after estimating their taxonomy, but for that, you need to "
+                                      "also provide a collection name. You can see what collections are available in your profile database "
+                                      "you can use the program `anvi-show-collections-and-bins`, and then use the parameter "
+                                      "`--collection-name` to tell anvi'o which one to use.")
+
+                if self.update_profile_db_with_taxonomy:
+                    if not self.metagenome_mode:
+                        raise ConfigError("Updating the profile database with taxonomy layer data is only possible in metagenome "
+                                          "mode :/ And not only that, you should also instruct anvi'o to compute single-copy core "
+                                          "gene coverages.")
+
+                    if not self.compute_anticodon_coverages:
+                        raise ConfigError("You wish to update the profile database with taxonomy, but this will not work if anvi'o "
+                                          "is computing coverages values of SCGs across samples (pro tip: you can ask anvi'o to do "
+                                          "it by adding the flag `--compute-scg-coverages` to your command line).")
+
+            ###########################################################
+            # TRNATaxonomyEstimatorMulti
+            ###########################################################
+            if self.__class__.__name__ in ['TRNATaxonomyEstimatorMulti']:
+                if self.args.contigs_db or self.args.profile_db:
+                    raise ConfigError("Taxonomy estimation classes have been initiated with files for metagenomes, but your arguments "
+                                      "include also a single contigs or profile database path. You make anvi'o nervous. "
+                                      "Please run this program either with a metagenomes file or contigs/profile databases.")
+
+                if self.output_file_path:
+                    raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file prefix rather "
+                                      "than an output file path. Anvi'o will use your prefix and will generate many files that start "
+                                      "with that prefix but ends with different names for each taxonomic level.")
+
+                if not self.output_file_prefix:
+                    raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file prefix :/")
+
+                if self.raw_output and self.matrix_format:
+                    raise ConfigError("Please don't request anvi'o to report the output both in raw and matrix format. Anvi'o shall "
+                                      "not be confused :(")
+
+                if self.output_file_prefix:
+                    filesnpaths.is_output_file_writable(self.output_file_prefix)
+
 
 class TRNATaxonomyArgs(object):
     def __init__(self, args, format_args_for_single_estimator=False):
