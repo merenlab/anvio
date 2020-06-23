@@ -41,7 +41,7 @@ class Migrater(object):
                               "jeopardy.")
 
         if args.migrate_dbs_safely and args.migrate_dbs_quickly:
-            raise ConfigError("Please don't as anvi'o to migrate your databases both safely and quickly :/")
+            raise ConfigError("Please don't ask anvi'o to migrate your databases both safely and quickly :/")
 
         self.safe_mode = args.migrate_dbs_safely
 
