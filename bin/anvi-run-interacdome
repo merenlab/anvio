@@ -22,7 +22,7 @@ __description__ = "Run Interacdome on a contigs database."
 
 @time_program
 def main(args):
-    p = interacdome.interacdome(args)
+    p = interacdome.InteracdomeSuper(args)
     p.process()
 
 
