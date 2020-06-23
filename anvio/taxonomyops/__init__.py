@@ -544,17 +544,29 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
 
         item_frequencies = self.frequency_of_items_with_taxonomy.values()
         if len([sf for sf in item_frequencies if sf > 1]) * 100 / len(item_frequencies) > 20:
-            if self.just_do_it:
-                self.run.warning("Because you asked anvi'o to just do it, it will do it, but you seem to have too much contamination "
-                                 "in this contigs database for it to represent a genome. So probably taxonomy estimations are all "
-                                 "garbage, but hey, at least it runs?")
-            else:
-                raise ConfigError("Because you haven't used the `--metagenome-mode` flag, anvi'o was trying to treat your contigs "
-                                  "database as a genome. But there seems to be too much redundancy of single-copy core genes in this "
-                                  "contigs database to assign taxonomy with any confidence :/ A more proper way to do this is to use the "
-                                  "`--metagenome-mode` flag. Or you can also tell anvi'o to `--just-do-it`. It is your computer after "
-                                  "all :( But you should still be aware that in that case you would likely get a completely irrelevant "
-                                  "answer from this program.")
+            if self.scgs_focus:
+                if self.just_do_it:
+                    self.run.warning("Because you asked anvi'o to just do it, it will do it, but you seem to have too much contamination "
+                                     "in this contigs database for it to represent a genome. So probably taxonomy estimations are all "
+                                     "garbage, but hey, at least it runs?")
+                else:
+                    raise ConfigError("Because you haven't used the `--metagenome-mode` flag, anvi'o was trying to treat your contigs "
+                                      "database as a genome. But there seems to be too much redundancy of single-copy core genes in this "
+                                      "contigs database to assign taxonomy with any confidence :/ A more proper way to do this is to use the "
+                                      "`--metagenome-mode` flag. Or you can also tell anvi'o to `--just-do-it`. It is your computer after "
+                                      "all :( But you should still be aware that in that case you would likely get a completely irrelevant "
+                                      "answer from this program.")
+            elif self.trna_focus:
+                reminder = ("Please note that since you haven't used the `--metagenome-mode` flag, anvi'o will treat this contigs "
+                            "database as a genome and not a metagenome and will try to report a 'consensus' taxonomy based on all "
+                            "the tRNA seqeunces and their taxonomic affiliations. ")
+
+                if not self.per_item_output_file:
+                    reminder += ("Since this will collapse all anticodons into a single result, you may want to use the flag "
+                                 "`--per-anticodon-output-file` to your command line if you would like to see individual "
+                                 "anticodons and their taxonomy for your genome.")
+
+                self.run.warning(reminder)
 
         splits_in_contigs_database = self.split_name_to_gene_caller_ids_dict.keys()
         contigs_db_taxonomy_dict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(split_names=splits_in_contigs_database,
