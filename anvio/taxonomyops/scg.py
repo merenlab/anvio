@@ -108,6 +108,7 @@ class SCGTaxonomyContext(AccessionIdToTaxonomy):
     def __init__(self, scgs_taxonomy_data_dir=None, scgs_taxonomy_remote_database_url=None, run=terminal.Run(), progress=terminal.Progress()):
         self.run = run
         self.progress = progress
+        self.focus = "scgs"
 
         # hard-coded GTDB variables. poor design, but I don't think we are going do need an
         # alternative to GTDB.

@@ -38,15 +38,13 @@ run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 pp = terminal.pretty_print
 
-proper_foci = ['trnas', 'scgs']
 
-
-class XXXTaxonomyExampleBaseClass(object):
-    def __init__(self, args):
-        """An example base class to fill in common arguments for SCG/TRNA Taxonomy classes."""
+class TerminologyHelper(object):
+    def __init__(self):
+        proper_foci = ['trnas', 'scgs']
 
         if not hasattr(self, 'focus'):
-            raise ConfigError("You are lost :/ The class that initializes `XXXTaxonomyArgs` must have a `focus` "
+            raise ConfigError("You are lost :/ The class that initializes `PopulateContigsDatabaseWithXXXTaxonomy` must have a `focus` "
                               "self variable. Focus can be one of these: %s." % ', '.join(proper_foci))
 
         if self.focus not in proper_foci:
@@ -55,11 +53,11 @@ class XXXTaxonomyExampleBaseClass(object):
         self.scgs_focus = self.focus == 'scgs'
         self.trna_focus = self.focus == 'trnas'
 
-        if self.scgs_focus:
-            pass
+        self._DELIVERABLE = "SCG taxonomy" if self.scgs_focus else "tRNA taxonomy"
+        self._ITEMS = "SCGs" if self.scgs_focus else 'anticodons'
+        self._SOURCE_DATA = "single-copy core gene sequences" if self.scgs_focus else "tRNA gene sequences"
+        self._SETUP_PROGRAM = "anvi-setup-scg-taxonomy" if self.scgs_focus else "anvi-setup-trna-taxonomy"
 
-        if self.trna_focus:
-            pass
 
 class AccessionIdToTaxonomy(object):
     """A base classs that populates `self.accession_to_taxonomy_dict`"""
@@ -120,32 +118,16 @@ class AccessionIdToTaxonomy(object):
         self.progress.end()
 
 
-class PopulateContigsDatabaseWithTaxonomy(object):
+
+
+class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
     def __init__(self, args):
-        if not hasattr(self, 'focus'):
-            raise ConfigError("You are lost :/ The class that initializes `PopulateContigsDatabaseWithXXXTaxonomy` must have a `focus` "
-                              "self variable. Focus can be one of these: %s." % ', '.join(proper_foci))
-
-        if self.focus not in proper_foci:
-            raise ConfigError("Unknown focus %s :/" % (self.focus))
-
-        self.scgs_focus = self.focus == 'scgs'
-        self.trna_focus = self.focus == 'trnas'
-
-        self._DELIV = "SCG taxonomy" if self.scgs_focus else "tRNA taxonomy"
-        self._ITEMS = "SCGs" if self.scgs_focus else 'anticodons'
-        self._DATA = "single-copy core gene sequences" if self.scgs_focus else "tRNA gene sequences"
-        self._SETIP = "anvi-setup-scg-taxonomy" if self.scgs_focus else "anvi-setup-trna-taxonomy"
-
-        if self.scgs_focus:
-            pass
-
-        if self.trna_focus:
-            pass
 
         self.taxonomy_dict = OrderedDict()
 
         self.mutex = multiprocessing.Lock()
+
+        TerminologyHelper.__init__(self)
 
 
     def get_sequences_dict_from_contigs_db(self):
@@ -219,7 +201,7 @@ class PopulateContigsDatabaseWithTaxonomy(object):
         self.progress.end()
 
         if not item_sequences_dict:
-            self.run.warning(f"This contigs database contains no {self._DATA} that are used by the "
+            self.run.warning(f"This contigs database contains no {self._SOURCE_DATA} that are used by the "
                               "anvi'o taxonomy headquarters in Lausanne. Somewhat disappointing but totally OK.")
 
             # even if there are no SCGs to use for taxonomy later, we did attempt ot populate the
@@ -291,7 +273,7 @@ class PopulateContigsDatabaseWithTaxonomy(object):
 
                 if 'incompatible' in error_text:
                     raise ConfigError(f"Your current databases are incompatible with the diamond version you have on your computer. "
-                                       "Please run the command `{self._SETUP} --redo-databases` and come back.")
+                                       "Please run the command `{self._SETUP_PROGRAM} --redo-databases` and come back.")
                 else:
                     if self.scgs_focus:
                         raise ConfigError("Bad news. The database search operation failed somewhere :( It is very hard for anvi'o "

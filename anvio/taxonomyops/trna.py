@@ -43,6 +43,9 @@ class TRNATaxonomyContext(AccessionIdToTaxonomy):
         self.run = run
         self.progress = progress
 
+        # know thyself.
+        self.focus = "trnas"
+
         # hard-coded GTDB variables. poor design, but I don't think we are going do need an
         # alternative to GTDB.
         self.target_database = "GTDB"
