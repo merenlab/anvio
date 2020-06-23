@@ -1684,9 +1684,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         else:
             meta_dict_for_bin[mod]["most_complete_paths"] = []
 
+        was_already_complete = meta_dict_for_bin[mod]["complete"]
         now_complete = True if meta_dict_for_bin[mod]["percent_complete"] >= self.module_completion_threshold else False
         meta_dict_for_bin[mod]["complete"] = now_complete
-        if now_complete:
+        if now_complete and not was_already_complete:
             meta_dict_for_bin["num_complete_modules"] += 1
 
         return now_complete
