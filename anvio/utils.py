@@ -3858,7 +3858,7 @@ class SequenceDereplicator:
         if len(id_list) != len(seq_list):
             raise ConfigError(
                 "SequenceDereplicator takes a list of sequence IDs and a list of sequence strings. "
-                "Your input lists were not of the same lengths. "
+                "Your input lists were not the same length. "
                 "The ID list had a length of %d, and the sequence list had a length of %d."
                 % (len(id_list), len(seq_list)))
         if extra_list:
