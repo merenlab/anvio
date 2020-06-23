@@ -195,13 +195,16 @@ class PfamSetup(object):
 
 class Pfam(object):
     def __init__(self, args, run=run, progress=progress):
-        self.args = args
+
         self.run = run
         self.progress = progress
-        self.contigs_db_path = args.contigs_db
-        self.num_threads = args.num_threads
-        self.hmm_program = args.hmmer_program or 'hmmsearch'
-        self.pfam_data_dir = args.pfam_data_dir
+
+        A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
+        null = lambda x: x
+        self.contigs_db_path = A('contigs_db', null)
+        self.num_threads = A('num_threads', null)
+        self.hmm_program = A('hmmer_program', null) or 'hmmsearch'
+        self.pfam_data_dir = A('pfam_data_dir', null)
 
         # load_catalog will populate this
         self.function_catalog = {}
