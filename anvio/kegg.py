@@ -868,8 +868,9 @@ class KeggSetup(KeggContext):
 
 
 class KeggRunHMMs(KeggContext):
-    """ Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DB for later metabolism prediction.
+    """Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DB for later metabolism prediction.
 
+    Parameters
     ==========
     args: Namespace object
         All the arguments supplied by user to anvi-run-kegg-kofams
@@ -995,7 +996,7 @@ class KeggRunHMMs(KeggContext):
             return
 
         # parse hmmscan output
-        parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
+        parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
         if self.keep_all_hits:
             run.info_single("All HMM hits will be kept regardless of score.")
             search_results_dict = parser.get_search_results()

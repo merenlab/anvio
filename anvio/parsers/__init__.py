@@ -10,7 +10,7 @@ from anvio.parsers.krakenuniq import KrakenUniq
 from anvio.parsers.defaultmatrix import DefaultMatrix
 from anvio.parsers.centrifuge import Centrifuge
 from anvio.parsers.kaiju import Kaiju
-from anvio.parsers.hmmscan import HMMScan
+from anvio.parsers.hmmer import HMMERTableOutput
 from anvio.parsers.concoct import CONCOCT
 from anvio.parsers.interproscan import InterProScan
 
@@ -28,7 +28,7 @@ parser_modules = {}
 parser_modules['taxonomy_genes']  = {"default_matrix": DefaultMatrix, "centrifuge": Centrifuge, 'kaiju': Kaiju}
 parser_modules['taxonomy_layers'] = {"krakenuniq": KrakenUniq}
 parser_modules['functions']       = {"interproscan": InterProScan}
-parser_modules['search']          = {"hmmscan": HMMScan}
+parser_modules['search']          = {"hmmer_table_output": HMMERTableOutput}
 parser_modules['collections']     = {"concoct": CONCOCT}
 
 run = terminal.Run()

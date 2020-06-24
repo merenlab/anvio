@@ -286,7 +286,7 @@ class Pfam(object):
             if ok_if_missing_from_catalog:
                 return "Unknown function with PFAM accession %s" % accession
             else:
-                raise ConfigError("It seems hmmscan found an accession id that does not exists "
+                raise ConfigError("It seems hmmscan/hmmsearch found an accession id that does not exists "
                                   "in Pfam catalog: %s" % accession)
 
         return self.function_catalog[accession]['function'] # maybe merge other columns too?
@@ -325,8 +325,8 @@ class Pfam(object):
             gene_function_calls_table.add_empty_sources_to_functional_sources({'Pfam'})
             return
 
-        # parse hmmscan output
-        parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
+        # parse hmmer output
+        parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
         search_results_dict = parser.get_search_results()
 
         # add functions to database

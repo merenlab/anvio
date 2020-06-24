@@ -192,7 +192,7 @@ class TablesForHMMHits(Table):
             if not hmm_scan_hits_txt:
                 search_results_dict = {}
             else:
-                parser = parser_modules['search']['hmmscan'](hmm_scan_hits_txt, alphabet=alphabet, context=context, program=self.hmm_program)
+                parser = parser_modules['search']['hmmer_table_output'](hmm_scan_hits_txt, alphabet=alphabet, context=context, program=self.hmm_program)
                 search_results_dict = parser.get_search_results()
 
             if not len(search_results_dict):

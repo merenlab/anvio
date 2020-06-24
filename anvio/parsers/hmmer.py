@@ -1,16 +1,5 @@
 # -*- coding: utf-8
-"""Parser for HMMer's hmmscan output
-
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Parsing of HMMer output needs to be redesigned. This code does not actually take output from hmmer
-and parse it. It parses the output file of anvio.driver.HMMer.hmmscan_worker which preprocesses the
-output format. The responsibility of HMMer output parsing needs to be consolidated in one spot. Biopython, a
-dependency of anvi'o, has an HMMer parser. See https://biopython.org/DIST/docs/api/Bio.SearchIO.HmmerIO-module.html.
-Perhaps this is more robust solution. This design is currently hanging on by a thread.
-"""
+"""Parser for HMMER's various outputs"""
 
 import anvio
 
@@ -29,8 +18,19 @@ __email__ = "a.murat.eren@gmail.com"
 run = anvio.terminal.Run()
 
 
-class HMMScan(Parser):
-    """Parse output from hmmscan and hmmsearch
+class HMMERTableOutput(Parser):
+    """Parse --tblout or --domtblout output formats for hmmer programs
+
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME NOTE FIXME
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    <rant>
+    Parsing of HMMER tabular output needs to be redesigned. This code does not actually take output from hmmer
+    and parse it. It parses the output file of anvio.driver.HMMER.hmmscan_worker which preprocesses the
+    output format. The responsibility of HMMER output parsing needs to be consolidated in one spot. Biopython, a
+    dependency of anvi'o, has an HMMER parser. See https://biopython.org/DIST/docs/api/Bio.SearchIO.HmmerIO-module.html.
+    Perhaps this is more robust solution. This design is currently hanging on by a thread.
+    </rant>
 
     Output specifictions of HMMER can be found in the user guide. At time of writing this,
     http://eddylab.org/software/hmmer/Userguide.pdf hosts the user guide.
@@ -45,7 +45,7 @@ class HMMScan(Parser):
 
     context: str, 'GENE'
         This tells the class how the output should be parsed. Pick from {'GENE', 'CONTIG',
-        'DOMAIN'}. Before being preprocessed by anvio.driver.HMMer.hmmscan_worker (see this module's
+        'DOMAIN'}. Before being preprocessed by anvio.driver.HMMER.hmmscan_worker (see this module's
         docstring), the header of the file should look like so, based on which context you use:
 
         GENE:
