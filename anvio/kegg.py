@@ -3013,6 +3013,11 @@ class KeggModulesDatabase(KeggContext):
                 corrected_vals = split_data_name[1]
                 corrected_name = split_data_name[0]
                 is_corrected = True
+        elif current_data_name == "ORTHOLOGY":
+            # example: K02048
+            if data_vals[0] != 'K' or len(data_vals) != 6:
+                is_ok = False
+                self.parsing_error_dict['bad_kegg_code_format'].append(current_pathway_num)
 
         elif current_data_name not in data_names_to_skip_checking:
             raise ConfigError("This is just a catch to see what types of information we haven't been processing "
