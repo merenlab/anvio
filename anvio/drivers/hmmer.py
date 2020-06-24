@@ -32,15 +32,8 @@ pp = terminal.pretty_print
 
 
 class HMMer:
-    def __init__(self, target_files_dict, num_threads_to_use=1, program_to_use='hmmscan', out_fmt='--tblout', progress=progress, run=run):
+    def __init__(self, target_files_dict, num_threads_to_use=1, program_to_use='hmmscan', progress=progress, run=run):
         """A class to streamline HMM runs.
-
-        Parameters
-        ==========
-        out_fmt : str, '--tblout'
-            HMMer programs have different table output formats. For example, --tblout, --domtblout,
-            --pfamtblout. Currently, there are no sanity checks to stop you from picking an
-            unsupported out_fmt.
 
         Notes
         =====
@@ -51,8 +44,6 @@ class HMMer:
         self.program_to_use = program_to_use
         self.progress = progress
         self.run = run
-
-        self.tblout = out_fmt
 
         self.tmp_dirs = []
         self.target_files_dict = {}
@@ -97,7 +88,7 @@ class HMMer:
 
 
     def run_hmmer(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms,
-                  desired_output='table'):
+                  desired_output='table', out_fmt='--tblout'):
         """Run the program
 
         Parameters
@@ -134,6 +125,10 @@ class HMMer:
             HMMER programs have a couple of outputs. For the standard output (specified by the hmmer
             program flag `-o`), use 'standard'. For the tabular output (specified by the hmmer
             program flag `--tblout` or `--domtblout`), use 'table'.
+
+        out_fmt : str, '--tblout'
+            HMMer programs have different table output formats. For example, choose from --tblout or
+            --domtblout.
         """
 
         target = ':'.join([alphabet, context])
@@ -149,6 +144,9 @@ class HMMer:
 
         if desired_output not in ['standard', 'table']:
             raise ConfigError("HMMer.run_hmmer :: Unknown desired_output, '%s'" % desired_output)
+
+        if out_fmt not in ['--tblout', '--domtblout']:
+            raise ConfigError("HMMer.run_hmmer :: Unknown out_fmt, '%s'" % out_fmt)
 
         self.run.warning('', header='HMM Profiling for %s' % source, lc='green')
         self.run.info('Reference', ref if ref else 'unknown')
@@ -201,13 +199,13 @@ class HMMer:
                 cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                             '-o', output_file, *noise_cutoff_terms.split(),
                             '--cpu', cores_per_process,
-                            self.tblout, table_file,
+                            out_fmt, table_file,
                             hmm, partial_file]
             else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
                 cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                             '-o', output_file,
                             '--cpu', cores_per_process,
-                            self.tblout, table_file,
+                            out_fmt, table_file,
                             hmm, partial_file]
 
             t = Thread(target=self.hmmer_worker, args=(partial_file,
