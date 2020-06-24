@@ -30,7 +30,6 @@ from anvio.parsers import parser_modules
 from anvio.drivers.hmmer import HMMer
 
 import os
-import copy
 import shutil
 import argparse
 import pandas as pd
@@ -102,7 +101,9 @@ class InteracdomeSuper(Pfam):
             return
 
         # parse hmmscan output
-        parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='DOMAIN', program=self.hmm_program)
+        parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='DOMAIN', program=self.hmm_program)
+        xxxx = parser.dicts['hits']
+        import pdb; pdb.set_trace() 
         #search_results_dict = parser.get_search_results()
 
         if anvio.DEBUG:
