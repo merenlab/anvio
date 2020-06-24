@@ -3018,6 +3018,13 @@ class KeggModulesDatabase(KeggContext):
             if data_vals[0] != 'K' or len(data_vals) != 6:
                 is_ok = False
                 self.parsing_error_dict['bad_kegg_code_format'].append(current_pathway_num)
+        elif current_data_name == "COMPOUND":
+            # example: C00009
+            # example: G00001
+            # example: D00195
+            if data_vals[0] not in ['C','G', 'D'] or len(data_vals) != 6:
+                is_ok = False
+                self.parsing_error_dict['bad_kegg_code_format'].append(current_pathway_num)
 
         elif current_data_name not in data_names_to_skip_checking:
             raise ConfigError("This is just a catch to see what types of information we haven't been processing "
