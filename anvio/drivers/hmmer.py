@@ -96,7 +96,8 @@ class HMMer:
                                       "We are very sorry about this." % (hmm_path, base_path + ext))
 
 
-    def run_hmmer(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms):
+    def run_hmmer(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms,
+                  desired_output='table'):
         """Run the program
 
         Parameters
@@ -128,6 +129,11 @@ class HMMer:
 
         noise_cutoff_terms : str
             Filter out hits with built-in flags. e.g. '--cut_ga'
+
+        desired_output : set, 'table'
+            HMMER programs have a couple of outputs. For the standard output (specified by the hmmer
+            program flag `-o`), use 'standard'. For the tabular output (specified by the hmmer
+            program flag `--tblout` or `--domtblout`), use 'table'.
         """
 
         target = ':'.join([alphabet, context])
@@ -140,6 +146,9 @@ class HMMer:
 
         if not self.target_files_dict[target]:
             raise ConfigError("HMMer class does not know about Sequences file for the target %s :/" % target)
+
+        if desired_output not in ['standard', 'table']:
+            raise ConfigError("HMMer.run_hmmer :: Unknown desired_output, '%s'" % desired_output)
 
         self.run.warning('', header='HMM Profiling for %s' % source, lc='green')
         self.run.info('Reference', ref if ref else 'unknown')
@@ -202,11 +211,13 @@ class HMMer:
                             hmm, partial_file]
 
             t = Thread(target=self.hmmer_worker, args=(partial_file,
-                                                         cmd_line,
-                                                         table_file,
-                                                         log_file,
-                                                         merged_file_buffer,
-                                                         buffer_write_lock))
+                                                       cmd_line,
+                                                       table_file,
+                                                       output_file,
+                                                       desired_output,
+                                                       log_file,
+                                                       merged_file_buffer,
+                                                       buffer_write_lock))
             t.start()
             workers.append(t)
 
@@ -231,21 +242,36 @@ class HMMer:
         return output_file_path if num_raw_hits else None
 
 
-    def hmmer_worker(self, partial_file, cmd_line, table_output_file, log_file, merged_file_buffer, buffer_write_lock):
+    def hmmer_worker(self, partial_file, cmd_line, table_output_file, standard_output_file, desired_output, log_file,
+                     merged_file_buffer, buffer_write_lock):
+
+        # First we run the command
         utils.run_command(cmd_line, log_file)
 
-        if not os.path.exists(table_output_file):
+        if not os.path.exists(table_output_file) or not os.path.exists(standard_output_file):
             self.progress.end()
             raise ConfigError("Something went wrong with %s and it failed to generate the expected output :/ Fortunately "
                               "we have this log file which should clarify the problem: '%s'. Please do not forget to include this "
                               "file in your question if you were to seek help from the community." % (self.program_to_use, log_file))
+
+        # Then we append the results to the main file
+        if desired_output == 'table':
+            self.append_to_main_table_file(merged_file_buffer, table_output_file, buffer_write_lock)
+
+
+    def append_to_main_table_file(self, merged_file_buffer, table_output_file, buffer_write_lock):
+        """Append table data to the main file.
+
+        FIXME In addition to appending, this functio also pre-processes the data, which should not
+        be done here. That qualifies as hmmer output parsing, and should be in
+        anvio/parsers/hmmer.py.
+        """
 
         detected_non_ascii = False
         lines_with_non_ascii = []
         clip_description_index = None
         clip_index_found = False
 
-        # FIXME Why is this here? This is hmmer output parsing, and should be in anvio/parsers/hmmer.py
         with open(table_output_file, 'rb') as hmm_hits_file:
             line_counter = 0
             for line_bytes in hmm_hits_file:
