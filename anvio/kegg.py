@@ -3131,7 +3131,7 @@ class KeggModulesDatabase(KeggContext):
             data_def = corrected_def
 
         # some types of information may need to be split into multiple db entries
-        data_types_to_split = ["ORTHOLOGY","REACTION"] 
+        data_types_to_split = ["ORTHOLOGY","REACTION"]
         if current_data_name in data_types_to_split:
             vals = [x for x in re.split('\(|\)|,|\+|-', data_vals) if x]
             for val in vals:
@@ -3160,7 +3160,7 @@ class KeggModulesDatabase(KeggContext):
                               "in the module dictionary is currently %s" % len(self.module_dict.keys()))
 
         # init the Modules table
-        mod_table = KeggModulesTable(mod_table_name=self.module_table_name)
+        mod_table = KeggTable(table_name=self.module_table_name)
 
         # keep track of errors encountered while parsing
         self.parsing_error_dict = {"bad_line_splitting" : [], "bad_kegg_code_format" : []}
@@ -3227,7 +3227,7 @@ class KeggModulesDatabase(KeggContext):
                               "in the pathway dictionary is currently %s" % len(self.pathway_dict.keys()))
 
         # init the pathways table
-        path_table = KeggModulesTable(mod_table_name=self.pathway_table_name)
+        path_table = KeggTable(table_name=self.pathway_table_name)
 
         num_pathways_parsed = 0
         for pnum in self.pathway_dict.keys():
@@ -3650,27 +3650,55 @@ class KeggModulesDatabase(KeggContext):
         return alt_path_list
 
 
-class KeggModulesTable:
-    """This class defines operations for creating the KEGG Modules table in Modules.db"""
+class KeggTable:
+    """This class defines operations for populating the KEGG tables in MODULES.db
 
-    def __init__(self, mod_table_name=None):
-        """"""
+    The blank tables should already be created in the MODULES.db before this class is initialized. We
+    obtain an instance of this class to add entries to the table.
+
+    Parameters
+    ==========
+    table_name : str
+        The name of the table to be populated
+    """
+
+
+    def __init__(self, table_name=None):
         self.db_entries = []
         self.total_entries = 0
 
-        if mod_table_name:
-            self.module_table_name = mod_table_name
+        if table_name:
+            self.table_name = table_name
         else:
-            raise ConfigError("Beep Beep. Warning. KeggModulesTable was initialized without knowing its own name.")
+            raise ConfigError("Beep Beep. Warning. KeggTable was initialized without knowing its own name.")
 
 
-    def append_and_store(self, db, module_num, data_name, data_value, data_definition=None, line_num=None):
-        """This function handles collects db entries (as tuples) into a list, and once we have 10,000 of them it stores that set into the Modules table.
+    def append_and_store(self, db, kegg_num, data_name, data_value, data_definition=None, line_num=None):
+        """Adds a table entry into the queue (a list) for storing and calls the store function once the queue has enough entries.
 
-        The db_entries list is cleared after each store so that future stores don't add duplicate entries to the table.
+        This function collects db entries (as tuples) one at a time into the self.db_entries attribute. Once that list has
+        10,000 entries, it stores those entries into the table. The db_entries list is cleared after each store so that future
+        stores don't add duplicate entries to the table.
+
+        Parameters
+        ==========
+        db : database object
+            An instance of the MODULES.db containing the tables to be populated
+
+        The following parameters are part of one table entry that will be added to the storage queue.
+        kegg_num : str
+            KEGG identifier in the table entry (ie, a KEGG Module number or KEGG Pathway Map number)
+        data_name : str
+            The data name field parsed from a KEGG file, which describes the category of the remaining information (ie, ORTHOLOGY)
+        data_value : str
+            The second column of information from a KEGG file which belongs to the category indicated by data name (ie, a KO number for the ORTHOLOGY category)
+        data_definition : str
+            The third column of information from a KEGG file, if it has one. (ex. an annotation)
+        line_num : int
+            Indicates which line in a KEGG file the information came from. Used for distinguishing which entries came from the same line.
         """
 
-        db_entry = tuple([module_num, data_name, data_value, data_definition, line_num])
+        db_entry = tuple([kegg_num, data_name, data_value, data_definition, line_num])
         self.db_entries.append(db_entry)
         self.total_entries += 1
 
@@ -3681,8 +3709,10 @@ class KeggModulesTable:
 
 
     def store(self, db):
+        """Inserts values from the self.db_entries list into the table."""
         if len(self.db_entries):
-            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.module_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
+            db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
+
 
     def get_total_entries(self):
         return self.total_entries
