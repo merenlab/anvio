@@ -234,10 +234,12 @@ class HMMer:
 
         self.progress.end()
 
-        num_raw_hits = filesnpaths.get_num_lines_in_file(output_file_path)
-        self.run.info('Number of raw hits', num_raw_hits)
+        if desired_output == 'table':
+            num_raw_hits = filesnpaths.get_num_lines_in_file(output_file_path)
+            self.run.info('Number of raw hits', num_raw_hits)
+            return output_file_path if num_raw_hits else None
 
-        return output_file_path if num_raw_hits else None
+        return output_file_path
 
 
     def hmmer_worker(self, partial_file, cmd_line, table_output_file, standard_output_file, desired_output, log_file,
@@ -255,10 +257,45 @@ class HMMer:
         # Then we append the results to the main file
         if desired_output == 'table':
             self.append_to_main_table_file(merged_file_buffer, table_output_file, buffer_write_lock)
+        elif desired_output == 'standard':
+            self.append_to_main_standard_file(merged_file_buffer, standard_output_file, buffer_write_lock)
+
+
+    def append_to_main_standard_file(self, merged_file_buffer, standard_output_file, buffer_write_lock):
+        """Append standard output to the main file.
+
+        Notes
+        =====
+        - The resulting file may not be universally parseable because there will be as many headers
+          as there are threads, whereas in a proper output file there is only one header. A header
+          looks like this, for example (note it ends in a \n character):
+
+          >>> # hmmsearch :: search profile(s) against a sequence database
+          >>> # HMMER 3.2.1 (June 2018); http://hmmer.org/
+          >>> # Copyright (C) 2018 Howard Hughes Medical Institute.
+          >>> # Freely distributed under the BSD open source license.
+          >>> # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+          >>> # query HMM file:                  /Users/evan/Software/anvio/anvio/data/misc/Interacdome/Pfam-A.hmm
+          >>> # target sequence database:        /var/folders/58/mpjnklbs5ql_y2rsgn0cwwnh0000gn/T/tmpsvyamen6/AA_gene_sequences.fa.3
+          >>> # output directed to file:         /var/folders/58/mpjnklbs5ql_y2rsgn0cwwnh0000gn/T/tmpsvyamen6/AA_gene_sequences.fa.3_output
+          >>> # per-dom hits tabular output:     /var/folders/58/mpjnklbs5ql_y2rsgn0cwwnh0000gn/T/tmpsvyamen6/AA_gene_sequences.fa.3_table
+          >>> # model-specific thresholding:     GA cutoffs
+          >>> # number of worker threads:        1
+          >>> # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+          >>> 
+
+          Additionally, there will be as many "[ok]"'s as there are threads, whereas in a proper
+          output file there is only one that marks the EOF.
+        """
+
+        with open(standard_output_file, 'r') as f:
+            lines = f.readlines()
+            with buffer_write_lock:
+                merged_file_buffer.write(f.read())
 
 
     def append_to_main_table_file(self, merged_file_buffer, table_output_file, buffer_write_lock):
-        """Append table data to the main file.
+        """Append table output to the main file.
 
         FIXME In addition to appending, this functio also pre-processes the data, which should not
         be done here. That qualifies as hmmer output parsing, and should be in

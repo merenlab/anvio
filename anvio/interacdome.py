@@ -91,20 +91,34 @@ class InteracdomeSuper(Pfam):
 
         # run hmmer
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-        hmm_hits_file = hmmer.run_hmmer('Interacdome', 'AA', 'DOMAIN', None, None, len(self.function_catalog), hmm_file, None, '--cut_ga', out_fmt='--domtblout')
+        hmm_hits_file = hmmer.run_hmmer(
+            source='Interacdome',
+            alphabet='AA',
+            context='DOMAIN',
+            kind=None,
+            domain=None,
+            num_genes_in_model=len(self.function_catalog),
+            hmm=hmm_file,
+            ref=None,
+            noise_cutoff_terms='--cut_ga',
+            desired_output='standard',
+            out_fmt='--domtblout'
+        )
 
-        if not hmm_hits_file:
-            self.run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. Anvi'o "
-                            "will now clean the temporary directories and gracefully quit.", nl_before=1, nl_after=1)
-            shutil.rmtree(tmp_directory_path)
-            hmmer.clean_tmp_dirs()
-            return
+        print(f"made {hmm_hits_file}")
 
         # parse hmmer output
-        parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='DOMAIN', program=self.hmm_program)
-        xxxx = parser.dicts['hits']
-        import pdb; pdb.set_trace() 
-        #search_results_dict = parser.get_search_results()
+        #parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='DOMAIN', program=self.hmm_program)
+        #xxxx = parser.dicts['hits']
+        #import pdb; pdb.set_trace() 
+
+        # FIXME Notify user if, after parsing, there was no goodies
+        #if not hmm_hits_file:
+        #    self.run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. Anvi'o "
+        #                    "will now clean the temporary directories and gracefully quit.", nl_before=1, nl_after=1)
+        #    shutil.rmtree(tmp_directory_path)
+        #    hmmer.clean_tmp_dirs()
+        #    return
 
         if anvio.DEBUG:
             self.run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up "
