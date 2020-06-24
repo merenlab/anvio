@@ -42,7 +42,7 @@ def get_parser_names(module):
 def get_parser_module(module):
     if module not in parser_modules:
         raise ConfigError("Anvi'o parser modules do not recognize any module called '%s'. But it has "
-                          "these in case if your honour would change their minds: '%s'." % \
+                          "these in case your honour would change their minds: '%s'." % \
                                 (module, ', '.join(list(parser_modules.keys()))))
 
     return parser_modules[module]
