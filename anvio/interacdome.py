@@ -18,6 +18,7 @@ References
 
 import anvio
 import anvio.pfam as pfam
+import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -25,9 +26,12 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.pfam import Pfam
 from anvio.errors import ConfigError
+from anvio.parsers import parser_modules
+from anvio.drivers.hmmer import HMMer
 
 import os
 import copy
+import shutil
 import argparse
 import pandas as pd
 
@@ -72,7 +76,43 @@ class InteracdomeSuper(Pfam):
     def process(self):
         """Runs Interacdome."""
 
-        pass
+        hmm_file = os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm')
+
+        # initialize contigs database
+        args = argparse.Namespace(contigs_db=self.contigs_db_path)
+        contigs_db = dbops.ContigsSuperclass(args)
+        tmp_directory_path = filesnpaths.get_temp_directory_path()
+
+        # export AA sequences for genes
+        target_files_dict = {'AA:DOMAIN': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
+        contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['AA:DOMAIN'],
+                                                                   simple_headers=True,
+                                                                   rna_alphabet=False,
+                                                                   report_aa_sequences=True)
+
+        # run hmmer
+        hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program, out_fmt='--domtblout')
+        hmm_hits_file = hmmer.run_hmmscan('Interacdome', 'AA', 'DOMAIN', None, None, len(self.function_catalog), hmm_file, None, '--cut_ga')
+
+        if not hmm_hits_file:
+            self.run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. Anvi'o "
+                            "will now clean the temporary directories and gracefully quit.", nl_before=1, nl_after=1)
+            shutil.rmtree(tmp_directory_path)
+            hmmer.clean_tmp_dirs()
+            return
+
+        # parse hmmscan output
+        parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='DOMAIN', program=self.hmm_program)
+        #search_results_dict = parser.get_search_results()
+
+        if anvio.DEBUG:
+            self.run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up "
+                        "later" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
+        else:
+            self.run.info_single('Cleaning up the temp directory (you can use `--debug` if you would '
+                            'like to keep it for testing purposes)', nl_before=1, nl_after=1)
+            shutil.rmtree(tmp_directory_path)
+            hmmer.clean_tmp_dirs()
 
 
 class InteracdomeTableData(object):
