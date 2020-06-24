@@ -3131,7 +3131,7 @@ class KeggModulesDatabase(KeggContext):
             data_def = corrected_def
 
         # some types of information may need to be split into multiple db entries
-        data_types_to_split = ["ORTHOLOGY","REACTION"] # lines that fall under these categories need to have data_vals split on comma
+        data_types_to_split = ["ORTHOLOGY","REACTION"] 
         if current_data_name in data_types_to_split:
             vals = [x for x in re.split('\(|\)|,|\+|-', data_vals) if x]
             for val in vals:
