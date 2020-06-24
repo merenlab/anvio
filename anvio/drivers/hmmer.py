@@ -113,7 +113,7 @@ class HMMer:
         self.run.info('Kind', kind if kind else 'unknown')
         self.run.info('Alphabet', alphabet)
         self.run.info('Context', context)
-        self.run.info('Domain', domain if domain else 'N\\A')
+        self.run.info('Domain', domain if domain else 'N/A')
         self.run.info('HMM model path', hmm)
         self.run.info('Number of genes in HMM model', num_genes_in_model)
         self.run.info('Noise cutoff term(s)', noise_cutoff_terms)
