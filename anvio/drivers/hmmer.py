@@ -97,6 +97,39 @@ class HMMer:
 
 
     def run_hmmer(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms):
+        """Run the program
+
+        Parameters
+        ==========
+        source : str
+            A name for your HMM effort.
+
+        alphabet : str
+            Which alphabet are you using? Choose from {'AA', 'DNA', 'RNA'}
+
+        context : str
+            This will determine how your output is processed. FIXME Documentation is lacking. Choose
+            from {'GENE', 'CONTIG', 'DOMAIN'}.
+
+        kind : str
+            Used for user stdout info. Don't by afraid to pass None
+
+        domain : str
+            Used for user stdout info. Don't by afraid to pass None
+
+        num_genes_in_model : int
+            Used for user stdout info. Don't by afraid to pass None
+
+        hmm : str
+            Path to the input .hmm file
+
+        ref : int
+            Used for user stdout info. Don't by afraid to pass None
+
+        noise_cutoff_terms : str
+            Filter out hits with built-in flags. e.g. '--cut_ga'
+        """
+
         target = ':'.join([alphabet, context])
 
         if target not in self.target_files_dict:
@@ -115,7 +148,7 @@ class HMMer:
         self.run.info('Context', context)
         self.run.info('Domain', domain if domain else 'N/A')
         self.run.info('HMM model path', hmm)
-        self.run.info('Number of genes in HMM model', num_genes_in_model)
+        self.run.info('Number of genes in HMM model', num_genes_in_model or 'unknown')
         self.run.info('Noise cutoff term(s)', noise_cutoff_terms)
         self.run.info('Number of CPUs will be used for search', self.num_threads_to_use)
         if alphabet in ['DNA', 'RNA']:
