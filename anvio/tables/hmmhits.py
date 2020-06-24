@@ -179,7 +179,7 @@ class TablesForHMMHits(Table):
             reference = sources[source]['ref']
             noise_cutoff_terms = sources[source]['noise_cutoff_terms']
 
-            hmm_scan_hits_txt = commander.run_hmmscan(source,
+            hmm_scan_hits_txt = commander.run_hmmer(source,
                                                       alphabet,
                                                       context,
                                                       kind_of_search,

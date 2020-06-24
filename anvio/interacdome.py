@@ -91,7 +91,7 @@ class InteracdomeSuper(Pfam):
 
         # run hmmer
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program, out_fmt='--domtblout')
-        hmm_hits_file = hmmer.run_hmmscan('Interacdome', 'AA', 'DOMAIN', None, None, len(self.function_catalog), hmm_file, None, '--cut_ga')
+        hmm_hits_file = hmmer.run_hmmer('Interacdome', 'AA', 'DOMAIN', None, None, len(self.function_catalog), hmm_file, None, '--cut_ga')
 
         if not hmm_hits_file:
             self.run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. Anvi'o "
@@ -100,7 +100,7 @@ class InteracdomeSuper(Pfam):
             hmmer.clean_tmp_dirs()
             return
 
-        # parse hmmscan output
+        # parse hmmer output
         parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='DOMAIN', program=self.hmm_program)
         xxxx = parser.dicts['hits']
         import pdb; pdb.set_trace() 

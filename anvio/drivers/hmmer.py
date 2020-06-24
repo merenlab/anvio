@@ -96,7 +96,7 @@ class HMMer:
                                       "We are very sorry about this." % (hmm_path, base_path + ext))
 
 
-    def run_hmmscan(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms):
+    def run_hmmer(self, source, alphabet, context, kind, domain, num_genes_in_model, hmm, ref, noise_cutoff_terms):
         target = ':'.join([alphabet, context])
 
         if target not in self.target_files_dict:
@@ -147,10 +147,10 @@ class HMMer:
                              "We hope that is alright." % (self.program_to_use, alphabet))
 
         thread_num = 0
-        for part_file in self.target_files_dict[target]:
-            log_file = part_file + '_log'
-            output_file = part_file + '_output'
-            table_file = part_file + '_table'
+        for partial_file in self.target_files_dict[target]:
+            log_file = partial_file + '_log'
+            output_file = partial_file + '_output'
+            table_file = partial_file + '_table'
 
             self.run.info('Log file for thread %s' % thread_num, log_file)
             thread_num += 1
@@ -160,15 +160,15 @@ class HMMer:
                             '-o', output_file, *noise_cutoff_terms.split(),
                             '--cpu', cores_per_process,
                             self.tblout, table_file,
-                            hmm, part_file]
+                            hmm, partial_file]
             else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
                 cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                             '-o', output_file,
                             '--cpu', cores_per_process,
                             self.tblout, table_file,
-                            hmm, part_file]
+                            hmm, partial_file]
 
-            t = Thread(target=self.hmmscan_worker, args=(part_file,
+            t = Thread(target=self.hmmer_worker, args=(partial_file,
                                                          cmd_line,
                                                          table_file,
                                                          log_file,
@@ -198,21 +198,21 @@ class HMMer:
         return output_file_path if num_raw_hits else None
 
 
-    def hmmscan_worker(self, part_file, cmd_line, table_output_file, log_file, merged_file_buffer, buffer_write_lock):
+    def hmmer_worker(self, partial_file, cmd_line, table_output_file, log_file, merged_file_buffer, buffer_write_lock):
         utils.run_command(cmd_line, log_file)
 
         if not os.path.exists(table_output_file):
             self.progress.end()
-            raise ConfigError("Something went wrong with hmmscan and it failed to generate the expected output :/ Fortunately "
+            raise ConfigError("Something went wrong with %s and it failed to generate the expected output :/ Fortunately "
                               "we have this log file which should clarify the problem: '%s'. Please do not forget to include this "
-                              "file in your question if you were to seek help from the community." % log_file)
+                              "file in your question if you were to seek help from the community." % (self.program_to_use, log_file))
 
         detected_non_ascii = False
         lines_with_non_ascii = []
         clip_description_index = None
         clip_index_found = False
 
-        # FIXME Why is this here? This is hmmer output parsing, and should be in anvio/parsers/hmmscan.py
+        # FIXME Why is this here? This is hmmer output parsing, and should be in anvio/parsers/hmmer.py
         with open(table_output_file, 'rb') as hmm_hits_file:
             line_counter = 0
             for line_bytes in hmm_hits_file:
@@ -236,7 +236,7 @@ class HMMer:
 
         if detected_non_ascii:
             self.run.warning("Just a heads-up, Anvi'o HMMer parser detected non-ascii characters while processing "
-                             "the file '%s' and cleared them. Here are the line numbers with non-ascii charachters: %s. "
+                             "the file '%s' and cleared them. Here are the line numbers with non-ascii characters: %s. "
                              "You may want to check those lines with a command like \"awk 'NR==<line number>' <file path> | cat -vte\"." %
                                                  (table_output_file, ", ".join(map(str, lines_with_non_ascii))))
 
