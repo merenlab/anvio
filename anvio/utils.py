@@ -735,7 +735,7 @@ def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after
     return output_file_path
 
 
-def split_fasta(input_file_path, parts=1, prefix=None):
+def split_fasta(input_file_path, parts=1, prefix=None, shuffle=False):
     if not prefix:
         prefix = os.path.abspath(input_file_path)
 
@@ -752,24 +752,39 @@ def split_fasta(input_file_path, parts=1, prefix=None):
 
     output_files = []
 
-    for part_no in range(parts):
-        output_file = prefix + '.' + str(part_no)
+    if shuffle:
+        output_files = [f'{prefix}.{part_no}' for part_no in range(parts)]
+        output_fastas = [u.FastaOutput(file_name) for file_name in output_files]
 
-        output_fasta = u.FastaOutput(output_file)
+        # The first sequence goes to the first outfile, the second seq to the second outfile, and so on.
+        for seq_idx, (seq_id, seq) in enumerate(zip(source.ids, source.sequences)):
+            which = seq_idx % parts
+            output_fastas[which].write_id(seq_id)
+            output_fastas[which].write_seq(seq)
+            
+        for output_fasta in output_fastas:
+            output_fasta.close()
+    else:
+        for part_no in range(parts):
+            output_file = prefix + '.' + str(part_no)
 
-        chunk_start = chunk_size * part_no
-        chunk_end   = chunk_start + chunk_size
+            output_fasta = u.FastaOutput(output_file)
 
-        if (part_no + 1 == parts):
-            # if this is the last chunk make sure it contains everything till end.
-            chunk_end = length
+            chunk_start = chunk_size * part_no
+            chunk_end   = chunk_start + chunk_size
 
-        for i in range(chunk_start, chunk_end):
-            output_fasta.write_id(source.ids[i])
-            output_fasta.write_seq(source.sequences[i])
+            if (part_no + 1 == parts):
+                # if this is the last chunk make sure it contains everything till end.
+                chunk_end = length
 
-        output_fasta.close()
-        output_files.append(output_file)
+            for i in range(chunk_start, chunk_end):
+                output_fasta.write_id(source.ids[i])
+                output_fasta.write_seq(source.sequences[i])
+
+            output_fasta.close()
+            output_files.append(output_file)
+
+    source.close()
 
     return output_files
 
@@ -2580,7 +2595,7 @@ def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_name
           mode = "splits"
           appropriate_seq_names = split_names
 
-        else: 
+        else:
           mode = "contigs"
           appropriate_seq_names = contig_names
 
@@ -2590,13 +2605,13 @@ def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_name
                           "%d are splits, and %d are neither. BUT you're in just-do-it mode and we know you're in charge, so we'll "
                           "proceed using any appropriate names." % \
                           (mode, len(contig_names), len(split_names), len(missing_names),))
-              seq_names_to_export = appropriate_seq_names 
+              seq_names_to_export = appropriate_seq_names
           else:
               raise ConfigError("Not all the sequences you requested are %s in this CONTIGS.db. %d names are contigs, "
                                 "%d are splits, and %d are neither. If you want to live on the edge and try to "
                                 "proceed using any appropriate names, try out the `--just-do-it` flag." % \
                                 (mode, len(contig_names), len(split_names), len(missing_names)))
-        
+
     for seq_name in seq_names_to_export:
         if splits_mode:
             s = splits_info_dict[seq_name]
@@ -3084,19 +3099,17 @@ def get_HMM_sources_dictionary(source_dirs=[]):
             source = source[:-1]
 
         if not PROPER(os.path.basename(source)):
-            raise ConfigError("One of the search database directories ('%s') contains characters in its name "
-                               "anvio does not like. Directory names should be at least three characters long "
-                               "and must not contain any characters but ASCII letters, digits and "
-                               "underscore" % os.path.basename(source))
+            raise ConfigError(f"One of the search database directories ({os.path.basename(source)}) contains characters "
+                               "in its name anvio does not like. Directory names should be at least three characters long "
+                               "and must not contain any characters but ASCII letters, digits and underscore")
 
         expected_files = ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt', 'noise_cutoff_terms.txt']
 
         missing_files = [f for f in expected_files if not os.path.exists(os.path.join(source, f))]
         if missing_files:
-            raise ConfigError("Each search database directory must contain following files: %s'. Yet, the HMM source '%s' seems to "
-                              "be missing the follwoing one(s): %s. See this blog post to make sure you are doing it the way it "
-                              "should be done: http://merenlab.org/2016/05/21/archaeal-single-copy-genes/" % \
-                                            (', '.join(expected_files), os.path.basename(source), ', '.join(missing_files)))
+            raise ConfigError(f"The HMM source '{os.path.basename(source)}' makes anvi'o unhappy. Each HMM source directory "
+                              f"must contain a specific set of {len(expected_files)} files, and nothing more. See this URL "
+                              f"for detailes: http://merenlab.org/software/anvio/help/artifacts/hmm-source/")
 
         empty_files = [f for f in expected_files if os.stat(os.path.join(source, f)).st_size == 0]
         if empty_files:
@@ -3378,6 +3391,13 @@ def is_profile_db(db_path):
 def is_structure_db(db_path):
     if get_db_type(db_path) != 'structure':
         raise ConfigError("'%s' is not an anvi'o structure database." % db_path)
+    return True
+
+
+def is_modules_db(db_path):
+    filesnpaths.is_file_exists(db_path)
+    if get_db_type(db_path) != 'modules':
+        raise ConfigError("'%s' is not an anvi'o modules database." % db_path)
     return True
 
 
