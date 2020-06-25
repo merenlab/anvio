@@ -277,7 +277,7 @@ class SanityCheck(object):
                 if self.profile_db_path and self.metagenome_mode and not self.compute_scg_coverages:
                     raise ConfigError("You have a profile database and you have asked anvi'o to estimate taxonomy in metagenome mode, "
                                       "but you are not asking anvi'o to compute SCG coverages which doesn't make much sense :/ Removing "
-                                      "the profile database from this command or addint the flag `--compute-scg-coverages` would have "
+                                      "the profile database from this command or adding the flag `--compute-scg-coverages` would have "
                                       "made much more sense.")
 
                 if self.profile_db_path and not self.metagenome_mode and not self.collection_name:
@@ -295,7 +295,7 @@ class SanityCheck(object):
 
                     if not self.compute_scg_coverages:
                         raise ConfigError("You wish to update the profile database with taxonomy, but this will not work if anvi'o "
-                                          "is computing coverages values of SCGs across samples (pro tip: you can ask anvi'o to do "
+                                          "is NOT computing coverages values of SCGs across samples (pro tip: you can ask anvi'o to do "
                                           "it by adding the flag `--compute-scg-coverages` to your command line).")
 
             ###########################################################
