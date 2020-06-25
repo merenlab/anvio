@@ -3099,19 +3099,17 @@ def get_HMM_sources_dictionary(source_dirs=[]):
             source = source[:-1]
 
         if not PROPER(os.path.basename(source)):
-            raise ConfigError("One of the search database directories ('%s') contains characters in its name "
-                               "anvio does not like. Directory names should be at least three characters long "
-                               "and must not contain any characters but ASCII letters, digits and "
-                               "underscore" % os.path.basename(source))
+            raise ConfigError(f"One of the search database directories ({os.path.basename(source)}) contains characters "
+                               "in its name anvio does not like. Directory names should be at least three characters long "
+                               "and must not contain any characters but ASCII letters, digits and underscore")
 
         expected_files = ['reference.txt', 'kind.txt', 'genes.txt', 'genes.hmm.gz', 'target.txt', 'noise_cutoff_terms.txt']
 
         missing_files = [f for f in expected_files if not os.path.exists(os.path.join(source, f))]
         if missing_files:
-            raise ConfigError("Each search database directory must contain following files: %s'. Yet, the HMM source '%s' seems to "
-                              "be missing the follwoing one(s): %s. See this blog post to make sure you are doing it the way it "
-                              "should be done: http://merenlab.org/2016/05/21/archaeal-single-copy-genes/" % \
-                                            (', '.join(expected_files), os.path.basename(source), ', '.join(missing_files)))
+            raise ConfigError(f"The HMM source '{os.path.basename(source)}' makes anvi'o unhappy. Each HMM source directory "
+                              f"must contain a specific set of {len(expected_files)} files, and nothing more. See this URL "
+                              f"for detailes: http://merenlab.org/software/anvio/help/artifacts/hmm-source/")
 
         empty_files = [f for f in expected_files if os.stat(os.path.join(source, f)).st_size == 0]
         if empty_files:
