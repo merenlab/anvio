@@ -1883,8 +1883,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if not self.quiet:
             if mods_with_nonessential_steps:
                 self.run.warning("Please note that anvi'o found one or more non-essential steps in the following KEGG modules: %s.   "
-                                 "At this time, we are not counting these steps in our percent completion estimates. But we still kept track of which "
-                                 "of these non-essential steps were found to be complete. You can see this information in the output file."
+                                 "At this time, we are not counting these steps in our percent completion estimates."
                                  % (", ".join(mods_with_nonessential_steps)))
 
             if mods_with_unassociated_ko:
