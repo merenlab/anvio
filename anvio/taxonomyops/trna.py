@@ -164,10 +164,10 @@ class SanityCheck(object):
             if self.__class__.__name__ in ['TRNATaxonomyEstimatorSingle']:
                 if self.metagenomes:
                     raise ConfigError("Taxonomy estimation classes have been initiated with a single contigs database, but your "
-                            "arguments also include input for metagenomes. It is a no no. Please choose either. ")
+                                      "arguments also include input for metagenomes. It is a no no. Please choose either. ")
 
                 if self.output_file_prefix:
-                    raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file path "
+                    raise ConfigError("When using tRNA taxonomy estimation in this mode, you must provide an output file path "
                                       "than an output file prefix.")
 
                 if self.output_file_path:
@@ -192,7 +192,7 @@ class SanityCheck(object):
 
                 if trna_taxonomy_database_version != self.ctx.trna_taxonomy_database_version:
                     self.progress.reset()
-                    self.run.warning("The SCG taxonomy database on your computer has a different version (%s) than the SCG taxonomy information "
+                    self.run.warning("The tRNA taxonomy database on your computer has a different version (%s) than the tRNA taxonomy information "
                                      "stored in your contigs database (%s). This is not a problem and things will most likely continue to work "
                                      "fine, but we wanted to let you know. You can get rid of this warning by re-running `anvi-run-trna-taxonomy` "
                                      "on your database." % (self.ctx.trna_taxonomy_database_version, trna_taxonomy_database_version))
@@ -218,7 +218,7 @@ class SanityCheck(object):
                                                             % (self.anticodon_for_metagenome_mode, ', '.join(self.ctx.anticodons.keys())))
 
                 if self.compute_anticodon_coverages and not self.profile_db_path:
-                    raise ConfigError("The flag `--compute-scg-coverages` is only good if there is a non-blank profile database around "
+                    raise ConfigError("The flag `--compute-anticodon-coverages` is only good if there is a non-blank profile database around "
                                       "from which anvi'o can learn coverage statistics of genes across one or more samples :/")
 
                 if self.profile_db_path and self.metagenome_mode and not self.compute_anticodon_coverages:
@@ -229,7 +229,7 @@ class SanityCheck(object):
 
                 if self.profile_db_path and not self.metagenome_mode and not self.collection_name:
                     raise ConfigError("You have a profile database, and you are not in metagenome mode. In this case anvi'o will try to "
-                                      "estimate coverages of SCGs in bins after estimating their taxonomy, but for that, you need to "
+                                      "estimate coverages of tRNA genes in bins after estimating their taxonomy, but for that, you need to "
                                       "also provide a collection name. You can see what collections are available in your profile database "
                                       "you can use the program `anvi-show-collections-and-bins`, and then use the parameter "
                                       "`--collection-name` to tell anvi'o which one to use.")
@@ -237,12 +237,11 @@ class SanityCheck(object):
                 if self.update_profile_db_with_taxonomy:
                     if not self.metagenome_mode:
                         raise ConfigError("Updating the profile database with taxonomy layer data is only possible in metagenome "
-                                          "mode :/ And not only that, you should also instruct anvi'o to compute single-copy core "
-                                          "gene coverages.")
+                                          "mode :/ And not only that, you should also instruct anvi'o to compute gene coverages.")
 
                     if not self.compute_anticodon_coverages:
                         raise ConfigError("You wish to update the profile database with taxonomy, but this will not work if anvi'o "
-                                          "is computing coverages values of SCGs across samples (pro tip: you can ask anvi'o to do "
+                                          "is NOT omputing coverages values of tRNA genes across samples (pro tip: you can ask anvi'o to do "
                                           "it by adding the flag `--compute-scg-coverages` to your command line).")
 
             ###########################################################
@@ -255,12 +254,12 @@ class SanityCheck(object):
                                       "Please run this program either with a metagenomes file or contigs/profile databases.")
 
                 if self.output_file_path:
-                    raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file prefix rather "
+                    raise ConfigError("When using tRNA taxonomy estimation in this mode, you must provide an output file prefix rather "
                                       "than an output file path. Anvi'o will use your prefix and will generate many files that start "
                                       "with that prefix but ends with different names for each taxonomic level.")
 
                 if not self.output_file_prefix:
-                    raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file prefix :/")
+                    raise ConfigError("When using tRNA taxonomy estimation in this mode, you must provide an output file prefix :/")
 
                 if self.raw_output and self.matrix_format:
                     raise ConfigError("Please don't request anvi'o to report the output both in raw and matrix format. Anvi'o shall "
