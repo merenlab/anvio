@@ -3068,7 +3068,7 @@ class KeggModulesDatabase(KeggContext):
 
 
     def parse_kegg_modules_line(self, line, current_module, line_num=None, current_data_name=None, error_dictionary=None,
-        sanity_check_func="module"):
+                                sanity_check_func="module"):
         """This function parses information from one line of a KEGG module file.
 
         These files have fields separated by 2 or more spaces. Fields can include data name (not always), data value (always), and data definition (not always).
@@ -3142,132 +3142,97 @@ class KeggModulesDatabase(KeggContext):
         return line_entries
 
 
+    def create_kegg_table(self, kegg_table_name, kegg_entity_dict, kegg_file_dir, sanity_check_func_to_use):
+        """This function drives the parsing of KEGG files into MODULES.db tables.
+
+        Parameters
+        ==========
+        kegg_table_name : str
+            The name of the table we will be creating
+        kegg_entity_dict : dictionary
+            The keys of this dictionary are the KEGG identifiers of the files we will be parsing.
+            For example, this could be a modules dictionary or a pathway maps dictionary
+        kegg_file_dir : str
+            Path to the KEGG files
+        sanity_check_func_to_use : str
+            Which sanity check function to use (also doubles as which kind of KEGG files we are parsing)
+
+        Returns
+        =======
+        num_files_parsed : int
+            the number of files parsed and added to the table
+        kegg_table : database table
+            Reference to the table that was populated
+        """
+
+        # sanity check that we setup the kegg files previously.
+        # It shouldn't be a problem since this function should only be called during the setup process after files download, but just in case.
+        if not os.path.exists(kegg_file_dir) or len(kegg_entity_dict.keys()) == 0:
+            raise ConfigError("Appparently, the KEGG %s files were not correctly setup and now all sorts of things are broken. The "
+                              "Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone "
+                              "except maybe developers, so if you do not fall into that category you are likely in deep doo-doo. "
+                              "Maybe re-running setup with --reset will work? (if not, you probably should email/Slack/telepathically "
+                              "cry out for help to the developers). Anyway, if this helps make things any clearer, the number of KEGG "
+                              "files in the file dictionary is currently %s" % (sanity_check_func_to_use, len(kegg_entity_dict.keys())))
+
+        self.progress.new("Loading %s KEGG %s files into Modules DB..." % (len(kegg_entity_dict.keys()), sanity_check_func_to_use))
+        kegg_table = KeggTable(table_name=kegg_table_name)
+
+        line_number = 0
+        num_files_parsed = 0
+        for kegg_num in kegg_entity_dict.keys():
+            self.progress.update("Parsing KEGG file %s" % kegg_num)
+            file_path = os.path.join(kegg_file_dir, kegg_num)
+            f = open(file_path, 'rU')
+
+            prev_data_name_field = None
+            for line in f.readlines():
+                line = line.strip('\n')
+                line_number += 1
+
+                # check for last line ///. We don't want to send the last line to the parsing function because it will break.
+                # we also check here that the line is not entirely blank (this happens sometimes in KEGG modules, inexplicably)
+                if not line == '///' and re.search(r"\S+", line):
+                    # parse the line into a tuple
+                    entries_tuple_list = None
+                    # here is the tricky bit about parsing these files. Not all lines start with the data_name field; those that don't start with a space.
+                    # if this is the case, we need to tell the parsing function what the previous data_name field has been.
+                    if line[0] == ' ':
+                        entries_tuple_list = self.parse_kegg_modules_line(line, kegg_num, line_number, prev_data_name_field, sanity_check_func=sanity_check_func_to_use)
+                    else:
+                        entries_tuple_list = self.parse_kegg_modules_line(line, kegg_num, line_number, sanity_check_func=sanity_check_func_to_use)
+
+                    prev_data_name_field = entries_tuple_list[0][0]
+
+                    for name, val, definition, line in entries_tuple_list:
+                        # append_and_store will collect db entries and store every 10000 at a time
+                        kegg_table.append_and_store(self.db, kegg_num, name, val, definition, line)
+
+                f.close()
+
+            num_files_parsed += 1
+        # once we are done parsing all pathways, we store whatever db entries remain in the db_entries list
+        # this is necessary because append_and_store() above only stores every 10000 entries
+        self.progress.update("Storing final batch of entries into DB")
+        kegg_table.store(self.db)
+
+        self.progress.end()
+
+        return num_files_parsed, kegg_table
+
+
     def create(self):
         """Creates the Modules DB"""
 
         self.touch()
-
-        self.progress.new("Loading %s KEGG modules into Modules DB..." % len(self.module_dict.keys()))
-
-        # sanity check that we setup the modules previously.
-        # It shouldn't be a problem since this function should only be called during the setup process after modules download, but just in case.
-        if not os.path.exists(self.module_data_dir) or len(self.module_dict.keys()) == 0:
-            raise ConfigError("Appparently, the Kegg Modules were not correctly setup and now all sorts of things are broken. The "
-                              "Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone "
-                              "except maybe developers, so if you do not fall into that category you are likely in deep doo-doo. "
-                              "Maybe re-running setup with --reset will work? (if not, you probably should email/Slack/telepathically "
-                              "cry out for help to the developers). Anyway, if this helps make things any clearer, the number of modules "
-                              "in the module dictionary is currently %s" % len(self.module_dict.keys()))
-
-        # init the Modules table
-        mod_table = KeggTable(table_name=self.module_table_name)
 
         # keep track of errors encountered while parsing
         self.parsing_error_dict = {"bad_line_splitting" : [], "bad_kegg_code_format" : []}
         self.num_corrected_errors = 0
         self.num_uncorrected_errors = 0
 
-        num_modules_parsed = 0
-        line_number = 0
-        for mnum in self.module_dict.keys():
-            self.progress.update("Parsing KEGG Module %s" % mnum)
-            mod_file_path = os.path.join(self.module_data_dir, mnum)
-            f = open(mod_file_path, 'rU')
-
-            prev_data_name_field = None
-            for line in f.readlines():
-                line = line.strip('\n')
-                line_number += 1
-
-                # check for last line ///. We don't want to send the last line to the parsing function because it will break.
-                # we also check here that the line is not entirely blank (this happens sometimes in KEGG modules, inexplicably)
-                if not line == '///' and re.search(r"\S+", line):
-                    # parse the line into a tuple
-                    entries_tuple_list = None
-                    # here is the tricky bit about parsing these files. Not all lines start with the data_name field; those that don't start with a space.
-                    # if this is the case, we need to tell the parsing function what the previous data_name field has been.
-                    if line[0] == ' ':
-                        entries_tuple_list = self.parse_kegg_modules_line(line, mnum, line_number, prev_data_name_field)
-                    else:
-                        entries_tuple_list = self.parse_kegg_modules_line(line, mnum, line_number)
-
-                    prev_data_name_field = entries_tuple_list[0][0]
-
-                    for name, val, definition, line in entries_tuple_list:
-                        # there is one situation in which we want to ignore the entry, and that is Modules appearing in the ORTHOLOGY category, like so:
-                        # (M00531  Assimilatory nitrate reduction, nitrate => ammonia)
-                        if not (name == "ORTHOLOGY" and val[0] == '('):
-                            # append_and_store will collect db entries and store every 10000 at a time
-                            mod_table.append_and_store(self.db, mnum, name, val, definition, line)
-                        else:
-                            line -= 1
-
-                f.close()
-
-            num_modules_parsed += 1
-        # once we are done parsing all modules, we store whatever db entries remain in the db_entries list
-        # this is necessary because append_and_store() above only stores every 10000 entries
-        self.progress.update("Storing final batch of module entries into DB")
-        mod_table.store(self.db)
-
-        self.progress.end()
-
-
-        # setup KEGG pathways
-        self.progress.new("Loading %s KEGG pathway maps into Modules DB..." % len(self.pathway_dict.keys()))
-
-        # sanity check that we setup the modules previously.
-        # It shouldn't be a problem since this function should only be called during the setup process after modules download, but just in case.
-        if not os.path.exists(self.pathway_data_dir) or len(self.pathway_dict.keys()) == 0:
-            raise ConfigError("Appparently, the Kegg Pathway Maps were not correctly setup and now all sorts of things are broken. The "
-                              "Modules DB cannot be created from broken things. BTW, this error is not supposed to happen to anyone "
-                              "except maybe developers, so if you do not fall into that category you are likely in deep doo-doo. "
-                              "Maybe re-running setup with --reset will work? (if not, you probably should email/Slack/telepathically "
-                              "cry out for help to the developers). Anyway, if this helps make things any clearer, the number of pathways "
-                              "in the pathway dictionary is currently %s" % len(self.pathway_dict.keys()))
-
-        # init the pathways table
-        path_table = KeggTable(table_name=self.pathway_table_name)
-
-        num_pathways_parsed = 0
-        for pnum in self.pathway_dict.keys():
-            self.progress.update("Parsing KEGG Pathway Map %s" % pnum)
-            path_file_path = os.path.join(self.pathway_data_dir, pnum)
-            f = open(path_file_path, 'rU')
-
-            prev_data_name_field = None
-            for line in f.readlines():
-                line = line.strip('\n')
-                line_number += 1
-
-                # check for last line ///. We don't want to send the last line to the parsing function because it will break.
-                # we also check here that the line is not entirely blank (this happens sometimes in KEGG modules, inexplicably)
-                if not line == '///' and re.search(r"\S+", line):
-                    # parse the line into a tuple
-                    entries_tuple_list = None
-                    # here is the tricky bit about parsing these files. Not all lines start with the data_name field; those that don't start with a space.
-                    # if this is the case, we need to tell the parsing function what the previous data_name field has been.
-                    if line[0] == ' ':
-                        entries_tuple_list = self.parse_kegg_modules_line(line, pnum, line_number, prev_data_name_field, sanity_check_func="pathway")
-                    else:
-                        entries_tuple_list = self.parse_kegg_modules_line(line, pnum, line_number, sanity_check_func="pathway")
-
-                    prev_data_name_field = entries_tuple_list[0][0]
-
-                    for name, val, definition, line in entries_tuple_list:
-                        # append_and_store will collect db entries and store every 10000 at a time
-                        path_table.append_and_store(self.db, pnum, name, val, definition, line)
-
-
-                f.close()
-
-            num_pathways_parsed += 1
-        # once we are done parsing all pathways, we store whatever db entries remain in the db_entries list
-        # this is necessary because append_and_store() above only stores every 10000 entries
-        self.progress.update("Storing final batch of pathway map entries into DB")
-        path_table.store(self.db)
-
-        self.progress.end()
+        num_modules_parsed, mod_table = self.create_kegg_table(self.module_table_name, self.module_dict, self.module_data_dir, "module")
+        num_pathways_parsed, path_table = self.create_kegg_table(self.pathway_table_name, self.pathway_dict, self.pathway_data_dir, "pathway")
 
         # warn user about any parsing errors
         if anvio.DEBUG:
