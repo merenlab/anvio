@@ -187,7 +187,7 @@ class SanityCheck(object):
                 trna_taxonomy_was_run = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['trna_taxonomy_was_run']
                 trna_taxonomy_database_version = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet).meta['trna_taxonomy_database_version']
                 if not trna_taxonomy_was_run:
-                    raise ConfigError("It seems the SCG taxonomy tables were not populated in this contigs database :/ Luckily it "
+                    raise ConfigError("It seems the tRNA taxonomy tables were not populated in this contigs database :/ Luckily it "
                                       "is easy to fix that. Please see the program `anvi-run-trna-taxonomy`.")
 
                 if trna_taxonomy_database_version != self.ctx.trna_taxonomy_database_version:
