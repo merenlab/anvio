@@ -1335,7 +1335,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # get rid of splits and contigs (and their associated gene calls) that are not in the profile DB
         if self.profile_db_path:
-            split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
+            # if we were given a blank profile, we will assume we want all splits and pull all splits from the contigs DB
+            if utils.is_blank_profile(self.profile_db_path):
+                self.run.warning("You seem to have provided a blank profile. No worries, we can still estimate metabolism for you. "
+                                 "But we cannot load splits from the profile DB, so instead we are assuming that you are interested in "
+                                 "ALL splits and we will load those from the contigs database.")
+                split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.contigs_db_path))
+            else:
+                split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
             split_names_in_contigs_db = set([tpl[1] for tpl in genes_in_splits])
             splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
 
