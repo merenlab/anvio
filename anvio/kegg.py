@@ -3326,7 +3326,11 @@ class KeggModulesDatabase(KeggContext):
 
 
     def get_db_content_hash(self):
-        """Compute hash of all KOs and module numbers present in the db (used for tracking major changes to db content with future KEGG updates)"""
+        """Compute hash of all KOs and module numbers present in the db.
+
+        (Used for tracking major changes to db content with future KEGG updates)
+        """
+
         mods = self.get_all_modules_as_list()
         mods.sort()
         orths = self.get_all_knums_as_list()
@@ -3377,23 +3381,27 @@ class KeggModulesDatabase(KeggContext):
 
     def get_all_modules_as_list(self):
         """This function returns a list of all modules in the DB."""
+
         return self.db.get_single_column_from_table(self.module_table_name, 'module', unique=True)
 
 
     def get_all_knums_as_list(self):
         """This function returns a list of all KO numbers in the DB."""
+
         where_clause_string = "data_name = 'ORTHOLOGY'"
         return self.db.get_single_column_from_table(self.module_table_name, 'data_value', unique=True, where_clause=where_clause_string)
 
 
     def get_modules_for_knum(self, knum):
-        """This function returns a list of modules that the given KO belongs to."""
+        """This function returns a list of modules that the given KO (knum) belongs to."""
+
         where_clause_string = "data_value = '%s'" % (knum)
         return self.db.get_single_column_from_table(self.module_table_name, 'module', unique=True, where_clause=where_clause_string)
 
 
     def get_module_classes_for_knum_as_dict(self, knum):
-        """This function returns the classes for the modules that a given KO belongs to in a dictionary of dictionaries keyed by module number."""
+        """This function returns the classes for the modules that a given KO (knum) belongs to in a dictionary of dictionaries keyed by module number."""
+
         mods = self.get_modules_for_knum(knum)
         all_mods_classes_dict = {}
         for mnum in mods:
@@ -3402,7 +3410,8 @@ class KeggModulesDatabase(KeggContext):
 
 
     def get_module_classes_for_knum_as_list(self, knum):
-        """This function returns the classes for the modules that a given KO belongs to as a list of strings."""
+        """This function returns the classes for the modules that a given KO (knum) belongs to as a list of strings."""
+
         mods = self.get_modules_for_knum(knum)
         all_mods_classes_list = []
         for mnum in mods:
@@ -3412,14 +3421,15 @@ class KeggModulesDatabase(KeggContext):
 
 
     def get_module_name(self, mnum):
-        """This function returns the name of the specified KEGG module."""
+        """This function returns the name of the specified KEGG module (mnum)."""
 
         # there should only be one NAME per module, so we return the first list element
         return self.get_data_value_entries_for_module_by_data_name(mnum, "NAME")[0]
 
 
     def get_module_names_for_knum(self, knum):
-        """This function returns all names of each KEGG module that the given KO belongs to in a dictionary keyed by module number."""
+        """This function returns all names of each KEGG module that the given KO (knum) belongs to in a dictionary keyed by module number."""
+
         mods = self.get_modules_for_knum(knum)
         module_names = {}
         for mnum in mods:
@@ -3440,7 +3450,7 @@ class KeggModulesDatabase(KeggContext):
 
 
     def get_kegg_module_class_dict(self, mnum):
-        """This function returns a dictionary of values in the CLASS field for a specific module
+        """This function returns a dictionary of values in the CLASS field for a specific module (mnum)
 
         It really exists only for convenience to put together the data fetch and parsing functions.
         """
@@ -3458,8 +3468,8 @@ class KeggModulesDatabase(KeggContext):
 
 
     def unroll_module_definition(self, mnum):
-        """This function accesses the DEFINITION line of a KEGG Module, unrolls it into all possible paths through the module, and
-        returns the list of all paths.
+        """This function accesses the DEFINITION line of a KEGG Module (mnum), unrolls it into all possible paths
+        through the module, and returns the list of all paths.
 
         This is a driver for the recursive functions that do the actual unrolling of each definition line.
         """
@@ -3710,6 +3720,7 @@ class KeggTable:
 
     def store(self, db):
         """Inserts values from the self.db_entries list into the table."""
+
         if len(self.db_entries):
             db._exec_many('''INSERT INTO %s VALUES (%s)''' % (self.table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
 
