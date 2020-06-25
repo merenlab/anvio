@@ -3455,6 +3455,16 @@ class KeggModulesDatabase(KeggContext):
         return all_paths
 
 
+    # KEGG Pathway Maps Table functions for data access and parsing start below
+    # =========================================================================
+    def get_all_pathway_maps_as_list(self):
+        """This function returns a list of all pathway maps in the DB."""
+
+        return self.db.get_single_column_from_table(self.pathway_table_name, 'pathway_map', unique=True)
+
+
+    # Functions for module pathway unrolling start below
+    # =========================================================================
     def split_by_delim_not_within_parens(self, d, delims, return_delims=False):
         """Takes a string, and splits it on the given delimiter(s) as long as the delimeter is not within parentheses.
 
