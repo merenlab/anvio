@@ -171,6 +171,11 @@ D = {
             {'metavar': 'FASTA',
              'help': "A FASTA-formatted input file"}
                 ),
+    'dna-sequence': (
+            ['--dna-sequence'],
+            {'metavar': 'FASTA',
+             'help': "A FASTA-formatted input file"}
+                ),
     'fasta-text-file': (
             ['-f', '--fasta-text-file'],
             {'metavar': 'FASTA_TEXT_FILE',
