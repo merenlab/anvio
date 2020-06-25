@@ -3300,9 +3300,11 @@ class KeggModulesDatabase(KeggContext):
         mods.sort()
         orths = self.get_all_knums_as_list()
         orths.sort()
-        mods_and_orths = mods + orths
-        mods_and_orths = "".join(mods_and_orths)
-        return str(hashlib.sha224(mods_and_orths.encode('utf-8')).hexdigest())[0:12]
+        pmaps = self.get_all_pathway_maps_as_list()
+        pmaps.sort()
+        all_content = mods + orths + pmaps
+        all_content = "".join(all_content)
+        return str(hashlib.sha224(all_content.encode('utf-8')).hexdigest())[0:12]
 
 
     # KEGG Modules Table functions for data access and parsing start below
