@@ -60,40 +60,45 @@ if __name__ == '__main__':
                                                     file for all.")
     groupC.add_argument(*anvio.A('metagenomes'), **anvio.K('metagenomes'))
 
-    groupD = parser.add_argument_group('OUTPUT AND FORMATTING', "Anvi'o will do its best to offer you some fancy output tables for your viewing \
+    groupD = parser.add_argument_group('INPUT #4', "Ad hoc sequence search. No contigs databases, no profiles. The lazy stayla. Please note\
+                                                    that if you use parameters defined under this optin, none of the other standard\
+                                                    parameters for this program will be taken into consideration.")
+    groupD.add_argument(*anvio.A('dna-sequence'), **anvio.K('dna-sequence'))
+
+    groupE = parser.add_argument_group('OUTPUT AND FORMATTING', "Anvi'o will do its best to offer you some fancy output tables for your viewing \
                                                                  pleasure by default. But in addition to that, you can ask the resulting information \
                                                                  to be stored in a TAB-delimited file (which is a much better way to include the \
                                                                  results in your study as supplementary information, or work with these results \
                                                                  using other analysis tools such as R). Depending on the mode you are running this \
                                                                  program, anvi'o may ask you to use an 'output file prefix' rather than an 'output \
                                                                  file path'.")
-    groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
-    groupD.add_argument(*anvio.A('per-anticodon-output-file'), **anvio.K('per-anticodon-output-file'))
-    groupD.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
-    groupD.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level', {'default': None}))
-    groupD.add_argument(*anvio.A('matrix-format'), **anvio.K('matrix-format', {'help': "If you want the reports to look like sparse matrices whenever "
+    groupE.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupE.add_argument(*anvio.A('per-anticodon-output-file'), **anvio.K('per-anticodon-output-file'))
+    groupE.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix'))
+    groupE.add_argument(*anvio.A('taxonomic-level'), **anvio.K('taxonomic-level', {'default': None}))
+    groupE.add_argument(*anvio.A('matrix-format'), **anvio.K('matrix-format', {'help': "If you want the reports to look like sparse matrices whenever "
                                                                                    "possible, declare this flag. Matrices are especially good to use "
                                                                                    "when you are working with internal/external genomes since they can "
                                                                                    "show you quickly the distribution of each taxon across all metagenomes "
                                                                                    "in programs like EXCEL. WELL TRY IT AND SEE."}))
-    groupD.add_argument(*anvio.A('raw-output'), **anvio.K('raw-output'))
+    groupE.add_argument(*anvio.A('raw-output'), **anvio.K('raw-output'))
 
-    groupE = parser.add_argument_group('PERFORMANCE', "We are not sure if allocating more threads for this operation will change anything.\
+    groupF = parser.add_argument_group('PERFORMANCE', "We are not sure if allocating more threads for this operation will change anything.\
                                                        But hey. One can try.")
-    groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupF.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
-    groupE = parser.add_argument_group('AUTHORITY', "Assert your dominance.")
-    groupE.add_argument(*anvio.A('anticodon-for-metagenome-mode'), **anvio.K('anticodon-for-metagenome-mode'))
-    groupE.add_argument(*anvio.A('report-anticodon-frequencies'), **anvio.K('report-anticodon-frequencies'))
-    groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    groupF = parser.add_argument_group('AUTHORITY', "Assert your dominance.")
+    groupF.add_argument(*anvio.A('anticodon-for-metagenome-mode'), **anvio.K('anticodon-for-metagenome-mode'))
+    groupF.add_argument(*anvio.A('report-anticodon-frequencies'), **anvio.K('report-anticodon-frequencies'))
+    groupF.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    groupF = parser.add_argument_group('ADVANCED', "Very pro-like stuff.")
-    groupF.add_argument(*anvio.A('simplify-taxonomy-information'), **anvio.K('simplify-taxonomy-information'))
-    groupF.add_argument(*anvio.A('compute-anticodon-coverages'), **anvio.K('compute-anticodon-coverages'))
-    groupF.add_argument(*anvio.A('update-profile-db-with-taxonomy'), **anvio.K('update-profile-db-with-taxonomy'))
+    groupG = parser.add_argument_group('ADVANCED', "Very pro-like stuff.")
+    groupG.add_argument(*anvio.A('simplify-taxonomy-information'), **anvio.K('simplify-taxonomy-information'))
+    groupG.add_argument(*anvio.A('compute-anticodon-coverages'), **anvio.K('compute-anticodon-coverages'))
+    groupG.add_argument(*anvio.A('update-profile-db-with-taxonomy'), **anvio.K('update-profile-db-with-taxonomy'))
 
-    groupG = parser.add_argument_group('BORING', "Options that you will likely never need.")
-    groupG.add_argument(*anvio.A('taxonomy-database'), **anvio.K('taxonomy-database'))
+    groupH = parser.add_argument_group('BORING', "Options that you will likely never need.")
+    groupH.add_argument(*anvio.A('taxonomy-database'), **anvio.K('taxonomy-database'))
 
     args = anvio.get_args(parser)
 
