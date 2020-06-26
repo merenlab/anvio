@@ -187,10 +187,10 @@ class HMMer:
                              "We hope that is alright." % (self.program_to_use, alphabet))
 
         thread_num = 0
-        for partial_file in self.target_files_dict[target]:
-            log_file = partial_file + '_log'
-            output_file = partial_file + '_output'
-            table_file = partial_file + '_table'
+        for partial_input_file in self.target_files_dict[target]:
+            log_file = partial_input_file + '_log'
+            output_file = partial_input_file + '_output'
+            table_file = partial_input_file + '_table'
 
             self.run.info('Log file for thread %s' % thread_num, log_file)
             thread_num += 1
@@ -200,15 +200,15 @@ class HMMer:
                             '-o', output_file, *noise_cutoff_terms.split(),
                             '--cpu', cores_per_process,
                             out_fmt, table_file,
-                            hmm, partial_file]
+                            hmm, partial_input_file]
             else: # if we didn't pass any noise cutoff terms, here we don't include them in the command line
                 cmd_line = ['nhmmscan' if alphabet in ['DNA', 'RNA'] else self.program_to_use,
                             '-o', output_file,
                             '--cpu', cores_per_process,
                             out_fmt, table_file,
-                            hmm, partial_file]
+                            hmm, partial_input_file]
 
-            t = Thread(target=self.hmmer_worker, args=(partial_file,
+            t = Thread(target=self.hmmer_worker, args=(partial_input_file,
                                                        cmd_line,
                                                        table_file,
                                                        output_file,
@@ -242,7 +242,7 @@ class HMMer:
         return output_file_path
 
 
-    def hmmer_worker(self, partial_file, cmd_line, table_output_file, standard_output_file, desired_output, log_file,
+    def hmmer_worker(self, partial_input_file, cmd_line, table_output_file, standard_output_file, desired_output, log_file,
                      merged_file_buffer, buffer_write_lock):
 
         # First we run the command
