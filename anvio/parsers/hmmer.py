@@ -2,6 +2,8 @@
 """Parser for HMMER's various outputs"""
 
 import anvio
+import anvio.utils as utils
+import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 from anvio.parsers.base import Parser
@@ -15,7 +17,185 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
-run = anvio.terminal.Run()
+
+class HMMERStandardOutput(object):
+    """Parse the standard output of HMMER programs
+
+    Parameters
+    ==========
+    hmmer_std_out : str
+        Path to output of HMMER.
+    """
+
+    def __init__(self, hmmer_std_out, run=terminal.Run(), progress=terminal.Progress()):
+        self.run = run
+        self.progress = progress
+
+        self.hmmer_std_out = hmmer_std_out
+
+        self.data = {}
+
+        self.delim_query = '//\n'
+        self.delim_seq = '>>'
+        self.delim_domain = '=='
+
+        self.seq_score_fields = [
+            'evalue',
+            'score',
+            'bias',
+            'best_dom_evalue',
+            'best_dom_score',
+            'best_dom_bias',
+            'expected_doms',
+            'num_doms',
+        ]
+
+        self.load()
+
+
+    def load(self):
+        self.progress.new('Processing HMMER output')
+        self.progress.update('Loading %s' % self.hmmer_std_out)
+
+        with open(self.hmmer_std_out) as f:
+            for i, query in enumerate(utils.get_chunk(f, separator=self.delim_query, read_size=32768)):
+
+                if i % 250 == 0:
+                    self.progress.update('%d done' % i)
+                    self.progress.increment(increment_to=i)
+
+                result = self.process_query(query)
+
+                if result:
+                    self.data[result['acc']] = result
+
+        self.progress.end()
+        self.run.info('Loaded HMMER results from', self.hmmer_std_out)
+
+
+    def find_line(self, condition):
+        for line in self.query_lines[self.line_no:]:
+            self.line_no += 1
+
+            if line.startswith('#'):
+                continue
+
+            if condition(line):
+                return line
+        else:
+            return False
+
+
+    def read_lines_until(self, condition, include_last=False, store=True):
+        lines = []
+        return_value = lines if store else True
+
+        for line in self.query_lines[self.line_no:]:
+            self.line_no += 1
+
+            if line.startswith('#'):
+                continue
+
+            if condition(line):
+                if include_last and store:
+                    lines.append(line)
+
+                return lines
+
+            if store:
+                lines.append(line)
+        else:
+            if store:
+                return lines
+            else:
+                return False
+
+
+    def process_query(self, query):
+        result = {}
+
+        if self.delim_seq not in query:
+            # This query had no hits
+            return result
+
+        self.query_lines = query.split('\n')
+        self.line_no = 0
+
+        line = self.find_line(lambda line: line.startswith('Query:'))
+        line_split = line.split()
+        result['query_name'] = line_split[1]
+        result['length'] = int(line_split[2][line_split[2].find('=')+1:-1])
+
+        line = self.find_line(lambda line: line.startswith('Accession:'))
+        result['acc'] = line.split()[1]
+
+        line = self.find_line(lambda line: line.lstrip().startswith('E-value'))
+        description_index = line.find('Desc')
+        fields = line[:description_index].split() # ignore last 'Description' field
+
+        assert len(fields) == 9, "Please report this on github with your HMMER version"
+
+        result['seq_hits'] = {}
+        self.read_lines_until(lambda line: line.lstrip().startswith('-------'), store=False)
+        seq_score_lines = self.read_lines_until(lambda line: line == '')
+        for seq_score_line in seq_score_lines:
+            seq_scores = seq_score_line[:description_index].split()
+            seq_name = seq_scores[-1]
+            result['seq_hits'][seq_name] = dict(zip(self.seq_score_fields, [float(x) for x in seq_scores]))
+            result['seq_hits'][seq_name]['num_doms'] = int(result['seq_hits'][seq_name]['num_doms'])
+
+        result['num_seq_hits'] = len(result['seq_hits'])
+
+        result['dom_hits'] = {}
+        for _ in range(result['num_seq_hits']):
+            seq_name = self.find_line(lambda line: line.startswith(self.delim_seq)).split()[1]
+
+            result['dom_hits'][seq_name] = {}
+
+            if result['seq_hits'][seq_name]['num_doms'] == 0:
+                continue
+
+            self.line_no += 2
+            for __ in range(result['seq_hits'][seq_name]['num_doms']):
+                dom_score_summary = self.find_line(lambda line: True).split()
+                dom_id = dom_score_summary.pop(0)
+                result['dom_hits'][seq_name][dom_id] = {}
+
+                result['dom_hits'][seq_name][dom_id]['summary'] = {
+                    'qual': str(dom_score_summary[0]),
+                    'score': float(dom_score_summary[1]),
+                    'bias': float(dom_score_summary[2]),
+                    'c-evalue': float(dom_score_summary[3]),
+                    'i-evalue': float(dom_score_summary[4]),
+                    'hmm_start': int(dom_score_summary[5]),
+                    'hmm_stop': int(dom_score_summary[6]),
+                    'hmm_bounds': str(dom_score_summary[7]),
+                    'ali_start': int(dom_score_summary[8]),
+                    'ali_stop': int(dom_score_summary[9]),
+                    'ali_bounds': str(dom_score_summary[10]),
+                    'env_start': int(dom_score_summary[11]),
+                    'env_stop': int(dom_score_summary[12]),
+                    'env_bounds': str(dom_score_summary[13]),
+                    'mean_post_prob': float(dom_score_summary[14]),
+                }
+
+            num_doms = result['seq_hits'][seq_name]['num_doms']
+            for __ in range(num_doms):
+                self.find_line(lambda line: line.lstrip().startswith(self.delim_domain))
+
+                if __ == num_doms - 1:
+                    if _ == result['num_seq_hits'] - 1:
+                        # This is the last alignment in the result. Go to end of string
+                        ali_lines = self.read_lines_until(lambda line: False)
+                    else:
+                        # This is the last alignment in the sequence. Go to next sequence delimiter
+                        ali_lines = self.read_lines_until(lambda line: line.lstrip().startswith(self.delim_seq))
+                        self.line_no -= 1
+                else:
+                    ali_lines = self.read_lines_until(lambda line: line.lstrip().startswith(self.delim_domain))
+                    self.line_no -= 1
+
+        return result
 
 
 class HMMERTableOutput(Parser):
@@ -37,7 +217,7 @@ class HMMERTableOutput(Parser):
 
     Parameters
     ==========
-    hmm_scan_hits_txt: ???
+    hmmer_table_txt: ???
         Undocumented FIXME
 
     alphabet: str, 'AA'
@@ -62,14 +242,14 @@ class HMMERTableOutput(Parser):
             Undocumented FIXME
     """
 
-    def __init__(self, hmm_scan_hits_txt, alphabet='AA', context='GENE', program='hmmscan'):
+    def __init__(self, hmmer_table_txt, alphabet='AA', context='GENE', program='hmmscan', run=terminal.Run()):
         self.alphabet = alphabet
         self.context = context
         self.program = program
 
         self.run = run
 
-        files_expected = {'hits': hmm_scan_hits_txt}
+        files_expected = {'hits': hmmer_table_txt}
 
         if self.context == "GENE":
             col_info = self.get_col_info_for_GENE_context()
@@ -96,7 +276,7 @@ class HMMERTableOutput(Parser):
             },
         }
 
-        Parser.__init__(self, 'HMMScan', [hmm_scan_hits_txt], files_expected, files_structure)
+        Parser.__init__(self, 'HMMScan', [hmmer_table_txt], files_expected, files_structure)
 
 
     def get_col_info_for_GENE_context(self):
