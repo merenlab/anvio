@@ -375,37 +375,12 @@ class HMMProfile(object):
         self.load()
 
 
-    def get_chunk(self, stream, separator, read_size=4096):
-        """Read one profile at a time
-
-        References
-        ==========
-        https://stackoverflow.com/questions/47927039/reading-a-file-until-a-specific-character-in-python
-        """
-
-        contents_buffer = ''
-        while True:
-            chunk = stream.read(read_size)
-            if not chunk:
-                yield contents_buffer
-                break
-
-            contents_buffer += chunk
-            while True:
-                try:
-                    part, contents_buffer = contents_buffer.split(separator, 1)
-                except ValueError:
-                    break
-                else:
-                    yield part
-
-
     def load(self):
         self.progress.new('HMM profile')
         self.progress.update('Loading %s' % self.filepath)
 
         with open(self.filepath) as f:
-            for i, raw_profile in enumerate(self.get_chunk(f, separator='//\n')):
+            for i, raw_profile in enumerate(utils.get_chunk(f, separator='//\n', read_size=32768)):
                 if not raw_profile.strip():
                     continue
 
