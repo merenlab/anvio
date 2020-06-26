@@ -1237,7 +1237,12 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
             table = []
 
             for hit in hits:
-                table.append([str(hit['percent_identity']), str(hit['bitscore']), hit['accession'], ' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy])])
+                if hit['accession'] == 'CONSENSUS':
+                    accession = terminal.c(hit['accession'], color='red')
+                    taxon_text = terminal.c(' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy]), color='red')
+                    table.append([str(hit['percent_identity']), str(hit['bitscore']), accession, taxon_text])
+                else:
+                    table.append([str(hit['percent_identity']), str(hit['bitscore']), hit['accession'], ' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy])])
 
             anvio.TABULATE(table, header)
         else:
