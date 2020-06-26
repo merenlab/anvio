@@ -220,7 +220,7 @@ class HMMer:
             workers.append(t)
 
         self.progress.new('Processing')
-        self.progress.update('Running HMM scan in %d threads...' % (self.num_threads_to_use))
+        self.progress.update('Running %s in %d threads...' % (self.program_to_use, self.num_threads_to_use))
 
         # Wait for all workers to finish.
         for worker in workers:
