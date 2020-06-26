@@ -1290,12 +1290,6 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
             raw_search_output = diamond.blastp_stdin_multi(fasta_formatted_sequence)
         elif self.trna_focus:
-            # FIXME FIXME FIXME FIXME FIXME
-            # the following line must be deleted. but we can't delete it unless we first fix the
-            # anvi-scan-trna's code. curently it uses gene names as aminoacid_codon, when it should
-            # use aminoacid_anticodon.
-            item_name = utils.rev_comp(item_name)
-
             target_database_path = self.ctx.anticodons[item_name]['db']
 
             blast = BLAST(None, target_database_path, run=run_quiet, progress=progress_quiet)
