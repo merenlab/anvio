@@ -308,7 +308,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
             raise ConfigError('It looks the fasta_txt file you provided "%s" is empty.' % self.fasta_txt_file)
 
         for name in self.contigs_information.keys():
-            u.is_this_name_OK_for_database('fasta.txt entry name', name, stringent=True)
+            u.is_this_name_OK_for_database('fasta.txt entry name', name, additional_chars_allowed='.')
 
         columns = next(iter(self.contigs_information.values()))
         bad_columns = [c for c in columns if c not in w.get_fields_for_fasta_information()]
