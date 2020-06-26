@@ -533,15 +533,23 @@ class HMMProfile(object):
         }
 
         # Parse the header
-        FIELDS = {'NAME', 'ACC', 'DESC', 'LENG', 'ALPH', 'MAP', 'CONS'}
+        FIELDS = {
+            'NAME': lambda x: x,
+            'ACC': lambda x: x,
+            'DESC': lambda x: x,
+            'LENG': lambda x: int(x),
+            'ALPH': lambda x: x,
+            'MAP': lambda x: True if x == 'yes' else False,
+            'CONS': lambda x: True if x == 'yes' else False,
+        }
 
         profile_split = raw_profile.split()
-        for i, word in enumerate(profile_split):
-            if word in FIELDS:
-                profile[word] = profile_split[i+1]
-                FIELDS.remove(word)
+        for i, TAG in enumerate(profile_split):
+            if TAG in FIELDS:
+                profile[TAG] = FIELDS[TAG](profile_split[i+1])
+                FIELDS.pop(TAG)
 
-            if word == 'HMM':
+            if TAG == 'HMM':
                 # We are done parsing the header
                 break
 
@@ -564,6 +572,9 @@ class HMMProfile(object):
 
             alphabet = line.split()[1:]
             states = raw_lines[line_no+1].split()[1:]
+
+            profile['alphabet'] = alphabet
+            profile['states'] = states
 
             line_no += 2
             break
