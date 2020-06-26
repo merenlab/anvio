@@ -3363,6 +3363,13 @@ def is_contigs_db(db_path):
     return True
 
 
+def is_tRNAseq_db(db_path):
+    filesnpaths.is_file_exists(db_path)
+    if get_db_type(db_path) != 'tRNAseq':
+        raise ConfigError("'%s' is not an anvi'o tRNAseq database." % db_path)
+    return True
+
+
 def is_pan_or_profile_db(db_path, genes_db_is_also_accepted=False):
     ok_db_types = ['pan', 'profile']
 
@@ -3864,3 +3871,131 @@ class Mailer:
         self.progress.end()
 
         self.run.info('E-mail', 'Successfully sent to "%s"' % to)
+
+
+class SequenceDereplicator:
+    def __init__(self, id_list, seq_list, extra_list=None):
+        if len(id_list) != len(seq_list):
+            raise ConfigError(
+                "SequenceDereplicator takes a list of sequence IDs and a list of sequence strings. "
+                "Your input lists were not the same length. "
+                "The ID list had a length of %d, and the sequence list had a length of %d."
+                % (len(id_list), len(seq_list)))
+        if extra_list:
+            if len(extra_list) != len(seq_list):
+                raise ConfigError(
+                    "SequenceDereplicator takes an optional extra list of sequence information. "
+                    "Your extra list was not the same length as the ID and sequence lists. "
+                    "The extra list had a length of %d, while the others had a length of %d."
+                    % (len(extra_list), len(seq_list)))
+
+        self.id_list = id_list
+        self.seq_list = seq_list
+        self.hashed_seq_list = [hash(seq) for seq in self.seq_list]
+        if extra_list:
+            self.extra_list = extra_list
+        else:
+            self.extra_list = []
+
+
+    def full_length_dereplicate(self):
+        seq_length_list = [len(seq) for seq in self.seq_list]
+        full_dict = {seq_length: {} for seq_length in sorted(set(seq_length_list))}
+        extra_iter = iter(self.extra_list)
+        for seq_length, hashed_seq, seq_id, seq in zip(seq_length_list, self.hashed_seq_list, self.id_list, self.seq_list):
+            inner_dict = full_dict[seq_length]
+            try:
+                if self.extra_list:
+                    value = inner_dict[hashed_seq]
+                    value[1].append(seq_id)
+                    value[2].append(next(extra_iter))
+                else:
+                    inner_dict[hashed_seq][1].append(seq_id)
+            except KeyError:
+                if self.extra_list:
+                    inner_dict[hashed_seq] = (seq, [seq_id], [next(extra_iter)])
+                else:
+                    inner_dict[hashed_seq] = (seq, [seq_id])
+
+        cluster_list = []
+        for inner_dict in full_dict.values():
+            cluster_list.extend(inner_dict.values())
+        cluster_list.sort(key=lambda value: -len(value[1]))
+
+        return cluster_list
+
+
+    def prefix_dereplicate(self):
+
+        prefix_dict = self.get_prefix_dict(self.seq_list, self.id_list, self.seq_list)
+
+        hit_dict = {}
+        cluster_dict = {}
+        extra_iter = iter(self.extra_list)
+        for query_id, query_seq, query_hash in zip(self.id_list, self.seq_list, self.hashed_seq_list):
+            if self.extra_list:
+                extra_item = next(extra_iter)
+            hit_id_list = prefix_dict[len(query_seq)][query_hash]
+            hit_dict[query_id] = hit_id_list
+            if self.extra_list:
+                member_item = (query_id, len(query_seq), extra_item)
+            else:
+                member_item = (query_id, len(query_seq))
+            for hit_id in hit_id_list:
+                try:
+                    cluster_dict[hit_id][1].append(member_item)
+                except KeyError:
+                    cluster_dict[hit_id] = ['', [member_item]]
+                if query_id == hit_id:
+                    cluster_dict[hit_id][0] = query_seq
+
+        cluster_list = []
+        for hit_id, value in cluster_dict.items():
+            if len(hit_dict[hit_id]) == 1:
+                cluster_list.append((hit_id, value[0], sorted(value[1], key=lambda t: -t[1])))
+        del hit_dict
+
+        membership_list = self.get_membership_list(
+            [cluster[0] for cluster in cluster_list], [cluster[1] for cluster in cluster_list])
+
+        return membership_list, cluster_list
+
+
+    def get_prefix_dict(self, query_seq_list, target_id_list, target_seq_list):
+
+        seq_length_list = [len(seq) for seq in query_seq_list]
+        min_seq_length = min(seq_length_list)
+        max_seq_length = max(seq_length_list)
+        del seq_length_list
+
+        prefix_dict = {prefix_length: {} for prefix_length in range(min_seq_length, max_seq_length + 1)}
+        for prefix_length, inner_dict in prefix_dict.items():
+            for seq_id, seq in zip(target_id_list, target_seq_list):
+                if prefix_length > len(seq):
+                    continue
+                hashed_prefix = hash(seq[: prefix_length])
+                try:
+                    inner_dict[hashed_prefix].append((seq_id, len(seq)))
+                except KeyError:
+                    inner_dict[hashed_prefix] = [(seq_id, len(seq))]
+        for inner_dict in prefix_dict.values():
+            for hashed_seq, target_list in inner_dict.items():
+                inner_dict[hashed_seq] = [seq_id for seq_id, seq_length in sorted(target_list, key=lambda target: -target[1])]
+
+        return prefix_dict
+
+
+    def get_membership_list(self, target_id_list, target_seq_list):
+
+        prefix_dict = self.get_prefix_dict(self.seq_list, target_id_list, target_seq_list)
+
+        membership_list = []
+        extra_iter = iter(self.extra_list)
+        for query_id, query_seq, query_hash in zip(self.id_list, self.seq_list, self.hashed_seq_list):
+            hit_id_list = prefix_dict[len(query_seq)][query_hash]
+            if self.extra_list:
+                membership_list.append((query_id, hit_id_list, next(extra_iter)))
+            else:
+                membership_list.append((query_id, hit_id_list))
+
+        return membership_list

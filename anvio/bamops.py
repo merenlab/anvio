@@ -219,7 +219,16 @@ class Read:
         self.reference_end = read.reference_end
 
         if read.has_tag('MD'):
-            self.reference_sequence = np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)
+            try:
+                self.reference_sequence = np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)
+            except AssertionError:
+                print(read.reference_name)
+                print(read.query_name)
+                print(read.query_sequence)
+                print(self.cigartuples)
+                print(self.reference_start)
+                print(self.reference_end)
+                self.reference_sequence = np.array([ord('N')] * (self.reference_end - self.reference_start))
         else:
             self.reference_sequence = np.array([ord('N')] * (self.reference_end - self.reference_start))
 

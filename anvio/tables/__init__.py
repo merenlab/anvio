@@ -2,8 +2,10 @@
 # pylint: disable=line-too-long
 """ Table schemas for databases."""
 
-from anvio.constants import codons, nucleotides, essential_genome_info
+from anvio.constants import codons, nucleotides, essential_genome_info, db_formatted_tRNA_feature_names
+from anvio.trnaidentifier import THREEPRIME_VARIANT_LIST
 
+import itertools
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -20,6 +22,7 @@ pan_db_version = "14"
 auxiliary_data_version = "2"
 structure_db_version = "2"
 genomes_storage_vesion = "7"
+tRNAseq_db_version = "1"
 workflow_config_version = "1"
 metabolic_modules_db_version = "2"
 
@@ -30,6 +33,7 @@ versions_for_db_types = {'contigs': contigs_db_version,
                          'pan': pan_db_version,
                          'genomestorage': genomes_storage_vesion,
                          'auxiliary data for coverages': auxiliary_data_version,
+                         'tRNAseq': tRNAseq_db_version,
                          'config': workflow_config_version,
                          'modules': metabolic_modules_db_version}
 
@@ -65,7 +69,7 @@ splits_info_table_structure            = ['split', 'order_in_parent' , 'start' ,
 splits_info_table_types                = ['text' ,     'numeric     ','numeric','numeric', 'numeric',   'numeric' ,      'numeric'     ,  'text'  ]
 
 
-# following tables deal with open reading frames found in contis by a gene caller (such as prodigal), and their functional annotations and stuff.
+# following tables deal with open reading frames found in contigs by a gene caller (such as prodigal), and their functional annotations and stuff.
 
 genes_in_contigs_table_name             = 'genes_in_contigs'
 genes_in_contigs_table_structure        = ['gene_callers_id', 'contig', 'start' , 'stop'  , 'direction', 'partial', 'call_type', 'source', 'version']
@@ -272,6 +276,72 @@ module_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      
 pathway_table_name = "kegg_pathway_maps"
 pathway_table_structure = ['pathway_map', 'data_name', 'data_value', 'data_definition', 'line']
 pathway_table_types     = [ 'str'  ,   'str'    ,     'str'   ,       'str'      ,'numeric' ]
+
+####################################################################################################
+#
+#     TABLE DESCRIPTIONS FOR THE tRNASEQ DB
+#
+####################################################################################################
+
+tRNAseq_sequences_table_name            = 'sequences'
+tRNAseq_sequences_table_structure       = ['name', 'replicate_names', 'replicate_count', 'sequence']
+tRNAseq_sequences_table_types           = ['str' , 'str'            , 'numeric'        , 'str']
+
+tRNAseq_acceptor_table_name             = 'acceptor'
+tRNAseq_acceptor_table_structure        = ['name', 'grouped_names', 'group_count', 'sequence_without_acceptor'] + [threeprime_variant + '_count' for threeprime_variant in THREEPRIME_VARIANT_LIST]
+tRNAseq_acceptor_table_types            = ['str' , 'str'          , 'numeric'    , 'str'                      ] + ['numeric' for _ in THREEPRIME_VARIANT_LIST]
+
+tRNAseq_subsequence_table_name          = 'subsequence_relations'
+tRNAseq_subsequence_table_structure     = ['name', 'subsequence_names', 'subsequence_count', 'average_subsequence_multiplicity'] + [threeprime_variant + '_count' for threeprime_variant in THREEPRIME_VARIANT_LIST]
+tRNAseq_subsequence_table_types         = ['str' , 'str'              , 'numeric'          , 'numeric'                         ] + ['numeric' for _ in THREEPRIME_VARIANT_LIST]
+
+tRNAseq_info_table_name                 = 'basic_info'
+tRNAseq_info_table_structure            = ['name', 'is_mature', 'is_long_read', 'is_charged', 'anticodon_sequence', 'amino_acid', 'sequence_length', 'features_start', 'features_stop', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature', 'num_extra_threeprime', 'alpha_start', 'alpha_stop', 'beta_start', 'beta_stop']
+tRNAseq_info_table_types                = ['str' , 'bool'     , 'bool'        , 'bool'      , 'str'               , 'str'       , 'numeric'        , 'numeric'       , 'numeric'      , 'numeric'      , 'numeric'        , 'numeric'   , 'numeric'     , 'numeric'                              , 'numeric'             , 'numeric'    , 'numeric'   , 'numeric'   , 'numeric']
+
+tRNAseq_features_table_name             = 'features'
+tRNAseq_features_table_structure        = ['name'] + list(itertools.chain(*zip([f + '_start' for f in db_formatted_tRNA_feature_names], [f + '_stop' for f in db_formatted_tRNA_feature_names])))
+tRNAseq_features_table_types            = ['str']  + ['str'] * len(db_formatted_tRNA_feature_names) * 2
+
+tRNAseq_unconserved_table_name          = 'unconserved_nucleotides'
+tRNAseq_unconserved_table_structure     = ['name', 'pos'    , 'observed_nucleotide', 'expected_nucleotides']
+tRNAseq_unconserved_table_types         = ['str' , 'numeric', 'str'                , 'str']
+
+tRNAseq_unpaired_table_name             = 'unpaired_nucleotides'
+tRNAseq_unpaired_table_structure        = ['name', 'fiveprime_pos', 'threeprime_pos', 'observed_fiveprime_nucleotide', 'observed_threeprime_nucleotide']
+tRNAseq_unpaired_table_types            = ['str' , 'numeric'      , 'numeric'       , 'str'                          , 'str']
+
+
+tRNAseq_long_sequences_table_name       = 'long_sequences'
+tRNAseq_long_sequences_table_structure  = ['name', 'replicate_names', 'replicate_count', 'sequence']
+tRNAseq_long_sequences_table_types      = ['str' , 'str'            , 'numeric'        , 'str']
+
+tRNAseq_long_acceptor_table_name        = 'long_acceptor'
+tRNAseq_long_acceptor_table_structure   = ['name', 'grouped_names', 'group_count', 'sequence_without_acceptor'] + [threeprime_variant + '_count' for threeprime_variant in THREEPRIME_VARIANT_LIST]
+tRNAseq_long_acceptor_table_types       = ['str' , 'str'          , 'numeric'    , 'str'                      ] + ['numeric' for _ in THREEPRIME_VARIANT_LIST]
+
+tRNAseq_long_subsequence_table_name     = 'long_subsequence_relations'
+tRNAseq_long_subsequence_table_structure= ['name', 'subsequence_names', 'subsequence_count', 'average_subsequence_multiplicity'] + [threeprime_variant + '_count' for threeprime_variant in THREEPRIME_VARIANT_LIST]
+tRNAseq_long_subsequence_table_types    = ['str' , 'str'              , 'numeric'          , 'numeric'                         ] + ['numeric' for _ in THREEPRIME_VARIANT_LIST]
+
+tRNAseq_long_info_table_name            = 'long_basic_info'
+tRNAseq_long_info_table_structure       = ['name', 'is_mature', 'is_long_read', 'is_charged', 'anticodon_sequence', 'amino_acid', 'sequence_length', 'features_start', 'features_stop', 'num_conserved', 'num_unconserved', 'num_paired', 'num_unpaired', 'num_in_extrapolated_fiveprime_feature', 'num_extra_threeprime', 'alpha_start', 'alpha_stop', 'beta_start', 'beta_stop']
+tRNAseq_long_info_table_types           = ['str' , 'bool'     , 'bool'        , 'bool'      , 'str'               , 'str'       , 'numeric'        , 'numeric'       , 'numeric'      , 'numeric'      , 'numeric'        , 'numeric'   , 'numeric'     , 'numeric'                              , 'numeric'             , 'numeric'    , 'numeric'   , 'numeric'   , 'numeric']
+
+tRNAseq_long_features_table_name        = 'long_features'
+tRNAseq_long_features_table_structure   = ['name'] + list(itertools.chain(*zip([f + '_start' for f in db_formatted_tRNA_feature_names], [f + '_stop' for f in db_formatted_tRNA_feature_names])))
+tRNAseq_long_features_table_types       = ['str']  + ['str'] * len(db_formatted_tRNA_feature_names) * 2
+
+tRNAseq_long_unconserved_table_name     = 'long_unconserved_nucleotides'
+tRNAseq_long_unconserved_table_structure= ['name', 'pos'    , 'observed_nucleotide', 'expected_nucleotides']
+tRNAseq_long_unconserved_table_types    = ['str' , 'numeric', 'str'                , 'str']
+
+tRNAseq_long_unpaired_table_name        = 'long_unpaired_nucleotides'
+tRNAseq_long_unpaired_table_structure   = ['name', 'fiveprime_pos', 'threeprime_pos', 'observed_fiveprime_nucleotide', 'observed_threeprime_nucleotide']
+tRNAseq_long_unpaired_table_types       = ['str' , 'numeric'      , 'numeric'       , 'str'                          , 'str']
+
+
+
 
 ####################################################################################################
 #

@@ -1,0 +1,257 @@
+# -*- coding: utf-8
+
+import anvio
+import anvio.terminal as terminal
+import anvio.db
+
+
+__author__ = "Samuel Miller"
+__copyright__ = "Copyright 2017, The anvio Project"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Samuel Miller"
+__email__ = "samuelmiller10@gmail.com"
+
+
+import argparse
+import os
+import pandas as pd
+import pysam
+import shutil
+import tempfile
+
+import anvio
+import anvio.db
+import anvio.terminal as terminal
+import anvio.utils as u
+import anvio.workflows as w
+
+from anvio.workflows.tRNAseq import tRNASeqWorkflow
+from anvio.errors import ConfigError
+
+run = terminal.Run()
+progress = terminal.Progress()
+
+
+M = tRNASeqWorkflow(argparse.Namespace(config=config))
+M.init()
+dirs_dict = M.dirs_dict
+
+
+rule tRNAseq_workflow_target_rule:
+    ''' The target rule for the workflow '''
+    input: M.target_files
+
+
+rule make_iu_input:
+    ''' Create an Illumina-utils samples file from samples_txt (run once) '''
+
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "make_iu_input.log")
+    # The input file is marked "ancient" to prevent Snakemake from rerunning this step
+    # when the samples_txt file has been changed.
+    input: ancient(M.get_param_value_from_config(['samples_txt']))
+    output: os.path.join(dirs_dict['QC_DIR'], "iu_samples_input.txt")
+    threads: M.T('make_iu_input')
+    resources: nodes = M.T('make_iu_input')
+    run:
+        samples_txt_df = pd.read_csv(input[0], sep='\t', index_col=False)
+        iu_samples_input_df = samples_txt_df[['r1', 'r2']] # r1 and r2 filepaths
+        iu_samples_input_df['sample'] = samples_txt_df['sample'] + '_' + samples_txt_df['split'] # e.g., sample1_demethylase, sample1_untreated
+        iu_samples_input_df[['sample', 'r1', 'r2']].to_csv(output[0], sep='\t', index=False) # reorder columns
+
+
+rule iu_gen_configs:
+    '''
+    Create an Illumina-utils config file for each sample+split pair
+    from the Illumina-utils samples file (run once)
+    '''
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "iu_gen_configs.log")
+    # The input file is marked "ancient" to prevent Snakemake from rerunning this step
+    # when the iu_samples_input file has been changed.
+    input: ancient(os.path.join(dirs_dict["QC_DIR"], "iu_samples_input.txt"))
+    output: expand(os.path.join(dirs_dict["QC_DIR"], "{sample_split_prefix}.ini"), sample_split_prefix=M.sample_split_prefixes)
+    params:
+        DIR = dirs_dict['QC_DIR'],
+        r1_prefix = M.get_rule_param('iu_gen_configs', '--r1-prefix'), # regex-formatted adapter tag at the beginning of the forward read, e.g., "^...AAGT"
+        r2_prefix = M.get_rule_param('iu_gen_configs', '--r2-prefix') # regex-formatted adapter tag at the beginning of the reverse read
+    threads: M.T('iu_gen_configs')
+    resources: nodes = M.T('iu_gen_configs')
+    shell: "iu-gen-configs {input} -o {params.DIR} {params.r1_prefix} {params.r2_prefix} >> {log} 2>&1"
+
+
+rule iu_merge_pairs:
+    ''' Merge paired-end reads using Illumina-utils '''
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-iu_merge_pairs.log")
+    input: os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}.ini")
+    output:
+        merged = temp(os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_MERGED")) if M.gzip_iu_merge_pairs_output else os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_MERGED"),
+        stats = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_STATS")
+    params:
+        marker_gene_stringent = M.get_rule_param('iu_merge_pairs', '--marker-gene-stringent'), # allows for both full and partial overlap of inserts, by default trimming trailing adapters following fully overlapping inserts
+        max_num_mismatches = M.get_rule_param('iu_merge_pairs', '--max-num-mismatches'),
+        report_r1_prefix = M.get_rule_param('iu_merge_pairs', '--report-r1-prefix'), # flag for reporting the actual sequence of an adapter tag at the beginning of the forward read, which should be specified in iu_gen_configs
+        report_r2_prefix = M.get_rule_param('iu_merge_pairs', '--report-r2-prefix') # flag for reporting the actual sequence of an adapter tag at the beginning of the reverse read
+    threads: M.T('iu_merge_pairs')
+    resources: nodes = M.T('iu_merge_pairs')
+    run:
+        shell("iu-merge-pairs {input} {params.marker_gene_stringent} {params.max_num_mismatches} {params.report_r1_prefix} {params.report_r2_prefix} --num-threads {threads} >> {log} 2>&1")
+        if M.gzip_iu_merge_pairs_output:
+            shell("gzip -k {output.merged} >> {log} 2>&1")
+            shell("gzip %s >> {log} 2>&1" % os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_FAILED"))
+            shell("gzip %s >> {log} 2>&1" % os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_FAILED_WITH_Ns"))
+            if params.report_r1_prefix:
+                shell("gzip %s >> {log} 2>&1" % os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_MERGED_R1_PREFIX"))
+            if params.report_r2_prefix:
+                shell("gzip %s >> {log} 2>&1" % os.path.join(dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_MERGED_R2_PREFIX"))
+
+
+rule gen_qc_report:
+    ''' Report all quality control statistics (run once) '''
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "gen_qc_report.log")
+    input: expand(os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}_STATS"), sample_split_prefix=M.sample_split_prefixes)
+    output: report = os.path.join(dirs_dict['QC_DIR'], "qc_report.txt") # optional target file that triggers Illumina-utils QC steps
+    threads: M.T('gen_qc_report')
+    resources: nodes = M.T('gen_qc_report')
+    run:
+        report_dict = {}
+        headers = []
+        for i, filename in enumerate(input):
+            sample_split = os.path.basename(filename).split("_STATS")[0]
+            report_dict[sample_split] = {}
+            file_headers = []
+            with open(filename) as f:
+                firstline = True
+                for line in f:
+                    if line == '\n':
+                        break
+                    line_frags = line.rstrip().split(' ...')
+                    header = line_frags[0]
+                    file_headers.append(header)
+                    number = line_frags[1].split('\t')[1]
+                    report_dict[sample_split][header] = number
+            if i == 0:
+                headers = file_headers
+            else:
+                if file_headers != headers:
+                    raise ConfigError("The difference in output headers between STATS files "
+                                      "indicates an inconsistency in how files were processed by 'iu-merge-pairs'. "
+                                      "These files, for example, have a difference between their headers: "
+                                      "%s and %s" % (input[i], input[i - 1]))
+        u.store_dict_as_TAB_delimited_file(report_dict, output.report, headers=['sample + split'] + headers)
+
+
+def gunzip_fasta(fasta, log):
+    fasta_gunzipped = os.path.splitext(fasta)[0]
+    shell("gunzip < %s > %s 2>> %s" % (fasta, fasta_gunzipped, log))
+    return fasta_gunzipped
+
+
+rule anvi_reformat_fasta:
+    ''' Reformat the FASTA file with Anvi\'o-compliant deflines '''
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-reformat_fasta.log")
+    input: M.get_input_for_anvi_reformat_fasta
+    output:
+        fasta = temp(os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}-reformatted.fasta")) if M.gzip_anvi_reformat_fasta_output else os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}-reformatted.fasta"),
+        report = os.path.join(dirs_dict['QC_DIR'], "{sample_split_prefix}-reformat_report.txt") # optional target file that triggers reformatting
+    threads: M.T('anvi_reformat_fasta')
+    resources: nodes = M.T('anvi_reformat_fasta')
+    params:
+        simplify_names = M.get_rule_param('anvi_reformat_fasta', '--simplify-names')
+    run:
+        if input[0].endswith('.gz'):
+            decompressed_fasta = gunzip_fasta(input[0], log[0])
+        else:
+            decompressed_fasta = input[0]
+        shell("anvi-script-reformat-fasta -o {output.fasta} {params.simplify_names} --report-file {output.report} %s >> {log} 2>&1" % decompressed_fasta)
+        if input[0].endswith('.gz'):
+            os.remove(decompressed_fasta)
+        if M.gzip_anvi_reformat_fasta_output:
+            shell("gzip -k {output.fasta} >> {log} 2>&1")
+
+
+rule anvi_gen_tRNAseq_database:
+    ''' Identify tRNA sequences and their structural features, storing in an Anvi\'o database '''
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-anvi_gen_tRNAseq_database.log")
+    input: M.get_input_for_anvi_gen_tRNAseq_database
+    output:
+        db = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-tRNAseq.db"),
+        fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-seeds.fasta"),
+        replicate_txt = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-seed_replicates.txt"),
+        nontRNA_fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-nontRNA.fasta")
+    threads: M.T('anvi_gen_tRNAseq_database')
+    resources: nodes = M.T('anvi_gen_tRNAseq_database')
+    params:
+        charging_recorded = M.get_rule_param('anvi_gen_tRNAseq_database', '--charging-recorded'), # tRNA-seq chemistry can record amino acid charging
+        trust_fasta = M.get_rule_param('anvi_gen_tRNAseq_database', '--trust-fasta'), # save time by skipping basic FASTA format checks
+        only_report_tRNA = M.get_rule_param('anvi_gen_tRNAseq_database', '--only-report-tRNA'), # do not produce a file of sequences not identified as tRNA
+        verbose = M.get_rule_param('anvi_gen_tRNAseq_database', '--verbose')
+    run:
+        if input[0].endswith('.gz'):
+            decompressed_fasta = gunzip_fasta(input[0], log[0])
+        else:
+            decompressed_fasta = input[0]
+        shell("anvi-gen-trnaseq-database -f %s -n {wildcards.sample_split_prefix} -o {output.db} {params.charging_recorded} {params.trust_fasta} {params.only_report_tRNA} -T {threads} {params.verbose} >> {log} 2>&1" % decompressed_fasta)
+        if input[0].endswith('.gz'):
+            os.remove(decompressed_fasta)
+
+
+rule map_tRNA_against_self:
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-map_tRNA_to_itself.log")
+    input: fasta = rules.anvi_gen_tRNAseq_database.output.fasta
+    output:
+        sam = temp(os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}.sam")),
+        raw_bam = temp(os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-raw.bam")),
+        bam = temp(os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}.bam")),
+        bam_index = temp(os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}.bam.bai"))
+    threads: M.T('map_tRNA')
+    resources: nodes = M.T('map_tRNA')
+    params: max_possible_alignments = M.get_param_value_from_config(['map_tRNA_against_self', '--max-possible-alignments'])
+    run:
+        index_dir = os.path.join(tempfile.gettempdir(), "BAM_INDEX-" + wildcards.sample_split_prefix)
+        os.mkdir(index_dir)
+        index_path = os.path.join(index_dir, wildcards.sample_split_prefix)
+        shell("bowtie2-build -f {input.fasta} %s >> {log} 2>&1" % index_path)
+        # Use prohibitively high gap penalties to ensure reads can only map with a mismatch and not gaps in the alignment.
+        # Use the longest possible subsequence seed length, 32, to prioritize mapping sensitivity to specificity.
+        # Allow up to one mismatch per subsequence seed.
+        # This means that an average tRNA, length 75, can align to another average tRNA with 2-3 nucleotide substitutions.
+        # Up to two alignments are reported per sequence -- the first alignment is the sequence mapping to itself.
+        shell("bowtie2 -x %s -f {input.fasta} -S {output.sam} -L 32 -N 1 -k {params.max_possible_alignments} --rdg 100,3 --rfg 100,3 -p {threads} >> {log} 2>&1" % index_path)
+        pysam.view('-bS', output.sam, '-F', '4', '-o', output.raw_bam, catch_stdout=False) # Use pysam to avoid samtools dependency
+        shell("anvi-init-bam {output.raw_bam} -o {output.bam} -T {threads} >> {log} 2>&1")
+        shutil.rmtree(index_dir)
+
+
+rule anvi_agglomerate:
+    version: 1.0
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-anvi_agglomerate.log")
+    input:
+        fasta = rules.anvi_gen_tRNAseq_database.output.fasta,
+        replicate_txt = rules.anvi_gen_tRNAseq_database.output.replicate_txt,
+        bam = rules.map_tRNA_against_self.output.bam,
+        bam_index = rules.map_tRNA_against_self.output.bam_index
+    output:
+        fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-agglomerated.fasta"),
+        bam = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-agglomerated.bam"),
+        bam_index = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-agglomerated.bam.bai")
+    threads: M.T('anvi_agglomerate')
+    resources: nodes = M.T('anvi_agglomerate')
+    params: max_possible_alignments = M.get_param_value_from_config(['map_tRNA_against_self', '--max-possible-alignments'])
+    run:
+        shell("anvi-agglomerate -f {input.fasta} -b {input.bam} -F {output.fasta} -B {output.bam} -r {input.replicate_txt} -m {params.max_possible_alignments} >> {log} 2>&1")
+
+
+if 'workflows/tRNAseq' in workflow.included[0]:
+    # Check if all program dependencies are met.
+    # For this line to be effective,
+    # there should be an initial dry run step --
+    # which is the default behavior of `WorkflowSuperClass`, so you are most likely covered.
+    M.check_workflow_program_dependencies(workflow, dont_raise=True)
