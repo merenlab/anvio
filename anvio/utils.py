@@ -2282,7 +2282,7 @@ def check_collection_name(collection_name):
 
 
 
-def is_this_name_OK_for_database(variable_name, content, stringent=True):
+def is_this_name_OK_for_database(variable_name, content, stringent=True, additional_chars_allowed=''):
     if not content:
         raise ConfigError("But the %s is empty? Come on :(" % variable_name)
 
@@ -2294,6 +2294,9 @@ def is_this_name_OK_for_database(variable_name, content, stringent=True):
         allowed_chars = constants.allowed_chars.replace('.', '').replace('-', '')
     else:
         allowed_chars = constants.allowed_chars.replace('.', '')
+
+    if len(additional_chars_allowed):
+        allowed_chars += additional_chars_allowed
 
     if len([c for c in content if c not in allowed_chars]):
         raise ConfigError("Well, the %s contains characters that anvi'o does not like :/ Please limit the characters "
