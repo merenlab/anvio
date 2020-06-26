@@ -458,6 +458,23 @@ class HMMProfile(object):
         self.run.info('Profiles kept', len(self.data))
 
 
+    def write(self, filepath):
+        """Write self.data to an .hmm file.
+
+        Parameters
+        ==========
+        filepath : str
+            If explictly passed None, the source .hmm file will be overwritten.
+        """
+
+        if filepath is None:
+            filepath = self.filepath
+
+        with open(filepath, 'w') as f:
+            for profile in self.data.values():
+                f.write(profile['raw'] + '//\n')
+
+        self.run.info('.hmm written to', filepath)
 
 
     def process_raw_profile(self, raw_profile):
