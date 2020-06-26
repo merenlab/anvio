@@ -2552,7 +2552,7 @@ def set_version():
            t.genomes_storage_vesion, \
            t.structure_db_version, \
            t.tRNAseq_db_version, \
-           t.kegg_modules_db_version
+           t.metabolic_modules_db_version
 
 
 def get_version_tuples():

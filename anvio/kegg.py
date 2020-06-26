@@ -1335,7 +1335,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # get rid of splits and contigs (and their associated gene calls) that are not in the profile DB
         if self.profile_db_path:
-            split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
+            # if we were given a blank profile, we will assume we want all splits and pull all splits from the contigs DB
+            if utils.is_blank_profile(self.profile_db_path):
+                self.run.warning("You seem to have provided a blank profile. No worries, we can still estimate metabolism for you. "
+                                 "But we cannot load splits from the profile DB, so instead we are assuming that you are interested in "
+                                 "ALL splits and we will load those from the contigs database.")
+                split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.contigs_db_path))
+            else:
+                split_names_in_profile_db = set(utils.get_all_item_names_from_the_database(self.profile_db_path))
             split_names_in_contigs_db = set([tpl[1] for tpl in genes_in_splits])
             splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
 
@@ -1684,9 +1691,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         else:
             meta_dict_for_bin[mod]["most_complete_paths"] = []
 
+        was_already_complete = meta_dict_for_bin[mod]["complete"]
         now_complete = True if meta_dict_for_bin[mod]["percent_complete"] >= self.module_completion_threshold else False
         meta_dict_for_bin[mod]["complete"] = now_complete
-        if now_complete:
+        if now_complete and not was_already_complete:
             meta_dict_for_bin["num_complete_modules"] += 1
 
         return now_complete
@@ -1875,8 +1883,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if not self.quiet:
             if mods_with_nonessential_steps:
                 self.run.warning("Please note that anvi'o found one or more non-essential steps in the following KEGG modules: %s.   "
-                                 "At this time, we are not counting these steps in our percent completion estimates. But we still kept track of which "
-                                 "of these non-essential steps were found to be complete. You can see this information in the output file."
+                                 "At this time, we are not counting these steps in our percent completion estimates."
                                  % (", ".join(mods_with_nonessential_steps)))
 
             if mods_with_unassociated_ko:
@@ -3073,6 +3080,7 @@ class KeggModulesDatabase(KeggContext):
         self.db.set_meta_value('total_entries', mod_table.get_total_entries())
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('hash', self.get_db_content_hash())
+        self.db.set_meta_value('version', t.metabolic_modules_db_version)
 
         self.db.disconnect()
 
