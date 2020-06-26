@@ -372,6 +372,7 @@ class HMMProfile(object):
         filesnpaths.is_file_exists(self.filepath)
 
         self.data = {}
+        self.load()
 
 
     def get_chunk(self, stream, separator, read_size=4096):

@@ -285,7 +285,8 @@ class InteracdomeSetup(object):
         interacdome_pfam_accessions = self.get_interacdome_pfam_accessions()
 
         hmm_profiles = pfam.HMMProfile(os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm'))
-        hmm_profiles.filter(by='ACC', subset=interacdome_pfam_accessions, filepath=None)
+        hmm_profiles.filter(by='ACC', subset=interacdome_pfam_accessions)
+        hmm_profiles.write(filepath=None) # overwrites
 
         # hmmpresses the new .hmm
         self.pfam_setup.hmmpress_files()
