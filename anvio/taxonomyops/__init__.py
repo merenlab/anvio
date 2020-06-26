@@ -1270,107 +1270,114 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
         return d
 
 
+    def get_gene_estimation_output(self, item_name, fasta_formatted_sequence, log_file_path, show_all_hits=True):
+        genes_estimation_output=[]
+
+        if self.scgs_focus:
+            target_database_path = self.ctx.SCGs[item_name]['db']
+
+            diamond = Diamond(target_database_path, run=run_quiet, progress=progress_quiet)
+            diamond.max_target_seqs = self.max_target_seqs
+            diamond.evalue = self.evalue
+            diamond.min_pct_id = self.min_pct_id
+            diamond.num_threads = self.num_threads
+            diamond.run.log_file_path = log_file_path
+
+            raw_search_output = diamond.blastp_stdin_multi(fasta_formatted_sequence)
+        elif self.trna_focus:
+            # FIXME FIXME FIXME FIXME FIXME
+            # the following line must be deleted. but we can't delete it unless we first fix the
+            # anvi-scan-trna's code. curently it uses gene names as aminoacid_codon, when it should
+            # use aminoacid_anticodon.
+            item_name = utils.rev_comp(item_name)
+
+            target_database_path = self.ctx.anticodons[item_name]['db']
+
+            blast = BLAST(None, target_database_path, run=run_quiet, progress=progress_quiet)
+            blast.search_program = 'blastn'
+            blast.max_target_seqs = self.max_target_seqs
+            blast.evalue = self.evalue
+            blast.min_pct_id = self.min_pct_id
+            blast.num_threads = self.num_threads
+            blast.run.log_file_path = log_file_path
+
+            raw_search_output = blast.blast_stdin(fasta_formatted_sequence)
+        else:
+            raise ConfigError("You must be joking, Mr. Feynman.")
+
+        hits_per_gene = {}
+        for blastp_hit in raw_search_output.split('\n'):
+            if len(blastp_hit) and not blastp_hit.startswith('Query'):
+                fields = blastp_hit.split('\t')
+
+                try:
+                    gene_callers_id = int(fields[0])
+                except:
+                    gene_callers_id = fields[0]
+
+                # FIXME FIXME FIXME FIXME FIXME
+                # there shold be no conditional in the following line, and " + '.1'" addition specific to the trna case
+                # must be removed. But for that, we first need Sam to regenerate tRNA anticodon FASTA files with proper
+                # accession ids :)
+                if self.trna_focus:
+                    hit = dict(zip(['accession', 'percent_identity', 'bitscore'], [fields[1] + '.1', float(fields[2]), float(fields[11])]))
+                else:
+                    hit = dict(zip(['accession', 'percent_identity', 'bitscore'], [fields[1], float(fields[2]), float(fields[11])]))
+
+                hit = self.update_dict_with_taxonomy(hit)
+
+                if gene_callers_id not in hits_per_gene:
+                    hits_per_gene[gene_callers_id] = {}
+
+                if item_name not in hits_per_gene[gene_callers_id]:
+                    hits_per_gene[gene_callers_id][item_name] = []
+
+                hits_per_gene[gene_callers_id][item_name].append(hit)
+
+        if anvio.DEBUG:
+            if not len(hits_per_gene):
+                with self.mutex:
+                    self.progress.reset()
+                    self.show_hits_gene_callers_id(fasta_formatted_sequence.split('\n')[0][1:], fasta_formatted_sequence.split('\n')[1], item_name, [])
+
+        for gene_callers_id, raw_hits in hits_per_gene.items():
+            if len(raw_hits.keys()) > 1:
+                self.run.warning("As crazy as it sounds, the gene callers id `%d` seems to have hit more than one SCG o_O Anvi'o will only use "
+                                 "one of them almost absolutely randomly. Here are the SCGs the gene sequence matches: '%s'" % [s for s in raw_hits.keys()])
+
+            item_name = list(raw_hits.keys())[0]
+            raw_hits = raw_hits[item_name]
+
+            consensus_hit = self.get_consensus_hit(raw_hits)
+            consensus_hit['accession'] = 'CONSENSUS'
+
+            if anvio.DEBUG or show_all_hits:
+                # avoid race conditions when priting this information when `--debug` is true:
+                with self.mutex:
+                    self.progress.reset()
+                    self.show_hits_gene_callers_id(gene_callers_id,
+                                                   fasta_formatted_sequence.split('\n')[1],
+                                                   item_name,
+                                                   raw_hits + [consensus_hit])
+
+            genes_estimation_output.append([gene_callers_id, item_name, [consensus_hit]])
+
+        return genes_estimation_output
+
+
     def blast_search_worker(self, input_queue, output_queue, error_queue, log_file_path):
-        """BLAST each SCG identified in the contigs database against the corresopinding
-           target local database of GTDB seqeunces
+        """BLAST each SCG or tRNA sequence identified in the contigs database against the corresopinding
+           target local database of GTDB seqeunces in parallel.
         """
 
         while True:
             item_name, fasta_formatted_sequence = input_queue.get(True)
 
-            if self.scgs_focus:
-                target_database_path = self.ctx.SCGs[item_name]['db']
-
-                diamond = Diamond(target_database_path, run=run_quiet, progress=progress_quiet)
-                diamond.max_target_seqs = self.max_target_seqs
-                diamond.evalue = self.evalue
-                diamond.min_pct_id = self.min_pct_id
-                diamond.num_threads = self.num_threads
-                diamond.run.log_file_path = log_file_path
-
-                raw_search_output = diamond.blastp_stdin_multi(fasta_formatted_sequence)
-            elif self.trna_focus:
-                # FIXME FIXME FIXME FIXME FIXME
-                # the following line must be deleted. but we can't delete it unless we first fix the
-                # anvi-scan-trna's code. curently it uses gene names as aminoacid_codon, when it should
-                # use aminoacid_anticodon.
-                item_name = utils.rev_comp(item_name)
-
-                target_database_path = self.ctx.anticodons[item_name]['db']
-
-                blast = BLAST(None, target_database_path, run=run_quiet, progress=progress_quiet)
-                blast.search_program = 'blastn'
-                blast.max_target_seqs = self.max_target_seqs
-                blast.evalue = self.evalue
-                blast.min_pct_id = self.min_pct_id
-                blast.num_threads = self.num_threads
-                blast.run.log_file_path = log_file_path
-
-                raw_search_output = blast.blast_stdin(fasta_formatted_sequence)
-            else:
-                raise ConfigError("You must be joking, Mr. Feynman.")
-
-            hits_per_gene = {}
-            genes_estimation_output=[]
-
-            for blastp_hit in raw_search_output.split('\n'):
-                if len(blastp_hit) and not blastp_hit.startswith('Query'):
-                    fields = blastp_hit.split('\t')
-
-                    try:
-                        gene_callers_id = int(fields[0])
-                        error_queue.put(None)
-                    except:
-                        error_queue.put(raw_search_output)
-
-                    # FIXME FIXME FIXME FIXME FIXME
-                    # there shold be no conditional in the following line, and " + '.1'" addition specific to the trna case
-                    # must be removed. But for that, we first need Sam to regenerate tRNA anticodon FASTA files with proper
-                    # accession ids :)
-                    if self.trna_focus:
-                        hit = dict(zip(['accession', 'percent_identity', 'bitscore'], [fields[1] + '.1', float(fields[2]), float(fields[11])]))
-                    else:
-                        hit = dict(zip(['accession', 'percent_identity', 'bitscore'], [fields[1], float(fields[2]), float(fields[11])]))
-
-                    hit = self.update_dict_with_taxonomy(hit)
-
-                    if gene_callers_id not in hits_per_gene:
-                        hits_per_gene[gene_callers_id] = {}
-
-                    if item_name not in hits_per_gene[gene_callers_id]:
-                        hits_per_gene[gene_callers_id][item_name] = []
-
-                    hits_per_gene[gene_callers_id][item_name].append(hit)
-                else:
-                    error_queue.put(None)
-
-            if anvio.DEBUG:
-                if not len(hits_per_gene):
-                    with self.mutex:
-                        self.progress.reset()
-                        self.show_hits_gene_callers_id(fasta_formatted_sequence.split('\n')[0][1:], fasta_formatted_sequence.split('\n')[1], item_name, [])
-
-            for gene_callers_id, raw_hits in hits_per_gene.items():
-                if len(raw_hits.keys()) > 1:
-                    self.run.warning("As crazy as it sounds, the gene callers id `%d` seems to have hit more than one SCG o_O Anvi'o will only use "
-                                     "one of them almost absolutely randomly. Here are the SCGs the gene sequence matches: '%s'" % [s for s in raw_hits.keys()])
-
-                item_name = list(raw_hits.keys())[0]
-                raw_hits = raw_hits[item_name]
-
-                consensus_hit = self.get_consensus_hit(raw_hits)
-                consensus_hit['accession'] = 'CONSENSUS'
-
-                if anvio.DEBUG:
-                    # avoid race conditions when priting this information when `--debug` is true:
-                    with self.mutex:
-                        self.progress.reset()
-                        self.show_hits_gene_callers_id(gene_callers_id,
-                                                       fasta_formatted_sequence.split('\n')[1],
-                                                       item_name,
-                                                       raw_hits + [consensus_hit])
-
-                genes_estimation_output.append([gene_callers_id, item_name, [consensus_hit]])
+            try:
+                genes_estimation_output = self.get_gene_estimation_output(item_name, fasta_formatted_sequence, log_file_path)
+                error_queue.put(None)
+            except Exception as e:
+                error_queue.put(e)
 
             output_queue.put(genes_estimation_output)
 
