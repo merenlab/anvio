@@ -7,8 +7,9 @@ import anvio
 import anvio.workflows as w
 import anvio.terminal as terminal
 
-from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.errors import ConfigError
+from anvio.dbops import ContigsDatabase
+from anvio.workflows.contigs import ContigsDBWorkflow
 
 __author__ = "Alon Shaiber"
 __copyright__ = "Copyright 2017, The anvio Project"
@@ -464,22 +465,25 @@ rule anvi_script_run_eggnog_mapper:
         shell("rm {input.eggnog_output}.temp 2>{log}")
 
 
-# generate external genomes storage
+# generate external genomes storage using `project_description` as name for contigs.
 # this rule is only used when this workflow is inherited (e.g. by pangenomics or phylogenomics workflows)
 rule gen_external_genome_file:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "" + "/gen_external_genome_file.log"
     input:
         annotation_done = expand(dirs_dict['CONTIGS_DIR'] + "/{sample}-annotate_contigs_database.done", sample=M.group_names),
-        contigs_dbs = expand(dirs_dict["CONTIGS_DIR"] + "/{sample}-contigs.db", sample=M.group_names)
+        contigs_db_paths = expand(dirs_dict["CONTIGS_DIR"] + "/{sample}-contigs.db", sample=M.group_names)
     output: M.external_genomes_file
     threads: M.T("gen_external_genome_file")
     resources: nodes = M.T("gen_external_genome_file")
     run:
+        contigs_db_project_names = [ContigsDatabase(contigs_db_path).meta["project_name"] for contigs_db_path in input.contigs_db_paths]
+        contigs_db_name_path_tuples = zip(contigs_db_project_names, input.contigs_db_paths)
         with open(output[0], 'w') as f:
             f.write("name\tcontigs_db_path\n")
-            for c in input.contigs_dbs:
-                f.write("%s\t%s\n" % (c.split(".")[0].split("/")[-1].replace('-','_'), c))
+            for name, path in contigs_db_name_path_tuples:
+                name = name.replace('.', '_').replace('-', '_').replace(' ', '_')
+                f.write("%s\t%s\n" % (name, path))
 
 
 if 'workflows/contigs' in workflow.included[0]:
