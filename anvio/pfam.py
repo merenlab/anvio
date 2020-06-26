@@ -416,7 +416,48 @@ class HMMProfile(object):
                 self.data[profile['ACC']] = profile
 
         self.progress.end()
-        self.run.info('Loaded', '%d profiles' % len(self.data))
+        self.run.info('HMM profiles loaded from', self.filepath)
+        self.run.info('Number of HMM profiles loaded', '%d profiles' % len(self.data))
+
+
+    def filter(self, by, subset):
+        """Create a new .hmm that is a subset of the instantiated .hmm
+
+        Parameters
+        ==========
+        by : str
+            Which key would you like to filter by? For example, 'NAME', 'ACC', 'LENG'
+
+        subset : set
+            For each profile, if its corresponding value of `by` matches any of the elements in this
+            set, it is included in the new .hmm file.
+        """
+
+        accessions_to_keep = set()
+        num_profiles = len(self.data)
+
+        self.progress.new('Filtering HMMs by %s' % by)
+
+        i = 0
+        for acc, profile in self.data.items():
+
+            if i % 100 == 0:
+                self.progress.update('%d/%d processed' % (i, num_profiles))
+                self.progress.increment(increment_to=i)
+
+            if profile[by] in subset:
+                accessions_to_keep.add(acc)
+
+            i += 1
+
+        self.data = {acc: self.data[acc] for acc in accessions_to_keep}
+
+        self.progress.end()
+        self.run.info('Filtered by', by)
+        self.run.info('Num subset values', len(subset))
+        self.run.info('Profiles kept', len(self.data))
+
+
 
 
     def process_raw_profile(self, raw_profile):
