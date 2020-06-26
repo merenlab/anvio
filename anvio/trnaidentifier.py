@@ -6,6 +6,7 @@ import anvio.constants as constants
 
 from anvio.constants import WC_plus_wobble_base_pairs as WC_PLUS_WOBBLE_BASE_PAIRS
 from anvio.constants import codon_to_AA_RC as CODON_TO_AA_RC
+from anvio.constants import anticodon_to_AA as ANTICODON_TO_AA
 from anvio.errors import TransferRNAIdentifierError
 
 import itertools
@@ -695,7 +696,7 @@ class Anticodon(_Sequence):
             cautious=cautious)
 
         try:
-            self.aa_string = CODON_TO_AA_RC[self.string]
+            self.aa_string = ANTICODON_TO_AA[self.string]
         except KeyError:
             self.aa_string = 'NA'
 
@@ -1158,7 +1159,7 @@ class Profile:
                 # tRNA-His uniquely has an extra nucleotide (G) at the 5' end.
                 anticodon_string = features[-self.anticodon_loop_index - 1].anticodon.string
                 try:
-                    aa_string = CODON_TO_AA_RC[anticodon_string]
+                    aa_string = ANTICODON_TO_AA[anticodon_string]
                 except KeyError:
                     aa_string = 'NA'
                 if aa_string != 'His':
