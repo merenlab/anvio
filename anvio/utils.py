@@ -1389,6 +1389,47 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
     return dest_file
 
 
+def get_chunk(stream, separator, read_size=4096):
+    """Read from a file chunk by chunk based on a separator substring
+
+    This utility of this function is to avoid reading in the entire contents of a file all at once.
+    Instead, you can read in a chunk, process it, then read in the next chunk, and repeat this until
+    the EOF.
+
+    Parameters
+    ==========
+    stream : _io.TextIOWrapper
+        A file handle, e.g. stream = open('<path_to_file>', 'r')
+
+    separator : str
+        Each value returned will be the string from the last `separator` to the next `separator`
+
+    read_size : int, 4096
+        How big should each read size be? Bigger means faster reading, but higher memory usage. This
+        has no effect on what is returned, but can greatly influence speed. Default is 4MB.
+
+    References
+    ==========
+    https://stackoverflow.com/questions/47927039/reading-a-file-until-a-specific-character-in-python
+    """
+
+    contents_buffer = ''
+    while True:
+        chunk = stream.read(read_size)
+        if not chunk:
+            yield contents_buffer
+            break
+
+        contents_buffer += chunk
+        while True:
+            try:
+                part, contents_buffer = contents_buffer.split(separator, 1)
+            except ValueError:
+                break
+            else:
+                yield part
+
+
 def get_split_start_stops(contig_length, split_length, gene_start_stops=None):
     """Wrapper function for get_split_start_stops_with_gene_calls and get_split_start_stops_without_gene_calls"""
     if gene_start_stops:
