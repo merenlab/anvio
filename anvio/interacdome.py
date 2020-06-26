@@ -53,12 +53,18 @@ class InteracdomeSuper(Pfam):
         null = lambda x: x
         self.interacdome_data_dir = A('interacdome_data_dir', null) or constants.default_interacdome_data_path
 
-        self.interacdome_table = InteracdomeTableData(kind='representable', interacdome_data_dir=self.interacdome_data_dir)
+        self.hmm_filepath = os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm')
 
         # Init the Pfam baseclass
         args.hmmer_program = 'hmmsearch' # Force use of hmmsearch
         args.pfam_data_dir = self.interacdome_data_dir
         Pfam.__init__(self, args, run=self.run, progress=self.progress)
+
+        # Init the HMM profile
+        self.hmms = pfam.HMMProfile(self.hmm_filepath)
+
+        # Init the InteracDome table
+        self.interacdome_table = InteracdomeTableData(kind='representable', interacdome_data_dir=self.interacdome_data_dir)
 
 
     def is_database_exists(self):
@@ -75,8 +81,6 @@ class InteracdomeSuper(Pfam):
     def process(self):
         """Runs Interacdome."""
 
-        hmm_file = os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm')
-
         # initialize contigs database
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
         contigs_db = dbops.ContigsSuperclass(args)
@@ -84,10 +88,12 @@ class InteracdomeSuper(Pfam):
 
         # export AA sequences for genes
         target_files_dict = {'AA:DOMAIN': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
-        contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(output_file_path=target_files_dict['AA:DOMAIN'],
-                                                                   simple_headers=True,
-                                                                   rna_alphabet=False,
-                                                                   report_aa_sequences=True)
+        contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(
+            output_file_path=target_files_dict['AA:DOMAIN'],
+            simple_headers=True,
+            rna_alphabet=False,
+            report_aa_sequences=True,
+        )
 
         # run hmmer
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
@@ -98,7 +104,7 @@ class InteracdomeSuper(Pfam):
             kind=None,
             domain=None,
             num_genes_in_model=len(self.function_catalog),
-            hmm=hmm_file,
+            hmm=self.hmm_filepath,
             ref=None,
             noise_cutoff_terms='--cut_ga',
             desired_output='standard',
