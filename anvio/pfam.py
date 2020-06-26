@@ -4,6 +4,7 @@
 
 import os
 import gzip
+import numpy as np
 import shutil
 import requests
 from io import BytesIO
@@ -361,7 +362,7 @@ class Pfam(object):
 
 
 class HMMProfile(object):
-    """Underdeveloped class to read hmm profiles (.hmm)"""
+    """Reads, modifies, and writes hmm profiles (.hmm)"""
 
     def __init__(self, filepath, run=terminal.Run(), progress=terminal.Progress()):
         self.run = run
@@ -370,18 +371,191 @@ class HMMProfile(object):
 
         filesnpaths.is_file_exists(self.filepath)
 
+        self.data = {}
+
+
+    def get_chunk(self, stream, separator, read_size=4096):
+        """Read one profile at a time
+
+        References
+        ==========
+        https://stackoverflow.com/questions/47927039/reading-a-file-until-a-specific-character-in-python
+        """
+
+        contents_buffer = ''
+        while True:
+            chunk = stream.read(read_size)
+            if not chunk:
+                yield contents_buffer
+                break
+
+            contents_buffer += chunk
+            while True:
+                try:
+                    part, contents_buffer = contents_buffer.split(separator, 1)
+                except ValueError:
+                    break
+                else:
+                    yield part
+
+
+    def load(self):
         self.progress.new('HMM profile')
         self.progress.update('Loading %s' % self.filepath)
 
-        with open(self.filepath, 'r') as f:
-            self.profiles = f.read().split('//\n')[:-1]
+        with open(self.filepath) as f:
+            for i, raw_profile in enumerate(self.get_chunk(f, separator='//\n')):
+                if not raw_profile.strip():
+                    continue
+
+                if i % 100 == 0:
+                    self.progress.update('%d profiles processed' % i)
+                    self.progress.increment(increment_to=i)
+
+                profile = self.process_raw_profile(raw_profile)
+                self.data[profile['ACC']] = profile
 
         self.progress.end()
+        self.run.info('Loaded', '%d profiles' % len(self.data))
 
-        self.run.info('Loaded', '%d profiles' % len(self.profiles))
+
+    def process_raw_profile(self, raw_profile):
+        """Process a profile.
+
+        Processes a string that looks like this:
+
+        HMMER3/f [3.2.1 | June 2018]
+        NAME  Ubie_methyltran
+        ACC   PF01209.17
+        DESC  ubiE/COQ5 methyltransferase family
+        LENG  233
+        ALPH  amino
+        RF    no
+
+        ...
+
+        STATS LOCAL FORWARD   -5.2458  0.70364
+        HMM          A        C        D        E        F        G        H        I        K        L        M        N        P        Q        R        S        T        V        W        Y
+                    m->m     m->i     m->d     i->m     i->i     d->m     d->d
+          COMPO   2.54716  4.35070  2.86386  2.72305  3.17454  2.77327  3.72537  2.80280  2.64902  2.43657  3.49755  3.12309  3.54723  3.17117  3.00291  2.68310  2.88876  2.58381  4.57982  3.36830
+                  2.68618  4.42225  2.77519  2.73123  3.46354  2.40513  3.72494  3.29354  2.67741  2.69355  4.24690  2.90347  2.73739  3.18146  2.89801  2.37887  2.77519  2.98518  4.58477  3.61503
+                  0.24616  4.06597  1.60415  0.61958  0.77255  0.00000        *
+              1   2.70153  4.53236  3.34187  2.81919  3.62674  3.53680  3.76783  2.88731  2.03395  2.51546  2.26844  3.23461  3.95064  3.01094  2.73876  2.86019  2.94221  2.70788  5.06922  3.81779      1 k - - X
+                  2.68618  4.42225  2.77519  2.73123  3.46354  2.40513  3.72494  3.29354  2.67741  2.69355  4.24690  2.90347  2.73739  3.18146  2.89801  2.37887  2.77519  2.98518  4.58477  3.61503
+                  0.03206  3.85187  4.57421  0.61958  0.77255  0.38135  1.14866
+              2   2.61757  4.49839  3.28139  2.75711  3.69124  3.48770  3.79249  3.00826  2.63457  2.66714  2.81777  3.19513  3.91494  2.57012  2.99323  2.76655  1.92096  2.77781  5.10625  3.84713      2 t - - X
+                  2.68618  4.42225  2.77519  2.73123  3.46354  2.40513  3.72494  3.29354  2.67741  2.69355  4.24690  2.90347  2.73739  3.18146  2.89801  2.37887  2.77519  2.98518  4.58477  3.61503
+                  0.02580  4.06597  4.78831  0.61958  0.77255  0.48576  0.95510
+
+                    ....
+
+            232   2.59256  4.07223  4.02476  3.44210  3.10552  3.69012  3.96905  2.14938  3.31845  2.21385  3.16613  3.65707  4.05752  3.54613  3.50650  2.97719  2.45795  2.02283  3.32232  2.83766    259 v - - E
+                  2.68618  4.42225  2.77519  2.73123  3.46354  2.40513  3.72494  3.29354  2.67741  2.69355  4.24690  2.90347  2.73739  3.18146  2.89801  2.37887  2.77519  2.98518  4.58477  3.61503
+                  0.02580  4.06597  4.78831  0.61958  0.77255  0.48576  0.95510
+            233   3.15895  5.12095  3.34717  2.93780  4.55191  3.62263  3.88116  3.99448  0.80088  3.51942  4.47451  3.35216  4.11266  3.06460  2.48782  3.19066  3.39982  3.69284  5.53001  4.37266    260 k - - E
+                  2.68618  4.42225  2.77519  2.73123  3.46354  2.40513  3.72494  3.29354  2.67741  2.69355  4.24690  2.90347  2.73739  3.18146  2.89801  2.37887  2.77519  2.98518  4.58477  3.61503
+                  0.01744  4.05761        *  0.61958  0.77255  0.00000        *
+        //
+        """
+
+        # Init the profile, we will populate this
+        profile = {
+            'raw': raw_profile,
+            'match_states': {},
+            'alignment_pos': None,
+            'consensus': None,
+            'NAME': None,
+            'ACC': None,
+            'DESC': None,
+            'LENG': None,
+            'ALPH': None,
+            'MAP': None,
+            'CONS': None,
+        }
+
+        # Parse the header
+        FIELDS = {'NAME', 'ACC', 'DESC', 'LENG', 'ALPH', 'MAP', 'CONS'}
+
+        profile_split = raw_profile.split()
+        for i, word in enumerate(profile_split):
+            if word in FIELDS:
+                profile[word] = profile_split[i+1]
+                FIELDS.remove(word)
+
+            if word == 'HMM':
+                # We are done parsing the header
+                break
+
+        if len(FIELDS):
+            raise ConfigError("Anvi'o was expecting each profile HMM to have the following fields, however this "
+                              "profile did not: %s. Here is the raw profile: %s" % (', '.join(FIELDS), raw_profile))
+
+        if profile['ACC'].find('.') != -1:
+            profile['ACC'], profile['VERSION'] = profile['ACC'].split('.')
+
+        # Now we go line by line
+        raw_lines = raw_profile.split('\n')
+        line_no = 0
+
+        # Get the alphabet and markov state
+        for line in raw_lines:
+            if not line.startswith('HMM '):
+                line_no += 1
+                continue
+
+            alphabet = line.split()[1:]
+            states = raw_lines[line_no+1].split()[1:]
+
+            line_no += 2
+            break
+
+        # Find the start
+        for line in raw_lines[line_no:]:
+            if not line.split()[0] == '1':
+                line_no += 1
+                continue
+            break
+
+        consensus_sequence = []
+        alignment_pos = []
+        for i in range(line_no, len(raw_lines[line_no:]), 3):
+            emission_line, insertion_line, state_line = raw_lines[i:i+3]
+            emission = emission_line.split()
+            insertion = insertion_line.split()
+            state = state_line.split()
+
+            assign_type = lambda x, t: t(x) if x != '-' else '-'
+
+            match_state = int(emission.pop(0))
+            profile['match_states'][match_state] = {}
+
+            profile['match_states'][match_state]['CS'] = assign_type(emission.pop(-1), str)
+            profile['match_states'][match_state]['MM'] = assign_type(emission.pop(-1), str)
+            profile['match_states'][match_state]['RF'] = assign_type(emission.pop(-1), str)
+            profile['match_states'][match_state]['CONS'] = assign_type(emission.pop(-1).upper(), str)
+            profile['match_states'][match_state]['MAP'] = assign_type(emission.pop(-1), int)
+
+            consensus_sequence.append(profile['match_states'][match_state]['CONS'])
+            alignment_pos.append(profile['match_states'][match_state]['MAP'])
+
+            # probabilities
+            emission = np.exp(-np.array([0 if x == '*' else float(x) for x in emission]))
+            insertion = np.exp(-np.array([0 if x == '*' else float(x) for x in insertion]))
+            state = np.exp(-np.array([0 if x == '*' else float(x) for x in state]))
+
+            profile['match_states'][match_state]['EMI_PR'] = emission
+            profile['match_states'][match_state]['INS_PR'] = insertion
+            profile['match_states'][match_state]['STATE_PR'] = state
+
+        if profile['CONS']:
+            profile['consensus'] = ''.join(consensus_sequence)
+        if profile['MAP']:
+            profile['alignment_pos'] = np.array(alignment_pos)
+
+        return profile
 
 
-    def filter(self, by, subset, filepath, ignore_version=True):
+    def filter(self, by, subset):
         """Create a new .hmm that is a subset of the instantiated .hmm
 
         Parameters
