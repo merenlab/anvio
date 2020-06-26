@@ -2,15 +2,11 @@
 # pylint: disable=line-too-long
 """tRNA identification from tRNA-seq reads"""
 
-import anvio.constants as constants
+import itertools
 
 from anvio.constants import WC_plus_wobble_base_pairs as WC_PLUS_WOBBLE_BASE_PAIRS
-from anvio.constants import codon_to_AA_RC as CODON_TO_AA_RC
 from anvio.constants import anticodon_to_AA as ANTICODON_TO_AA
 from anvio.errors import TransferRNAIdentifierError
-
-import itertools
-import os
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
