@@ -289,7 +289,6 @@ class HMMer:
         """
 
         with open(standard_output_file, 'r') as f:
-            lines = f.readlines()
             with buffer_write_lock:
                 merged_file_buffer.write(f.read())
 
