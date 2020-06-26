@@ -281,6 +281,7 @@ class _Arm(_TransferRNAFeature):
                                     *loop.canonical_positions,
                                     *stem.threeprime_seq.canonical_positions)
         if cautious:
+            # FIXME: `canonical_positions` variables down below are not defined:
             if (tuple(pos for component_positions in canonical_positions
                       for pos in component_positions)
                 != tuple(range(canonical_positions[0][0],
