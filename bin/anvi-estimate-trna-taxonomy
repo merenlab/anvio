@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
 
+import os
 import sys
 
 import anvio
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 import anvio.taxonomyops.trna as trnataxonomyops
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -31,10 +33,29 @@ progress = terminal.Progress()
 def main(args):
     if args.metagenomes:
         raise ConfigError("This program can't do this yet.")
+
+    if args.dna_sequence:
+        # learn about the anticodon
+        import anvio.trnaidentifier as trnaidentifier
+        anticodon = trnaidentifier.Profile(args.dna_sequence).anticodon_seq
+
+        if not anticodon:
+            raise ConfigError("Anvi'o couldn't identify the anticodon in this sequence. Perhaps not a proper tRNA sequence?")
+
+        # setup search
+        fasta_formatted_sequence = f'>{anticodon}\n{args.dna_sequence}'
+
+        # go
+        log_file_path = filesnpaths.get_temp_file_path(just_the_path=True)
+        trnataxonomyops.PopulateContigsDatabaseWithTRNATaxonomy(args).get_gene_estimation_output(anticodon,
+                                                                                                 fasta_formatted_sequence,
+                                                                                                 log_file_path=log_file_path)
+
+        if not anvio.DEBUG:
+            os.remove(log_file_path)
     else:
         t = trnataxonomyops.TRNATaxonomyEstimatorSingle(args)
-
-    t.estimate()
+        t.estimate()
 
 
 if __name__ == '__main__':
