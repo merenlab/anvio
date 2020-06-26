@@ -85,9 +85,9 @@ class DB:
                                       "your anvi'o :(" % self.db_path)
                 else:
                     progress.reset()
-                    raise ConfigError("The database at '%s' is outdated (its version is v%s, but your anvi'o installation only knows how to "
-                                      "deal with v%s). You can migrate your database without losing any data using the program `anvi-migrate`."\
-                                               % (self.db_path, self.version, client_version))
+                    raise ConfigError(f"The database at '{self.db_path}' is outdated (this database is v{self.version} and your anvi'o installation "
+                                      f"wants to work with v{client_version}). You can migrate your database without losing any data using the "
+                                      f"program `anvi-migrate` with either of the flags `--migrate-dbs-safely` or `--migrate-dbs-quickly`.")
 
             bad_tables = [table_name for table_name in self.get_table_names() if table_name not in tables.requires_unique_entry_id]
             if len(bad_tables):
