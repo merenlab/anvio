@@ -1,0 +1,220 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+# I need this script to handle clustered seed sequences and GAST taxonomy output,
+# and it will soon be deleted and replaced with something else.
+
+import argparse
+import anvio.db
+import anvio.constants
+import anvio.utils
+
+import pandas as pd
+import os
+import gc
+
+from copy import deepcopy
+from collections import OrderedDict
+from time import time
+t0 = time()
+
+anticodons = sorted(anvio.utils.rev_comp(codon) for codon in anvio.constants.codons)
+
+gast_ranks = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species', 'subspecies'] # GAST doesn't seem to report subspecies, but has a space for it anyways
+num_gast_ranks = len(gast_ranks)
+ranks = gast_ranks[:-1]
+
+def split_taxonomy_col(col):
+    table = []
+    for string in col:
+        row = string.split(';')
+        row += [''] * (num_gast_ranks - len(row))
+        table.append(row)
+    return table
+
+parser = argparse.ArgumentParser()
+parser.add_argument('tRNASeqDB')
+parser.add_argument('gast')
+parser.add_argument('dataset_name')
+parser.add_argument('outdir')
+parser.add_argument('--mmseqsTSV')
+parser.add_argument('--ucTSV')
+
+parser.add_argument('--fasta')
+parser.add_argument('--outfasta')
+parser.add_argument('--profilefasta')
+parser.add_argument('--samplenum')
+args = parser.parse_args()
+# args = parser.parse_args(['/Users/sammiller/Documents/SANDBOX/COVID_UC_S9/COVID_UC_S9_untreated_TRNASEQ.db',
+#                           '/Users/sammiller/Documents/SANDBOX/COVID_UC_S9/COVID_UC_S9_untreated_UNIQUE_TRNA.gast',
+#                           'COVID_UC_S9',
+#                           '/Users/sammiller/Documents/SANDBOX/COVID_UC_S9',
+#                           '--ucTSV', '/Users/sammiller/Documents/SANDBOX/COVID_UC_S9/COVID_UC_S9_untreated-UC_CLUSTERS.tsv',
+#                           '--fasta', '/Users/sammiller/Documents/SANDBOX/COVID_UC_S9_untreated_UNIQUE_TRNA.fasta',
+#                           '--outfasta', '/Users/sammiller/Documents/SANDBOX/COVID_UC_S9_untreated_UNIQUE_TAXANNOT_TRNA.fasta',
+#                           '--profilefasta', '/Users/sammiller/Documents/SANDBOX/COVID_UC_S9_untreated_TAXANNOT_PROFILE_TRNA.fasta',
+#                           '--samplenum', '9'])
+
+
+db = anvio.db.DB(args.tRNASeqDB, 1)
+fulldf = pd.DataFrame(db.get_some_columns_from_table('sequences', 'name,replicate_count'),
+                  columns=['name', 'replicate_count'])
+fulldf.set_index('name', inplace=True)
+
+if args.ucTSV:
+    cl = pd.read_csv(
+        args.ucTSV,
+        sep='\t',
+        names=['record_type', 'clust_num', 'seq_len', 'percent_ident', 'strand',
+               'unused1', 'unused2', 'compressed_align', 'query_label', 'target_label'],
+        usecols=['record_type', 'query_label', 'target_label'])
+    cl = cl[(cl['record_type'] == 'S') | (cl['record_type'] == 'H')]
+    query_labels = cl['query_label'].tolist()
+    target_labels = cl['target_label'].tolist()
+    new_target_labels = []
+    for query_label, target_label in zip(query_labels, target_labels):
+        if target_label == '*':
+            new_target_labels.append(query_label)
+        else:
+            new_target_labels.append(target_label)
+    del query_labels
+    del target_labels
+    cl['target_label'] = new_target_labels
+    del new_target_labels
+    cl.rename(columns={'query_label': 'name', 'target_label': 'rep_name'}, inplace=True)
+else:
+    cl = pd.read_csv(args.mmseqsTSV, sep='\t', names=['rep_name', 'name'])
+cl.set_index('name', inplace=True)
+fulldf['rep_name'] = cl[['rep_name']]
+del cl
+gc.collect()
+
+taxdf = pd.read_csv(args.gast, sep='\t', usecols=['read_id', 'taxonomy'])
+taxdf = taxdf[taxdf['taxonomy'] != 'Unknown'] # Ignore queries without a significant hit
+taxdf[gast_ranks] = pd.DataFrame(split_taxonomy_col(taxdf['taxonomy'].tolist()))
+taxdf.drop(['taxonomy', 'subspecies'], axis=1, inplace=True)
+taxdf.set_index('read_id', inplace=True)
+fulldf.reset_index(inplace=True)
+fulldf.set_index('rep_name', inplace=True) # Merge on representative name, as taxonomy was done for seed sequences
+fulldf[gast_ranks[:-1]] = taxdf[gast_ranks[:-1]]
+del taxdf
+fulldf.reset_index(inplace=True)
+fulldf.set_index('name', inplace=True)
+fulldf['species'] = (fulldf[fulldf['species'] != '']['genus'] # Unlike other ranks, species names are not unique, so must be combined with genus
+                     + ' '
+                     + fulldf[fulldf['species'] != '']['species'])
+fulldf['species'].fillna('', inplace=True)
+gc.collect()
+
+fulldf['anticodon'] = pd.DataFrame(db.get_some_columns_from_table('basic_info', 'name,anticodon_sequence'),
+                                   columns=['name', 'anticodon_sequence']).set_index('name')
+fulldf['anticodon_rc'] = fulldf['anticodon'].apply(anvio.utils.rev_comp)
+codon_to_AA = deepcopy(anvio.constants.codon_to_AA)
+codon_to_AA[''] = ''
+fulldf['amino_acid'] = fulldf['anticodon_rc'].map(codon_to_AA)
+fulldf.drop('anticodon_rc', axis=1, inplace=True)
+
+
+df = fulldf[pd.notnull(fulldf['kingdom'])]
+seq_dict = dict()
+with open(args.fasta) as f:
+    for line in f:
+        if line[0] == '>':
+            seq_name = line.rstrip()[1:]
+        else:
+            seq_dict[seq_name] = line.rstrip()
+df['seq'] = [seq_dict[seq_name] for seq_name in df.index]
+samplenum_suffix = '_' + args.samplenum
+with open(args.outfasta, 'w') as f:
+    for seq_name, seq in zip(df.index.tolist(), df['seq'].tolist()):
+        f.write('>' + seq_name + samplenum_suffix + '\n')
+        f.write(seq + '\n')
+with open(args.profilefasta, 'w') as f:
+    for seq_name, seq, replicate_count in zip(df.index.tolist(), df['seq'].tolist(), df['replicate_count'].tolist()):
+        for i in range(1, replicate_count + 1):
+            f.write('>' + seq_name + samplenum_suffix + '_' + str(i) + '\n')
+            f.write(seq + '\n')
+
+
+# TOTAL READ COUNTS FOR EACH AMINO ACID
+print("Finding total read counts for each amino acid...")
+aa_count = OrderedDict()
+for aa in anvio.constants.amino_acids:
+    aa_count[aa] = fulldf[fulldf['amino_acid'] == aa]['replicate_count'].sum()
+
+with open(os.path.join(args.outdir, args.dataset_name + '_aa_total_counts.tsv'), 'w') as f:
+    f.write('amino_acid\treads_identified_as_tRNA_decoding_amino_acid\n')
+    for aa, count in aa_count.items():
+        f.write(aa + '\t' + str(count) + '\n')
+del aa_count
+gc.collect()
+
+
+# TOTAL READ COUNTS FOR EACH ANTICODON
+print("Finding total read counts for each anticodon...")
+anticodon_count = OrderedDict()
+for anticodon in anticodons:
+    anticodon_count[anticodon] = fulldf[fulldf['anticodon'] == anticodon]['replicate_count'].sum()
+
+with open(os.path.join(args.outdir, args.dataset_name + '_codon_total_counts.tsv'), 'w') as f:
+    f.write('anticodon\treads_identified_as_tRNA_decoding_anticodon\n')
+    for anticodon, count in anticodon_count.items():
+        f.write(anticodon + '\t' + str(count) + '\n')
+del anticodon_count
+gc.collect()
+
+
+# TOTAL READ COUNTS FOR EACH TAXON FROM EACH TAXONOMIC RANK
+print("Finding total read counts for each taxon, from each taxonomic rank...")
+rank_read_count_dfs = OrderedDict()
+for rank in ranks:
+    rank_read_count_dfs[rank] = fulldf.groupby(rank)[['replicate_count']].sum().rename(
+        columns={'replicate_count': 'reads_identified_as_tRNA'}).sort_values(
+            'reads_identified_as_tRNA', ascending=False)
+
+with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_counts.xlsx')) as writer:
+    for rank, df in rank_read_count_dfs.items():
+        df.to_excel(writer, sheet_name=rank)
+        df.to_csv(os.path.join(args.outdir, args.dataset_name + '_' + rank + '_aa_counts.tsv'), sep='\t')
+del rank_read_count_dfs
+gc.collect()
+
+
+# READ COUNTS FOR EACH AMINO ACID FOR EACH TAXON FROM EACH TAXONOMIC RANK
+print("Finding read counts for each amino acid, for each taxon, from each taxonomic rank...")
+rank_aa_count_dfs = OrderedDict()
+for rank in ranks:
+    rank_aa_count_df = fulldf.groupby([rank, 'amino_acid'])[['replicate_count']].sum().rename(
+        columns={'replicate_count': 'reads_identified_as_tRNA'}).sort_values(
+            'reads_identified_as_tRNA', ascending=False).unstack(level='amino_acid')
+    rank_aa_count_df.columns = rank_aa_count_df.columns.droplevel(0) # top level with value of 'replicate_count'
+    del rank_aa_count_df.index.name # The name is the rank
+    rank_aa_count_dfs[rank] = rank_aa_count_df
+
+with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_aa_counts.xlsx')) as writer:
+    for rank, df in rank_aa_count_dfs.items():
+        df.to_excel(writer, sheet_name=rank)
+        df.to_csv(os.path.join(args.outdir, args.dataset_name + '_' + rank + '_aa_counts.tsv'), sep='\t')
+del rank_aa_count_dfs
+gc.collect()
+
+
+# READ COUNTS FOR EACH ANTICODON FOR EACH TAXON FROM EACH TAXONOMIC RANK
+print("Finding read counts for each anticodon, for each taxon, from each taxonomic rank...")
+rank_anticodon_count_dfs = OrderedDict()
+for rank in ranks:
+    rank_anticodon_count_df = fulldf.groupby([rank, 'anticodon'])[['replicate_count']].sum().rename(
+        columns={'replicate_count': 'reads_identified_as_tRNA'}).sort_values(
+            'reads_identified_as_tRNA', ascending=False).unstack(level='anticodon')
+    rank_anticodon_count_df.columns = rank_anticodon_count_df.columns.droplevel(0) # top level with value of 'replicate_count'
+    del rank_anticodon_count_df.index.name # The name is the rank
+    rank_anticodon_count_dfs[rank] = rank_anticodon_count_df
+
+with pd.ExcelWriter(os.path.join(args.outdir, args.dataset_name + '_taxon_anticodon_counts.xlsx')) as writer:
+    for rank, df in rank_anticodon_count_dfs.items():
+        df.to_excel(writer, sheet_name=rank)
+        df.to_csv(os.path.join(args.outdir, args.dataset_name + '_' + rank + '_anticodon_counts.tsv'), sep='\t')
+del rank_anticodon_count_dfs
+gc.collect()
+
+print("Total time elapsed: %d s" % (time() - t0))

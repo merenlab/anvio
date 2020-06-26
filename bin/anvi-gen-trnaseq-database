@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+# -*- coding: utf-8
+
+import sys
+
+import anvio
+import anvio.dbops as dbops
+import anvio.terminal as terminal
+
+from anvio.errors import ConfigError, FilesNPathsError
+
+
+__author__ = "Developers of anvi'o (see AUTHORS.txt)"
+__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__credits__ = []
+__license__ = "GPL 3.0"
+__version__ = anvio.__version__
+__maintainer__ = "Samuel Miller"
+__email__ = "samuelmiller@gmail.com"
+__requires__ = ['tRNAseq-fasta']
+__provides__ = ['tRNAseq-db']
+__description__ = "Generate a new anvi'o tRNA-seq database."
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description=__description__)
+
+    groupA = parser.add_argument_group('MANDATORY INPUTS', 'Things you really need to provide to be in business.')
+    groupA.add_argument(*anvio.A('tRNAseq-fasta'), **anvio.K('tRNAseq-fasta'))
+    groupA.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
+
+    groupB = parser.add_argument_group('OPTIONAL INPUTS', 'Things you may want to tweak.')
+    groupB.add_argument(*anvio.A('output-db-path'), **anvio.K('output-db-path', {'default': 'TRNASEQ.db'}))
+    groupB.add_argument(*anvio.A('description'), **anvio.K('description'))
+    groupB.add_argument(*anvio.A('charging-recorded'), **anvio.K('charging-recorded'))
+    groupB.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupB.add_argument(*anvio.A('trust-fasta'), **anvio.K('trust-fasta'))
+    groupB.add_argument(*anvio.A('skip-seed-output'), **anvio.K('skip-seed-output'))
+    groupB.add_argument(*anvio.A('only-report-tRNA'), **anvio.K('only-report-tRNA'))
+    groupB.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size', {'default': 50000}))
+    groupB.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
+
+    args = anvio.get_args(parser)
+
+    try:
+        a = dbops.tRNASeqDatabase(
+            args.output_db_path,
+            charging_recorded=args.charging_recorded,
+            num_threads=args.num_threads,
+            trust_fasta=args.trust_fasta,
+            only_report_tRNA=args.only_report_tRNA,
+            skip_seed_output=args.skip_seed_output,
+            write_buffer_size=args.write_buffer_size,
+            quiet=not args.verbose,
+            skip_init=False)
+        a.create(args)
+    except ConfigError as e:
+        print(e)
+        sys.exit(-1)
+    except FilesNPathsError as e:
+        print(e)
+        sys.exit(-2)
