@@ -152,6 +152,13 @@ class SanityCheck(object):
                                           "with the current genes configuration of this class (sources say this is a record, FYI)." % \
                                                     (len(missing_anticodon_databases), len(self.ctx.anticodons)))
 
+                if self.fasta_file_path and self.sequence:
+                    raise ConfigError("There can only be one: sequence, or FASTA file. This is anvi'o. You can't have "
+                                      "your cake and eat it too.")
+
+                if (self.fasta_file_path or self.sequence) and self.contigs_db_path:
+                    raise ConfigError("If you have an anvi'o contigs database to work with, you can't also provide a FASTA file or a sequence.")
+
             ###########################################################
             # TRNATaxonomyEstimatorSingle
             #
@@ -177,23 +184,6 @@ class SanityCheck(object):
                     raise ConfigError("Haha in this mode you can't ask for the raw output or matrix format .. yet (we know that "
                                       "the parameter space of this program is like a mine field and we are very upset about it "
                                       "as well).")
-
-                if self.fasta_file_path and self.sequence:
-                    raise ConfigError("There can only be one: sequence, or FASTA file. This is anvi'o. You can't have "
-                                      "your cake and eat it too.")
-
-                if (self.fasta_file_path or self.sequence) and self.contigs_db_path:
-                    raise ConfigError("If you have an anvi'o contigs database to work with, you can't also provide a FASTA file or a sequence.")
-
-                if self.fasta_file_path or self.sequence:
-                    # so we are only left with sequnces
-                    if self.collection_name or self.profile_db_path or self.metagenome_mode or self.anticodon_for_metagenome_mode \
-                                    or self.compute_anticodon_coverages or self.update_profile_db_with_taxonomy:
-                        raise ConfigError("Anvi'o understands that you want to work with your own sequences. She doesn't understand, however, "
-                                          "why do you provide all the other parameters that are completely irrelevant to this mode. If you are "
-                                          "providing a sequence or sequences in a FASTA file to run tRNA taxonmoy on, you should keep your "
-                                          "command line simple. All the fancy parameters are for those who work with anvi'o databases :)")
-                    return
 
                 if not self.contigs_db_path:
                     raise ConfigError("For these things to work, you need to provide a contigs database for the anvi'o tRNA "
@@ -308,6 +298,8 @@ class TRNATaxonomyArgs(object):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file_path = A('output_file')
+        self.fasta_file_path = A('fasta_file')
+        self.sequence = A('dna_sequence')
         self.per_anticodon_output_file = A('per_anticodon_output_file')
         self.output_file_prefix = A('output_file_prefix')
         self.just_do_it = A('just_do_it')
