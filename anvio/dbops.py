@@ -4866,6 +4866,7 @@ class ContigsDatabase:
         self.db.set_meta_value('skip_predict_frame', True if skip_predict_frame else False)
         self.db.set_meta_value('splits_consider_gene_calls', (not skip_mindful_splitting))
         self.db.set_meta_value('scg_taxonomy_was_run', False)
+        self.db.set_meta_value('scg_taxonomy_database_version', None)
         self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 

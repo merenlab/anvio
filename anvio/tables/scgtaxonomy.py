@@ -39,7 +39,7 @@ class TableForSCGTaxonomy(Table):
     def add(self, blastp_search_output):
         """Incrementally adds new hits to a contigs database.
 
-           It is essential to run the member function `update_self_value` once adding new hits are complete.
+           It is essential to run the member function `update_db_self_table_values` once adding new hits are complete.
            At the time of writing this class w couldn't find a better way to do it.
         """
 
@@ -58,11 +58,24 @@ class TableForSCGTaxonomy(Table):
         self.database.disconnect()
 
 
-    def update_self_value(self, value=True):
-        """Updates the self table in contigs db to clarify that scg taxonomy were run"""
+    def update_db_self_table_values(self, taxonomy_was_run=False, database_version=None):
+        """Updates the self table in contigs db.
+
+        The purpose of this function is to clarify whether scg taxonomy was run for a contigs
+        database, and if yes, which version of the local database was used to keep track of
+        versions.
+
+        Paremeters
+        ==========
+        taxonomy_was_run: bool, False
+            Set True if taxonomy was run successfuly.
+        database_version: str, None
+            This sould be read from the ctx.scg_taxonomy_database_version in taxonomyops.
+        """
 
         self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        self.database.update_meta_value("scg_taxonomy_was_run", value)
+        self.database.update_meta_value("scg_taxonomy_was_run", taxonomy_was_run)
+        self.database.update_meta_value("scg_taxonomy_database_version", database_version)
         self.database.disconnect()
 
 

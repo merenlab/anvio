@@ -15,7 +15,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
 
-contigs_db_version = "17"
+contigs_db_version = "18"
 profile_db_version = "34"
 genes_db_version = "6"
 pan_db_version = "14"
@@ -24,7 +24,7 @@ structure_db_version = "2"
 genomes_storage_vesion = "7"
 tRNAseq_db_version = "1"
 workflow_config_version = "1"
-kegg_modules_db_version = "2"
+metabolic_modules_db_version = "2"
 
 versions_for_db_types = {'contigs': contigs_db_version,
                          'profile': profile_db_version,
@@ -34,7 +34,8 @@ versions_for_db_types = {'contigs': contigs_db_version,
                          'genomestorage': genomes_storage_vesion,
                          'auxiliary data for coverages': auxiliary_data_version,
                          'tRNAseq': tRNAseq_db_version,
-                         'config': workflow_config_version}
+                         'config': workflow_config_version,
+                         'modules': metabolic_modules_db_version}
 
 
 ####################################################################################################
