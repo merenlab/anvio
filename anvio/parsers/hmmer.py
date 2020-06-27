@@ -23,6 +23,63 @@ __email__ = "a.murat.eren@gmail.com"
 class HMMERStandardOutput(object):
     """Parse the standard output of HMMER programs
 
+    The main meat of this class is to produce the attributes:
+
+        (1) self.seq_hits
+        (2) self.dom_hits
+
+    (1) self.seq_hits is a dataframe that looks like this:
+
+        |              query         acc target  query_len        evalue  score  bias  \
+        | 0       3Beta_HSD  PF01073.18   1998        282  5.200000e-23   76.2   0.0
+        | 1       3Beta_HSD  PF01073.18   1723        282  1.300000e-07   25.7   0.0
+        | ...           ...         ...    ...        ...           ...    ...   ...
+        | 3128  Voltage_CLC  PF00654.19    320        354  7.200000e-65  214.3  37.1
+        | 3129         YkuD  PF03734.13     30        146  1.700000e-14   49.3   0.2
+
+        |       best_dom_evalue  best_dom_score  best_dom_bias  expected_doms  num_doms
+        | 0        6.600000e-22            72.6            0.0            2.0         1
+        | 1        1.700000e-07            25.3            0.0            1.2         1
+        | ...               ...             ...            ...            ...       ...
+        | 3128     7.800000e-64           210.9           29.1            2.0         1
+        | 3129     3.800000e-14            48.2            0.2            1.7         1
+
+    (2) self.dom_hits is a frame that looks like this:
+
+        |               query         acc target  domain qual  score  bias      c-evalue  \
+        | 0       3Beta_HSD  PF01073.18   1998       1    !   72.6   0.0  2.900000e-24
+        | 1       3Beta_HSD  PF01073.18   1723       1    !   25.3   0.0  7.300000e-10
+        | ...           ...         ...    ...     ...  ...    ...   ...           ...
+        | 2896  Voltage_CLC  PF00654.19    320       1    !  210.9  29.1  1.700000e-66
+        | 2897         YkuD  PF03734.13     30       1    !   48.2   0.2  8.400000e-17
+        | 
+        |           i-evalue  hmm_start  hmm_stop hmm_bounds  ali_start  ali_stop  \
+        | 0     6.600000e-22          1       237         [.          4       243
+        | 1     1.700000e-07          1        95         [.          4        92
+        | ...            ...        ...       ...        ...        ...       ...
+        | 2896  7.800000e-64          3       352         ..         61       390
+        | 2897  3.800000e-14          2       146         .]        327       459
+        | 
+        |      ali_bounds  env_start  env_stop env_bounds  mean_post_prob  \
+        | 0            ..          4       254         ..            0.74
+        | 1            ..          4       148         ..            0.72
+        | ...         ...        ...       ...        ...             ...
+        | 2896         ..         59       392         ..            0.94
+        | 2897         ..        326       459         ..            0.78
+        | 
+        |               consensus_align              match_align             target_align
+        | 0     vvtGggGFlGrrivkeLlrl...  +v+Gg+G++G++ v +L++ ...  LVLGGAGYIGSHAVDQLISK...
+        | 1     vvtGggGFlGrrivkeLlrl...  ++ Gg+GFlG++i k L+++...  IIFGGSGFLGQQIAKILVQR...
+        | ...                       ...                      ...                      ...
+        | 2896  gllagllvkrvapeaagsGi...  g++  +++ r+  + a  G ...  GVVFTYFYTRF-GKNASRGN...
+        | 2897  kyivvdlaeqrllvlyengk...  +yi++dl++q++ +++ +gk...  NYIEIDLKDQKM-YCFIDGK...
+
+    If you're confused about the meaning of these columns, please see starting from page 32
+    of the HMMER guide http://eddylab.org/software/hmmer/Userguide.pdf. There you will be able
+    to with relative ease correlate the column names in these tables to what is described
+    meticulously in the tutorial. For example, `best_dom_bias` refers to the the 'bias (best 1
+    domain)' column.
+
     Parameters
     ==========
     hmmer_std_out : str
@@ -139,6 +196,8 @@ class HMMERStandardOutput(object):
 
         self.seq_hits = pd.DataFrame(self.seq_hits).astype(self.seq_hits_dtypes)
         self.dom_hits = pd.DataFrame(self.dom_hits).astype(self.dom_hits_dtypes)
+
+        print(self.dom_hits)
 
         self.progress.end()
         self.run.info('Loaded HMMER results from', self.hmmer_std_out)
