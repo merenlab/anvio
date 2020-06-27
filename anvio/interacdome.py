@@ -32,6 +32,7 @@ from anvio.drivers.hmmer import HMMer
 import os
 import shutil
 import argparse
+import numpy as np
 import pandas as pd
 
 
@@ -53,18 +54,24 @@ class InteracdomeSuper(Pfam):
         null = lambda x: x
         self.interacdome_data_dir = A('interacdome_data_dir', null) or constants.default_interacdome_data_path
 
+        self.bind_freq = {}
         self.hmm_filepath = os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm')
+
+        # Init the InteracDome table
+        self.interacdome_table = InteracdomeTableData(kind='representable', interacdome_data_dir=self.interacdome_data_dir)
+        self.interacdome_table.load()
 
         # Init the Pfam baseclass
         args.hmmer_program = 'hmmsearch' # Force use of hmmsearch
         args.pfam_data_dir = self.interacdome_data_dir
         Pfam.__init__(self, args, run=self.run, progress=self.progress)
 
+        # Init contigs database
+        args = argparse.Namespace(contigs_db=self.contigs_db_path)
+        self.contigs_db = dbops.ContigsSuperclass(args)
+
         # Init the HMM profile
         self.hmms = pfam.HMMProfile(self.hmm_filepath)
-
-        # Init the InteracDome table
-        self.interacdome_table = InteracdomeTableData(kind='representable', interacdome_data_dir=self.interacdome_data_dir)
 
 
     def is_database_exists(self):
