@@ -107,6 +107,7 @@ class ContigsSuperclass(object):
         self.split_sequences = {}
         self.contigs_basic_info = {}
         self.contig_sequences = {}
+        self.nt_positions_info = {}
 
         self.genes_in_contigs_dict = {}
         self.gene_lengths = {}
@@ -155,14 +156,34 @@ class ContigsSuperclass(object):
 
         self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if 'creation_date' in self.a_meta else 'unknown'
 
-        self.progress.update('Reading contigs basic info')
-        self.contigs_basic_info = contigs_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key=True)
+        ####################################################################################
+        # MINDFULLY READING STUFF FROM THE DATABASE
+        ####################################################################################
+        # read SPLITS and GENES basic information.
+        self.splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, 'split', self.split_names_of_interest, progress=self.progress)
+        self.genes_in_splits = contigs_db.db.smart_get(t.genes_in_splits_table_name, 'split', self.split_names_of_interest, progress=self.progress)
 
-        self.progress.update('Reading splits basic info')
-        self.splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
+        # if there are no splits names of interest, contig names of interest will be an empty set.
+        # that's OK, because `smart_get` will take care of it.
+        contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in self.split_names_of_interest])
 
-        self.progress.update('Reading genes in contigs table')
-        self.genes_in_contigs_dict = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
+        # read CONTIGS and GENES basic information.
+        self.contigs_basic_info = contigs_db.db.smart_get(t.contigs_info_table_name, 'contig', contig_names_of_interest, string_the_key=True, progress=self.progress)
+        self.genes_in_contigs_dict = contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, progress=self.progress)
+
+        # because this table is as dumb as Eric, it needs some special attention
+        if self.split_names_of_interest:
+            self.progress.update('Reading **SOME** entries in the nucleotide positions info table :)')
+            where_clause = """contig_name IN (%s)""" % ','.join(['"%s"' % c for c in contig_names_of_interest])
+            for contig_name, nt_positions_info in contigs_db.db.get_some_rows_from_table(t.nt_position_info_table_name, where_clause=where_clause):
+                self.nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_positions_info, 'uint8')
+        else:
+            self.progress.update('Reading **ALL** entries in the nucleotide positions info table :(')
+            for contig_name, nt_positions_info in contigs_db.db.get_all_rows_from_table(t.nt_position_info_table_name):
+                self.nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_positions_info, 'uint8')
+        ####################################################################################
+        # /MINDFULLY READING STUFF FROM THE DATABASE
+        ####################################################################################
 
         self.progress.update('Populating gene lengths dict')
         self.gene_lengths = dict([(g, (self.genes_in_contigs_dict[g]['stop'] - self.genes_in_contigs_dict[g]['start'])) for g in self.genes_in_contigs_dict])
@@ -174,8 +195,6 @@ class ContigsSuperclass(object):
             e = self.genes_in_contigs_dict[gene_unique_id]
             self.contig_name_to_genes[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
 
-        self.progress.update('Reading genes in splits table')
-        self.genes_in_splits = contigs_db.db.get_table_as_dict(t.genes_in_splits_table_name)
 
         self.progress.update('Identifying HMM searches for single-copy genes and others')
         self.hmm_sources_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
@@ -201,12 +220,6 @@ class ContigsSuperclass(object):
         for entry in list(self.genes_in_splits.values()):
             self.gene_callers_id_to_split_name_dict[entry['gene_callers_id']] = entry['split']
 
-        self.progress.update('Accessing the auxiliary data file')
-
-        self.nt_positions_info = {}
-        for contig_name, nt_position_row in contigs_db.db.get_table_as_dict(t.nt_position_info_table_name).items():
-            self.nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_position_row['position_info'], 'uint8')
-
         self.progress.end()
 
         contigs_db.disconnect()
@@ -226,7 +239,7 @@ class ContigsSuperclass(object):
         self.progress.update('...')
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
-        splits_taxonomy_table = contigs_db.db.get_table_as_dict(t.splits_taxonomy_table_name)
+        splits_taxonomy_table = contigs_db.db.smart_get(t.splits_taxonomy_table_name, 'split', self.split_names_of_interest, string_the_key=True, error_if_no_data=False, progress=self.progress)
         taxon_names_table = contigs_db.db.get_table_as_dict(t.taxon_names_table_name)
 
         for split_name in splits_taxonomy_table:
