@@ -91,6 +91,15 @@ class ContigsSuperclass(object):
         self.run = r
         self.progress = p
 
+        # if ContigsSuperclass is being used as a base class, then the class that inherits
+        # it may have set a `split_names_of_interest` variable. in which case we don't want to
+        # overwrite it, and use it for any task that requires a focus on a particular set of
+        # splits. But if there is non set by the class that inherits ContigsSuperclass, then
+        # we don't want functions that use/assume `split_names_of_interest` variable to throw
+        # errors because the variable is not set. so what we are doing here ensures that.
+        if not hasattr(self, 'split_names_of_interest'):
+            self.split_names_of_interest = set([])
+
         self.a_meta = {}
 
         self.splits_basic_info = {}
