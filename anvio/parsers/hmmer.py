@@ -8,6 +8,7 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError
 from anvio.parsers.base import Parser
 
+import numpy as np
 import pandas as pd
 
 
@@ -21,12 +22,13 @@ __email__ = "a.murat.eren@gmail.com"
 
 
 class HMMERStandardOutput(object):
-    """Parse the standard output of HMMER programs
+    """Parse the standard output of HMMER programs (NOTE: currently only works with hmmsearch)
 
     The main meat of this class is to produce the attributes:
 
         (1) self.seq_hits
         (2) self.dom_hits
+        (3) self.ali_info
 
     (1) self.seq_hits is a dataframe that looks like this:
 
@@ -67,7 +69,7 @@ class HMMERStandardOutput(object):
         | 2896         ..         59       392         ..            0.94
         | 2897         ..        326       459         ..            0.78
         | 
-        |               consensus_align              match_align             target_align
+        |       match_state_align              comparison_align             sequence_align
         | 0     vvtGggGFlGrrivkeLlrl...  +v+Gg+G++G++ v +L++ ...  LVLGGAGYIGSHAVDQLISK...
         | 1     vvtGggGFlGrrivkeLlrl...  ++ Gg+GFlG++i k L+++...  IIFGGSGFLGQQIAKILVQR...
         | ...                       ...                      ...                      ...
@@ -79,6 +81,9 @@ class HMMERStandardOutput(object):
     to with relative ease correlate the column names in these tables to what is described
     meticulously in the tutorial. For example, `best_dom_bias` refers to the the 'bias (best 1
     domain)' column.
+
+    (3) ali_info is a nested dictionary that can be used to access on a per-hit basis which residues
+        in a sequence aligned to which residues in the HMM.
 
     Parameters
     ==========
@@ -98,6 +103,8 @@ class HMMERStandardOutput(object):
         self.context = context
 
         self.set_names()
+
+        self.ali_info = {}
 
         # This is converted to a dataframe after populating
         self.seq_hits = {
@@ -151,9 +158,9 @@ class HMMERStandardOutput(object):
             'env_stop': [],
             'env_bounds': [],
             'mean_post_prob': [],
-            'consensus_align': [],
-            'match_align': [],
-            'target_align': [],
+            'match_state_align': [],
+            'comparison_align': [],
+            'sequence_align': [],
         }
 
         self.dom_hits_dtypes = {
@@ -176,9 +183,9 @@ class HMMERStandardOutput(object):
             'env_stop': int,
             'env_bounds': str,
             'mean_post_prob': float,
-            'consensus_align': str,
-            'match_align': str,
-            'target_align': str,
+            'match_state_align': str,
+            'comparison_align': str,
+            'sequence_align': str,
         }
 
         self.delim_query = '//\n'
@@ -204,7 +211,7 @@ class HMMERStandardOutput(object):
         self.seq_hits = pd.DataFrame(self.seq_hits).astype(self.seq_hits_dtypes)
         self.dom_hits = pd.DataFrame(self.dom_hits).astype(self.dom_hits_dtypes)
 
-        self.context_specific_operations()
+        self.additional_processing()
 
         self.progress.end()
         self.run.info('Loaded HMMER results from', self.hmmer_std_out)
@@ -364,12 +371,14 @@ class HMMERStandardOutput(object):
 
                     line_index += 2
 
-                self.dom_hits['consensus_align'].append(''.join(consensus))
-                self.dom_hits['match_align'].append(''.join(match))
-                self.dom_hits['target_align'].append(''.join(target))
+                self.dom_hits['match_state_align'].append(''.join(consensus))
+                self.dom_hits['comparison_align'].append(''.join(match))
+                self.dom_hits['sequence_align'].append(''.join(target))
 
 
     def set_names(self):
+        """Set the column names depending on self.context"""
+
         if self.context is None:
             self.query_col = 'query'
             self.acc_col = 'acc'
@@ -383,15 +392,65 @@ class HMMERStandardOutput(object):
             self.target_col = 'corresponding_gene_call'
 
 
-    def context_specific_operations(self):
-        """Reformat for use with the context"""
+    def additional_processing(self):
+        """Further process raw data"""
 
-        if self.context == 'interacdome':
+        if self.context is None:
+            self.get_ali_info()
+
+        elif self.context == 'interacdome':
             self.seq_hits['corresponding_gene_call'] = self.seq_hits['corresponding_gene_call'].astype(int)
             self.dom_hits['corresponding_gene_call'] = self.dom_hits['corresponding_gene_call'].astype(int)
 
             self.seq_hits[['pfam_id', 'version']] = self.seq_hits['pfam_id'].str.split('.', n=1, expand=True)
             self.dom_hits[['pfam_id', 'version']] = self.dom_hits['pfam_id'].str.split('.', n=1, expand=True)
+
+            # For convenience this is done after pfam_id has been split
+            self.get_ali_info()
+
+
+    def get_ali_info(self):
+        """Creates self.ali_info. See class docstring for description
+
+        Notes
+        =====
+        - This function is very slow.
+        """
+
+        gap_chars = {'-', '.'}
+
+        for target, subset in self.dom_hits.groupby(self.target_col):
+            self.ali_info[target] = {}
+
+            for acc, subsubset in subset.groupby(self.acc_col):
+                self.ali_info[target][acc] = {}
+
+                for i, row in subsubset.iterrows():
+                    ali_mapping = []
+
+                    seq_pos, hmm_pos = row['hmm_start'], row['ali_start']
+                    sequence, match_state = row['sequence_align'], row['match_state_align']
+
+                    assert len(sequence) == len(match_state)
+
+                    for i in range(len(sequence)):
+                        seq_char, hmm_char = sequence[i], match_state[i]
+                        if (seq_char not in gap_chars) and (hmm_char not in gap_chars):
+                            # alignment
+                            ali_mapping.append((seq_pos, hmm_pos))
+                            seq_pos += 1
+                            hmm_pos += 1
+                        elif (seq_char in gap_chars) and (hmm_char not in gap_chars):
+                            # gap in seq
+                            hmm_pos += 1
+                        elif (seq_char not in gap_chars) and (hmm_char in gap_chars):
+                            # gap in match state
+                            seq_pos += 1
+                        else:
+                            # this happens with 0 probability
+                            pass
+
+                    self.ali_info[target][acc][row['domain']] = np.array(ali_mapping)
 
 
 
