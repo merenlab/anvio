@@ -255,11 +255,11 @@ class ContigsSuperclass(object):
             self.run.info('Splits taxonomy', 'Initiated for taxonomic level for "%s"' % t_level)
 
 
-    def init_contig_sequences(self, min_contig_length=0,
-                              gene_caller_ids_of_interest=set([]),
-                              split_names_of_interest=set([]),
-                              contig_names_of_interest=set([])):
+    def init_contig_sequences(self, min_contig_length=0, gene_caller_ids_of_interest=set([]), split_names_of_interest=set([]), contig_names_of_interest=set([])):
         contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        if not len(split_names_of_interest):
+            split_names_of_interest = self.split_names_of_interest
 
         too_many_args = False
         if len(gene_caller_ids_of_interest):
@@ -293,33 +293,21 @@ class ContigsSuperclass(object):
         else:
             subset_provided = False
 
+        if subset_provided and not len(contig_names_of_interest):
+            raise ConfigError("Anvi'o was trying to identify the contig names of interest in `init_contig_sequences` "
+                              "and then after a few steps there was no contig names of interest at all :( Something "
+                              "fishy happened, and code is Jon Snow.")
+
+        self.progress.new('Loading contig sequences')
+        self.contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', contig_names_of_interest, string_the_key=True, progress=self.progress)
+        self.progress.end()
+
         if subset_provided:
-            # someone was interested in a subest of things, but found nothing for them?
-            if not len(contig_names_of_interest):
-                raise ConfigError("Well, it turns out there are no contigs matching to the list of gene calls anvi'o "
-                                  "wanted to work with :( Very sad (and very confusing). If you think this is a bug on "
-                                  "our part, please let us know.")
-
-            self.run.warning("Someone asked the contigs super class to initialize contig sequences that are affiliated "
-                             "with some of the gene calls, split names, or contig names, relevant for this operation "
-                             "(this is happening either becasue the user asked for it, or there was an optimization "
-                             "step somewhere). As a result of which, this class will only know %d contig sequences "
-                             "instead of %d in the database." % (len(contig_names_of_interest), len(self.contigs_basic_info)),
-                             header="JUST SO YOU KNOW", lc='yellow')
-
-            # load some
-            self.progress.new('Loading contig sequences')
-            self.progress.update('Reading SOME contig sequences')
-            self.contig_sequences = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name,
-                                                                  '''contig IN (%s)''' % (', '.join(["'%s'" % s for s in contig_names_of_interest])),
-                                                                  error_if_no_data=True)
-            self.progress.end()
-        else:
-            # load all
-            self.progress.new('Loading contig sequences')
-            self.progress.update('Reading ALL contig sequences')
-            self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
-            self.progress.end()
+            self.run.warning(f"Someone asked the Contigs Superclass to initialize only a subset of contig sequences. "
+                             f"Usually this is a good thing and means that some good code somewhere is looking after "
+                             f"you. Just for your information, this class will only know {len(contig_names_of_interest)} "
+                             f"contig sequences instead of all th things in the database.",
+                             header="THE MORE YOU KNOW 🌈", lc='yellow')
 
         contigs_db.disconnect()
 
