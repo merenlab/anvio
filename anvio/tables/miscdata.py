@@ -1115,55 +1115,37 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
         FIXME This is an unforgiving function, i.e. --just-do-it does nothing
         """
 
-        def get_gene_lengths(source):
-            """Return dict of gene_caller_id: length pairs for a given source"""
-            return {
-                k: floor((v['stop'] - v['start']) / 3)
-                for k, v in database.get_some_rows_from_table_as_dict(
-                    t.genes_in_contigs_table_name,
-                    where_clause="source = '%s'" % source
-                ).items()
-            }
-
-        gene_lengths_by_source = {}
-
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        gene_lengths = database.get_table_as_dataframe(
+            t.genes_in_contigs_table_name,
+            columns_of_interest=('gene_callers_id', 'start', 'stop'),
+        )
+        gene_lengths = dict(zip(gene_lengths['gene_callers_id'], gene_lengths['stop'] - gene_lengths['start']))
 
-        is_format_good = lambda key: len(key.split(':')) == 3
+        is_format_good = lambda key: len(key.split(':')) == 2
 
         # These tables could be millions of entries. We do not bother compiling a prettified list of
         # their badly formatted table. If it's wrong we complain immediately.
         for i, data_key in enumerate(data_dict):
             if not is_format_good(data_key):
                 raise ConfigError("The data key '%s' (entry #%d) is not properly formatted. It should "
-                                  "have the format <gene_caller>:<gene_callers_id>:<codon_order_in_gene>, "
-                                  "e.g. prodigal:1248:122 would be an entry for the 122nd amino acid "
-                                  "(0-indexed) in gene 1248 of gene set identified with prodigal." % \
-                                  (data_key, i+1))
+                                  "have the format <gene_callers_id>:<codon_order_in_gene>, "
+                                  "e.g. 1248:122 would be an entry for the 122nd amino acid "
+                                  "(0-indexed) in gene 1248." % (data_key, i+1))
 
-            gene_caller, gene_callers_id, codon_order_in_gene = data_key.split(':')
+            gene_callers_id, codon_order_in_gene = data_key.split(':')
             gene_callers_id = int(gene_callers_id)
             codon_order_in_gene = int(codon_order_in_gene)
 
-            if gene_caller not in gene_lengths_by_source:
-                try:
-                    gene_lengths_by_source[gene_caller] = get_gene_lengths(gene_caller)
-                except ConfigError:
-                    raise ConfigError("At least one of your data entries in your additional data specifies a gene "
-                                      "caller that is absent in your contigs database... For example, "
-                                      "the data key '%s' (entry #%d) corresponds to the gene caller '%s', "
-                                      "which is non-existent in this database..." % \
-                                      (data_key, i+1, gene_caller))
-
-            if gene_callers_id not in gene_lengths_by_source[gene_caller]:
+            if gene_callers_id not in gene_lengths:
                 raise ConfigError("There is a problem with data key '%s' (entry #%d). It specifies gene callers "
-                                  "ID %d, which does not exist for this gene source." % \
+                                  "ID %d, which does not exist." % \
                                   (data_key, i+1, gene_callers_id))
 
-            if codon_order_in_gene < 0 or codon_order_in_gene >= gene_lengths_by_source[gene_caller][gene_callers_id]:
+            if codon_order_in_gene < 0 or codon_order_in_gene >= gene_lengths[gene_callers_id]:
                 raise ConfigError("There is a problem with data key '%s' (entry #%d). It specifies codon_order_in_gene "
                                   "%d, which falls outside of gene %d (its length is %d)." % \
-                                  (data_key, i+1, codon_order_in_gene, gene_callers_id, gene_lengths_by_source[gene_caller][gene_callers_id]))
+                                  (data_key, i+1, codon_order_in_gene, gene_callers_id, gene_lengths[gene_callers_id]))
 
         database.disconnect()
 
