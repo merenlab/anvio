@@ -117,7 +117,7 @@ class InteracdomeSuper(Pfam):
         self.run.info('num unique genes', self.hmm_out.dom_hits['corresponding_gene_call'].unique().shape[0])
         self.run.info('num unique HMMs', self.hmm_out.dom_hits['pfam_id'].unique().shape[0])
 
-        if not self.hmm_out.dom_hits.shape[0] == 0:
+        if self.hmm_out.dom_hits.shape[0] == 0:
             self.run.info_single("The HMM search returned no hits :/ So there is nothing to do. Anvi'o "
                                  "will now clean the temporary directories and gracefully quit.",
                                  nl_before=1, nl_after=1)
