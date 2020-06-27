@@ -8,6 +8,8 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError
 from anvio.parsers.base import Parser
 
+import pandas as pd
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -33,22 +35,91 @@ class HMMERStandardOutput(object):
 
         self.hmmer_std_out = hmmer_std_out
 
-        self.data = {}
+        # This is converted to a dataframe after populating
+        self.seq_hits = {
+            'query': [],
+            'acc': [],
+            'target': [],
+            'query_len': [],
+            'evalue': [],
+            'score': [],
+            'bias': [],
+            'best_dom_evalue': [],
+            'best_dom_score': [],
+            'best_dom_bias': [],
+            'expected_doms': [],
+            'num_doms': [],
+        }
+
+        self.seq_hits_dtypes = {
+            'query': str,
+            'acc': str,
+            'target': str,
+            'query_len': int,
+            'evalue': float,
+            'score': float,
+            'bias': float,
+            'best_dom_evalue': float,
+            'best_dom_score': float,
+            'best_dom_bias': float,
+            'expected_doms': float,
+            'num_doms': int,
+        }
+
+        # This is converted to a dataframe after populating
+        self.dom_hits = {
+            'query': [],
+            'acc': [],
+            'target': [],
+            'domain': [],
+            'qual': [],
+            'score': [],
+            'bias': [],
+            'c-evalue': [],
+            'i-evalue': [],
+            'hmm_start': [],
+            'hmm_stop': [],
+            'hmm_bounds': [],
+            'ali_start': [],
+            'ali_stop': [],
+            'ali_bounds': [],
+            'env_start': [],
+            'env_stop': [],
+            'env_bounds': [],
+            'mean_post_prob': [],
+            'consensus_align': [],
+            'match_align': [],
+            'target_align': [],
+        }
+
+        self.dom_hits_dtypes = {
+            'query': str,
+            'acc': str,
+            'target': str,
+            'domain': int,
+            'qual': str,
+            'score': float,
+            'bias': float,
+            'c-evalue': float,
+            'i-evalue': float,
+            'hmm_start': int,
+            'hmm_stop': int,
+            'hmm_bounds': str,
+            'ali_start': int,
+            'ali_stop': int,
+            'ali_bounds': str,
+            'env_start': int,
+            'env_stop': int,
+            'env_bounds': str,
+            'mean_post_prob': float,
+            'consensus_align': str,
+            'match_align': str,
+            'target_align': str,
+        }
 
         self.delim_query = '//\n'
         self.delim_seq = '>>'
         self.delim_domain = '=='
-
-        self.seq_score_fields = [
-            'evalue',
-            'score',
-            'bias',
-            'best_dom_evalue',
-            'best_dom_score',
-            'best_dom_bias',
-            'expected_doms',
-            'num_doms',
-        ]
 
         self.load()
 
@@ -64,10 +135,10 @@ class HMMERStandardOutput(object):
                     self.progress.update('%d done' % i)
                     self.progress.increment(increment_to=i)
 
-                result = self.process_query(query)
+                self.process_query(query)
 
-                if result:
-                    self.data[result['acc']] = result
+        self.seq_hits = pd.DataFrame(self.seq_hits).astype(self.seq_hits_dtypes)
+        self.dom_hits = pd.DataFrame(self.dom_hits).astype(self.dom_hits_dtypes)
 
         self.progress.end()
         self.run.info('Loaded HMMER results from', self.hmmer_std_out)
@@ -112,22 +183,20 @@ class HMMERStandardOutput(object):
 
 
     def process_query(self, query):
-        result = {}
-
         if self.delim_seq not in query:
             # This query had no hits
-            return result
+            return
 
         self.query_lines = query.split('\n')
         self.line_no = 0
 
         line = self.find_line(lambda line: line.startswith('Query:'))
         line_split = line.split()
-        result['query_name'] = line_split[1]
-        result['length'] = int(line_split[2][line_split[2].find('=')+1:-1])
+        query_name = line_split[1]
+        query_len = int(line_split[2][line_split[2].find('=')+1:-1])
 
         line = self.find_line(lambda line: line.startswith('Accession:'))
-        result['acc'] = line.split()[1]
+        acc = line.split()[1]
 
         line = self.find_line(lambda line: line.lstrip().startswith('E-value'))
         description_index = line.find('Desc')
@@ -135,57 +204,67 @@ class HMMERStandardOutput(object):
 
         assert len(fields) == 9, "Please report this on github with your HMMER version"
 
-        result['seq_hits'] = {}
         self.read_lines_until(lambda line: line.lstrip().startswith('-------'), store=False)
         seq_score_lines = self.read_lines_until(lambda line: line == '')
+
+        num_doms_per_seq = {}
+
         for seq_score_line in seq_score_lines:
             seq_scores = seq_score_line[:description_index].split()
-            seq_name = seq_scores[-1]
-            result['seq_hits'][seq_name] = dict(zip(self.seq_score_fields, [float(x) for x in seq_scores]))
-            result['seq_hits'][seq_name]['num_doms'] = int(result['seq_hits'][seq_name]['num_doms'])
 
-        result['num_seq_hits'] = len(result['seq_hits'])
+            self.seq_hits['query'].append(query_name)
+            self.seq_hits['query_len'].append(query_len)
+            self.seq_hits['acc'].append(acc)
+            self.seq_hits['evalue'].append(float(seq_scores[0]))
+            self.seq_hits['score'].append(float(seq_scores[1]))
+            self.seq_hits['bias'].append(float(seq_scores[2]))
+            self.seq_hits['best_dom_evalue'].append(float(seq_scores[3]))
+            self.seq_hits['best_dom_score'].append(float(seq_scores[4]))
+            self.seq_hits['best_dom_bias'].append(float(seq_scores[5]))
+            self.seq_hits['expected_doms'].append(float(seq_scores[6]))
+            self.seq_hits['num_doms'].append(int(seq_scores[7]))
+            self.seq_hits['target'].append(seq_scores[8])
 
-        result['dom_hits'] = {}
-        for _ in range(result['num_seq_hits']):
-            seq_name = self.find_line(lambda line: line.startswith(self.delim_seq)).split()[1]
+            num_doms_per_seq[seq_scores[8]] = int(seq_scores[7])
 
-            result['dom_hits'][seq_name] = {}
+        num_seq_hits = len(seq_score_lines)
 
-            if result['seq_hits'][seq_name]['num_doms'] == 0:
+        for _ in range(num_seq_hits):
+            target_name = self.find_line(lambda line: line.startswith(self.delim_seq)).split()[1]
+
+            if num_doms_per_seq[target_name] == 0:
                 continue
 
             self.line_no += 2
-            for __ in range(result['seq_hits'][seq_name]['num_doms']):
+            for __ in range(num_doms_per_seq[target_name]):
                 dom_score_summary = self.find_line(lambda line: True).split()
-                dom_id = dom_score_summary.pop(0)
-                result['dom_hits'][seq_name][dom_id] = {}
 
-                result['dom_hits'][seq_name][dom_id]['summary'] = {
-                    'qual': str(dom_score_summary[0]),
-                    'score': float(dom_score_summary[1]),
-                    'bias': float(dom_score_summary[2]),
-                    'c-evalue': float(dom_score_summary[3]),
-                    'i-evalue': float(dom_score_summary[4]),
-                    'hmm_start': int(dom_score_summary[5]),
-                    'hmm_stop': int(dom_score_summary[6]),
-                    'hmm_bounds': str(dom_score_summary[7]),
-                    'ali_start': int(dom_score_summary[8]),
-                    'ali_stop': int(dom_score_summary[9]),
-                    'ali_bounds': str(dom_score_summary[10]),
-                    'env_start': int(dom_score_summary[11]),
-                    'env_stop': int(dom_score_summary[12]),
-                    'env_bounds': str(dom_score_summary[13]),
-                    'mean_post_prob': float(dom_score_summary[14]),
-                }
+                self.dom_hits['query'].append(query_name)
+                self.dom_hits['acc'].append(acc)
+                self.dom_hits['target'].append(target_name)
+                self.dom_hits['domain'].append(dom_score_summary[0])
+                self.dom_hits['qual'].append(dom_score_summary[1])
+                self.dom_hits['score'].append(dom_score_summary[2])
+                self.dom_hits['bias'].append(dom_score_summary[3])
+                self.dom_hits['c-evalue'].append(dom_score_summary[4])
+                self.dom_hits['i-evalue'].append(dom_score_summary[5])
+                self.dom_hits['hmm_start'].append(dom_score_summary[6])
+                self.dom_hits['hmm_stop'].append(dom_score_summary[7])
+                self.dom_hits['hmm_bounds'].append(dom_score_summary[8])
+                self.dom_hits['ali_start'].append(dom_score_summary[9])
+                self.dom_hits['ali_stop'].append(dom_score_summary[10])
+                self.dom_hits['ali_bounds'].append(dom_score_summary[11])
+                self.dom_hits['env_start'].append(dom_score_summary[12])
+                self.dom_hits['env_stop'].append(dom_score_summary[13])
+                self.dom_hits['env_bounds'].append(dom_score_summary[14])
+                self.dom_hits['mean_post_prob'].append(dom_score_summary[15])
 
-            num_doms = result['seq_hits'][seq_name]['num_doms']
-            for __ in range(num_doms):
+            for __ in range(num_doms_per_seq[target_name]):
                 self.find_line(lambda line: line.lstrip().startswith(self.delim_domain))
 
-                if __ == num_doms - 1:
-                    if _ == result['num_seq_hits'] - 1:
-                        # This is the last alignment in the result. Go to end of string
+                if __ == num_doms_per_seq[target_name] - 1:
+                    if _ == num_seq_hits - 1:
+                        # This is the last alignment in the summary_info. Go to end of string
                         ali_lines = self.read_lines_until(lambda line: False)
                     else:
                         # This is the last alignment in the sequence. Go to next sequence delimiter
@@ -195,7 +274,34 @@ class HMMERStandardOutput(object):
                     ali_lines = self.read_lines_until(lambda line: line.lstrip().startswith(self.delim_domain))
                     self.line_no -= 1
 
-        return result
+                consensus = []
+                match = []
+                target = []
+                line_index = 0
+                while True:
+                    if line_index >= len(ali_lines):
+                        break
+
+                    line = ali_lines[line_index]
+
+                    if not line.lstrip().startswith(query_name + ' '):
+                        line_index += 1
+                        continue
+
+                    cons_seq_fragment = line.split()[2]
+                    frag_len = len(cons_seq_fragment)
+                    ali_index = line.find(cons_seq_fragment)
+
+                    consensus.append(cons_seq_fragment)
+                    match.append(ali_lines[line_index + 1][ali_index: ali_index + frag_len])
+                    target.append(ali_lines[line_index + 2][ali_index: ali_index + frag_len])
+
+                    line_index += 2
+
+                self.dom_hits['consensus_align'].append(''.join(consensus))
+                self.dom_hits['match_align'].append(''.join(match))
+                self.dom_hits['target_align'].append(''.join(target))
+
 
 
 class HMMERTableOutput(Parser):
