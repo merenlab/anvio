@@ -422,6 +422,63 @@ class DB:
         return self.get_all_rows_from_table(table_name)
 
 
+    def smart_get(self, table_name, column=None, data=None, string_the_key=False, error_if_no_data=True, progress=None):
+        """A wrapper function for `get_*_table_as_dict` and that is not actually that smart.
+
+        If the user is interested in only some of the data, they can build a where clause
+        and use `get_some_rows_from_table_as_dict`. If the user is interested in the entire
+        table data, then they would call `get_table_as_dict`. But in situations where it is
+        not certain whether there will be a where clause, the if/else statements clutter the
+        code. Here is an example:
+
+            ----8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------
+            def func(items_of_interest=None):
+                (...)
+
+                if items_of_interest:
+                    where_clause = 'column_name IN (%s)' % (','.join(['"%s"' % item for item in items_of_interest]))
+                    d = get_some_rows_from_table_as_dict(table_name, where_clause=where_clause)
+                else:
+                    d = get_table_as_dict(table_name)
+
+                (...)
+            ---->8------->8------->8------->8------->8------->8------->8------->8------->8------->8------->8-------
+
+        This function cleans up this mess as this call is equivalent to the example code above:
+
+            ----8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------
+            def func(items_of_interest=None):
+                (...)
+
+                smart_get(table_name, column_name, items_of_interest)
+
+                (...)
+            ---->8------->8------->8------->8------->8------->8------->8------->8------->8------->8------->8-------
+
+        Paremeters
+        ==========
+        table_name: str
+            The anvi'o data table name
+        column: str
+            The column name that will be used to select from table
+        data: set
+            A set of item names of interest. If the set is empty, the function will return the entire content of `table_name`
+        """
+
+        if column and data:
+            items = ','.join(['"%s"' % d for d in data])
+
+            if progress:
+                progress.update(f'Reading **SOME** data from `{table_name.replace("_", " ")}` table :)')
+
+            return self.get_some_rows_from_table_as_dict(table_name, where_clause=f"{column} IN ({items})", string_the_key=string_the_key, error_if_no_data=error_if_no_data)
+        else:
+            if progress:
+                progress.update(f'Reading **ALL** data from `{table_name.replace("_", " ")}` table :(')
+
+            return self.get_table_as_dict(table_name, string_the_key=string_the_key, error_if_no_data=error_if_no_data)
+
+
     def get_table_as_dict(self, table_name, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True, log_norm_numeric_values=False):
         if self.ROWID_PREPENDS_ROW_DATA(table_name):
             table_structure = ['entry_id'] + self.get_table_structure(table_name)
