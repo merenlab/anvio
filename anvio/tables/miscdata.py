@@ -1044,7 +1044,7 @@ class TableForNucleotideAdditionalData(AdditionalDataBaseClass):
         # A dict of {<contig_name>: <contig_length>, ...}
         contig_lengths = dict(database.get_some_columns_from_table(t.contigs_info_table_name, 'contig,length'))
 
-        is_format_good = lambda key: len(key.split('::')) == 2
+        is_format_good = lambda key: len(key.split(':')) == 2
 
         not_in_db = set()
 
@@ -1053,12 +1053,12 @@ class TableForNucleotideAdditionalData(AdditionalDataBaseClass):
         for i, data_key in enumerate(data_dict):
             if not is_format_good(data_key):
                 raise ConfigError("The data key '%s' (entry #%d) is not properly formatted. It should "
-                                  "have the format <contig_name>::<position_in_contig>, e.g. "
-                                  "contig_000001::125 would be an entry for contig_000001 at the "
+                                  "have the format <contig_name>:<position_in_contig>, e.g. "
+                                  "contig_000001:125 would be an entry for contig_000001 at the "
                                   "125th position of the sequence (The first letter in the sequence "
                                   "has the position 0, not 1)." % (data_key, i+1))
 
-            contig, pos = data_key.split('::')
+            contig, pos = data_key.split(':')
             pos = int(pos)
 
             if contig not in contig_lengths:
@@ -1079,7 +1079,7 @@ class TableForNucleotideAdditionalData(AdditionalDataBaseClass):
                                                           len(data_dict),
                                                           self.db_type,
                                                           example,
-                                                          example.split('::')[0]))
+                                                          example.split(':')[0]))
 
             if self.just_do_it:
                 self.run.warning(msg + ".. But since you asked anvi'o to keep its mouth shut, it removed the ones that "
@@ -1129,19 +1129,19 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
-        is_format_good = lambda key: len(key.split('::')) == 3
+        is_format_good = lambda key: len(key.split(':')) == 3
 
         # These tables could be millions of entries. We do not bother compiling a prettified list of
         # their badly formatted table. If it's wrong we complain immediately.
         for i, data_key in enumerate(data_dict):
             if not is_format_good(data_key):
                 raise ConfigError("The data key '%s' (entry #%d) is not properly formatted. It should "
-                                  "have the format <gene_caller>::<gene_callers_id>::<codon_order_in_gene>, "
-                                  "e.g. prodigal::1248::122 would be an entry for the 122nd amino acid "
+                                  "have the format <gene_caller>:<gene_callers_id>:<codon_order_in_gene>, "
+                                  "e.g. prodigal:1248:122 would be an entry for the 122nd amino acid "
                                   "(0-indexed) in gene 1248 of gene set identified with prodigal." % \
                                   (data_key, i+1))
 
-            gene_caller, gene_callers_id, codon_order_in_gene = data_key.split('::')
+            gene_caller, gene_callers_id, codon_order_in_gene = data_key.split(':')
             gene_callers_id = int(gene_callers_id)
             codon_order_in_gene = int(codon_order_in_gene)
 
