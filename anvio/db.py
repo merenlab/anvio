@@ -67,7 +67,11 @@ class DB:
 
         self.check_if_db_writable()
 
-        self.conn = sqlite3.connect(self.db_path)
+        try:
+            self.conn = sqlite3.connect(self.db_path)
+        except Exception as e:
+            raise ConfigError(f"This one time someone was not happy with '{self.db_path}' and '{e}', they said.")
+
         self.conn.text_factory = str
 
         self.cursor = self.conn.cursor()
