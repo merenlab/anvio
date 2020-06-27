@@ -130,6 +130,9 @@ if __name__ == '__main__':
         print(e)
         sys.exit(-3)
 
+    if args.dry_run:
+        run.info_single('Dry run, eh? Fine. Bai!', nl_after=1)
+        sys.exit()
 
     app = BottleApplication(d)
     app.run_application(args.ip_address, args.port_number)
