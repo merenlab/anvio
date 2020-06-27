@@ -494,8 +494,16 @@ class DB:
             A set of item names of interest. If the set is empty, the function will return the entire content of `table_name`
         """
 
+        table_columns_and_types = self.get_table_columns_and_types(table_name)
+
+        if column not in table_columns_and_types:
+            raise ConfigError(f"The column name `{column}` is not in table `{table_name}` :/")
+
         if column and data:
-            items = ','.join(['"%s"' % d for d in data])
+            if table_columns_and_types[column] in ["numeric", "integer"]:
+                items = ','.join([str(d) for d in data])
+            else:
+                items = ','.join(['"%s"' % d for d in data])
 
             if progress:
                 progress.update(f'Reading **SOME** data from `{table_name.replace("_", " ")}` table :)')
