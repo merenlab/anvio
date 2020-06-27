@@ -2194,7 +2194,7 @@ class PanSuperclass(object):
         self.gene_clusters_initialized = True
 
 
-    def load_pan_views(self, splits_of_interest=None):
+    def load_pan_views(self, split_names_of_interest=None):
         pan_db = PanDatabase(self.pan_db_path)
 
         views_table = pan_db.db.get_table_as_dict(t.views_table_name)
@@ -2203,7 +2203,7 @@ class PanSuperclass(object):
             table_name = views_table[view]['target_table']
             self.views[view] = {'table_name': table_name,
                                 'header': pan_db.db.get_table_structure(table_name)[1:],
-                                'dict': pan_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest)}
+                                'dict': pan_db.db.get_table_as_dict(table_name, keys_of_interest=split_names_of_interest)}
 
         pan_db.disconnect()
 
@@ -2451,7 +2451,7 @@ class ProfileSuperclass(object):
         # Should we initialize the profile super for a specific list of splits? This is where we take care of that.
         # the user can initialize the profile super two ways: by providing split names of interest explicitly, or
         # by providing collection name and bin names in args.
-        self.split_names_of_interest = A('split_names_of_interest')
+        self.split_names_of_interest = A('split_names_of_interest') or set([])
         self.collection_name = A('collection_name')
 
         # figure out bin names, if there is one to figure out
@@ -2472,7 +2472,7 @@ class ProfileSuperclass(object):
             self.bin_names = None
 
         if self.split_names_of_interest and not isinstance(self.split_names_of_interest, type(set([]))):
-            raise ConfigError("ProfileSuper says the argument `splits_of_interest` must be of type set(). "
+            raise ConfigError("ProfileSuper says the argument `split_names_of_interest` must be of type set(). "
                               "Someone screwed up somewhere :/")
         elif self.split_names_of_interest and self.collection_name:
             raise ConfigError("ProfileSuper is initialized with args that contain both `split_names_of_interest`,\
@@ -3222,18 +3222,18 @@ class ProfileSuperclass(object):
         return collection, bins_info
 
 
-    def load_views(self, splits_of_interest=None, omit_parent_column=False):
+    def load_views(self, split_names_of_interest=None, omit_parent_column=False):
         profile_db = ProfileDatabase(self.profile_db_path)
 
         views_table = profile_db.db.get_table_as_dict(t.views_table_name)
 
-        self.progress.new('Loading views%s' % (' for %d items' % len(splits_of_interest) if splits_of_interest else ''))
+        self.progress.new('Loading views%s' % (' for %d items' % len(split_names_of_interest) if split_names_of_interest else ''))
         for view in views_table:
             self.progress.update('for %s' % view)
             table_name = views_table[view]['target_table']
             self.views[view] = {'table_name': table_name,
                                 'header': profile_db.db.get_table_structure(table_name)[1:],
-                                'dict': profile_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest, omit_parent_column=omit_parent_column)}
+                                'dict': profile_db.db.get_table_as_dict(table_name, keys_of_interest=split_names_of_interest, omit_parent_column=omit_parent_column)}
 
         self.progress.end()
         profile_db.disconnect()
