@@ -512,7 +512,7 @@ class ContigsSuperclass(object):
             else:
                 gene_caller_ids_of_interest = set([])
 
-            functions_dict = contigs_db.db.smart_get(t.gene_function_calls_table_name, 'gene_callers_id', gene_caller_ids_of_interest)
+            functions_dict = contigs_db.db.smart_get(t.gene_function_calls_table_name, 'gene_callers_id', gene_caller_ids_of_interest, error_if_no_data=False)
             hits = list(functions_dict.values())
 
             self.gene_function_call_sources = gene_function_sources_in_db
