@@ -188,7 +188,7 @@ class HMMERStandardOutput(object):
         with open(self.hmmer_std_out) as f:
             for i, query in enumerate(utils.get_chunk(f, separator=self.delim_query, read_size=32768)):
 
-                if i % 250 == 0:
+                if i % 500 == 0:
                     self.progress.update('%d done' % i)
                     self.progress.increment(increment_to=i)
 
@@ -196,8 +196,6 @@ class HMMERStandardOutput(object):
 
         self.seq_hits = pd.DataFrame(self.seq_hits).astype(self.seq_hits_dtypes)
         self.dom_hits = pd.DataFrame(self.dom_hits).astype(self.dom_hits_dtypes)
-
-        print(self.dom_hits)
 
         self.progress.end()
         self.run.info('Loaded HMMER results from', self.hmmer_std_out)
@@ -361,6 +359,28 @@ class HMMERStandardOutput(object):
                 self.dom_hits['match_align'].append(''.join(match))
                 self.dom_hits['target_align'].append(''.join(target))
 
+
+    def reformat_for_interacdome(self):
+        """Reformat for use with interacdome"""
+
+        self.dom_hits.rename(columns={
+            'query': 'pfam_name',
+            'acc': 'pfam_id',
+            'target': 'corresponding_gene_call',
+        }, inplace=True)
+
+        self.seq_hits.rename(columns={
+            'query': 'pfam_name',
+            'acc': 'pfam_id',
+            'query_len': 'pfam_len',
+            'target': 'corresponding_gene_call',
+        }, inplace=True)
+
+        self.seq_hits['corresponding_gene_call'] = self.seq_hits['corresponding_gene_call'].astype(int)
+        self.dom_hits['corresponding_gene_call'] = self.dom_hits['corresponding_gene_call'].astype(int)
+
+        self.seq_hits[['pfam_id', 'version']] = self.seq_hits['pfam_id'].str.split('.', n=1, expand=True)
+        self.dom_hits[['pfam_id', 'version']] = self.dom_hits['pfam_id'].str.split('.', n=1, expand=True)
 
 
 class HMMERTableOutput(Parser):
