@@ -433,6 +433,13 @@ class DB:
         return [t[2] for t in response.fetchall()]
 
 
+    def get_table_columns_and_types(self, table_name):
+        self.is_table_exists(table_name)
+
+        response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
+        return dict([(t[1], t[2]) for t in response.fetchall()])
+
+
     def get_table_structure(self, table_name):
         self.is_table_exists(table_name)
 
