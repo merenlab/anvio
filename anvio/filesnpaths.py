@@ -139,6 +139,7 @@ def is_file_exists(file_path, dont_raise=False):
         if dont_raise:
             return False
         else:
+            Progress().reset()
             raise FilesNPathsError("No such file: '%s' :/" % file_path)
     return True
 

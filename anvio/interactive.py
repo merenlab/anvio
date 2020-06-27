@@ -168,6 +168,22 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         self.collections = ccollections.Collections()
 
+        # we will set the split names of interest early on to avoid
+        # reading everything in the contigs database.
+        self.split_names_of_interest = set([])
+        self.bin_names_of_interest = []
+        if self.collection_name and (self.bin_ids_file_path or self.bin_id):
+            progress.new('Initializing split names of interest')
+            progress.update('...')
+
+            splits_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
+            self.bin_names_of_interest = list(splits_dict.keys())
+
+            for split_names in list(splits_dict.values()):
+                self.split_names_of_interest.update(split_names)
+
+            progress.end()
+
         # if the mode has not been set from within the arguments, we will set something up here:
         if not self.mode:
             if self.manual_mode:
@@ -712,36 +728,24 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
 
     def load_refine_mode(self):
-        self.split_names_of_interest = set([])
         self.is_merged = self.p_meta['merged']
         self.is_blank = self.p_meta['blank']
         self.clustering_configs = constants.clustering_configs['merged' if self.is_merged else 'blank' if self.is_blank else 'single']
-
-        progress.new('Initializing')
-        progress.update('Getting split names')
-
-        split_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
-        self.bins = list(split_dict.keys())
-
-        for split_names in list(split_dict.values()):
-            self.split_names_of_interest.update(split_names)
-
-        progress.end()
 
         # if the user updates the refinement of a single bin or bins, there shouldn't be multiple copies
         # of that stored in the database. so everytime 'store_refined_bins' function is called,
         # it will check this varlable and, (1) if empty, continue updating stuff in db store updates
         # in it, (2) if not empty, remove items stored in this variable from collections dict, and continue
-        # with step (1). the starting point is of course self.bins. when the store_refined_bins function is
+        # with step (1). the starting point is of course self.bin_names_of_interest. when the store_refined_bins function is
         # called the first time, it will read collection data for collection_name, and remove the bin(s) in
         # analysis from it before it stores the data:
-        self.ids_for_already_refined_bins = self.bins
+        self.ids_for_already_refined_bins = self.bin_names_of_interest
 
         self.input_directory = os.path.dirname(os.path.abspath(self.profile_db_path))
 
         self.run.info('Input directory', self.input_directory)
         self.run.info('Collection ID', self.collection_name)
-        self.run.info('Number of bins', len(self.bins))
+        self.run.info('Number of bins', len(self.bin_names_of_interest))
         self.run.info('Number of splits', len(self.split_names_of_interest))
 
         if not self.skip_hierarchical_clustering:
@@ -768,7 +772,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.collections = ccollections.Collections()
         self.collections.populate_collections_dict(self.profile_db_path)
 
-        bins = sorted(list(self.bins))
+        bins = sorted(list(self.bin_names_of_interest))
 
         if not self.args.title:
             self.title = textwrap.fill('Refining %s%s from "%s"' % (', '.join(bins[0:3]),
@@ -958,7 +962,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # this is a weird place to do it, but we are going to ask ContigsSuperclass function to load
         # all the split sequences since only now we know the mun_contig_length that was used to profile
         # this stuff
-        self.init_split_sequences(self.p_meta['min_contig_length'])
+        self.init_split_sequences(min_contig_length=self.p_meta['min_contig_length'])
 
         self.collections.populate_collections_dict(self.profile_db_path)
 
@@ -1077,7 +1081,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 }
 
         self.collections.populate_collections_dict(self.profile_db_path)
-        split_names_of_interest = self.collections.get_collection_dict(self.collection_name)[self.bin_id]
         all_gene_callers_ids = []
 
         # NOTE: here we ask anvi'o to not worry about names consistency. because we are initializing
@@ -1086,11 +1089,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # contigs database). Bypassing those checks helps us avoid headaches later.
         self.skip_check_names = True
 
-        self.init_split_sequences(self.p_meta['min_contig_length'], split_names_of_interest=split_names_of_interest)
+        self.init_split_sequences(self.p_meta['min_contig_length'], split_names_of_interest=self.split_names_of_interest)
 
         gene_caller_ids_missing_in_gene_level_cov_stats_dict = set([])
         gene_caller_sources_for_missing_gene_caller_ids_in_gene_level_cov_stats_dict = set([])
-        for split_name in split_names_of_interest:
+        for split_name in self.split_names_of_interest:
             genes_in_splits_entries = self.split_name_to_genes_in_splits_entry_ids[split_name]
 
             for genes_in_splits_entry in genes_in_splits_entries:
@@ -1109,6 +1112,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     self.views[view]['dict'][str(gene_callers_id)] = {}
                     for sample_name in self.gene_level_coverage_stats_dict[gene_callers_id]:
                         self.views[view]['dict'][str(gene_callers_id)][sample_name] = self.gene_level_coverage_stats_dict[gene_callers_id][sample_name][view]
+
         if len(gene_caller_ids_missing_in_gene_level_cov_stats_dict):
             self.run.warning("Anvi'o observed something weird while it was processing gene level coverage statistics. "
                              "Some of the gene calls stored in your contigs database (%d of them, precisely) did not "
