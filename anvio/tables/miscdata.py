@@ -741,7 +741,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         data_dict : dict
             A dictionary for items or layers additional should follow this format:
 
-                d = {
+                data_dict = {
                         'item_or_layer_name_01': {'data_key_01': value,
                                                   'data_key_02': value,
                                                   'data_key_03': value
@@ -755,6 +755,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         data_keys_list : list
             A list of keys one or more of which should appear for each item in `data_dict`.
         """
+
         if self.target_table not in ['items', 'layers', 'nucleotides', 'amino_acids']:
             raise ConfigError("You are using an AdditionalDataBaseClass instance to add %s data into your %s database. But "
                               "you know what? You can't do that :/ Someone made a mistake somewhere. If you are a user, "
