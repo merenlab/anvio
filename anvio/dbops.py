@@ -324,7 +324,10 @@ class ContigsSuperclass(object):
         return contigs_shorter_than_M
 
 
-    def init_split_sequences(self, min_contig_length=0, split_names_of_interest=[]):
+    def init_split_sequences(self, min_contig_length=0, split_names_of_interest=set([])):
+        if not len(split_names_of_interest):
+            split_names_of_interest = self.split_names_of_interest
+
         contigs_shorter_than_M = self.init_contig_sequences(min_contig_length)
 
         if not len(self.splits_basic_info):
@@ -390,7 +393,10 @@ class ContigsSuperclass(object):
         self.progress.end()
 
 
-    def init_non_singlecopy_gene_hmm_sources(self, split_names_of_interest=None, return_each_gene_as_a_layer=False):
+    def init_non_singlecopy_gene_hmm_sources(self, split_names_of_interest=set([]), return_each_gene_as_a_layer=False):
+        if not len(split_names_of_interest):
+            split_names_of_interest = self.split_names_of_interest
+
         if not self.contigs_db_path or not len(self.non_singlecopy_gene_hmm_sources):
             return
 
