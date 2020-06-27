@@ -210,10 +210,10 @@ class HMMERStandardOutput(object):
 
         self.seq_hits = pd.DataFrame(self.seq_hits).astype(self.seq_hits_dtypes)
         self.dom_hits = pd.DataFrame(self.dom_hits).astype(self.dom_hits_dtypes)
+        self.progress.end()
 
         self.additional_processing()
 
-        self.progress.end()
         self.run.info('Loaded HMMER results from', self.hmmer_std_out)
 
 
@@ -427,9 +427,17 @@ class HMMERStandardOutput(object):
         if self.dom_hits.empty:
             return
 
+        unique_targets = self.dom_hits[self.target_col].nunique()
+        self.progress.new('Per-residue mapping', progress_total_items=unique_targets)
+
         gap_chars = {'-', '.'}
 
+        processed = 0
         for target, subset in self.dom_hits.groupby(self.target_col):
+            if processed % 50 == 0:
+                self.progress.update('%d/%d done' % (processed, unique_targets))
+                self.progress.increment(increment_to=processed)
+
             self.ali_info[target] = {}
 
             for acc, subsubset in subset.groupby(self.acc_col):
@@ -461,6 +469,8 @@ class HMMERStandardOutput(object):
                             pass
 
                     self.ali_info[target][acc][row['domain']] = np.array(ali_mapping)
+            processed += 1
+        self.progress.end()
 
 
 
