@@ -167,17 +167,24 @@ class InteracdomeTableData(object):
                               % (kind, ','.join(list(self.files.keys()))))
 
         self.filepath = self.files[self.kind]
-
         filesnpaths.is_file_exists(self.filepath)
 
+        self.df = None
+        self.bind_freqs = {}
 
-    def get_as_dataframe(self):
-        """Return the dataset as a dataframe"""
 
+    def load(self):
+        # Load the table as a df
         df = pd.read_csv(os.path.join(self.interacdome_data_dir, self.filepath), sep='\t', comment='#')
         df.index = df['pfam_id'].str.split('_', n=1, expand=True)[0]
+        self.df = df
 
-        return df
+        # Populate bind_freqs arrays
+        for pfam_id, row in self.df.iterrows():
+            if pfam_id not in self.bind_freqs:
+                self.bind_freqs[pfam_id] = {}
+
+            self.bind_freqs[pfam_id][row['ligand_type']] = np.array(row['binding_frequencies'].split(','))
 
 
 class InteracdomeSetup(object):
