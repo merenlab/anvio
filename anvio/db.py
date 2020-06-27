@@ -72,6 +72,8 @@ class DB:
 
         self.cursor = self.conn.cursor()
 
+        self.table_names_in_db = self.get_table_names()
+
         if new_database:
             self.create_self()
             self.set_version(client_version)
@@ -89,7 +91,7 @@ class DB:
                                       f"wants to work with v{client_version}). You can migrate your database without losing any data using the "
                                       f"program `anvi-migrate` with either of the flags `--migrate-dbs-safely` or `--migrate-dbs-quickly`.")
 
-            bad_tables = [table_name for table_name in self.get_table_names() if table_name not in tables.requires_unique_entry_id]
+            bad_tables = [table_name for table_name in self.table_names_in_db if table_name not in tables.requires_unique_entry_id]
             if len(bad_tables):
                 raise ConfigError("You better be a programmer tinkering with anvi'o databases adding new tables or something. Otherwise we "
                                   "have quite a serious problem :/ Each table in a given anvi'o database must have an entry in the "
@@ -333,11 +335,7 @@ class DB:
             return next_available_id
         """
 
-        if table_name not in self.get_table_names():
-            raise ConfigError("insert_rows_from_dataframe :: A table with the name %s does "
-                              "not exist in the database you requested. %s are the tables "
-                              "existent in the database" \
-                               % (table_name, ", ".join(self.get_table_names())))
+        self.is_table_exists(table_name)
 
         if not list(dataframe.columns) and not raise_if_no_columns:
             # if the dataframe has no colums, we just return
@@ -362,31 +360,47 @@ class DB:
         self.insert_many(table_name, entries=entries)
 
 
+    def is_table_exists(self, table_name):
+        if table_name not in self.table_names_in_db:
+            raise ConfigError(f"The database at {self.db_path} does seem to have a table `{table_name}` :/ "
+                              f"Here is a list of table names this database knows: {', '.join(self.table_names_in_db)}")
+
+
     def get_all_rows_from_table(self, table_name):
+        self.is_table_exists(table_name)
+
         response = self._exec('''SELECT %s FROM %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name))
         return response.fetchall()
 
 
     def get_some_rows_from_table(self, table_name, where_clause):
+        self.is_table_exists(table_name)
+
         response = self._exec('''SELECT %s FROM %s WHERE %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name, where_clause))
         return response.fetchall()
 
 
-    def get_row_counts_from_table(self, table, where_clause=None):
+    def get_row_counts_from_table(self, table_name, where_clause=None):
+        self.is_table_exists(table_name)
+
         if where_clause:
-            response = self._exec('''SELECT COUNT(*) FROM %s WHERE %s''' % (table, where_clause))
+            response = self._exec('''SELECT COUNT(*) FROM %s WHERE %s''' % (table_name, where_clause))
         else:
-            response = self._exec('''SELECT COUNT(*) FROM %s''' % (table))
+            response = self._exec('''SELECT COUNT(*) FROM %s''' % (table_name))
 
         return response.fetchall()[0][0]
 
 
     def remove_some_rows_from_table(self, table_name, where_clause):
+        self.is_table_exists(table_name)
+
         self._exec('''DELETE FROM %s WHERE %s''' % (table_name, where_clause))
         self.commit()
 
 
     def get_single_column_from_table(self, table, column, unique=False, where_clause=None):
+        self.is_table_exists(table)
+
         if where_clause:
             response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', column, table, where_clause))
         else:
@@ -395,6 +409,8 @@ class DB:
 
 
     def get_some_columns_from_table(self, table, comma_separated_column_names, unique=False, where_clause=None):
+        self.is_table_exists(table)
+
         if where_clause:
             response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table, where_clause))
         else:
@@ -403,17 +419,30 @@ class DB:
 
 
     def get_frequencies_of_values_from_a_column(self, table_name, column_name):
+        self.is_table_exists(table_name)
+
         response = self._exec('''select %s, COUNT(*) from %s group by %s''' % (column_name, table_name, column_name))
 
         return response.fetchall()
 
 
     def get_table_column_types(self, table_name):
+        self.is_table_exists(table_name)
+
         response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
         return [t[2] for t in response.fetchall()]
 
 
+    def get_table_columns_and_types(self, table_name):
+        self.is_table_exists(table_name)
+
+        response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
+        return dict([(t[1], t[2]) for t in response.fetchall()])
+
+
     def get_table_structure(self, table_name):
+        self.is_table_exists(table_name)
+
         response = self._exec('''SELECT * FROM %s''' % table_name)
         return [t[0] for t in response.description]
 
@@ -465,8 +494,16 @@ class DB:
             A set of item names of interest. If the set is empty, the function will return the entire content of `table_name`
         """
 
+        table_columns_and_types = self.get_table_columns_and_types(table_name)
+
+        if column not in table_columns_and_types:
+            raise ConfigError(f"The column name `{column}` is not in table `{table_name}` :/")
+
         if column and data:
-            items = ','.join(['"%s"' % d for d in data])
+            if table_columns_and_types[column] in ["numeric", "integer"]:
+                items = ','.join([str(d) for d in data])
+            else:
+                items = ','.join(['"%s"' % d for d in data])
 
             if progress:
                 progress.update(f'Reading **SOME** data from `{table_name.replace("_", " ")}` table :)')
