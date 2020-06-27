@@ -1375,7 +1375,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.progress.update("Organizing KOfam hit data")
         gene_calls_splits_dict = {tpl[0] : tpl[1] for tpl in genes_in_splits}
         gene_calls_contigs_dict = {tpl[0] : tpl[1] for tpl in genes_in_contigs}
-        assert len(gene_calls_splits_dict.keys()) == len(genes_in_splits)
         assert len(gene_calls_splits_dict.keys()) == len(genes_in_contigs)
 
         kofam_gene_split_contig = []
