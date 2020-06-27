@@ -84,20 +84,27 @@ class HMMERStandardOutput(object):
     ==========
     hmmer_std_out : str
         Path to output of HMMER.
+
+    context : str, None
+        If provided, operations specific to a context will also be carried out. Choose from
+        {'interacdome'}
     """
 
-    def __init__(self, hmmer_std_out, run=terminal.Run(), progress=terminal.Progress()):
+    def __init__(self, hmmer_std_out, context=None, run=terminal.Run(), progress=terminal.Progress()):
         self.run = run
         self.progress = progress
 
         self.hmmer_std_out = hmmer_std_out
+        self.context = context
+
+        self.set_names()
 
         # This is converted to a dataframe after populating
         self.seq_hits = {
-            'query': [],
-            'acc': [],
-            'target': [],
-            'query_len': [],
+            self.query_col: [],
+            self.acc_col: [],
+            self.target_col: [],
+            self.query_len_col: [],
             'evalue': [],
             'score': [],
             'bias': [],
@@ -109,10 +116,10 @@ class HMMERStandardOutput(object):
         }
 
         self.seq_hits_dtypes = {
-            'query': str,
-            'acc': str,
-            'target': str,
-            'query_len': int,
+            self.query_col: str,
+            self.acc_col: str,
+            self.target_col: str,
+            self.query_len_col: int,
             'evalue': float,
             'score': float,
             'bias': float,
@@ -125,9 +132,9 @@ class HMMERStandardOutput(object):
 
         # This is converted to a dataframe after populating
         self.dom_hits = {
-            'query': [],
-            'acc': [],
-            'target': [],
+            self.query_col: [],
+            self.acc_col: [],
+            self.target_col: [],
             'domain': [],
             'qual': [],
             'score': [],
@@ -150,9 +157,9 @@ class HMMERStandardOutput(object):
         }
 
         self.dom_hits_dtypes = {
-            'query': str,
-            'acc': str,
-            'target': str,
+            self.query_col: str,
+            self.acc_col: str,
+            self.target_col: str,
             'domain': int,
             'qual': str,
             'score': float,
@@ -196,6 +203,8 @@ class HMMERStandardOutput(object):
 
         self.seq_hits = pd.DataFrame(self.seq_hits).astype(self.seq_hits_dtypes)
         self.dom_hits = pd.DataFrame(self.dom_hits).astype(self.dom_hits_dtypes)
+
+        self.context_specific_operations()
 
         self.progress.end()
         self.run.info('Loaded HMMER results from', self.hmmer_std_out)
@@ -269,9 +278,9 @@ class HMMERStandardOutput(object):
         for seq_score_line in seq_score_lines:
             seq_scores = seq_score_line[:description_index].split()
 
-            self.seq_hits['query'].append(query_name)
-            self.seq_hits['query_len'].append(query_len)
-            self.seq_hits['acc'].append(acc)
+            self.seq_hits[self.query_col].append(query_name)
+            self.seq_hits[self.query_len_col].append(query_len)
+            self.seq_hits[self.acc_col].append(acc)
             self.seq_hits['evalue'].append(float(seq_scores[0]))
             self.seq_hits['score'].append(float(seq_scores[1]))
             self.seq_hits['bias'].append(float(seq_scores[2]))
@@ -280,7 +289,7 @@ class HMMERStandardOutput(object):
             self.seq_hits['best_dom_bias'].append(float(seq_scores[5]))
             self.seq_hits['expected_doms'].append(float(seq_scores[6]))
             self.seq_hits['num_doms'].append(int(seq_scores[7]))
-            self.seq_hits['target'].append(seq_scores[8])
+            self.seq_hits[self.target_col].append(seq_scores[8])
 
             num_doms_per_seq[seq_scores[8]] = int(seq_scores[7])
 
@@ -296,9 +305,9 @@ class HMMERStandardOutput(object):
             for __ in range(num_doms_per_seq[target_name]):
                 dom_score_summary = self.find_line(lambda line: True).split()
 
-                self.dom_hits['query'].append(query_name)
-                self.dom_hits['acc'].append(acc)
-                self.dom_hits['target'].append(target_name)
+                self.dom_hits[self.query_col].append(query_name)
+                self.dom_hits[self.acc_col].append(acc)
+                self.dom_hits[self.target_col].append(target_name)
                 self.dom_hits['domain'].append(dom_score_summary[0])
                 self.dom_hits['qual'].append(dom_score_summary[1])
                 self.dom_hits['score'].append(dom_score_summary[2])
@@ -360,27 +369,30 @@ class HMMERStandardOutput(object):
                 self.dom_hits['target_align'].append(''.join(target))
 
 
-    def reformat_for_interacdome(self):
-        """Reformat for use with interacdome"""
+    def set_names(self):
+        if self.context is None:
+            self.query_col = 'query'
+            self.acc_col = 'acc'
+            self.query_len_col = 'query_len'
+            self.target_col = 'target'
 
-        self.dom_hits.rename(columns={
-            'query': 'pfam_name',
-            'acc': 'pfam_id',
-            'target': 'corresponding_gene_call',
-        }, inplace=True)
+        elif self.context == 'interacdome':
+            self.query_col = 'pfam_name'
+            self.acc_col = 'pfam_id'
+            self.query_len_col = 'pfam_len'
+            self.target_col = 'corresponding_gene_call'
 
-        self.seq_hits.rename(columns={
-            'query': 'pfam_name',
-            'acc': 'pfam_id',
-            'query_len': 'pfam_len',
-            'target': 'corresponding_gene_call',
-        }, inplace=True)
 
-        self.seq_hits['corresponding_gene_call'] = self.seq_hits['corresponding_gene_call'].astype(int)
-        self.dom_hits['corresponding_gene_call'] = self.dom_hits['corresponding_gene_call'].astype(int)
+    def context_specific_operations(self):
+        """Reformat for use with the context"""
 
-        self.seq_hits[['pfam_id', 'version']] = self.seq_hits['pfam_id'].str.split('.', n=1, expand=True)
-        self.dom_hits[['pfam_id', 'version']] = self.dom_hits['pfam_id'].str.split('.', n=1, expand=True)
+        if self.context == 'interacdome':
+            self.seq_hits['corresponding_gene_call'] = self.seq_hits['corresponding_gene_call'].astype(int)
+            self.dom_hits['corresponding_gene_call'] = self.dom_hits['corresponding_gene_call'].astype(int)
+
+            self.seq_hits[['pfam_id', 'version']] = self.seq_hits['pfam_id'].str.split('.', n=1, expand=True)
+            self.dom_hits[['pfam_id', 'version']] = self.dom_hits['pfam_id'].str.split('.', n=1, expand=True)
+
 
 
 class HMMERTableOutput(Parser):
