@@ -111,27 +111,31 @@ class InteracdomeSuper(Pfam):
             out_fmt='--domtblout'
         )
 
-        print(f"made {hmm_hits_file}")
+        self.hmm_out = parser_modules['search']['hmmer_std_output'](hmm_hits_file, context='interacdome')
 
-        # parse hmmer output
-        #parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='DOMAIN', program=self.hmm_program)
-        #xxxx = parser.dicts['hits']
-        #import pdb; pdb.set_trace() 
+        self.run.info('num total domain hits', self.hmm_out.dom_hits.shape[0])
+        self.run.info('num unique genes', self.hmm_out.dom_hits['corresponding_gene_call'].unique().shape[0])
+        self.run.info('num unique HMMs', self.hmm_out.dom_hits['pfam_id'].unique().shape[0])
 
-        # FIXME Notify user if, after parsing, there was no goodies
-        #if not hmm_hits_file:
-        #    self.run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. Anvi'o "
-        #                    "will now clean the temporary directories and gracefully quit.", nl_before=1, nl_after=1)
-        #    shutil.rmtree(tmp_directory_path)
-        #    hmmer.clean_tmp_dirs()
-        #    return
+        if not self.hmm_out.dom_hits.shape[0] == 0:
+            self.run.info_single("The HMM search returned no hits :/ So there is nothing to do. Anvi'o "
+                                 "will now clean the temporary directories and gracefully quit.",
+                                 nl_before=1, nl_after=1)
+            shutil.rmtree(tmp_directory_path)
+            hmmer.clean_tmp_dirs()
+            return
+
+        # NOTE
+        # Do the thing here
+        pass
 
         if anvio.DEBUG:
-            self.run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up "
-                        "later" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
+            self.run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to "
+                             "clean those up later" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)),
+                             header="Debug")
         else:
-            self.run.info_single('Cleaning up the temp directory (you can use `--debug` if you would '
-                            'like to keep it for testing purposes)', nl_before=1, nl_after=1)
+            self.run.info_single("Cleaning up the temp directory (you can use `--debug` if you would "
+                                 "like to keep it for testing purposes)", nl_before=1, nl_after=1)
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
 
