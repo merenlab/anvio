@@ -402,8 +402,15 @@ class HMMERStandardOutput(object):
             self.seq_hits['corresponding_gene_call'] = self.seq_hits['corresponding_gene_call'].astype(int)
             self.dom_hits['corresponding_gene_call'] = self.dom_hits['corresponding_gene_call'].astype(int)
 
-            self.seq_hits[['pfam_id', 'version']] = self.seq_hits['pfam_id'].str.split('.', n=1, expand=True)
-            self.dom_hits[['pfam_id', 'version']] = self.dom_hits['pfam_id'].str.split('.', n=1, expand=True)
+            if self.dom_hits.empty:
+                self.dom_hits['version'] = []
+            else:
+                self.dom_hits[['pfam_id', 'version']] = self.dom_hits['pfam_id'].str.split('.', n=1, expand=True)
+
+            if self.seq_hits.empty:
+                self.seq_hits['version'] = []
+            else:
+                self.seq_hits[['pfam_id', 'version']] = self.seq_hits['pfam_id'].str.split('.', n=1, expand=True)
 
             # For convenience this is done after pfam_id has been split
             self.get_ali_info()
@@ -416,6 +423,9 @@ class HMMERStandardOutput(object):
         =====
         - This function is very slow.
         """
+
+        if self.dom_hits.empty:
+            return
 
         gap_chars = {'-', '.'}
 
