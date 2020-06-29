@@ -152,6 +152,7 @@ class DB:
         db_fields = ', '.join(['%s %s' % (t[0], t[1]) for t in zip(fields, types)])
         self._exec('''CREATE TABLE %s (%s)''' % (table_name, db_fields))
         self.commit()
+        self.table_names_in_db = self.get_table_names()
 
 
     def set_version(self, version):

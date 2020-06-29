@@ -59,7 +59,6 @@ class GenomeStorage(object):
 
         if create_new:
             self.create_tables()
-            self.db.table_names_in_db = self.db.get_table_names()
         else:
             self.init()
 
