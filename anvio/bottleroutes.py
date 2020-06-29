@@ -346,7 +346,7 @@ class BottleApplication(Bottle):
         if name == "init":
             bin_prefix = "Bin_"
             if self.interactive.mode == 'refine':
-                bin_prefix = list(self.interactive.bins)[0] + "_" if len(self.interactive.bins) == 1 else "Refined_",
+                bin_prefix = list(self.interactive.bin_names_of_interest)[0] + "_" if len(self.interactive.bin_names_of_interest) == 1 else "Refined_",
 
             default_view = self.interactive.default_view
             default_order = self.interactive.p_meta['default_item_order']
