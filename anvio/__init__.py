@@ -1904,6 +1904,13 @@ D = {
              'help': "Minimum significance score of an HMM find to be considered as a valid hit. "
                      "Default is %(default)g."}
                 ),
+    'max-num-target-sequences': (
+            ['--max-num-target-sequences'],
+            {'metavar': 'NUMBER',
+             'default': 20,
+             'type': float,
+             'help': "Maximum number of target sequences to request from BLAST or DIAMOND searches. The default is %(default)g%%."}
+                ),
     'min-percent-identity': (
             ['--min-percent-identity'],
             {'metavar': 'PERCENT_IDENTITY',
