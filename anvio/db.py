@@ -67,10 +67,16 @@ class DB:
 
         self.check_if_db_writable()
 
-        self.conn = sqlite3.connect(self.db_path)
+        try:
+            self.conn = sqlite3.connect(self.db_path)
+        except Exception as e:
+            raise ConfigError(f"This one time someone was not happy with '{self.db_path}' and '{e}', they said.")
+
         self.conn.text_factory = str
 
         self.cursor = self.conn.cursor()
+
+        self.table_names_in_db = self.get_table_names()
 
         if new_database:
             self.create_self()
@@ -89,7 +95,7 @@ class DB:
                                       f"wants to work with v{client_version}). You can migrate your database without losing any data using the "
                                       f"program `anvi-migrate` with either of the flags `--migrate-dbs-safely` or `--migrate-dbs-quickly`.")
 
-            bad_tables = [table_name for table_name in self.get_table_names() if table_name not in tables.requires_unique_entry_id]
+            bad_tables = [table_name for table_name in self.table_names_in_db if table_name not in tables.requires_unique_entry_id]
             if len(bad_tables):
                 raise ConfigError("You better be a programmer tinkering with anvi'o databases adding new tables or something. Otherwise we "
                                   "have quite a serious problem :/ Each table in a given anvi'o database must have an entry in the "
@@ -333,11 +339,7 @@ class DB:
             return next_available_id
         """
 
-        if table_name not in self.get_table_names():
-            raise ConfigError("insert_rows_from_dataframe :: A table with the name %s does "
-                              "not exist in the database you requested. %s are the tables "
-                              "existent in the database" \
-                               % (table_name, ", ".join(self.get_table_names())))
+        self.is_table_exists(table_name)
 
         if not list(dataframe.columns) and not raise_if_no_columns:
             # if the dataframe has no colums, we just return
@@ -362,31 +364,47 @@ class DB:
         self.insert_many(table_name, entries=entries)
 
 
+    def is_table_exists(self, table_name):
+        if table_name not in self.table_names_in_db:
+            raise ConfigError(f"The database at {self.db_path} does seem to have a table `{table_name}` :/ "
+                              f"Here is a list of table names this database knows: {', '.join(self.table_names_in_db)}")
+
+
     def get_all_rows_from_table(self, table_name):
+        self.is_table_exists(table_name)
+
         response = self._exec('''SELECT %s FROM %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name))
         return response.fetchall()
 
 
     def get_some_rows_from_table(self, table_name, where_clause):
+        self.is_table_exists(table_name)
+
         response = self._exec('''SELECT %s FROM %s WHERE %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name, where_clause))
         return response.fetchall()
 
 
-    def get_row_counts_from_table(self, table, where_clause=None):
+    def get_row_counts_from_table(self, table_name, where_clause=None):
+        self.is_table_exists(table_name)
+
         if where_clause:
-            response = self._exec('''SELECT COUNT(*) FROM %s WHERE %s''' % (table, where_clause))
+            response = self._exec('''SELECT COUNT(*) FROM %s WHERE %s''' % (table_name, where_clause))
         else:
-            response = self._exec('''SELECT COUNT(*) FROM %s''' % (table))
+            response = self._exec('''SELECT COUNT(*) FROM %s''' % (table_name))
 
         return response.fetchall()[0][0]
 
 
     def remove_some_rows_from_table(self, table_name, where_clause):
+        self.is_table_exists(table_name)
+
         self._exec('''DELETE FROM %s WHERE %s''' % (table_name, where_clause))
         self.commit()
 
 
     def get_single_column_from_table(self, table, column, unique=False, where_clause=None):
+        self.is_table_exists(table)
+
         if where_clause:
             response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', column, table, where_clause))
         else:
@@ -395,6 +413,8 @@ class DB:
 
 
     def get_some_columns_from_table(self, table, comma_separated_column_names, unique=False, where_clause=None):
+        self.is_table_exists(table)
+
         if where_clause:
             response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table, where_clause))
         else:
@@ -403,23 +423,101 @@ class DB:
 
 
     def get_frequencies_of_values_from_a_column(self, table_name, column_name):
+        self.is_table_exists(table_name)
+
         response = self._exec('''select %s, COUNT(*) from %s group by %s''' % (column_name, table_name, column_name))
 
         return response.fetchall()
 
 
     def get_table_column_types(self, table_name):
+        self.is_table_exists(table_name)
+
         response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
         return [t[2] for t in response.fetchall()]
 
 
+    def get_table_columns_and_types(self, table_name):
+        self.is_table_exists(table_name)
+
+        response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
+        return dict([(t[1], t[2]) for t in response.fetchall()])
+
+
     def get_table_structure(self, table_name):
+        self.is_table_exists(table_name)
+
         response = self._exec('''SELECT * FROM %s''' % table_name)
         return [t[0] for t in response.description]
 
 
     def get_table_as_list_of_tuples(self, table_name, table_structure=None):
         return self.get_all_rows_from_table(table_name)
+
+
+    def smart_get(self, table_name, column=None, data=None, string_the_key=False, error_if_no_data=True, progress=None):
+        """A wrapper function for `get_*_table_as_dict` and that is not actually that smart.
+
+        If the user is interested in only some of the data, they can build a where clause
+        and use `get_some_rows_from_table_as_dict`. If the user is interested in the entire
+        table data, then they would call `get_table_as_dict`. But in situations where it is
+        not certain whether there will be a where clause, the if/else statements clutter the
+        code. Here is an example:
+
+            ----8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------
+            def func(items_of_interest=None):
+                (...)
+
+                if items_of_interest:
+                    where_clause = 'column_name IN (%s)' % (','.join(['"%s"' % item for item in items_of_interest]))
+                    d = get_some_rows_from_table_as_dict(table_name, where_clause=where_clause)
+                else:
+                    d = get_table_as_dict(table_name)
+
+                (...)
+            ---->8------->8------->8------->8------->8------->8------->8------->8------->8------->8------->8-------
+
+        This function cleans up this mess as this call is equivalent to the example code above:
+
+            ----8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------8<-------
+            def func(items_of_interest=None):
+                (...)
+
+                smart_get(table_name, column_name, items_of_interest)
+
+                (...)
+            ---->8------->8------->8------->8------->8------->8------->8------->8------->8------->8------->8-------
+
+        Paremeters
+        ==========
+        table_name: str
+            The anvi'o data table name
+        column: str
+            The column name that will be used to select from table
+        data: set
+            A set of item names of interest. If the set is empty, the function will return the entire content of `table_name`
+        """
+
+        table_columns_and_types = self.get_table_columns_and_types(table_name)
+
+        if column not in table_columns_and_types:
+            raise ConfigError(f"The column name `{column}` is not in table `{table_name}` :/")
+
+        if column and data:
+            if table_columns_and_types[column] in ["numeric", "integer"]:
+                items = ','.join([str(d) for d in data])
+            else:
+                items = ','.join(['"%s"' % d for d in data])
+
+            if progress:
+                progress.update(f'Reading **SOME** data from `{table_name.replace("_", " ")}` table :)')
+
+            return self.get_some_rows_from_table_as_dict(table_name, where_clause=f"{column} IN ({items})", string_the_key=string_the_key, error_if_no_data=error_if_no_data)
+        else:
+            if progress:
+                progress.update(f'Reading **ALL** data from `{table_name.replace("_", " ")}` table :(')
+
+            return self.get_table_as_dict(table_name, string_the_key=string_the_key, error_if_no_data=error_if_no_data)
 
 
     def get_table_as_dict(self, table_name, string_the_key=False, columns_of_interest=None, keys_of_interest=None, omit_parent_column=False, error_if_no_data=True, log_norm_numeric_values=False):
