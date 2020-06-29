@@ -2200,7 +2200,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                         # handle ko-level information
                         for ko in c_dict['kofam_hits']:
-                            if ko not in p:
+
+                            # some paths include protein complexes, so we must look for KO within these protein complexes as well
+                            kos_in_path = set([])
+                            for ko_or_complex in p:
+                                split_kos = re.split('\+|\-', ko_or_complex)
+                                kos_in_path.update(split_kos)
+                            if ko not in kos_in_path:
                                 continue
 
                             for gc_id in c_dict["kofam_hits"][ko]:
