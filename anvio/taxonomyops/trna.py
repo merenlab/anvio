@@ -512,7 +512,7 @@ class PopulateContigsDatabaseWithTRNATaxonomy(TRNATaxonomyArgs, SanityCheck, Pop
 
         self.ctx = ctx
 
-        self.max_target_seqs = 20
+        self.max_target_seqs = int(A('max_num_target_sequences')) or 100
         self.evalue = float(A('e_value')) if A('e_value') else 1e-05
         self.min_pct_id = float(A('min_percent_identity')) if A('min_percent_identity') else 90
 
