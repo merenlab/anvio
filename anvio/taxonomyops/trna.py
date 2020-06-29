@@ -146,7 +146,7 @@ class SanityCheck(object):
                 for prefix in ['.nhr', '.nin', '.nsq']:
                     missing_anticodon_databases = [anticodon for anticodon in self.ctx.anticodons if not os.path.exists(self.ctx.anticodons[anticodon]['db'] + '.nhr')]
                     if len(missing_anticodon_databases):
-                        raise ConfigError("OK. It is very likley that if you run `anvi-setup-scg-taxonomy` first you will be golden. "
+                        raise ConfigError("OK. It is very likley that if you run `anvi-setup-trna-taxonomy` first you will be golden. "
                                           "Because even though anvi'o found the directory for taxonomy headquarters, "
                                           "your setup seems to be missing %d of %d databases required for everything to work "
                                           "with the current genes configuration of this class (sources say this is a record, FYI)." % \
