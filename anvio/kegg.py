@@ -76,7 +76,7 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
                     'data_dict': "modules",
                     'headers': None,
                     'only_complete': False,
-                    'description': "A custom tab-delimited output file where you choose the included data using --custom-output-headers"
+                    'description': "A custom tab-delimited output file where you choose the included KEGG modules data using --custom-output-headers"
                     },
                 'kofam_hits': {
                     'output_suffix': "kofam_hits.txt",
@@ -89,11 +89,11 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
 # dict containing matrix headers of information that we can output in custom mode
 # key corresponds to the header's key in output dictionary (returned from generate_output_dict() function)
 # cdict_key is the header's key in module-level completion dictionary (if any)
-# mode_type indicates which category of output modes (modules or kofams) this header can be used for. If both, this is 'shared'
+# mode_type indicates which category of output modes (modules or kofams) this header can be used for. If both, this is 'all'
 # description is printed when --list-available-output-headers parameter is used
 OUTPUT_HEADERS = {'unique_id' : {
                         'cdict_key': None,
-                        'mode_type': 'shared',
+                        'mode_type': 'all',
                         'description': "Just an integer that keeps our data organized. No real meaning here. Always included in output, so no need to specify it on the command line"
                         },
                   'kegg_module' : {
@@ -144,7 +144,7 @@ OUTPUT_HEADERS = {'unique_id' : {
                         },
                   'gene_caller_id': {
                         'cdict_key': None,
-                        'mode_type': 'shared',
+                        'mode_type': 'all',
                         'description': "Gene caller ID of a single KOfam hit in the contigs DB. If you choose this header, each "
                                        "line in the output file will be a KOfam hit"
                         },
@@ -161,7 +161,7 @@ OUTPUT_HEADERS = {'unique_id' : {
                         },
                   'contig' : {
                         'cdict_key': 'genes_to_contigs',
-                        'mode_type': 'shared',
+                        'mode_type': 'all',
                         'description': "Contig that a KOfam hit is found on. If you choose this header, each line in the output "
                                        "file will be a KOfam hit"
                         },
@@ -1205,10 +1205,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # update available modes and headers with appropriate genome/bin/metagenome identifier
         for m in self.available_modes:
-            if m != 'custom':
+            if m != 'modules_custom':
                 self.available_modes[m]['headers'].insert(1, self.name_header)
         self.available_headers[self.name_header] = {
                                         'cdict_key': None,
+                                        'mode_type' : 'all',
                                         'description': "Name of genome/bin/metagenome in which we find KOfam hits and/or KEGG modules"
                                         }
 
@@ -1255,11 +1256,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             raise ConfigError("You have requested some output modes that we cannot handle. The offending modes "
                               "are: %s. Please use the flag --list-available-modes to see which ones are acceptable."
                               % (", ".join(illegal_modes)))
-        if self.custom_output_headers and "custom" not in self.output_modes:
-            raise ConfigError("You seem to have provided a list of custom headers without actually requesting the 'custom' output "
+        if self.custom_output_headers and "modules_custom" not in self.output_modes:
+            raise ConfigError("You seem to have provided a list of custom headers without actually requesting a 'custom' output "
                               "mode. We think perhaps you missed something, so we are stopping you right there.")
-        if "custom" in self.output_modes and not self.custom_output_headers:
-            raise ConfigError("You have requested 'custom' output mode, but haven't told us what headers to include in that output. "
+        if "modules_custom" in self.output_modes and not self.custom_output_headers:
+            raise ConfigError("You have requested a 'custom' output mode, but haven't told us what headers to include in that output. "
                               "You should be using the --custom-output-headers flag to do this.")
         if self.custom_output_headers:
             if anvio.DEBUG:
@@ -1330,7 +1331,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
 
         for header, header_meta in self.available_headers.items():
-            self.run.info(header, header_meta['description'])
+            self.run.info(header, "%s [%s output modes]" %(header_meta['description'], header_meta['mode_type']))
 
 
     def init_hits_and_splits(self):
