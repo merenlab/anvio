@@ -1029,6 +1029,16 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
 
 
 class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
+    """Search sequences in corresponding databases, and store consensus taxonomy per seqeunce in the database.
+
+       Depending on the context, this class currently deals with single-copy core genes or tRNA sequences. The
+       key function here is the BLAST/DIAMOND search against the matching database, get back all the significant
+       hits (or as many as `max_target_seqs` if hits exceed that), and try to find a LCA of all matches (hence it
+       is important to not set `max_target_seqs` a small number).
+
+       The class will recover sequences of interest from an anvi'o contigs database given the context. That said,
+       it can also be used in an ad-hoc manner, where the user can search a single sequence.
+    """
     def __init__(self, args):
 
         self.taxonomy_dict = OrderedDict()
