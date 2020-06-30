@@ -81,7 +81,7 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
                 'kofam_hits': {
                     'output_suffix': "kofam_hits.txt",
                     'data_dict': "kofams",
-                    'headers': ["unique_id", "ko", "gene_caller_id", "contig", "modules"],
+                    'headers': ["unique_id", "ko", "gene_caller_id", "contig", "modules_with_ko"],
                     'only_complete': False,
                     'description': "Information on all KOfam hits in the contigs DB, regardless of KEGG module membership"
                     },
