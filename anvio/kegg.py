@@ -87,7 +87,7 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
                     },
                 }
 # dict containing matrix headers of information that we can output in custom mode
-# key corresponds to the header's key in output dictionary (returned from generate_output_dict() function)
+# key corresponds to the header's key in output dictionary (returned from generate_output_dict_for_modules() function)
 # cdict_key is the header's key in module-level completion dictionary (if any)
 # mode_type indicates which category of output modes (modules or kofams) this header can be used for. If both, this is 'all'
 # description is printed when --list-available-output-headers parameter is used
@@ -2184,14 +2184,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.kegg_modules_db.disconnect()
 
         if not self.store_json_without_estimation and not skip_storing_data:
-            self.store_kegg_metabolism_superdict(kegg_metabolism_superdict)
+            self.store_kegg_metabolism_superdicts(kegg_metabolism_superdict, kofam_hits_superdict)
         if self.write_dict_to_json:
             self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json")
 
         return kegg_metabolism_superdict, kofam_hits_superdict
 
 
-    def generate_output_dict(self, kegg_superdict, headers_to_include=None, only_complete_modules=False):
+    def generate_output_dict_for_modules(self, kegg_superdict, headers_to_include=None, only_complete_modules=False):
         """This dictionary converts the metabolism superdict to a two-level dict containing desired headers for output.
 
         The metabolism superdict is a three-to-four-level dictionary. The first three levels are: genomes/metagenomes/bins, modules, and module completion information.
@@ -2392,8 +2392,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return d
 
 
-    def store_kegg_metabolism_superdict(self, kegg_superdict):
-        """This function writes the metabolism superdict to tab-delimited files depending on which output the user requested.
+    def store_kegg_metabolism_superdicts(self, module_superdict, ko_superdict):
+        """This function writes the metabolism superdicts to tab-delimited files depending on which output the user requested.
 
         The user can request a variety of output 'modes', and for each of these modes we look up the details on the output
         format which are stored in self.available_modes, use that information to generate a dictionary of dictionaries,
@@ -2407,7 +2407,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 raise ConfigError("Oh, dear. You've come all this way only to realize that we don't know which headers to use "
                                   "for the %s output mode. Something is terribly wrong, and it is probably a developer's fault. :("
                                   % (mode))
-            output_dict = self.generate_output_dict(kegg_superdict, headers_to_include=header_list, only_complete_modules=self.available_modes[mode]["only_complete"])
+            output_dict = self.generate_output_dict_for_modules(module_superdict, headers_to_include=header_list, only_complete_modules=self.available_modes[mode]["only_complete"])
             utils.store_dict_as_TAB_delimited_file(output_dict, output_path, key_header="unique_id", headers=header_list)
             self.run.info("%s output file" % mode, output_path, nl_before=1)
 
@@ -2702,7 +2702,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                   "for the %s output mode. Something is terribly wrong. Perhaps you should try telling us what "
                                   "headers to use with the --custom-output-headers flag. If that doesn't work, contact the developers. :)"
                                   % (output_mode))
-            single_dict = single_estimator.generate_output_dict(kegg_superdict_multi[metagenome_name], headers_to_include=header_list, only_complete_modules=self.available_modes[output_mode]["only_complete"])
+            single_dict = single_estimator.generate_output_dict_for_modules(kegg_superdict_multi[metagenome_name], headers_to_include=header_list, only_complete_modules=self.available_modes[output_mode]["only_complete"])
 
             kegg_metabolism_superdict_multi_output_version[metagenome_name] = single_dict
 
