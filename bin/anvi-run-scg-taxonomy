@@ -65,6 +65,10 @@ if __name__ == '__main__':
     groupH.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupH.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size'))
 
+    groupI = parser.add_argument_group("OUTPUT", "By default, this program does not generate an output and instead simply store taxonomy \
+                                                  information into the contigs database. But if the user wants more, they get more.")
+    groupI.add_argument(*anvio.A('all-hits-output-file'), **anvio.K('all-hits-output-file'))
+
     args = anvio.get_args(parser)
 
     try:
