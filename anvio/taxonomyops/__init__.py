@@ -1047,6 +1047,13 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
         TerminologyHelper.__init__(self)
 
+        if self.contigs_db_path:
+            contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+            self.contigs_db_project_name = contigs_db.meta['project_name']
+            contigs_db.disconnect()
+        else:
+            self.contigs_db_project_name = "UNKNOWN"
+
 
     def get_sequences_dict_from_contigs_db(self):
         """Returns a dictionary of all HMM hits per SCG/anticodon of interest"""
