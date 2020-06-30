@@ -2517,7 +2517,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # add keys to this list to include the data in the visualization dictionary
         module_data_keys_for_visualization = ['percent_complete']
 
-        metabolism_dict = self.estimate_metabolism(skip_storing_data=True)
+        metabolism_dict, ko_hit_dict = self.estimate_metabolism(skip_storing_data=True)
         data_for_visualization = {}
 
         for bin, mod_dict in metabolism_dict.items():
@@ -2704,6 +2704,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """The function that calls metabolism on each individual contigs db and aggregates the results into one dictionary."""
 
         metabolism_super_dict = {}
+        ko_hits_super_dict = {}
 
         total_num_metagenomes = len(self.database_names)
         self.progress.new("Estimating metabolism for contigs DBs", progress_total_items=total_num_metagenomes)
@@ -2711,14 +2712,14 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         for metagenome_name in self.database_names:
             args = self.get_args_for_single_estimator(metagenome_name)
             self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, total_num_metagenomes, metagenome_name))
-            metabolism_super_dict[metagenome_name] = KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(skip_storing_data=True)
+            metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name] = KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(skip_storing_data=True)
 
             self.progress.increment()
             self.progress.reset()
 
         self.progress.end()
 
-        return metabolism_super_dict
+        return metabolism_super_dict, ko_hits_super_dict
 
 
     def get_metabolism_superdict_multi_as_data_frame(self, kegg_superdict_multi_output_version):
@@ -2874,7 +2875,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Num Contigs DBs in file", len(self.database_names))
             self.run.info('Metagenome Mode', self.metagenome_mode)
 
-        kegg_metabolism_superdict_multi = self.get_metabolism_superdict_multi()
+        kegg_metabolism_superdict_multi, ko_hits_superdict_multi = self.get_metabolism_superdict_multi()
 
         self.store_metabolism_superdict_multi(kegg_metabolism_superdict_multi)
 
