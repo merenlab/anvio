@@ -1196,24 +1196,26 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
                 for worker in workers:
                     worker.terminate()
 
-                if 'incompatible' in error_text:
+                if error_text and error_text is type(str) and 'incompatible' in error_text:
                     raise ConfigError(f"Your current databases are incompatible with the diamond version you have on your computer. "
                                       f"Please run the command `{self._SETUP_PROGRAM} --redo-databases` and come back.")
                 else:
                     if self.scgs_focus:
-                        raise ConfigError("Bad news. The database search operation failed somewhere :( It is very hard for anvi'o "
-                                          "to know what happened, but the MOST LIKELY reason is that you have a diamond version "
-                                          "installed on your system that is incompatible with anvi'o :/ The best course of action for that "
-                                          "is to make sure running `diamond --version` on your terminal returns `0.9.14`. If not, "
-                                          "try to upgrade/downgrade your diamond to match this version. If you are in a conda environmnet "
-                                          "you can try running `conda install diamond=0.9.14`. Please feel free to contact us if the problem "
-                                          "persists. We apologize for the inconvenience.")
+                        raise ConfigError(f"Bad news. The database search operation failed somewhere :( It is very hard for anvi'o "
+                                          f"to know what happened, but this is what we heard last: '{error_text}'. If this error message "
+                                          f"makes sense ot you, great. Otherwise a LIKELY reason for this failure is that you have a diamond version "
+                                          f"installed on your system that is incompatible with anvi'o :/ The best course of action for that "
+                                          f"is to make sure running `diamond --version` on your terminal returns `0.9.14`. If not, "
+                                          f"try to upgrade/downgrade your diamond to match this version. If you are in a conda environmnet "
+                                          f"you can try running `conda install diamond=0.9.14`. Please feel free to contact us if the problem "
+                                          f"persists. We apologize for the inconvenience.")
                     else:
-                        raise ConfigError("Bad news. The database search operation failed somewhere :( It is very hard for anvi'o "
-                                          "to know what happened, but the MOST LIKELY reason is that you have a BLAST version "
-                                          "installed on your system that is incompatible with anvi'o :/ If you see `2.6.0` or higher "
-                                          "version numbers when you type `blastn -version` in your terminal, it may be wortwhile to "
-                                          "get in touch with anvi'o developers.")
+                        raise ConfigError(f"Bad news. The database search operation failed somewhere :( It is very hard for anvi'o "
+                                          f"to know what happened, but this is what we heard last: '{error_text}'. If this error message "
+                                          f"makes sense ot you, great. Otherwise a LIKELY reason for this is that you have a BLAST version "
+                                          f"installed on your system that is incompatible with anvi'o :/ If you see `2.6.0` or higher "
+                                          f"version numbers when you type `blastn -version` in your terminal, it may be wortwhile to "
+                                          f"get in touch with anvi'o developers.")
 
             try:
                 search_output += output_queue.get()
