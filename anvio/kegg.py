@@ -2245,7 +2245,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
 
-        # use the kofam_hits output mode header set by default
         if not headers_to_include:
             headers_to_include = set(["unique_id", self.name_header, "kegg_module", "module_is_complete", "module_completeness",
             "path_id", "path", "path_completeness", "kofam_hit", "gene_caller_id", "contig"])
@@ -2398,6 +2397,77 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return d
 
 
+    def generate_output_dict_for_kofams(self, ko_superdict, headers_to_include=None):
+        """This dictionary converts the kofam hits superdict to a two-level dict containing desired headers for output.
+
+        The kofam hits superdict is a three-to-four-level dictionary. The first three levels are: genomes/metagenomes/bins, KOs, and KO hit information.
+        The KO hit dictionary also has some dictionaries in it, and those make up the fourth level.
+        The structure of the KO hit dictionary is like this example:
+        {ko: {"gene_caller_ids" : set([431, 6777]),
+              "modules" : ["M00001", "M00555"],                 **Can be None if KO does not belong to any KEGG modules
+              "genes_to_contigs": { 431: 2,
+                                   6777: 1 },
+              "contigs_to_genes": { 1: set(6777),
+                                    2: set(431) }}}
+
+        To distill this information into one line, we need to convert the dictionary on-the-fly to a dict of dicts,
+        where each bin-ko-gene_caller_id is keyed by an arbitrary integer.
+
+        PARAMETERS
+        ==========
+        ko_superdict : dictionary of dictionaries of dictionaries
+            The metabolism superdict containing all KO hits in each bin/genome/metagenome
+
+        headers_to_include : list
+            Which headers to include in the output dictionary
+
+        RETURNS
+        =======
+        d : dictionary of dictionaries
+            The output dictionary whose format is compatible for printing to a tab-delimited file
+        """
+
+        self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
+
+        # use the kofam_hits output mode header set by default
+        if not headers_to_include:
+            headers_to_include = set(["unique_id", self.name_header, "ko", "modules_with_ko", "gene_caller_id", "contig"])
+        else:
+            headers_to_include = set(headers_to_include)
+
+        d = {}
+        unique_id = 0
+
+        for bin, ko_dict in ko_superdict.items():
+            for ko, k_dict in ko_dict.items():
+                if anvio.DEBUG:
+                    self.run.info("Generating output for KO", ko)
+
+                for gc_id in k_dict["gene_caller_ids"]:
+                    d[unique_id] = {}
+
+                    if self.name_header in headers_to_include:
+                        d[unique_id][self.name_header] = bin
+                    if "ko" in headers_to_include:
+                        d[unique_id]["ko"] = ko
+                    if "gene_caller_id" in headers_to_include:
+                        d[unique_id]["gene_caller_id"] = gc_id
+                    if "contig" in headers_to_include:
+                        d[unique_id]["contig"] = k_dict["genes_to_contigs"][gc_id]
+                    if "modules_with_ko" in headers_to_include:
+                        if k_dict["modules"]:
+                            mod_list = ",".join(k_dict["modules"])
+                        else:
+                            mod_list = "None"
+                        d[unique_id]["modules_with_ko"] = mod_list
+
+                    unique_id += 1
+
+        self.kegg_modules_db.disconnect()
+
+        return d
+
+
     def store_kegg_metabolism_superdicts(self, module_superdict, ko_superdict):
         """This function writes the metabolism superdicts to tab-delimited files depending on which output the user requested.
 
@@ -2413,7 +2483,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 raise ConfigError("Oh, dear. You've come all this way only to realize that we don't know which headers to use "
                                   "for the %s output mode. Something is terribly wrong, and it is probably a developer's fault. :("
                                   % (mode))
-            output_dict = self.generate_output_dict_for_modules(module_superdict, headers_to_include=header_list, only_complete_modules=self.available_modes[mode]["only_complete"])
+            if self.available_modes[mode]["data_dict"] == 'modules':
+                output_dict = self.generate_output_dict_for_modules(module_superdict, headers_to_include=header_list, only_complete_modules=self.available_modes[mode]["only_complete"])
+            elif self.available_modes[mode]["data_dict"] == 'kofams':
+                output_dict = self.generate_output_dict_for_kofams(ko_superdict, headers_to_include=header_list)
+            else:
+                raise ConfigError(f"Uh oh. You've requested to generate output from the {self.available_modes[mode]['data_dict']} "
+                                  "data dictionary, but we don't know about that one.")
             utils.store_dict_as_TAB_delimited_file(output_dict, output_path, key_header="unique_id", headers=header_list)
             self.run.info("%s output file" % mode, output_path, nl_before=1)
 
