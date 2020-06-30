@@ -1940,7 +1940,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """This is the metabolism estimation function for a contigs DB that contains a single genome.
 
         Assuming this contigs DB contains only one genome, it sends all of the splits and their kofam hits to the atomic
-        estimation function for processing. It then returns the metabolism completion dictionary for the genome, wrapped in the superdict format.
+        estimation function for processing. It then returns the metabolism and ko completion dictionaries for the genome, wrapped in the superdict format.
 
         PARAMETERS
         ==========
@@ -1951,19 +1951,24 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         =======
         genome_metabolism_dict : dictionary of dictionary of dictionaries
             dictionary mapping genome name to its metabolism completeness dictionary
+        genome_ko_superdict : dictionary of dictionary of dictionaries
+            maps genome name to its KOfam hit dictionary
         """
 
         genome_metabolism_superdict = {}
+        genome_ko_superdict = {}
         # since all hits belong to one genome, we can take the UNIQUE splits from all the hits
         splits_in_genome = list(set([tpl[2] for tpl in kofam_gene_split_contig]))
-        metabolism_dict_for_genome = self.mark_kos_present_for_list_of_splits(kofam_gene_split_contig, split_list=splits_in_genome,
+        metabolism_dict_for_genome, ko_dict_for_genome = self.mark_kos_present_for_list_of_splits(kofam_gene_split_contig, split_list=splits_in_genome,
                                                                                                     bin_name=self.contigs_db_project_name)
         if not self.store_json_without_estimation:
             genome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(metabolism_dict_for_genome, bin_name=self.contigs_db_project_name)
+            genome_ko_superdict[self.contigs_db_project_name] = ko_dict_for_genome
         else:
             genome_metabolism_superdict[self.contigs_db_project_name] = metabolism_dict_for_genome
+            genome_ko_superdict[self.contigs_db_project_name] = ko_dict_for_genome
 
-        return genome_metabolism_superdict
+        return genome_metabolism_superdict, genome_ko_superdict
 
 
     def estimate_for_bins_in_collection(self, kofam_gene_split_contig):
@@ -1979,9 +1984,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         =======
         bins_metabolism_superdict : dictionary of dictionary of dictionaries
             dictionary mapping bin name to its metabolism completeness dictionary
+        bins_ko_superdict : dictionary of dictionary of dictionaries
+            dictionary mapping bin name to its KOfam hits dictionary
         """
 
         bins_metabolism_superdict = {}
+        bins_ko_superdict = {}
 
         bin_name_to_split_names_dict = ccollections.GetSplitNamesInBins(self.args).get_dict()
         self.run.info_single("%s split names associated with %s bins of in collection '%s' have been "
@@ -1992,14 +2000,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         for bin_name in bin_name_to_split_names_dict:
             splits_in_bin = bin_name_to_split_names_dict[bin_name]
             ko_in_bin = [tpl for tpl in kofam_gene_split_contig if tpl[2] in splits_in_bin]
-            metabolism_dict_for_bin = self.mark_kos_present_for_list_of_splits(ko_in_bin, split_list=splits_in_bin, bin_name=bin_name)
+            metabolism_dict_for_bin, ko_dict_for_bin = self.mark_kos_present_for_list_of_splits(ko_in_bin, split_list=splits_in_bin, bin_name=bin_name)
 
             if not self.store_json_without_estimation:
                 bins_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(metabolism_dict_for_bin, bin_name=bin_name)
+                bins_ko_superdict[bin_name] = ko_dict_for_bin
             else:
                 bins_metabolism_superdict[bin_name] = metabolism_dict_for_bin
+                bins_ko_superdict[bin_name] = ko_dict_for_bin
 
-        return bins_metabolism_superdict
+        return bins_metabolism_superdict, bins_ko_superdict
 
 
     def estimate_for_contigs_db_for_metagenome(self, kofam_gene_split_contig):
@@ -2022,19 +2032,24 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         =======
         metagenome_metabolism_superdict : dictionary of dictionary of dictionaries
             dictionary mapping metagenome name to its metabolism completeness dictionary
+        metagenome_ko_superdict : dictionary of dictionary of dictionaries
+            dictionary mapping metagenome name to its KOfam hits dictionary
         """
 
         metagenome_metabolism_superdict = {}
+        metagenome_ko_superdict = {}
         # since we consider all the hits in the metagenome collectively, we can take the UNIQUE splits from all the hits
         splits_in_metagenome = list(set([tpl[2] for tpl in kofam_gene_split_contig]))
-        metabolism_dict_for_metagenome = self.mark_kos_present_for_list_of_splits(kofam_gene_split_contig, split_list=splits_in_metagenome,
+        metabolism_dict_for_metagenome, ko_dict_for_metagenome = self.mark_kos_present_for_list_of_splits(kofam_gene_split_contig, split_list=splits_in_metagenome,
                                                                                                     bin_name=self.contigs_db_project_name)
         if not self.store_json_without_estimation:
             metagenome_metabolism_superdict[self.contigs_db_project_name] = self.estimate_for_list_of_splits(metabolism_dict_for_metagenome, bin_name=self.contigs_db_project_name)
+            metagenome_ko_superdict[self.contigs_db_project_name] = ko_dict_for_metagenome
         else:
             metagenome_metabolism_superdict[self.contigs_db_project_name] = metabolism_dict_for_metagenome
+            metagenome_ko_superdict[self.contigs_db_project_name] = ko_dict_for_metagenome
 
-        return metagenome_metabolism_superdict
+        return metagenome_metabolism_superdict, metagenome_ko_superdict
 
 
     def estimate_metabolism_from_json_data(self):
