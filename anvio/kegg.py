@@ -48,112 +48,151 @@ pp = terminal.pretty_print
 """Some critical constants for metabolism estimation output formatting."""
 # dict containing possible output modes
 # output_suffix should be unique to a mode so that multiple output modes can be used at once
+# data_dict indicates which data dictionary is used for generating the output (modules or kofams)
 # headers list describes which information to include in the output file; see OUTPUT_HEADERS dict below for more info
 # only_complete flag indicates whether to only include modules over completeness threshold in the output file
 # description is what is printed when --list-available-modes parameter is used
-OUTPUT_MODES = {'kofam_hits': {
-                    'output_suffix': "kofam_hits.txt",
+OUTPUT_MODES = {'kofam_hits_in_modules': {
+                    'output_suffix': "kofam_hits_in_modules.txt",
+                    'data_dict': "modules",
                     'headers': ["unique_id", "kegg_module", "module_is_complete",
                                 "module_completeness", "path_id", "path", "path_completeness",
                                 "kofam_hit", "gene_caller_id", "contig"],
                     'only_complete': False,
-                    'description': "Information on each KOfam hit in the contigs DB"
+                    'description': "Information on each KOfam hit that belongs to a KEGG module"
                     },
                 'modules': {
                     'output_suffix': "modules.txt",
+                    'data_dict': "modules",
                     'headers': ["unique_id", "kegg_module", "module_name", "module_class", "module_category",
                                 "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
                                 "kofam_hits_in_module", "gene_caller_ids_in_module"],
                     'only_complete': True,
-                    'description': "Completeness information on KEGG modules. Only modules whose completeness is above the "
+                    'description': "Information on complete KEGG modules. Only modules whose completeness is above the "
                                    "threshold will be included, but you include all modules by running with --module-completion-threshold 0"
                     },
-                'custom': {
-                    'output_suffix': "custom.txt",
+                'modules_custom': {
+                    'output_suffix': "modules_custom.txt",
+                    'data_dict': "modules",
                     'headers': None,
                     'only_complete': False,
                     'description': "A custom tab-delimited output file where you choose the included data using --custom-output-headers"
-                    }
+                    },
+                'kofam_hits': {
+                    'output_suffix': "kofam_hits.txt",
+                    'data_dict': "kofams",
+                    'headers': ["unique_id", "ko", "gene_caller_id", "contig", "modules"],
+                    'only_complete': False,
+                    'description': "Information on all KOfam hits in the contigs DB, regardless of KEGG module membership"
+                    },
                 }
 # dict containing matrix headers of information that we can output in custom mode
 # key corresponds to the header's key in output dictionary (returned from generate_output_dict() function)
 # cdict_key is the header's key in module-level completion dictionary (if any)
+# mode_type indicates which category of output modes (modules or kofams) this header can be used for. If both, this is 'shared'
 # description is printed when --list-available-output-headers parameter is used
 OUTPUT_HEADERS = {'unique_id' : {
                         'cdict_key': None,
+                        'mode_type': 'shared',
                         'description': "Just an integer that keeps our data organized. No real meaning here. Always included in output, so no need to specify it on the command line"
                         },
                   'kegg_module' : {
                         'cdict_key': None,
+                        'mode_type': 'modules',
                         'description': "KEGG module number"
                         },
                   'module_is_complete' : {
                         'cdict_key': 'complete',
+                        'mode_type': 'modules',
                         'description': "Whether a KEGG module is considered complete or not based on its percent completeness and the completeness threshold"
                         },
                   'module_completeness' : {
                         'cdict_key': 'percent_complete',
+                        'mode_type': 'modules',
                         'description': "Percent completeness of a KEGG module"
                         },
                   'module_name' : {
                         'cdict_key': None,
+                        'mode_type': 'modules',
                         'description': "English name/description of a KEGG module"
                         },
                   'module_class' : {
                         'cdict_key': None,
+                        'mode_type': 'modules',
                         'description': "Metabolism class of a KEGG module"
                         },
                   'module_category' : {
                         'cdict_key': None,
+                        'mode_type': 'modules',
                         'description': "Metabolism category of a KEGG module"
                         },
                   'module_subcategory' : {
                         'cdict_key': None,
+                        'mode_type': 'modules',
                         'description': "Metabolism subcategory of a KEGG module"
                         },
                   'module_definition' : {
                         'cdict_key': None,
+                        'mode_type': 'modules',
                         'description': "KEGG-formatted definition of a KEGG module. Describes the metabolic pathway "
                                        "in terms of the KOS that belong to the module"
                         },
                   'gene_caller_ids_in_module': {
                         'cdict_key': None,
+                        'mode_type': 'modules',
                         'description': "Comma-separated list of gene caller IDs of KOfam hits in a module"
                         },
                   'gene_caller_id': {
                         'cdict_key': None,
+                        'mode_type': 'shared',
                         'description': "Gene caller ID of a single KOfam hit in the contigs DB. If you choose this header, each "
                                        "line in the output file will be a KOfam hit"
                         },
                   'kofam_hits_in_module' : {
                         'cdict_key': None,
+                        'mode_type': 'modules',
                         'description': "Comma-separated list of KOfam hits in a module"
                         },
                   'kofam_hit' : {
                         'cdict_key': 'kofam_hits',
+                        'mode_type': 'modules',
                         'description': "KO number of a single KOfam hit. If you choose this header, each line in the output file "
                                        "will be a KOfam hit"
                         },
                   'contig' : {
                         'cdict_key': 'genes_to_contigs',
+                        'mode_type': 'shared',
                         'description': "Contig that a KOfam hit is found on. If you choose this header, each line in the output "
                                        "file will be a KOfam hit"
                         },
                   'path_id' : {
                         'cdict_key': None,
+                        'mode_type': 'modules',
                         'description': "Integer ID for a path through a KEGG module. No real meaning and just for data organization. "
                                        "If you choose this header, each line in the output file will be a KOfam hit"
                         },
                   'path' : {
                         'cdict_key': 'paths',
+                        'mode_type': 'modules',
                         'description': "A path through a KEGG module (a linear sequence of KOs that together represent each metabolic step "
                                        "in the module. Most modules have several of these due to KO redundancy). If you choose this header, "
                                        "each line in the output file will be a KOfam hit"
                         },
                   'path_completeness' : {
                         'cdict_key': 'pathway_completeness',
+                        'mode_type': 'modules',
                         'description': "Percent completeness of a particular path through a KEGG module. If you choose this header, each line "
                                        "in the output file will be a KOfam hit"
+                        },
+                  'ko' : {
+                        'cdict_key': None,
+                        'mode_type': 'kofams',
+                        'description': 'KEGG Orthology (KO) number of a KOfam hit'
+                        },
+                  'modules_with_ko': {
+                        'cdict_key': 'modules',
+                        'mode_type': 'kofams',
+                        'description': 'A comma-separated list of modules that the KO belongs to'
                         },
                   }
 
