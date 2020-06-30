@@ -1246,6 +1246,31 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
         self.progress.end()
 
 
+    def store_hits_gene_callers_id(self, gene_callers_id, gene_sequence, item_name, hits):
+        if self.trna_focus:
+            header = ['db_name', 'gene_callers_id', 'anticodon', 'amino_acid', 'accession', 'percent_identity', 'bitscore'] + constants.levels_of_taxonomy
+        elif self.scgs_focus:
+            header = ['db_name', 'gene_callers_id', 'gene_name', 'accession', 'percent_identity', 'bitscore'] + constants.levels_of_taxonomy
+        else:
+            header = None
+
+        if not os.path.exists(self.all_hits_output_file_path):
+            with open(self.all_hits_output_file_path, 'w') as output:
+                output.write('\t'.join(header) + '\n')
+
+        if self.trna_focus:
+            line = [str(f) for f in [self.contigs_db_project_name, gene_callers_id, item_name, constants.anticodon_to_AA[item_name]]]
+        elif self.scgs_focus:
+            line = [str(f) for f in [self.contigs_db_project_name, gene_callers_id, item_name]]
+
+        with open(self.all_hits_output_file_path, 'a') as output:
+            for hit in hits:
+                if self.trna_focus:
+                    output.write('\t'.join(line + [str(hit[k]) for k in header[4:]]) + '\n')
+                elif self.scgs_focus:
+                    output.write('\t'.join(line + [str(hit[k]) for k in header[3:]]) + '\n')
+
+
     def show_hits_gene_callers_id(self, gene_callers_id, gene_sequence, item_name, hits):
         self.progress.reset()
         self.run.warning(None, header=f"Hits for '{item_name}' w/gene caller id '{gene_callers_id}'", lc="green")
@@ -1294,7 +1319,7 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
         return d
 
 
-    def get_gene_estimation_output(self, item_name, fasta_formatted_sequence, log_file_path, show_all_hits=True):
+    def get_gene_estimation_output(self, item_name, fasta_formatted_sequence, log_file_path, show_all_hits=False):
         genes_estimation_output=[]
 
         if self.scgs_focus:
@@ -1345,11 +1370,15 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
                 hits_per_gene[gene_callers_id][item_name].append(hit)
 
-        if anvio.DEBUG:
-            if not len(hits_per_gene):
-                with self.mutex:
+        # logging and reporting block
+        if (anvio.DEBUG or self.all_hits_output_file_path) and not len(hits_per_gene):
+            with self.mutex:
+                if anvio.DEBUG or show_all_hits:
                     self.progress.reset()
                     self.show_hits_gene_callers_id(fasta_formatted_sequence.split('\n')[0][1:], fasta_formatted_sequence.split('\n')[1], item_name, [])
+
+                if self.all_hits_output_file_path:
+                    self.store_hits_gene_callers_id(fasta_formatted_sequence.split('\n')[0][1:], fasta_formatted_sequence.split('\n')[1], item_name, [])
 
         for gene_callers_id, raw_hits in hits_per_gene.items():
             if len(raw_hits.keys()) > 1:
@@ -1362,14 +1391,16 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
             consensus_hit = self.get_consensus_hit(raw_hits)
             consensus_hit['accession'] = 'CONSENSUS'
 
-            if anvio.DEBUG or show_all_hits:
+            if anvio.DEBUG or show_all_hits or self.all_hits_output_file_path:
                 # avoid race conditions when priting this information when `--debug` is true:
                 with self.mutex:
-                    self.progress.reset()
-                    self.show_hits_gene_callers_id(gene_callers_id,
-                                                   fasta_formatted_sequence.split('\n')[1],
-                                                   item_name,
-                                                   raw_hits + [consensus_hit])
+                    if anvio.DEBUG or show_all_hits:
+                        self.progress.reset()
+                        self.show_hits_gene_callers_id(gene_callers_id, fasta_formatted_sequence.split('\n')[1], item_name, raw_hits + [consensus_hit])
+
+                    if self.all_hits_output_file_path:
+                        self.store_hits_gene_callers_id(gene_callers_id, fasta_formatted_sequence.split('\n')[1], item_name, raw_hits + [consensus_hit])
+
 
             genes_estimation_output.append([gene_callers_id, item_name, [consensus_hit]])
 

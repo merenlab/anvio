@@ -734,6 +734,15 @@ D = {
                      "When consensus taxonomy is generated per bin or genome, taxonomy for each underlying item "
                      "is not reported. This additional optional output file will elucidate things."}
                 ),
+    'all-hits-output-file': (
+            ['--all-hits-output-file'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FILE_PATH',
+             'help': "If this flag is declared, anvi'o will store a comprehensive list of hits that led to the "
+                     "determination of the consensus hit per sequence (which is the only piece of inormation that). "
+                     "is stored in the contigs database)."}
+                ),
     'report-scg-frequencies': (
             ['--report-scg-frequencies'],
             {'default': None,

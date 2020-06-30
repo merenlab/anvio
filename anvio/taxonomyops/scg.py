@@ -192,6 +192,11 @@ class SanityCheck(object):
                                   "file (in this case, the file to resolve accession IDs to taxon names). You may need to run "
                                   "the program `anvi-setup-scg-taxonomy` with the `--reset` flag to set things right again.")
 
+            filesnpaths.is_output_file_writable(self.all_hits_output_file_path, ok_if_exists=False) if self.all_hits_output_file_path else None
+
+            filesnpaths.is_output_file_writable(self.per_scg_output_file) if self.per_scg_output_file else None
+                
+
             ###########################################################
             # PopulateContigsDatabaseWithSCGTaxonomy
             ###########################################################
@@ -346,6 +351,7 @@ class SCGTaxonomyArgs(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file_path = A('output_file')
         self.per_scg_output_file = A('per_scg_output_file')
+        self.all_hits_output_file_path = A('all_hits_output_file')
         self.output_file_prefix = A('output_file_prefix')
         self.just_do_it = A('just_do_it')
         self.simplify_taxonomy_information = A('simplify_taxonomy_information')
