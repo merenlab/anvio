@@ -2117,9 +2117,12 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         =======
         kegg_metabolism_superdict : dictionary of dictionaries of dictionaries
             a complex data structure containing the metabolism estimation data for each genome/bin in the contigs DB
+        kofam_hits_superdict : dictionary of dictionaries of dictionaries
+            a complex data structure containing the KOfam hits information for each genome/bin in the contigs DB
         """
 
         kegg_metabolism_superdict = {}
+        kofam_hits_superdict = {}
 
         self.kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, run=run_quiet, quiet=self.quiet)
 
@@ -2130,11 +2133,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             kofam_hits_info = self.init_hits_and_splits()
 
             if self.profile_db_path and not self.metagenome_mode:
-                kegg_metabolism_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
+                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_bins_in_collection(kofam_hits_info)
             elif not self.profile_db_path and not self.metagenome_mode:
-                kegg_metabolism_superdict = self.estimate_for_genome(kofam_hits_info)
+                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_genome(kofam_hits_info)
             elif self.metagenome_mode:
-                kegg_metabolism_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
+                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_for_contigs_db_for_metagenome(kofam_hits_info)
             else:
                 raise ConfigError("This class doesn't know how to deal with that yet :/")
 
@@ -2145,7 +2148,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.write_dict_to_json:
             self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json")
 
-        return kegg_metabolism_superdict
+        return kegg_metabolism_superdict, kofam_hits_superdict
 
 
     def generate_output_dict(self, kegg_superdict, headers_to_include=None, only_complete_modules=False):
