@@ -2750,13 +2750,15 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         return df
 
 
-    def get_metabolism_superdict_multi_for_output(self, kegg_superdict_multi, output_mode, as_data_frame=False):
+    def get_metabolism_superdict_multi_for_output(self, kegg_superdict_multi, ko_superdict_multi, output_mode, as_data_frame=False):
         """Arranges the multi-contigs DB metabolism data into a better format for printing
 
         PARAMETERS
         ==========
         kegg_superdict_multi : dictionary
             the metabolism estimation data for multiple different contigs DBs
+        ko_superdict_multi : dictionary
+            the ko hit data for multiple different contigs DBs
         output_mode : string
             which output format to use
         as_data_frame : boolean
@@ -2785,7 +2787,13 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                                   "for the %s output mode. Something is terribly wrong. Perhaps you should try telling us what "
                                   "headers to use with the --custom-output-headers flag. If that doesn't work, contact the developers. :)"
                                   % (output_mode))
-            single_dict = single_estimator.generate_output_dict_for_modules(kegg_superdict_multi[metagenome_name], headers_to_include=header_list, only_complete_modules=self.available_modes[output_mode]["only_complete"])
+            if single_estimator.available_modes[output_mode]["data_dict"] == 'modules':
+                single_dict = single_estimator.generate_output_dict_for_modules(kegg_superdict_multi[metagenome_name], headers_to_include=header_list, only_complete_modules=self.available_modes[output_mode]["only_complete"])
+            elif self.available_modes[output_mode]["data_dict"] == 'kofams':
+                single_dict = single_estimator.generate_output_dict_for_kofams(ko_superdict_multi[metagenome_name], headers_to_include=header_list)
+            else:
+                raise ConfigError(f"Uh oh. You've requested to generate output from the {single_estimator.available_modes[output_mode]['data_dict']} "
+                                  "data dictionary, but we don't know about that one.")
 
             kegg_metabolism_superdict_multi_output_version[metagenome_name] = single_dict
 
@@ -2795,11 +2803,11 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             return kegg_metabolism_superdict_multi_output_version
 
 
-    def store_metabolism_superdict_multi_long_format(self, kegg_superdict_multi):
+    def store_metabolism_superdict_multi_long_format(self, kegg_superdict_multi, ko_superdict_multi):
         """Stores the multi-contigs DB metabolism data in long format (tab-delimited files, one per requested output mode)"""
 
         for mode in self.output_modes:
-            df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, output_mode=mode, as_data_frame=True)
+            df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode=mode, as_data_frame=True)
 
             output_file_path = self.output_file_prefix + "_" + self.available_modes[mode]["output_suffix"]
             df.to_csv(output_file_path, index=True, index_label="unique_id", sep='\t', na_rep='NA')
@@ -2807,7 +2815,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info("Long-format output", output_file_path)
 
 
-    def store_metabolism_superdict_multi_matrix_format(self, kegg_superdict_multi):
+    def store_metabolism_superdict_multi_matrix_format(self, kegg_superdict_multi, ko_superdict_multi):
         """Stores the multi-contigs DB metabolism data in several matrices.
 
         Contigs DBs are arranged in columns and KEGG modules are arranged in rows.
@@ -2815,7 +2823,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         """
 
         # we use module output mode because that gets us all the relevant information in the dataframe
-        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, output_mode="modules", as_data_frame=True)
+        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode="modules", as_data_frame=True)
         df.set_index(['db_name', 'kegg_module'], inplace=True)
 
 
@@ -2839,13 +2847,13 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             self.run.info('Output matrix for "%s"' % stat, output_file_path)
 
 
-    def store_metabolism_superdict_multi(self, kegg_superdict_multi):
+    def store_metabolism_superdict_multi(self, kegg_superdict_multi, ko_superdict_multi):
         """A driver function to store metabolism data in the requested output format"""
 
         if self.matrix_format:
-            self.store_metabolism_superdict_multi_matrix_format(kegg_superdict_multi)
+            self.store_metabolism_superdict_multi_matrix_format(kegg_superdict_multi, ko_superdict_multi)
         else:
-            self.store_metabolism_superdict_multi_long_format(kegg_superdict_multi)
+            self.store_metabolism_superdict_multi_long_format(kegg_superdict_multi, ko_superdict_multi)
 
 
     def estimate_metabolism(self):
@@ -2877,7 +2885,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         kegg_metabolism_superdict_multi, ko_hits_superdict_multi = self.get_metabolism_superdict_multi()
 
-        self.store_metabolism_superdict_multi(kegg_metabolism_superdict_multi)
+        self.store_metabolism_superdict_multi(kegg_metabolism_superdict_multi, ko_hits_superdict_multi)
 
 
 class KeggModulesDatabase(KeggContext):
