@@ -2818,7 +2818,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
     def store_metabolism_superdict_multi_matrix_format(self, kegg_superdict_multi, ko_superdict_multi):
         """Stores the multi-contigs DB metabolism data in several matrices.
 
-        Contigs DBs are arranged in columns and KEGG modules are arranged in rows.
+        Contigs DBs are arranged in columns and KEGG modules/KOs are arranged in rows.
         Each module statistic (ie, completeness, presence/absence) will be in a different file.
         """
 
@@ -2845,6 +2845,14 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
                     output.write('\t'.join([rows[i]] + ['%.2f' % c for c in matrix[i]]) + '\n')
 
             self.run.info('Output matrix for "%s"' % stat, output_file_path)
+
+        # now we make a KO hit count matrix
+        df = self.get_metabolism_superdict_multi_for_output(kegg_superdict_multi, ko_superdict_multi, output_mode="kofam_hits", as_data_frame=True)
+        df.set_index(['db_name'], inplace=True)
+        ko_counts = df.groupby(['ko','db_name']).size().unstack(fill_value=0)
+        output_file_path = '%s-ko_hits-MATRIX.txt' % (self.output_file_prefix)
+        ko_counts.to_csv(output_file_path, sep='\t')
+        self.run.info('Output matrix for "%s"' % 'ko_hits', output_file_path)
 
 
     def store_metabolism_superdict_multi(self, kegg_superdict_multi, ko_superdict_multi):
