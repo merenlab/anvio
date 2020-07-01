@@ -1,0 +1,4 @@
+name	contigs_db_path	profile_db_path	collection_id	bin_id
+E_facealis	CONTIGS.db	PROFILE.db	bins_for_testing	E_facealis
+P_avidum	CONTIGS.db	PROFILE.db	bins_for_testing	P_avidum
+S_epidermidis	CONTIGS.db	PROFILE.db	bins_for_testing	S_epidermidis
