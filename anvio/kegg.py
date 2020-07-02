@@ -2342,6 +2342,15 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                 if "module_definition" in headers_to_include:
                                     d[unique_id]["module_definition"] = module_def
 
+                                # comma-separated lists of KOs and gene calls in module
+                                if "kofam_hits_in_module" in headers_to_include:
+                                    kos_in_mod = c_dict['kofam_hits'].keys()
+                                    d[unique_id]["kofam_hits_in_module"] = ",".join(kos_in_mod)
+                                if "gene_caller_ids_in_module" in headers_to_include:
+                                    gcids_in_mod = c_dict['genes_to_contigs'].keys()
+                                    gcids_in_mod = [str(x) for x in gcids_in_mod]
+                                    d[unique_id]["gene_caller_ids_in_module"] = ",".join(gcids_in_mod)
+
                                 # everything else at c_dict level
                                 for h in remaining_headers:
                                     if h not in self.available_headers.keys():
