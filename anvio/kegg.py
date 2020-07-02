@@ -1300,28 +1300,29 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                               "you now know what you need to do to make this message go away." % ("MODULES.db", self.kegg_data_dir))
         kegg_modules_db = KeggModulesDatabase(self.kegg_modules_db_path, args=self.args, quiet=self.quiet)
 
-        # here we load the contigs DB just for sanity check purposes.
-        # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
-        contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
-        self.contigs_db_project_name = contigs_db.meta['project_name']
+        if not self.estimate_from_json:
+            # here we load the contigs DB just for sanity check purposes.
+            # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
+            contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+            self.contigs_db_project_name = contigs_db.meta['project_name']
 
-        # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
-        if 'modules_db_hash' not in contigs_db.meta:
-            raise ConfigError("Based on the contigs DB metadata, the contigs DB that you are working with has not been annotated with hits to the "
-                              "KOfam database, so there are no KOs to estimate metabolism from. Please run `anvi-run-kegg-kofams` on this contigs DB "
-                              "before you attempt to run this script again.")
-        contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
-        mod_db_hash = kegg_modules_db.db.get_meta_value('hash')
-        if contigs_db_mod_hash != mod_db_hash:
-            raise ConfigError("The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now. "
-                              "Perhaps you updated your KEGG setup after running `anvi-run-kegg-kofams` on this contigs DB? Or maybe you have multiple KEGG data "
-                              "directories set up on your computer, and the one you are using now is different from the one that you used for `anvi-run-kegg-kofams`? "
-                              "Well. The solution to the first problem is to re-run `anvi-run-kegg-kofams` on the contigs DB (%s) using the updated MODULES.db "
-                              "(located in the KEGG data directory %s). The solution to the second problem is to specify the appropriate KEGG data directory using "
-                              "the --kegg-data-dir flag. If neither of those things make this work, then you should contact the developers to see if they can help you "
-                              "figure this out. For those who need this information, the Modules DB used to annotate this contigs database previously had the "
-                              "following hash: %s. And the hash of the current Modules DB is: %s" % (self.contigs_db_path, self.kegg_data_dir, contigs_db_mod_hash, mod_db_hash))
-        contigs_db.disconnect()
+            # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
+            if 'modules_db_hash' not in contigs_db.meta:
+                raise ConfigError("Based on the contigs DB metadata, the contigs DB that you are working with has not been annotated with hits to the "
+                                  "KOfam database, so there are no KOs to estimate metabolism from. Please run `anvi-run-kegg-kofams` on this contigs DB "
+                                  "before you attempt to run this script again.")
+            contigs_db_mod_hash = contigs_db.meta['modules_db_hash']
+            mod_db_hash = kegg_modules_db.db.get_meta_value('hash')
+            if contigs_db_mod_hash != mod_db_hash:
+                raise ConfigError("The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now. "
+                                  "Perhaps you updated your KEGG setup after running `anvi-run-kegg-kofams` on this contigs DB? Or maybe you have multiple KEGG data "
+                                  "directories set up on your computer, and the one you are using now is different from the one that you used for `anvi-run-kegg-kofams`? "
+                                  "Well. The solution to the first problem is to re-run `anvi-run-kegg-kofams` on the contigs DB (%s) using the updated MODULES.db "
+                                  "(located in the KEGG data directory %s). The solution to the second problem is to specify the appropriate KEGG data directory using "
+                                  "the --kegg-data-dir flag. If neither of those things make this work, then you should contact the developers to see if they can help you "
+                                  "figure this out. For those who need this information, the Modules DB used to annotate this contigs database previously had the "
+                                  "following hash: %s. And the hash of the current Modules DB is: %s" % (self.contigs_db_path, self.kegg_data_dir, contigs_db_mod_hash, mod_db_hash))
+            contigs_db.disconnect()
         kegg_modules_db.disconnect()
 
 
