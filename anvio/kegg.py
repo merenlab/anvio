@@ -2598,21 +2598,25 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         self.available_headers["db_name"] = {
                                         'cdict_key': None,
+                                        'mode_type': 'all',
                                         'description': "Name of contigs DB. Always included in output, so no need to specify on the command line"
         }
         if self.name_header == 'genome_name':
             self.available_headers["genome_name"] = {
                                             'cdict_key': None,
+                                            'mode_type': 'all',
                                             'description': "Name of genome in which we find KOfam hits and/or KEGG modules"
                                             }
         elif self.name_header == 'bin_name':
             self.available_headers["bin_name"] = {
                                             'cdict_key': None,
+                                            'mode_type': 'all',
                                             'description': "Name of bin in which we find KOfam hits and/or KEGG modules"
                                             }
         elif self.name_header == 'metagenome_name':
             self.available_headers["metagenome_name"] = {
                                             'cdict_key': None,
+                                            'mode_type': 'all',
                                             'description': "Name of metagenome in which we find KOfam hits and/or KEGG modules"
                                             }
 
@@ -2627,7 +2631,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
 
         for header, header_meta in self.available_headers.items():
-            self.run.info(header, header_meta['description'])
+            self.run.info(header, "%s [%s output modes]" %(header_meta['description'], header_meta['mode_type']))
 
 
     def init_metagenomes(self):
