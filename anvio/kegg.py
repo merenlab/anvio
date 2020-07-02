@@ -1169,7 +1169,7 @@ class KeggEstimatorArgs():
             elif self.custom_output_headers.index("unique_id") != 0:
                 self.custom_output_headers.remove("unique_id")
                 self.custom_output_headers = ["unique_id"] + self.custom_output_headers
-            self.available_modes['custom']['headers'] = self.custom_output_headers
+            self.available_modes['modules_custom']['headers'] = self.custom_output_headers
 
 
 class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
