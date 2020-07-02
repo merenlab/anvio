@@ -32,3 +32,10 @@ By default, %(anvi-run-kegg-kofams)s uses `hmmsearch` to find KO hits. If for so
 {{ codestart }}
 anvi-run-kegg-kofams -c CONTIGS.db --hmmer-program hmmscan
 {{ codestop }}
+
+### Keep all HMM hits
+Usually, this program parses out weak HMM hits and keeps only those that are above the score threshold for a given KO. If you would like to turn off this behavior and keep all hits (there will be _a lot_ of weak ones), you can follow the example below:
+
+{{ codestart }}
+anvi-run-kegg-kofams -c CONTIGS.db --keep-all-hits
+{{ codestop }}
