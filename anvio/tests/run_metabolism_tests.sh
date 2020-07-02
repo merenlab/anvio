@@ -36,3 +36,18 @@ anvi-estimate-metabolism -i internal-genomes.txt -O internal
 
 INFO "Estimating metabolism on metagenomes file"
 anvi-estimate-metabolism -M metagenomes.txt -O metagenomes
+
+INFO "Trying a different module completeness threshold"
+anvi-estimate-metabolism -c P_marinus_CCMP1375.db --module-completion-threshold 0 -O nondefault_threshold
+
+INFO "Generating long format output files"
+anvi-estimate-metabolism -e external-genomes.txt --kegg-output-modes kofam_hits,modules,custom --custom-output-headers kegg_module,module_is_complete,module_name -O long_format
+
+INFO "Generating matrix output files"
+anvi-estimate-metabolism -i internal-genomes.txt --matrix-format -O matrix_format
+
+INFO "Generating JSON output (debug option)"
+anvi-estimate-metabolism -c S_islandicus_LS215.db --get-raw-data-as-json estimation_data --store-json-without-estimation
+
+INFO "Estimating from JSON output (debug option)"
+anvi-estimate-metabolism -c S_islandicus_LS215.db --estimate-from-json estimation_data.json -O from_json
