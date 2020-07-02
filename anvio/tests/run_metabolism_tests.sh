@@ -41,7 +41,7 @@ INFO "Trying a different module completeness threshold"
 anvi-estimate-metabolism -c P_marinus_CCMP1375.db --module-completion-threshold 0 -O nondefault_threshold
 
 INFO "Generating long format output files"
-anvi-estimate-metabolism -e external-genomes.txt --kegg-output-modes kofam_hits,modules,custom --custom-output-headers kegg_module,module_is_complete,module_name -O long_format
+anvi-estimate-metabolism -e external-genomes.txt --kegg-output-modes kofam_hits,modules,kofam_hits_in_modules,modules_custom --custom-output-headers kegg_module,module_is_complete,module_name -O long_format
 
 INFO "Generating matrix output files"
 anvi-estimate-metabolism -i internal-genomes.txt --matrix-format -O matrix_format
