@@ -5,6 +5,9 @@ source 00.sh
 SETUP_WITH_OUTPUT_DIR $1
 #####################################
 
+# Change this whenever re-annotation of the test databases is done
+CURRENT_MODULES_DB_HASH="ba0d0dda2796"
+
 INFO "Setting up the metabolism test directory"
 mkdir $output_dir/metabolism_test
 cp $files/real_data_for_testing/*.fa                $output_dir/metabolism_test
@@ -25,6 +28,11 @@ anvi-import-functions -c S_islandicus_LS215.db -i S_islandicus_LS215_KOfams.txt
 
 # IGD_SUBSET database is already annotated, but just in case that breaks, here is how to fix it:
 # anvi-import-functions -c CONTIGS.db -i IGD_SUBSET_KOfams.txt
+
+INFO "Setting modules db hash in databases to $CURRENT_MODULES_DB_HASH"
+anvi-db-info --self-key modules_db_hash --self-value $CURRENT_MODULES_DB_HASH --just-do-it B_thetaiotamicron_VPI-5482.db
+anvi-db-info --self-key modules_db_hash --self-value $CURRENT_MODULES_DB_HASH --just-do-it P_marinus_CCMP1375.db
+anvi-db-info --self-key modules_db_hash --self-value $CURRENT_MODULES_DB_HASH --just-do-it S_islandicus_LS215.db
 
 INFO "Estimating metabolism on a single contigs database"
 anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db -O single_contigs_db
