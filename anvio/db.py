@@ -381,6 +381,8 @@ class DB:
     def get_some_rows_from_table(self, table_name, where_clause):
         self.is_table_exists(table_name)
 
+        where_clause = where_clause.replace('"', "'")
+
         response = self._exec('''SELECT %s FROM %s WHERE %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name, where_clause))
         return response.fetchall()
 
@@ -389,6 +391,7 @@ class DB:
         self.is_table_exists(table_name)
 
         if where_clause:
+            where_clause = where_clause.replace('"', "'")
             response = self._exec('''SELECT COUNT(*) FROM %s WHERE %s''' % (table_name, where_clause))
         else:
             response = self._exec('''SELECT COUNT(*) FROM %s''' % (table_name))
@@ -399,6 +402,8 @@ class DB:
     def remove_some_rows_from_table(self, table_name, where_clause):
         self.is_table_exists(table_name)
 
+        where_clause = where_clause.replace('"', "'")
+
         self._exec('''DELETE FROM %s WHERE %s''' % (table_name, where_clause))
         self.commit()
 
@@ -407,6 +412,7 @@ class DB:
         self.is_table_exists(table)
 
         if where_clause:
+            where_clause = where_clause.replace('"', "'")
             response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', column, table, where_clause))
         else:
             response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', column, table))
@@ -417,6 +423,7 @@ class DB:
         self.is_table_exists(table)
 
         if where_clause:
+            where_clause = where_clause.replace('"', "'")
             response = self._exec('''SELECT %s %s FROM %s WHERE %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table, where_clause))
         else:
             response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table))
@@ -699,6 +706,7 @@ class DB:
             columns_of_interest = table_structure
 
         if where_clause:
+            where_clause = where_clause.replace('"', "'")
             results_df = pd.read_sql('''SELECT %s FROM "%s" WHERE %s''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name, where_clause), self.conn, columns=table_structure)
         else:
             results_df = pd.read_sql('''SELECT %s FROM "%s"''' % (self.PROPER_SELECT_STATEMENT(table_name), table_name), self.conn, columns=table_structure)
@@ -749,6 +757,8 @@ class DB:
         """
 
         results_dict = {}
+
+        where_clause = where_clause.replace('"', "'")
 
         if self.ROWID_PREPENDS_ROW_DATA(table_name):
             table_structure = ['entry_id'] + self.get_table_structure(table_name)
