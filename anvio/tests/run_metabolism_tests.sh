@@ -13,7 +13,8 @@ mkdir $output_dir/metabolism_test
 cp $files/real_data_for_testing/*.fa                $output_dir/metabolism_test
 cp $files/real_data_for_testing/IGD_SUBSET/*.db     $output_dir/metabolism_test
 cp $files/real_data_for_testing/KOfams/*KOfams.txt  $output_dir/metabolism_test
-cp $files/real_data_for_testing/*-genomes.txt       $output_dir/metabolism_test
+cp $files/real_data_for_testing/*genomes.txt       $output_dir/metabolism_test
+cp $files/real_data_for_testing/bin-ids.txt         $output_dir/metabolism_test
 cd $output_dir/metabolism_test
 
 INFO "Generating contigs databases for external genomes"
@@ -36,3 +37,24 @@ anvi-db-info --self-key modules_db_hash --self-value $CURRENT_MODULES_DB_HASH --
 
 INFO "Estimating metabolism on a single contigs database"
 anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db -O single_contigs_db
+
+INFO "Estimating metabolism using metagenome mode"
+anvi-estimate-metabolism -c CONTIGS.db --metagenome-mode -O metagenome_mode
+
+INFO "Estimating metabolism on a collection"
+anvi-estimate-metabolism -c CONTIGS.db -p PROFILE.db -C bins_for_testing -O collection
+
+INFO "Estimating metabolism on a single bin in a collection"
+anvi-estimate-metabolism -c CONTIGS.db -p PROFILE.db -C bins_for_testing -b E_facealis -O single_bin
+
+INFO "Estimating metabolism using a bin IDs file"
+anvi-estimate-metabolism -c CONTIGS.db -p PROFILE.db -C bins_for_testing -B bin-ids.txt -O bin_ids_file
+
+INFO "Estimating metabolism on external genomes"
+anvi-estimate-metabolism -e external-genomes.txt -O external
+
+INFO "Estimating metabolism on internal genomes"
+anvi-estimate-metabolism -i internal-genomes.txt -O internal
+
+INFO "Estimating metabolism on metagenomes file"
+anvi-estimate-metabolism -M metagenomes.txt -O metagenomes
