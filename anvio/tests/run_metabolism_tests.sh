@@ -40,11 +40,35 @@ anvi-estimate-metabolism -M metagenomes.txt -O metagenomes
 INFO "Trying a different module completeness threshold"
 anvi-estimate-metabolism -c P_marinus_CCMP1375.db --module-completion-threshold 0 -O nondefault_threshold
 
-INFO "Generating long format output files"
-anvi-estimate-metabolism -e external-genomes.txt --kegg-output-modes kofam_hits,modules,kofam_hits_in_modules,modules_custom --custom-output-headers kegg_module,module_is_complete,module_name -O long_format
+INFO "Listing output modes for single database"
+anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db --list-available-modes
 
-INFO "Generating matrix output files"
-anvi-estimate-metabolism -i internal-genomes.txt --matrix-format -O matrix_format
+INFO "Listing output modes for multi mode"
+anvi-estimate-metabolism -e external-genomes.txt --list-available-modes
+
+INFO "Listing custom output headers for single database"
+anvi-estimate-metabolism -c B_thetaiotamicron_VPI-5482.db --list-available-output-headers
+
+INFO "Listing custom output headers for multi mode"
+anvi-estimate-metabolism -e external-genomes.txt --list-available-output-headers
+
+INFO "Generating long format output files on single database"
+anvi-estimate-metabolism -c P_marinus_CCMP1375.db --kegg-output-modes kofam_hits,modules,kofam_hits_in_modules,modules_custom --custom-output-headers kegg_module,module_is_complete,module_name -O long_format_single
+
+INFO "Generating long format output files in multi mode"
+anvi-estimate-metabolism -e external-genomes.txt --kegg-output-modes kofam_hits,modules,kofam_hits_in_modules -O long_format_multi
+
+# below we try every single header for modules_custom mode
+INFO "Generating modules custom output file on single database"
+anvi-estimate-metabolism -c P_marinus_CCMP1375.db --kegg-output-modes modules_custom -O modules_custom_single \
+    --custom-output-headers kegg_module,module_is_complete,module_completeness,module_name,module_class,module_category,module_subcategory,module_definition,gene_caller_ids_in_module,gene_caller_id,kofam_hits_in_module,kofam_hit,contig,path_id,path,path_completeness,genome_name
+
+INFO "Generating modules custom output file in multi mode"
+anvi-estimate-metabolism -e external-genomes.txt --kegg-output-modes modules_custom -O modules_custom_multi \
+    --custom-output-headers kegg_module,module_is_complete,module_completeness,module_name,module_class,module_category,module_subcategory,module_definition,gene_caller_ids_in_module,gene_caller_id,kofam_hits_in_module,kofam_hit,contig,path_id,path,path_completeness,genome_name,db_name
+
+INFO "Generating matrix output files in multi mode"
+anvi-estimate-metabolism -e external-genomes.txt --matrix-format -O matrix_format_multi
 
 INFO "Generating JSON output (debug option)"
 anvi-estimate-metabolism -c S_islandicus_LS215.db --get-raw-data-as-json estimation_data --store-json-without-estimation
