@@ -1149,7 +1149,6 @@ class KeggEstimatorArgs():
         self.available_modes = OUTPUT_MODES
         self.available_headers = OUTPUT_HEADERS
 
-
         if format_args_for_single_estimator:
             # to fool a single estimator into passing sanity checks, nullify multi estimator args here
             self.databases = None
@@ -1270,6 +1269,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 raise ConfigError("You have requested some output headers that we cannot handle. The offending ones "
                                   "are: %s. Please use the flag --list-available-output-headers to see which ones are acceptable."
                                   % (", ".join(illegal_headers)))
+
+            # check if any headers requested for modules_custom mode are reserved for KOfams mode
+            if "modules_custom" in self.output_modes:
+                for header in self.custom_output_headers:
+                    if self.available_headers[header]['mode_type'] != "modules" and self.available_headers[header]['mode_type'] != "all":
+                        raise ConfigError(f"Oh dear. You requested the 'modules_custom' output mode, but gave us a header ({header}) "
+                                          "that is suitable only for %s mode(s). Not good." % (self.available_headers[header]['mode_type']))
+
 
         if self.matrix_format:
             raise ConfigError("You seem to want output in matrix format despite having only a single contigs database to work "
