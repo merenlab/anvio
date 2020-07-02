@@ -23,9 +23,9 @@ __provides__ = ['single-profile-db', 'misc-data-item-orders', 'variability-profi
 __description__ = "Creates a single anvi'o profile database. The default input to this program is a BAM file.\
                    When it is run on a BAM file, depending on the user parameters, the program quantifies\
                    coverage per nucleotide position (and averages them out per contig), calculates\
-                   single-nucleotide, single-codon, and single-amino acid variants, as well as structurel variants\
+                   single-nucleotide, single-codon, and single-amino acid variants, as well as structural variants\
                    such as insertion and deletions and stores these data into appropriate tables. Anvi'o single\
-                   profiles can be merged by the program `anvi-merge`."
+                   profiles can be merged by the program `anvi-merge`"
 
 
 @time_program

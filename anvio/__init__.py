@@ -1834,8 +1834,8 @@ D = {
             {'metavar': 'NAME',
              'help': "It is important to set a sample name (using only ASCII letters and digits "
                      "and without spaces) that is unique (considering all others). If you do not "
-                     "provide one, anvi'o will try to make up one for you based on other information, "
-                     "although, you should never let the software to decide these things)."}
+                     "provide one, anvi'o will try to make up one for you based on other information "
+                     "(although, you should never let the software to decide these things)."}
                 ),
     'project-name': (
             ['-n', '--project-name'],
