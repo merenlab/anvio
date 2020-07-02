@@ -74,4 +74,4 @@ INFO "Generating JSON output (debug option)"
 anvi-estimate-metabolism -c S_islandicus_LS215.db --get-raw-data-as-json estimation_data --store-json-without-estimation
 
 INFO "Estimating from JSON output (debug option)"
-anvi-estimate-metabolism -c S_islandicus_LS215.db --estimate-from-json estimation_data.json -O from_json
+anvi-estimate-metabolism --estimate-from-json estimation_data.json -O from_json
