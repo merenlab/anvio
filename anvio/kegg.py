@@ -1140,6 +1140,7 @@ class KeggEstimatorArgs():
         self.external_genomes_file = A('external_genomes') or None
         self.internal_genomes_file = A('internal_genomes') or None
         self.metagenomes_file = A('metagenomes') or None
+        self.kegg_data_dir = A('kegg_data_dir')
 
         # if necessary, assign 0 completion threshold, which evaluates to False above
         if A('module_completion_threshold') == 0:
@@ -2571,6 +2572,9 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
             raise ConfigError("You appear to have provided both an input text file and a contigs database, and "
                               "now anvi'o is not quite sure which one to work on. Please choose only one. :) ")
 
+        # init the base class for access to shared paths and such
+        KeggContext.__init__(self, args)
+        
         KeggEstimatorArgs.__init__(self, self.args)
 
         if anvio.DEBUG:
