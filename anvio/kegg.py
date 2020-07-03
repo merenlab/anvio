@@ -1529,12 +1529,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             present_in_mods = self.kegg_modules_db.get_modules_for_knum(ko)
             if not present_in_mods:
                 kos_not_in_modules.append(ko)
-                # KOs that are not in modules will not be initialized above in the ko hit dictionary, so we add them here
-                bin_level_ko_dict[ko] = {"gene_caller_ids" : set(),
-                                         "modules" : None,
-                                         "genes_to_contigs" : {},
-                                         "contigs_to_genes" : {}
-                                         }
+                # KOs that are not in modules will not be initialized above in the ko hit dictionary, so we add them here if we haven't already
+                if ko not in bin_level_ko_dict:
+                    bin_level_ko_dict[ko] = {"gene_caller_ids" : set(),
+                                             "modules" : None,
+                                             "genes_to_contigs" : {},
+                                             "contigs_to_genes" : {}
+                                             }
             else:
                 bin_level_ko_dict[ko]["modules"] = present_in_mods
             for m in present_in_mods:
