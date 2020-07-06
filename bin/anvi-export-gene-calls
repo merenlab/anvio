@@ -22,7 +22,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db']
 __provides__ = ['gene-calls-txt']
-__description__ = "Export gene calls from an anvi'o contigs database."
+__description__ = "Export gene calls from an anvi'o contigs database"
 
 run = terminal.Run()
 progress = terminal.Progress()

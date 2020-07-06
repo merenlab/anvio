@@ -20,7 +20,7 @@ __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['genes-db', 'pan-db', 'profile-db', 'contigs-db']
 __provides__ = ['misc-data-items-txt', 'misc-data-layers-txt', 'misc-data-layer-orders-txt', 'misc-data-nucleotides-txt', 'misc-data-amino-acids-txt']
-__description__ = "Export additional data or order tables in pan or profile databases for items or layers."
+__description__ = "Export additional data or order tables in pan or profile databases for items or layers"
 
 run = terminal.Run()
 
