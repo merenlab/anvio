@@ -88,14 +88,11 @@ class InteracdomeSuper(Pfam):
     def process(self):
         """Runs Interacdome."""
 
-        # initialize contigs database
-        args = argparse.Namespace(contigs_db=self.contigs_db_path)
-        contigs_db = dbops.ContigsSuperclass(args)
         tmp_directory_path = filesnpaths.get_temp_directory_path()
 
         # export AA sequences for genes
         target_files_dict = {'AA:DOMAIN': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
-        contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(
+        self.contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(
             output_file_path=target_files_dict['AA:DOMAIN'],
             simple_headers=True,
             rna_alphabet=False,
@@ -115,7 +112,7 @@ class InteracdomeSuper(Pfam):
             ref=None,
             noise_cutoff_terms='--cut_ga',
             desired_output='standard',
-            out_fmt='--domtblout'
+            out_fmt='--domtblout',
         )
 
         self.hmm_out = parser_modules['search']['hmmer_std_output'](hmm_hits_file, context='interacdome')
@@ -132,9 +129,7 @@ class InteracdomeSuper(Pfam):
             hmmer.clean_tmp_dirs()
             return
 
-        # NOTE
-        # Do the thing here
-        pass
+        self.map_binding_frequencies_to_hmms()
 
         if anvio.DEBUG:
             self.run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to "
@@ -145,6 +140,24 @@ class InteracdomeSuper(Pfam):
                                  "like to keep it for testing purposes)", nl_before=1, nl_after=1)
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
+
+
+    def map_binding_frequencies_to_hmms(self):
+        """Populate self.bind_freq dict
+
+        Notes
+        =====
+        - Must have self.hmm_out (see self.process for example)
+        """
+
+        for gene_callers_id in self.hmm_out.ali_info:
+            for pfam_id in self.hmm_out.ali_info[gene_callers_id]:
+                if pfam_id not in self.interacdome_table.bind_freqs:
+                    # pfam hit to gene, but has no binding_frequency data
+                    continue
+
+                for domain_id in self.hmm_out.ali_info[gene_callers_id][pfam_id]:
+                    if 
 
 
 class InteracdomeTableData(object):
