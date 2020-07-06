@@ -33,7 +33,7 @@ __resources__ = [("Refining a bin", "http://merenlab.org/2015/05/11/anvi-refine/
 __requires__ = ['profile-db', 'contigs-db', 'bin',]
 __provides__ = ['bin',]
 __description__ = ("Start an anvi'o interactive interactive to manually curate or refine a genome, "
-                   "whether it is a metagenome-assembled, single-cell, or an isolate genome.")
+                   "whether it is a metagenome-assembled, single-cell, or an isolate genome")
 
 
 run = terminal.Run()

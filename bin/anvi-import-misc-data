@@ -23,7 +23,7 @@ __requires__ = ['genes-db', 'pan-db', 'profile-db', 'contigs-db', 'misc-data-ite
 __provides__ = ['misc-data-items', 'misc-data-layers', 'misc-data-layer-orders', 'misc-data-nucleotides', 'misc-data-amino-acids']
 __description__ = ("Populate additional data or order tables in pan or profile databases for "
                    "items and layers, OR additional data in contigs databases for nucleotides "
-                   "and amino acids (the Swiss army knife-level serious stuff).")
+                   "and amino acids (the Swiss army knife-level serious stuff)")
 
 
 @terminal.time_program

@@ -22,7 +22,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ["pan-db", "profile-db"]
 __provides__ = ["collection"]
-__description__ = "A script to display collections stored in an anvi'o profile or pan database."
+__description__ = "A script to display collections stored in an anvi'o profile or pan database"
 
 
 run = terminal.Run()

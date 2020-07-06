@@ -1,4 +1,4 @@
-An HMM source is a collection of one or more HMMs. 
+An HMM source is a collection of one or more HMMs. See the page for %(anvi-run-hmms)s for more information on HMMs. 
 
 HMMs for any set of genes can be put together and run on any anvi'o %(contigs-db)s which would yield an %(hmm-hits)s.
 

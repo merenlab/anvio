@@ -23,7 +23,7 @@ __description__ = ("Run NCBI's COGs to associate genes in an anvi'o contigs data
                    "COGs database was been designed as an attempt to classify proteins from completely "
                    "sequenced genomes on the basis of the orthology concept. It is no longer actively "
                    "developed, however, it is still very effective for daily needs. You may want to "
-                   "consider Pfams or the eggNOG database for more comprehensive functional insights.")
+                   "consider Pfams or the eggNOG database for more comprehensive functional insights")
 
 
 run = terminal.Run()

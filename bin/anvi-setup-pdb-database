@@ -19,7 +19,7 @@ __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 __provides__ = ['pdb-db']
-__description__ = ("Setup or update an offline database of representative PDB structures clustered at 95%.")
+__description__ = ("Setup or update an offline database of representative PDB structures clustered at 95%")
 
 
 @terminal.time_program

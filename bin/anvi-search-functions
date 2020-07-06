@@ -27,7 +27,7 @@ __description__ = ("Search functions in an anvi'o contigs database or genomes st
                    "with functions matching to serach terms you used. This file is only useful to quickly highlight matching contigs "
                    "in the interface by providing it to the anvi-interactive with the `--additional-layer` parameter. You can also "
                    "request a much more comprehensive report, which gives you anything you might need to know, including the matching "
-                   "gene caller id, functional annotation source, and full function name for each hit and serach term.")
+                   "gene caller id, functional annotation source, and full function name for each hit and serach term")
 
 
 run = terminal.Run()

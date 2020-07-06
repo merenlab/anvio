@@ -20,7 +20,7 @@ __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
 __description__ = ("Remove stuff from 'additional data' or 'order' tables for either items or layers in either "
                    "pan or profile databases. OR, remove stuff from the 'additional data' tables for nucleotides "
-                   "or amino acids in contigs databases.")
+                   "or amino acids in contigs databases")
 
 
 run = terminal.Run()
