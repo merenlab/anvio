@@ -74,10 +74,7 @@ class DatabaseInfo:
             run.info_single("Please remember that it is never a good idea to change these values. But in "
                             "some cases it may be absolutely necessary to update something here, and a "
                             "programmer may ask you to run this program and do it. But even then, you "
-                            "should be very skeptical. For instance, if the programmer asks you to change "
-                            "the values for 'num_contigs', or 'kmer_size', it would mean that they likely "
-                            "hate you and want you to fail. So please be extremely careful changing any "
-                            "of these values.", mc='red', nl_before=1)
+                            "should be extremely careful.", mc='red', nl_before=1)
 
         # It wouldn't hurt to print out some DB specific information?
         if self.db_type == 'contigs':
