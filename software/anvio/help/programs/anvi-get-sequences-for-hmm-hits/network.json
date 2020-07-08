@@ -1,0 +1,108 @@
+{
+  "graph": [],
+  "nodes": [
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "genes-fasta",
+      "name": "genes-fasta",
+      "provided_by_anvio": true,
+      "type": "FASTA"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "concatenated-gene-alignment-fasta",
+      "name": "concatenated-gene-alignment-fasta",
+      "provided_by_anvio": true,
+      "type": "FASTA"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "contigs-db",
+      "name": "contigs-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "profile-db",
+      "name": "profile-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 1,
+      "score": 1,
+      "color": "#AA0000",
+      "id": "external-genomes",
+      "name": "external-genomes",
+      "provided_by_anvio": false,
+      "type": "TXT"
+    },
+    {
+      "size": 1,
+      "score": 1,
+      "color": "#AA0000",
+      "id": "internal-genomes",
+      "name": "internal-genomes",
+      "provided_by_anvio": false,
+      "type": "TXT"
+    },
+    {
+      "size": 1,
+      "score": 1,
+      "color": "#AA0000",
+      "id": "hmm-source",
+      "name": "hmm-source",
+      "provided_by_anvio": false,
+      "type": "HMM"
+    },
+    {
+      "size": 7,
+      "score": 0.1,
+      "color": "#AAAA00",
+      "id": "anvi-get-sequences-for-hmm-hits",
+      "name": "anvi-get-sequences-for-hmm-hits",
+      "type": "PROGRAM"
+    }
+  ],
+  "links": [
+    {
+      "source": 7,
+      "target": 0
+    },
+    {
+      "source": 7,
+      "target": 1
+    },
+    {
+      "target": 7,
+      "source": 2
+    },
+    {
+      "target": 7,
+      "source": 3
+    },
+    {
+      "target": 7,
+      "source": 4
+    },
+    {
+      "target": 7,
+      "source": 5
+    },
+    {
+      "target": 7,
+      "source": 6
+    }
+  ],
+  "directed": false,
+  "multigraph": false
+}

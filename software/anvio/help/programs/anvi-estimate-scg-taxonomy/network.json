@@ -1,0 +1,121 @@
+{
+  "graph": [],
+  "nodes": [
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "genome-taxonomy",
+      "name": "genome-taxonomy",
+      "provided_by_anvio": true,
+      "type": "CONCEPT"
+    },
+    {
+      "size": 1,
+      "score": 1,
+      "color": "#AA0000",
+      "id": "genome-taxonomy-txt",
+      "name": "genome-taxonomy-txt",
+      "provided_by_anvio": false,
+      "type": "TXT"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "profile-db",
+      "name": "profile-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "contigs-db",
+      "name": "contigs-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "scgs-taxonomy",
+      "name": "scgs-taxonomy",
+      "provided_by_anvio": true,
+      "type": "CONCEPT"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "collection",
+      "name": "collection",
+      "provided_by_anvio": true,
+      "type": "COLLECTION"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "bin",
+      "name": "bin",
+      "provided_by_anvio": true,
+      "type": "BIN"
+    },
+    {
+      "size": 1,
+      "score": 1,
+      "color": "#AA0000",
+      "id": "metagenomes",
+      "name": "metagenomes",
+      "provided_by_anvio": false,
+      "type": "TXT"
+    },
+    {
+      "size": 8,
+      "score": 0.1,
+      "color": "#AAAA00",
+      "id": "anvi-estimate-scg-taxonomy",
+      "name": "anvi-estimate-scg-taxonomy",
+      "type": "PROGRAM"
+    }
+  ],
+  "links": [
+    {
+      "source": 8,
+      "target": 0
+    },
+    {
+      "source": 8,
+      "target": 1
+    },
+    {
+      "target": 8,
+      "source": 2
+    },
+    {
+      "target": 8,
+      "source": 3
+    },
+    {
+      "target": 8,
+      "source": 4
+    },
+    {
+      "target": 8,
+      "source": 5
+    },
+    {
+      "target": 8,
+      "source": 6
+    },
+    {
+      "target": 8,
+      "source": 7
+    }
+  ],
+  "directed": false,
+  "multigraph": false
+}

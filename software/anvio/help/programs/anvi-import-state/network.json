@@ -1,0 +1,69 @@
+{
+  "graph": [],
+  "nodes": [
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "state",
+      "name": "state",
+      "provided_by_anvio": true,
+      "type": "CONCEPT"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "pan-db",
+      "name": "pan-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "profile-db",
+      "name": "profile-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "state-json",
+      "name": "state-json",
+      "provided_by_anvio": true,
+      "type": "JSON"
+    },
+    {
+      "size": 4,
+      "score": 0.1,
+      "color": "#AAAA00",
+      "id": "anvi-import-state",
+      "name": "anvi-import-state",
+      "type": "PROGRAM"
+    }
+  ],
+  "links": [
+    {
+      "source": 4,
+      "target": 0
+    },
+    {
+      "target": 4,
+      "source": 1
+    },
+    {
+      "target": 4,
+      "source": 2
+    },
+    {
+      "target": 4,
+      "source": 3
+    }
+  ],
+  "directed": false,
+  "multigraph": false
+}

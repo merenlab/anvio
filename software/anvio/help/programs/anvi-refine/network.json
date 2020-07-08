@@ -1,0 +1,60 @@
+{
+  "graph": [],
+  "nodes": [
+    {
+      "size": 2,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "bin",
+      "name": "bin",
+      "provided_by_anvio": true,
+      "type": "BIN"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "profile-db",
+      "name": "profile-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "contigs-db",
+      "name": "contigs-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 4,
+      "score": 0.1,
+      "color": "#AAAA00",
+      "id": "anvi-refine",
+      "name": "anvi-refine",
+      "type": "PROGRAM"
+    }
+  ],
+  "links": [
+    {
+      "source": 3,
+      "target": 0
+    },
+    {
+      "target": 3,
+      "source": 0
+    },
+    {
+      "target": 3,
+      "source": 1
+    },
+    {
+      "target": 3,
+      "source": 2
+    }
+  ],
+  "directed": false,
+  "multigraph": false
+}

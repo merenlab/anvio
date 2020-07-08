@@ -4,9 +4,11 @@ This is one of the programs that users commonly run on newly generated %(contigs
 
 ### What is an HMM?
 
+Check out the lovely vocabulary page for an example [here](http://merenlab.org/vocabulary/#hmm).
+
 Essentially, this program will help annotate the genes in your %(contigs-db)s, using either one of the databases built into anvi'o or a custom database. 
 
-Basically, Hidden Markov Models (or HMMs for short) are used to search for specific genes with known functions in a larger dataset. For example, say you wanted to find examples of ribosome binding sites in your genome. Trying to search directly for a nucleotide sequence would get you nowhere, since ribosome binding sites are very diverse. Instead, you could take a list of known ribosome binding sites, look at which specific nucleotides are more conserved and which are more variable, and use these patterns to find spots in your dataset that are likely ribosome binding sites. These patterns are what is contained in an %(hmm-source)s and this program uses them to search through the data in your %(contigs-db)s. 
+Basically, in anvi'o, Hidden Markov Models (or HMMs for short) are used to search for specific genes with known functions in a larger dataset. Nucleotide patterns for specific gene functions are contained in an %(hmm-source)s and this program uses them to search through the data in your %(contigs-db)s. 
 
 ### Default Usage
 

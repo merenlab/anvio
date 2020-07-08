@@ -1,0 +1,69 @@
+{
+  "graph": [],
+  "nodes": [
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "metapangenome",
+      "name": "metapangenome",
+      "provided_by_anvio": true,
+      "type": "CONCEPT"
+    },
+    {
+      "size": 1,
+      "score": 1,
+      "color": "#AA0000",
+      "id": "internal-genomes",
+      "name": "internal-genomes",
+      "provided_by_anvio": false,
+      "type": "TXT"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "pan-db",
+      "name": "pan-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "genomes-storage-db",
+      "name": "genomes-storage-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 4,
+      "score": 0.1,
+      "color": "#AAAA00",
+      "id": "anvi-meta-pan-genome",
+      "name": "anvi-meta-pan-genome",
+      "type": "PROGRAM"
+    }
+  ],
+  "links": [
+    {
+      "source": 4,
+      "target": 0
+    },
+    {
+      "target": 4,
+      "source": 1
+    },
+    {
+      "target": 4,
+      "source": 2
+    },
+    {
+      "target": 4,
+      "source": 3
+    }
+  ],
+  "directed": false,
+  "multigraph": false
+}

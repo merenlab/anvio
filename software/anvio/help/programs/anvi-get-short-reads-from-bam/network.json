@@ -1,0 +1,82 @@
+{
+  "graph": [],
+  "nodes": [
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "short-reads-fasta",
+      "name": "short-reads-fasta",
+      "provided_by_anvio": true,
+      "type": "FASTA"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "profile-db",
+      "name": "profile-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "contigs-db",
+      "name": "contigs-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "bin",
+      "name": "bin",
+      "provided_by_anvio": true,
+      "type": "BIN"
+    },
+    {
+      "size": 1,
+      "score": 1,
+      "color": "#AA0000",
+      "id": "bam-file",
+      "name": "bam-file",
+      "provided_by_anvio": false,
+      "type": "BAM"
+    },
+    {
+      "size": 5,
+      "score": 0.1,
+      "color": "#AAAA00",
+      "id": "anvi-get-short-reads-from-bam",
+      "name": "anvi-get-short-reads-from-bam",
+      "type": "PROGRAM"
+    }
+  ],
+  "links": [
+    {
+      "source": 5,
+      "target": 0
+    },
+    {
+      "target": 5,
+      "source": 1
+    },
+    {
+      "target": 5,
+      "source": 2
+    },
+    {
+      "target": 5,
+      "source": 3
+    },
+    {
+      "target": 5,
+      "source": 4
+    }
+  ],
+  "directed": false,
+  "multigraph": false
+}
