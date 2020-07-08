@@ -1,0 +1,134 @@
+{
+  "graph": [],
+  "nodes": [
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "misc-data-items-txt",
+      "name": "misc-data-items-txt",
+      "provided_by_anvio": true,
+      "type": "TXT"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "misc-data-layers-txt",
+      "name": "misc-data-layers-txt",
+      "provided_by_anvio": true,
+      "type": "TXT"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "misc-data-layer-orders-txt",
+      "name": "misc-data-layer-orders-txt",
+      "provided_by_anvio": true,
+      "type": "TXT"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "misc-data-nucleotides-txt",
+      "name": "misc-data-nucleotides-txt",
+      "provided_by_anvio": true,
+      "type": "TXT"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "misc-data-amino-acids-txt",
+      "name": "misc-data-amino-acids-txt",
+      "provided_by_anvio": true,
+      "type": "TXT"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "genes-db",
+      "name": "genes-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "pan-db",
+      "name": "pan-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "profile-db",
+      "name": "profile-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "contigs-db",
+      "name": "contigs-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 9,
+      "score": 0.1,
+      "color": "#AAAA00",
+      "id": "anvi-export-misc-data",
+      "name": "anvi-export-misc-data",
+      "type": "PROGRAM"
+    }
+  ],
+  "links": [
+    {
+      "source": 9,
+      "target": 0
+    },
+    {
+      "source": 9,
+      "target": 1
+    },
+    {
+      "source": 9,
+      "target": 2
+    },
+    {
+      "source": 9,
+      "target": 3
+    },
+    {
+      "source": 9,
+      "target": 4
+    },
+    {
+      "target": 9,
+      "source": 5
+    },
+    {
+      "target": 9,
+      "source": 6
+    },
+    {
+      "target": 9,
+      "source": 7
+    },
+    {
+      "target": 9,
+      "source": 8
+    }
+  ],
+  "directed": false,
+  "multigraph": false
+}

@@ -1,0 +1,95 @@
+{
+  "graph": [],
+  "nodes": [
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "misc-data-item-orders-txt",
+      "name": "misc-data-item-orders-txt",
+      "provided_by_anvio": true,
+      "type": "TXT"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "dendrogram",
+      "name": "dendrogram",
+      "provided_by_anvio": true,
+      "type": "NEWICK"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "phylogeny",
+      "name": "phylogeny",
+      "provided_by_anvio": true,
+      "type": "NEWICK"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "genes-db",
+      "name": "genes-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "pan-db",
+      "name": "pan-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 1,
+      "score": 0.5,
+      "color": "#00AA00",
+      "id": "profile-db",
+      "name": "profile-db",
+      "provided_by_anvio": true,
+      "type": "DB"
+    },
+    {
+      "size": 6,
+      "score": 0.1,
+      "color": "#AAAA00",
+      "id": "anvi-export-items-order",
+      "name": "anvi-export-items-order",
+      "type": "PROGRAM"
+    }
+  ],
+  "links": [
+    {
+      "source": 6,
+      "target": 0
+    },
+    {
+      "source": 6,
+      "target": 1
+    },
+    {
+      "source": 6,
+      "target": 2
+    },
+    {
+      "target": 6,
+      "source": 3
+    },
+    {
+      "target": 6,
+      "source": 4
+    },
+    {
+      "target": 6,
+      "source": 5
+    }
+  ],
+  "directed": false,
+  "multigraph": false
+}
