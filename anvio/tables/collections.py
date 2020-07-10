@@ -117,7 +117,6 @@ class TablesForCollections(Table):
         bin_names = list(collection_dict.keys())
 
         if drop_collection:
-            # push information about this search result into serach_info table.
             db_entries = tuple([collection_name, num_splits_in_collection_dict, len(bin_names), ','.join(bin_names)])
             database._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_info_table_name, db_entries)
 
