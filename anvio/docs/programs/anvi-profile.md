@@ -25,7 +25,7 @@ anvi-profile -c %(contigs-db)s  \
             --blank-profile
 {{ codestop }}
 
-### Checking your BAM file 
+### Checking your BAM file: always a good idea 
 
 If you want to first check your BAM file to see what contigs it contains, just use the flag `--list-contigs` to see a comprehensive list. 
 
@@ -47,18 +47,6 @@ Where `contigs_i_like.txt` looks like this:
 
     SF15-RossSeacontig4922
     SF15-RossSeacontig702
-    
-### Output options 
-
-You can ask the program to put the output %(single-profile-db)s in a specific place, using the flag `-o`.
-
-{{ codestart }}
-anvi-profile -c %(contigs-db)s  \ 
-            -i %(bam-file)s \
-            -o ../single_profile_databases
-{{ codestop }}
-
-The flag `-W` will cause the program to overwrite any existing files with the same name.
 
 ## Analysis Parameters
  
@@ -68,9 +56,7 @@ Keep in mind that if you plan to merge your resulting %(single-profile-db)s with
 
 ### Contig Specification 
 
-To profile only contigs within a specific length, you can use the flags `--min-contig-length` and `-max-contig-length`. By default, the minimum length for analysis is 1000 and there is no maximum length. Looking at contigs shorter than 1000 may be problematic, since the tetranucleotide frequency may start to give you bogus results. Also keep in mind that as you increase the range (espeically on the low end), the runtime will increase.
-
-To profile only contigs that have a certain coverage, you can use the flag `--min-mean-coverage`. Basically, contigs with a coverage below the provided value will be thrown out, so if you want to compare multiple samples down the line, it would be much more useful to leave this at the default (0). 
+To profile only contigs within a specific length, you can use the flags `--min-contig-length` and `-max-contig-length`. By default, the minimum length for analysis is 1000 and there is no maximum length. You can also profile only contigs that have a certain average coverage. 
 
 #### Specifications for your BAM file
 
@@ -89,17 +75,13 @@ anvi-profile -c Ross_sea_contigs.db  \
 
 #### To cluster or not to cluster? 
 
-By default, anvi'o will not try to cluster your splits (since it takes quite a bit of runtime) unless you are using the tag `--blank-profile`. If you don't want to do this (because you already have a tree for your contigs or don't want to use the interactive interface), use the tag `--skip-hierarchical-clustering`. 
+By default, anvi'o will not try to cluster your splits (since it takes quite a bit of runtime) unless you are using the tag `--blank-profile`. If you don't want to run this, use the tag `--skip-hierarchical-clustering`. 
 
 If you're planning to later merge this sample with others, it is better to perform clustering while running %(anvi-merge)s than at this stage. 
 
 However, if you want to bin this single sample or otherwise want clustering to happen, just use the tag `--cluster-contigs`. 
 
-#### If you do plan to cluster
-
-You can also set the following parameters: 
-* Provide a custom distance metric for clustering using the flag `--distance.` (The default is euclidean)
-* Provide a custom linkage method for clustering using the flag `--linkage.` (The default is ward)
+If you do plan to cluster, you can set a custom distance metric or a custom linkage method. 
 
 ### Variability 
 
@@ -116,49 +98,12 @@ anvi-profile -c Ross_sea_contigs.db  \
             --report-variability-full
 {{ codestop }}
 
-### Profiling 
-
-#### I want more profiling.
-
-You can characterize the codon frequencies of genes in your sample at the cost of some runtime. Despite time being money, codon frequency analysis can be helpful for downstream evolutionary insights. Simply add the tag `--profile-SCVs` and watch the magic happen. 
-
-#### Less profiling please. 
-
-You can choose not to store data regarding the alignment of insertions and deletions relative to the reference using the flag `--skip-INDEL-profiling`. 
-
-You can also choose not to characterize single-nucleotide variance with the flag `--skip-SNV-profiling`. This will automatically enforce `--skip-INDEL-profiling`
-
 ## Other Parameters 
 
-These are mostly cosmetic or runtime changes. 
+You should provide the sample name with the flag `-S` and can provide a description of your project using the `--description` tag followed by a text file. These will help anvi'o name output files and will show up in the anvi'o interfaces down the line. 
 
-### Providing addtional information
+You can characterize the codon frequencies of genes in your sample at the cost of some runtime. Despite time being money, codon frequency analysis can be helpful downstream. Simply add the tag `--profile-SCVs` and watch the magic happen. 
 
-This information will help anvi'o name output files and will show up in the anvi'o interfaces down the line. 
+Alternatively, you can choose not to store insertion and deletion data or single nucleotide variance data.
 
-Providing a sample name using the `-S` tag is necessary if you want a quality output name. It will just make things a lot easier down the line. 
-
-You can also provide a description of your project using the `--description` tag followed by a standard text file. This will  show up in anvi'o summary reports and in the interactive interface. 
-
-For example
-
-{{ codestart }}
-anvi-profile -c Ross_sea_contigs.db  \ 
-            -i bam_file.bam \
-            -S Ross_sea_sample_1 \
-            --description Ross_sea_proj_description.txt
-{{ codestop }}
-
-### Performance settings
-
-If you're unsure what these terms mean or are not aware of the limitations of your system, you're best off leaving these settings alone.
-
-#### Multithreading 
-
-You can set the maximum number of threads using the flag `--num-threads`. The default is one, just to be cautious. 
-
-You can also change the buffer size per thread (how much data is kept in memory before being written to the disk) with the flag `--write-buffer-size-per-thread`.  The default here is 500. 
-
-If multithreading, you can also set the queue size for working threads to communicate with the main thread using the `--queue size` flag. The default value depends on the number of threads, and the default is sufficient for most purposes. 
-
-
+If you know the limits of your system, you can also multithread this program. See the program help menu for more information. 

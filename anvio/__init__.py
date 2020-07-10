@@ -1,7 +1,7 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 
-"""Lots of under-the-rug, operational garbage in here. Run. Run away.."""
+"""Lots of under-the-rug, operational garbage in here. Run. Run away."""
 
 import os
 import sys
@@ -403,7 +403,7 @@ D = {
              'action': 'store_true',
              'help': "The alignment of a read to a reference genome/sequence can be imperfect, such that the read exhibits "
                      "insertions or deletions relative to the reference. Anvi'o normally stores this information in the "
-                     "profile database since the time taken and extra storage do not amount to much, but if insist on not "
+                     "profile database since the time taken and extra storage do not amount to much, but if you insist on not "
                      "having this information, you can skip storing this information by providing this flag. Note: If "
                      "--skip-SNV-profiling is provided, --skip-INDEL-profiling will automatically be enforced."}
                 ),
@@ -1580,7 +1580,7 @@ D = {
              'type': str,
              'help': "If you don't provide anything here, this program will come up with a temporary "
                      "directory path by itself to store intermediate files, and clean it later. If you "
-                     "want to have full control over this, you can use this flag to define one.."}
+                     "want to have full control over this, you can use this flag to define one."}
                 ),
     'output-file-prefix': (
             ['-O', '--output-file-prefix'],
