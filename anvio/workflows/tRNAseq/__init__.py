@@ -39,9 +39,7 @@ class tRNASeqWorkflow(WorkflowSuperClass):
             'iu_merge_pairs',
             'gen_qc_report',
             'anvi_reformat_fasta',
-            'anvi_gen_tRNAseq_database',
-            'map_tRNA_against_self',
-            'anvi_agglomerate'])
+            'anvi_trnaseq'])
 
         self.general_params.extend(['samples_txt']) # general section of config file
 
@@ -61,14 +59,10 @@ class tRNASeqWorkflow(WorkflowSuperClass):
             'run',
             '--gzip-output',
             '--simplify-names']
-        rule_acceptable_params_dict['anvi_gen_tRNAseq_database'] = [
-            '--charging-recorded',
-            '--trust-fasta',
-            '--only-report-tRNA',
-            '--verbose']
-        rule_acceptable_params_dict['map_tRNA_against_self'] = [
-            'run',
-            '--max-possible-alignments']
+        rule_acceptable_params_dict['anvi_trnaseq'] = ['run',
+                                                       '--uniquing-report',
+                                                       '--normalization-reports',
+                                                       '--skip-fasta-check']
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
         # Default values for certain accessible parameters
@@ -86,16 +80,10 @@ class tRNASeqWorkflow(WorkflowSuperClass):
                 'run': True,
                 '--gzip-output': False,
                 '--simplify-names': True},
-            'anvi_gen_tRNAseq_database': {
-                '--charging-recorded': False,
-                '--only-report-tRNA': False,
-                '--trust-fasta': False,
-                '--verbose': False,
-                'threads': 1},
-            'map_tRNA_against_self': {
-                'run': True,
-                '--max-possible-alignments': 50,
-                'threads': 1}})
+            'anvi_trnaseq': {'run': True,
+                             '--uniquing-report': True,
+                             '--normalization-reports': True,
+                             '--skip-fasta-check': False}})
 
         self.dirs_dict.update({'QC_DIR': '01_QC', 'IDENT_DIR': '02_IDENT'})
 
@@ -106,7 +94,7 @@ class tRNASeqWorkflow(WorkflowSuperClass):
 
         self.run_iu_merge_pairs = self.get_param_value_from_config(['iu_merge_pairs', 'run'])
         self.run_anvi_reformat_fasta = self.get_param_value_from_config(['anvi_reformat_fasta', 'run'])
-        self.run_map_tRNA_against_self = self.get_param_value_from_config(['map_tRNA_against_self', 'run'])
+        self.run_anvi_trnaseq = self.get_param_value_from_config(['anvi_trnaseq', 'run'])
         self.gzip_iu_merge_pairs_output = self.get_param_value_from_config(['iu_merge_pairs', '--gzip-output'])
         self.gzip_anvi_reformat_fasta_output = self.get_param_value_from_config(['anvi_reformat_fasta', '--gzip-output'])
 
@@ -150,12 +138,6 @@ class tRNASeqWorkflow(WorkflowSuperClass):
         for sample_split_prefix in self.sample_split_prefixes:
             target_files.append(
                 os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "-tRNAseq.db"))
-            target_files.append(
-                os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "-seeds.fasta"))
-            target_files.append(
-                os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "-seed_replicates.txt"))
-            target_files.append(
-                os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "-nontRNA.fasta"))
 
         if self.run_iu_merge_pairs:
             target_files.append(
@@ -165,15 +147,6 @@ class tRNASeqWorkflow(WorkflowSuperClass):
             for sample_split_prefix in self.sample_split_prefixes:
                 target_files.append(
                     os.path.join(self.dirs_dict['QC_DIR'], sample_split_prefix + "-reformat_report.txt"))
-
-        if self.run_map_tRNA_against_self:
-            for sample_split_prefix in self.sample_split_prefixes:
-                target_files.append(
-                    os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "-agglomerated.fasta"))
-                target_files.append(
-                    os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "-agglomerated.bam"))
-                target_files.append(
-                    os.path.join(self.dirs_dict['IDENT_DIR'], sample_split_prefix + "-agglomerated.bam.bai"))
 
         return target_files
 
@@ -272,13 +245,12 @@ class tRNASeqWorkflow(WorkflowSuperClass):
         return os.path.join(self.dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "_MERGED")
 
 
-    def get_input_for_anvi_gen_tRNAseq_database(self, wildcards):
+    def get_input_for_anvi_trnaseq(self, wildcards):
         """
             Input can come from two possible sources:
             a FASTA file with Anvi'o-compliant deflines supplied by the user
             or the reformatted FASTA file produced by the rule, anvi_reformat_fasta.
         """
-
         if self.run_anvi_reformat_fasta:
             return os.path.join(self.dirs_dict['QC_DIR'], wildcards.sample_split_prefix + "-reformatted.fasta")
         return self.fasta_paths[self.sample_split_prefixes.index(wildcards.sample_split_prefix)]

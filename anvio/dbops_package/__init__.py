@@ -2,6 +2,7 @@
 # pylint: disable=line-too-long
 
 import os
+import random
 import time
 
 import anvio
@@ -22,16 +23,19 @@ __status__ = "Development"
 
 
 class Database:
+    """ Used to initialize an empty database or access an existing database """
+
     def __init__(self, db_path, args=None, run=terminal.Run(), progress=terminal.Progress(), quiet=True):
         self.db = None
         self.db_path = db_path
-        self.db_type = utils.get_db_type(self.db_path)
-        self.db_version = utils.get_required_version_for_db(self.db_path)
 
         if args:
             A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         else:
             A = anvio.EmptyArgs()
+        self.args = args
+        self.db_type = A('db_type') or None
+        self.db_version = A('db_version') or None
         self.meta_int_keys = A('meta_int_keys') or []
         self.meta_float_keys = A('meta_float_keys') or []
         self.table_info = A('table_info') or []
@@ -46,6 +50,9 @@ class Database:
     def init(self):
 
         if os.path.exists(self.db_path):
+            self.db_type = utils.get_db_type(self.db_path)
+            self.db_version = utils.get_required_version_for_db(self.db_path)
+
             self.db = db.DB(self.db_path, self.db_version)
             meta_table = self.db.get_table_as_dict('self')
             self.meta = dict([(k, meta_table[k]['value']) for k in meta_table])
@@ -62,7 +69,7 @@ class Database:
                 except:
                     pass
 
-            self.run.info("%s database', 'An existing database, %s, has been initiated." % (self.db_type, self.db_path), quiet=self.quiet)
+            self.run.info("%s database" % self.db_type, "An existing database, %s, has been initiated." % self.db_path, quiet=self.quiet)
         else:
             self.db = None
 
@@ -85,13 +92,14 @@ class Database:
             self.db.set_meta_value(key, meta_values[key])
 
         self.db.set_meta_value('creation_date', time.time())
+        self.db.set_meta_value(self.db_type + '_db_hash', 'hash' + str('%08x' % random.randrange(16**8)))
 
         # know thyself
         self.db.set_meta_value('db_type', self.db_type)
 
         self.disconnect()
 
-        self.run.info('%s database', 'A new database, %s, has been created.' % (self.db_type, self.db_path), quiet=self.quiet)
+        self.run.info("%s database" % self.db_type, "A new database, %s, has been created." % self.db_path, quiet=self.quiet)
 
 
     def disconnect(self):
