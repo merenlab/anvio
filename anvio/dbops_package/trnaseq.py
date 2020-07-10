@@ -4,7 +4,7 @@
 import os
 
 import anvio
-import anvio.dbops as dbops
+import anvio.dbops_package as dbops_package
 import anvio.constants as constants
 import anvio.tables as t
 import anvio.terminal as terminal
@@ -19,32 +19,23 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
-THREEPRIME_VARIANT_LIST = constants.trnaseq.THREEPRIME_VARIANT_LIST
+class TRNASeqDatabase(dbops_package.Database):
+    """ Used to initialize an empty tRNA-seq database or access an existing tRNA-seq database"""
 
-
-class TRNASeqSuperclass:
-    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
-        pass
-
-
-class TRNASeqDatabase(dbops.Database):
     def __init__(self, db_path, run=terminal.Run(), progress=terminal.Progress(), quiet=True):
-        args = {}
-        args['meta_int_keys'] = ['charging_recorded']
-        args['meta_float_keys'] = []
-        args['table_info'] = [(t.trnaseq_sequences_table_name, t.trnaseq_sequences_table_structure, t.trnaseq_sequences_table_types),
-                              (t.trnaseq_acceptor_table_name, t.trnaseq_acceptor_table_structure, t.trnaseq_acceptor_table_types),
-                              (t.trnaseq_subsequence_table_name, t.trnaseq_subsequence_table_structure, t.trnaseq_subsequence_table_types),
-                              (t.trnaseq_info_table_name, t.trnaseq_info_table_structure, t.trnaseq_info_table_types),
-                              (t.trnaseq_features_table_name, t.trnaseq_features_table_structure, t.trnaseq_features_table_types),
-                              (t.trnaseq_unconserved_table_name, t.trnaseq_unconserved_table_structure, t.trnaseq_unconserved_table_types),
-                              (t.trnaseq_unpaired_table_name, t.trnaseq_unpaired_table_structure, t.trnaseq_unpaired_table_types),
-                              (t.trnaseq_long_sequences_table_name, t.trnaseq_long_sequences_table_structure, t.trnaseq_long_sequences_table_types),
-                              (t.trnaseq_long_acceptor_table_name, t.trnaseq_long_acceptor_table_structure, t.trnaseq_long_acceptor_table_types),
-                              (t.trnaseq_long_subsequence_table_name, t.trnaseq_long_subsequence_table_structure, t.trnaseq_long_subsequence_table_types),
-                              (t.trnaseq_long_info_table_name, t.trnaseq_long_info_table_structure, t.trnaseq_long_info_table_types),
-                              (t.trnaseq_long_features_table_name, t.trnaseq_long_features_table_structure, t.trnaseq_long_features_table_types),
-                              (t.trnaseq_long_unconserved_table_name, t.trnaseq_long_unconserved_table_structure, t.trnaseq_long_unconserved_table_types),
-                              (t.trnaseq_long_unpaired_table_name, t.trnaseq_long_unpaired_table_structure, t.trnaseq_long_unpaired_table_types)]
+        args = anvio.EmptyArgs()
+        if not os.path.exists(db_path):
+            args.db_type = 'trnaseq'
+            args.db_version = anvio.__trnaseq__version__
+        args.meta_int_keys = [] # metadata to be stored as an int
+        args.meta_float_keys = [] # metadata to be stored as a float
+        args.table_info = [
+            (t.trnaseq_sequences_table_name, t.trnaseq_sequences_table_structure, t.trnaseq_sequences_table_types),
+            (t.trnaseq_info_table_name, t.trnaseq_info_table_structure, t.trnaseq_info_table_types),
+            (t.trnaseq_features_table_name, t.trnaseq_features_table_structure, t.trnaseq_features_table_types),
+            (t.trnaseq_unconserved_table_name, t.trnaseq_unconserved_table_structure, t.trnaseq_unconserved_table_types),
+            (t.trnaseq_unpaired_table_name, t.trnaseq_unpaired_table_structure, t.trnaseq_unpaired_table_types),
+            (t.trnaseq_normalization_table_name, t.trnaseq_normalization_table_structure, t.trnaseq_normalization_table_types),
+            (t.trnaseq_subseq_derep_table_name, t.trnaseq_subseq_derep_table_structure, t.trnaseq_subseq_derep_table_types)]
 
         super().__init__(db_path, args=args, run=run, progress=progress, quiet=quiet)

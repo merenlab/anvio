@@ -32,7 +32,6 @@ requirements:
     - r-optparse
     - bioconductor
     - fasttree
-    - vsearch
 
 test:
   commands:

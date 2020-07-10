@@ -175,79 +175,27 @@ rule anvi_reformat_fasta:
             shell("gzip -k {output.fasta} >> {log} 2>&1")
 
 
-rule anvi_gen_tRNAseq_database:
-    ''' Identify tRNA sequences and their structural features, storing in an Anvi\'o database '''
+rule anvi_trnaseq:
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-anvi_gen_tRNAseq_database.log")
-    input: M.get_input_for_anvi_gen_tRNAseq_database
+    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-anvi_trnaseq.log")
+    input: M.get_input_for_anvi_trnaseq
     output:
-        db = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-tRNAseq.db"),
-        fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-seeds.fasta"),
-        replicate_txt = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-seed_replicates.txt"),
-        nontRNA_fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-nontRNA.fasta")
-    threads: M.T('anvi_gen_tRNAseq_database')
-    resources: nodes = M.T('anvi_gen_tRNAseq_database')
+        db = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-tRNAseq.db")
+    threads: M.T('anvi_trnaseq')
+    resources: nodes = M.T('anvi_trnaseq')
     params:
-        charging_recorded = M.get_rule_param('anvi_gen_tRNAseq_database', '--charging-recorded'), # tRNA-seq chemistry can record amino acid charging
-        trust_fasta = M.get_rule_param('anvi_gen_tRNAseq_database', '--trust-fasta'), # save time by skipping basic FASTA format checks
-        only_report_tRNA = M.get_rule_param('anvi_gen_tRNAseq_database', '--only-report-tRNA'), # do not produce a file of sequences not identified as tRNA
-        verbose = M.get_rule_param('anvi_gen_tRNAseq_database', '--verbose')
+        uniquing_report = M.get_rule_param('anvi_trnaseq', '--uniquing-report'),
+        normalization_reports = M.get_rule_param('anvi_trnaseq', '--normalization-reports'),
+        skip_fasta_check = M.get_rule_param('anvi_trnaseq', '--skip-fasta-check')
     run:
         if input[0].endswith('.gz'):
             decompressed_fasta = gunzip_fasta(input[0], log[0])
         else:
             decompressed_fasta = input[0]
-        shell("anvi-gen-trnaseq-database -f %s -n {wildcards.sample_split_prefix} -o {output.db} {params.charging_recorded} {params.trust_fasta} {params.only_report_tRNA} -T {threads} {params.verbose} >> {log} 2>&1" % decompressed_fasta)
+        output_dir = os.path.join(dirs_dict['IDENT_DIR'], wildcards.sample_split_prefix)
+        shell("anvi-trnaseq --fasta-file %s --project-name {wildcards.sample_split_prefix} --output-dir %s {params.uniquing_report} {params.normalization_reports} {params.skip_fasta_check} -T {threads} >> {log} 2>&1" % (decompressed_fasta, output_dir))
         if input[0].endswith('.gz'):
             os.remove(decompressed_fasta)
-
-
-rule map_tRNA_against_self:
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-map_tRNA_to_itself.log")
-    input: fasta = rules.anvi_gen_tRNAseq_database.output.fasta
-    output:
-        sam = temp(os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}.sam")),
-        raw_bam = temp(os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-raw.bam")),
-        bam = temp(os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}.bam")),
-        bam_index = temp(os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}.bam.bai"))
-    threads: M.T('map_tRNA')
-    resources: nodes = M.T('map_tRNA')
-    params: max_possible_alignments = M.get_param_value_from_config(['map_tRNA_against_self', '--max-possible-alignments'])
-    run:
-        index_dir = os.path.join(tempfile.gettempdir(), "BAM_INDEX-" + wildcards.sample_split_prefix)
-        os.mkdir(index_dir)
-        index_path = os.path.join(index_dir, wildcards.sample_split_prefix)
-        shell("bowtie2-build -f {input.fasta} %s >> {log} 2>&1" % index_path)
-        # Use prohibitively high gap penalties to ensure reads can only map with a mismatch and not gaps in the alignment.
-        # Use the longest possible subsequence seed length, 32, to prioritize mapping sensitivity to specificity.
-        # Allow up to one mismatch per subsequence seed.
-        # This means that an average tRNA, length 75, can align to another average tRNA with 2-3 nucleotide substitutions.
-        # Up to two alignments are reported per sequence -- the first alignment is the sequence mapping to itself.
-        shell("bowtie2 -x %s -f {input.fasta} -S {output.sam} -L 32 -N 1 -k {params.max_possible_alignments} --rdg 100,3 --rfg 100,3 -p {threads} >> {log} 2>&1" % index_path)
-        pysam.view('-bS', output.sam, '-F', '4', '-o', output.raw_bam, catch_stdout=False) # Use pysam to avoid samtools dependency
-        shell("anvi-init-bam {output.raw_bam} -o {output.bam} -T {threads} >> {log} 2>&1")
-        shutil.rmtree(index_dir)
-
-
-rule anvi_agglomerate:
-    version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-anvi_agglomerate.log")
-    input:
-        fasta = rules.anvi_gen_tRNAseq_database.output.fasta,
-        replicate_txt = rules.anvi_gen_tRNAseq_database.output.replicate_txt,
-        bam = rules.map_tRNA_against_self.output.bam,
-        bam_index = rules.map_tRNA_against_self.output.bam_index
-    output:
-        fasta = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-agglomerated.fasta"),
-        bam = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-agglomerated.bam"),
-        bam_index = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-agglomerated.bam.bai")
-    threads: M.T('anvi_agglomerate')
-    resources: nodes = M.T('anvi_agglomerate')
-    params: max_possible_alignments = M.get_param_value_from_config(['map_tRNA_against_self', '--max-possible-alignments'])
-    run:
-        shell("anvi-agglomerate -f {input.fasta} -b {input.bam} -F {output.fasta} -B {output.bam} -r {input.replicate_txt} -m {params.max_possible_alignments} >> {log} 2>&1")
-
 
 if 'workflows/tRNAseq' in workflow.included[0]:
     # Check if all program dependencies are met.
