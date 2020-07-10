@@ -295,7 +295,12 @@ class ClusteringConfiguration:
                 if config.has_option(section, 'table_form'):
                     table_form = config.get(section, 'table_form')
 
-                table_rows = dbc.get_all_rows_from_table(table)
+                if self.row_ids_of_interest:
+                    column_name = dbc.get_table_structure(table)[0]
+                    where_clause = """%s IN (%s)""" % (column_name, ','.join(['"%s"' % _ for _ in self.row_ids_of_interest]))
+                    table_rows = dbc.get_some_rows_from_table(table, where_clause=where_clause)
+                else:
+                    table_rows = dbc.get_all_rows_from_table(table)
 
                 if self.row_ids_of_interest:
                     if table_form == 'dataframe':
