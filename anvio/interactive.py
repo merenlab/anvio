@@ -983,7 +983,19 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.default_view = 'blank_view'
 
         else:
-            self.load_views()
+            # Here we will ensure we are loading the views only for those splits that we need.
+            # This may come across as odd: why would anyone need anything but all splits
+            # in full mode? Well, there _is_ a reason: to avoid any redundancy in the code,
+            # the refine mode is initiated right after the full mode. in refine mode anvi'o
+            # always focuses on a subset of split names, and by checking for that here we are
+            # essentially avoiding the loading of all splits in a profile database to build and
+            # take care of yet another performance bottleneck Xabier Vázquez-Campos identified
+            # in #1458:
+            if len(self.split_names_of_interest):
+                self.load_views(split_names_of_interest=self.split_names_of_interest)
+            else:
+                self.load_views()
+
             self.default_view = self.p_meta['default_view']
 
         # if the user wants to see available views, show them and exit.
