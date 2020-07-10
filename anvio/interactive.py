@@ -1417,6 +1417,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         collections.append(self.collection_name, refined_bin_data, refined_bins_info_dict, drop_collection=False)
 
+        collections.refresh_collections_info_table(self.collection_name)
+
         run.info_single('"%s" collection is updated!' % self.collection_name)
 
 
