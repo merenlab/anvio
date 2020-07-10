@@ -61,6 +61,33 @@ class TablesForCollections(Table):
         database.disconnect()
 
 
+    def refresh_collections_info_table(self, collection_name):
+        """For a given collection, re-read most up-to-date information from the collection splits table and update collections info table"""
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+        collection_names_in_db = database.get_single_column_from_table(t.collections_splits_table_name, 'collection_name', unique=True)
+
+        if collection_name not in collection_names_in_db:
+            database.disconnect()
+            raise ConfigError(f"The collection name '{collection_name}' is not in the collections table :/")
+
+        where_clause = f'collection_name="{collection_name}"'
+        # please note that this is not unique yet and it is intentional
+        bin_names_in_collection = database.get_single_column_from_table(t.collections_splits_table_name, 'bin_name', where_clause=where_clause)
+
+        num_splits_in_collection = len(bin_names_in_collection)
+        bin_names_in_collection = sorted(list(set(bin_names_in_collection)))
+        database.disconnect()
+
+        self.delete_entries_for_key('collection_name', collection_name, [t.collections_info_table_name])
+
+        db_entries = tuple([collection_name, num_splits_in_collection, len(bin_names_in_collection), ','.join(bin_names_in_collection)])
+
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database._exec('''INSERT INTO %s VALUES (?,?,?,?)''' % t.collections_info_table_name, db_entries)
+        database.disconnect()
+
+
     def append(self, collection_name, collection_dict, bins_info_dict={}, drop_collection=True):
         utils.is_this_name_OK_for_database('collection name', collection_name, stringent=False)
 
@@ -110,7 +137,6 @@ class TablesForCollections(Table):
                 db_entries.append(tuple([collection_name, split_name, bin_name]))
         database._exec_many('''INSERT INTO %s VALUES (?,?,?)''' % t.collections_splits_table_name, db_entries)
         num_splits = len(db_entries)
-
 
         # FIXME: This function can be called to populate the contigs database (via anvi-populate-collections), or
         # the profile database. when it is contigs database, the superclass Table has the self.splits_info variable
