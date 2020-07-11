@@ -1,7 +1,7 @@
 ---
 name: Feature Request / Idea
 about: Suggest an idea for anvi'o
-title: "[FEATURE]"
+title: "[FEATURE] Replace this text with a concise description of the feature"
 labels: ''
 assignees: ''
 
@@ -9,12 +9,12 @@ assignees: ''
 
 ## The need
 
-Describe the need briefly. 
+Describe the need briefly.
 
 ## The solution
 
-Describe the best solution to address this need in your opinion.
+Describe the best solution to address this need.
 
 ## Beneficiaries
 
-Who would most benefit from this solution? Any anvi'o user? Anyone who uses a particular function?
+Speculate who would most benefit from this solution. Any anvi'o user? Anyone who uses a particular function?
