@@ -3238,9 +3238,12 @@ class ProfileSuperclass(object):
         for view in views_table:
             self.progress.update('for %s' % view)
             table_name = views_table[view]['target_table']
+
+            data = profile_db.db.smart_get(table_name, 'contig', self.split_names_of_interest, progress=self.progress, omit_parent_column=omit_parent_column)
+
             self.views[view] = {'table_name': table_name,
                                 'header': profile_db.db.get_table_structure(table_name)[1:],
-                                'dict': profile_db.db.get_table_as_dict(table_name, keys_of_interest=split_names_of_interest, omit_parent_column=omit_parent_column)}
+                                'dict': data}
 
         self.progress.end()
         profile_db.disconnect()
