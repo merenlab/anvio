@@ -30,7 +30,8 @@ tests = {'mini': ['run_mini_test.sh'],
          'full': ['run_all_tests.sh', 'run_pangenome_tests.sh'],
          'pangenomics': ['run_pangenome_tests.sh'],
          'alons-classifier': ['run_alons_classifier_tests.sh'],
-         'manual-interface': ['run_manual_interactive.sh']}
+         'manual-interface': ['run_manual_interactive.sh'],
+         'metabolism': ['run_metabolism_tests.sh']}
 
 
 def __catch_sig(signum, frame):
