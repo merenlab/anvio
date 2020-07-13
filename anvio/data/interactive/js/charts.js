@@ -39,6 +39,7 @@ var sequence;
 var charts;
 var brush;
 var inspect_mode;
+var show_nucleotides = true;
 
 
 function loadAll() {
@@ -154,9 +155,9 @@ function loadAll() {
                 $('#header').append("<p style='margin-top: -30px; margin-bottom: 15px;'><small><small><a href='#' onclick='showSearchItemsDialog();'>Select or Search Item</a></small></small></p>");
 
                 $('.main').prepend(`<div style="float: right; text-align: right; padding-right: 60px; padding-bottom: 20px; display: inline-block;" class="form-inline"> \
-                                        <b>Range:</b> 
-                                            <input class="form-control input-sm" id="brush_start" type="text" value="0" size="5"> 
-                                        <b>:</b> 
+                                        <b>Range:</b>
+                                            <input class="form-control input-sm" id="brush_start" type="text" value="0" size="5">
+                                        <b>:</b>
                                             <input class="form-control input-sm" id="brush_end" type="text" value="${sequence.length}" size="5">\
                                     </div>`);
 
@@ -203,6 +204,76 @@ function loadAll() {
 
 }
 
+function display_nucleotides(width, margin) {
+  if(!show_nucleotides) return;
+
+  contextSvg.selectAll("text").remove();
+  contextSvg.select("#solids").remove();
+
+  let start = parseInt($('#brush_start').val());
+  let end = parseInt($('#brush_end').val());
+
+  if(end - start > 300 || end - start < 15) {
+    contextSvg.attr("height", 150);
+    return;
+  }
+
+  let curSeq = sequence.substring(start, end);
+
+  var nucleotideDefs = contextSvg.append('defs');
+  var linearGradient = nucleotideDefs.append('linearGradient')
+                                     .attr('id', 'solids')
+                                     .attr('x1', "0")
+                                     .attr('y1', "0")
+                                     .attr('x2', "1")
+                                     .attr('y2', "0");
+
+  for(var i = 0; i < curSeq.length; i++) {
+    var txtColor;
+    switch(curSeq[i]) {
+      case "A":
+        txtColor = "rgb(0,144,0)";
+        break;
+      case "G":
+        txtColor = "rgb(208,104,7)";
+        break;
+      case "T":
+        txtColor = "rgb(255,41,26)";
+        break;
+      case "C":
+        txtColor = "rgb(53,48,220)";
+        break;
+      default:
+        txtColor = "black";
+    }
+
+    linearGradient.append('svg:stop')
+                  .attr('offset', "" + i/curSeq.length)
+                  .attr('style', "stop-color:" + txtColor + ";stop-opacity:1");
+
+    if(i < curSeq.length-1) {
+      linearGradient.append('svg:stop')
+                    .attr('offset', "" + (i+1)/curSeq.length)
+                    .attr('style', "stop-color:" + txtColor + ";stop-opacity:1");
+    } else {
+      linearGradient.append('svg:stop')
+                    .attr('offset', "1")
+                    .attr('style', "stop-color:" + txtColor + ";stop-opacity:1");
+    }
+  }
+
+  var nucleotides = contextSvg.append("text")
+                              .text(sequence.substring(start, end))
+                              .attr("fill", "url(#solids)")
+                              /* width of monospaced character per font size */
+                              .attr("font-size", "" + width/((end-start)*.6002738402061856) + "px")
+                              .attr("y", "" + (130 + .75*contextSvg.selectAll("text")[0][0].getBBox().height) + "px")
+                              .attr("font-family", "monospace")
+                              .attr("tspan", "")
+                              .attr("transform", "translate(" + (margin.left) + ", 0)");
+
+  contextSvg.attr("height", 150 + contextSvg.selectAll("text")[0][0].getBBox().height);
+}
 
 function show_selected_sequence() {
     let range = charts[0].xScale.domain();
@@ -211,7 +282,7 @@ function show_selected_sequence() {
     range[0] = Math.max(range[0], 0);
     range[1] = Math.min(range[1], sequence.length);
 
-    show_sequence_modal(`Sequence [${range[0]}, ${range[1]}]`, 
+    show_sequence_modal(`Sequence [${range[0]}, ${range[1]}]`,
         `${page_header} range:${range[0]},${range[1]}\n` + sequence.substring(range[0], range[1]));
 }
 
@@ -295,7 +366,7 @@ function showSetMaxValuesDialog() {
             } else {
                 max_val = 0;
             }
-    
+
             table += '<tr> \
                         <td>' + layer_name + '</td> \
                         <td><a href="#" onclick="$(\'#max_multiple\').val(\'' + actual_max_val + '\')">' + actual_max_val + '</a></td> \
@@ -348,7 +419,7 @@ function showSearchItemsDialog() {
 
 function search_items(search_query, page) {
     if (typeof page === 'undefined') {
-        page = 0; 
+        page = 0;
     }
 
     // anvi-server uses iframes for prettier urls, links need to be open _top
@@ -379,10 +450,10 @@ function search_items(search_query, page) {
 
                     if (search_query.length > 0) {
                         let begin = item_name.toLowerCase().indexOf(search_query.toLowerCase());
-                        item_name_pretty = [item_name.slice(0, begin), 
-                                           '<mark>', 
-                                           item_name.slice(begin, begin + search_query.length), 
-                                           '</mark>', 
+                        item_name_pretty = [item_name.slice(0, begin),
+                                           '<mark>',
+                                           item_name.slice(begin, begin + search_query.length),
+                                           '</mark>',
                                            item_name.slice(begin + search_query.length, item_name.length)
                                            ].join("");
 
@@ -396,14 +467,14 @@ function search_items(search_query, page) {
                 results_html += '<br /><br /><center>';
 
                 if (results.length > 0) {
-                    if (page > 0) {
-                    results_html += `<a href="#" onclick="search_items('${search_query}', ${page-1});">&lt;&lt;&lt; prev</a> | `;
+                    if (page + 1 < total_page) {
+                        results_html += `<a href="#" onclick="search_items('${search_query}', ${page+1});">&lt;&lt;&lt; prev</a> | `;
                     }
 
                     results_html += " page " + (page + 1) + " of " + total_page;
-                    
-                    if (page + 1 < total_page) {
-                        results_html += ` | <a href="#" onclick="search_items('${search_query}', ${page+1});"> next &gt;&gt;&gt;</a>`;
+
+                    if (page > 0) {
+                        results_html += ` | <a href="#" onclick="search_items('${search_query}', ${page-1});"> next &gt;&gt;&gt;</a>`;
                     }
                 }
                 else
@@ -416,6 +487,18 @@ function search_items(search_query, page) {
                 $('#searchItemDialog .search-results').append(results_html);
             }
         });
+}
+
+function toggleSettingsPanel() {
+    $('#settings-panel').toggle();
+
+    if ($('#settings-panel').is(':visible')) {
+        $('#toggle-panel-settings').addClass('toggle-panel-settings-pos');
+        $('#toggle-panel-settings-inner').html('&#9658;');
+    } else {
+        $('#toggle-panel-settings').removeClass('toggle-panel-settings-pos');
+        $('#toggle-panel-settings-inner').html('&#9664;');
+    }
 }
 
 function createCharts(state){
@@ -461,11 +544,11 @@ function createCharts(state){
     $('#chart-container').css("width", (width + 150) + "px");
     $('#chart-container').css("height", height + "px");
 
-    
+
     charts = [];
-    
+
     var layersCount = layers.length;
-    
+
     coverage.forEach(function(d) {
         for (var prop in d) {
             if (d.hasOwnProperty(prop)) {
@@ -523,7 +606,7 @@ function createCharts(state){
                         showBottomAxis: (j == visible_layers - 1),
                         color: state['layers'][layers[layer_index]]['color']
                 }));
-        
+
     }
 
 
@@ -590,20 +673,25 @@ function createCharts(state){
                 .attr("y", 0)
                 .attr("height", contextHeight);
 
+    display_nucleotides(width, margin);
+
     function onBrush(){
         /* this will return a date range to pass into the chart object */
         var b = brush.empty() ? contextXScale.domain() : brush.extent();
-        
+
         if (brush.empty()) {
             $('.btn-selection-sequence').addClass('disabled').prop('disabled', true);
         } else {
             $('.btn-selection-sequence').removeClass('disabled').prop('disabled', false);
         }
-        
+
         b = [Math.floor(b[0]), Math.floor(b[1])];
 
         $('#brush_start').val(b[0]);
         $('#brush_end').val(b[1]);
+
+        // rescale nucleotide display
+        if(show_nucleotides) display_nucleotides(width, margin);
 
         for(var i = 0; i < layersCount; i++){
             charts[i].showOnly(b);
@@ -636,14 +724,14 @@ function Chart(options){
     this.margin = options.margin;
     this.showBottomAxis = options.showBottomAxis;
     this.color = options.color;
-    
+
     var localName = this.name;
     var num_data_points = this.variability_a.length;
-    
+
     this.xScale = d3.scale.linear()
                             .range([0, this.width])
                             .domain([0, this.coverage.length]);
-   
+
 
     let cov_min_max = GetMaxMin(this.coverage);
     this.minCoverage = cov_min_max['Min'];
@@ -669,7 +757,7 @@ function Chart(options){
                             .domain([0, this.maxVariability]);
 
     this.yScaleGC = d3.scale.linear()
-                            .range([this.yScale(this.minCoverage), 
+                            .range([this.yScale(this.minCoverage),
                                    (this.maxCoverage < this.maxCoverageForyScale) ? this.yScale(this.maxCoverage) : 0])
                             .domain([this.minGCContent, this.maxGCContent]);
 
@@ -677,7 +765,7 @@ function Chart(options){
     var yS = this.yScale;
     var ySL = this.yScaleLine;
     var yGC = this.yScaleGC;
-    
+
     this.area = d3.svg.area()
                             .x(function(d, i) { return xS(i); })
                             .y0(this.height)
@@ -772,7 +860,7 @@ function Chart(options){
                                 .attr("glyph-orientation-vertical", "0")
                                 .attr("style", "cursor:pointer;")
                                 .attr("fill", function (d){ return get_comp_nt_color(d.value['competing_nts']); })
-                                .attr('data-content', function(d) { 
+                                .attr('data-content', function(d) {
                                     return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
                                             <h3>Content</h3> \
                                             <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
@@ -804,7 +892,7 @@ function Chart(options){
     }
 
 
-    
+
     this.xAxisTop = d3.svg.axis().scale(this.xScale).orient("top");
 
     if(this.id == 0){
@@ -813,11 +901,11 @@ function Chart(options){
                     .attr("transform", "translate(0,0)")
                     .call(this.xAxisTop);
     }
-    
-        
+
+
     this.yAxis = d3.svg.axis().scale(this.yScale).orient("left").ticks(5);
     this.yAxisLine = d3.svg.axis().scale(this.yScaleLine).orient("right").ticks(5);
-        
+
     this.chartContainer.append("g")
                    .attr("class", "y axis")
                    .attr("transform", "translate(-10,0)")
@@ -832,9 +920,9 @@ function Chart(options){
                    .attr("class","country-title")
                    .attr("transform", "translate(0,20)")
                    .text(this.name);
-    
+
 }
-    
+
 Chart.prototype.showOnly = function(b){
     this.xScale.domain(b); var xS = this.xScale;
     this.chartContainer.selectAll("path").data([this.coverage]).attr("d", this.area);
@@ -846,4 +934,3 @@ Chart.prototype.showOnly = function(b){
     this.textContainer.selectAll("text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(d.key); });
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }
-
