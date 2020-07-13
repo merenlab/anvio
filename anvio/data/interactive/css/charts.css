@@ -24,6 +24,43 @@
     font-size: 24px;
 }
 
+#toggle-panel-settings {
+    position: fixed;
+    height: 100px;
+    width: 15px;
+    background-color: #EEEEEE;
+    border: solid 1px #DDDDDD;
+    top: calc(40%);
+    border-radius: 10px 0px 0px 10px;
+    cursor: pointer;
+    font-size: 10px;
+    padding-top: 14px;
+    right: 0px;
+}
+
+#settings-panel {
+	display: none;
+    top: 0px;
+    right: 0px;
+    position: absolute;
+    height: 100%;
+    background: url('../images/fractal.jpg') center center scroll;
+    border-left: 1px solid #D3D3D3;
+    opacity: 0.9;
+    width: 490px;
+    padding: 10px;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    overflow-y: scroll;
+}
+
+#settings-panel code {
+	  padding: 1.4px 2px;
+    font-size: 90%;
+    color: #c7254e;
+    background-color: #f3f3f3;
+    border-radius: 2px;
+}
+
 svg {
     font-family: 'Lato', Arial, serif;
     font-size: 10px;
@@ -165,4 +202,8 @@ a{
 .search-results {
     padding: 20px;
     font-size: 12px;
+}
+
+.toggle-panel-settings-pos {
+    right: 490px !important;
 }

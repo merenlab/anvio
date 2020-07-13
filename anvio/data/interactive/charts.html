@@ -15,7 +15,7 @@
         <link rel="stylesheet" type="text/css" href="css/popover.css" />
         <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
         <link href='https://fonts.googleapis.com/css?family=Lato:300,700' rel='stylesheet' type='text/css' />
-        <!--[if lte IE 8]><style>.main{display:none;} .support-note .note-ie{display:block;}</style><![endif]-->	
+        <!--[if lte IE 8]><style>.main{display:none;} .support-note .note-ie{display:block;}</style><![endif]-->
          <script type="text/javascript" src="js/utils.js"></script>
         <script type="text/javascript" src="lib/jquery/dist/jquery.min.js"></script>
         <script type="text/javascript" src="lib/d3.js/d3.min.js"></script>
@@ -97,13 +97,13 @@
                         </div>
                         <div class="modal-body">
                             <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Window Size:</label>  
+                                <label class="col-md-4 settings-label">Window Size:</label>
                                 <div class="col-md-8">
                                     <input type="text" id="gc_window_size" value="100">
                                 </div>
                             </div>
                             <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Step Size:</label>  
+                                <label class="col-md-4 settings-label">Step Size:</label>
                                 <div class="col-md-8">
                                     <input type="text" id="gc_step_size" value="20">
                                 </div>
@@ -123,6 +123,57 @@
                     </div>
                 </div>
             </div>
+
+	    <div id="toggle-panel-settings" onclick="toggleSettingsPanel()");">
+        <span id="toggle-panel-settings-inner">&#9664;</span><span style="display: block; font-size: 11px; transform: rotate(90deg);"><u>S</u>ETTINGS</span>
+      </div>
+
+	    <div id="settings-panel">
+        <div id="fixed-sidebar-div">
+          <div role="tabpanel" style="margin: 0px;">
+                <ul class="nav nav-tabs" role="tablist">
+                  <li role="presentation" class="active"><a href="#functions_settings" aria-controls="functions_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-stats" aria-hidden="true" data-help="functions-tab"></span> Functions</a></li>
+                  <li id="sequence_settings_tab" role="presentation"><a href="#sequence_settings" aria-controls="sequence_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-inbox" aria-hidden="true"></span> Sequence</a></li>
+                  <li id="overlays_settings_tab" role="presentation" class="disabled"><a href="#overlays_settings" aria-controls="overlays_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true" data-help="overlays-tab"></span> Overlays</a></li>
+                  <li id="search_panel_tab" role="presentation" class="disabled"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-search" aria-hidden="true" data-help="search-tab"></span> Search</a></li>
+                </ul>
+          </div>
         </div>
+
+        <div id="sidebar">
+          <div class="tab-content">
+            <div role="tabpanel" class="tab-pane fade in" id="functions_settings">
+              <div id="functions-settings" class="form-horizontal">
+                <div style="text-align: left; padding-top: 20px; display: inline-block;">
+                  <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button>
+                </div>
+              </div>
+            </div>
+
+            <div role="tabpanel" class="tab-pane fade in" id="overlays_settings">
+              <div id="overlays-settings" class="form-horizontal">
+                <div style="text-align: right; padding-top: 20px; display: inline-block;">
+                  <button type="button" class="btn btn-primary btn-xs" onclick="showOverlayGCContentDialog();" class="btn btn-outline-primary">Overlay GC Content</button>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();" class="btn btn-outline-primary">Reset overlay</button>
+                </div>
+              </div>
+            </div>
+
+            <div role="tabpanel" class="tab-pane fade in" id="sequence_settings">
+              <div style="text-align: right; padding-top: 20px; display: inline-block;">
+                <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\\n' + sequence);">Get sequence</button>
+                <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button>
+              </div>
+            </div>
+
+            <div role="tabpanel" class="tab-pane fade in" id="search_tab">
+              <p style='text-align: center; margin-top: 20px; margin-bottom: 15px'><big><big><a href='#' onclick='showSearchItemsDialog();'>Select or Search Item</a></big></big></p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
     </body>
 </html>
