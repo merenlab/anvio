@@ -332,5 +332,3 @@ class InteracdomeSetup(object):
         clans_file = os.path.join(self.interacdome_data_dir, 'Pfam-A.clans.tsv')
         clans = pd.read_csv(clans_file, sep='\t', header=None)
         clans[clans[0].isin(interacdome_pfam_accessions)].to_csv(clans_file, sep='\t', index=False, header=False)
-
-
