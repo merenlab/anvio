@@ -73,6 +73,10 @@ class InteracdomeSuper(Pfam):
         # Init the HMM profile
         self.hmms = pfam.HMMProfile(self.hmm_filepath)
 
+        self.run.warning("Anvi'o will use 'InteracDome' by Kobren and Singh (DOI: 10.1093/nar/gky1224) to attribute binding frequencies. "
+                         "If you publish your findings, please do not forget to properly credit their work.", lc='green', header="CITATION")
+
+
 
     def is_database_exists(self):
         """Checks pfam database and interacdome table data exist. Overwrites Pfam.is_database_exists"""
@@ -157,7 +161,7 @@ class InteracdomeSuper(Pfam):
                     continue
 
                 for domain_id in self.hmm_out.ali_info[gene_callers_id][pfam_id]:
-                    if 
+                    pass
 
 
 class InteracdomeTableData(object):
