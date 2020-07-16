@@ -446,7 +446,7 @@ class HMMERStandardOutput(object):
                 for i, row in subsubset.iterrows():
                     ali_mapping = []
 
-                    seq_pos, hmm_pos = row['hmm_start'], row['ali_start']
+                    seq_pos, hmm_pos = row['ali_start'], row['hmm_start']
                     sequence, match_state = row['sequence_align'], row['match_state_align']
 
                     assert len(sequence) == len(match_state)
