@@ -82,13 +82,15 @@ class HMMScan(Parser):
         Returns
         =======
         annotations_dict : dictionary
-            dictionary of annotations, one annotation per HMM hit, which provides information to be
-            stored in the gene functions table of a contigs database
+            dictionary of annotations, one annotation per HMM hit
         bitscore_dict : dictionary
-            dictionary of bitscore information, one entry per HMM hit, including full and domain-level bitscore
+            dictionary of bitscore information, one entry per HMM hit, including full and domain-level bitscore.
+            only returned if return_bitscore_dict is True, and only applies to GENE context.
         """
 
         annotations_dict = {}
+        bit_score_info_dict = {}
+
 
         # this is the stuff we are going to try to fill with this:
         # search_table_structure = ['entry_id', 'source', 'alphabet', 'contig', 'gene_callers_id' 'gene_name', 'gene_hmm_id', 'e_value']
@@ -97,6 +99,8 @@ class HMMScan(Parser):
         num_hits_removed = 0 # a counter for the number of hits we don't add to the annotation dictionary
         for hit in list(self.dicts['hits'].values()):
             entry = None
+            bit_score_info_dict_entry = None
+
             if self.context == 'GENE':
                 # Here we only add the hit to the annotations_dict if the appropriate bit score is above the
                 # threshold set in noise_cutoff_dict (which is indexed by profile name (aka gene_name in the hits dict)
@@ -122,6 +126,14 @@ class HMMScan(Parser):
                                  'gene_hmm_id': hit['gene_hmm_id'],
                                  'gene_callers_id': hit['gene_callers_id'],
                                  'e_value': hit['e_value']}
+                        if return_bitscore_dict:
+                            bit_score_info_dict_entry = {'entry_id': entry_id,
+                                     'gene_name': hit['gene_name'],
+                                     'gene_hmm_id': hit['gene_hmm_id'],
+                                     'gene_callers_id': hit['gene_callers_id'],
+                                     'e_value': hit['e_value'],
+                                     'bit_score': hit['bit_score'],
+                                     'domain_bit_score': hit['dom_bit_score']}
                     else:
                         num_hits_removed += 1
 
@@ -136,6 +148,14 @@ class HMMScan(Parser):
                              'gene_hmm_id': hit['gene_hmm_id'],
                              'gene_callers_id': hit['gene_callers_id'],
                              'e_value': hit['e_value']}
+                    if return_bitscore_dict:
+                        bit_score_info_dict_entry = {'entry_id': entry_id,
+                                 'gene_name': hit['gene_name'],
+                                 'gene_hmm_id': hit['gene_hmm_id'],
+                                 'gene_callers_id': hit['gene_callers_id'],
+                                 'e_value': hit['e_value'],
+                                 'bit_score': hit['bit_score'],
+                                 'domain_bit_score': hit['dom_bit_score']}
 
                 else:
                     entry = {'entry_id': entry_id,
@@ -143,6 +163,14 @@ class HMMScan(Parser):
                              'gene_hmm_id': hit['gene_hmm_id'],
                              'gene_callers_id': hit['gene_callers_id'],
                              'e_value': hit['e_value']}
+                    if return_bitscore_dict:
+                        bit_score_info_dict_entry = {'entry_id': entry_id,
+                                 'gene_name': hit['gene_name'],
+                                 'gene_hmm_id': hit['gene_hmm_id'],
+                                 'gene_callers_id': hit['gene_callers_id'],
+                                 'e_value': hit['e_value'],
+                                 'bit_score': hit['bit_score'],
+                                 'domain_bit_score': hit['dom_bit_score']}
             elif self.context == 'CONTIG' and (self.alphabet == 'DNA' or self.alphabet == 'RNA'):
                 entry = {'entry_id': entry_id,
                          'gene_name': hit['gene_name'],
@@ -157,8 +185,13 @@ class HMMScan(Parser):
             if entry:
                 entry_id += 1
                 annotations_dict[entry_id] = entry
+                if return_bitscore_dict and bit_score_info_dict:
+                    bit_score_info_dict[entry_id] = bit_score_info_dict_entry
 
         self.run.info("Number of weak hits removed", num_hits_removed)
         self.run.info("Number of hits in annotation dict ", len(annotations_dict.keys()))
+
+        if return_bitscore_dict:
+            return annotations_dict, bit_score_info_dict
 
         return annotations_dict
