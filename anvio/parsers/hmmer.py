@@ -428,7 +428,7 @@ class HMMERStandardOutput(object):
             return
 
         unique_targets = self.dom_hits[self.target_col].nunique()
-        self.progress.new('Per-residue mapping', progress_total_items=unique_targets)
+        self.progress.new('Storing alignment info', progress_total_items=unique_targets)
 
         gap_chars = {'-', '.'}
 
@@ -441,10 +441,9 @@ class HMMERStandardOutput(object):
             self.ali_info[target] = {}
 
             for acc, subsubset in subset.groupby(self.acc_col):
-                self.ali_info[target][acc] = {}
-
                 for i, row in subsubset.iterrows():
-                    ali_mapping = []
+                    seq_positions = []
+                    hmm_positions = []
 
                     seq_pos, hmm_pos = row['ali_start'], row['hmm_start']
                     sequence, match_state = row['sequence_align'], row['match_state_align']
@@ -455,7 +454,8 @@ class HMMERStandardOutput(object):
                         seq_char, hmm_char = sequence[i], match_state[i]
                         if (seq_char not in gap_chars) and (hmm_char not in gap_chars):
                             # alignment
-                            ali_mapping.append((seq_pos, hmm_pos))
+                            seq_positions.append(seq_pos)
+                            hmm_positions.append(hmm_pos)
                             seq_pos += 1
                             hmm_pos += 1
                         elif (seq_char in gap_chars) and (hmm_char not in gap_chars):
@@ -468,7 +468,7 @@ class HMMERStandardOutput(object):
                             # this happens with 0 probability
                             pass
 
-                    self.ali_info[target][acc][row['domain']] = np.array(ali_mapping)
+                    self.ali_info[target][(acc, row['domain'])] = {'seq': np.array(seq_positions), 'hmm': np.array(hmm_positions)}
             processed += 1
         self.progress.end()
 
