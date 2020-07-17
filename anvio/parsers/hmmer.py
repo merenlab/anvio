@@ -442,9 +442,7 @@ class HMMERStandardOutput(object):
 
             for acc, subsubset in subset.groupby(self.acc_col):
                 for i, row in subsubset.iterrows():
-                    seq_positions = []
-                    hmm_positions = []
-
+                    seq_positions, hmm_positions = [], []
                     seq_pos, hmm_pos = row['ali_start'], row['hmm_start']
                     sequence, match_state = row['sequence_align'], row['match_state_align']
 
@@ -468,7 +466,11 @@ class HMMERStandardOutput(object):
                             # this happens with 0 probability
                             pass
 
-                    self.ali_info[target][(acc, row['domain'])] = {'seq': np.array(seq_positions), 'hmm': np.array(hmm_positions)}
+                    # These HMM state and sequence positions are 1-indexed. We subtract by 1 to make them zero-indexed
+                    seq_positions = np.array(seq_positions) - 1
+                    hmm_positions = np.array(hmm_positions) - 1
+                    self.ali_info[target][(acc, row['domain'])] = {'seq': seq_positions, 'hmm': hmm_positions}
+
             processed += 1
         self.progress.end()
 
