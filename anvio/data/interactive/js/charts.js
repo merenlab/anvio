@@ -204,16 +204,21 @@ function loadAll() {
 
 }
 
+/*
+ * Sequence styling inspired by the integrated genomics viewer:
+ * http://software.broadinstitute.org/software/igv/
+ */
 function display_nucleotides(width, margin) {
   if(!show_nucleotides) return;
 
-  contextSvg.selectAll("text").remove();
+  contextSvg.select("#DNA_sequence").remove();
+  contextSvg.select("#AA_sequence").remove();
   contextSvg.select("#solids").remove();
 
   let start = parseInt($('#brush_start').val());
   let end = parseInt($('#brush_end').val());
 
-  if(end - start > 300 || end - start < 15) {
+  if(end - start > 300 || end - start < 30) {
     contextSvg.attr("height", 150);
     return;
   }
@@ -228,6 +233,7 @@ function display_nucleotides(width, margin) {
                                      .attr('x2', "1")
                                      .attr('y2', "0");
 
+  // define nucleotide color gradient
   for(var i = 0; i < curSeq.length; i++) {
     var txtColor;
     switch(curSeq[i]) {
@@ -262,17 +268,66 @@ function display_nucleotides(width, margin) {
     }
   }
 
-  var nucleotides = contextSvg.append("text")
-                              .text(sequence.substring(start, end))
-                              .attr("fill", "url(#solids)")
-                              /* width of monospaced character per font size */
-                              .attr("font-size", "" + width/((end-start)*.6002738402061856) + "px")
-                              .attr("y", "" + (130 + .75*contextSvg.selectAll("text")[0][0].getBBox().height) + "px")
-                              .attr("font-family", "monospace")
-                              .attr("tspan", "")
-                              .attr("transform", "translate(" + (margin.left) + ", 0)");
+  var nucl_sequence = contextSvg.append("text")
+                                .text(sequence.substring(start, end))
+                                .attr("id", "DNA_sequence")
+                                .attr("fill", "url(#solids)");
+  /* width of monospaced character per font size */
+  var nucl_text_font = width/((end-start)*.6002738402061856);
+                   nucl_sequence.attr("font-size", nucl_text_font);
+  var nucl_text_y = 140 + .75*contextSvg.select("#DNA_sequence")[0][0].getBBox().height;
+                   nucl_sequence.attr("y", nucl_text_y)
+                                .attr("font-family", "monospace")
+                                .attr("transform", "translate(" + (margin.left) + ", 0)");
 
-  contextSvg.attr("height", 150 + contextSvg.selectAll("text")[0][0].getBBox().height);
+  var show_AAs = false;
+  geneParser["data"].forEach(function(gene){
+    if(gene.start_in_split < end-2 && gene.stop_in_split > start+2) show_AAs = true;
+  });
+
+  if(show_AAs) {
+    var aa_sequence = contextSvg.append("g")
+                                .attr("id", "AA_sequence")
+                                .attr('transform', 'translate(50, 10)');
+
+    var aa_string = "";
+    var rect_x = 0;
+    var textWidth = width/(end-start);
+    var rect_bg_dark = true;
+    for(var i = start; i < end-2; i++) {
+      for(var j = 0; j < geneParser["data"].length; j++) {
+        var gene = geneParser["data"][j];
+        if(gene.start_in_split <= i && i <= gene.stop_in_split) {
+          aa_string = aa_string + "\xa0L\xa0";
+          aa_sequence.append("rect")
+                     .attr("height", contextSvg.select("#DNA_sequence")[0][0].getBBox().height + "px")
+                     .attr("width", 3*textWidth)
+                     .attr("x", rect_x)
+                     .attr("y", nucl_text_y)
+                     .attr("fill", rect_bg_dark ? "rgb(144,137,250)" : "rgb(81,68,211)");
+          rect_bg_dark = !rect_bg_dark;
+          rect_x += 3*textWidth;
+          i += 2;
+          break;
+        }
+      }
+      if(i < gene.start_in_split || i > gene.stop_in_split) {
+        aa_string = aa_string + "\xa0";
+        rect_x += textWidth;
+      }
+    }
+
+    aa_sequence.append("text")
+              .text(aa_string)
+              .attr('id', "AA_text")
+              .attr('font-size', "" + nucl_text_font + "px")
+              .attr("font-family", "monospace")
+              .attr("fill", "white")
+              .attr("y", "" + (nucl_text_y + .67*contextSvg.select("#DNA_sequence")[0][0].getBBox().height) + "px");
+  }
+
+  contextSvg.attr("height", 150 + contextSvg.select("#DNA_sequence")[0][0].getBBox().height +
+    (show_AAs? contextSvg.select("#DNA_sequence")[0][0].getBBox().height : 0));
 }
 
 function show_selected_sequence() {
