@@ -54,7 +54,6 @@ class InteracdomeSuper(Pfam):
         null = lambda x: x
         self.interacdome_data_dir = A('interacdome_data_dir', null) or constants.default_interacdome_data_path
 
-        self.bind_freq = {}
         self.hmm_filepath = os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm')
 
         # Init the InteracDome table
@@ -76,6 +75,14 @@ class InteracdomeSuper(Pfam):
         self.run.warning("Anvi'o will use 'InteracDome' by Kobren and Singh (DOI: 10.1093/nar/gky1224) to attribute binding frequencies. "
                          "If you publish your findings, please do not forget to properly credit their work.", lc='green', header="CITATION")
 
+        # This is saved in `amino_acid_additonal_data`
+        self.bind_freq = {
+            'item_name': [],
+            'data_key': [],
+            'data_value': [],
+            'data_type': [],
+            'data_group': [],
+        }
 
 
     def is_database_exists(self):
@@ -152,16 +159,37 @@ class InteracdomeSuper(Pfam):
         Notes
         =====
         - Must have self.hmm_out (see self.process for example)
+        - FIXME assumes all hits for a gene are non-overlapping
         """
 
         for gene_callers_id in self.hmm_out.ali_info:
-            for pfam_id in self.hmm_out.ali_info[gene_callers_id]:
+            hit_info = self.hmm_out.dom_hits[self.hmm_out.dom_hits['corresponding_gene_call'] == gene_callers_id]
+
+            for pfam_id, dom_id in self.hmm_out.ali_info[gene_callers_id]:
+
                 if pfam_id not in self.interacdome_table.bind_freqs:
                     # pfam hit to gene, but has no binding_frequency data
                     continue
 
-                for domain_id in self.hmm_out.ali_info[gene_callers_id][pfam_id]:
-                    pass
+                # The alignment of the sequence with the pfam
+                ali = self.hmm_out.ali_info[gene_callers_id][(pfam_id, dom_id)]
+
+                for ligand, freqs in self.interacdome_table.bind_freqs[pfam_id].items():
+                    attributed_freqs = freqs[ali['hmm']]
+
+                    # get rid of positions with 0 frequency
+                    codon_orders = ali['seq'][attributed_freqs > 0]
+                    attributed_freqs = attributed_freqs[attributed_freqs > 0]
+
+                    num_entries = len(attributed_freqs)
+                    # This is saved in `amino_acid_additonal_data`
+                    self.bind_freq['item_name'].extend([str(gene_callers_id) + ':' + str(x) for x in codon_orders])
+                    self.bind_freq['data_key'].extend([ligand] * num_entries)
+                    self.bind_freq['data_value'].extend(list(attributed_freqs))
+                    self.bind_freq['data_type'].extend(['float'] * num_entries)
+                    self.bind_freq['data_group'].extend(['InteracDome'] * num_entries)
+
+        self.bind_freq = pd.DataFrame(self.bind_freq)
 
 
 class InteracdomeTableData(object):
@@ -201,7 +229,7 @@ class InteracdomeTableData(object):
             if pfam_id not in self.bind_freqs:
                 self.bind_freqs[pfam_id] = {}
 
-            self.bind_freqs[pfam_id][row['ligand_type']] = np.array(row['binding_frequencies'].split(','))
+            self.bind_freqs[pfam_id][row['ligand_type']] = np.array(row['binding_frequencies'].split(',')).astype(float)
 
 
 class InteracdomeSetup(object):
