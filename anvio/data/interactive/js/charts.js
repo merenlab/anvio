@@ -204,11 +204,28 @@ function loadAll() {
 
 }
 
+function toggle_nucleotide_display() {
+  show_nucleotides = !show_nucleotides;
+  if(show_nucleotides) {
+    display_nucleotides();
+    $("div.nucl-activated").fadeIn(300).delay(1500).fadeOut(400);
+  } else {
+    contextSvg.select("#DNA_sequence").remove();
+    contextSvg.select("#AA_sequence").remove();
+    contextSvg.select("#solids").remove();
+    contextSvg.attr("height", 150);
+    $("div.nucl-deactivated").fadeIn(300).delay(1500).fadeOut(400);
+  }
+}
+
 /*
  * Sequence styling inspired by the integrated genomics viewer:
  * http://software.broadinstitute.org/software/igv/
  */
-function display_nucleotides(width, margin) {
+function display_nucleotides() {
+  var margin = {top: 20, right: 50, bottom: 150, left: 50};
+  var width = VIEWER_WIDTH * .80;
+
   if(!show_nucleotides) return;
 
   contextSvg.select("#DNA_sequence").remove();
@@ -282,10 +299,35 @@ function display_nucleotides(width, margin) {
 
   var show_AAs = false;
   geneParser["data"].forEach(function(gene){
-    if(gene.start_in_split < end-2 && gene.stop_in_split > start+2) show_AAs = true;
+    var left_ep, right_ep;
+    if(gene.direction == "f") {
+      left_ep = gene.start_in_split;
+      right_ep = gene.stop_in_split;
+    } else {
+      left_ep = gene.stop_in_split;
+      right_ep = gene.start_in_split;
+    }
+    if(left_ep < end-2 && right_ep > start+2) show_AAs = true;
   });
 
   if(show_AAs) {
+    var codon_to_AA = {'ATA': 'I', 'ATC': 'I', 'ATT': 'I', 'ATG': 'M',
+                 'ACA': 'T', 'ACC': 'T', 'ACG': 'T', 'ACT': 'T',
+                 'AAC': 'N', 'AAT': 'N', 'AAA': 'K', 'AAG': 'K',
+                 'AGC': 'S', 'AGT': 'S', 'AGA': 'R', 'AGG': 'R',
+                 'CTA': 'L', 'CTC': 'L', 'CTG': 'L', 'CTT': 'L',
+                 'CCA': 'P', 'CCC': 'P', 'CCG': 'P', 'CCT': 'P',
+                 'CAC': 'H', 'CAT': 'H', 'CAA': 'Q', 'CAG': 'Q',
+                 'CGA': 'R', 'CGC': 'R', 'CGG': 'R', 'CGT': 'R',
+                 'GTA': 'V', 'GTC': 'V', 'GTG': 'V', 'GTT': 'V',
+                 'GCA': 'A', 'GCC': 'A', 'GCG': 'A', 'GCT': 'A',
+                 'GAC': 'D', 'GAT': 'D', 'GAA': 'E', 'GAG': 'E',
+                 'GGA': 'G', 'GGC': 'G', 'GGG': 'G', 'GGT': 'G',
+                 'TCA': 'S', 'TCC': 'S', 'TCG': 'S', 'TCT': 'S',
+                 'TTC': 'F', 'TTT': 'F', 'TTA': 'L', 'TTG': 'L',
+                 'TAC': 'Y', 'TAT': 'Y', 'TAA': 'STP', 'TAG': 'STP',
+                 'TGC': 'C', 'TGT': 'C', 'TGA': 'STP', 'TGG': 'W'};
+
     var aa_sequence = contextSvg.append("g")
                                 .attr("id", "AA_sequence")
                                 .attr('transform', 'translate(50, 10)');
@@ -293,37 +335,62 @@ function display_nucleotides(width, margin) {
     var aa_string = "";
     var rect_x = 0;
     var textWidth = width/(end-start);
-    var rect_bg_dark = true;
-    for(var i = start; i < end-2; i++) {
-      for(var j = 0; j < geneParser["data"].length; j++) {
-        var gene = geneParser["data"][j];
-        if(gene.start_in_split <= i && i <= gene.stop_in_split) {
-          aa_string = aa_string + "\xa0L\xa0";
-          aa_sequence.append("rect")
-                     .attr("height", contextSvg.select("#DNA_sequence")[0][0].getBBox().height + "px")
-                     .attr("width", 3*textWidth)
-                     .attr("x", rect_x)
-                     .attr("y", nucl_text_y)
-                     .attr("fill", rect_bg_dark ? "rgb(144,137,250)" : "rgb(81,68,211)");
-          rect_bg_dark = !rect_bg_dark;
-          rect_x += 3*textWidth;
-          i += 2;
-          break;
+
+    geneParser["data"].forEach(function(gene){
+      var left_ep, right_ep;;
+      if(gene.direction == "f") {
+        left_ep = gene.start_in_split;
+        right_ep = gene.stop_in_split;
+      } else {
+        left_ep = gene.stop_in_split;
+        right_ep = gene.start_in_split;
+      }
+      if(left_ep < end-2 && right_ep > start+2) {
+        aa_string = display_AA(left_ep, right_ep, gene.direction == "r");
+      }
+    });
+
+    function display_AA(l, r, reverse) {
+      var i;
+      if(start <= l) {
+        i = l;
+        aa_string += "\xa0".repeat(l-start);
+        rect_x += (l-start)*textWidth;
+      } else {
+        i = start;
+        var extra = 3 - ((start - l) % 3);
+        if(extra < 3) {
+          i += extra;
+          aa_string += "\xa0".repeat(extra);
+          rect_x += extra*textWidth;
         }
       }
-      if(i < gene.start_in_split || i > gene.stop_in_split) {
-        aa_string = aa_string + "\xa0";
-        rect_x += textWidth;
+      var stop = Math.min(r, end);
+      var rect_bg_dark = true;
+
+      for (; i < stop-2; i+=3) {
+        var aa = (reverse ? codon_to_AA["" + sequence[i+2] + sequence[i+1] + sequence[i]]
+                          : codon_to_AA["" + sequence[i] + sequence[i+1] + sequence[i+2]]);
+        aa_string = aa_string + (aa=="STP" ? aa : "\xa0" + aa + "\xa0");
+        aa_sequence.append("rect")
+                   .attr("height", contextSvg.select("#DNA_sequence")[0][0].getBBox().height + "px")
+                   .attr("width", 3*textWidth)
+                   .attr("x", rect_x)
+                   .attr("y", nucl_text_y)
+                   .attr("fill", rect_bg_dark ? "rgb(144,137,250)" : "rgb(81,68,211)");
+        rect_bg_dark = !rect_bg_dark;
+        rect_x += 3*textWidth;
       }
+      return aa_string;
     }
 
     aa_sequence.append("text")
               .text(aa_string)
               .attr('id', "AA_text")
-              .attr('font-size', "" + nucl_text_font + "px")
+              .attr('font-size', nucl_text_font)
               .attr("font-family", "monospace")
               .attr("fill", "white")
-              .attr("y", "" + (nucl_text_y + .67*contextSvg.select("#DNA_sequence")[0][0].getBBox().height) + "px");
+              .attr("y", nucl_text_y + .67*contextSvg.select("#DNA_sequence")[0][0].getBBox().height);
   }
 
   contextSvg.attr("height", 150 + contextSvg.select("#DNA_sequence")[0][0].getBBox().height +
@@ -728,7 +795,7 @@ function createCharts(state){
                 .attr("y", 0)
                 .attr("height", contextHeight);
 
-    display_nucleotides(width, margin);
+    display_nucleotides();
 
     function onBrush(){
         /* this will return a date range to pass into the chart object */
@@ -746,7 +813,7 @@ function createCharts(state){
         $('#brush_end').val(b[1]);
 
         // rescale nucleotide display
-        if(show_nucleotides) display_nucleotides(width, margin);
+        if(show_nucleotides) display_nucleotides();
 
         for(var i = 0; i < layersCount; i++){
             charts[i].showOnly(b);

@@ -164,12 +164,16 @@
               <div style="text-align: right; padding-top: 20px; display: inline-block;">
                 <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\\n' + sequence);">Get sequence</button>
                 <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button>
+                <button type="button" id="toggle-nucl-btn" class="btn btn-primary btn-xs" onclick="toggle_nucleotide_display();">Toggle nucleotides</button>
               </div>
             </div>
 
             <div role="tabpanel" class="tab-pane fade in" id="search_tab">
               <p style='text-align: center; margin-top: 20px; margin-bottom: 15px'><big><big><a href='#' onclick='showSearchItemsDialog();'>Select or Search Item</a></big></big></p>
             </div>
+
+            <div class="alert-box nucl-activated">Nucleotide Display Activated</div>
+            <div class="alert-box nucl-deactivated">Nucleotide Display Deactivated</div>
           </div>
         </div>
 
