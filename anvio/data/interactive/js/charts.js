@@ -228,14 +228,13 @@ function display_nucleotides() {
 
   if(!show_nucleotides) return;
 
-  contextSvg.select("#DNA_sequence").remove();
-  contextSvg.select("#AA_sequence").remove();
+  contextSvg.selectAll("text").remove();
   contextSvg.select("#solids").remove();
 
   let start = parseInt($('#brush_start').val());
   let end = parseInt($('#brush_end').val());
 
-  if(end - start > 300 || end - start < 30) {
+  if(end - start > 300 || end - start < 15) {
     contextSvg.attr("height", 150);
     return;
   }
@@ -250,7 +249,6 @@ function display_nucleotides() {
                                      .attr('x2', "1")
                                      .attr('y2', "0");
 
-  // define nucleotide color gradient
   for(var i = 0; i < curSeq.length; i++) {
     var txtColor;
     switch(curSeq[i]) {
