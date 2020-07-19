@@ -406,7 +406,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
             ValueError(f'number_of_splits muts be > 0.  Got {self.number_of_splits}')
 
         # Todo are there errors to catch here?
-        self.input_file_splits = utils.split_fasta(self.input_file_path, parts=self.number_of_splits)
+        self.input_file_splits = utils.split_fasta(self.input_file_path, parts=self.number_of_splits, shuffle=True)
 
         return State(input_file_splits=self.input_file_splits)
 
