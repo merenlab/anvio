@@ -75,14 +75,8 @@ class InteracdomeSuper(Pfam):
         self.run.warning("Anvi'o will use 'InteracDome' by Kobren and Singh (DOI: 10.1093/nar/gky1224) to attribute binding frequencies. "
                          "If you publish your findings, please do not forget to properly credit their work.", lc='green', header="CITATION")
 
-        # This is saved in `amino_acid_additonal_data`
-        self.bind_freq = {
-            'item_name': [],
-            'data_key': [],
-            'data_value': [],
-            'data_type': [],
-            'data_group': [],
-        }
+        # This dictionary is populated and stored as entries in `amino_acid_additonal_data`
+        self.bind_freq = {}
 
 
     def is_database_exists(self):
@@ -162,7 +156,21 @@ class InteracdomeSuper(Pfam):
         - FIXME assumes all hits for a gene are non-overlapping
         """
 
-        for gene_callers_id in self.hmm_out.ali_info:
+        self.bind_freq = {
+            'codon_order_in_gene': [],
+            'gene_callers_id': [],
+            'data_key': [],
+            'data_value': [],
+        }
+
+        self.progress.new('Matching binding frequencies to residues', progress_total_items=len(self.hmm_out.ali_info))
+
+        for i, gene_callers_id in enumerate(self.hmm_out.ali_info):
+
+            if i % 100 == 0:
+                self.progress.increment(i)
+                self.progress.update('%d/%d done' % (i, len(self.hmm_out.ali_info)))
+
             hit_info = self.hmm_out.dom_hits[self.hmm_out.dom_hits['corresponding_gene_call'] == gene_callers_id]
 
             for pfam_id, dom_id in self.hmm_out.ali_info[gene_callers_id]:
@@ -175,21 +183,37 @@ class InteracdomeSuper(Pfam):
                 ali = self.hmm_out.ali_info[gene_callers_id][(pfam_id, dom_id)]
 
                 for ligand, freqs in self.interacdome_table.bind_freqs[pfam_id].items():
+                    # ali['hmm'] is the 0-indexed positions (match states) in the HMM profile that
+                    # aligned to the gene sequence. Hence, the fancy-indexing below subsets freqs to
+                    # this subset of match states.
                     attributed_freqs = freqs[ali['hmm']]
 
-                    # get rid of positions with 0 frequency
+                    # attributed_freqs and ali['seq] are now in 1 to 1 correspondence. I.e.
+                    # dict(zip(ali['seq'], attributed_freqs)) is a dictionary where keys are
+                    # codon_orders and attributed freqs are binding frequencies.
+
+                    # Many of these attributed binding frequenices are 0. We do not bother reporting
+                    # these, so we filter them out
                     codon_orders = ali['seq'][attributed_freqs > 0]
                     attributed_freqs = attributed_freqs[attributed_freqs > 0]
 
-                    num_entries = len(attributed_freqs)
-                    # This is saved in `amino_acid_additonal_data`
-                    self.bind_freq['item_name'].extend([str(gene_callers_id) + ':' + str(x) for x in codon_orders])
-                    self.bind_freq['data_key'].extend([ligand] * num_entries)
+                    # Populate binding frequencies for this ligand/gene combo
+                    self.bind_freq['gene_callers_id'].extend([gene_callers_id] * len(attributed_freqs))
+                    self.bind_freq['codon_order_in_gene'].extend(codon_orders)
+                    self.bind_freq['data_key'].extend([ligand] * len(attributed_freqs))
                     self.bind_freq['data_value'].extend(list(attributed_freqs))
-                    self.bind_freq['data_type'].extend(['float'] * num_entries)
-                    self.bind_freq['data_group'].extend(['InteracDome'] * num_entries)
 
+        self.progress.increment(len(self.hmm_out.ali_info))
+
+        self.progress.update('Casting data as dataframe')
         self.bind_freq = pd.DataFrame(self.bind_freq)
+
+        self.progress.update('Averaging multi-hit positions')
+        self.bind_freq = self.bind_freq.groupby(['gene_callers_id', 'data_key', 'codon_order_in_gene']).mean().reset_index()
+        self.bind_freq['data_type'] = 'float'
+        self.bind_freq['data_group'] = 'Interacdome'
+
+        import ipdb; ipdb.set_trace()
 
 
 class InteracdomeTableData(object):
