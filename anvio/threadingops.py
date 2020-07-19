@@ -55,7 +55,7 @@ class State(UserDict):
         if isinstance(key, str):
             super().__setitem__(key, value)
         else:
-            raise ValueError(f'key must be str.  Got {utils.class_name(key)}.')
+            raise ValueError(f'key must be str.  Got {type(key).__name__}.')
 
 
 # Todo: add type hints to this.

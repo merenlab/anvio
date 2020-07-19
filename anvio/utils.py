@@ -3871,8 +3871,3 @@ class Mailer:
         self.progress.end()
 
         self.run.info('E-mail', 'Successfully sent to "%s"' % to)
-
-
-def class_name(thing: Any) -> str:
-    """Returns the name of the class of `thing` as a str."""
-    return type(thing).__name__
