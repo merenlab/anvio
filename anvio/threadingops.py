@@ -19,20 +19,8 @@ from anvio import fastalib
 from anvio import filesnpaths
 from anvio import utils
 from anvio.errors import ConfigError, CommandError
-from anvio.terminal import Logger
 from collections import UserDict
 from threading import Thread
-from typing import Any
-from typing import Callable
-from typing import Collection
-from typing import Dict
-from typing import Mapping
-from typing import MutableMapping
-from typing import MutableSequence
-from typing import Optional
-from typing import Sequence
-from typing import Tuple
-from typing import Union
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
@@ -51,7 +39,7 @@ class State(UserDict):
     Useful for typing.
     """
 
-    def __setitem__(self, key: str, value: Any):
+    def __setitem__(self, key, value):
         if isinstance(key, str):
             super().__setitem__(key, value)
         else:
@@ -149,12 +137,12 @@ class ThreadedCommandRunner(abc.ABC):
     """
 
     def __init__(self,
-                 input_file_path: str,
-                 collated_output_file_paths: Mapping[str, str],
-                 log_file_path: str,
-                 number_of_splits: int,
-                 logger: Optional[Logger],
-                 ) -> None:
+                 input_file_path,
+                 collated_output_file_paths,
+                 log_file_path,
+                 number_of_splits,
+                 logger,
+                 ):
         """In addition to the named parameters, the following instance variables are also initialized to empty values:
 
         - threads
@@ -168,13 +156,13 @@ class ThreadedCommandRunner(abc.ABC):
         self.log_file_path = log_file_path
         self.logger = logger
 
-        self.threads: MutableSequence[AnviThread] = []
-        self.commands: MutableSequence[Any] = []
-        self.input_file_splits: MutableSequence[str] = []
-        self.output_file_split_paths: MutableMapping[str, Sequence[str]] = {}
+        self.threads = []
+        self.commands = []
+        self.input_file_splits = []
+        self.output_file_split_paths = {}
 
     # Main entrypoint for this class
-    def run(self) -> State:
+    def run(self):
         """Run the multithreaded command wrapper, and return the `State`.
 
         Each of the intermediate function calls should return `State`.  Some of the steps may return empty `State`
@@ -202,7 +190,7 @@ class ThreadedCommandRunner(abc.ABC):
     # Needs its own special logfile because each thread wants to write to it.
     # the collection will most likely hold int, str, float, that sort of thing
     @staticmethod
-    def _command_runner(command: Union[str, Collection[Any]], log_file_path) -> Union[int, CommandError]:
+    def _command_runner(command, log_file_path):
         """Run `command`, writing any logs to `log_file_path`.
 
         If the command returns a zero exit code, _command_runner returns 0, otherwise it returns `CommandError`.
@@ -231,7 +219,7 @@ class ThreadedCommandRunner(abc.ABC):
 
     # this method should set self.input_file_splits
     @abc.abstractmethod
-    def _split_input_file(self) -> State:
+    def _split_input_file(self):
         """Takes `input_file_path` pointing to the file you want to split up.
 
         It splits this file into a certain `number_of_splits`, and writes the splits to disk.
@@ -243,7 +231,7 @@ class ThreadedCommandRunner(abc.ABC):
         """
         pass
 
-    def _set_output_file_split_paths(self) -> State:
+    def _set_output_file_split_paths(self):
         """Sets the output_file_split_paths instance variable.
 
         Keys of `self.output_file_split_paths` will match keys in `self.collated_output_file_paths`.
@@ -263,14 +251,14 @@ class ThreadedCommandRunner(abc.ABC):
         return State(output_file_split_paths=self.output_file_split_paths)
 
     @abc.abstractmethod
-    def _make_commands(self) -> State:
+    def _make_commands(self):
         """Build commands to be run and set them to `self.commands`.
 
         Should return State, e.g., to return the commands in `self.commands` to the calling context.
         """
         pass
 
-    def _run_commands(self) -> State:
+    def _run_commands(self):
         """Run commands built with `_make_commands` each in its own `AnviThread`.
 
         Uses `utils.run_command` to run all the commands, each one in its own `AnviThread`.
@@ -306,7 +294,7 @@ class ThreadedCommandRunner(abc.ABC):
         return State(threads=self.threads)
 
     @abc.abstractmethod
-    def _collate_output_files(self) -> State:
+    def _collate_output_files(self):
         """Collate all the intermediate output files from each of the threads.
 
         The result will be that all output files specified in `self.collated_output_file_paths` will contain the results
@@ -316,13 +304,13 @@ class ThreadedCommandRunner(abc.ABC):
         """
         pass
 
-    def _remove_input_file_splits(self) -> State:
+    def _remove_input_file_splits(self):
         """Remove the input file splits specified in `self.input_file_splits`."""
         self._remove_files(self.input_file_splits)
 
         return State()
 
-    def _remove_output_file_splits(self) -> State:
+    def _remove_output_file_splits(self):
         """Remove all the intermediate output file splits."""
         for _, paths in self.output_file_split_paths.items():
             self._remove_files(paths)
@@ -330,7 +318,7 @@ class ThreadedCommandRunner(abc.ABC):
         return State()
 
     # Helper functions
-    def _check_threads_for_errors(self) -> None:
+    def _check_threads_for_errors(self):
         """Check threads for any exceptions that may have occurred during their time running commands.
 
         Any errors will be raised.
@@ -343,7 +331,7 @@ class ThreadedCommandRunner(abc.ABC):
                 raise thread.target_return_value
 
     @staticmethod
-    def _remove_files(paths: Collection[str]) -> None:
+    def _remove_files(paths) -> None:
         """Helper function to remove all the given `paths`."""
         for path in paths:
             if filesnpaths.is_file_exists(path, dont_raise=True):
@@ -393,7 +381,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
     # Implement the abstract methods
     #
     #
-    def _split_input_file(self) -> State:
+    def _split_input_file(self):
         """Split input fasta into the correct number of splits.
 
         Returns `State` with the paths to each of the fasta splits.
@@ -411,7 +399,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
 
         return State(input_file_splits=self.input_file_splits)
 
-    def _make_commands(self) -> State:
+    def _make_commands(self):
         """Make commands and store them in `self.commands`.
 
         Reads input file split paths from `self.input_file_splits`.  Reads output file split paths from
@@ -460,7 +448,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
 
         return State(commands=self.commands)
 
-    def _collate_output_files(self) -> State:
+    def _collate_output_files(self):
         """Collates output files specified in `self.output_file_split_paths` to those specified in `self.collated_output_file_paths`.
 
         Returns `gene_calls_dict` and `amino_acid_sequences_dict` in `State`.
@@ -486,7 +474,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
     # Helper methods
     #
     #
-    def _process_peptide_files(self, peptide_paths: Collection[str]) -> Tuple[Dict[int, Any], Dict[int, Any]]:
+    def _process_peptide_files(self, peptide_paths):
         """Checks that `peptide_paths` files actually exist, then combines them."""
         # For renaming fasta headers
         hit_id = 0
@@ -540,7 +528,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         return gene_calls_dict, amino_acid_sequences_dict
 
     # Check the gff files and append them into the single outfile.
-    def _process_gff_files(self, gff_paths: Collection[str]) -> None:
+    def _process_gff_files(self, gff_paths):
         """Check the gff files and combine them.
 
         Note:  Currently genes_in_contigs (the gff file) is not used downstream.  This is important as each of the
