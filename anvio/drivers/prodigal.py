@@ -5,7 +5,7 @@
 #   words, it will still "split" the input fasta into a single split, and run Prodigal in a new thread.  It seems
 #   wasteful, but with the Infant Gut test dataset, it only added a couple of seconds of overhead vs. the original
 #   single threaded code.  So it seems to not be a major performance issue as of now.
-
+import argparse
 import os
 
 import anvio
@@ -49,7 +49,6 @@ class Prodigal:
                                   'v2.60': self.__parser_1}
 
         self.check_version()
-
 
     def __parser_1(self, defline):
         """parses this:
@@ -127,20 +126,23 @@ class Prodigal:
                          "properly credit their work.", lc='green', header="CITATION")
 
         self.progress.new('Processing')
-        self.progress.update('Identifying ORFs using %s' % (('%d threads.' % self.num_threads) if self.num_threads > 1 else 'a single thread (boo).'))
+        self.progress.update('Identifying ORFs using %s' % (
+            ('%d threads.' % self.num_threads) if self.num_threads > 1 else 'a single thread (boo).'))
 
         # Set up the prodigal runner.
         collated_output_file_paths = {'gff_path': self.genes_in_contigs,
                                       'peptide_path': self.amino_acid_sequences_in_contigs}
 
-        prodigal_runner = ThreadedProdigalRunner(input_file_path=fasta_file_path,
-                                                 collated_output_file_paths=collated_output_file_paths,
-                                                 number_of_splits=self.num_threads,
-                                                 log_file_path=log_file_path,
-                                                 logger=terminal.Logger(progress=self.progress, run=self.run),
-                                                 installed_version=self.installed_version,
-                                                 parser=self.parser,
-                                                 translation_table=self.prodigal_translation_table)
+        args = argparse.Namespace(input_file_path=fasta_file_path,
+                                  collated_output_file_paths=collated_output_file_paths,
+                                  number_of_splits=self.num_threads,
+                                  log_file_path=log_file_path,
+                                  logger=terminal.Logger(progress=self.progress, run=self.run),
+                                  installed_version=self.installed_version,
+                                  parser=self.parser,
+                                  translation_table=self.prodigal_translation_table)
+
+        prodigal_runner = ThreadedProdigalRunner(args)
 
         # Run the pipeline!
         state = prodigal_runner.run()

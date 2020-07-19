@@ -351,20 +351,10 @@ class ThreadedCommandRunner(abc.ABC):
 
 
 class ThreadedProdigalRunner(ThreadedCommandRunner):
-    def __init__(self,
-                 input_file_path: str,
-                 collated_output_file_paths: Mapping[str, str],
-                 number_of_splits: int,
-                 log_file_path: str,
-                 logger: Optional[Logger],
-                 installed_version: str,
-                 parser: Callable[[str], Dict[str, Any]],
-                 # while it will take str or int, it will be saved as a str
-                 translation_table: Optional[Union[str, int]]
-                 ) -> None:
+    def __init__(self, args):
         """See ThreadedCommandRunner for more info.
 
-        Note:  Lots of state to set up here...use kwargs please!
+        `args` should have the `__dict__` attribute, e.g., `argparse.Namespace`.
 
         Parameters not shared with Superclass
         =====================================
@@ -374,20 +364,31 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         - `translation_table`: Either a string or int specifying the specific translation table, or None.  If None, then
            Prodigal's `-p meta` option will be used instead.
         """
-        super().__init__(input_file_path=input_file_path,
-                         collated_output_file_paths=collated_output_file_paths,
-                         number_of_splits=number_of_splits,
-                         log_file_path=log_file_path,
-                         logger=logger)
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
-        self.installed_version = installed_version
-        self.parser = parser
+        required_args = ['input_file_path', 'collated_output_file_paths', 'number_of_splits', 'log_file_path',
+                         'installed_version', 'parser']
+
+        # Check that the required arguments are present.
+        for arg in required_args:
+            if A(arg) is None:
+                raise KeyError(f"'{arg}' is a required argument")
+
+        super().__init__(input_file_path=A('input_file_path'),
+                         collated_output_file_paths=A('collated_output_file_paths'),
+                         number_of_splits=A('number_of_splits'),
+                         log_file_path=A('log_file_path'),
+                         logger=A('logger'))
+
+        self.installed_version = A('installed_version')
+        self.parser = A('parser')
 
         # if it's an int we need to cast to str
+        translation_table = A('translation_table')
         if isinstance(translation_table, int):
             translation_table = str(translation_table)
 
-        self.translation_table: Optional[str] = translation_table
+        self.translation_table = translation_table
 
     # Implement the abstract methods
     #
