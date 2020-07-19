@@ -542,8 +542,9 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
     def _process_gff_files(self, gff_paths: Collection[str]) -> None:
         """Check the gff files and combine them.
 
-        Question:  Is genes_in_contigs (the gff file) ever actually used?...each of the threads will start renumbering
-        sequences from 1 in each subfile.  Will this break something downstream?
+        Note:  Currently genes_in_contigs (the gff file) is not used downstream.  This is important as each of the
+        threads will start renumbering sequences from 1 in each subfile.  If the gff file itself is to be used, you MUST
+        deal with this issue first!  See: https://github.com/merenlab/anvio/pull/1437#discussion_r440514864.
         """
         assert self.collated_output_file_paths['gff_path']
 
