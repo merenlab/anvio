@@ -29,6 +29,7 @@ import Bio.PDB as PDB
 from numba import jit
 from collections import Counter
 from email.mime.text import MIMEText
+from typing import Any
 
 import anvio
 import anvio.db as db
@@ -431,6 +432,8 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
         The command to be run, e.g. "echo hello" or ["echo", "hello"]
     log_file_path : str or Path-like
         All stdout from the command is sent to this filepath
+
+    Raises ConfigError if ret_val < 0, or on OSError.  Does NOT raise if program terminated with exit code > 0.
     """
     cmdline = format_cmdline(cmdline)
 
@@ -453,6 +456,7 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
         ret_val = subprocess.call(cmdline, shell=False, stdout=log_file, stderr=subprocess.STDOUT)
         log_file.close()
 
+        # This can happen in POSIX due to signal termination (e.g., SIGKILL).
         if ret_val < 0:
             raise ConfigError("Command failed to run. What command, you say? This: '%s'" % ' '.join(cmdline))
         else:
@@ -3867,3 +3871,8 @@ class Mailer:
         self.progress.end()
 
         self.run.info('E-mail', 'Successfully sent to "%s"' % to)
+
+
+def class_name(thing: Any) -> str:
+    """Returns the name of the class of `thing` as a str."""
+    return type(thing).__name__
