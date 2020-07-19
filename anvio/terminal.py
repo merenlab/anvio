@@ -916,3 +916,10 @@ def get_terminal_size():
         except:
             cr = (25, 80)
     return int(cr[1]), int(cr[0])
+
+
+class Logger:
+    """Utility class that makes it easier to use Anvio's nice logging in command runners."""
+    def __init__(self, run=Run(), progress=Progress()):
+        self.run = run
+        self.progress = progress
