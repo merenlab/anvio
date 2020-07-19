@@ -2,14 +2,6 @@
 # -*- coding: utf-8
 """This file contains PfamSetup and Pfam classes."""
 
-import os
-import gzip
-import numpy as np
-import shutil
-import requests
-from io import BytesIO
-import glob
-
 import anvio
 import anvio.dbops as dbops
 import anvio.utils as utils
@@ -20,6 +12,17 @@ from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.errors import ConfigError
 from anvio.tables.genefunctions import TableForGeneFunctions
+
+import os
+import gzip
+import numpy as np
+import pandas as pd
+import shutil
+import requests
+import glob
+
+from io import BytesIO
+from scipy.stats import entropy
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -448,9 +451,13 @@ class HMMProfile(object):
 
         with open(filepath, 'w') as f:
             for profile in self.data.values():
-                f.write(profile['raw'] + '//\n')
+                f.write(profile['RAW'] + '//\n')
 
         self.run.info('.hmm written to', filepath)
+
+
+    def __getitem__(self, key):
+        return self.data[key]
 
 
     def process_raw_profile(self, raw_profile):
@@ -494,10 +501,8 @@ class HMMProfile(object):
 
         # Init the profile, we will populate this
         profile = {
-            'raw': raw_profile,
-            'match_states': {},
-            'alignment_pos': None,
-            'consensus': None,
+            'RAW': raw_profile,
+            'MATCH_STATES': {},
             'NAME': None,
             'ACC': None,
             'DESC': None,
@@ -561,41 +566,39 @@ class HMMProfile(object):
                 continue
             break
 
-        consensus_sequence = []
-        alignment_pos = []
+        profile['MATCH_STATES'] = {
+            'MATCH_STATE': [],
+            'CS': [],
+            'MM': [],
+            'RF': [],
+            'CONS': [],
+            'MAP': [],
+            'IC': [], # information content (https://en.wikipedia.org/wiki/Sequence_logo)
+        }
+
         for i in range(line_no, len(raw_lines[line_no:]), 3):
             emission_line, insertion_line, state_line = raw_lines[i:i+3]
             emission = emission_line.split()
+
+            # These are not used currently but maybe someday will be
             insertion = insertion_line.split()
             state = state_line.split()
 
             assign_type = lambda x, t: t(x) if x != '-' else '-'
+            profile['MATCH_STATES']['MATCH_STATE'].append(int(emission.pop(0)))
+            profile['MATCH_STATES']['CS'].append(assign_type(emission.pop(-1), str))
+            profile['MATCH_STATES']['MM'].append(assign_type(emission.pop(-1), str))
+            profile['MATCH_STATES']['RF'].append(assign_type(emission.pop(-1), str))
+            profile['MATCH_STATES']['CONS'].append(assign_type(emission.pop(-1).upper(), str))
+            profile['MATCH_STATES']['MAP'].append(assign_type(emission.pop(-1), int))
 
-            match_state = int(emission.pop(0))
-            profile['match_states'][match_state] = {}
+            # Store the information content of the match state
+            emission_probs = np.exp(-np.array([0 if x == '*' else float(x) for x in emission]))
+            information_content = np.log2(len(profile['alphabet'])) - entropy(emission_probs, base=2)
+            profile['MATCH_STATES']['IC'].append(information_content)
 
-            profile['match_states'][match_state]['CS'] = assign_type(emission.pop(-1), str)
-            profile['match_states'][match_state]['MM'] = assign_type(emission.pop(-1), str)
-            profile['match_states'][match_state]['RF'] = assign_type(emission.pop(-1), str)
-            profile['match_states'][match_state]['CONS'] = assign_type(emission.pop(-1).upper(), str)
-            profile['match_states'][match_state]['MAP'] = assign_type(emission.pop(-1), int)
-
-            consensus_sequence.append(profile['match_states'][match_state]['CONS'])
-            alignment_pos.append(profile['match_states'][match_state]['MAP'])
-
-            # probabilities
-            emission = np.exp(-np.array([0 if x == '*' else float(x) for x in emission]))
-            insertion = np.exp(-np.array([0 if x == '*' else float(x) for x in insertion]))
-            state = np.exp(-np.array([0 if x == '*' else float(x) for x in state]))
-
-            profile['match_states'][match_state]['EMI_PR'] = emission
-            profile['match_states'][match_state]['INS_PR'] = insertion
-            profile['match_states'][match_state]['STATE_PR'] = state
-
-        if profile['CONS']:
-            profile['consensus'] = ''.join(consensus_sequence)
-        if profile['MAP']:
-            profile['alignment_pos'] = np.array(alignment_pos)
+        # Cast match state info as a dataframe
+        profile['MATCH_STATES'] = pd.DataFrame(profile['MATCH_STATES']).set_index('MATCH_STATE', drop=True)
 
         return profile
 
