@@ -422,13 +422,14 @@ class HMMERStandardOutput(object):
         Notes
         =====
         - This function is very slow.
+        - EDIT: This function is not _that_ slow
         """
 
         if self.dom_hits.empty:
             return
 
         unique_targets = self.dom_hits[self.target_col].nunique()
-        self.progress.new('Storing alignment info', progress_total_items=unique_targets)
+        self.progress.new('Processing alignment info', progress_total_items=unique_targets)
 
         gap_chars = {'-', '.'}
 
@@ -442,18 +443,22 @@ class HMMERStandardOutput(object):
 
             for acc, subsubset in subset.groupby(self.acc_col):
                 for i, row in subsubset.iterrows():
-                    seq_positions, hmm_positions = [], []
+                    seq_positions, seq_chars, hmm_positions, hmm_chars, comparison_chars = [], [], [], [], []
+
                     seq_pos, hmm_pos = row['ali_start'], row['hmm_start']
-                    sequence, match_state = row['sequence_align'], row['match_state_align']
+                    sequence, match_state, comparison = row['sequence_align'], row['match_state_align'], row['comparison_align']
 
                     assert len(sequence) == len(match_state)
 
                     for i in range(len(sequence)):
-                        seq_char, hmm_char = sequence[i], match_state[i]
+                        seq_char, hmm_char, comparison_char = sequence[i], match_state[i], comparison[i]
                         if (seq_char not in gap_chars) and (hmm_char not in gap_chars):
-                            # alignment
+                            # there is alignment (non-gap characters)
                             seq_positions.append(seq_pos)
+                            seq_chars.append(seq_char)
                             hmm_positions.append(hmm_pos)
+                            hmm_chars.append(hmm_char.upper())
+                            comparison_chars.append(comparison_char.upper())
                             seq_pos += 1
                             hmm_pos += 1
                         elif (seq_char in gap_chars) and (hmm_char not in gap_chars):
@@ -466,10 +471,14 @@ class HMMERStandardOutput(object):
                             # this happens with 0 probability
                             pass
 
-                    # These HMM state and sequence positions are 1-indexed. We subtract by 1 to make them zero-indexed
-                    seq_positions = np.array(seq_positions) - 1
-                    hmm_positions = np.array(hmm_positions) - 1
-                    self.ali_info[target][(acc, row['domain'])] = {'seq': seq_positions, 'hmm': hmm_positions}
+                    # The HMM state and sequence positions are 1-indexed. We subtract by 1 to make them zero-indexed
+                    self.ali_info[target][(acc, row['domain'])] = pd.DataFrame({
+                        'seq': seq_chars,
+                        'hmm': hmm_chars,
+                        'comparison': comparison_chars,
+                        'seq_positions': np.array(seq_positions) - 1,
+                        'hmm_positions': np.array(hmm_positions) - 1,
+                    })
 
             processed += 1
         self.progress.end()
