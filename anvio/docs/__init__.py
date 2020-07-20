@@ -298,6 +298,18 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
+    "binding-frequencies": {
+        "name": "AMINO ACID BINDING FREQUENCIES",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "interacdome-data": {
+        "name": "INTERACDOME DATA",
+        "type": "DATA",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "functions": {
         "name": "GENE FUNCTIONS",
         "type": "CONCEPT",

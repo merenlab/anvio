@@ -19,6 +19,7 @@ __requires__ = ['contigs-db', 'interacdome-data']
 __provides__ = ['binding-frequencies',]
 __description__ = "Run InteracDome on a contigs database."
 
+# FIXME add resources tag once blog post is out
 
 @time_program
 def main(args):
