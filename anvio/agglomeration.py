@@ -22,19 +22,17 @@ from copy import deepcopy
 sys.setrecursionlimit(10000)
 
 class Agglomerator:
-    def __init__(
-        self,
-        input_fasta_path=None,
-        input_bam_path=None,
-        output_fasta_path=None,
-        output_bam_path=None,
-        replicates_path=None,
-        order_by_replicate_abundance=True,
-        max_possible_alignments=2,
-        sort_index_bam_output=True,
-        run=None,
-        progress=None,
-        verbose=False):
+    def __init__(self,
+                 input_fasta_path=None,
+                 input_bam_path=None,
+                 output_fasta_path=None,
+                 output_bam_path=None,
+                 replicates_path=None,
+                 order_by_replicate_abundance=True,
+                 max_possible_alignments=2,
+                 sort_index_bam_output=True,
+                 run=terminal.Run(),
+                 progress=terminal.Progress()):
 
         self.input_fasta_path = input_fasta_path
         self.input_bam_path = input_bam_path
@@ -44,16 +42,9 @@ class Agglomerator:
         self.max_possible_alignments = max_possible_alignments
         self.sort_index_bam_output = sort_index_bam_output
         self.output_fasta_path = output_fasta_path
-        if run:
-            self.run = run
-        else:
-            self.run = terminal.Run()
-        if progress:
-            self.progress = progress
-        else:
-            self.progress = terminal.Progress()
-            self.progress.new("Agglomerating sequence alignments")
-        self.verbose = verbose
+        self.run = run
+        self.progress = progress
+        self.progress.new("Agglomerating")
 
         self.seed_count = 0
 
@@ -148,9 +139,7 @@ class Agglomerator:
 
             num_processed_ref_seqs += 1
             self.progress.increment(num_processed_ref_seqs)
-            if self.verbose:
-                self.progress.update(
-                    "%d/%d sequences processed" % (num_processed_ref_seqs, self.ref_seq_count))
+            self.progress.update("%d/%d sequences processed" % (num_processed_ref_seqs, self.ref_seq_count))
 
         self.raw_output_bam.close()
         self.output_fasta.close()

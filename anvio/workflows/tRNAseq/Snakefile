@@ -27,19 +27,19 @@ import anvio.terminal as terminal
 import anvio.utils as u
 import anvio.workflows as w
 
-from anvio.workflows.tRNAseq import tRNASeqWorkflow
+from anvio.workflows.trnaseq import TRNASeqWorkflow
 from anvio.errors import ConfigError
 
 run = terminal.Run()
 progress = terminal.Progress()
 
 
-M = tRNASeqWorkflow(argparse.Namespace(config=config))
+M = TRNASeqWorkflow(argparse.Namespace(config=config))
 M.init()
 dirs_dict = M.dirs_dict
 
 
-rule tRNAseq_workflow_target_rule:
+rule trnaseq_workflow_target_rule:
     ''' The target rule for the workflow '''
     input: M.target_files
 
@@ -180,24 +180,26 @@ rule anvi_trnaseq:
     log: os.path.join(dirs_dict['LOGS_DIR'], "{sample_split_prefix}-anvi_trnaseq.log")
     input: M.get_input_for_anvi_trnaseq
     output:
-        db = os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}-tRNAseq.db")
+        db = os.path.join(os.path.join(dirs_dict['IDENT_DIR'], "{sample_split_prefix}"), "{sample_split_prefix}-TRNASEQ.db")
     threads: M.T('anvi_trnaseq')
     resources: nodes = M.T('anvi_trnaseq')
     params:
-        uniquing_report = M.get_rule_param('anvi_trnaseq', '--uniquing-report'),
-        normalization_reports = M.get_rule_param('anvi_trnaseq', '--normalization-reports'),
-        skip_fasta_check = M.get_rule_param('anvi_trnaseq', '--skip-fasta-check')
+        skip_fasta_check = M.get_rule_param('anvi_trnaseq', '--skip-fasta-check'),
+        write_buffer_size = M.get_rule_param('write_buffer_size', '--write-buffer-size'),
+        max_possible_alignments = M.get_rule_param('max_possible_alignments', '--max-possible-alignments')
     run:
         if input[0].endswith('.gz'):
             decompressed_fasta = gunzip_fasta(input[0], log[0])
         else:
             decompressed_fasta = input[0]
         output_dir = os.path.join(dirs_dict['IDENT_DIR'], wildcards.sample_split_prefix)
-        shell("anvi-trnaseq --fasta-file %s --project-name {wildcards.sample_split_prefix} --output-dir %s {params.uniquing_report} {params.normalization_reports} {params.skip_fasta_check} -T {threads} >> {log} 2>&1" % (decompressed_fasta, output_dir))
+        os.rmdir(output_dir)
+        shell("anvi-trnaseq --fasta-file %s --project-name {wildcards.sample_split_prefix} --output-dir %s {params.skip_fasta_check} {params.write_buffer_size} {params.max_possible_alignments} -T {threads} >> {log} 2>&1" % (decompressed_fasta, output_dir))
         if input[0].endswith('.gz'):
             os.remove(decompressed_fasta)
 
-if 'workflows/tRNAseq' in workflow.included[0]:
+
+if 'workflows/trnaseq' in workflow.included[0]:
     # Check if all program dependencies are met.
     # For this line to be effective,
     # there should be an initial dry run step --

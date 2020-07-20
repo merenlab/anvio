@@ -35,7 +35,7 @@ class TRNASeqDatabase(dbops_package.Database):
             (t.trnaseq_features_table_name, t.trnaseq_features_table_structure, t.trnaseq_features_table_types),
             (t.trnaseq_unconserved_table_name, t.trnaseq_unconserved_table_structure, t.trnaseq_unconserved_table_types),
             (t.trnaseq_unpaired_table_name, t.trnaseq_unpaired_table_structure, t.trnaseq_unpaired_table_types),
-            (t.trnaseq_normalization_table_name, t.trnaseq_normalization_table_structure, t.trnaseq_normalization_table_types),
-            (t.trnaseq_subseq_derep_table_name, t.trnaseq_subseq_derep_table_structure, t.trnaseq_subseq_derep_table_types)]
+            (t.trnaseq_trimmed_table_name, t.trnaseq_trimmed_table_structure, t.trnaseq_trimmed_table_types),
+            (t.trnaseq_normalized_table_name, t.trnaseq_normalized_table_structure, t.trnaseq_normalized_table_types)]
 
         super().__init__(db_path, args=args, run=run, progress=progress, quiet=quiet)

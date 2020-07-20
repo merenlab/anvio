@@ -627,7 +627,7 @@ class Acceptor(_Sequence):
         # For CCAN and CCANN, num_extra_threeprime must be set to 1 and 2, respectively.
         # The N and NN of CCAN and CCANN are not treated explicitly by this class.
         # C and CC are accommodated by allowed_input_lengths being 1, 2, or 3.
-        # Missing nucleotides in C and CC are not recorded as unconserved nucleotides,
+        # Missing nucleotides in C (CA) and CC (A) are not recorded as unconserved nucleotides,
         # but variant nucleotides in CCN, CNA, and NCA are recorded as such.
         # Although num_allowed_unconserved is 0,
         # CCN, CNA, and NCA cause Acceptor.meets_conserved_thresh to be set to True.
@@ -690,7 +690,11 @@ class Profile:
         self.feature_names = [f.name for f in self.features]
 
         if self.features:
-            self.acceptor = self.features[-1]
+            # The extra 3' nucleotides are not explicitly added to the Acceptor object for complex reasons.
+            if self.num_extra_threeprime > 0:
+                self.acceptor_variant_string = self.features[-1].string + self.profiled_seq[-self.num_extra_threeprime: ]
+            else:
+                self.acceptor_variant_string = self.features[-1].string
 
             # Explicitly record the start and stop positions within the input seq
             # of the variable-length alpha and beta regions of the D loop.
@@ -718,7 +722,7 @@ class Profile:
 
             # Use a slightly less stringent standard for tRNA
             # when the acceptor sequence is CCA than C, CC, NCA, CNA, CCN, CCAN, or CCANN.
-            if self.acceptor.string == 'CCA':
+            if self.acceptor_variant_string == 'CCA':
                 # The features must include the T loop.
                 if len(self.features) > self.T_LOOP_INDEX:
                     self.is_predicted_trna = True
@@ -738,7 +742,7 @@ class Profile:
                 if len(self.input_seq) > LONGEST_KNOWN_TRNA_LENGTH:
                     self.is_predicted_trna = False
         else:
-            self.acceptor = None
+            self.acceptor_variant_string = None
 
             self.alpha_start = None
             self.alpha_stop = None
