@@ -31,8 +31,24 @@ See **[program help menu](../../../vignette#anvi-export-functions)** or go back 
 ## Usage
 
 
+This program **takes in a <span class="artifact-n">[functions](/software/anvio/help/artifacts/functions)</span> artifact to create a <span class="artifact-n">[functions-txt](/software/anvio/help/artifacts/functions-txt)</span>.** Basically, if you want to take the information in your <span class="artifact-n">[functions](/software/anvio/help/artifacts/functions)</span> artifact out of anvi'o or give it to a fellow anvi'o user (for them to [import it](http://merenlab.org/software/anvio/help/programs/anvi-import-functions/) into their own project), you get that information using this command. 
+
+Simply provide the <span class="artifact-n">[contigs-db](/software/anvio/help/artifacts/contigs-db)</span> with an associated <span class="artifact-n">[functions](/software/anvio/help/artifacts/functions)</span>: 
+
+<div class="codeblock" markdown="1">
+anvi&#45;export&#45;functions &#45;c <span class="artifact&#45;n">[contigs&#45;db](/software/anvio/help/artifacts/contigs&#45;db)</span> 
+</div>
+
+You can also get annotations for only a specific list of sources. For example:
+
+<div class="codeblock" markdown="1">
+anvi&#45;export&#45;functions &#45;&#45;annotation&#45;sources source_1,source_2,source_3
+</div>
+
+
+
 {:.notice}
-**No one has described the usage of this program** :/ If you would like to contribute, please see previous examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs), and feel free to add a Markdown formatted file in that directory named "anvi-export-functions.md". For a template, you can use the markdown file for `anvi-gen-contigs-database`. THANK YOU!
+Edit [this file](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs/anvi-export-functions.md) to update this information.
 
 
 ## Additional Resources

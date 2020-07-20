@@ -46,3 +46,6 @@ anvi-run-hmms -c CONTIGS_DB -I Bacteria_71
 - Add the tag `--just-do-it` to hide all warnings and questions in case you don't want to deal with those.
 -  There are also parameters that can help speed up the runtime of this program. However, be aware of the limits of your system, espeically if running on a SGE.  For example, you can increase the number of threads or switch to hmmsearch if you are scanning  a large umber of HMMs. For more information on that, check out [here](http://merenlab.org/software/anvio/vignette/#anvi-run-hmms). 
 
+### See anvi-run-hmms in action!
+
+On the [metagenomic workflow tutorial](http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-run-hmms)!

@@ -25,7 +25,7 @@ Visit <a href="http://merenlab.org/software/anvio/vignette/">this page</a> to se
 <a href="/software/anvio/network/" target="_blank"><img src="/images/anvio-network.png" width="100%" /></a>
 
 {:.notice}
-The help contents were last updated on **07 Jul 20 16:18:03** for anvi'o version **6.2-master (esther)**.
+The help contents were last updated on **10 Jul 20 20:20:11** for anvi'o version **6.2-master (esther)**.
 
 
 {% include _toc.html %}
@@ -36,7 +36,7 @@ The help contents were last updated on **07 Jul 20 16:18:03** for anvi'o version
 
 ## Programs
 
-Listed below a total of 71 programs.
+Listed below a total of 73 programs.
 
 
 * **[anvi-3dev](programs/anvi-3dev)**: Interactively visualize sequence variants on protein structures.
@@ -51,7 +51,7 @@ Listed below a total of 71 programs.
 
 * **[anvi-cluster-contigs](programs/anvi-cluster-contigs)**: A program to cluster items in a merged anvi&#x27;o profile using automatic binning algorithms.
 <span>**Provides**: <span class="artifact-p">[collection](artifacts/collection)</span> <span class="artifact-p">[bin](artifacts/bin)</span> / 
-<span>**Requires**: <span class="artifact-r">[profile-db](artifacts/profile-db)</span> <span class="artifact-r">[contigs-db](artifacts/contigs-db)</span>.</span>
+<span>**Requires**: <span class="artifact-r">[profile-db](artifacts/profile-db)</span> <span class="artifact-r">[contigs-db](artifacts/contigs-db)</span> <span class="artifact-r">[collection](artifacts/collection)</span>.</span>
 
 
 * **[anvi-compute-genome-similarity](programs/anvi-compute-genome-similarity)**: Export sequences from sequence sources and compute a similarity metric (e.g. ANI). If a Pan Database is given anvi&#x27;o will write computed output to misc data tables of Pan Database.
@@ -289,7 +289,7 @@ Listed below a total of 71 programs.
 <span>**Requires**: <span class="artifact-r">[genomes-storage-db](artifacts/genomes-storage-db)</span>.</span>
 
 
-* **[anvi-profile](programs/anvi-profile)**: Creates a single anvi&#x27;o profile database. The default input to this program is a BAM file.                   When it is run on a BAM file, depending on the user parameters, the program quantifies                   coverage per nucleotide position (and averages them out per contig), calculates                   single-nucleotide, single-codon, and single-amino acid variants, as well as structural variants                   such as insertion and deletions and stores these data into appropriate tables. Anvi&#x27;o single                   profiles can be merged by the program `anvi-merge`.
+* **[anvi-profile](programs/anvi-profile)**: Creates a single anvi&#x27;o profile database.                    When it is run on a BAM file, depending on the user parameters, the program quantifies                   coverage per nucleotide position (and averages them  per contig), calculates                   single-nucleotide, single-codon, and single-amino acid variants, as well as structural variants                   such as insertion and deletions and stores these data into appropriate tables.
 <span>**Provides**: <span class="artifact-p">[single-profile-db](artifacts/single-profile-db)</span> <span class="artifact-p">[misc-data-item-orders](artifacts/misc-data-item-orders)</span> <span class="artifact-p">[variability-profile](artifacts/variability-profile)</span> / 
 <span>**Requires**: <span class="artifact-r">[bam-file](artifacts/bam-file)</span> <span class="artifact-r">[contigs-db](artifacts/contigs-db)</span>.</span>
 
@@ -334,7 +334,7 @@ Listed below a total of 71 programs.
 <span>**Requires**: <span class="artifact-r">[contigs-db](artifacts/contigs-db)</span>.</span>
 
 
-* **[anvi-search-functions](programs/anvi-search-functions)**: Search functions in an anvi&#x27;o contigs database or genomes storage. Basically, this program searches for one or more search terms you define in functional annotations of genes in an anvi&#x27;o contigs database, and generates multiple reports. The simpler report (which also is the default one) simply tells you which contigs contain genes with functions matching to serach terms you used. This file is only useful to quickly highlight matching contigs in the interface by providing it to the anvi-interactive with the `--additional-layer` parameter. You can also request a much more comprehensive report, which gives you anything you might need to know, including the matching gene caller id, functional annotation source, and full function name for each hit and serach term.
+* **[anvi-search-functions](programs/anvi-search-functions)**: Search functions in an anvi&#x27;o contigs database or genomes storage. Basically, this program searches for one or more search terms you define in functional annotations of genes in an anvi&#x27;o contigs database, and generates multiple reports. The default report simply tells you which contigs contain genes with functions matching to serach terms you used, useful for viewing in the interface. You can also request a much more comprehensive report, which gives you anything you might need to know for each hit and serach term.
 <span>**Provides**: <span class="artifact-p">[functions-txt](artifacts/functions-txt)</span> / 
 <span>**Requires**: <span class="artifact-r">[contigs-db](artifacts/contigs-db)</span> <span class="artifact-r">[genomes-storage-db](artifacts/genomes-storage-db)</span>.</span>
 
@@ -384,9 +384,19 @@ Listed below a total of 71 programs.
 <span>**Requires**: <span class="artifact-r">[fasta](artifacts/fasta)</span>.</span>
 
 
+* **[anvi-script-gen-hmm-hits-matrix-across-genomes](programs/anvi-script-gen-hmm-hits-matrix-across-genomes)**: A simple script to generate a TAB-delimited file that reports the frequency of HMM hits for a given HMM source across contigs databases..
+<span>**Provides**: <span class="artifact-p">[hmm-source](artifacts/hmm-source)</span> <span class="artifact-p">[hmm-hits](artifacts/hmm-hits)</span> / 
+<span>**Requires**: <span class="artifact-r">[contigs-db](artifacts/contigs-db)</span>.</span>
+
+
 * **[anvi-script-gen-short-reads](programs/anvi-script-gen-short-reads)**: Generate short reads from contigs. Useful to reconstruct mock data sets from already assembled contigs.
 <span>**Provides**: <span class="artifact-p">[short-reads-fasta](artifacts/short-reads-fasta)</span> / 
 <span>**Requires**: <span class="artifact-r">[configuration-ini](artifacts/configuration-ini)</span>.</span>
+
+
+* **[anvi-script-get-coverage-from-bam](programs/anvi-script-get-coverage-from-bam)**: Get nucleotide-level, contig-level, or bin-level coverage values from a BAM file.
+<span>**Provides**: <span class="artifact-p">[coverages-txt](artifacts/coverages-txt)</span> / 
+<span>**Requires**: <span class="artifact-r">[bam-file](artifacts/bam-file)</span> <span class="artifact-r">[collection-txt](artifacts/collection-txt)</span>.</span>
 
 
 * **[anvi-script-reformat-fasta](programs/anvi-script-reformat-fasta)**: Reformat FASTA file (remove contigs based on length, or based on a given list of deflines, and/or generate an output with simpler names).

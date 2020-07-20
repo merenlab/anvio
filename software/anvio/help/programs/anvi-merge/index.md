@@ -38,17 +38,20 @@ The main function of anvi-merge is to convert multiple <span class="artifact-n">
 1. Use <span class="artifact-n">[anvi-profile](/software/anvio/help/programs/anvi-profile)</span> to create a <span class="artifact-n">[single-profile-db](/software/anvio/help/artifacts/single-profile-db)</span> using each of your samples (formatted into <span class="artifact-n">[bam-file](/software/anvio/help/artifacts/bam-file)</span>) *(Note: for each of these you'll need to use the same <span class="artifact-n">[contigs-db](/software/anvio/help/artifacts/contigs-db)</span>)*
 1. Use anvi-merge to merge those <span class="artifact-n">[single-profile-db](/software/anvio/help/artifacts/single-profile-db)</span>s into a single database, called a <span class="artifact-n">[profile-db](/software/anvio/help/artifacts/profile-db)</span>. This will look something like the following:
 
-        anvi-merge -c cool_contigs.db \
+<div class="codeblock" markdown="1">
+anvi&#45;merge &#45;c cool_contigs.db \
                     Single_profile_db_1 Single_profile_db_2 \
-                    -o cool_contigs_merge
+                    &#45;o cool_contigs_merge
+</div>
                     
-    This will put all of the output files (the final profile-db as well as a <span class="artifact-n">[misc-data-item-orders](/software/anvio/help/artifacts/misc-data-item-orders)</span> containing various other information) into the folder `cool_contigs_merge `.
-        
+This will put all of the output files (the final profile-db as well as a <span class="artifact-n">[misc-data-item-orders](/software/anvio/help/artifacts/misc-data-item-orders)</span> containing various other information) into the folder `cool_contigs_merge `.
+    
 
 ## Other Parameters
 
 You must give anvi-merge your contigs database and single profile databases. However, you can also provide more information or give addtional instructions.
 
+* Use the flag `-h` at any time to display the help menu 
 ### Hierarchical Clustering 
 #### To run or not to run? 
 * Use the flag `--skip-hierarchical-clustering` to turn hierarchical clustering off. This will save on computation time, but will skip out on creating the tree of contigs at the center of the interactive interface. If you have more than 25,000 splits in the final profile, this will be set automatically. 

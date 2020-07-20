@@ -31,8 +31,25 @@ See **[program help menu](../../../vignette#anvi-setup-ncbi-cogs)** or go back t
 ## Usage
 
 
+This program **downloads and organizes a local copy of the data from NCBI's [COGs database](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC102395/) for use in function annotation.** This program generates a <span class="artifact-n">[cogs-data](/software/anvio/help/artifacts/cogs-data)</span> artifact, which is required to run the program <span class="artifact-n">[anvi-run-ncbi-cogs](/software/anvio/help/programs/anvi-run-ncbi-cogs)</span>. 
+
+{:notice}
+The COGs database is no longer actively added to, so might also want to consider using a separate database for more comprehensive functional annotation. As of yet, anvi'o does not have a program to accesss the eggNOG database (instructions to use this database to get function information are [here](http://merenlab.org/2016/06/18/importing-functions/#eggnog-database--emapper)), but does have the functionality to use the Pfams database (check out <span class="artifact-n">[anvi-run-pfams](/software/anvio/help/programs/anvi-run-pfams)</span> for more information). 
+
+### Set up COGs data
+<div class="codeblock" markdown="1">
+anvi&#45;setup&#45;ncbi&#45;cogs &#45;&#45;just&#45;do&#45;it
+</div>
+
+If you already have a <span class="artifact-n">[cogs-data](/software/anvio/help/artifacts/cogs-data)</span> artifact and are trying to redownload this data, run 
+
+<div class="codeblock" markdown="1">
+anvi&#45;setup&#45;ncbi&#45;cogs &#45;&#45;reset
+</div>
+
+
 {:.notice}
-**No one has described the usage of this program** :/ If you would like to contribute, please see previous examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs), and feel free to add a Markdown formatted file in that directory named "anvi-setup-ncbi-cogs.md". For a template, you can use the markdown file for `anvi-gen-contigs-database`. THANK YOU!
+Edit [this file](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs/anvi-setup-ncbi-cogs.md) to update this information.
 
 
 ## Additional Resources

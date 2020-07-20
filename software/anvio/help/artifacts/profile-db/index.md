@@ -38,6 +38,7 @@ A profile database contains information about how short reads map to the contigs
 * the coverage and abundance per nucleotide position for each contig 
 * varience of various kinds (single-nucleotide, single-codon, and single-amino acid)
 * structural variance (ex insertions and deletions)
+These terms are explained on the [anvi'o vocabulary page](http://merenlab.org/vocabulary/)
 
 This information is neccessary to run anvi'o programs like <span class="artifact-n">[anvi-cluster-contigs](/software/anvio/help/programs/anvi-cluster-contigs)</span>, <span class="artifact-n">[anvi-estimate-metabolism](/software/anvio/help/programs/anvi-estimate-metabolism)</span>, and <span class="artifact-n">[anvi-gen-gene-level-stats-databases](/software/anvio/help/programs/anvi-gen-gene-level-stats-databases)</span>. You can also interact with a profile database using programs like <span class="artifact-n">[anvi-interactive](/software/anvio/help/programs/anvi-interactive)</span>.
 

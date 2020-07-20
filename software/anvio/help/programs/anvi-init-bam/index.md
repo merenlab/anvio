@@ -31,8 +31,23 @@ See **[program help menu](../../../vignette#anvi-init-bam)** or go back to the *
 ## Usage
 
 
+This program sorts and indexes your BAM files: essentially converting <span class="artifact-n">[raw-bam-file](/software/anvio/help/artifacts/raw-bam-file)</span> into <span class="artifact-n">[bam-file](/software/anvio/help/artifacts/bam-file)</span>, which are ready to be used in anvi'o. 
+
+If you're unsure what a BAM file is, check out the <span class="artifact-n">[bam-file](/software/anvio/help/artifacts/bam-file)</span> page or [this file](https://samtools.github.io/hts-specs/SAMv1.pdf), written by the developers of samtools. For a descritption of what indexing a BAM file does, check out the page for <span class="artifact-n">[raw-bam-file](/software/anvio/help/artifacts/raw-bam-file)</span>. 
+
+To run this program, just provide a path to the bam files that you want to index. For example, 
+
+<div class="codeblock" markdown="1">
+anvi&#45;init&#45;bam <span class="artifact&#45;n">[raw&#45;bam&#45;file](/software/anvio/help/artifacts/raw&#45;bam&#45;file)</span> 
+</div>
+
+You can also multithread this to shorten runtime with the flag `-T` followed by the desired number of threads if your system is capable of this. 
+
+To see it in action (plus a description on how to run it on an entire folder), check out [this page](http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-init-bam). 
+
+
 {:.notice}
-**No one has described the usage of this program** :/ If you would like to contribute, please see previous examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs), and feel free to add a Markdown formatted file in that directory named "anvi-init-bam.md". For a template, you can use the markdown file for `anvi-gen-contigs-database`. THANK YOU!
+Edit [this file](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs/anvi-init-bam.md) to update this information.
 
 
 ## Additional Resources

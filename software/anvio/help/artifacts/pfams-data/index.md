@@ -30,6 +30,11 @@ Back to the **[main page](../../)** of anvi'o programs and artifacts.
 
 ## Description
 
+This basically stores **a local copy of the data from the EBI's [Pfam database](https://pfam.xfam.org/) for function annotation.** 
+
+It is required to run <span class="artifact-n">[anvi-run-pfams](/software/anvio/help/programs/anvi-run-pfams)</span> and is set up on your computer by the program <span class="artifact-n">[anvi-setup-pfams](/software/anvio/help/programs/anvi-setup-pfams)</span>. 
+
+
 {:.notice}
-**No one has described this artifact yet** :/ If you would like to contribute by describing it, please see previous examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs/artifacts), and add a Markdown formatted file in that directory named "pfams-data.md". Its contents will replace this sad text. THANK YOU!
+Edit [this file](https://github.com/merenlab/anvio/tree/master/anvio/docs/artifacts/pfams-data.md) to update this information.
 

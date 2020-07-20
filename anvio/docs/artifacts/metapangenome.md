@@ -1,0 +1,1 @@
+A metapangenome is a way of comparing a bunch of genomes based both on the gene clusters they contain (like in a pangenome) and their abundances in different environments/samples (using metagenomic read recruitment).

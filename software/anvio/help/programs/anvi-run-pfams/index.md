@@ -31,8 +31,34 @@ See **[program help menu](../../../vignette#anvi-run-pfams)** or go back to the 
 ## Usage
 
 
+This program **associates genes in your <span class="artifact-n">[contigs-db](/software/anvio/help/artifacts/contigs-db)</span> with functions using the EBI's [Pfam database](https://pfam.xfam.org/).** 
+
+Before you run this program, you'll have to set up the Pfam database on your computer with the program <span class="artifact-n">[anvi-setup-pfams](/software/anvio/help/programs/anvi-setup-pfams)</span>.  
+
+The Pfam database is based on protein sequences, so anvi'o will convert your genetic information into protein sequences and then use HMMs to compare them to the database. (*Unsure what an HMM is? Check out [our vocab page](http://merenlab.org/vocabulary/#hmm)*)
+
+To run, you'll need to provide a <span class="artifact-n">[contigs-db](/software/anvio/help/artifacts/contigs-db)</span>. If you stored the <span class="artifact-n">[pfams-data](/software/anvio/help/artifacts/pfams-data)</span> that you got from running <span class="artifact-n">[anvi-setup-pfams](/software/anvio/help/programs/anvi-setup-pfams)</span> in a custom location, you'll need to provide that path as well. The output is a <span class="artifact-n">[functions](/software/anvio/help/artifacts/functions)</span> artifact. 
+
+Here is a default run: 
+
+<div class="codeblock" markdown="1">
+anvi&#45;run&#45;ncbi&#45;cogs &#45;c <span class="artifact&#45;n">[contigs&#45;db](/software/anvio/help/artifacts/contigs&#45;db)</span> \
+            &#45;&#45;pfam&#45;data&#45;dir <span class="artifact&#45;n">[pfams&#45;data](/software/anvio/help/artifacts/pfams&#45;data)</span> \
+</div>
+
+By default, this uses hmmsearch to run HMMs. You can choose to use hmmscan instead by running
+
+<div class="codeblock" markdown="1">
+anvi&#45;run&#45;ncbi&#45;cogs &#45;c <span class="artifact&#45;n">[contigs&#45;db](/software/anvio/help/artifacts/contigs&#45;db)</span> \
+            &#45;&#45;pfam&#45;data&#45;dir <span class="artifact&#45;n">[pfams&#45;data](/software/anvio/help/artifacts/pfams&#45;data)</span> \
+            &#45;&#45;hmmer&#45;program hmmscan
+</div>
+
+See [this article](https://cryptogenomicon.org/2011/05/27/hmmscan-vs-hmmsearch-speed-the-numerology/) for a discussion on the performance of the two HMMER programs. 
+
+
 {:.notice}
-**No one has described the usage of this program** :/ If you would like to contribute, please see previous examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs), and feel free to add a Markdown formatted file in that directory named "anvi-run-pfams.md". For a template, you can use the markdown file for `anvi-gen-contigs-database`. THANK YOU!
+Edit [this file](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs/anvi-run-pfams.md) to update this information.
 
 
 ## Additional Resources

@@ -25,6 +25,7 @@ __description__ = "Creates a single anvi'o profile database. \
                    coverage per nucleotide position (and averages them  per contig), calculates\
                    single-nucleotide, single-codon, and single-amino acid variants, as well as structural variants\
                    such as insertion and deletions and stores these data into appropriate tables"
+__resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-profile")]
 
 
 @time_program

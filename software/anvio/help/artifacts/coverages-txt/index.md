@@ -21,7 +21,7 @@ Back to the **[main page](../../)** of anvi'o programs and artifacts.
 ## Provided by
 
 
-<p style="text-align: left" markdown="1"><span class="artifact-p">[anvi-export-splits-and-coverages](../../programs/anvi-export-splits-and-coverages)</span></p>
+<p style="text-align: left" markdown="1"><span class="artifact-p">[anvi-export-splits-and-coverages](../../programs/anvi-export-splits-and-coverages)</span> <span class="artifact-p">[anvi-script-get-coverage-from-bam](../../programs/anvi-script-get-coverage-from-bam)</span></p>
 
 
 ## Required or used by
@@ -30,6 +30,13 @@ Back to the **[main page](../../)** of anvi'o programs and artifacts.
 
 ## Description
 
+This is a text file containing **the average coverage for each contig in each sample** that was in the <span class="artifact-n">[profile-db](/software/anvio/help/artifacts/profile-db)</span> and <span class="artifact-n">[contigs-db](/software/anvio/help/artifacts/contigs-db)</span> that you used when you ran <span class="artifact-n">[anvi-export-splits-and-coverages](/software/anvio/help/programs/anvi-export-splits-and-coverages)</span>. 
+
+This is a tab-delimited file where each row describes a specific contig and each column describes one of your samples. Each cell contains the average coverage of that contig in that sample. 
+
+This artifact is really only used when taking information out of anvi'o, so enjoy your coverage information :) 
+
+
 {:.notice}
-**No one has described this artifact yet** :/ If you would like to contribute by describing it, please see previous examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs/artifacts), and add a Markdown formatted file in that directory named "coverages-txt.md". Its contents will replace this sad text. THANK YOU!
+Edit [this file](https://github.com/merenlab/anvio/tree/master/anvio/docs/artifacts/coverages-txt.md) to update this information.
 

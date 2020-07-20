@@ -23,7 +23,7 @@ __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 __provides__ = ["coverages-txt"]
-__requires__ = ["bam-file"]
+__requires__ = ["bam-file", "collection-txt",]
 __description__ = ("Get nucleotide-level, contig-level, or bin-level coverage values from a BAM file")
 
 
