@@ -507,5 +507,11 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False
+    },
+    "blast-table": {
+        "name": "BLAST TABLE",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
     }
 }

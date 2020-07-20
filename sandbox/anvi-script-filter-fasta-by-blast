@@ -19,6 +19,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
+__provides__ = ["contigs-fasta"]
+__requires__ = ["contigs-fasta", "blast-table"]
 __description__ = "Filter FASTA file according to BLAST table (remove sequences with bad BLAST alignment)."
 
 
