@@ -980,18 +980,18 @@ class TRNASeqDataset:
     def calc_normalization_stats(self):
         self.progress.new("Calculating normalized tRNA statistics")
 
-        self.progress.update("For each trimmed sequence, counting the normalized sequences containing it")
+        self.progress.update("Counting the normalized sequences containing each trimmed sequence")
         normalized_count_dict = OrderedDict([(trimmed_seq.representative_id, 0) for trimmed_seq in self.trimmed_trna_seqs])
         for normalized_seq in self.normalized_trna_seqs:
-            for trimmed_seq in self.trimmed_trna_seqs:
+            for trimmed_seq in normalized_seq.trimmed_seqs:
                 normalized_count_dict[trimmed_seq.representative_id] += 1
         self.counts_of_normalized_seqs_containing_trimmed_seqs = [normalized_count for normalized_count in normalized_count_dict.values()]
 
         self.progress.update("Finding the \"multiplicity\" of each trimmed sequence among normalized sequences")
         multiplicity_dict = OrderedDict()
         for trimmed_seq, normalized_count_item in zip(self.trimmed_trna_seqs, normalized_count_dict.items()):
-            representative_id, normalized_count = normalized_count_item
-            multiplicity_dict[representative_id] = trimmed_seq.input_count * normalized_count
+            trimmed_representative_id, normalized_count = normalized_count_item
+            multiplicity_dict[trimmed_representative_id] = trimmed_seq.input_count * normalized_count
         self.multiplicities_of_trimmed_seqs_among_normalized_seqs = [multiplicity for multiplicity in multiplicity_dict.values()]
 
         self.progress.update("Finding the \"average multiplicity\" of each normalized sequence")
@@ -999,7 +999,7 @@ class TRNASeqDataset:
             multiplicity_sum = 0
             for trimmed_seq in normalized_seq.trimmed_seqs:
                 multiplicity_sum += multiplicity_dict[trimmed_seq.representative_id]
-            self.average_multiplicities_of_normalized_seqs.append(round(multiplicity_sum / len(normalized_seq.trimmed_seqs), 1))
+            self.average_multiplicities_of_normalized_seqs.append(round(multiplicity_sum / normalized_seq.input_count, 1))
 
         self.progress.end()
 
