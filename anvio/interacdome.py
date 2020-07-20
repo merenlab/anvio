@@ -20,6 +20,7 @@ import anvio
 import anvio.pfam as pfam
 import anvio.dbops as dbops
 import anvio.utils as utils
+import anvio.tables as tables
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
@@ -138,6 +139,12 @@ class InteracdomeSuper(Pfam):
 
         self.filter_hits()
         self.attribute_binding_frequencies()
+
+        if self.bind_freq.empty:
+            self.run.warning("There are 0 HMM hits, so there is nothing to do :( Binding frequencies were not "
+                             "added to your database", header="Oh no...")
+        else:
+            self.store()
 
         if anvio.DEBUG:
             self.run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to "
@@ -260,6 +267,8 @@ class InteracdomeSuper(Pfam):
             'data_value': [],
         }
 
+        self.run.warning("", header="InteracDome Results", lc='green')
+
         self.progress.new('Matching binding frequencies to residues', progress_total_items=len(self.hmm_out.ali_info))
 
         for i, gene_callers_id in enumerate(self.hmm_out.ali_info):
@@ -308,6 +317,26 @@ class InteracdomeSuper(Pfam):
         self.bind_freq['data_type'] = 'float'
         self.bind_freq['data_group'] = 'Interacdome'
 
+        self.progress.end()
+
+
+
+    def store(self):
+        self.progress.new("Storing binding frequencies in contigs database")
+        self.progress.update("...")
+
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
+
+        # This is horrible. But we hijacked the miscdata framework to create
+        # amino_acid_addtional_data table in the contigs DB, so we must live with the consequences
+        self.bind_freq['item_name'] = self.bind_freq['gene_callers_id'].astype(str) + ':' + self.bind_freq['codon_order_in_gene'].astype(str)
+
+        contigs_db.db.insert_rows_from_dataframe(
+            tables.amino_acid_additional_data_table_name,
+            self.bind_freq[tables.amino_acid_additional_data_table_structure]
+        )
+
+        contigs_db.disconnect()
         self.progress.end()
 
 
