@@ -191,9 +191,9 @@ class NormalizedSeq:
         self.count_of_input_seqs_mapped_to_fiveprime_end = count_of_input_seqs_mapped_to_fiveprime_end
 
 
-class AgglomeratedSeq:
-    def __init__(self, normalized_seqs):
-        self.normalized_seqs = normalized_seqs
+# class AgglomeratedSeq:
+#     def __init__(self, normalized_seqs):
+#         self.normalized_seqs = normalized_seqs
 
 
 class TRNASeqDataset:
@@ -238,7 +238,9 @@ class TRNASeqDataset:
 
         self.trnaseq_db_path = os.path.join(self.output_dir, self.project_name + "-TRNASEQ.db")
 
-        self.profiled_unique_seq_count = 0
+        self.profiled_unique_seq_count = 0 # tracks reads placed in profile input queue
+        self.retrieved_profile_count = 0 # tracks reads retrieved from profile output queue
+
         self.trna_count = 0
         self.unique_trna_count = 0
         self.trna_containing_anticodon_count = 0
@@ -387,14 +389,13 @@ class TRNASeqDataset:
         trnaseq_unconserved_table_entries = []
         trnaseq_unpaired_table_entries = []
 
-        retrieved_profile_count = 0
         unique_trna_seqs = []
         unique_nontrna_seqs = []
 
-        while retrieved_profile_count < self.profiled_unique_seq_count:
+        while self.retrieved_profile_count < self.profiled_unique_seq_count:
             # Retrieve profiles from the output queue and write tRNA profiles to the database.
             trna_profile = output_queue.get()
-            retrieved_profile_count += 1
+            self.retrieved_profile_count += 1
 
             output_id = trna_profile.name
             output_seq = trna_profile.input_seq
