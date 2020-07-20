@@ -1467,6 +1467,28 @@ D = {
              'type': str,
              'help': "Variability engine. The default is '%(default)s'."}
                 ),
+    'min-binding-frequency': (
+            ['-m', '--min-binding-frequency'],
+            {'metavar': 'FLOAT',
+             'default': 0.0,
+             'type': float,
+             'help': "InteracDome has associated binding 'frequencies', which can be considered scores between 0 to 1 that "
+                     "quantify how likely a position is to be involved in binding. Use this parameter to filter out low frequencies. "
+                     "The default is %(default)f."}
+                ),
+    'information-content-cutoff': (
+            ['-t', '--information-content-cutoff'],
+            {'metavar': 'FLOAT',
+             'default': 4.0,
+             'type': float,
+             'help': "This parameter can be used to control for low-quality domain hits. Each domain is composed of positions (match states) "
+                     "with varying degrees of conservancy, which can be quantified with information content (IC). High IC means highly conserved. "
+                     "For example, IC = 4 corresponds to 95%% of the members of the Pfam sharing the same amino acid at that position. "
+                     "By default, anvi'o demands that for an alignment of a user's gene with a Pfam HMM, the gene sequence must match with the "
+                     "consensus amino acid of each match state that has IC > %(default)f. For context, it is common for a Pfam to not even have a "
+                     "position with an IC > 4, so these represent truly very conserved positions. You can modify this with this parameter. For example, "
+                     "if you think this is dumb, you can set this to 10000, and then no domain hits will be removed for this reason."}
+                ),
     'driver': (
             ['--driver'],
             {'metavar': 'DRIVER',
