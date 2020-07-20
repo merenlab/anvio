@@ -11,16 +11,18 @@ Exports
 
 # todo check args of everything!
 
+import os
 import abc
 import anvio
-import os
 
+from anvio import utils
 from anvio import fastalib
 from anvio import filesnpaths
-from anvio import utils
+
 from anvio.errors import ConfigError, CommandError
 from collections import UserDict
 from threading import Thread
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
@@ -417,10 +419,10 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         # Check that the proper keyword arguments are given.
         for key in ['peptide_path', 'gff_path']:
             if key not in self.output_file_split_paths:
-                ValueError(f"self.output_file_split_paths should have the key '{key}', but it is missing.")
+                raise ValueError(f"self.output_file_split_paths should have the key '{key}', but it is missing.")
 
-            # Sanity check for lengths
-            assert len(self.input_file_splits) == len(self.output_file_split_paths[key])
+            if not len(self.input_file_splits) == len(self.output_file_split_paths[key]):
+                raise ConfigError("The number input files do not match to the number of files expected :/")
 
         for i in range(len(self.input_file_splits)):
             command = ['prodigal',
