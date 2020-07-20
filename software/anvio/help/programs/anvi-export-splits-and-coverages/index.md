@@ -31,8 +31,21 @@ See **[program help menu](../../../vignette#anvi-export-splits-and-coverages)** 
 ## Usage
 
 
+This program **gives you the coverage information in your <span class="artifact-n">[profile-db](/software/anvio/help/artifacts/profile-db)</span> as external files**. Basically, if you want to take that information in your <span class="artifact-n">[profile-db](/software/anvio/help/artifacts/profile-db)</span> out of anvio, this is for you. 
+
+Once you input your <span class="artifact-n">[profile-db](/software/anvio/help/artifacts/profile-db)</span> and the <span class="artifact-n">[contigs-db](/software/anvio/help/artifacts/contigs-db)</span> you used to generate it, it will create a <span class="artifact-n">[contigs-fasta](/software/anvio/help/artifacts/contigs-fasta)</span> that lists your contigs for you, as well as a <span class="artifact-n">[coverages-txt](/software/anvio/help/artifacts/coverages-txt)</span>, which describes coverage information. 
+
+*Note: if your coverages are skewed by outlier positions, consider using Q2Q3-coverages instead.*
+
+### Contigs or splits?
+
+*Wondering what the difference is? Check out [our vocab page](http://merenlab.org/vocabulary/#split).*
+
+By default, this program will give you the sequences of your splits, but will look at coverage data in terms of the parent contig. If you want to get coverage information for your splits, use `--splits-mode`. Alternatively, you can ask the program to `--report-contigs` to look at contig sequences instead. 
+
+
 {:.notice}
-**No one has described the usage of this program** :/ If you would like to contribute, please see previous examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs), and feel free to add a Markdown formatted file in that directory named "anvi-export-splits-and-coverages.md". For a template, you can use the markdown file for `anvi-gen-contigs-database`. THANK YOU!
+Edit [this file](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs/anvi-export-splits-and-coverages.md) to update this information.
 
 
 ## Additional Resources

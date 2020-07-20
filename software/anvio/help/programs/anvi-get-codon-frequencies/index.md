@@ -31,8 +31,13 @@ See **[program help menu](../../../vignette#anvi-get-codon-frequencies)** or go 
 ## Usage
 
 
+This program **calculates the frequency of each codon and amino acid in your <span class="artifact-n">[contigs-db](/software/anvio/help/artifacts/contigs-db)</span>**. 
+
+
+
+
 {:.notice}
-**No one has described the usage of this program** :/ If you would like to contribute, please see previous examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs), and feel free to add a Markdown formatted file in that directory named "anvi-get-codon-frequencies.md". For a template, you can use the markdown file for `anvi-gen-contigs-database`. THANK YOU!
+Edit [this file](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs/anvi-get-codon-frequencies.md) to update this information.
 
 
 ## Additional Resources

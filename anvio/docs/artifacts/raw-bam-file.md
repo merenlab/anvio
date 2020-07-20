@@ -16,4 +16,4 @@ then you would still need to index `Lake_Michigan_Sample_2.bam`.
 
 ### How do you index a BAM file?
 
-You can either do this directly using samtools, or you can just run the anvi'o program %(anvi-init-bam)s. 
+You can either do this directly using samtools, or you can just run the anvi'o program %(anvi-init-bam)s (which uses samtools for you). 

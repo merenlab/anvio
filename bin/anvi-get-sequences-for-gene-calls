@@ -24,6 +24,7 @@ __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['contigs-db',]
 __provides__ = ['genes-fasta',]
 __description__ = "A script to get back sequences for gene calls"
+__resources__ = [("A tutorial on getting gene-level taxonomy for a contigs-db", "http://merenlab.org/2016/06/18/importing-taxonomy/")]
 
 
 run = terminal.Run()

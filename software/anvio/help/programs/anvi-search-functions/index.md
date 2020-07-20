@@ -8,7 +8,7 @@ image:
   display: true
 ---
 
-Search functions in an anvi&#x27;o contigs database or genomes storage. Basically, this program searches for one or more search terms you define in functional annotations of genes in an anvi&#x27;o contigs database, and generates multiple reports. The simpler report (which also is the default one) simply tells you which contigs contain genes with functions matching to serach terms you used. This file is only useful to quickly highlight matching contigs in the interface by providing it to the anvi-interactive with the `--additional-layer` parameter. You can also request a much more comprehensive report, which gives you anything you might need to know, including the matching gene caller id, functional annotation source, and full function name for each hit and serach term.
+Search functions in an anvi&#x27;o contigs database or genomes storage. Basically, this program searches for one or more search terms you define in functional annotations of genes in an anvi&#x27;o contigs database, and generates multiple reports. The default report simply tells you which contigs contain genes with functions matching to serach terms you used, useful for viewing in the interface. You can also request a much more comprehensive report, which gives you anything you might need to know for each hit and serach term.
 
 See **[program help menu](../../../vignette#anvi-search-functions)** or go back to the **[main page](../../)** of anvi'o programs and artifacts.
 
@@ -31,8 +31,43 @@ See **[program help menu](../../../vignette#anvi-search-functions)** or go back 
 ## Usage
 
 
+This program **searches for keywords in the function annotations of your database.** 
+
+You can use this program to look for specific functon keywords in a <span class="artifact-n">[contigs-db](/software/anvio/help/artifacts/contigs-db)</span>, <span class="artifact-n">[genomes-storage-db](/software/anvio/help/artifacts/genomes-storage-db)</span> or <span class="artifact-n">[pan-db](/software/anvio/help/artifacts/pan-db)</span>. For example, say you wanted your <span class="artifact-n">[contigs-db](/software/anvio/help/artifacts/contigs-db)</span> to search for genes that encoded some type of kinase. You could call 
+
+<div class="codeblock" markdown="1">
+anvi&#45;search&#45;functions &#45;c <span class="artifact&#45;n">[contigs&#45;db](/software/anvio/help/artifacts/contigs&#45;db)</span> \
+            &#45;&#45;search&#45;terms kinase
+</div>
+
+By default, the output will be a fairly barren <span class="artifact-n">[functions-txt](/software/anvio/help/artifacts/functions-txt)</span>, only telling you which contigs contain genes that matched your search. This will be most helpful as an additional layer in the anvi'o interactive interface, so you can quickly see where the kinase-encoding genes are in the genome. To do this, run anvi-interactive with the `--aditional-layer` parameter with the <span class="artifact-n">[functions-txt](/software/anvio/help/artifacts/functions-txt)</span>. 
+
+However, you can also request a much more comprehensive output that contains much more information, including the matching gene's caller id, functional annotation source and full function name. 
+
+For example, to run the same search as above, but with a more comprehensive output, you could call 
+
+<div class="codeblock" markdown="1">
+anvi&#45;search&#45;functions &#45;c <span class="artifact&#45;n">[contigs&#45;db](/software/anvio/help/artifacts/contigs&#45;db)</span> \
+            &#45;&#45;search&#45;terms kinase
+            &#45;&#45;full&#45;report kinase_information.txt
+            &#45;&#45;include&#45;sequences
+            &#45;&#45;verbose
+</div>
+
+Following this run, the file `kinase_information.txt` will contain comprehensive information about the matching genes, including their sequences. 
+
+You can also search for multiple terms at the same time, or for terms from only specific annotation sources. For example, if you only wanted Pfam hits with functions related to kinases or phosphatases, you could call 
+
+<div class="codeblock" markdown="1">
+anvi&#45;search&#45;functions &#45;c <span class="artifact&#45;n">[contigs&#45;db](/software/anvio/help/artifacts/contigs&#45;db)</span> \
+            &#45;&#45;search&#45;terms kinase,phosphatase
+            &#45;&#45;annotation&#45;sources Pfam
+            &#45;&#45;full&#45;report kinase_phosphatase_information.txt
+</div>
+
+
 {:.notice}
-**No one has described the usage of this program** :/ If you would like to contribute, please see previous examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs), and feel free to add a Markdown formatted file in that directory named "anvi-search-functions.md". For a template, you can use the markdown file for `anvi-gen-contigs-database`. THANK YOU!
+Edit [this file](https://github.com/merenlab/anvio/tree/master/anvio/docs/programs/anvi-search-functions.md) to update this information.
 
 
 ## Additional Resources

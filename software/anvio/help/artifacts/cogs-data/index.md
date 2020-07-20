@@ -30,6 +30,11 @@ Back to the **[main page](../../)** of anvi'o programs and artifacts.
 
 ## Description
 
+This basically stores **a local copy of the data from the NCBI [COGs database](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC102395/) for function annotation.** 
+
+It is required to run <span class="artifact-n">[anvi-run-ncbi-cogs](/software/anvio/help/programs/anvi-run-ncbi-cogs)</span> and is set up on your computer by the program <span class="artifact-n">[anvi-setup-ncbi-cogs](/software/anvio/help/programs/anvi-setup-ncbi-cogs)</span>. 
+
+
 {:.notice}
-**No one has described this artifact yet** :/ If you would like to contribute by describing it, please see previous examples [here](https://github.com/merenlab/anvio/tree/master/anvio/docs/artifacts), and add a Markdown formatted file in that directory named "cogs-data.md". Its contents will replace this sad text. THANK YOU!
+Edit [this file](https://github.com/merenlab/anvio/tree/master/anvio/docs/artifacts/cogs-data.md) to update this information.
 

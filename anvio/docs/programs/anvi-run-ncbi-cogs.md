@@ -1,4 +1,4 @@
-This program **associates genes in your %(contigs-db)s with functions using NCBI's [COGs database](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC102395/).**
+This program **associates genes in your %(contigs-db)s with functions using NCBI's [Clusters of Orthologus Groups (COGs) database](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC102395/).**
 
 Before you run this program, you'll have to set up the COGs database on your computer with the program %(anvi-setup-ncbi-cogs)s.  
 

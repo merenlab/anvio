@@ -2,7 +2,7 @@
   "graph": [],
   "nodes": [
     {
-      "size": 1,
+      "size": 2,
       "score": 0.5,
       "color": "#00AA00",
       "id": "collection",
@@ -38,7 +38,7 @@
       "type": "DB"
     },
     {
-      "size": 4,
+      "size": 5,
       "score": 0.1,
       "color": "#AAAA00",
       "id": "anvi-cluster-contigs",
@@ -50,6 +50,10 @@
     {
       "source": 4,
       "target": 0
+    },
+    {
+      "target": 4,
+      "source": 0
     },
     {
       "source": 4,
