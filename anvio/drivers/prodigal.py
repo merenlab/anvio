@@ -50,6 +50,7 @@ class Prodigal:
 
         self.check_version()
 
+
     def __parser_1(self, defline):
         """parses this:
 
@@ -126,8 +127,20 @@ class Prodigal:
                          "properly credit their work.", lc='green', header="CITATION")
 
         self.progress.new('Processing')
-        self.progress.update('Identifying ORFs using %s' % (
-            ('%d threads.' % self.num_threads) if self.num_threads > 1 else 'a single thread (boo).'))
+        self.progress.update(f"Identifying ORFs using {terminal.pluralize('thread', self.num_threads)}.")
+
+        # if more threads assigned to gene calling than the number of sequences in the FASTA file,
+        # it can cause issues downstream, and we should set the number of threads accordingly.
+        num_sequences_in_fasta_file = utils.get_num_sequences_in_fasta(fasta_file_path)
+        if num_sequences_in_fasta_file < self.num_threads:
+            self.progress.reset()
+            self.run.warning(f"Even though you set the number of threads to {self.num_threads}, your FASTA file contains only "
+                             f"{terminal.pluralize('sequence', num_sequences_in_fasta_file)}. "
+                             f"To avoid any hiccups later, anvi'o will set the number of threads to match the number of "
+                             f"sequences in your FASTA (who would've thought a perfect assembly can have a downside?).")
+            self.num_threads = num_sequences_in_fasta_file
+
+            self.progress.update(f"Identifying ORFs using {terminal.pluralize('thread', self.num_threads)}")
 
         # Set up the prodigal runner.
         collated_output_file_paths = {'gff_path': self.genes_in_contigs,
