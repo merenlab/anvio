@@ -79,18 +79,20 @@ class TrimmedSeq:
         self.input_with_extra_fiveprime_count = sum([len(unique_seq.input_ids) if unique_seq.extra_fiveprime_length else 0
                                                      for unique_seq in self.unique_seqs])
 
-
         # The representative ID is chosen as follows:
         # 1. Most abundant full-length tRNA (no extra 5' bases), ignoring acceptor sequence
         # 2. Most abundant longer-than-full-length tRNA
         # 3. Most abundant fragmentary tRNA
-        unique_seqs = sorted(self.unique_seqs, key=lambda unique_seq: (-unique_seq.extra_fiveprime_length, -len(unique_seq.input_ids)))
+        # Sort such that the first sequence is the most abundant longest and the last is the least abundant shortest.
+        unique_seqs = sorted(self.unique_seqs, key=lambda unique_seq: (-unique_seq.extra_fiveprime_length, -unique_seq.input_count))
 
         if unique_seqs[0].extra_fiveprime_length > 0:
             # If there is also a unique sequence that was ultimately trimmed down
             # to the same sequence as the sequence with extra 5' bases, it must be a full-length sequence.
             if unique_seqs[-1].extra_fiveprime_length == 0:
-                representative_id = unique_seqs[-1].representative_id
+                # Sort such that the last sequence is the most abundant shortest.
+                representative_id = sorted(
+                    unique_seqs, key=lambda unique_seq: (-unique_seq.extra_fiveprime_length, unique_seq.input_count))[-1].representative_id
             else:
                 representative_id = unique_seqs[0].representative_id
         else:
