@@ -49,6 +49,7 @@ class InteracdomeSuper(Pfam):
 
         self.run = run
         self.progress = progress
+        self.run.warning("", header='INITIALIZATION', lc='green')
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
@@ -75,7 +76,7 @@ class InteracdomeSuper(Pfam):
         self.run.warning("Anvi'o will use 'InteracDome' by Kobren and Singh (DOI: 10.1093/nar/gky1224) to attribute binding frequencies. "
                          "If you publish your findings, please do not forget to properly credit their work.", lc='green', header="CITATION")
 
-        # This dictionary is populated and stored as entries in `amino_acid_additonal_data`
+        # This dictionary is populated and stored as entries in `amino_acid_additional_data`
         self.bind_freq = {}
 
 
@@ -135,6 +136,7 @@ class InteracdomeSuper(Pfam):
             return
 
         self.map_binding_frequencies_to_hmms()
+        self.attribute_binding_frequencies()
 
         if anvio.DEBUG:
             self.run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to "
@@ -147,13 +149,12 @@ class InteracdomeSuper(Pfam):
             hmmer.clean_tmp_dirs()
 
 
-    def map_binding_frequencies_to_hmms(self):
+    def attribute_binding_frequencies(self):
         """Populate self.bind_freq dict
 
         Notes
         =====
         - Must have self.hmm_out (see self.process for example)
-        - FIXME assumes all hits for a gene are non-overlapping
         """
 
         self.bind_freq = {
@@ -171,8 +172,6 @@ class InteracdomeSuper(Pfam):
                 self.progress.increment(i)
                 self.progress.update('%d/%d done' % (i, len(self.hmm_out.ali_info)))
 
-            hit_info = self.hmm_out.dom_hits[self.hmm_out.dom_hits['corresponding_gene_call'] == gene_callers_id]
-
             for pfam_id, dom_id in self.hmm_out.ali_info[gene_callers_id]:
 
                 if pfam_id not in self.interacdome_table.bind_freqs:
@@ -183,18 +182,18 @@ class InteracdomeSuper(Pfam):
                 ali = self.hmm_out.ali_info[gene_callers_id][(pfam_id, dom_id)]
 
                 for ligand, freqs in self.interacdome_table.bind_freqs[pfam_id].items():
-                    # ali['hmm'] is the 0-indexed positions (match states) in the HMM profile that
+                    # ali['hmm_positions'] is the 0-indexed positions (match states) in the HMM profile that
                     # aligned to the gene sequence. Hence, the fancy-indexing below subsets freqs to
                     # this subset of match states.
-                    attributed_freqs = freqs[ali['hmm']]
+                    attributed_freqs = freqs[ali['hmm_positions'].values]
 
-                    # attributed_freqs and ali['seq] are now in 1 to 1 correspondence. I.e.
-                    # dict(zip(ali['seq'], attributed_freqs)) is a dictionary where keys are
+                    # attributed_freqs and ali['seq_positions'] are now in 1 to 1 correspondence, i.e.
+                    # dict(zip(ali['seq_positions'], attributed_freqs)) is a dictionary where keys are
                     # codon_orders and attributed freqs are binding frequencies.
 
                     # Many of these attributed binding frequenices are 0. We do not bother reporting
                     # these, so we filter them out
-                    codon_orders = ali['seq'][attributed_freqs > 0]
+                    codon_orders = ali['seq_positions'].values[attributed_freqs > 0]
                     attributed_freqs = attributed_freqs[attributed_freqs > 0]
 
                     # Populate binding frequencies for this ligand/gene combo
@@ -213,7 +212,7 @@ class InteracdomeSuper(Pfam):
         self.bind_freq['data_type'] = 'float'
         self.bind_freq['data_group'] = 'Interacdome'
 
-        import ipdb; ipdb.set_trace()
+        self.progress.end()
 
 
 class InteracdomeTableData(object):
