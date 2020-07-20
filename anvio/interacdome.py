@@ -54,6 +54,7 @@ class InteracdomeSuper(Pfam):
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
         self.interacdome_data_dir = A('interacdome_data_dir', null) or constants.default_interacdome_data_path
+        self.information_content_cutoff = A('information_content_cutoff', null) or 4
 
         self.hmm_filepath = os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm')
 
@@ -135,7 +136,7 @@ class InteracdomeSuper(Pfam):
             hmmer.clean_tmp_dirs()
             return
 
-        self.map_binding_frequencies_to_hmms()
+        self.filter_hits()
         self.attribute_binding_frequencies()
 
         if anvio.DEBUG:
@@ -147,6 +148,101 @@ class InteracdomeSuper(Pfam):
                                  "like to keep it for testing purposes)", nl_before=1, nl_after=1)
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
+
+
+    def filter_hits(self):
+        """Filter out hits that do not pass criteria
+
+        Removes hits from self.hmm_out.dom_hits and self.self.hmm_out.ali_info
+        """
+
+        num_hits = self.hmm_out.dom_hits.shape[0]
+        self.progress.new('Filtering HMM hits', progress_total_items=num_hits)
+
+        # lists to remove hits from self.hmm_out.dom_hits
+        # each holds 3 length tuples (gene_callers_id, pfam_id, domain_id)
+        no_binding_freqs = []
+        conserved_match_states_disagree = []
+        indices_to_keep = []
+
+        for i, row in self.hmm_out.dom_hits.iterrows():
+            pfam_id, gene_callers_id, dom_id = row['pfam_id'], row['corresponding_gene_call'], row['domain']
+
+            if i % 100 == 0:
+                self.progress.increment(i)
+                self.progress.update('%d/%d processed' % (i, num_hits))
+
+            if pfam_id not in self.interacdome_table.bind_freqs:
+                # pfam hit to gene, but has no binding_frequency data
+                no_binding_freqs.append((gene_callers_id, pfam_id, dom_id))
+                indices_to_keep.append(False)
+                continue
+
+            if not self.conserved_positions_match(row):
+                # gene sequence did not match the match state consensus values in conserved regions
+                conserved_match_states_disagree.append((gene_callers_id, pfam_id, dom_id))
+                indices_to_keep.append(False)
+                continue
+
+            indices_to_keep.append(True)
+
+        self.progress.increment(len(self.hmm_out.ali_info))
+        self.progress.reset()
+
+        self.run.info("filtered hits (no Interacdome data)", len(no_binding_freqs))
+        self.run.info("filtered hits (disagrees with conserved match states)", len(conserved_match_states_disagree))
+
+        hits_to_delete = no_binding_freqs + conserved_match_states_disagree
+        if not len(hits_to_delete):
+            self.progress.end()
+            return
+
+        self.progress.update("Removing above hits from data structures")
+
+        self.hmm_out.dom_hits = self.hmm_out.dom_hits.loc[indices_to_keep, :]
+        for gene_callers_id, pfam_id, dom_id in hits_to_delete:
+            del self.hmm_out.ali_info[gene_callers_id][(pfam_id, dom_id)]
+
+        self.progress.end()
+
+
+    def conserved_positions_match(self, dom_hit):
+        """Returns True if gene sequence matches the consensus of conserved HMM match states
+
+        Conserved is defined as having information content >= self.information_content_cutoff
+
+        Parameters
+        ==========
+        dom_hit : pandas Series
+            A row from self.hmm_out.dom_hits
+        """
+
+        pfam_id, gene_callers_id, dom_id = dom_hit['pfam_id'], dom_hit['corresponding_gene_call'], dom_hit['domain']
+
+        # Match states with information content > self.information_content_cutoff (conserved)
+        match_states = self.hmms.data[pfam_id]['MATCH_STATES']
+
+        conserved = match_states[match_states['IC'] >= self.information_content_cutoff]
+        conserved = conserved[(conserved.index >= dom_hit['hmm_start']) & (conserved.index <= dom_hit['hmm_stop'])]
+
+        if conserved.empty:
+            # There are no conserved positions
+            return True
+
+        ali = self.hmm_out.ali_info[gene_callers_id][(pfam_id, dom_id)]
+
+        conserved_pos_has_partner = [cons in ali['hmm_positions'].values for cons in conserved.index]
+        if not all(conserved_pos_has_partner):
+            # Some of the conserved positions had a gap in the sequence, and therefore do not match
+            return False
+
+        ali_conserved = ali.loc[ali['hmm_positions'].isin(conserved.index), :]
+        conserved_pos_matches = ali_conserved['hmm'].values == ali_conserved['seq'].values
+        if not all(conserved_pos_matches):
+            # Some of the conserved positions are different in the sequence to the consensus
+            return False
+
+        return True
 
 
     def attribute_binding_frequencies(self):
