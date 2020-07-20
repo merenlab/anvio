@@ -299,15 +299,7 @@ function display_nucleotides() {
 
   var show_AAs = false;
   geneParser["data"].forEach(function(gene){
-    var left_ep, right_ep;
-    if(gene.direction == "f") {
-      left_ep = gene.start_in_split;
-      right_ep = gene.stop_in_split;
-    } else {
-      left_ep = gene.stop_in_split;
-      right_ep = gene.start_in_split;
-    }
-    if(left_ep < end-2 && right_ep > start+2) show_AAs = true;
+    if(gene.start_in_split < end-2 && gene.stop_in_split > start+2) show_AAs = true;
   });
 
   if(show_AAs) {
@@ -335,30 +327,26 @@ function display_nucleotides() {
     var aa_string = "";
     var rect_x = 0;
     var textWidth = width/(end-start);
+    var ptr = start;
 
-    geneParser["data"].forEach(function(gene){
-      var left_ep, right_ep;;
-      if(gene.direction == "f") {
-        left_ep = gene.start_in_split;
-        right_ep = gene.stop_in_split;
-      } else {
-        left_ep = gene.stop_in_split;
-        right_ep = gene.start_in_split;
-      }
-      if(left_ep < end-2 && right_ep > start+2) {
-        aa_string = display_AA(left_ep, right_ep, gene.direction == "r");
+    geneParser["data"].sort((a,b) => a.start_in_split > b.start_in_split? 1 : -1).forEach(function(gene){
+      if(gene.start_in_split < end-2 && gene.stop_in_split > start+2) {
+        aa_string = display_AA(gene);
       }
     });
 
-    function display_AA(l, r, reverse) {
+    function display_AA(gene) {
+      var l = gene.start_in_split;
+      var r = gene.stop_in_split;
+
       var i;
-      if(start <= l) {
+      if(ptr <= l) {
         i = l;
-        aa_string += "\xa0".repeat(l-start);
-        rect_x += (l-start)*textWidth;
+        aa_string += "\xa0".repeat(l-ptr);
+        rect_x += (l-ptr)*textWidth;
       } else {
-        i = start;
-        var extra = 3 - ((start - l) % 3);
+        i = ptr;
+        var extra = 3 - ((ptr - l) % 3);
         if(extra < 3) {
           i += extra;
           aa_string += "\xa0".repeat(extra);
@@ -367,11 +355,16 @@ function display_nucleotides() {
       }
       var stop = Math.min(r, end);
       var rect_bg_dark = true;
-
       for (; i < stop-2; i+=3) {
-        var aa = (reverse ? codon_to_AA["" + sequence[i+2] + sequence[i+1] + sequence[i]]
+        var aa = (gene.direction == "r" ? codon_to_AA["" + sequence[i+2] + sequence[i+1] + sequence[i]]
                           : codon_to_AA["" + sequence[i] + sequence[i+1] + sequence[i+2]]);
-        aa_string = aa_string + (aa=="STP" ? aa : "\xa0" + aa + "\xa0");
+        if(aa == "STP") {
+          aa_string = aa_string + "STP";
+        } else if(typeof aa == "undefined") {
+          aa_string = aa_string + "\xa0-\xa0";
+        } else {
+          aa_string = aa_string + "\xa0" + aa + "\xa0";
+        }
         aa_sequence.append("rect")
                    .attr("height", contextSvg.select("#DNA_sequence")[0][0].getBBox().height + "px")
                    .attr("width", 3*textWidth)
@@ -381,6 +374,7 @@ function display_nucleotides() {
         rect_bg_dark = !rect_bg_dark;
         rect_x += 3*textWidth;
       }
+      ptr = i;
       return aa_string;
     }
 
