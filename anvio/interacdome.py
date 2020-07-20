@@ -319,6 +319,12 @@ class InteracdomeSuper(Pfam):
 
         self.progress.end()
 
+        self.run.info("Num genes with at least 1 binding score", self.bind_freq['gene_callers_id'].nunique())
+        self.run.info("Num positions with >0.00 binding scores", (self.bind_freq['data_value'] >= 0).sum())
+        self.run.info("Num positions with >0.25 binding scores", (self.bind_freq['data_value'] >= 0.25).sum())
+        self.run.info("Num positions with >0.50 binding scores", (self.bind_freq['data_value'] >= 0.50).sum())
+        self.run.info("Num positions with >0.75 binding scores", (self.bind_freq['data_value'] >= 0.75).sum())
+        self.run.info("Num positions with =1.00 binding score", (self.bind_freq['data_value'] == 1.00).sum())
 
 
     def store(self):
