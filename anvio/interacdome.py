@@ -132,36 +132,34 @@ class InteracDomeSuper(Pfam):
     def process(self):
         """Runs InteracDome."""
 
-        #tmp_directory_path = filesnpaths.get_temp_directory_path()
+        tmp_directory_path = filesnpaths.get_temp_directory_path()
 
-        ## export AA sequences for genes
-        #target_files_dict = {'AA:DOMAIN': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
-        #self.contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(
-        #    output_file_path=target_files_dict['AA:DOMAIN'],
-        #    simple_headers=True,
-        #    rna_alphabet=False,
-        #    report_aa_sequences=True,
-        #)
+        # export AA sequences for genes
+        target_files_dict = {'AA:DOMAIN': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
+        self.contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(
+            output_file_path=target_files_dict['AA:DOMAIN'],
+            simple_headers=True,
+            rna_alphabet=False,
+            report_aa_sequences=True,
+        )
 
-        ## run hmmer
-        #hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-        #hmm_hits_file = hmmer.run_hmmer(
-        #    source='InteracDome',
-        #    alphabet='AA',
-        #    context='DOMAIN',
-        #    kind=None,
-        #    domain=None,
-        #    num_genes_in_model=len(self.function_catalog),
-        #    hmm=self.hmm_filepath,
-        #    ref=None,
-        #    noise_cutoff_terms='--cut_ga',
-        #    desired_output='standard',
-        #    out_fmt='--domtblout',
-        #)
+        # run hmmer
+        hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
+        hmm_hits_file = hmmer.run_hmmer(
+            source='InteracDome',
+            alphabet='AA',
+            context='DOMAIN',
+            kind=None,
+            domain=None,
+            num_genes_in_model=len(self.function_catalog),
+            hmm=self.hmm_filepath,
+            ref=None,
+            noise_cutoff_terms='--cut_ga',
+            desired_output='standard',
+            out_fmt='--domtblout',
+        )
 
         self.run.warning("", header='HMMER results', lc='green')
-        # FIXME
-        hmm_hits_file = 'testing'
         self.hmm_out = parser_modules['search']['hmmer_std_output'](hmm_hits_file, context='interacdome')
 
         self.run.info('num total domain hits', self.hmm_out.dom_hits.shape[0])
