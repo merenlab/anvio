@@ -66,18 +66,26 @@ class HMMScan(Parser):
         Parser.__init__(self, 'HMMScan', [hmm_scan_hits_txt], files_expected, files_structure)
 
 
-    def get_search_results(self, noise_cutoff_dict = None):
+    def get_search_results(self, noise_cutoff_dict=None, return_bitscore_dict=False):
         """This function goes through the hits provided by `hmmscan` and generates an annotation dictionary with the relevant information about each hit.
 
         This function makes sure only hits with a high enough bit score make it into the annotation dictionary.
 
         Parameters
         ==========
-        noise_cutoff_dict    dictionary of noise cutoff terms; see setup_ko_dict in kofam.py for an example
+        noise_cutoff_dict : dictionary
+            dictionary of noise cutoff terms; see setup_ko_dict in kofam.py for an example
+
+        return_bitscore_dict : boolean
+            if True, this function will also return a dictionary of bitscores for each hit
 
         Returns
         =======
-        annotations_dict    dictionary of annotations
+        annotations_dict : dictionary
+            dictionary of annotations, one annotation per HMM hit, which provides information to be
+            stored in the gene functions table of a contigs database
+        bitscore_dict : dictionary
+            dictionary of bitscore information, one entry per HMM hit, including full and domain-level bitscore
         """
 
         annotations_dict = {}
