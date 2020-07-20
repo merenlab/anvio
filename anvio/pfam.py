@@ -388,7 +388,7 @@ class HMMProfile(object):
                     continue
 
                 if i % 100 == 0:
-                    self.progress.update('%d profiles processed' % i)
+                    self.progress.update('%d profiles loaded' % i)
                     self.progress.increment(increment_to=i)
 
                 profile = self.process_raw_profile(raw_profile)
@@ -598,7 +598,11 @@ class HMMProfile(object):
             profile['MATCH_STATES']['IC'].append(information_content)
 
         # Cast match state info as a dataframe
-        profile['MATCH_STATES'] = pd.DataFrame(profile['MATCH_STATES']).set_index('MATCH_STATE', drop=True)
+        profile['MATCH_STATES'] = pd.DataFrame(profile['MATCH_STATES'])
+
+        # We 0-index the match states because we are rebels
+        profile['MATCH_STATES']['MATCH_STATE'] -= 1
+        profile['MATCH_STATES'].set_index('MATCH_STATE', drop=True, inplace=True)
 
         return profile
 
