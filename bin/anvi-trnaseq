@@ -26,7 +26,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description=__description__)
 
-    groupA = parser.add_argument_group('MANDATORY', 'Let there be light.')
+    groupA = parser.add_argument_group('MANDATORY')
     groupA.add_argument(*anvio.A('fasta-file'),
                         **anvio.K('fasta-file',
                                   {'help': "A FASTA file of tRNA-seq reads. "
@@ -35,34 +35,12 @@ if __name__ == '__main__':
     groupA.add_argument(*anvio.A('project-name'), **anvio.K('project-name'))
     groupA.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'metavar':'TRNASEQ_DB_DIR'}))
 
-    groupB = parser.add_argument_group('OUTPUT', 'Control what comes out the other end.')
-    groupB.add_argument('--uniquing-report', default=False, action='store_true', dest='uniquing_report',
-                        help=("The first stage of tRNA sequence clustering "
-                              "is full-length dereplication, or \"uniquing,\". "
-                              "This flag generates a .txt file of the names of representative sequences "
-                              "and clustered sequences, and the membership counts of each cluster. "))
-    groupB.add_argument('--normalization-reports', default=False, action='store_true', dest='normalization_reports',
-                        help=("The second stage of tRNA sequence clustering "
-                              "is 5' and 3' normalization of tRNA and fragment (subsequence) dereplication. "
-                              "When mature tRNA is found in a cluster, "
-                              "it is used as the representative sequence of the cluster. "
-                              "tRNA fragments and pre-tRNA longer than mature tRNA become members of the cluster. "
-                              "When mature tRNA is not found in the cluster, "
-                              "the longest sequence is chosen as the representative sequence. "
-                              "The representative sequence has nucleotides 5' of mature tRNA "
-                              "and the 3' acceptor removed (CCA or a variant). "
-                              "This flag generates three .txt files. "
-                              "The first file relates the IDs of representative unique tRNA sequences "
-                              "with the 3' acceptor removed "
-                              "to the IDs of otherwise identical (normalized) sequences."
-                              "The second file relates the IDs of representative unique \"long\" tRNA sequences "
-                              "with 5' nucleotides and the 3' acceptor removed "
-                              "to the IDs of otherwise identical (normalized) sequences. "
-                              "The third file relates the IDs of fragment-dereplicated normalized sequences "
-                              "to the IDs of the clustered member sequences."))
-
-    groupC = parser.add_argument_group('CLUSTERING', 'Technical parameters for clustering.')
-    groupC.add_argument('--max-possible-alignments', type=int, default=50, dest='max_possible_alignments',
+    groupB = parser.add_argument_group('OTHERS')
+    groupB.add_argument(*anvio.A('description'), **anvio.K('description'))
+    groupB.add_argument(*anvio.A('skip-fasta-check'), **anvio.K('skip-fasta-check'))
+    groupB.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    groupB.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size', {'default': 50000}))
+    groupB.add_argument('--max-possible-alignments', type=int, default=50, dest='max_possible_alignments',
                         help=("The third stage of clustering, agglomerative clustering of modified sequences, "
                               "involves mapping representative sequences from the second stage against themselves "
                               "with one mismatch and no gaps allowed in alignments. "
@@ -72,12 +50,6 @@ if __name__ == '__main__':
                               "that decreases only marginally with more alignments. "
                               "Tinkering with this parameter by increasing its value "
                               "will slow down agglomerative clustering."))
-
-    groupD = parser.add_argument_group('OTHERS', 'For your convenience.')
-    groupD.add_argument(*anvio.A('description'), **anvio.K('description'))
-    groupD.add_argument(*anvio.A('skip-fasta-check'), **anvio.K('skip-fasta-check'))
-    groupD.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    groupD.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size', {'default': 50000}))
 
     args = anvio.get_args(parser)
     try:

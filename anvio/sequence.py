@@ -173,9 +173,9 @@ class SequenceDereplicator:
         Identical sequences are clustered, returning a list of tuples.
 
         If no extra sequence information (self.extra_list) is provided, the list format is:
-        cluster_list = [(sequence A, [member sequence 1 ID, member sequence 2 ID, ...]), (sequence B, [member IDs]), ...]
+        cluster_list = [(sequence A, [member sequence X ID, member sequence Y ID, ...]), (sequence B, [member IDs]), ...]
         If extra information is provided:
-        cluster_list = [(sequence A, [member sequence 1 ID, ...], [member sequence 1 extra info, ...]), ...]
+        cluster_list = [(sequence A, [member sequence X ID, ...], [member sequence X extra info, ...]), ...]
         """
 
         # Search for identical sequences of the same length.
@@ -221,9 +221,9 @@ class SequenceDereplicator:
         Two lists are returned, a cluster list and a cluster membership list.
 
         Here is the format of the cluster list when extra sequence information is not provided:
-        cluster_list = [(seed seq A ID, seed sequence A, [(member seq X ID, member seq X length), (member seq Y ID, member seq Y length), ...]), ...]
+        cluster_list = [(seed seq A ID, seed sequence A, [(member seq A ID, member seq A length), (member seq X ID, member seq X length), ...]), ...]
         Here is the format when it is provided:
-        cluster_list = [(seed seq A ID, seed sequence A, [(member seq X ID, member seq X length, member seq X extra info), ...]), ...]
+        cluster_list = [(seed seq A ID, seed sequence A, [(member seq A ID, member seq A length, member seq A extra info), ...]), ...]
 
         The membership list has an entry for each input sequence.
         Here is the format when extra sequence information is not provided:
@@ -265,8 +265,7 @@ class SequenceDereplicator:
             for inner_dict in prefix_dict.values():
                 for hashed_seq, parent_seq_list in inner_dict.items():
                     # Sort the list of IDs containing the prefix subsequence in descending order of sequence length.
-                    inner_dict[hashed_seq] = [seq_id for seq_id, seq_length
-                                            in sorted(parent_seq_list, key=lambda t: -t[1])]
+                    inner_dict[hashed_seq] = [seq_id for seq_id, seq_length in sorted(parent_seq_list, key=lambda t: -t[1])]
 
             return prefix_dict
 

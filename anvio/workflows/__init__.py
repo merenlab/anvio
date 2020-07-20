@@ -643,13 +643,13 @@ def get_workflow_module_dict():
     from anvio.workflows.metagenomics import MetagenomicsWorkflow
     from anvio.workflows.pangenomics import PangenomicsWorkflow
     from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
-    from anvio.workflows.tRNAseq import tRNASeqWorkflow
+    from anvio.workflows.trnaseq import TRNASeqWorkflow
 
     workflows_dict = {'contigs': ContigsDBWorkflow,
                       'metagenomics': MetagenomicsWorkflow,
                       'pangenomics': PangenomicsWorkflow,
                       'phylogenomics': PhylogenomicsWorkflow,
-                      'tRNAseq': tRNASeqWorkflow}
+                      'trnaseq': TRNASeqWorkflow}
 
     return workflows_dict
 
