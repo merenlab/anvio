@@ -17,7 +17,7 @@ anvi-interactive -p %(profile-db)s \
 
 For the central tree to display correctly, you'll need to have run hierarchical clustering at some point while making your profile database (either during %(anvi-merge)s, or, if this is a %(single-profile-db)s, while running %(anvi-profile)s). 
 
-You'll get lovely concentric circles, each filled with data that was contained in your databases and that you are now free to interact with. See the page for the %(interface)s for more information. 
+You'll get lovely concentric circles (or rectangles), each filled with data that was contained in your databases and that you are now free to interact with. See the page for the %(interactive)s for more information. 
 
 ### Running on a specific collection 
 
