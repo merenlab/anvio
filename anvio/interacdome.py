@@ -56,6 +56,7 @@ class InteracdomeSuper(Pfam):
         null = lambda x: x
         self.interacdome_data_dir = A('interacdome_data_dir', null) or constants.default_interacdome_data_path
         self.information_content_cutoff = A('information_content_cutoff', null) or 4
+        self.min_binding_frequency = A('min_binding_frequency', null) or 0.1
 
         self.hmm_filepath = os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm')
 
@@ -139,6 +140,7 @@ class InteracdomeSuper(Pfam):
 
         self.filter_hits()
         self.attribute_binding_frequencies()
+        self.filter_positions()
 
         if self.bind_freq.empty:
             self.run.warning("There are 0 HMM hits, so there is nothing to do :( Binding frequencies were not "
@@ -252,6 +254,38 @@ class InteracdomeSuper(Pfam):
         return True
 
 
+    def filter_positions(self):
+        """Filter out positions that do not pass criteria
+
+        Removes individual positions from self.bind_freq
+        """
+
+        self.run.info("Filter by minimum binding frequency", self.min_binding_frequency > 0, nl_before=1)
+
+        if not self.min_binding_frequency:
+            return
+
+        self.run.info("Minimum binding frequency", self.min_binding_frequency, nl_after=1)
+
+        self.progress.new('Filtering binding positions')
+        self.progress.update('...')
+
+        self.bind_freq = self.bind_freq[self.bind_freq['data_value'] >= self.min_binding_frequency]
+
+        self.progress.end()
+
+        total_entries = self.bind_freq['data_value'].shape[0]
+        self.run.info_single(f"(Post-filter) {total_entries} total positions with binding freqs", mc='cyan')
+        for i in np.arange(0, 1, 0.1):
+            lo_range, hi_range = i, i + 0.1
+            if hi_range == 1:
+                num = ((self.bind_freq['data_value'] >= lo_range) & (self.bind_freq['data_value'] <= hi_range)).sum()
+                self.run.info_single(f"positions binding freqs in range [{lo_range:.1f},{hi_range:.1f}]: {num}", level=2)
+            else:
+                num = ((self.bind_freq['data_value'] >= lo_range) & (self.bind_freq['data_value'] < hi_range)).sum()
+                self.run.info_single(f"positions binding freqs in range [{lo_range:.1f},{hi_range:.1f}): {num}", level=2)
+
+
     def attribute_binding_frequencies(self):
         """Populate self.bind_freq dict
 
@@ -319,12 +353,16 @@ class InteracdomeSuper(Pfam):
 
         self.progress.end()
 
-        self.run.info("Num genes with at least 1 binding score", self.bind_freq['gene_callers_id'].nunique())
-        self.run.info("Num positions with >0.00 binding scores", (self.bind_freq['data_value'] >= 0).sum())
-        self.run.info("Num positions with >0.25 binding scores", (self.bind_freq['data_value'] >= 0.25).sum())
-        self.run.info("Num positions with >0.50 binding scores", (self.bind_freq['data_value'] >= 0.50).sum())
-        self.run.info("Num positions with >0.75 binding scores", (self.bind_freq['data_value'] >= 0.75).sum())
-        self.run.info("Num positions with =1.00 binding score", (self.bind_freq['data_value'] == 1.00).sum())
+        total_entries = self.bind_freq['data_value'].shape[0]
+        self.run.info_single(f"(Pre-filter) {total_entries} total positions with binding freqs", mc='cyan')
+        for i in np.arange(0, 1, 0.1):
+            lo_range, hi_range = i, i + 0.1
+            if hi_range == 1:
+                num = ((self.bind_freq['data_value'] >= lo_range) & (self.bind_freq['data_value'] <= hi_range)).sum()
+                self.run.info_single(f"positions binding freqs in range [{lo_range:.1f},{hi_range:.1f}]: {num}", level=2)
+            else:
+                num = ((self.bind_freq['data_value'] >= lo_range) & (self.bind_freq['data_value'] < hi_range)).sum()
+                self.run.info_single(f"positions binding freqs in range [{lo_range:.1f},{hi_range:.1f}): {num}", level=2)
 
 
     def store(self):
