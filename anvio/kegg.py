@@ -1037,9 +1037,15 @@ class KeggRunHMMs(KeggContext):
         parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
         if self.keep_all_hits:
             run.info_single("All HMM hits will be kept regardless of score.")
-            search_results_dict = parser.get_search_results()
+            if self.log_bitscores:
+                search_results_dict, bitscore_dict = parser.get_search_results(return_bitscore_dict=True)
+            else:
+                search_results_dict = parser.get_search_results()
         else:
-            search_results_dict = parser.get_search_results(noise_cutoff_dict=self.ko_dict)
+            if self.log_bitscores:
+                search_results_dict, bitscore_dict = parser.get_search_results(noise_cutoff_dict=self.ko_dict, return_bitscore_dict=True)
+            else:
+                search_results_dict = parser.get_search_results(noise_cutoff_dict=self.ko_dict)
 
         # add functions and KEGG modules info to database
         functions_dict = {}
@@ -1098,6 +1104,11 @@ class KeggRunHMMs(KeggContext):
                              "a functional source.")
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
 
+        # If requested, store bit scores of each hit in file
+        if self.log_bitscores:
+            self.bitscore_log_file = os.path.splitext(os.path.basename(self.contigs_db_path)) + "_bitscores.txt"
+            anvio.utils.store_dict_as_TAB_delimited_file(bitscore_dict, self.bitscore_log_file, key_header='entry_id')
+            self.run.info("Bit score information file: ", self.bitscore_log_file)
 
         if anvio.DEBUG:
             run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up "
