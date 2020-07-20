@@ -1082,7 +1082,7 @@ class TableForNucleotideAdditionalData(AdditionalDataBaseClass):
                                                           example.split(':')[0]))
 
             if self.just_do_it:
-                self.run.warning(msg + ".. But since you asked anvi'o to keep its mouth shut, it removed the ones that "
+                self.run.warning(msg + "... But since you asked anvi'o to keep its mouth shut, it removed the ones that "
                                  "were not in your database from your input data, hoping that the rest of your "
                                  "probably very dubious operation will go just fine :/")
 
