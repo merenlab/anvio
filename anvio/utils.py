@@ -764,7 +764,7 @@ def split_fasta(input_file_path, parts=1, prefix=None, shuffle=False):
             which = seq_idx % parts
             output_fastas[which].write_id(seq_id)
             output_fastas[which].write_seq(seq)
-            
+
         for output_fasta in output_fastas:
             output_fasta.close()
     else:
@@ -1211,6 +1211,16 @@ def remove_sequences_with_only_gaps_from_fasta(input_file_path, output_file_path
             os.remove(output_file_path)
 
     return total_num_sequences, num_sequences_removed
+
+
+def get_num_sequences_in_fasta(input_file):
+    fasta = u.SequenceSource(input_file)
+    num_sequences = 0
+
+    while next(fasta):
+        num_sequences += 1
+
+    return num_sequences
 
 
 def get_all_ids_from_fasta(input_file):
