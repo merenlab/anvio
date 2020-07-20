@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""Setup and utilize Interacdome.
+"""Setup and utilize InteracDome.
 
-The Interacdome is from Mona Singh's group at Princeton. In brief, they attribute empirical
+The InteracDome is from Mona Singh's group at Princeton. In brief, they attribute empirical
 residue-by-residue binding frequencies for Pfam families. Only families with members that have
 crystallized structures with ligand co-complexes are used, since otherwise there are no binding
 frequencies to attribute. The assumption is that if a residue is close to a bound ligand, it gets a
@@ -45,11 +45,15 @@ __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 
 
-class InteracdomeSuper(Pfam):
+class InteracDomeSuper(Pfam):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
 
         self.run = run
         self.progress = progress
+
+        self.run.warning("Anvi'o will use 'InteracDome' by Kobren and Singh (DOI: 10.1093/nar/gky1224) to attribute binding frequencies. "
+                         "If you publish your findings, please do not forget to properly credit their work.", lc='green', header="CITATION")
+
         self.run.warning("", header='INITIALIZATION', lc='green')
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
@@ -57,11 +61,12 @@ class InteracdomeSuper(Pfam):
         self.interacdome_data_dir = A('interacdome_data_dir', null) or constants.default_interacdome_data_path
         self.information_content_cutoff = A('information_content_cutoff', null) or 4
         self.min_binding_frequency = A('min_binding_frequency', null) or 0.1
+        self.just_do_it = A('just_do_it', null)
 
         self.hmm_filepath = os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm')
 
         # Init the InteracDome table
-        self.interacdome_table = InteracdomeTableData(kind='representable', interacdome_data_dir=self.interacdome_data_dir)
+        self.interacdome_table = InteracDomeTableData(kind='representable', interacdome_data_dir=self.interacdome_data_dir)
         self.interacdome_table.load()
 
         # Init the Pfam baseclass
@@ -73,14 +78,44 @@ class InteracdomeSuper(Pfam):
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
         self.contigs_db = dbops.ContigsSuperclass(args)
 
+        self.potentially_remove_previous_interacdome_data()
+
         # Init the HMM profile
         self.hmms = pfam.HMMProfile(self.hmm_filepath)
 
-        self.run.warning("Anvi'o will use 'InteracDome' by Kobren and Singh (DOI: 10.1093/nar/gky1224) to attribute binding frequencies. "
-                         "If you publish your findings, please do not forget to properly credit their work.", lc='green', header="CITATION")
-
         # This dictionary is populated and stored as entries in `amino_acid_additional_data`
         self.bind_freq = {}
+
+
+    def potentially_remove_previous_interacdome_data(self):
+        database = dbops.ContigsDatabase(self.contigs_db_path)
+
+        entries = database.db.get_single_column_from_table(
+            tables.amino_acid_additional_data_table_name,
+            'data_group',
+            unique=True,
+            where_clause="data_group='InteracDome'"
+        )
+
+        if 'InteracDome' in entries:
+            if not self.just_do_it:
+                raise ConfigError("anvi-run-interacdome has already been run on this database. If you want to delete "
+                                  "this data and run anvi-run-interacdome again, provide the --just-do-it flag.")
+            else:
+                self.run.warning("You already have InteracDome data in this database, but since you provided the flag "
+                                 "--just-do-it, anvi'o is in the process of deleting this data, then things will be re-ran.")
+
+                self.progress.new("Deleting previous data")
+                self.progress.update('...')
+
+                database.db.remove_some_rows_from_table(
+                    tables.amino_acid_additional_data_table_name,
+                    where_clause='''data_group="InteracDome"'''
+                )
+
+                self.progress.end()
+
+        database.disconnect()
 
 
     def is_database_exists(self):
@@ -90,40 +125,43 @@ class InteracdomeSuper(Pfam):
             Pfam.is_database_exists(self)
         except ConfigError:
             raise ConfigError("It seems you do not have the associated Pfam data required to use "
-                              "Interacdome, please run 'anvi-setup-interacdome' to download it. Then "
+                              "InteracDome, please run 'anvi-setup-interacdome' to download it. Then "
                               "run this command again.")
 
 
     def process(self):
-        """Runs Interacdome."""
+        """Runs InteracDome."""
 
-        tmp_directory_path = filesnpaths.get_temp_directory_path()
+        #tmp_directory_path = filesnpaths.get_temp_directory_path()
 
-        # export AA sequences for genes
-        target_files_dict = {'AA:DOMAIN': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
-        self.contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(
-            output_file_path=target_files_dict['AA:DOMAIN'],
-            simple_headers=True,
-            rna_alphabet=False,
-            report_aa_sequences=True,
-        )
+        ## export AA sequences for genes
+        #target_files_dict = {'AA:DOMAIN': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
+        #self.contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(
+        #    output_file_path=target_files_dict['AA:DOMAIN'],
+        #    simple_headers=True,
+        #    rna_alphabet=False,
+        #    report_aa_sequences=True,
+        #)
 
-        # run hmmer
-        hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-        hmm_hits_file = hmmer.run_hmmer(
-            source='Interacdome',
-            alphabet='AA',
-            context='DOMAIN',
-            kind=None,
-            domain=None,
-            num_genes_in_model=len(self.function_catalog),
-            hmm=self.hmm_filepath,
-            ref=None,
-            noise_cutoff_terms='--cut_ga',
-            desired_output='standard',
-            out_fmt='--domtblout',
-        )
+        ## run hmmer
+        #hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
+        #hmm_hits_file = hmmer.run_hmmer(
+        #    source='InteracDome',
+        #    alphabet='AA',
+        #    context='DOMAIN',
+        #    kind=None,
+        #    domain=None,
+        #    num_genes_in_model=len(self.function_catalog),
+        #    hmm=self.hmm_filepath,
+        #    ref=None,
+        #    noise_cutoff_terms='--cut_ga',
+        #    desired_output='standard',
+        #    out_fmt='--domtblout',
+        #)
 
+        self.run.warning("", header='HMMER results', lc='green')
+        # FIXME
+        hmm_hits_file = 'testing'
         self.hmm_out = parser_modules['search']['hmmer_std_output'](hmm_hits_file, context='interacdome')
 
         self.run.info('num total domain hits', self.hmm_out.dom_hits.shape[0])
@@ -141,6 +179,8 @@ class InteracdomeSuper(Pfam):
         self.filter_hits()
         self.attribute_binding_frequencies()
         self.filter_positions()
+
+        self.bind_freq = self.bind_freq.sort_values(by=['gene_callers_id', 'data_key', 'codon_order_in_gene'])
 
         if self.bind_freq.empty:
             self.run.warning("There are 0 HMM hits, so there is nothing to do :( Binding frequencies were not "
@@ -198,7 +238,7 @@ class InteracdomeSuper(Pfam):
         self.progress.increment(len(self.hmm_out.ali_info))
         self.progress.reset()
 
-        self.run.info("filtered hits (no Interacdome data)", len(no_binding_freqs))
+        self.run.info("filtered hits (no InteracDome data)", len(no_binding_freqs))
         self.run.info("filtered hits (disagrees with conserved match states)", len(conserved_match_states_disagree))
 
         hits_to_delete = no_binding_freqs + conserved_match_states_disagree
@@ -349,7 +389,7 @@ class InteracdomeSuper(Pfam):
         self.progress.update('Averaging multi-hit positions')
         self.bind_freq = self.bind_freq.groupby(['gene_callers_id', 'data_key', 'codon_order_in_gene']).mean().reset_index()
         self.bind_freq['data_type'] = 'float'
-        self.bind_freq['data_group'] = 'Interacdome'
+        self.bind_freq['data_group'] = 'InteracDome'
 
         self.progress.end()
 
@@ -384,7 +424,7 @@ class InteracdomeSuper(Pfam):
         self.progress.end()
 
 
-class InteracdomeTableData(object):
+class InteracDomeTableData(object):
     """Manages query and access of the interacdome tabular data sets"""
 
     def __init__(self, kind='representable', interacdome_data_dir=None):
@@ -400,7 +440,7 @@ class InteracdomeTableData(object):
         }
 
         if kind not in self.files:
-            raise ConfigError("Unknown kind '%s' of Interacdome data. Known kinds: %s" \
+            raise ConfigError("Unknown kind '%s' of InteracDome data. Known kinds: %s" \
                               % (kind, ','.join(list(self.files.keys()))))
 
         self.filepath = self.files[self.kind]
@@ -424,7 +464,7 @@ class InteracdomeTableData(object):
             self.bind_freqs[pfam_id][row['ligand_type']] = np.array(row['binding_frequencies'].split(',')).astype(float)
 
 
-class InteracdomeSetup(object):
+class InteracDomeSetup(object):
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         """Setup a Pfam database for anvi'o
 
@@ -446,17 +486,17 @@ class InteracdomeSetup(object):
         }
 
         if self.interacdome_data_dir and args.reset:
-            raise ConfigError("You are attempting to run Interacdome setup on a non-default data directory (%s) using the --reset flag. "
+            raise ConfigError("You are attempting to run InteracDome setup on a non-default data directory (%s) using the --reset flag. "
                               "To avoid automatically deleting a directory that may be important to you, anvi'o refuses to reset "
                               "directories that have been specified with --interacdome-data-dir. If you really want to get rid of this "
-                              "directory and regenerate it with Interacdome data inside, then please remove the directory yourself using "
+                              "directory and regenerate it with InteracDome data inside, then please remove the directory yourself using "
                               "a command like `rm -r %s`. We are sorry to make you go through this extra trouble, but it really is "
                               "the safest way to handle things." % (self.interacdome_data_dir, self.interacdome_data_dir))
 
         if not self.interacdome_data_dir:
             self.interacdome_data_dir = constants.default_interacdome_data_path
 
-        self.run.warning('', header='Setting up Interacdome', lc='yellow')
+        self.run.warning('', header='Setting up InteracDome', lc='yellow')
         self.run.info('Data directory', self.interacdome_data_dir)
         self.run.info('Reset contents', args.reset)
 
@@ -477,14 +517,14 @@ class InteracdomeSetup(object):
 
         if (os.path.exists(os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm') or 
             os.path.exists(os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm.gz')))):
-            raise ConfigError("It seems you already have the Interacdome data downloaded in '%s', please "
+            raise ConfigError("It seems you already have the InteracDome data downloaded in '%s', please "
                               "use --reset flag if you want to re-download it." % self.interacdome_data_dir)
 
 
     def setup(self):
-        """The main method of this class. Sets up the Interacdome data directory for usage"""
+        """The main method of this class. Sets up the InteracDome data directory for usage"""
 
-        self.run.warning('', header='Downloading Interacdome tables', lc='yellow')
+        self.run.warning('', header='Downloading InteracDome tables', lc='yellow')
         self.download_interacdome_files()
 
         self.run.warning('', header='Downloading associated Pfam HMM profiles', lc='yellow')
@@ -495,7 +535,7 @@ class InteracdomeSetup(object):
 
 
     def download_interacdome_files(self):
-        """Download the confident and representable non-redundant Interacdome datasets
+        """Download the confident and representable non-redundant InteracDome datasets
 
         These datasets can be found at the interacdome webpage: https://interacdome.princeton.edu/
         """
@@ -530,7 +570,7 @@ class InteracdomeSetup(object):
     def load_interacdome(self, kind='representable'):
         """Loads the representable interacdome dataset as pandas df"""
 
-        data = InteracdomeTableData(kind=kind, interacdome_data_dir=self.interacdome_data_dir)
+        data = InteracDomeTableData(kind=kind, interacdome_data_dir=self.interacdome_data_dir)
         return data.get_as_dataframe()
 
 
@@ -541,7 +581,7 @@ class InteracdomeSetup(object):
 
 
     def filter_pfam(self):
-        """Filter Pfam data according to whether the ACC is in the Interacdome dataset"""
+        """Filter Pfam data according to whether the ACC is in the InteracDome dataset"""
 
         interacdome_pfam_accessions = self.get_interacdome_pfam_accessions()
 

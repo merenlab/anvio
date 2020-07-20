@@ -3507,6 +3507,7 @@ class PanDatabase:
 
 class ContigsDatabase:
     """To create an empty contigs database and/or access one."""
+
     def __init__(self, db_path, run=run, progress=progress, quiet=True, skip_init=False):
         self.db = None
         self.db_path = db_path

@@ -16,13 +16,13 @@ __version__ = anvio.__version__
 __maintainer__ = "Evan Kiefl"
 __email__ = "kiefl.evan@gmail.com"
 __requires__ = ['contigs-db', 'interacdome-data']
-__provides__ = [] # FIXME
-__description__ = "Run Interacdome on a contigs database."
+__provides__ = ['binding-frequencies',]
+__description__ = "Run InteracDome on a contigs database."
 
 
 @time_program
 def main(args):
-    p = interacdome.InteracdomeSuper(args)
+    p = interacdome.InteracDomeSuper(args)
     p.process()
 
 
@@ -36,6 +36,7 @@ if __name__ == '__main__':
     parser.add_argument(*anvio.A('min-binding-frequency'), **anvio.K('min-binding-frequency'))
     parser.add_argument(*anvio.A('information-content-cutoff'), **anvio.K('information-content-cutoff'))
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     args = anvio.get_args(parser)
 
