@@ -923,6 +923,7 @@ class KeggRunHMMs(KeggContext):
         self.num_threads = A('num_threads')
         self.hmm_program = A('hmmer_program') or 'hmmsearch'
         self.keep_all_hits = True if A('keep_all_hits') else False
+        self.log_bitscores = True if A('log_bitscores') else False
         self.ko_dict = None # should be set up by setup_ko_dict()
 
         # init the base class
