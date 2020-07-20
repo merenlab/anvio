@@ -1049,7 +1049,7 @@ class TRNASeqDataset:
                  normalized_seq.count_of_input_seqs_mapped_to_interior,
                  normalized_seq.count_of_trimmed_seqs_mapped_to_fiveprime_end,
                  normalized_seq.count_of_input_seqs_mapped_to_fiveprime_end)
-                + tuple(normalized_seq.input_acceptor_variant_count_dict))
+                + tuple(normalized_seq.input_acceptor_variant_count_dict.values()))
 
         trnaseq_db = TRNASeqDatabase(self.trnaseq_db_path, quiet=True)
         trnaseq_db.db._exec_many(
