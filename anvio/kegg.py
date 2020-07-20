@@ -67,9 +67,8 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
                     'headers': ["unique_id", "kegg_module", "module_name", "module_class", "module_category",
                                 "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
                                 "kofam_hits_in_module", "gene_caller_ids_in_module"],
-                    'only_complete': True,
-                    'description': "Information on complete KEGG modules. Only modules whose completeness is above the "
-                                   "threshold will be included, but you include all modules by running with --module-completion-threshold 0"
+                    'only_complete': False,
+                    'description': "Information on KEGG modules"
                     },
                 'modules_custom': {
                     'output_suffix': "modules_custom.txt",
@@ -2574,7 +2573,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         # init the base class for access to shared paths and such
         KeggContext.__init__(self, args)
-        
+
         KeggEstimatorArgs.__init__(self, self.args)
 
         if anvio.DEBUG:
