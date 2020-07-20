@@ -1061,7 +1061,6 @@ class KeggRunHMMs(KeggContext):
             names = self.kegg_modules_db.get_module_names_for_knum(knum)
             classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(knum)
 
-            # FIXME? some KOs are not associated with modules. Should we report this?
             if mods:
                 mod_annotation = "!!!".join(mods)
                 mod_class_annotation = "!!!".join(classes) # why do we split by '!!!'? Because that is how it is done in COGs. So so sorry. :'(
