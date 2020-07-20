@@ -33,6 +33,8 @@ if __name__ == '__main__':
 
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument(*anvio.A('interacdome-data-dir'), **anvio.K('interacdome-data-dir'))
+    parser.add_argument(*anvio.A('min-binding-frequency'), **anvio.K('min-binding-frequency'))
+    parser.add_argument(*anvio.A('information-content-cutoff'), **anvio.K('information-content-cutoff'))
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
 
     args = anvio.get_args(parser)
