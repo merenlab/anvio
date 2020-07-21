@@ -1,6 +1,6 @@
 This program **takes in a %(functions)s artifact to create a %(functions-txt)s.** Basically, if you want to take the information in your %(functions)s artifact out of anvi'o or give it to a fellow anvi'o user (for them to [import it](http://merenlab.org/software/anvio/help/programs/anvi-import-functions/) into their own project), you get that information using this command. 
 
-Simply provide the %(contigs-db)s with an associated %(functions)s: 
+Simply provide the %(contigs-db)s that has been annotated with %(functions)s: 
 
 {{ codestart }}
 anvi-export-functions -c %(contigs-db)s 

@@ -33,7 +33,7 @@ Since clustering is done here, you can also customize the linkage method and dis
 
 See the note on this mode in the [metagenomic workflow](http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-interactive) for more information. 
 
-If instead you want to run the standard anvi'o interface, but only looking at contigs within a specific collection, use the tag `--colection-autoload`. 
+If instead you want to run the standard anvi'o interface, but only looking at contigs within a specific collection, use the tag `--collection-autoload`. 
 
 ### Looking at *genes* instead of bins or contigs
 
@@ -60,11 +60,11 @@ You can also customize various aspects of the interactive interface. For example
 
 ### Adding additional information 
 
-You can add any additional layers of your choice using the parameter `--additional-layers` and providing a file containing the information you want to appear as another layer. You could also choose to split non-singlecopy gene HMM hits into their own layer with the `--split-hmm-layers` parameter. 
+You can add any additional layers of your choice using the parameter `--additional-layers` and providing a file containing the information you want to appear as another layer. You could also choose to split non-single-copy gene HMM hits into their own layer with the `--split-hmm-layers` parameter. 
 
 If you want to add an entirely new view to the interface, you can do that too, as long as you provide a file containing all split names and their associated values. For more information, see the parameter `--additional-view`. 
 
-You can also provide the manual inputs even if you're using an Anvi'o database. For example, if you provide your own NEWICK formatted tree and it will be displayed instead of the one in your database. 
+You can also provide the manual inputs even if you're using an Anvi'o database. For example, if you provide your own NEWICK formatted tree it will be displayed instead of the one in your database. 
 
 ## Other things 
 
@@ -74,7 +74,7 @@ You can use this program to look at the available information in your databases,
 
 - views (using `--show-views`)
 - states (using `--show-states`)
--  collections (using `--list-collections`)
+- collections (using `--list-collections`)
 
 ### Note for power users 
 

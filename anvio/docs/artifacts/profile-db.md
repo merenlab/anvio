@@ -4,8 +4,8 @@ You can think of this as a extension of a %(contigs-db)s that contains informati
 
 A profile database contains information about how short reads map to the contigs in a %(contigs-db)s. Specificially, a profile database contains 
 * the coverage and abundance per nucleotide position for each contig 
-* varience of various kinds (single-nucleotide, single-codon, and single-amino acid)
-* structural variance (ex insertions and deletions)
+* variants of various kinds (single-nucleotide, single-codon, and single-amino acid)
+* structural variants (ex. insertions and deletions)
 These terms are explained on the [anvi'o vocabulary page](http://merenlab.org/vocabulary/)
 
 This information is neccessary to run anvi'o programs like %(anvi-cluster-contigs)s, %(anvi-estimate-metabolism)s, and %(anvi-gen-gene-level-stats-databases)s. You can also interact with a profile database using programs like %(anvi-interactive)s.

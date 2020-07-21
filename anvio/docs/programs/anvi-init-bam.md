@@ -1,6 +1,6 @@
 This program sorts and indexes your BAM files: essentially converting %(raw-bam-file)s into %(bam-file)s, which are ready to be used in anvi'o. 
 
-If you're unsure what a BAM file is, check out the %(bam-file)s page or [this file](https://samtools.github.io/hts-specs/SAMv1.pdf), written by the developers of samtools. For a descritption of what indexing a BAM file does, check out the page for %(raw-bam-file)s. 
+If you're unsure what a BAM file is, check out the %(bam-file)s page or [this file](https://samtools.github.io/hts-specs/SAMv1.pdf), written by the developers of samtools. For a description of what indexing a BAM file does, check out the page for %(raw-bam-file)s. 
 
 To run this program, just provide a path to the bam files that you want to index. For example, 
 
