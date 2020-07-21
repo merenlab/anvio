@@ -4,7 +4,7 @@ Basically, a single gene alignment compares a single gene's sequence across mult
 
 Clustal programs do a great job of visualizing this data, by color coding it. Here is an example from Anvi'o's pangenome display: 
 
-A lovely clustal-like alignment from the anvi'o pangenome display
+![A lovely clustal-like alignment from the anvi'o pangenome display](../../images/example_alignment.png)
 
 A concatenated gene alignment fasta contains multiple of these gene alignments, in order to generate a tree based off of multiple genes. 
 
