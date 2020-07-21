@@ -9,7 +9,7 @@ A FASTA file contains sequences (in this case, nucleotide sequences, though they
     >SEQUENCE_ID VARIOUS_SEQUENCE_DATA
     SEQUENCE
     
-The `VARIOUS_SEQUENCE_DATA` region can contain data such as the NCBI taxon ID, gi assession number, a text description of the sequence, or the start and end positions if the sequence is a portion of a larger sample. All of this information is optional. 
+The `VARIOUS_SEQUENCE_DATA` region can contain data such as the NCBI taxon ID, GI accession number, a text description of the sequence, or the start and end positions if the sequence is a portion of a larger sample. All of this information is optional. 
 
 The sequence itself is written in standard IUPAC format (though it can be written in lower-case letters).  
 
