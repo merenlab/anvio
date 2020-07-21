@@ -352,10 +352,11 @@ rule anvi_run_kegg_kofams:
     params:
         kegg_data_dir = M.get_rule_param('anvi_run_kegg_kofams', '--kegg-data-dir'),
         hmmer_program = M.get_rule_param('anvi_run_kegg_kofams', '--hmmer-program'),
-        keep_all_hits = M.get_rule_param('anvi_run_kegg_kofams', '--keep-all-hits')
+        keep_all_hits = M.get_rule_param('anvi_run_kegg_kofams', '--keep-all-hits'),
+        log_bitscores = M.get_rule_param('anvi_run_kegg_kofams', '--log-bitscores')
     threads: M.T('anvi_run_kegg_kofams')
     resources: nodes = M.T('anvi_run_kegg_kofams')
-    shell: "anvi-run-kegg-kofams -c {input} {params.kegg_data_dir} {params.hmmer_program} {params.keep_all_hits} -T {threads} >> {log} 2>&1"
+    shell: "anvi-run-kegg-kofams -c {input} {params.kegg_data_dir} {params.hmmer_program} {params.keep_all_hits} {params.log_bitscores} -T {threads} >> {log} 2>&1"
 
 
 rule anvi_run_ncbi_cogs:
