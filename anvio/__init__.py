@@ -2405,6 +2405,13 @@ D = {
             'help': "If you use this flag, anvi'o will not get rid of any raw HMM hits, even those that "
                     "are below the score threshold."}
                 ),
+    'log-bitscores': (
+            ['--log-bitscores'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "Use this flag to generate a tab-delimited text file containing the bit scores "
+                    "of every KOfam hit that is put in the contigs database."}
+                ),
 }
 
 # two functions that works with the dictionary above.

@@ -6,7 +6,7 @@ Depending on the output options used when running %(anvi-estimate-metabolism)s, 
 
 The long format output modes produce tab-delimited files. Each line in the file (except for the header line) is indexed by an integer in the `unique_id` column. Different output "modes" will result in output files with different information.
 
-### Modules Mode
+### 'Modules' Mode
 
 The 'modules' output file will have the suffix `modules.txt`. Each line in the file will represent information about a KEGG module in a given genome, metagenome, or bin. Here is one example, produced by running metabolism estimation on the [Infant Gut dataset](http://merenlab.org/tutorials/infant-gut/):
 
@@ -16,9 +16,9 @@ The 'modules' output file will have the suffix `modules.txt`. Each line in the f
 | 1 | E_faecalis_6240 | Enterococcus_faecalis_6240 | M00002 | Glycolysis, core module involving three-carbon compounds | Pathway modules | Carbohydrate metabolism | Central carbohydrate metabolism | """K01803 ((K00134,K00150) K00927,K11389) (K01834,K15633,K15634,K15635) K01689 (K00873,K12406)""" | K01834,K00134,K00873,K01689,K01803,K00927 | 2342,2646,1044,642,226,1041,1042,1043 | 1.0 | True |
 |(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
 
-### KOfam Hits Mode
+### 'KOfam Hits in Modules' Mode
 
-The 'kofam_hits' output file will have the suffix `kofam_hits.txt`. Each line in the file will represent information about one KOfam hit in a given genome, metagenome, or bin. Hits are organized according to the KEGG module that they belong to, and more specifically the path through the KEGG module in which the KO appears.
+The 'kofam_hits_in_modules' output file will have the suffix `kofam_hits_in_modules.txt`. Each line in the file will represent information about one KOfam hit in a given genome, metagenome, or bin - but ONLY KOs that are a part of at least one KEGG Module are included in this output. Hits are organized according to the KEGG module that they belong to, and more specifically the path through the KEGG module in which the KO appears.
 
 What is a path through a KEGG module, you ask? Well. KEGG modules are metabolic pathways defined by a set of KOs. For example, here is the definition of module [M00001](https://www.genome.jp/kegg-bin/show_module?M00001), better known as "Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate":
 
@@ -42,13 +42,26 @@ Without further ado, here is an example of this output mode (also from the Infan
 | 1 | E_faecalis_6240 | K01834 | 2646 | Enterococcus_faecalis_6240_contig_00003_chromosome | 0 | K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873 | 0.8 | Enterococcus_faecalis_6240 | M00001 | 1.0 | True |
 |(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
 
-### Custom Mode
+### 'KOfam Hits' Mode
 
-The 'custom' output mode will have user-defined content and the suffix `custom.txt`. See %(anvi-estimate-metabolism)s for an example command to work with this mode.
+The `kofam_hits` output file will have the suffix `kofam_hits.txt`. Unlike the previous mode, this output will include ALL KOs, regardless of whether they belong to a KEGG Module or not. However, since only a subset of these KOs belong to modules, this output does not include module-related information like paths and module completeness.
+
+Here is an example of this output mode (also from the Infant Gut dataset):
+
+unique_id | db_name | genome_name | ko | gene_caller_id | contig | modules_with_ko
+|:--|:--|:--|:--|:--|:--|:--|
+0 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K00845 | 1608 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00549,M00892,M00909
+1 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K01810 | 600 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00004,M00114,M00892,M00909
+2 | E_faecalis_6240 | Enterococcus_faecalis_6240 | K00850 | 225 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00345
+|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
+
+### Custom Mode (for module data)
+
+The 'modules_custom' output mode will have user-defined content and the suffix `modules_custom.txt` (we currently only support output customization for modules data). See %(anvi-estimate-metabolism)s for an example command to work with this mode.
 
 ## Matrix format output
 
-Matrix format is an output option when %(anvi-estimate-metabolism)s is working with multiple contigs databases at once. The purpose of this output mode is to generate matrices of KEGG module statistics for easy visualization. Currently, the output of this mode includes a module completeness matrix, and a matrix of binary module presence/absence values. In these matrices, each row is a KEGG module and each column is an input %(contigs-db)s.
+Matrix format is an output option when %(anvi-estimate-metabolism)s is working with multiple contigs databases at once. The purpose of this output mode is to generate matrices of KEGG module statistics for easy visualization. Currently, the output of this mode includes a module completeness matrix, a matrix of binary module presence/absence values, and a matrix of KO counts. In these matrices, each row is a KEGG module or KO, and each column is an input %(contigs-db)s.
 
 Here is an example of a module completeness matrix:
 
