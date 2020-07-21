@@ -56,7 +56,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                     "anvi_gen_contigs_database": {"--project-name": "{group}"},
                                     "centrifuge": {"threads": 2},
                                     "anvi_run_hmms": {"run": True, "threads": 5},
-                                    "anvi_run_kegg_kofams": {"run": False, "threads": 4},
+                                    "anvi_run_kegg_kofams": {"run": True, "threads": 4},
                                     "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
                                     "anvi_run_scg_taxonomy": {"run": True, "threads": 6},
                                     'anvi_run_trna_scan': {"run": True, "threads": 6},
