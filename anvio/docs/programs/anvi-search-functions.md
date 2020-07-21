@@ -15,9 +15,9 @@ For example, to run the same search as above, but with a more comprehensive outp
 
 {{ codestart }}
 anvi-search-functions -c %(contigs-db)s \
-            --search-terms kinase
-            --full-report kinase_information.txt
-            --include-sequences
+            --search-terms kinase \
+            --full-report kinase_information.txt \
+            --include-sequences \
             --verbose
 {{ codestop }}
 
@@ -27,7 +27,7 @@ You can also search for multiple terms at the same time, or for terms from only 
 
 {{ codestart }}
 anvi-search-functions -c %(contigs-db)s \
-            --search-terms kinase,phosphatase
-            --annotation-sources Pfam
+            --search-terms kinase,phosphatase \
+            --annotation-sources Pfam \ 
             --full-report kinase_phosphatase_information.txt
 {{ codestop }}

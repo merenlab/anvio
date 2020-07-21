@@ -4,7 +4,7 @@ You can run this program on a %(profile-db)s or %(pan-db)s as follows:
 
 {{ codestart }}
 anvi-export-collection -C my_favorite_collection \
-                        -p %(profile-db)s \
+                        -p %(profile-db)s 
 {{ codestop }}
 
 This will give you a %(collection-txt)s file that describes the collection `my_favorite_collection`. 

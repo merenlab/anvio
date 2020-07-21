@@ -7,7 +7,7 @@ You can run this program like so:
 {{ codestart }}
 anvi-import-collection -C my_bins.txt \
                         -p %(profile-db)s \
-                        -c %(contigs-db)s \
+                        -c %(contigs-db)s 
 {{ codestop }}
 
 This will import the collection indicated in `my_bins.txt` into your %(profile-db)s. 

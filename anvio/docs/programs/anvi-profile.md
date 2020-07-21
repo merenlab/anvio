@@ -39,7 +39,7 @@ For example, you could run
 
 {{ codestart }}
 anvi-profile -c Ross_sea_contigs.db  \ 
-            --blank-profile
+            --blank-profile \
             --contigs-of-interest contigs_i_like.txt
 {{ codestop }}
 
