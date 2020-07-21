@@ -479,8 +479,9 @@ class InteracDomeSetup(object):
         self.pfam_setup = None
 
         self.interacdome_files = {
-            'representable_interactions.txt': 'https://interacdome.princeton.edu/session/344807c477180230032a2a3807ba47c3/download/downloadBP?w=',
-            'confident_interactions.txt': 'https://interacdome.princeton.edu/session/344807c477180230032a2a3807ba47c3/download/downloadConfidentBP?w=',
+            # FIXME The links at interacdome.princeton.edu are not static
+            'representable_interactions.txt': 'https://interacdome.princeton.edu/session/27bd022617a0f20aa4a92e14a7f7a513/download/downloadBP?w=',
+            'confident_interactions.txt': 'https://interacdome.princeton.edu/session/27bd022617a0f20aa4a92e14a7f7a513/download/downloadConfidentBP?w=',
         }
 
         if self.interacdome_data_dir and args.reset:
