@@ -54,19 +54,22 @@ class InteracDomeSuper(Pfam):
         self.run.warning("Anvi'o will use 'InteracDome' by Kobren and Singh (DOI: 10.1093/nar/gky1224) to attribute binding frequencies. "
                          "If you publish your findings, please do not forget to properly credit their work.", lc='green', header="CITATION")
 
-        self.run.warning("", header='INITIALIZATION', lc='green')
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
         self.interacdome_data_dir = A('interacdome_data_dir', null) or constants.default_interacdome_data_path
         self.information_content_cutoff = A('information_content_cutoff', null) or 4
         self.min_binding_frequency = A('min_binding_frequency', null) or 0.1
+        self.interacdome_dataset = A('interacdome_dataset', null) or 'representable'
         self.just_do_it = A('just_do_it', null)
+
+        self.run.warning("", header='INITIALIZATION', lc='green')
+        self.run.info("Interacdome dataset used", self.interacdome_dataset)
 
         self.hmm_filepath = os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm')
 
         # Init the InteracDome table
-        self.interacdome_table = InteracDomeTableData(kind='representable', interacdome_data_dir=self.interacdome_data_dir)
+        self.interacdome_table = InteracDomeTableData(kind=self.interacdome_dataset, interacdome_data_dir=self.interacdome_data_dir)
         self.interacdome_table.load()
 
         # Init the Pfam baseclass
