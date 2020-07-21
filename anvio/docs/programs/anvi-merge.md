@@ -11,7 +11,7 @@ anvi-merge -c cool_contigs.db \
                     -o cool_contigs_merge
 {{ codestop }}
                     
-This will put all of the output files (the final profile-db as well as a %(misc-data-item-orders)s containing various other information) into the folder `cool_contigs_merge `.
+This will put all of the output files (the final profile-db as well as a %(misc-data-items-order)s containing various other information) into the folder `cool_contigs_merge `.
     
 
 ## Other Parameters

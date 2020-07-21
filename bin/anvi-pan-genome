@@ -20,7 +20,7 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __requires__ = ['genomes-storage-db',]
-__provides__ = ['pan-db', 'misc-data-item-orders']
+__provides__ = ['pan-db', 'misc-data-items-order']
 __description__ = ("An anvi'o program to compute a pangenome from an anvi'o genome storage")
 __resources__ = [("A tutorial on pangenomics", "http://merenlab.org/2016/11/08/pangenomics-v2/"),]
 
