@@ -1,11 +1,11 @@
 This program **creates a %(single-profile-db)s from a %(bam-file)s and %(contigs-db)s**. 
 
-Once you have a %(single-profile-db)s, you can run programs like %(anvi-cluster-contigs)s, %(anvi-estimate-metabolism)s, and %(anvi-gen-gene-level-stats-databases)s, as well as use the interactive interface with %(anvi-interactive)s. If you want to run these same contigs against multiple BAM files (because you have multiple samples), you'll combine your %(single-profile-db)ss after you've created them all using %(anvi-merge)s. See the pages for %(single-profile-db)s or %(profile-db)s for more you can do with these artifiacts. 
+Once you have a %(single-profile-db)s, you can run programs like %(anvi-cluster-contigs)s, %(anvi-estimate-metabolism)s, and %(anvi-gen-gene-level-stats-databases)s, as well as use the interactive interface with %(anvi-interactive)s. If you want to run these same contigs against multiple BAM files (because you have multiple samples), you'll combine your %(single-profile-db)ss after you've created them all using %(anvi-merge)s. See the pages for %(single-profile-db)s or %(profile-db)s for more you can do with these artifacts. 
 
 In short, this program runs various analyses on the contigs in your %(contigs-db)s and how they relate to the sample information stored in the %(bam-file)s you provided. It then stores this information into a %(single-profile-db)s. Specifically, this program calculates 
 * coverage per nucleotide position (if you're unsure what coverage refers to, check out [this page](http://merenlab.org/vocabulary/#coverage))
 * single-nucleotide, single-codon, and single-amino acid variants (You can find all of those terms on the vocab page linked above, as well as a more detailed explaination [here](http://merenlab.org/2015/07/20/analyzing-variability/#an-intro-to-single-nucleotidecodonamino-acid-variation))
-* structural variance such as insertions or deletions 
+* structural variants such as insertions or deletions 
 
 ## Basic Usage
 
@@ -85,11 +85,11 @@ If you do plan to cluster, you can set a custom distance metric or a custom link
 
 ### Variability 
 
-Anvi-profile will throw away variability data below certain thresholds to reduce noise. After all, if you have a single C read at a position with a 1000X coverage where all other reads are T, this is probably not a variance position that you want to investigate further. By default, it will not analyze positions will coverage less than 10X, and it will not report every position. 
+Anvi-profile will throw away variability data below certain thresholds to reduce noise. After all, if you have a single C read at a position with a 1000X coverage where all other reads are T, this is probably not a variant position that you want to investigate further. By default, it will not analyze positions with coverage less than 10X, and it will not report every position. 
 
 However, you can change the coverage threshold using the  `--min-coverage-for-variability` flag. You can also report every variability position using the flag `--report-variability-full`. 
 
-For example, if your data quality was poor and you wanted to view every single position for variance, you could call the following: 
+For example, if your data quality was poor and you wanted to view every single position for variants, you could call the following: 
 
 {{ codestart }}
 anvi-profile -c Ross_sea_contigs.db  \ 
@@ -104,6 +104,6 @@ You should provide the sample name with the flag `-S` and can provide a descript
 
 You can characterize the codon frequencies of genes in your sample at the cost of some runtime. Despite time being money, codon frequency analysis can be helpful downstream. Simply add the tag `--profile-SCVs` and watch the magic happen. 
 
-Alternatively, you can choose not to store insertion and deletion data or single nucleotide variance data.
+Alternatively, you can choose not to store insertion and deletion data or single nucleotide variant data.
 
 If you know the limits of your system, you can also multithread this program. See the program help menu for more information. 
