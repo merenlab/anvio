@@ -573,7 +573,8 @@ class InteracDomeSetup(object):
         """Loads the representable interacdome dataset as pandas df"""
 
         data = InteracDomeTableData(kind=kind, interacdome_data_dir=self.interacdome_data_dir)
-        return data.get_as_dataframe()
+        data.load()
+        return data.df
 
 
     def get_interacdome_pfam_accessions(self):
