@@ -65,6 +65,51 @@ def remove_spaces(text):
     return text
 
 
+def pluralize(word, number, suffix_for_plural="s", suffix_for_singular=None):
+    """Pluralize a given word mindfully.
+
+    We often run into a situation where the word of choice depends on the number of items
+    it descripes and it can take a lot of extra space in the code. For instance, take this:
+
+    >>> f"You have {num_sequences_in_fasta_file} sequences in your FASTA file."
+
+    This will print "You have 1 seqeunces in your FASTA file" like an idiot when there is only
+    one sequence. An alternative is to do something more elaborate:
+
+    >>> f"You have {num_sequences_in_fasta_file} {'sequence' if num_sequences_in_fasta_file == 1 else 'seqeunces'}"
+
+    Even though this will work beautifully, it works at the expense of the readability of the code
+    for a minor inconvenience.
+
+    THE PURPOSE of this function is to fix this problem in a more elegant fashion. The following call is
+    equivalent to the second example:
+
+    >>> f"You have {pluralize('sequence', num_sequences_in_fasta_file)} in your FASTA file."
+
+    Voila.
+
+
+    Parameters
+    ==========
+    word: str
+        The word to conditionally plurlize
+    number: int
+        The number of items the word intends to describe
+    suffix_for_plural: str, 's'
+        The character that needs to be added to the end of the `word` if plural.
+    suffix_for_singular: str, None
+        The same for `suffix_for_plural` for singular case.
+    """
+
+    if number > 1:
+        return f"{number} {word}{suffix_for_plural}"
+    else:
+        if suffix_for_singular:
+            return f"{number} {word}{suffix_for_singular}"
+        else:
+            return f"a single {word}"
+
+
 class Progress:
     def __init__(self, verbose=True):
         self.pid = None
@@ -916,3 +961,10 @@ def get_terminal_size():
         except:
             cr = (25, 80)
     return int(cr[1]), int(cr[0])
+
+
+class Logger:
+    """Utility class that makes it easier to use Anvio's nice logging in command runners."""
+    def __init__(self, run=Run(), progress=Progress()):
+        self.run = run
+        self.progress = progress
