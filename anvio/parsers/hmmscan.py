@@ -185,7 +185,7 @@ class HMMScan(Parser):
             if entry:
                 entry_id += 1
                 annotations_dict[entry_id] = entry
-                if return_bitscore_dict and bit_score_info_dict:
+                if return_bitscore_dict and bit_score_info_dict_entry:
                     bit_score_info_dict[entry_id] = bit_score_info_dict_entry
 
         self.run.info("Number of weak hits removed", num_hits_removed)
