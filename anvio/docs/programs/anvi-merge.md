@@ -1,9 +1,9 @@
-The main function of anvi-merge is to convert multiple %(single-profile-db)ss into a single %(profile-db)s (also called a merged profile database). Basically, this takes the alignment data from each sample (each contained in its own %(single-profile-db)s) and combines them into a single database that anvi'o can look through more easily. 
+The main function of `anvi-merge` is to convert multiple %(single-profile-db)ss into a single %(profile-db)s (also called a merged profile database). Basically, this takes the alignment data from each sample (each contained in its own %(single-profile-db)s) and combines them into a single database that anvi'o can look through more easily. 
 
 ### Overview: How to run anvi-merge
 1. Set up your %(contigs-db)s. See that page for more information
 1. Use %(anvi-profile)s to create a %(single-profile-db)s using each of your samples (formatted into %(bam-file)s) *(Note: for each of these you'll need to use the same %(contigs-db)s)*
-1. Use anvi-merge to merge those %(single-profile-db)ss into a single database, called a %(profile-db)s. This will look something like the following:
+1. Use `anvi-merge` to merge those %(single-profile-db)ss into a single database, called a %(profile-db)s. This will look something like the following:
 
 {{ codestart }}
 anvi-merge -c cool_contigs.db \
@@ -16,7 +16,7 @@ This will put all of the output files (the final profile-db as well as a %(misc-
 
 ## Other Parameters
 
-You must give anvi-merge your contigs database and single profile databases. However, you can also provide more information or give addtional instructions.
+You must give `anvi-merge` your contigs database and single profile databases. However, you can also provide more information or give addtional instructions.
 
 * Use the flag `-h` at any time to display the help menu 
 ### Hierarchical Clustering 
