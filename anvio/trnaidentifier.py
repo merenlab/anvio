@@ -1211,10 +1211,8 @@ class GeneProfile:
 # E. coli tRNA-Ala-GGC-1-1: start first position of 3' strand of D stem
 # forward = 'GAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACCA'
 
-forward = 'GTTAAGCTGGGAAGATTTCCACCA'
-
-profile = Profile(forward)
-print(profile.profiled_seq)
+# profile = Profile(forward)
+# print(profile.profiled_seq)
 # print(profile.features)
 # print(profile.num_unconserved)
 # print(profile.num_unpaired)
