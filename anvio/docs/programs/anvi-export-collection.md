@@ -12,7 +12,7 @@ This will give you a %(collection-txt)s file that describes the collection `my_f
 To list the collections available in this database, you can run 
 
 {{ codestart }}
-anvi-import-collection -p %(pan-db)s \
+anvi-export-collection -p %(pan-db)s \
                         --list-colllections
 {{ codestop }}
 
