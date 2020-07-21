@@ -687,6 +687,7 @@ class TRNASeqDataset:
         bowtie2.N = seed_mismatches_allowed
         bowtie2.rdg = rdg
         bowtie2.rfg = rfg
+        bowtie2.norc = True
         bowtie2.align()
         raw_bam_path = os.path.splitext(bowtie2.sam)[0] + "-RAW.bam"
         self.convert_sam_to_bam(bowtie2.sam, raw_bam_path)

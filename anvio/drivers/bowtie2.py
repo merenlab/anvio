@@ -33,7 +33,8 @@ class Bowtie2:
         self.score_min = None
         self.rdg = None
         self.rfg = None
-        self.options = [self.k, self.L, self.N, self.score_min, self.rdg, self.rfg]
+        self.norc = False
+        self.options = [self.k, self.L, self.N, self.score_min, self.rdg, self.rfg, self.norc]
 
         # At the moment, this only allows a FASTA query file rather than paired FASTQ files.
         self.query_fasta = query_fasta
@@ -73,6 +74,7 @@ class Bowtie2:
 
         single_dash_params = ['k', 'L', 'N']
         double_dash_params = ['score_min']
+        flags = ['norc']
         optional_args = []
         for param in single_dash_params:
             arg = self.__getattribute__(param)
@@ -84,6 +86,9 @@ class Bowtie2:
             if arg:
                 optional_args.append('--' + param.replace('_', '-'))
                 optional_args.append(arg)
+        for param in flags:
+            if self.__getattribute__(param):
+                optional_args.append('--' + param.replace('_', '-'))
 
         if output_sam_path:
             self.sam = output_sam_path
