@@ -1,4 +1,4 @@
-This is a text file that **contains the information in a %(misc-data-item-orders)s**, used for importing into and exporting this information from your anvi'o project. 
+This is a text file that **contains the information in a %(misc-data-items-order)s**, used for importing into and exporting this information from your anvi'o project. 
 
 If you open this file, it will look something like this: 
 

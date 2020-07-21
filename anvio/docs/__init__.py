@@ -256,13 +256,13 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "misc-data-item-orders-txt": {
+    "misc-data-items-order-txt": {
         "name": "LAYER ORDERS DATA",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": True
     },
-    "misc-data-item-orders": {
+    "misc-data-items-order": {
         "name": "ITEM ORDERS DATA",
         "type": "CONCEPT",
         "provided_by_anvio": True,
