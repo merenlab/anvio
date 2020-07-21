@@ -13,7 +13,7 @@ anvi-run-ncbi-cogs -c %(contigs-db)s \
             --pfam-data-dir %(pfams-data)s \
 {{ codestop }}
 
-By default, this uses hmmsearch to run HMMs. You can choose to use hmmscan instead by running
+By default, this uses `hmmsearch` to run HMMs. You can choose to use `hmmscan` instead by running
 
 {{ codestart }}
 anvi-run-ncbi-cogs -c %(contigs-db)s \
