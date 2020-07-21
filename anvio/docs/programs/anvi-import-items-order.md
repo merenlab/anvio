@@ -1,0 +1,16 @@
+This program, as one might think, allows you to import a %(misc-data-item-orders-txt)s, so that you can view it as a %(misc-data-item-orders)s. 
+
+You can import an item order into a %(profile-db)s, %(pan-db)s, or %(genes-db)s as follows: 
+
+{{ codestart }}
+anvi-import-collection -p %(profile-db)s \
+                        --i %(misc-data-item-orders-txt)s
+{{ codestop }}
+
+It may also be nice to give it a good name, so that it's easy to find in the interface. 
+
+{{ codestart }}
+anvi-import-collection -p %(profile-db)s \
+                        --i %(misc-data-item-orders-txt)s \
+                        --name my_favorite_tree
+{{ codestop }}
