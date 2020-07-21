@@ -2,7 +2,7 @@ This program **associates genes in your %(contigs-db)s with functions using NCBI
 
 Before you run this program, you'll have to set up the COGs database on your computer with the program %(anvi-setup-ncbi-cogs)s.  
 
-As mentioned above, the COGs database is no longer actively added to, so might also want to consider using a separate database. As of yet, anvi'o does not have a program to accesss the eggNOG database (instructions to use this database to get function information are [here](http://merenlab.org/2016/06/18/importing-functions/#eggnog-database--emapper)), but does have the functionality to use the Pfams database (check out %(anvi-run-pfams)s for more information). 
+As mentioned above, the COGs database is no longer actively added to anvi'o, so you might also want to consider using a separate database. As of yet, anvi'o does not have a program to accesss the eggNOG database (instructions to use this database to get function information are [here](http://merenlab.org/2016/06/18/importing-functions/#eggnog-database--emapper)), but does have the functionality to use the Pfams database (check out %(anvi-run-pfams)s for more information). 
 
 To run, you'll need to provide a %(contigs-db)s. If you stored the %(cogs-data)s that you got from running %(anvi-setup-ncbi-cogs)s in a custom location, you'll need to provide that path as well. The output is a %(functions)s artifact. 
 
