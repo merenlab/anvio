@@ -615,7 +615,7 @@ class TRNASeqDataset:
                                            [unique_seq.representative_id for unique_seq in unique_trna_seqs],
                                            [unique_seq.string[unique_seq.extra_fiveprime_length: -unique_seq.acceptor_length]
                                             for unique_seq in unique_trna_seqs],
-                                           extra_list=unique_trna_seqs).full_length_dereplicate()])
+                                           extras=unique_trna_seqs).full_length_dereplicate()])
         self.trimmed_trna_seqs.sort(key=lambda trimmed_seq: -trimmed_seq.input_count)
 
         self.progress.end()
@@ -790,12 +790,13 @@ class TRNASeqDataset:
         #                                  (trimmed seq ID B, trimmed seq string B, TrimmedSeq B), ...]),
         #  (seed ID X, ...), ...]
 
-        self.normalized_trna_seqs = [NormalizedSeq([trimmed_seqs_info[2] for trimmed_seqs_info in normalized_seq_info[2]], skip_init=True)
+        self.normalized_trna_seqs = [NormalizedSeq([trimmed_seqs_info[2] for trimmed_seqs_info in normalized_seq_info[2]],
+                                                   skip_init=True)
                                      for normalized_seq_info
                                      in SequenceDereplicator(
                                         [trimmed_seq.representative_id for trimmed_seq in self.trimmed_trna_seqs],
                                         [trimmed_seq.string[::-1] for trimmed_seq in self.trimmed_trna_seqs], # change sequence string orientation to 3'-5' to dereplicate from 3' end
-                                        extra_list=self.trimmed_trna_seqs).prefix_dereplicate()[0]]
+                                        extras=self.trimmed_trna_seqs).prefix_dereplicate()[0]]
 
         self.progress.end()
 
