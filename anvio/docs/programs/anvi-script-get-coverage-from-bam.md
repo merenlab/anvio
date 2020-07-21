@@ -1,6 +1,6 @@
 This program gets the coverage values from a %(bam-file)s, and puts them into a %(coverages-txt)s. 
 
-You much provide a BAM file, but there are three ways you can choose contigs to analyze within that file: 
+You must provide a BAM file, but there are three ways you can choose contigs to analyze within that file: 
 1. Give a contig name. Here, you can only report coverage per nucleotide position (in this example, the user is specifically asking for this anyway with the `-m` flag)
 
     {{ codestart }}
