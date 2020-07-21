@@ -9,4 +9,4 @@ To get one of these for your %(contigs-db)s, you can either import it (using %(a
 
 This is used to run %(anvi-analyze-synteny)s. 
 
-You can also use %(anvi-export-functions)s to view the contents of this file through a %(functions-txt)s artifact. 
+You can also use %(anvi-export-functions)s to obtain a file containing these functional annotations through a %(functions-txt)s artifact. 
