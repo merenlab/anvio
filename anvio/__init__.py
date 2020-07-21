@@ -720,6 +720,20 @@ D = {
                      "program with superuser privileges. If you don't have superuser privileges, then you can "
                      "use this parameter to tell anvi'o the location you wish to use to setup your data."}
                 ),
+    'interacdome-dataset': (
+            ['--interacdome-dataset'],
+            {'default': 'representable',
+             'type': str,
+             'choices': ['representable', 'confident'],
+             'help': "Choose 'representable' to include Pfams that correspond to domain-ligand interactions that had "
+                     "nonredundant instances across three or more distinct PDB structures. InteracDome"
+                     "authors recommend using this collection to learn more about domain binding properties. Choose "
+                     "'confident' to include Pfams that correspond to domain-ligand interactions "
+                     "that had nonredundant instances across three or more distinct PDB entries and "
+                     "achieved a cross-validated precision of at least 0.5. We recommend using this "
+                     "collection to annotate potential ligand-binding positions in protein "
+                     "sequences. The default is '%(default)s'."}
+                ),
     'kegg-data-dir': (
             ['--kegg-data-dir'],
             {'default': None,
