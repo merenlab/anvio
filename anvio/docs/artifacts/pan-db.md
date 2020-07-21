@@ -1,6 +1,6 @@
 An anvi’o database that contains **key information associated with your gene clusters**.
 
-This is vital for its pangenomic analsis, hence the name. 
+This is vital for its pangenomic analysis, hence the name. 
 
 This is the output of the program %(anvi-pan-genome)s, which can be run after you've created a %(genomes-storage-db)s with the genomes you want to analyze. That script will identify your gene clusters and put them in a pan-db. 
 
