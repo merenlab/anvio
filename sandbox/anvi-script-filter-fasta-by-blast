@@ -21,7 +21,7 @@ __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 __provides__ = ["contigs-fasta"]
 __requires__ = ["contigs-fasta", "blast-table"]
-__description__ = "Filter FASTA file according to BLAST table (remove sequences with bad BLAST alignment)."
+__description__ = "Filter FASTA file according to BLAST table (remove sequences with bad BLAST alignment)"
 
 
 run = terminal.Run()
