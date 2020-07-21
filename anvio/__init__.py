@@ -1490,6 +1490,14 @@ D = {
                      "quantify how likely a position is to be involved in binding. Use this parameter to filter out low frequencies. "
                      "The default is %(default)f."}
                 ),
+    'min-hit-fraction': (
+            ['-f', '--min-hit-fraction'],
+            {'metavar': 'FLOAT',
+             'default': 0.8,
+             'type': float,
+             'help': "Any hits where the hit length--relative to the HMM profile--divided by the total HMM profile length, is less than this value, "
+                     "it will be removed from the results and will not contribute to binding frequencies. The default is %(default)s"}
+                ),
     'information-content-cutoff': (
             ['-t', '--information-content-cutoff'],
             {'metavar': 'FLOAT',

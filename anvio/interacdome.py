@@ -54,17 +54,18 @@ class InteracDomeSuper(Pfam):
         self.run.warning("Anvi'o will use 'InteracDome' by Kobren and Singh (DOI: 10.1093/nar/gky1224) to attribute binding frequencies. "
                          "If you publish your findings, please do not forget to properly credit their work.", lc='green', header="CITATION")
 
-
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
         self.interacdome_data_dir = A('interacdome_data_dir', null) or constants.default_interacdome_data_path
         self.information_content_cutoff = A('information_content_cutoff', null) or 4
         self.min_binding_frequency = A('min_binding_frequency', null) or 0.1
+        self.min_hit_fraction = A('min_hit_fraction', null) or 0.8
         self.interacdome_dataset = A('interacdome_dataset', null) or 'representable'
         self.just_do_it = A('just_do_it', null)
 
         self.run.warning("", header='INITIALIZATION', lc='green')
         self.run.info("Interacdome dataset used", self.interacdome_dataset)
+        self.run.info("Minimum hit fraction", self.min_hit_fraction)
 
         self.hmm_filepath = os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm')
 
@@ -213,6 +214,7 @@ class InteracDomeSuper(Pfam):
         # each holds 3 length tuples (gene_callers_id, pfam_id, domain_id)
         no_binding_freqs = []
         conserved_match_states_disagree = []
+        small_fraction = []
         indices_to_keep = []
 
         for i, row in self.hmm_out.dom_hits.iterrows():
@@ -228,7 +230,13 @@ class InteracDomeSuper(Pfam):
                 indices_to_keep.append(False)
                 continue
 
-            if not self.conserved_positions_match(row):
+            elif self.is_hit_too_partial(row):
+                # pfam hit to gene, but the hit length is too much less than the HMM profile length
+                small_fraction.append((gene_callers_id, pfam_id, dom_id))
+                indices_to_keep.append(False)
+                continue
+
+            elif not self.conserved_positions_match(row):
                 # gene sequence did not match the match state consensus values in conserved regions
                 conserved_match_states_disagree.append((gene_callers_id, pfam_id, dom_id))
                 indices_to_keep.append(False)
@@ -241,8 +249,9 @@ class InteracDomeSuper(Pfam):
 
         self.run.info("filtered hits (no InteracDome data)", len(no_binding_freqs))
         self.run.info("filtered hits (disagrees with conserved match states)", len(conserved_match_states_disagree))
+        self.run.info("filtered hits (hit is too partial hit)", len(small_fraction))
 
-        hits_to_delete = no_binding_freqs + conserved_match_states_disagree
+        hits_to_delete = no_binding_freqs + conserved_match_states_disagree + small_fraction
         if not len(hits_to_delete):
             self.progress.end()
             return
@@ -254,6 +263,28 @@ class InteracDomeSuper(Pfam):
             del self.hmm_out.ali_info[gene_callers_id][(pfam_id, dom_id)]
 
         self.progress.end()
+
+
+    def is_hit_too_partial(self, dom_hit):
+        """Returns True if the ratio of hit length to HMM profile length is less than threshold
+
+        This is determined with the cutoff, self.min_hit_fraction. If the length of hit
+        (dom_hits['hmm_stop'] - dom_hits['hmm_stop']) divided by the HMM profile length
+        (self.hmms[<pfam_id>]['LENG']) is less than self.min_hit_fraction, False is returned. Else
+        True
+
+        Parameters
+        ==========
+        dom_hit : pandas Series
+            A row from self.hmm_out.dom_hits
+        """
+
+        fraction = (dom_hit['hmm_stop'] - dom_hit['hmm_start']) / self.hmms[dom_hit['pfam_id']]['LENG']
+
+        if fraction < self.min_hit_fraction:
+            return True
+        else:
+            return False
 
 
     def conserved_positions_match(self, dom_hit):

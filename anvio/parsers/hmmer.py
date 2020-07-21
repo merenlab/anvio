@@ -197,7 +197,7 @@ class HMMERStandardOutput(object):
 
     def load(self):
         self.progress.new('Processing HMMER output')
-        self.progress.update('Loading %s' % self.hmmer_std_out)
+        self.progress.update('Parsing %s' % self.hmmer_std_out)
 
         with open(self.hmmer_std_out) as f:
             for i, query in enumerate(utils.get_chunk(f, separator=self.delim_query, read_size=32768)):
