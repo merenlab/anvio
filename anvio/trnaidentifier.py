@@ -652,7 +652,6 @@ class Profile:
     THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES = FIVEPRIME_TO_THREEPRIME_FEATURE_CLASSES[::-1]
     STEM_FORMATION_TRIGGERS = [FiveprimeTStemSeq, FiveprimeAnticodonStemSeq, FiveprimeDStemSeq, FiveprimeAcceptorStemSeq]
     ARM_FORMATION_TRIGGERS = [TStem, AnticodonStem, DStem]
-    T_LOOP_INDEX = THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(TLoop)
     T_ARM_INDEX = THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(TArm)
     THREEPRIME_STEM_SEQ_INDICES = {TStem: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(ThreeprimeTStemSeq),
                                    AnticodonStem: THREEPRIME_TO_FIVEPRIME_FEATURE_CLASSES.index(ThreeprimeAnticodonStemSeq),
@@ -720,21 +719,11 @@ class Profile:
                 self.anticodon_seq = ''
                 self.anticodon_aa = ''
 
-            # Use a slightly less stringent standard for tRNA
-            # when the acceptor sequence is CCA than C, CC, NCA, CNA, CCN, CCAN, or CCANN.
-            if self.acceptor_variant_string == 'CCA':
-                # The features must include the T loop.
-                if len(self.features) > self.T_LOOP_INDEX:
-                    self.is_predicted_trna = True
-                else:
-                    self.is_predicted_trna = False
+            if len(self.features) > self.T_ARM_INDEX:
+                self.is_predicted_trna = True
             else:
-                # The features must include the T arm.
-                if len(self.features) > self.T_ARM_INDEX:
-                    self.is_predicted_trna = True
-                else:
-                    self.is_predicted_trna = False
-            # Furthermore, if the sequence does not have a complete feature set but is longer than tRNA should be,
+                self.is_predicted_trna = False
+            # If the sequence does not have a complete feature set but is longer than tRNA should be,
             # there is a high likelihood that this is due to the sequence (tRNA-seq transcript) being a chimera
             # or another type of RNA with structural features akin to the 3' end of tRNA.
             # (Longer-than-expected sequences with a complete feature set are often pre-tRNA.)
@@ -1222,8 +1211,10 @@ class GeneProfile:
 # E. coli tRNA-Ala-GGC-1-1: start first position of 3' strand of D stem
 # forward = 'GAGCGCTTGCATGGCATGCAAGAGGTCAGCGGTTCGATCCCGCTTAGCTCCACCA'
 
-# profile = Profile(forward)
-# print(profile.profiled_seq)
+forward = 'GTTAAGCTGGGAAGATTTCCACCA'
+
+profile = Profile(forward)
+print(profile.profiled_seq)
 # print(profile.features)
 # print(profile.num_unconserved)
 # print(profile.num_unpaired)
