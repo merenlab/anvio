@@ -21,4 +21,4 @@ anvi-script-gen-short-reads %(configuration-ini)s \
                                             --output-file-path %(short-reads-fasta)s
 {{ codestop }}
     
-The resulting FASTA file with short reads will cover the `contig` with short reads that are 10 nts long at 100X coverage. There will also be an error-rateof 0.05, to mimic the sequencing errors you would get from sequencing in the wet lab. 
+The resulting FASTA file with short reads will cover the `contig` with short reads that are 10 nts long at 100X coverage. There will also be an error-rate of 0.05, to mimic the sequencing errors you would get from sequencing in the wet lab. 
