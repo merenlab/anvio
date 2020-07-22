@@ -361,6 +361,16 @@ function display_nucleotides() {
                   .attr("fill", "white")
                   .attr("x", buffer*textWidth)
                   .attr("y", nucl_text_y + .67*dna_seq_height + offset_y);
+
+        if(gene.direction == "r") {
+          aa_sequence.append("rect")
+                     .attr("height", 1.1*dna_seq_height)
+                     .attr("width", aas_in_window.length*3*textWidth)
+                     .attr("x", buffer*textWidth)
+                     .attr("y", nucl_text_y + offset_y)
+                     .attr("fill", "red")
+                     .attr("fill-opacity", 0.1)
+        }
       }
       prev_gene_stop = gene.stop_in_split;
     }
