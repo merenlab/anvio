@@ -58,7 +58,7 @@ class InteracDomeSuper(Pfam):
         null = lambda x: x
         self.interacdome_data_dir = A('interacdome_data_dir', null) or constants.default_interacdome_data_path
         self.information_content_cutoff = A('information_content_cutoff', null) or 4
-        self.min_binding_frequency = A('min_binding_frequency', null) or 0.1
+        self.min_binding_frequency = A('min_binding_frequency', null) or 0
         self.min_hit_fraction = A('min_hit_fraction', null) or 0.8
         self.interacdome_dataset = A('interacdome_dataset', null) or 'representable'
         self.output_prefix = A('output_file_prefix', null)
