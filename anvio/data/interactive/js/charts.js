@@ -292,7 +292,8 @@ function display_nucleotides() {
   /* width of monospaced character per font size */
   var nucl_text_font = width/((end-start)*.6002738402061856);
                    nucl_sequence.attr("font-size", nucl_text_font);
-  var nucl_text_y = 140 + .75*contextSvg.select("#DNA_sequence")[0][0].getBBox().height;
+  var dna_seq_height = contextSvg.select("#DNA_sequence")[0][0].getBBox().height;
+  var nucl_text_y = 140 + .75*dna_seq_height;
                    nucl_sequence.attr("y", nucl_text_y)
                                 .attr("font-family", "monospace")
                                 .attr("transform", "translate(" + (margin.left) + ", 0)");
@@ -303,92 +304,71 @@ function display_nucleotides() {
   });
 
   if(show_AAs) {
-    var codon_to_AA = {'ATA': 'I', 'ATC': 'I', 'ATT': 'I', 'ATG': 'M',
-                 'ACA': 'T', 'ACC': 'T', 'ACG': 'T', 'ACT': 'T',
-                 'AAC': 'N', 'AAT': 'N', 'AAA': 'K', 'AAG': 'K',
-                 'AGC': 'S', 'AGT': 'S', 'AGA': 'R', 'AGG': 'R',
-                 'CTA': 'L', 'CTC': 'L', 'CTG': 'L', 'CTT': 'L',
-                 'CCA': 'P', 'CCC': 'P', 'CCG': 'P', 'CCT': 'P',
-                 'CAC': 'H', 'CAT': 'H', 'CAA': 'Q', 'CAG': 'Q',
-                 'CGA': 'R', 'CGC': 'R', 'CGG': 'R', 'CGT': 'R',
-                 'GTA': 'V', 'GTC': 'V', 'GTG': 'V', 'GTT': 'V',
-                 'GCA': 'A', 'GCC': 'A', 'GCG': 'A', 'GCT': 'A',
-                 'GAC': 'D', 'GAT': 'D', 'GAA': 'E', 'GAG': 'E',
-                 'GGA': 'G', 'GGC': 'G', 'GGG': 'G', 'GGT': 'G',
-                 'TCA': 'S', 'TCC': 'S', 'TCG': 'S', 'TCT': 'S',
-                 'TTC': 'F', 'TTT': 'F', 'TTA': 'L', 'TTG': 'L',
-                 'TAC': 'Y', 'TAT': 'Y', 'TAA': 'STP', 'TAG': 'STP',
-                 'TGC': 'C', 'TGT': 'C', 'TGA': 'STP', 'TGG': 'W'};
-
     var aa_sequence = contextSvg.append("g")
                                 .attr("id", "AA_sequence")
                                 .attr('transform', 'translate(50, 10)');
 
-    var aa_string = "";
-    var rect_x = 0;
     var textWidth = width/(end-start);
-    var ptr = start;
+    var prev_gene_stop = 0;
+    var offset_y = 0;
+    var overlapping_genes = false;
 
     geneParser["data"].sort((a,b) => a.start_in_split > b.start_in_split? 1 : -1).forEach(function(gene){
       if(gene.start_in_split < end-2 && gene.stop_in_split > start+2) {
-        aa_string = display_AA(gene);
+        display_AA(gene);
       }
     });
 
     function display_AA(gene) {
-      var l = gene.start_in_split;
-      var r = gene.stop_in_split;
-
-      var i;
-      if(ptr <= l) {
-        i = l;
-        aa_string += "\xa0".repeat(l-ptr);
-        rect_x += (l-ptr)*textWidth;
+      var aa_string = "";
+      var rect_x = 0;
+      var buffer, aa_i, aa_f;
+      if(gene.start_in_split > start) {
+        buffer = gene.start_in_split - start;
+        aa_i = 0;
       } else {
-        i = ptr;
-        var extra = 3 - ((ptr - l) % 3);
-        if(extra < 3) {
-          i += extra;
-          aa_string += "\xa0".repeat(extra);
-          rect_x += extra*textWidth;
-        }
+        buffer = (gene.stop_in_split - start) % 3;
+        aa_i = Math.ceil((start-gene.start_in_split)/3);
       }
-      var stop = Math.min(r, end);
-      var rect_bg_dark = true;
-      for (; i < stop-2; i+=3) {
-        var aa = (gene.direction == "r" ? codon_to_AA["" + sequence[i+2] + sequence[i+1] + sequence[i]]
-                          : codon_to_AA["" + sequence[i] + sequence[i+1] + sequence[i+2]]);
-        if(aa == "STP") {
-          aa_string = aa_string + "STP";
-        } else if(typeof aa == "undefined") {
-          aa_string = aa_string + "\xa0-\xa0";
-        } else {
-          aa_string = aa_string + "\xa0" + aa + "\xa0";
-        }
-        aa_sequence.append("rect")
-                   .attr("height", contextSvg.select("#DNA_sequence")[0][0].getBBox().height + "px")
-                   .attr("width", 3*textWidth)
-                   .attr("x", rect_x)
-                   .attr("y", nucl_text_y)
-                   .attr("fill", rect_bg_dark ? "rgb(144,137,250)" : "rgb(81,68,211)");
-        rect_bg_dark = !rect_bg_dark;
-        rect_x += 3*textWidth;
-      }
-      ptr = i;
-      return aa_string;
-    }
+      aa_f = Math.floor((Math.min(end, gene.stop_in_split) - gene.start_in_split)/3);
+      rect_x += textWidth * buffer;
 
-    aa_sequence.append("text")
-              .text(aa_string)
-              .attr('id', "AA_text")
-              .attr('font-size', nucl_text_font)
-              .attr("font-family", "monospace")
-              .attr("fill", "white")
-              .attr("y", nucl_text_y + .67*contextSvg.select("#DNA_sequence")[0][0].getBBox().height);
+      if(gene.start_in_split < prev_gene_stop) {
+        offset_y = offset_y == 0 ? 5+dna_seq_height : 0;
+        overlapping_genes = true;
+      }
+      if(gene.call_type == 1 && typeof gene.aa_sequence != "undefined") {
+        var aas_in_window = gene.aa_sequence.substring(aa_i, aa_f);
+        aa_string += "\xa0" + aas_in_window.split('').join('\xa0\xa0') + "\xa0";
+        if(aa_f == gene.aa_sequence.length+1) {
+          aa_string += "STP";
+          aas_in_window += "\xa0";
+        }
+        for(var i = 0; i < aas_in_window.length; i++) {
+          aa_sequence.append("rect")
+                     .attr("height", dna_seq_height)
+                     .attr("width", 3*textWidth)
+                     .attr("x", rect_x)
+                     .attr("y", nucl_text_y + offset_y)
+                     .attr("fill", i % 2 == 0 ? "rgb(144,137,250)" : "rgb(81,68,211)");
+          rect_x += (3*textWidth);
+        }
+
+        aa_sequence.append("text")
+                  .text(aa_string)
+                  .attr('font-size', nucl_text_font)
+                  .attr("font-family", "monospace")
+                  .attr("fill", "white")
+                  .attr("x", buffer*textWidth)
+                  .attr("y", nucl_text_y + .67*dna_seq_height + offset_y);
+      }
+      prev_gene_stop = gene.stop_in_split;
+    }
   }
 
-  contextSvg.attr("height", 150 + contextSvg.select("#DNA_sequence")[0][0].getBBox().height +
-    (show_AAs? contextSvg.select("#DNA_sequence")[0][0].getBBox().height : 0));
+  contextSvg.attr("height", 150 + dna_seq_height +
+    (show_AAs? dna_seq_height : 0) +
+    (overlapping_genes? 5+dna_seq_height : 0));
 }
 
 function show_selected_sequence() {
