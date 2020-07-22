@@ -61,6 +61,7 @@ class InteracDomeSuper(Pfam):
         self.min_binding_frequency = A('min_binding_frequency', null) or 0.1
         self.min_hit_fraction = A('min_hit_fraction', null) or 0.8
         self.interacdome_dataset = A('interacdome_dataset', null) or 'representable'
+        self.output_prefix = A('output_file_prefix', null)
         self.just_do_it = A('just_do_it', null)
 
         self.run.warning("", header='INITIALIZATION', lc='green')
@@ -464,11 +465,11 @@ class InteracDomeSuper(Pfam):
             'ligand': 'data_key',
             'binding_freq': 'data_value',
         })
-        self.amino_acid_additional_data['data_type'] = 'float'
-        self.amino_acid_additional_data['data_group'] = 'InteracDome'
         self.amino_acid_additional_data['item_name'] = (self.amino_acid_additional_data['gene_callers_id'].astype(str) + ':' +
                                                         self.amino_acid_additional_data['codon_order_in_gene'].astype(str))
         self.amino_acid_additional_data.drop(['gene_callers_id', 'codon_order_in_gene'], axis=1, inplace=True)
+        self.amino_acid_additional_data['data_type'] = 'float'
+        self.amino_acid_additional_data['data_group'] = 'InteracDome'
 
         contigs_db.db.insert_rows_from_dataframe(
             tables.amino_acid_additional_data_table_name,
@@ -477,11 +478,25 @@ class InteracDomeSuper(Pfam):
 
         contigs_db.disconnect()
         self.progress.reset()
-        self.run.info_single(f"binding frequencies successfully stored in {self.contigs_db_path}")
+        self.run.info_single(f"Binding frequencies successfully stored in {self.contigs_db_path}", mc='green', nl_before=1)
 
-        #self.progress.update("HMMER hit table")
-        #self.hmm_out.dom_hits.to_csv(self.)
+        self.progress.update("HMMER hit table")
+        dom_hit_filepath = self.output_prefix + '-domain_hits.txt'
+        self.hmm_out.dom_hits.to_csv(dom_hit_filepath, sep='\t', index=False)
+        self.progress.reset()
+        self.run.info_single(f"Domain hit summaries stored in {dom_hit_filepath}", mc='green')
 
+        self.progress.update("Match state contributors")
+        match_state_contributors_filepath = self.output_prefix + '-match_state_contributors.txt'
+        self.bind_freq.to_csv(match_state_contributors_filepath, sep='\t', index=False)
+        self.progress.reset()
+        self.run.info_single(f"Match state contributors stored in {match_state_contributors_filepath}", mc='green')
+
+        self.run.warning(f"You got here, which is great! That means any binding frequencies were stored in your contigs database. "
+                         f"In addition, a couple of files were stored in your current directory (with the prefix '{self.output_prefix}') "
+                         f"that you may want to keep around if you plan on doing very refined analyses.", header='THINGS HAPPENED', lc='green')
+
+        self.progress.end()
 
 
 class InteracDomeTableData(object):
