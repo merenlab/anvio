@@ -87,8 +87,19 @@ class InteracDomeSuper(Pfam):
         # Init the HMM profile
         self.hmms = pfam.HMMProfile(self.hmm_filepath)
 
-        # This dictionary is populated and stored as entries in `amino_acid_additional_data`
+        # This dictionary is populated and cast as a dataframe. It contains all of the per-residue
+        # binding frequency information for each hit
         self.bind_freq = {}
+
+        # This dictionary (eventual dataframe) is just like self.bind_freq, except has averaged
+        # binding frequencies for residue-ligand combos that have multiple contributing hits. It
+        # also drops all contributing match state information
+        self.avg_bind_freq = {}
+
+        # This is a modified version of self.avg_bind_freq that is compatible with the
+        # amino_acid_additional_data table structure, i.e.
+        # tables.amino_acid_additional_data_table_structure
+        self.amino_acid_additional_data = {}
 
 
     def potentially_remove_previous_interacdome_data(self):
@@ -182,7 +193,8 @@ class InteracDomeSuper(Pfam):
         self.attribute_binding_frequencies()
         self.filter_positions()
 
-        self.bind_freq = self.bind_freq.sort_values(by=['gene_callers_id', 'data_key', 'codon_order_in_gene'])
+        self.bind_freq = self.bind_freq.sort_values(by=['gene_callers_id', 'ligand', 'codon_order_in_gene'])
+        self.avg_bind_freq = self.avg_bind_freq.sort_values(by=['gene_callers_id', 'ligand', 'codon_order_in_gene'])
 
         if self.bind_freq.empty:
             self.run.warning("There are 0 HMM hits, so there is nothing to do :( Binding frequencies were not "
@@ -329,7 +341,7 @@ class InteracDomeSuper(Pfam):
     def filter_positions(self):
         """Filter out positions that do not pass criteria
 
-        Removes individual positions from self.bind_freq
+        Removes individual positions from self.avg_bind_freq
         """
 
         self.run.info("Filter by minimum binding frequency", self.min_binding_frequency > 0, nl_before=1)
@@ -342,19 +354,19 @@ class InteracDomeSuper(Pfam):
         self.progress.new('Filtering binding positions')
         self.progress.update('...')
 
-        self.bind_freq = self.bind_freq[self.bind_freq['data_value'] >= self.min_binding_frequency]
+        self.avg_bind_freq = self.avg_bind_freq[self.avg_bind_freq['binding_freq'] >= self.min_binding_frequency]
 
         self.progress.end()
 
-        total_entries = self.bind_freq['data_value'].shape[0]
+        total_entries = self.avg_bind_freq['binding_freq'].shape[0]
         self.run.info_single(f"(Post-filter) {total_entries} total positions with binding freqs", mc='cyan')
         for i in np.arange(0, 1, 0.1):
             lo_range, hi_range = i, i + 0.1
             if hi_range == 1:
-                num = ((self.bind_freq['data_value'] >= lo_range) & (self.bind_freq['data_value'] <= hi_range)).sum()
+                num = ((self.avg_bind_freq['binding_freq'] >= lo_range) & (self.avg_bind_freq['binding_freq'] <= hi_range)).sum()
                 self.run.info_single(f"positions binding freqs in range [{lo_range:.1f},{hi_range:.1f}]: {num}", level=2)
             else:
-                num = ((self.bind_freq['data_value'] >= lo_range) & (self.bind_freq['data_value'] < hi_range)).sum()
+                num = ((self.avg_bind_freq['binding_freq'] >= lo_range) & (self.avg_bind_freq['binding_freq'] < hi_range)).sum()
                 self.run.info_single(f"positions binding freqs in range [{lo_range:.1f},{hi_range:.1f}): {num}", level=2)
 
 
@@ -367,14 +379,15 @@ class InteracDomeSuper(Pfam):
         """
 
         self.bind_freq = {
-            'codon_order_in_gene': [],
             'gene_callers_id': [],
-            'data_key': [],
-            'data_value': [],
+            'codon_order_in_gene': [],
+            'pfam_id': [],
+            'match_state': [],
+            'ligand': [],
+            'binding_freq': [],
         }
 
         self.run.warning("", header="InteracDome Results", lc='green')
-
         self.progress.new('Matching binding frequencies to residues', progress_total_items=len(self.hmm_out.ali_info))
 
         for i, gene_callers_id in enumerate(self.hmm_out.ali_info):
@@ -405,55 +418,70 @@ class InteracDomeSuper(Pfam):
                     # Many of these attributed binding frequenices are 0. We do not bother reporting
                     # these, so we filter them out
                     codon_orders = ali['seq_positions'].values[attributed_freqs > 0]
+                    match_states = ali['hmm_positions'].values[attributed_freqs > 0]
                     attributed_freqs = attributed_freqs[attributed_freqs > 0]
 
-                    # Populate binding frequencies for this ligand/gene combo
+                    # Populate binding frequencies for this pfam-ligand-gene combo
                     self.bind_freq['gene_callers_id'].extend([gene_callers_id] * len(attributed_freqs))
                     self.bind_freq['codon_order_in_gene'].extend(codon_orders)
-                    self.bind_freq['data_key'].extend([ligand] * len(attributed_freqs))
-                    self.bind_freq['data_value'].extend(list(attributed_freqs))
+                    self.bind_freq['match_state'].extend(match_states)
+                    self.bind_freq['pfam_id'].extend([pfam_id] * len(attributed_freqs))
+                    self.bind_freq['ligand'].extend([ligand] * len(attributed_freqs))
+                    self.bind_freq['binding_freq'].extend(list(attributed_freqs))
 
         self.progress.increment(len(self.hmm_out.ali_info))
 
         self.progress.update('Casting data as dataframe')
         self.bind_freq = pd.DataFrame(self.bind_freq)
 
-        self.progress.update('Averaging multi-hit positions')
-        self.bind_freq = self.bind_freq.groupby(['gene_callers_id', 'data_key', 'codon_order_in_gene']).mean().reset_index()
-        self.bind_freq['data_type'] = 'float'
-        self.bind_freq['data_group'] = 'InteracDome'
+        self.progress.update('Aggregating multi-hit positions')
+        columns = ['gene_callers_id', 'codon_order_in_gene', 'ligand', 'binding_freq']
+        self.avg_bind_freq = self.bind_freq[columns].groupby(['gene_callers_id', 'ligand', 'codon_order_in_gene']).mean().reset_index()
 
         self.progress.end()
 
-        total_entries = self.bind_freq['data_value'].shape[0]
+        total_entries = self.avg_bind_freq['binding_freq'].shape[0]
         self.run.info_single(f"(Pre-filter) {total_entries} total positions with binding freqs", mc='cyan')
         for i in np.arange(0, 1, 0.1):
             lo_range, hi_range = i, i + 0.1
             if hi_range == 1:
-                num = ((self.bind_freq['data_value'] >= lo_range) & (self.bind_freq['data_value'] <= hi_range)).sum()
+                num = ((self.avg_bind_freq['binding_freq'] >= lo_range) & (self.avg_bind_freq['binding_freq'] <= hi_range)).sum()
                 self.run.info_single(f"positions binding freqs in range [{lo_range:.1f},{hi_range:.1f}]: {num}", level=2)
             else:
-                num = ((self.bind_freq['data_value'] >= lo_range) & (self.bind_freq['data_value'] < hi_range)).sum()
+                num = ((self.avg_bind_freq['binding_freq'] >= lo_range) & (self.avg_bind_freq['binding_freq'] < hi_range)).sum()
                 self.run.info_single(f"positions binding freqs in range [{lo_range:.1f},{hi_range:.1f}): {num}", level=2)
 
 
     def store(self):
-        self.progress.new("Storing binding frequencies in contigs database")
-        self.progress.update("...")
+        self.progress.new("Storing")
+        self.progress.update("binding frequencies in contigs database")
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
 
         # This is horrible. But we hijacked the miscdata framework to create
-        # amino_acid_addtional_data table in the contigs DB, so we must live with the consequences
-        self.bind_freq['item_name'] = self.bind_freq['gene_callers_id'].astype(str) + ':' + self.bind_freq['codon_order_in_gene'].astype(str)
+        # amino_acid_additional_data table in the contigs DB, so we must live with the consequences
+        self.amino_acid_additional_data = self.avg_bind_freq.rename(columns={
+            'ligand': 'data_key',
+            'binding_freq': 'data_value',
+        })
+        self.amino_acid_additional_data['data_type'] = 'float'
+        self.amino_acid_additional_data['data_group'] = 'InteracDome'
+        self.amino_acid_additional_data['item_name'] = (self.amino_acid_additional_data['gene_callers_id'].astype(str) + ':' +
+                                                        self.amino_acid_additional_data['codon_order_in_gene'].astype(str))
+        self.amino_acid_additional_data.drop(['gene_callers_id', 'codon_order_in_gene'], axis=1, inplace=True)
 
         contigs_db.db.insert_rows_from_dataframe(
             tables.amino_acid_additional_data_table_name,
-            self.bind_freq[tables.amino_acid_additional_data_table_structure]
+            self.amino_acid_additional_data
         )
 
         contigs_db.disconnect()
-        self.progress.end()
+        self.progress.reset()
+        self.run.info_single(f"binding frequencies successfully stored in {self.contigs_db_path}")
+
+        #self.progress.update("HMMER hit table")
+        #self.hmm_out.dom_hits.to_csv(self.)
+
 
 
 class InteracDomeTableData(object):
