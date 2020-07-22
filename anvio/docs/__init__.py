@@ -513,5 +513,11 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user": True
+    },
+    "splits-txt": {
+        "name": "SPLITS",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
     }
 }
