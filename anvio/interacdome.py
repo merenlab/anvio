@@ -12,7 +12,7 @@ References
 ==========
 - https://interacdome.princeton.edu/
 - Systematic domain-based aggregation of protein structures highlights DNA-, RNA- and other
-  ligand-binding positions.  Shilpa Nadimapalli Kobren and Mona Singh. Nucleic Acids Research (2019)
+  ligand-binding positions. Shilpa Nadimapalli Kobren and Mona Singh. Nucleic Acids Research (2019)
   47: 582-593.
 """
 
@@ -360,15 +360,17 @@ class InteracDomeSuper(Pfam):
         self.progress.end()
 
         total_entries = self.avg_bind_freq['binding_freq'].shape[0]
-        self.run.info_single(f"(Post-filter) {total_entries} total positions with binding freqs", mc='cyan')
+        total_genes = self.avg_bind_freq['gene_callers_id'].nunique()
+        self.run.info_single(f"(Post-filter) {total_genes} genes with at least 1 binding freq", mc='cyan')
+        self.run.info_single(f"(Post-filter) {total_entries} total position-ligand combos with binding freqs", mc='cyan')
         for i in np.arange(0, 1, 0.1):
             lo_range, hi_range = i, i + 0.1
             if hi_range == 1:
                 num = ((self.avg_bind_freq['binding_freq'] >= lo_range) & (self.avg_bind_freq['binding_freq'] <= hi_range)).sum()
-                self.run.info_single(f"positions binding freqs in range [{lo_range:.1f},{hi_range:.1f}]: {num}", level=2)
+                self.run.info_single(f"position-ligand combos with binding freqs in range [{lo_range:.1f},{hi_range:.1f}]: {num}", level=2)
             else:
                 num = ((self.avg_bind_freq['binding_freq'] >= lo_range) & (self.avg_bind_freq['binding_freq'] < hi_range)).sum()
-                self.run.info_single(f"positions binding freqs in range [{lo_range:.1f},{hi_range:.1f}): {num}", level=2)
+                self.run.info_single(f"position-ligand combos with binding freqs in range [{lo_range:.1f},{hi_range:.1f}): {num}", level=2)
 
 
     def attribute_binding_frequencies(self):
@@ -442,15 +444,17 @@ class InteracDomeSuper(Pfam):
         self.progress.end()
 
         total_entries = self.avg_bind_freq['binding_freq'].shape[0]
-        self.run.info_single(f"(Pre-filter) {total_entries} total positions with binding freqs", mc='cyan')
+        total_genes = self.avg_bind_freq['gene_callers_id'].nunique()
+        self.run.info_single(f"(Pre-filter) {total_genes} genes with at least 1 binding freq", mc='cyan')
+        self.run.info_single(f"(Pre-filter) {total_entries} total position-ligand combos with binding freqs", mc='cyan')
         for i in np.arange(0, 1, 0.1):
             lo_range, hi_range = i, i + 0.1
             if hi_range == 1:
                 num = ((self.avg_bind_freq['binding_freq'] >= lo_range) & (self.avg_bind_freq['binding_freq'] <= hi_range)).sum()
-                self.run.info_single(f"positions binding freqs in range [{lo_range:.1f},{hi_range:.1f}]: {num}", level=2)
+                self.run.info_single(f"position-ligand combos with binding freqs in range [{lo_range:.1f},{hi_range:.1f}]: {num}", level=2)
             else:
                 num = ((self.avg_bind_freq['binding_freq'] >= lo_range) & (self.avg_bind_freq['binding_freq'] < hi_range)).sum()
-                self.run.info_single(f"positions binding freqs in range [{lo_range:.1f},{hi_range:.1f}): {num}", level=2)
+                self.run.info_single(f"position-ligand combos with binding freqs in range [{lo_range:.1f},{hi_range:.1f}): {num}", level=2)
 
 
     def store(self):
@@ -478,7 +482,8 @@ class InteracDomeSuper(Pfam):
 
         contigs_db.disconnect()
         self.progress.reset()
-        self.run.info_single(f"Binding frequencies successfully stored in {self.contigs_db_path}", mc='green', nl_before=1)
+        num_residues = self.amino_acid_additional_data['item_name'].nunique()
+        self.run.info_single(f"Binding frequencies for {num_residues} unique positions successfully stored in {self.contigs_db_path}", mc='green', nl_before=1)
 
         self.progress.update("HMMER hit table")
         dom_hit_filepath = self.output_prefix + '-domain_hits.txt'
