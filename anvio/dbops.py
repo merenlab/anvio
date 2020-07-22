@@ -317,7 +317,7 @@ class ContigsSuperclass(object):
 
         self.progress.update('Filtering out shorter contigs')
         for contig_name in contigs_shorter_than_M:
-            self.contig_sequences.pop(contig_name)
+            self.contig_sequences.pop(contig_name) if contig_name in self.contig_sequences else None
 
         self.progress.end()
 
