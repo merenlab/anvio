@@ -2136,8 +2136,9 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
         summary['pdb_content'] = structure_db.get_pdb_content(gene_callers_id)
-        summary['residue_info'] = structure_db.get_residue_info_for_gene(gene_callers_id).to_json(orient='index')
         structure_db.disconnect()
+
+        summary['residue_info'] = self.get_residue_info_for_gene(gene_callers_id).to_json(orient='index')
 
         summary['histograms'] = {}
         for engine in self.available_engines:
@@ -2145,6 +2146,21 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
                                                                 self.variability_storage[gene_callers_id][engine]['column_info'])
 
         return summary
+
+
+    def get_residue_info_for_gene(self, gene_callers_id):
+        """Grab the residue info from both the structure database and the contigs database
+
+        This grabs residue info from both `residue_info_table_name` in the structure database as well as
+        any potential data present in `amino_acid_additional_data` in the contigs database.
+        """
+
+        structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
+        from_structure_db = structure_db.get_residue_info_for_gene(gene_callers_id)
+        structure_db.disconnect()
+
+        residue_info = from_structure_db
+        return residue_info
 
 
     def get_variability(self, options):
