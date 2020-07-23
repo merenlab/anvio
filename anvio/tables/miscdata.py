@@ -1119,6 +1119,35 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
         AdditionalDataBaseClass.__init__(self, args)
 
 
+    def get_gene_dataframe(self, gene_callers_id, keys_of_interest=set([]), group_name=None):
+        if self.df is None:
+            self.init_table_as_dataframe()
+
+        gene_df = self.df[self.df['gene_callers_id'] == gene_callers_id]
+
+        if group_name:
+            gene_df = gene_df[gene_df['data_group'] == group_name]
+
+        if len(keys_of_interest):
+            gene_df = gene_df[gene_df['data_key'].isin(set(keys_of_interest))]
+
+        return gene_df
+
+
+    def init_table_as_dataframe(self):
+        """Call AdditionalAndOrderDataBaseClass.init_table_as_dataframe and split `item_name`
+
+        Splits the item_name column (format <gene_callers_id>:<codon_order_in_gene>) into two
+        separate columns, `gene_callers_id` and `codon_order_in_gene`, thereby recovering this
+        information for parseability, etc.
+        """
+
+        super(AdditionalDataBaseClass, self).init_table_as_dataframe()
+        self.df[['gene_callers_id', 'codon_order_in_gene']] = self.df['item_name'].str.split(':', expand=True)
+        self.df['gene_callers_id'] = self.df['gene_callers_id'].astype(int)
+        self.df['codon_order_in_gene'] = self.df['codon_order_in_gene'].astype(int)
+
+
     def check_names(self, data_dict):
         """Compares data key values found in the data dict to the ones in the db
 
