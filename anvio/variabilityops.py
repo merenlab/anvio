@@ -1069,7 +1069,9 @@ class VariabilitySuper(VariabilityFilter, object):
         if self.engine == 'NT':
             self.data = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name,
                                                              columns_of_interest=self.table_structure,
-                                                             where_clause=sqlite_where_clause)
+                                                             where_clause=sqlite_where_clause,
+                                                             error_if_no_data=False)
+            self.check_if_data_is_empty()
 
         elif self.engine == 'CDN' or self.engine == 'AA':
             if not profile_db.meta['SCVs_profiled']:
@@ -1137,6 +1139,9 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def check_if_data_is_empty(self):
+        if self.progress.pid is not None:
+            self.progress.end()
+
         if self.data.empty:
             raise self.EndProcess
 
@@ -1895,7 +1900,7 @@ class VariabilitySuper(VariabilityFilter, object):
                    message to user
             """
             if msg:
-                run.info_single(msg, 'red', 1, 1)
+                run.info_single(msg, mc='red', nl_before=1, nl_after=1)
             if exit:
                 sys.exit()
 
@@ -2330,10 +2335,10 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
 
         # no data no play.
         if not len(self.data):
-            raise ConfigError("ConsensusSequences class is upset because it doesn't have any data. There can be two reasons "
-                              "to this. One, anvi'o variability engines reported nothing (in which case you should have gotten "
-                              "an error much earler). Two, you are a programmer and failed to call the 'process()' on your "
-                              "instance from this class. Do you see how the second option is much more likely? :/")
+            raise ConfigError("ConsensusSequences class is upset because it doesn't have any data. If you are a user, this means "
+                              "the sequence(s) you are interested in has/have no sequence variability, so there is really nothig "
+                              "to do here... If you are a programmer and failed to call 'process()' on your "
+                              "instance from this class, you may also see this message.")
 
         # learn about the sequences, either contigs or genes
         if self.contigs_mode:
@@ -2345,7 +2350,7 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
                 _, d = self.get_sequences_for_gene_callers_ids([gene_callers_id])
                 sequences[gene_callers_id] = d[gene_callers_id]['sequence'].lower()
 
-        # here we populate a dictionary with all the right items but witout any real data.
+        # here we populate a dictionary with all the right items but without any real data.
         sample_names = set(self.data['sample_id'])
         for sample_name in sample_names:
             self.sequence_variants_in_samples_dict[sample_name] = {}
