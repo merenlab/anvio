@@ -938,7 +938,7 @@ class VariabilitySuper(VariabilityFilter, object):
                                           "Here are a few of those ids" if len(some_to_report) > 1 else "Its id is",
                                           ", ".join([str(x) for x in some_to_report])))
 
-        self.progress.update('Making sure you are not playing games ..')
+        self.progress.update('Making sure you are not playing games ...')
         if self.engine not in ['NT', 'CDN', 'AA']:
             raise ConfigError("Anvi'o doesn't know what to do with a engine on '%s' yet :/" % self.engine)
         self.table_structure = t.variable_nts_table_structure if self.engine ==  'NT' else t.variable_codons_table_structure
@@ -1139,10 +1139,10 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def check_if_data_is_empty(self):
-        if self.progress.pid is not None:
-            self.progress.end()
-
         if self.data.empty:
+            if self.progress.pid is not None:
+                self.progress.end()
+
             raise self.EndProcess
 
 
@@ -1190,6 +1190,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
     def is_available_samples_compatible_with_sample_ids_of_interest(self):
         self.run.info("Samples available", ", ".join(sorted(self.available_sample_ids)), progress=self.progress)
+
         if self.sample_ids_of_interest:
             samples_missing = [sample_id for sample_id in self.sample_ids_of_interest if sample_id not in self.available_sample_ids]
             if len(samples_missing):
