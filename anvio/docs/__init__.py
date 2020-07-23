@@ -412,6 +412,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "detection-txt": {
+        "name": "DETECTIONS",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "genome-distance-txt": {
         "name": "DISTANCE ESTIMATES",
         "type": "TXT",
