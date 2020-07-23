@@ -261,8 +261,6 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
             component.addRepresentation("surface", surface_rep_params);
         }
 
-        // FIXME does not work as expected. When loading structure residue info create
-        // manual labels
         if ($('#show_residue_labels').is(':checked')) {
             component.addRepresentation("label", {
             sele: ".CA",
@@ -1280,6 +1278,7 @@ function gen_pymol_script() {
         } : null;
     }
 
+    // FIXME I will have to go residue by residue
     var bb_color = hexToRgb($('#backbone_color').attr('color'));
 
     // s is the full PyMOL script string

@@ -215,11 +215,6 @@
                             <div class="col-md-8"><input type="checkbox" id="show_backbone" onclick="create_ngl_views(fetch_variability=false); " checked="checked" /></div>
                         </div>
                         <div class="col-md-12">
-                            <label class="col-md-4 settings-label">Color: </label>  
-                            <div class="col-md-8"><div class="colorpicker" id="backbone_color" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab;"></div>
-                            </div>
-                        </div>
-                        <div class="col-md-12">
                             <label class="col-md-4 settings-label">Style: </label>
                             <div class="col-md-8">
                                 <select id="backbone_type" onchange="create_ngl_views(fetch_variability=false);">
@@ -235,6 +230,51 @@
                                 </select>
                             </div>
                         </div>
+                        <span class="settings-header" style="margin-left: 10px;"><h5>Backbone Color</h5></span>
+                        <div class="col-md-12">
+                            <label class="col-md-4 settings-label">Rule: </label>
+                            <div class="col-md-8">
+                                <select id="color_type" onchange="if ($(this).val() == 'Static') { $('.static-color-backbone').show(); $('.dynamic-color-backbone').hide(); } else { $('.static-color-backbone').hide(); $('.dynamic-color-backbone').show(); }; create_ngl_views(fetch_variability=false);">
+                                    <option>Static</option>
+                                    <option>Dynamic</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="static-color-backbone">
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Color: </label>
+                                <div class="col-md-8"><div class="colorpicker" id="color_static_backbone" color="#c80023" onchange="create_ngl_views(fetch_variability=false)" style="background-color: #c80023;"></div></div>
+                            </div>
+                        </div>
+                        <div class="dynamic-color-backbone" style="display: none;">
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Color by: </label>
+                                <div class="col-md-8"><select id="backbone_color_variable" onChange="FIXME(this);"></select></div>
+                            </div>
+                            <div id="color_numerical_panel">
+                                <span class="settings-header" style="margin-left: 22px;"><h5>Minimum</h5></span>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Value: </label>
+                                    <div class="col-md-8"><input type="input" id="color_min" onblur="draw_variability(); " value="0"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label" style="margin-bottom: 15px">Color: </label>
+                                    <div class="col-md-8"><div class="colorpicker" id="color_start" color="#ffffed" onchange="draw_variability();" style="background-color: #ffffed"></div></div>
+                                </div>
+                                <span class="settings-header" style="margin-left: 22px;"><h5>Maximum</h5></span>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Value: </label>
+                                    <div class="col-md-8"><input type="input" id="color_max" onblur="draw_variability(); " value="1"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Color: </label>
+                                    <div class="col-md-8"><div class="colorpicker" id="color_end" color="#c80023" onchange="draw_variability();" style="background-color: #c80023"></div></div>
+                                </div>
+                                <div class="clearfix"></div>
+                                <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_background_color_error">Max Value must be greater than Min Value.</div>
+                            </div>
+                        </div>
+                        <div class="clearfix"></div>
                         <span class="settings-header" style="margin-left: 10px;"><h5>Surface</h5></span>
                         <div class="col-md-12">
                             <label class="col-md-4 settings-label">Show: </label>

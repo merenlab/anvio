@@ -1644,7 +1644,6 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         FIND_MIN = lambda c, buff=0.01: var.data[c].min() - buff if c in var.data.columns else 0
         FIND_MAX = lambda c, buff=0.01: var.data[c].max() + buff if c in var.data.columns else 1
 
-
         info = [
             {
                 'name': 'departure_from_consensus',
