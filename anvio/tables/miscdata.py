@@ -1158,7 +1158,21 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
         if len(keys_of_interest):
             gene_df = gene_df[gene_df['data_key'].isin(set(keys_of_interest))]
 
-        return gene_df.pivot(columns='data_key', index='codon_order_in_gene', values='data_value').reset_index()
+        # Assumes a data_key can possess only 1 data_type
+        dtypes_convert = {
+            'str': str,
+            'int': int,
+            'float': float,
+            'stackedbar': str,
+            'unknown': str,
+        }
+
+        dtypes = {}
+        for data_key, subset in gene_df.groupby('data_key'):
+            dtypes[data_key] = dtypes_convert[subset['data_type'].iloc[0]]
+
+        pivot_gene_df = gene_df.pivot(columns='data_key', index='codon_order_in_gene', values='data_value').astype(dtypes)
+        return pivot_gene_df.reset_index()
 
 
     def init_table_as_dataframe(self):
