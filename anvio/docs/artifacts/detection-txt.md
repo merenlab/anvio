@@ -2,9 +2,7 @@ This is a text file containing **the detection value for each gene in each sampl
 
 This is a tab-delimited file where each row describes a specific gene and each column describes one of your samples. Each cell contains the detection of that gene in that sample. 
 
-### Example for genes
-
-(the type of output you would get from %(anvi-export-gene-coverage-and-detection)s)
+### Example
 
     key       sample_1    sample_2    sample_3 ...
     13947     0.291093    0.984394    0.9289432         
