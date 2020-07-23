@@ -72,7 +72,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
         if not self.db_path:
             raise ConfigError("The AdditionalAndOrderDataBaseClass is inherited with an args object that did not "
-                              "contain any database path :/ Even though any of the following would "
+                              "contain any db_path :/ Even though any of the following would "
                               "have worked: %s :(" % ', '.join(["'%s'" % x for x in acceptable_db_inputs]))
 
         if not self.table_name:
