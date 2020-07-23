@@ -369,7 +369,7 @@ function display_nucleotides() {
                      .attr("x", buffer*textWidth)
                      .attr("y", nucl_text_y + offset_y)
                      .attr("fill", "red")
-                     .attr("fill-opacity", 0.1)
+                     .attr("fill-opacity", 0.1);
         }
       }
       prev_gene_stop = gene.stop_in_split;
@@ -573,14 +573,14 @@ function search_items(search_query, page) {
                 results_html += '<br /><br /><center>';
 
                 if (results.length > 0) {
-                    if (page + 1 < total_page) {
-                        results_html += `<a href="#" onclick="search_items('${search_query}', ${page+1});">&lt;&lt;&lt; prev</a> | `;
+                    if (page > 0) {
+                        results_html += `<a href="#" onclick="search_items('${search_query}', ${page-1});">&lt;&lt;&lt; prev</a> | `;
                     }
 
                     results_html += " page " + (page + 1) + " of " + total_page;
 
-                    if (page > 0) {
-                        results_html += ` | <a href="#" onclick="search_items('${search_query}', ${page-1});"> next &gt;&gt;&gt;</a>`;
+                    if (page + 1 < total_page) {
+                        results_html += ` | <a href="#" onclick="search_items('${search_query}', ${page+1});"> next &gt;&gt;&gt;</a>`;
                     }
                 }
                 else
