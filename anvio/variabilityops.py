@@ -2331,7 +2331,7 @@ class ConsensusSequences(NucleotidesEngine, AminoAcidsEngine):
             self.data = pd.DataFrame(collapsed_coverage_counts, columns=coverage_columns).reset_index(drop=True)
             self.data[data_append.columns] = data_append
             self.data['sample_id'] = 'merged'
-            self.data['consensus'] = self.data[self.items].idxmax(axis=1)
+            self.data['consensus'] = self.data[self.items].astype(int).idxmax(axis=1)
 
         # no data no play.
         if not len(self.data):
