@@ -114,6 +114,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                                'stackedbar': 0,
                                'unknown': None}
 
+        self.df = None
+
 
     def populate_from_file(self, additional_data_file_path, skip_check_names=None):
 
@@ -378,6 +380,14 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                     if key not in data_dict[data_name]:
                         raise ConfigError("Your data dictionary fails the sanity check since at least one item in it (i.e., %s) is "
                                           "missing any data for the key '%s'." % (data_name, key))
+
+
+    def init_table_as_dataframe(self):
+        """Init the raw table as a dataframe"""
+
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        self.df = database.get_table_as_dataframe(self.table_name, error_if_no_data=False)
+        database.disconnect()
 
 
 class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
@@ -649,7 +659,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
         Returns
         =======
-        output : (additional_data_keys, additional_data_dict)
+        (additional_data_keys, additional_data_dict) : tuple
         """
 
         if not self.target_data_group:
