@@ -1419,10 +1419,6 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
-        # splits
-        self.bin_id = A('bin_id', null)
-        self.collection_name = A('collection_name', null)
-        self.splits_of_interest_path = A('splits_of_interest', null)
         # database
         self.profile_db_path = A('profile_db', null)
         self.contigs_db_path = A('contigs_db', null)
