@@ -1079,7 +1079,8 @@ class VariabilitySuper(VariabilityFilter, object):
                                    profiles :(")
 
             self.data = profile_db.db.get_table_as_dataframe(t.variable_codons_table_name,
-                                                             where_clause=sqlite_where_clause)
+                                                             where_clause=sqlite_where_clause,
+                                                             error_if_no_data=False)
             self.check_if_data_is_empty()
 
             # this is where magic happens for the AA engine. we just read the data from the variable codons table, and it
