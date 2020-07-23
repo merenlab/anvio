@@ -1158,7 +1158,7 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
         if len(keys_of_interest):
             gene_df = gene_df[gene_df['data_key'].isin(set(keys_of_interest))]
 
-        return gene_df.pivot(columns='data_key', index='codon_order_in_gene', values='data_value')
+        return gene_df.pivot(columns='data_key', index='codon_order_in_gene', values='data_value').reset_index()
 
 
     def init_table_as_dataframe(self):

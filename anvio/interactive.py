@@ -34,7 +34,12 @@ from anvio.errors import ConfigError, RefineError, GenesDBError
 from anvio.variabilityops import VariabilitySuper
 from anvio.variabilityops import variability_engines
 
-from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerAdditionalData, TableForLayerOrders
+from anvio.tables.miscdata import (
+    TableForItemAdditionalData,
+    TableForLayerAdditionalData,
+    TableForLayerOrders,
+    TableForAminoAcidAdditionalData,
+)
 from anvio.tables.collections import TablesForCollections
 
 
@@ -1450,6 +1455,10 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
         ContigsSuperclass.__init__(self, self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
 
+        # Init the amino acid additional data table object
+        args = argparse.Namespace(contigs_db=self.contigs_db_path)
+        self.amino_acid_additional_data = TableForAminoAcidAdditionalData(args)
+
         if self.store_full_variability_in_memory:
             self.profile_full_variability_data()
 
@@ -2151,16 +2160,19 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
     def get_residue_info_for_gene(self, gene_callers_id):
         """Grab the residue info from both the structure database and the contigs database
 
-        This grabs residue info from both `residue_info_table_name` in the structure database as well as
+        This grabs residue info from both `residue_info` in the structure database as well as
         any potential data present in `amino_acid_additional_data` in the contigs database.
         """
 
+        # Get residue info from `residue_info`
         structure_db = structureops.StructureDatabase(self.structure_db_path, 'none', ignore_hash=True)
         from_structure_db = structure_db.get_residue_info_for_gene(gene_callers_id)
         structure_db.disconnect()
 
-        residue_info = from_structure_db
-        return residue_info
+        # Get residue info from `amino_acid_additional_data`
+        from_contigs_db = self.amino_acid_additional_data.get_gene_dataframe(gene_callers_id)
+
+        return from_structure_db.merge(from_contigs_db, 'left', on='codon_order_in_gene')
 
 
     def get_variability(self, options):
