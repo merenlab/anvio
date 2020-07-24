@@ -13,6 +13,8 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError, GenesDBError
 from anvio.tables.tableops import Table
 
+import pandas as pd
+
 from math import floor
 
 
@@ -1171,6 +1173,9 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
         for data_key, subset in gene_df.groupby('data_key'):
             dtypes[data_key] = dtypes_convert[subset['data_type'].iloc[0]]
 
+        if gene_df.empty:
+            return pd.DataFrame({}, columns=('codon_order_in_gene',))
+
         pivot_gene_df = gene_df.pivot(columns='data_key', index='codon_order_in_gene', values='data_value').astype(dtypes)
         return pivot_gene_df.reset_index()
 
@@ -1184,6 +1189,12 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
         """
 
         super(AdditionalDataBaseClass, self).init_table_as_dataframe()
+
+        if self.df.empty:
+            self.df['gene_callers_id'] = None
+            self.df['codon_order_in_gene'] = None
+            return
+
         self.df[['gene_callers_id', 'codon_order_in_gene']] = self.df['item_name'].str.split(':', expand=True)
         self.df['gene_callers_id'] = self.df['gene_callers_id'].astype(int)
         self.df['codon_order_in_gene'] = self.df['codon_order_in_gene'].astype(int)
