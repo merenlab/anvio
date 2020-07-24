@@ -243,7 +243,7 @@
                         <div class="static-color-backbone">
                             <div class="col-md-12">
                                 <label class="col-md-4 settings-label">Color: </label>
-                                <div class="col-md-8"><div class="colorpicker" id="color_static_backbone" color="#c80023" onchange="create_ngl_views(fetch_variability=false)" style="background-color: #c80023;"></div></div>
+                                <div class="col-md-8"><div class="colorpicker" id="color_static_backbone" color="#c80023" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #c80023;"></div></div>
                             </div>
                         </div>
                         <div class="dynamic-color-backbone" style="display: none;">
@@ -255,20 +255,20 @@
                                 <span class="settings-header" style="margin-left: 22px;"><h5>Minimum</h5></span>
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">Value: </label>
-                                    <div class="col-md-8"><input type="input" id="color_min" onblur="draw_variability(); " value="0"></div>
+                                    <div class="col-md-8"><input type="input" id="color_min" onblur="create_ngl_views(fetch_variability=false);" value="0"></div>
                                 </div>
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label" style="margin-bottom: 15px">Color: </label>
-                                    <div class="col-md-8"><div class="colorpicker" id="color_start" color="#ffffed" onchange="draw_variability();" style="background-color: #ffffed"></div></div>
+                                    <div class="col-md-8"><div class="colorpicker" id="backbone_color_start" color="#ffffed" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #ffffed"></div></div>
                                 </div>
                                 <span class="settings-header" style="margin-left: 22px;"><h5>Maximum</h5></span>
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">Value: </label>
-                                    <div class="col-md-8"><input type="input" id="color_max" onblur="draw_variability(); " value="1"></div>
+                                    <div class="col-md-8"><input type="input" id="backbone_color_max" onblur="create_ngl_views(fetch_variability=false);" value="1"></div>
                                 </div>
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">Color: </label>
-                                    <div class="col-md-8"><div class="colorpicker" id="color_end" color="#c80023" onchange="draw_variability();" style="background-color: #c80023"></div></div>
+                                    <div class="col-md-8"><div class="colorpicker" id="backbone_color_end" color="#c80023" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #c80023"></div></div>
                                 </div>
                                 <div class="clearfix"></div>
                                 <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_background_color_error">Max Value must be greater than Min Value.</div>
