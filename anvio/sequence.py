@@ -3,8 +3,8 @@
 
 """Classes for basic sequence properties and manipulations."""
 
+from collections import OrderedDict
 from hashlib import sha224
-
 from itertools import permutations
 
 import anvio
@@ -138,157 +138,586 @@ class Composition:
             self.GC_content = (self.G + self.C) * 1.0 / length
 
 
-class SequenceDereplicator:
-    """
-    This class takes in a list of sequences and performs full-length or prefix dereplication.
-    A list of sequences and corresponding list of sequence IDs are required.
-    A list of extra information for each sequence is optional.
-    The extra list can take any form -- a list of tuples, strings, mixed data types, etc.
-    """
-
-    def __init__(self, ids, seqs, extras=None):
+class Dereplicator:
+    @staticmethod
+    def _check_input(ids, seqs, extras=None):
         if len(ids) != len(seqs):
-            raise ConfigError(
-                "SequenceDereplicator takes a list of sequence IDs and a list of sequence strings. "
-                "Your input lists were not the same length. "
-                "The ID list had a length of %d, and the sequence list had a length of %d."
-                % (len(ids), len(seqs)))
+            raise ConfigError("Your input lists were not the same length. "
+                              "`ids` had a length of %d, while `seqs` had a length of %d."
+                              % (len(ids), len(seqs)))
         if extras:
             if len(extras) != len(seqs):
-                raise ConfigError(
-                    "SequenceDereplicator takes an optional extra list of sequence information. "
-                    "Your extra list was not the same length as the ID and sequence lists. "
-                    "The extra list had a length of %d, while the others had a length of %d."
-                    % (len(extras), len(seqs)))
-
-        self.ids = ids
-        self.seqs = seqs
-        self.hashed_seqs = [sha224(seq.encode('utf-8')).hexdigest() for seq in self.seqs]
-        if extras:
-            self.extras = extras
-        else:
-            self.extras = []
+                raise ConfigError("Your input lists were not the same length. "
+                                  "`extras` had a length of %d, while `ids` and `seqs` had a length of %d."
+                                  % (len(extras), len(seqs)))
 
 
-    def full_length_dereplicate(self):
-        """
-        Identical sequences are clustered, returning a list of tuples.
+    @staticmethod
+    def _hash_seqs(seqs):
+        hashed_seqs = [sha224(seq.encode('utf-8')).hexdigest() for seq in seqs]
+        return hashed_seqs
 
-        If no extra sequence information (self.extras) is provided, the list format is:
-        clusters = [(sequence A, [member sequence X ID, member sequence Y ID, ...]), (sequence B, [member IDs]), ...]
-        If extra information is provided:
-        clusters = [(sequence A, [member sequence X ID, ...], [member sequence X extra info, ...]), ...]
-        """
+
+    @staticmethod
+    def _full_length_dereplicate_with_extra_info(ids, seqs, extras):
+
+        hashed_seqs = Dereplicator._hash_seqs(seqs)
 
         # Search for identical sequences of the same length.
-        seq_lengths = [len(seq) for seq in self.seqs]
+        seq_lengths = [len(seq) for seq in seqs]
         full_dict = {seq_length: {} for seq_length in sorted(set(seq_lengths))} # store clusters here
-        extra_iter = iter(self.extras)
-        for seq_length, hashed_seq, seq_id, seq in zip(seq_lengths, self.hashed_seqs, self.ids, self.seqs):
+        extra_iter = iter(extras)
+        for seq_length, hashed_seq, seq_id, seq in zip(seq_lengths, hashed_seqs, ids, seqs):
             inner_dict = full_dict[seq_length]
-            try:
-                if self.extras:
-                    value = inner_dict[hashed_seq]
-                    value[1].append(seq_id)
-                    value[2].append(next(extra_iter))
-                else:
-                    inner_dict[hashed_seq][1].append(seq_id)
-            except KeyError:
-                if self.extras:
-                    inner_dict[hashed_seq] = (seq, [seq_id], [next(extra_iter)])
-                else:
-                    inner_dict[hashed_seq] = (seq, [seq_id])
+            if hashed_seq in inner_dict:
+                member_info = inner_dict[hashed_seq]
+                member_info[1].append(seq_id)
+                member_info[2].append(next(extra_iter))
+            else:
+                inner_dict[hashed_seq] = (seq, [seq_id], [next(extra_iter)])
 
         clusters = []
         for inner_dict in full_dict.values():
             clusters.extend(inner_dict.values())
-        clusters.sort(key=lambda value: -len(value[1]))
+
+        # Sort by cluster size and then ID of the first member (seed).
+        clusters.sort(key=lambda member_info: (-len(member_info[1]), member_info[1][0]))
 
         return clusters
 
 
-    def get_prefix_dict(self, ids, seqs, min_seq_length=None):
+    @staticmethod
+    def _full_length_dereplicate_without_extra_info(ids, seqs):
+
+        hashed_seqs = Dereplicator._hash_seqs(seqs)
+
+        # Search for identical sequences of the same length.
+        seq_lengths = [len(seq) for seq in seqs]
+        full_dict = {seq_length: {} for seq_length in sorted(set(seq_lengths))} # store clusters here
+        for seq_length, hashed_seq, seq_id, seq in zip(seq_lengths, hashed_seqs, ids, seqs):
+            inner_dict = full_dict[seq_length]
+            if hashed_seq in inner_dict:
+                inner_dict[hashed_seq][1].append(seq_id)
+            else:
+                inner_dict[hashed_seq] = (seq, [seq_id])
+
+        clusters = []
+        for inner_dict in full_dict.values():
+            clusters.extend(inner_dict.values())
+
+        # Sort by cluster size and then ID of the first member (seed).
+        clusters.sort(key=lambda member_info: (-len(member_info[1]), member_info[1][0]))
+
+        return clusters
+
+
+    @staticmethod
+    def full_length_dereplicate(ids, seqs, extras=None):
         """
-        The returned prefix_dict contains hashes of prefix subsequences from all of the target sequences.
-        prefix_dict is keyed by sequence length, with lengths spanning from the min to max sequence length;
-        min seq length can be adjusted downward using the parameter.
-        prefix_dict values are dictionaries themselves.
-        Inner dict keys are prefix sequence hashes,
-        and values are lists of target sequence IDs containing those hashes.
+        Identical sequences are clustered, returning a list of tuples.
+
+        If no extra sequence information (`extras`) is provided, the list format is:
+        clusters = [(<seed seq A>, [<IDs of identical seqs, starting with A>]),
+                    (<seed seq B>, [<IDs of identical seqs, starting with B>]), ...]
+        If extra information is provided:
+        clusters = [(<seed seq A>, [<IDs of identical seqs, starting with A>], [<extra info for each identical seq, starting with A>]),
+                    (<seed seq B>, [<IDs of identical seqs, starting with B>], [<extra info for each identical seq, starting with B>]), ...]
         """
 
+        if extras:
+            clusters = Dereplicator._full_length_dereplicate_with_extra_info(ids, seqs, extras)
+        else:
+            clusters = Dereplicator._full_length_dereplicate_without_extra_info(ids, seqs)
+
+        return clusters
+
+
+    @staticmethod
+    def _get_unique_inputs(ids, seqs, extras=None):
+        unique_ids = []
+        unique_seqs = []
+        unique_extras = []
+        replicate_dict = {}
+        if extras:
+            for cluster in Dereplicator.full_length_dereplicate(ids, seqs, extras):
+                unique_ids.append(cluster[1][0])
+                unique_seqs.append(cluster[0])
+                unique_extras.append(cluster[2][0])
+                replicate_dict[cluster[1][0]] = list(zip(cluster[1][1: ], cluster[2][1: ]))
+        else:
+            for cluster in Dereplicator.full_length_dereplicate(ids, seqs):
+                unique_ids.append(cluster[1][0])
+                unique_seqs.append(cluster[0])
+                replicate_dict[cluster[1][0]] = cluster[1][1: ]
+
+        if len(unique_ids) == len(ids):
+            unique_ids = ids
+            unique_seqs = seqs
+            unique_extras = extras
+            replicate_dict = None
+
+        return unique_ids, unique_seqs, unique_extras, replicate_dict
+
+
+    @staticmethod
+    def _get_empty_substring_dict(seqs, min_seq_length=None, max_seq_length=None):
+        """
+        The returned dict has the following structure:
+        substring_dict = {min_seq_length: {},
+                          min_seq_length + 1: {}, ...
+                          max_seq_length: {}}
+        By default, `min_seq_length` and `max_seq_length` are determined from `seqs`.
+        This is overriden when optional values are provided.
+        """
         if min_seq_length:
             if min_seq_length < 1:
-                raise ConfigError("The `min_seq_length` argument of `get_prefix_dict` "
+                raise ConfigError("The `min_seq_length` argument of `_get_empty_substring_dict` "
                                   "must be at least 1, not %d." % min_seq_length)
 
         seq_lengths = [len(seq) for seq in seqs]
-        min_seq_length = min_seq_length if min_seq_length else min(seq_lengths)
-        max_seq_length = max(seq_lengths)
 
-        prefix_dict = {prefix_length: {} for prefix_length in range(min_seq_length, max_seq_length + 1)}
+        if max_seq_length:
+            if max_seq_length > max(seq_lengths):
+                raise ConfigError("The `max_seq_length` argument of `_get_empty_substring_dict` "
+                                  "cannot exceed the length of the longest sequence in the argument, `seqs`. "
+                                  "You provided a value of %d, which exceeds the longest length, %d."
+                                  % (max_seq_length, max(seq_lengths)))
+
+        min_seq_length = min_seq_length if min_seq_length else min(seq_lengths)
+        max_seq_length = max_seq_length if max_seq_length else max(seq_lengths)
+
+        substring_dict = {substring_length: {} for substring_length in range(min_seq_length, max_seq_length + 1)}
+
+        return substring_dict
+
+
+    @staticmethod
+    def _get_prefix_dict(ids, seqs, min_seq_length=None, max_seq_length=None):
+        """
+        The returned `prefix_dict` contains hashes of prefix subsequences from all of the target sequences in `seqs`.
+        `prefix_dict` is keyed by sequence length, with lengths spanning from the min to max sequence length;
+        The parameters `min_seq_length` and `max_seq_length` can be used to adjust the lengths considered inward.
+        `prefix_dict` values are dictionaries themselves.
+        Inner dict keys are prefix sequence hashes, and values are lists of target sequence IDs containing those hashes.
+        """
+
+        prefix_dict = Dereplicator._get_empty_substring_dict(
+            seqs, min_seq_length=min_seq_length, max_seq_length=max_seq_length)
+
         for prefix_length, inner_dict in prefix_dict.items():
             for seq_id, seq in zip(ids, seqs):
-                if prefix_length > len(seq):
+                # Ignore prefixes of the same length as the sequence.
+                if prefix_length >= len(seq):
                     continue
                 hashed_prefix = sha224(seq[: prefix_length].encode('utf-8')).hexdigest()
                 if hashed_prefix in inner_dict:
                     inner_dict[hashed_prefix].append((seq_id, len(seq)))
                 else:
                     inner_dict[hashed_prefix] = [(seq_id, len(seq))]
+
         for inner_dict in prefix_dict.values():
             for hashed_seq, parent_seqs in inner_dict.items():
-                # Sort the list of IDs containing the prefix subsequence in descending order of sequence length.
-                inner_dict[hashed_seq] = [seq_id for seq_id, seq_length in sorted(parent_seqs, key=lambda t: -t[1])]
+                # Sort in descending order of subject sequence length then in ascending order of ID.
+                inner_dict[hashed_seq] = [seq_id for seq_id, seq_length
+                                          in sorted(parent_seqs, key=lambda t: (-t[1], t[0]))]
 
         return prefix_dict
 
 
-    def get_memberships(self, seed_ids, seed_seqs):
-        """
-        This function is called after clustering to find which sequences are in which clusters.
-        Prefix dereplication can result in the same sequence occurring in multiple clusters.
-        """
+    @staticmethod
+    def _prefix_dereplicate_with_replicate_seqs_and_with_extra_info(ids, seqs, extras, replicate_dict):
+
+        hashed_seqs = Dereplicator._hash_seqs(seqs)
+
+        prefix_dict = Dereplicator._get_prefix_dict(ids, seqs)
+
+        # Example `hit_dict` format:
+        # hit_dict = {seq X ID: [seq A ID, seq B ID, ...],
+        #             seq Y ID: [seq A ID, seq B ID, ...],
+        #             ...}
+        # Seed seqs -- A and B in the example -- do not have entries in `hit_dict`.
+
+        # Example `cluster_dict` format:
+        # cluster_dict = {seed seq A ID: [(seq X ID, seq X length, seq X extra),
+        #                                 (seq Y ID, seq Y length, seq Y extra),
+        #                                 ...]],
+        #                 seed seq B ID: [(seq X ID, seq X length, seq X extra),
+        #                                 (seq Y ID, seq Y length, seq Y extra),
+        #                                 ...]],
+        #                 ...}
+        # Seed seqs -- A and B in the example -- do not have entries in their own clusters in `cluster_dict`.
+
+        hit_dict = {}
+        cluster_dict = {}
+        extra_iter = iter(extras)
+        for query_id, query_seq, query_hash in zip(ids, seqs, hashed_seqs):
+            query_extra_item = next(extra_iter)
+
+            inner_dict = prefix_dict[len(query_seq)]
+            if query_hash not in inner_dict:
+                continue
+
+            hit_ids = inner_dict[query_hash]
+            # Record which target sequences contain the query sequence as a prefix subsequence.
+            hit_dict[query_id] = hit_ids
+
+            # Record information on the query replicates.
+            member_info = [(query_id, len(query_seq), query_extra_item)]
+            for replicate_id, replicate_extra_item in replicate_dict[query_id]:
+                member_info.append((replicate_id, len(query_seq), replicate_extra_item))
+            # Make preliminary clusters for each target sequence containing the query sequence.
+            for seed_id in hit_ids:
+                if seed_id in cluster_dict:
+                    cluster_dict[seed_id].extend(member_info)
+                else:
+                    cluster_dict[seed_id] = member_info
+
+        clusters = []
+        memberships = []
+        for query_id, query_seq, query_extra_item in zip(ids, seqs, extras):
+            if query_id in hit_dict:
+                # The query is not a seed because it is a prefix of other sequences.
+                continue
+
+            replicate_items = replicate_dict[query_id]
+            cluster_items_for_seed = [(query_id, len(query_seq), query_extra_item)]
+            # The seed seq and identical seqs are added as members of the seed's cluster.
+            for replicate_id, replicate_extra_item in replicate_items:
+                cluster_items_for_seed.append((replicate_id, len(query_seq), replicate_extra_item))
+
+            if query_id in cluster_dict:
+                # Other query sequences are prefixes of this query.
+                member_info = cluster_dict[query_id]
+                # Sort members in descending order of sequence length.
+                member_info.sort(key=lambda member_item: -member_item[1])
+                # The seed seq and identical seqs are added as members of the seed's cluster.
+                member_info = cluster_items_for_seed + member_info
+                clusters.append((query_id, query_seq, member_info))
+            else:
+                # No other query sequences were prefixes of this query.
+                # Make a cluster with the query as the seed
+                # and the query and its replicates as members of the cluster.
+                clusters.append((query_id, query_seq, cluster_items_for_seed))
+
+            # Seed and identical sequences are the only members of the seed's cluster.
+            memberships.append((query_id, [query_id], query_extra_item))
+            for replicate_id, replicate_extra_item in replicate_items:
+                memberships.append((replicate_id, [query_id], replicate_extra_item))
+
+        # Record memberships of query sequences that were not seed sequences.
 
         # Find the prefix hashes from the final cluster seed sequences.
         # It is more efficient to search hashed input sequences against these hashed prefix subsequences,
         # which only requires searching one list of hashes representing prefix sequences of a certain length,
         # than to search for each input sequence ID in every cluster's list of member sequence IDs.
-        seed_prefix_dict = self.get_prefix_dict(seed_ids, seed_seqs, min_seq_length=min([len(seq) for seq in self.seqs]))
+        seed_ids, seed_seqs, _ = zip(*clusters)
+        seed_prefix_dict = Dereplicator._get_prefix_dict(seed_ids, seed_seqs, min_seq_length=min([len(seq) for seq in seqs]))
 
-        missed_seed_ids = []
-        memberships = []
-        extra_iter = iter(self.extras)
-        for query_id, query_seq, query_hash in zip(self.ids, self.seqs, self.hashed_seqs):
+        for query_id, query_seq, query_hash, query_extra_item in zip(ids, seqs, hashed_seqs, extras):
             inner_dict = seed_prefix_dict[len(query_seq)]
-            if query_hash in inner_dict:
-                seed_ids = inner_dict[query_hash]
+            if query_hash not in inner_dict:
+                continue
+
+            seed_ids = inner_dict[query_hash]
+            memberships.append((query_id, seed_ids, query_extra_item))
+            for replicate_id in replicate_dict[query_id]:
+                memberships.append((replicate_id, seed_ids, query_extra_item))
+
+        # Sort by cluster/membership size and then by seed/member ID.
+        clusters.sort(key=lambda cluster: (-len(cluster[2]), cluster[0]))
+        memberships.sort(key=lambda membership: (-len(membership[1]), membership[0]))
+
+        return clusters, memberships
+
+
+    @staticmethod
+    def _prefix_dereplicate_with_replicate_seqs_and_without_extra_info(ids, seqs, replicate_dict):
+
+        hashed_seqs = Dereplicator._hash_seqs(seqs)
+
+        prefix_dict = Dereplicator._get_prefix_dict(ids, seqs)
+
+        # Example `hit_dict` format:
+        # hit_dict = {seq X ID: [seq A ID, seq B ID, ...],
+        #             seq Y ID: [seq A ID, seq B ID, ...],
+        #             ...}
+        # Seed seqs -- A and B in the example -- do not have entries in `hit_dict`.
+
+        # Example `cluster_dict` format:
+        # cluster_dict = {seed seq A ID: [(seq X ID, seq X length),
+        #                                 (seq Y ID, seq Y length),
+        #                                 ...]],
+        #                 seed seq B ID: [(seq X ID, seq X length),
+        #                                 (seq Y ID, seq Y length),
+        #                                 ...]],
+        #                 ...}
+        # Seed seqs -- A and B in the example -- do not have entries in their own clusters in `cluster_dict`.
+
+        hit_dict = {}
+        cluster_dict = {}
+        for query_id, query_seq, query_hash in zip(ids, seqs, hashed_seqs):
+            inner_dict = prefix_dict[len(query_seq)]
+            if query_hash not in inner_dict:
+                continue
+
+            hit_ids = inner_dict[query_hash]
+            # Record which target sequences contain the query sequence as a prefix subsequence.
+            hit_dict[query_id] = hit_ids
+
+            # Record information on the query replicates.
+            member_info = [(query_id, len(query_seq))]
+            for replicate_id in replicate_dict[query_id]:
+                member_info.append((replicate_id, len(query_seq)))
+            # Make preliminary clusters for each target sequence containing the query sequence.
+            for seed_id in hit_ids:
+                if seed_id in cluster_dict:
+                    cluster_dict[seed_id].extend(member_info)
+                else:
+                    cluster_dict[seed_id] = member_info
+
+        clusters = []
+        memberships = []
+        for query_id, query_seq in zip(ids, seqs):
+            if query_id in hit_dict:
+                # The query is not a seed because it is a prefix of other sequences.
+                continue
+
+            replicate_ids = replicate_dict[query_id]
+            cluster_items_for_seed = [(query_id, len(query_seq))]
+            # The seed seq and identical seqs are added as members of the seed's cluster.
+            for replicate_id in replicate_ids:
+                cluster_items_for_seed.append((replicate_id, len(query_seq)))
+
+            if query_id in cluster_dict:
+                # Other query sequences are prefixes of this query.
+                member_info = cluster_dict[query_id]
+                # Sort members in descending order of sequence length.
+                member_info.sort(key=lambda member_item: -member_item[1])
+                # The seed seq and identical seqs are added as members of the seed's cluster.
+                member_info = cluster_items_for_seed + member_info
+                clusters.append((query_id, query_seq, member_info))
             else:
-                # The absense of the query sequence in seed_prefix_dict
-                # is explained in detail in the prefix_dereplicate method.
-                inner_dict[query_hash] = [query_id]
-                seed_ids = [query_id]
-                missed_seed_ids.append(query_id)
-            # # REMOVE try block
-            # try:
-            #     hit_ids = hit_prefix_dict[len(query_seq)][query_hash]
-            # except KeyError:
-            #     print(query_hash)
-            #     print(query_id)
-            #     print(query_seq)
-            #     raise Exception
-            if self.extras:
-                memberships.append((query_id, seed_ids, next(extra_iter)))
+                # No other query sequences were prefixes of this query.
+                # Make a cluster with the query as the seed
+                # and the query and its replicates as members of the cluster.
+                clusters.append((query_id, query_seq, cluster_items_for_seed))
+
+            # Seed and identical sequences are the only members of the seed's cluster.
+            memberships.append((query_id, [query_id]))
+            for replicate_id in replicate_ids:
+                memberships.append((replicate_id, [query_id]))
+
+        # Record memberships of query sequences that were not seed sequences.
+
+        # Find the prefix hashes from the final cluster seed sequences.
+        # It is more efficient to search hashed input sequences against these hashed prefix subsequences,
+        # which only requires searching one list of hashes representing prefix sequences of a certain length,
+        # than to search for each input sequence ID in every cluster's list of member sequence IDs.
+        seed_ids, seed_seqs, _ = zip(*clusters)
+        seed_prefix_dict = Dereplicator._get_prefix_dict(seed_ids, seed_seqs, min_seq_length=min([len(seq) for seq in seqs]))
+
+        for query_id, query_seq, query_hash in zip(ids, seqs, hashed_seqs):
+            inner_dict = seed_prefix_dict[len(query_seq)]
+            if query_hash not in inner_dict:
+                continue
+
+            seed_ids = inner_dict[query_hash]
+            memberships.append((query_id, seed_ids))
+            for replicate_id in replicate_dict[query_id]:
+                memberships.append((replicate_id, seed_ids))
+
+        # Sort by cluster/membership size and then by seed/member ID.
+        clusters.sort(key=lambda cluster: (-len(cluster[2]), cluster[0]))
+        memberships.sort(key=lambda membership: (-len(membership[1]), membership[0]))
+
+        return clusters, memberships
+
+
+    @staticmethod
+    def _prefix_dereplicate_without_replicate_seqs_and_with_extra_info(ids, seqs, extras):
+
+        hashed_seqs = Dereplicator._hash_seqs(seqs)
+
+        prefix_dict = Dereplicator._get_prefix_dict(ids, seqs)
+
+        # Example `hit_dict` format:
+        # hit_dict = {seq X ID: [seq A ID, seq B ID, ...],
+        #             seq Y ID: [seq A ID, seq B ID, ...],
+        #             ...}
+        # Seed seqs -- A and B in the example -- do not have entries in `hit_dict`.
+
+        # Example `cluster_dict` format:
+        # cluster_dict = {seed seq A ID: [(seq X ID, seq X length, seq X extra),
+        #                                 (seq Y ID, seq Y length, seq Y extra),
+        #                                 ...]],
+        #                 seed seq B ID: [(seq X ID, seq X length, seq X extra),
+        #                                 (seq Y ID, seq Y length, seq Y extra),
+        #                                 ...]],
+        #                 ...}
+        # Seed seqs -- A and B in the example -- do not have entries in their own clusters in `cluster_dict`.
+
+        hit_dict = {}
+        cluster_dict = {}
+        extra_iter = iter(extras)
+        for query_id, query_seq, query_hash in zip(ids, seqs, hashed_seqs):
+            query_extra_item = next(extra_iter)
+            inner_dict = prefix_dict[len(query_seq)]
+            if query_hash not in inner_dict:
+                continue
+
+            hit_ids = inner_dict[query_hash]
+            # Record which target sequences contain the query sequence as a prefix subsequence.
+            hit_dict[query_id] = hit_ids
+            member_item = (query_id, len(query_seq), query_extra_item)
+            # Make preliminary clusters for each target sequence containing the query sequence.
+            for seed_id in hit_ids:
+                if seed_id in cluster_dict:
+                    cluster_dict[seed_id].append(member_item)
+                else:
+                    cluster_dict[seed_id] = [member_item]
+
+        clusters = []
+        memberships = []
+        # The query sequences were unique.
+        for query_id, query_seq, query_extra_item in zip(ids, seqs, extras):
+            if query_id in hit_dict:
+                # The query is not a seed because it is a prefix of other sequences.
+                continue
+
+            if query_id in cluster_dict:
+                # Other query sequences are prefixes of this query.
+                member_info = cluster_dict[query_id]
+                # Sort members in descending order of sequence length.
+                member_info.sort(key=lambda member_item: -member_item[1])
+                # The seed seq is added as a member of its own cluster.
+                member_info.insert(0, (query_id, len(query_seq), query_extra_item))
+                clusters.append((query_id, query_seq, member_info))
             else:
-                memberships.append((query_id, seed_ids))
+                # No other query sequences were prefixes of this query.
+                # Make a cluster with the query as the seed and the sole member of the cluster.
+                member_info = [(query_id, len(query_seq), query_extra_item)]
+                clusters.append((query_id, query_seq, member_info))
 
-        return memberships, missed_seed_ids
+            # Seed sequences are only members of their own cluster.
+            memberships.append((query_id, [query_id], query_extra_item))
+
+        # Record memberships of query sequences that were not seed sequences.
+
+        # Find the prefix hashes from the final cluster seed sequences.
+        # It is more efficient to search hashed input sequences against these hashed prefix subsequences,
+        # which only requires searching one list of hashes representing prefix sequences of a certain length,
+        # than to search for each input sequence ID in every cluster's list of member sequence IDs.
+        seed_ids, seed_seqs, _ = zip(*clusters)
+        seed_prefix_dict = Dereplicator._get_prefix_dict(seed_ids, seed_seqs, min_seq_length=min([len(seq) for seq in seqs]))
+
+        for query_id, query_seq, query_hash, extra_query_item in zip(ids, seqs, hashed_seqs, extras):
+            inner_dict = seed_prefix_dict[len(query_seq)]
+            if query_hash not in inner_dict:
+                continue
+            seed_ids = inner_dict[query_hash]
+            memberships.append((query_id, seed_ids, extra_query_item))
+
+        # Sort by cluster/membership size and then by seed/member ID.
+        clusters.sort(key=lambda cluster: (-len(cluster[2]), cluster[0]))
+        memberships.sort(key=lambda membership: (-len(membership[1]), membership[0]))
+
+        return clusters, memberships
 
 
-    def prefix_dereplicate(self):
+    @staticmethod
+    def _prefix_dereplicate_without_replicate_seqs_and_without_extra_info(ids, seqs):
+
+        hashed_seqs = Dereplicator._hash_seqs(seqs)
+
+        prefix_dict = Dereplicator._get_prefix_dict(ids, seqs)
+
+        # Example `hit_dict` format:
+        # hit_dict = {seq X ID: [seq A ID, seq B ID, ...],
+        #             seq Y ID: [seq A ID, seq B ID, ...],
+        #             ...}
+        # Seed seqs -- A and B in the example -- do not have entries in `hit_dict`.
+
+        # Example `cluster_dict` format:
+        # cluster_dict = {seed seq A ID: [(seq X ID, seq X length),
+        #                                 (seq Y ID, seq Y length),
+        #                                 ...]],
+        #                 seed seq B ID: [(seq X ID, seq X length),
+        #                                 (seq Y ID, seq Y length),
+        #                                 ...]],
+        #                 ...}
+        # Seed seqs -- A and B in the example -- do not have entries in their own clusters in `cluster_dict`.
+
+        hit_dict = {}
+        cluster_dict = {}
+        for query_id, query_seq, query_hash in zip(ids, seqs, hashed_seqs):
+            inner_dict = prefix_dict[len(query_seq)]
+            if query_hash not in inner_dict:
+                continue
+
+            hit_ids = inner_dict[query_hash]
+            # Record which target sequences contain the query sequence as a prefix subsequence.
+            hit_dict[query_id] = hit_ids
+            member_item = (query_id, len(query_seq))
+            # Make preliminary clusters for each target sequence containing the query sequence.
+            for seed_id in hit_ids:
+                if seed_id in cluster_dict:
+                    cluster_dict[seed_id].append(member_item)
+                else: # new cluster
+                    cluster_dict[seed_id] = [member_item]
+
+        clusters = []
+        memberships = []
+        # The query sequences were unique.
+        for query_id, query_seq in zip(ids, seqs):
+            if query_id in hit_dict:
+                # The query is not a seed because it is a prefix of other sequences.
+                continue
+
+            if query_id in cluster_dict:
+                # Other query sequences are prefixes of this query.
+                member_info = cluster_dict[query_id]
+                # Sort members in descending order of sequence length.
+                member_info.sort(key=lambda member_item: -member_item[1])
+                # The seed seq is added as a member of its own cluster.
+                member_info.insert(0, (query_id, len(query_seq)))
+                clusters.append((query_id, query_seq, member_info))
+            else:
+                # No other query sequences were prefixes of this query.
+                # Make a cluster with the query as the seed and the sole member of the cluster.
+                member_info = [(query_id, len(query_seq))]
+                clusters.append((query_id, query_seq, member_info))
+
+            # Seed sequences are only members of their own cluster.
+            memberships.append((query_id, [query_id]))
+
+        # Record memberships of query sequences that were not seed sequences.
+
+        # Find the prefix hashes from the final cluster seed sequences.
+        # It is more efficient to search hashed input sequences against these hashed prefix subsequences,
+        # which only requires searching one list of hashes representing prefix sequences of a certain length,
+        # than to search for each input sequence ID in every cluster's list of member sequence IDs.
+        seed_ids, seed_seqs, _ = zip(*clusters)
+        seed_prefix_dict = Dereplicator._get_prefix_dict(seed_ids, seed_seqs, min_seq_length=min([len(seq) for seq in seqs]))
+
+        for query_id, query_seq, query_hash in zip(ids, seqs, hashed_seqs):
+            inner_dict = seed_prefix_dict[len(query_seq)]
+            if query_hash not in inner_dict:
+                continue
+            seed_ids = inner_dict[query_hash]
+            memberships.append((query_id, seed_ids))
+
+        # Sort by cluster/membership size and then by seed/member ID.
+        clusters.sort(key=lambda cluster: (-len(cluster[2]), cluster[0]))
+        memberships.sort(key=lambda membership: (-len(membership[1]), membership[0]))
+
+        return clusters, memberships
+
+
+    @staticmethod
+    def prefix_dereplicate(ids, seqs, extras=None):
         """
-        Prefix dereplication clusters sequences that match the beginning of a longer (seed) sequence.
-        Sequences can occur in multiple clusters, as they may be subsequences of distinct seed sequences:
+        Sequences matching the beginning of a longer (seed) sequence are clustered.
+        Sequences can occur in multiple clusters, as they may be subsequences of distinct seed sequences, e.g.:
         Cluster 1:
         ACGTACGTACGTACGT (seed, seq A)
         ACGTACGTACGT (seq X)
@@ -300,86 +729,576 @@ class SequenceDereplicator:
 
         Two lists are returned, a `clusters` list and a `memberships` list.
 
-        Here is the format of the `clusters` list when extra sequence information is not provided:
-        clusters = [(seed seq A ID, seed sequence A, [(member seq A ID, member seq A length), (member seq X ID, member seq X length), ...]), ...]
-        Here is the format when it is provided:
-        clusters = [(seed seq A ID, seed sequence A, [(member seq A ID, member seq A length, member seq A extra info), ...]), ...]
+        Here is an example of the format of the `clusters` list when extra sequence information is NOT provided:
+        clusters = [(seed seq A ID, seed seq A, [(seq A ID, seq A length),
+                                                 (seq X ID, seq X length),
+                                                 (seq Y ID, seq Y length)]),
+                    (seed seq B ID, seed seq B, [(seq B ID, seq B length),
+                                                 (seq X ID, seq X length),
+                                                 (seq Y ID, seq Y length)]),
+                    ...]
+        Here is an example of the format when extra sequence information is provided:
+        clusters = [(seed seq A ID, seed seq A, [(seq A ID, seq A length, seq A extra info),
+                                                 (seq X ID, seq X length, seq X extra info),
+                                                 (seq Y ID, seq Y length, seq Y extra info)]),
+                    (seed seq B ID, seed seq B, [(seq B ID, seq B length, seq B extra info),
+                                                 (seq X ID, seq X length, seq X extra info),
+                                                 (seq Y ID, seq Y length, seq Y extra info)]),
+                    ...]
 
         The membership list has an entry for each input sequence.
-        Here is the format when extra sequence information is not provided:
-        memberships = [(member sequence X, [seed seq A ID, seed seq B ID, ...]), ...]
-        Here is the format when it is provided:
-        memberships = [(member sequence X, [seed seq A ID, seed seq B ID, ...], member seq X extra info), ...]
+        Here is an example of the format when extra sequence information is NOT provided:
+        memberships = [(seq A, [seq A ID, ...]),
+                       (seq X, [seq A ID, seq B ID, ...]),
+                       (seq Y, [seq A ID, seq B ID, ...]),
+                       (seq B, [seq B ID, ...]),
+                       ...]
+        Here is an example when extra sequence information is provided:
+        memberships = [(seq A, [seq A ID, ...], seq A extra info),
+                       (seq X, [seq A ID, seq B ID, ...], seq X extra info),
+                       (seq Y, [seq A ID, seq B ID, ...], seq Y extra info),
+                       (seq B, [seq B ID, ...], seq B extra info),
+                       ...]
         """
 
-        prefix_dict = self.get_prefix_dict(self.ids, self.seqs)
+        Dereplicator._check_input(ids, seqs, extras)
+
+        unique_ids, unique_seqs, unique_extras, replicate_dict = Dereplicator._get_unique_inputs(ids, seqs, extras)
+
+        if replicate_dict:
+            if extras:
+                clusters, memberships = Dereplicator._prefix_dereplicate_with_replicate_seqs_and_with_extra_info(
+                    unique_ids, unique_seqs, unique_extras, replicate_dict)
+            else:
+                clusters, memberships = Dereplicator._prefix_dereplicate_with_replicate_seqs_and_without_extra_info(
+                    unique_ids, unique_seqs, replicate_dict)
+        else:
+            if extras:
+                clusters, memberships = Dereplicator._prefix_dereplicate_without_replicate_seqs_and_with_extra_info(
+                    ids, seqs, extras)
+            else:
+                clusters, memberships = Dereplicator._prefix_dereplicate_without_replicate_seqs_and_without_extra_info(
+                    ids, seqs)
+
+        return clusters, memberships
+
+
+    @staticmethod
+    def _get_subseq_dict(ids, seqs, min_seq_length=None, max_seq_length=None):
+        """
+        The returned `subseq_dict` contains hashes of subseqs from all of the target sequences in `seqs`.
+        `subseq_dict` is keyed by sequence length, with lengths spanning from the min to max sequence length;
+        The parameters `min_seq_length` and `max_seq_length` can be used to adjust the lengths considered inward.
+        `subseq_dict` values are dictionaries themselves.
+        Inner dict keys are subseq hashes, and values are lists of target sequence IDs containing those hashes.
+        """
+
+        subseq_dict = Dereplicator._get_empty_substring_dict(
+            seqs, min_seq_length=min_seq_length, max_seq_length=max_seq_length)
+
+        for subseq_length, inner_dict in subseq_dict.items():
+            for seq_id, seq in zip(ids, seqs):
+                # Ignore subseqs of the same length as the sequence.
+                if subseq_length >= len(seq):
+                    continue
+                hashed_subseqs = []
+                prelim_subseq_items = []
+                for start_index, stop_index in zip(range(0, len(seq) - subseq_length + 1),
+                                                   range(subseq_length, len(seq) + 1)):
+                    hashed_subseq = sha224(seq[start_index: stop_index].encode('utf-8')).hexdigest()
+                    hashed_subseqs.append(hashed_subseq)
+                    prelim_subseq_items.append([seq_id, [start_index], len(seq)])
+
+                if len(set(hashed_subseqs)) < len(hashed_subseqs):
+                    # Consolidate identical subseqs of the same sequence.
+                    prev_hashed_subseq = hashed_subseqs[0]
+                    prev_subseq_item = prelim_subseq_items[0]
+                    for hashed_subseq, prelim_item in sorted(zip(hashed_subseqs, prelim_subseq_items),
+                                                             key=lambda t: t[0])[1: ]:
+                        if hashed_subseq == prev_hashed_subseq:
+                            # Add a start index for an identical subsequence within the target sequence.
+                            prev_subseq_item[1] += prelim_item[1]
+                        else:
+                            if prev_hashed_subseq in inner_dict:
+                                inner_dict[prev_hashed_subseq].append(prev_subseq_item)
+                            else:
+                                inner_dict[prev_hashed_subseq] = [prev_subseq_item]
+                            prev_subseq_item = prelim_item
+                        prev_hashed_subseq = hashed_subseq
+                    # Add the last subseq.
+                    if prev_hashed_subseq in inner_dict:
+                        inner_dict[prev_hashed_subseq].append(prev_subseq_item)
+                    else:
+                        inner_dict[prev_hashed_subseq] = [prev_subseq_item]
+                else:
+                    for hashed_subseq, subseq_item in zip(hashed_subseqs, prelim_subseq_items):
+                        if hashed_subseq in inner_dict:
+                            inner_dict[hashed_subseq].append(subseq_item)
+                        else:
+                            inner_dict[hashed_subseq] = [subseq_item]
+
+        for inner_dict in subseq_dict.values():
+            for hashed_seq, parent_seqs in inner_dict.items():
+                # Sort in descending order of subject sequence length then in ascending order of ID.
+                inner_dict[hashed_seq] = [(seq_id, seq_start_indices) for seq_id, seq_start_indices, seq_length
+                                          in sorted(parent_seqs, key=lambda t: (-t[2], t[0]))]
+
+        return subseq_dict
+
+
+    @staticmethod
+    def _subseq_dereplicate_with_replicate_seqs_and_with_extra_info(ids, seqs, extras, replicate_dict):
+
+        hashed_seqs = Dereplicator._hash_seqs(seqs)
+
+        subseq_dict = Dereplicator._get_subseq_dict(ids, seqs)
+
+        # Example `hit_dict` format:
+        # hit_dict = {seq X ID: [seq A ID, seq B ID, ...],
+        #             seq Y ID: [seq A ID, seq B ID, ...],
+        #             ...}
+        # Seed seqs -- A and B in the example -- do not have entries in `hit_dict`.
+
+        # Example `cluster_dict` format:
+        # cluster_dict = {seed seq A ID: [(seq X ID, seq X length, [<seq X start indices in seq A>], seq X extra),
+        #                                 (seq Y ID, seq Y length, [<seq Y start indices in seq A>], seq Y extra),
+        #                                 ...]],
+        #                 seed seq B ID: [(seq X ID, seq X length, [<seq X start indices in seq B>], seq X extra),
+        #                                 (seq Y ID, seq Y length, [<seq Y start indices in seq B>], seq Y extra),
+        #                                 ...]],
+        #                 ...}
+        # Seed seqs -- A and B in the example -- do not have entries in their own clusters in `cluster_dict`.
 
         hit_dict = {}
         cluster_dict = {}
-        extra_iter = iter(self.extras)
-        for query_id, query_seq, query_hash in zip(self.ids, self.seqs, self.hashed_seqs):
-            if self.extras:
-                extra_item = next(extra_iter)
-            hit_ids = prefix_dict[len(query_seq)][query_hash]
-            # Record which target sequences contain the query sequence as a prefix subsequence.
-            hit_dict[query_id] = hit_ids
-            # # REMOVE
-            # if query_id == 'c_000000064951':
-            #     print('bob')
-            #     print(hit_ids)
-            if self.extras:
-                member_item = (query_id, len(query_seq), extra_item)
-            else:
-                member_item = (query_id, len(query_seq))
+        extra_iter = iter(extras)
+        for query_id, query_seq, query_hash in zip(ids, seqs, hashed_seqs):
+            query_extra_item = next(extra_iter)
+            inner_dict = subseq_dict[len(query_seq)]
+            if query_hash not in inner_dict:
+                continue
+
+            hits = inner_dict[query_hash]
+            # Record which target sequences contain the query sequence as a subsequence.
+            # A query sequence may hit a target sequence at different indices, producing multiple hits.
+            hit_dict[query_id] = hits
             # Make preliminary clusters for each target sequence containing the query sequence.
-            for seed_id in hit_ids:
-                try:
-                    cluster_dict[seed_id][1].append(member_item)
-                except KeyError: # new cluster
-                    # # REMOVE
-                    # if query_id == 'c_000000064951':
-                    #     print('al')
-                    cluster_dict[seed_id] = ['', [member_item]]
-                if query_id == seed_id:
-                    cluster_dict[seed_id][0] = query_seq
+            for seed_id, seed_start_indices in hits:
+                if seed_id in cluster_dict:
+                    member_info = cluster_dict[seed_id]
+                    member_info.append((query_id, len(query_seq), seed_start_indices, query_extra_item))
+                else:
+                    member_info = [(query_id, len(query_seq), seed_start_indices, query_extra_item)]
+                    cluster_dict[seed_id] = member_info
+                # Record information on the query replicates.
+                for replicate_id, replicate_extra_item in replicate_dict[query_id]:
+                    member_info.append((replicate_id, len(query_seq), seed_start_indices, replicate_extra_item))
 
-        # Remove clusters with a seed sequence that is a member sequence of another cluster,
-        # so that seed sequences only occur in one cluster.
-        # This creates an issue with identical sequences that only hit each other and lack prefix subsequences.
-        # Consider two identical sequences of this type, A and B.
-        # They will form two clusters with seed sequences A and B, respectively,
-        # both clusters containing A and B as member sequences.
-        # These clusters will not be added to the `clusters` list,
-        # since the seeds are member sequences of another cluster.
-        # However, one of these clusters should be added to the `clusters` list.
-        # A and B should also have entries in memberships, determined below.
-        # The first step in the correction occurs in get_memberships,
-        # which determines the membership of every query sequence
-        # by searching for them as prefix subsequences of seed sequences in the `clusters` list.
-        # A and B will not be found as prefix subsequences of any seeds.
-        # Say A occurs first in the query list.
-        # Then it will be added again as a seed sequence for the search in get_memberships,
-        # such that both A and B will be returned in memberships as members of cluster A.
-        # A's ID is also returned by get_memberships along with those of other such seeds,
-        # so that their clusters, still found in `cluster_dict`, can be added retroactively to `clusters`.
         clusters = []
-        for seed_id, value in cluster_dict.items():
-            if len(hit_dict[seed_id]) == 1: # seed sequence only hits itself
-                clusters.append((seed_id, value[0], sorted(value[1], key=lambda t: -t[1])))
-                # # REMOVE
-                # if hit_id == 'c_000000064951':
-                #     print('cal')
-                #     print(clusters[-1])
+        memberships = []
+        for query_id, query_seq, query_extra_item in zip(ids, seqs, extras):
+            if query_id in hit_dict:
+                # The query is not a seed because it is a prefix of other sequences.
+                continue
 
-        # Now that the final clusters have been found,
-        # determine the cluster membership of every query sequence.
-        memberships, missed_seed_ids = self.get_memberships([cluster[0] for cluster in clusters],
-                                                            [cluster[1] for cluster in clusters])
+            replicate_items = replicate_dict[query_id]
+            member_info_for_seed = [(query_id, len(query_seq), [0], query_extra_item)]
+            # The seed seq and identical seqs are added as members of the seed's cluster.
+            for replicate_id, replicate_extra_item in replicate_items:
+                member_info_for_seed.append((replicate_id, len(query_seq), [0], replicate_extra_item))
 
-        for missed_seed_id in missed_seed_ids:
-            value = cluster_dict[missed_seed_id]
-            # The sort shouldn't be necessary,
-            # since all of the members should be of the same length in the cluster.
-            clusters.append((missed_seed_id, value[0], sorted(value[1], key=lambda t: -t[1])))
+            if query_id in cluster_dict:
+                # Other query sequences are subseqs of this query.
+                member_info = cluster_dict[query_id]
+                # Sort members in descending order of sequence length.
+                member_info.sort(key=lambda member_item: -member_item[1])
+                # The seed seq and identical seqs are added as members of the seed's cluster.
+                member_info = member_info_for_seed + member_info
+                clusters.append((query_id, query_seq, member_info))
+            else:
+                # No other query sequences were prefixes of this query.
+                # Make a cluster with the query as the seed
+                # and the query and its replicates as members of the cluster.
+                member_info = member_info_for_seed
+                clusters.append((query_id, query_seq, member_info))
+
+            # Seed and identical sequences are the only members of the seed's cluster.
+            memberships.append((query_id, [query_id], [0], query_extra_item))
+            for replicate_id, replicate_extra_item in replicate_items:
+                memberships.append((replicate_id, [query_id], [0], replicate_extra_item))
+
+        # Record memberships of query sequences that were not seed sequences.
+
+        # Find the subseq hashes from the final cluster seed sequences.
+        # It is more efficient to search hashed input sequences against these hashed subsequences,
+        # which only requires searching one list of hashes representing subsequences of a certain length,
+        # than to search for each input sequence ID in every cluster's list of member sequence IDs.
+        seed_ids, seed_seqs, _ = zip(*clusters)
+        seed_subseq_dict = Dereplicator._get_subseq_dict(seed_ids, seed_seqs, min_seq_length=min([len(seq) for seq in seqs]))
+
+        for query_id, query_seq, query_hash, query_extra_item in zip(ids, seqs, hashed_seqs, extras):
+            inner_dict = seed_subseq_dict[len(query_seq)]
+            if query_hash not in inner_dict:
+                continue
+            seed_ids, seed_start_indices = zip(*inner_dict[query_hash])
+            memberships.append((query_id, seed_ids, seed_start_indices, query_extra_item))
+            for replicate_id in replicate_dict[query_id]:
+                memberships.append((replicate_id, seed_ids, seed_start_indices, query_extra_item))
+
+        # Sort by cluster/membership size and then by seed/member ID.
+        clusters.sort(key=lambda cluster: (-len(cluster[2]), cluster[0]))
+        memberships.sort(key=lambda membership: (-len(membership[1]), membership[0]))
+
+        return clusters, memberships
+
+
+    @staticmethod
+    def _subseq_dereplicate_with_replicate_seqs_and_without_extra_info(ids, seqs, replicate_dict):
+
+        hashed_seqs = Dereplicator._hash_seqs(seqs)
+
+        subseq_dict = Dereplicator._get_subseq_dict(ids, seqs)
+
+        # Example `hit_dict` format:
+        # hit_dict = {seq X ID: [seq A ID, seq B ID, ...],
+        #             seq Y ID: [seq A ID, seq B ID, ...],
+        #             ...}
+        # Seed seqs -- A and B in the example -- do not have entries in `hit_dict`.
+
+        # Example `cluster_dict` format:
+        # cluster_dict = {seed seq A ID: [(seq X ID, seq X length, [<seq X start indices in seq A>]),
+        #                                 (seq Y ID, seq Y length, [<seq Y start indices in seq A>]),
+        #                                 ...]],
+        #                 seed seq B ID: [(seq X ID, seq X length, [<seq X start indices in seq B>]),
+        #                                 (seq Y ID, seq Y length, [<seq Y start indices in seq B>]),
+        #                                 ...]],
+        #                 ...}
+        # Seed seqs -- A and B in the example -- do not have entries in their own clusters in `cluster_dict`.
+
+        hit_dict = {}
+        cluster_dict = {}
+        for query_id, query_seq, query_hash in zip(ids, seqs, hashed_seqs):
+            inner_dict = subseq_dict[len(query_seq)]
+            if query_hash not in inner_dict:
+                continue
+
+            hits = inner_dict[query_hash]
+            # Record which target sequences contain the query sequence as a subsequence.
+            # A query sequence may hit a target sequence at different indices, producing multiple hits.
+            hit_dict[query_id] = hits
+            # Make preliminary clusters for each target sequence containing the query sequence.
+            for seed_id, seed_start_indices in hits:
+                if seed_id in cluster_dict:
+                    cluster_dict[seed_id].append((query_id, len(query_seq), seed_start_indices))
+                else:
+                    cluster_dict[seed_id] = [(query_id, len(query_seq), seed_start_indices)]
+
+        clusters = []
+        memberships = []
+        for query_id, query_seq in zip(ids, seqs):
+            if query_id in hit_dict:
+                # The query is not a seed because it is a prefix of other sequences.
+                continue
+
+            replicate_ids = replicate_dict[query_id]
+            member_info_for_seed = [(query_id, len(query_seq), [0])]
+            # The seed seq and identical seqs are added as members of the seed's cluster.
+            for replicate_id in replicate_ids:
+                member_info_for_seed.append((replicate_id, len(query_seq), [0]))
+
+            if query_id in cluster_dict:
+                # Other query sequences are subseqs of this query.
+                member_info = cluster_dict[query_id]
+                # Sort members in descending order of sequence length.
+                member_info.sort(key=lambda member_item: -member_item[1])
+                # The seed seq and identical seqs are added as members of the seed's cluster.
+                member_info = member_info_for_seed + member_info
+                clusters.append((query_id, query_seq, member_info))
+            else:
+                # No other query sequences were prefixes of this query.
+                # Make a cluster with the query as the seed
+                # and the query and its replicates as members of the cluster.
+                member_info = member_info_for_seed
+                clusters.append((query_id, query_seq, member_info))
+
+            # Seed and identical sequences are the only members of the seed's cluster.
+            memberships.append((query_id, [query_id], [0]))
+            for replicate_id in replicate_ids:
+                memberships.append((replicate_id, [query_id], [0]))
+
+        # Record memberships of query sequences that were not seed sequences.
+
+        # Find the subseq hashes from the final cluster seed sequences.
+        # It is more efficient to search hashed input sequences against these hashed subsequences,
+        # which only requires searching one list of hashes representing subsequences of a certain length,
+        # than to search for each input sequence ID in every cluster's list of member sequence IDs.
+        seed_ids, seed_seqs, _ = zip(*clusters)
+        seed_subseq_dict = Dereplicator._get_subseq_dict(seed_ids, seed_seqs, min_seq_length=min([len(seq) for seq in seqs]))
+
+        for query_id, query_seq, query_hash in zip(ids, seqs, hashed_seqs):
+            inner_dict = seed_subseq_dict[len(query_seq)]
+            if query_hash not in inner_dict:
+                continue
+            seed_ids, seed_start_indices = zip(*inner_dict[query_hash])
+            memberships.append((query_id, seed_ids, seed_start_indices))
+            for replicate_id in replicate_dict[query_id]:
+                memberships.append((replicate_id, seed_ids, seed_start_indices))
+
+        # Sort by cluster/membership size and then by seed/member ID.
+        clusters.sort(key=lambda cluster: (-len(cluster[2]), cluster[0]))
+        memberships.sort(key=lambda membership: (-len(membership[1]), membership[0]))
+
+        return clusters, memberships
+
+
+    @staticmethod
+    def _subseq_dereplicate_without_replicate_seqs_and_with_extra_info(ids, seqs, extras):
+
+        hashed_seqs = Dereplicator._hash_seqs(seqs)
+
+        subseq_dict = Dereplicator._get_subseq_dict(ids, seqs)
+
+        # Example `hit_dict` format:
+        # hit_dict = {seq X ID: [seq A ID, seq B ID, ...],
+        #             seq Y ID: [seq A ID, seq B ID, ...],
+        #             ...}
+        # Seed seqs -- A and B in the example -- do not have entries in `hit_dict`.
+
+        # Example `cluster_dict` format:
+        # cluster_dict = {seed seq A ID: [(seq X ID, seq X length, [<seq X start indices in seq A>], seq X extra),
+        #                                 (seq Y ID, seq Y length, [<seq Y start indices in seq A>], seq Y extra),
+        #                                 ...]],
+        #                 seed seq B ID: [(seq X ID, seq X length, [<seq X start indices in seq B>], seq X extra),
+        #                                 (seq Y ID, seq Y length, [<seq Y start indices in seq B>], seq Y extra),
+        #                                 ...]],
+        #                 ...}
+        # Seed seqs -- A and B in the example -- do not have entries in their own clusters in `cluster_dict`.
+
+        hit_dict = {}
+        cluster_dict = {}
+        extra_iter = iter(extras)
+        for query_id, query_seq, query_hash in zip(ids, seqs, hashed_seqs):
+            query_extra_item = next(extra_iter)
+            inner_dict = subseq_dict[len(query_seq)]
+            if query_hash not in inner_dict:
+                continue
+
+            hits = inner_dict[query_hash]
+            # Record which target sequences contain the query sequence as a subsequence.
+            # A query sequence may hit a target sequence at different indices, producing multiple hits.
+            hit_dict[query_id] = hits
+            # Make preliminary clusters for each target sequence containing the query sequence.
+            for seed_id, seed_start_indices in hits:
+                if seed_id in cluster_dict:
+                    cluster_dict[seed_id].append((query_id, len(query_seq), seed_start_indices, query_extra_item))
+                else:
+                    cluster_dict[seed_id] = [(query_id, len(query_seq), seed_start_indices, query_extra_item)]
+
+        clusters = []
+        memberships = []
+        for query_id, query_seq, query_extra_item in zip(ids, seqs, extras):
+            if query_id in hit_dict:
+                # The query is not a seed because it is a prefix of other sequences.
+                continue
+
+            # The seed seq and identical seqs are added as members of the seed's cluster.
+
+            if query_id in cluster_dict:
+                # Other query sequences are subseqs of this query.
+                member_info = cluster_dict[query_id]
+                # Sort members in descending order of sequence length.
+                member_info.sort(key=lambda member_item: -member_item[1])
+                # The seed seq and identical seqs are added as members of the seed's cluster.
+                member_info = [(query_id, len(query_seq), [0], query_extra_item)] + member_info
+                clusters.append((query_id, query_seq, member_info))
+            else:
+                # No other query sequences were prefixes of this query.
+                # Make a cluster with the query as the seed and sole member of the cluster.
+                member_info = [(query_id, len(query_seq), [0], query_extra_item)]
+                clusters.append((query_id, query_seq, member_info))
+
+            # Seed and identical sequences are the only members of the seed's cluster.
+            memberships.append((query_id, [query_id], [0], query_extra_item))
+
+        # Record memberships of query sequences that were not seed sequences.
+
+        # Find the subseq hashes from the final cluster seed sequences.
+        # It is more efficient to search hashed input sequences against these hashed subsequences,
+        # which only requires searching one list of hashes representing subsequences of a certain length,
+        # than to search for each input sequence ID in every cluster's list of member sequence IDs.
+        seed_ids, seed_seqs, _ = zip(*clusters)
+        seed_subseq_dict = Dereplicator._get_subseq_dict(seed_ids, seed_seqs, min_seq_length=min([len(seq) for seq in seqs]))
+
+        for query_id, query_seq, query_hash, query_extra_item in zip(ids, seqs, hashed_seqs, extras):
+            inner_dict = seed_subseq_dict[len(query_seq)]
+            if query_hash not in inner_dict:
+                continue
+            seed_ids, seed_start_indices = zip(*inner_dict[query_hash])
+            memberships.append((query_id, seed_ids, seed_start_indices, query_extra_item))
+
+        # Sort by cluster/membership size and then by seed/member ID.
+        clusters.sort(key=lambda cluster: (-len(cluster[2]), cluster[0]))
+        memberships.sort(key=lambda membership: (-len(membership[1]), membership[0]))
+
+        return clusters, memberships
+
+
+    @staticmethod
+    def _subseq_dereplicate_without_replicate_seqs_and_without_extra_info(ids, seqs):
+
+        hashed_seqs = Dereplicator._hash_seqs(seqs)
+
+        subseq_dict = Dereplicator._get_subseq_dict(ids, seqs)
+
+        # Example `hit_dict` format:
+        # hit_dict = {seq X ID: [seq A ID, seq B ID, ...],
+        #             seq Y ID: [seq A ID, seq B ID, ...],
+        #             ...}
+        # Seed seqs -- A and B in the example -- do not have entries in `hit_dict`.
+
+        # Example `cluster_dict` format:
+        # cluster_dict = {seed seq A ID: [(seq X ID, seq X length, [<seq X start indices in seq A>]),
+        #                                 (seq Y ID, seq Y length, [<seq Y start indices in seq A>]),
+        #                                 ...]],
+        #                 seed seq B ID: [(seq X ID, seq X length, [<seq X start indices in seq B>]),
+        #                                 (seq Y ID, seq Y length, [<seq Y start indices in seq B>]),
+        #                                 ...]],
+        #                 ...}
+        # Seed seqs -- A and B in the example -- do not have entries in their own clusters in `cluster_dict`.
+
+        hit_dict = {}
+        cluster_dict = {}
+        for query_id, query_seq, query_hash in zip(ids, seqs, hashed_seqs):
+            inner_dict = subseq_dict[len(query_seq)]
+            if query_hash not in inner_dict:
+                continue
+
+            hits = inner_dict[query_hash]
+            # Record which target sequences contain the query sequence as a subsequence.
+            # A query sequence may hit a target sequence at different indices, producing multiple hits.
+            hit_dict[query_id] = hits
+            # Make preliminary clusters for each target sequence containing the query sequence.
+            for seed_id, seed_start_indices in hits:
+                if seed_id in cluster_dict:
+                    cluster_dict[seed_id].append((query_id, len(query_seq), seed_start_indices))
+                else:
+                    cluster_dict[seed_id] = [(query_id, len(query_seq), seed_start_indices)]
+
+        clusters = []
+        memberships = []
+        for query_id, query_seq in zip(ids, seqs):
+            if query_id in hit_dict:
+                # The query is not a seed because it is a prefix of other sequences.
+                continue
+
+            # The seed seq and identical seqs are added as members of the seed's cluster.
+
+            if query_id in cluster_dict:
+                # Other query sequences are subseqs of this query.
+                member_info = cluster_dict[query_id]
+                # Sort members in descending order of sequence length.
+                member_info.sort(key=lambda member_item: -member_item[1])
+                # The seed seq and identical seqs are added as members of the seed's cluster.
+                member_info = [(query_id, len(query_seq), [0])] + member_info
+                clusters.append((query_id, query_seq, member_info))
+            else:
+                # No other query sequences were prefixes of this query.
+                # Make a cluster with the query as the seed and sole member of the cluster.
+                member_info = [(query_id, len(query_seq), [0])]
+                clusters.append((query_id, query_seq, member_info))
+
+            # Seed and identical sequences are the only members of the seed's cluster.
+            memberships.append((query_id, [query_id], [0]))
+
+        # Record memberships of query sequences that were not seed sequences.
+
+        # Find the subseq hashes from the final cluster seed sequences.
+        # It is more efficient to search hashed input sequences against these hashed subsequences,
+        # which only requires searching one list of hashes representing subsequences of a certain length,
+        # than to search for each input sequence ID in every cluster's list of member sequence IDs.
+        seed_ids, seed_seqs, _ = zip(*clusters)
+        seed_subseq_dict = Dereplicator._get_subseq_dict(seed_ids, seed_seqs, min_seq_length=min([len(seq) for seq in seqs]))
+
+        for query_id, query_seq, query_hash in zip(ids, seqs, hashed_seqs):
+            inner_dict = seed_subseq_dict[len(query_seq)]
+            if query_hash not in inner_dict:
+                continue
+            seed_ids, seed_start_indices = zip(*inner_dict[query_hash])
+            memberships.append((query_id, seed_ids, seed_start_indices))
+
+        # Sort by cluster/membership size and then by seed/member ID.
+        clusters.sort(key=lambda cluster: (-len(cluster[2]), cluster[0]))
+        memberships.sort(key=lambda membership: (-len(membership[1]), membership[0]))
+
+        return clusters, memberships
+
+
+    @staticmethod
+    def subseq_dereplicate(ids, seqs, extras=None):
+        """
+        Sequences matching one or more subsequences of a longer (seed) sequence are clustered.
+        Sequences can occur in multiple clusters, as they may be subsequences of distinct seed sequences, e.g.:
+        Cluster 1:
+        ACGTACGTACGTACGT (seed, seq A)
+         CGTACGTACGT     (seq X, start index 1)
+             CGTACGTACGT (seq X, start index 5)
+        ACGTACGTACGTACG  (seq Y, start index 0)
+        Cluster 2:
+        ACGTACGTACGTACGG (seed, seq B)
+         CGTACGTACGT     (seq X, start index 1)
+        ACGTACGTACGTACG  (seq Y, start index 0)
+
+        Two lists are returned, a `clusters` list and a `memberships` list.
+
+        Here is an example of the format of the `clusters` list when extra sequence information is NOT provided:
+        clusters = [(seed seq A ID, seed seq A, [(seq A ID, seq A length, [seq A start position in A = 0]),
+                                                 (seq X ID, seq X length, [seq X start position in A = 1, seq X start position in A = 5]),
+                                                 (seq Y ID, seq Y length, [seq Y start position in A = 0])]),
+                    (seed seq B ID, seed seq B, [(seq B ID, seq B length, [seq B start position in B = 0]),
+                                                 (seq X ID, seq X length, [seq X start position in B = 1]),
+                                                 (seq Y ID, seq Y length, [seq Y start position in B = 0])]),
+                    ...]
+        Here is an example of the format when extra sequence information is provided:
+        clusters = [(seed seq A ID, seed seq A, [(seq A ID, seq A length, [seq A start position in A = 0], seq A extra info),
+                                                 (seq X ID, seq X length, [seq X start position in A = 1, seq X start position in A = 5], seq X extra info),
+                                                 (seq Y ID, seq Y length, [seq Y start position in A = 0], seq Y extra info)]),
+                    (seed seq B ID, seed seq B, [(seq B ID, seq B length, [seq B start position in B = 0], seq B extra info),
+                                                 (seq X ID, seq X length, [seq X start position in B = 1], seq X extra info),
+                                                 (seq Y ID, seq Y length, [seq Y start position in B = 0], seq Y extra info)]),
+                    ...]
+
+        The membership list has an entry for each input sequence.
+        Here is an example of the format when extra sequence information is NOT provided:
+        memberships = [(seq A, [seq A ID, ...], [[seq A start position in A = 0], ...]),
+                       (seq X, [seq A ID, seq B ID, ...], [[seq X start position in A = 1, seq X start position in A = 5], (seq X start position in B = 1], ...]),
+                       (seq Y, [seq A ID, seq B ID, ...], [[seq Y start position in A = 0], [seq Y start position in A = 0], ...]),
+                       (seq B, [seq B ID, ...], [[seq B start position in B = 0], ...]),
+                       ...]
+        Here is an example when extra sequence information is provided:
+        memberships = [(seq A, [seq A ID, ...], [[seq A start position in A = 0], ...], seq A extra info),
+                       (seq X, [seq A ID, seq B ID, ...], [[seq X start position in A = 1, seq X start position in A = 5], [seq X start position in B = 1], ...], seq X extra info),
+                       (seq Y, [seq A ID, seq B ID, ...], [[seq Y start position in A = 0], [seq Y start position in A = 0], ...], seq Y extra info),
+                       (seq B, [seq B ID, ...], [[seq B start position in B = 0], ...], seq B extra info),
+                       ...]
+        """
+
+        Dereplicator._check_input(ids, seqs, extras)
+
+        unique_ids, unique_seqs, unique_extras, replicate_dict = Dereplicator._get_unique_inputs(ids, seqs, extras)
+
+        if replicate_dict:
+            if extras:
+                clusters, memberships = Dereplicator._subseq_dereplicate_with_replicate_seqs_and_with_extra_info(
+                    unique_ids, unique_seqs, unique_extras, replicate_dict)
+            else:
+                clusters, memberships = Dereplicator._subseq_dereplicate_with_replicate_seqs_and_without_extra_info(
+                    unique_ids, unique_seqs, replicate_dict)
+        else:
+            if extras:
+                clusters, memberships = Dereplicator._subseq_dereplicate_without_replicate_seqs_and_with_extra_info(
+                    ids, seqs, extras)
+            else:
+                clusters, memberships = Dereplicator._subseq_dereplicate_without_replicate_seqs_and_without_extra_info(
+                    ids, seqs)
 
         return clusters, memberships
