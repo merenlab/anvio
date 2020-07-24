@@ -1428,8 +1428,8 @@ function gen_pymol_script() {
         } : null;
     }
 
-    // FIXME I will have to go residue by residue
-    var bb_color = hexToRgb($('#backbone_color').attr('color'));
+    // FIXME Uses static backbone color
+    var bb_color = hexToRgb($('#color_static_backbone').attr('color'));
 
     // s is the full PyMOL script string
     var s = `cmd.set_color('bb_color', [${bb_color.r},${bb_color.g},${bb_color.b}])\n` +
@@ -1437,10 +1437,10 @@ function gen_pymol_script() {
             `bg_color white\n` +
             `struct_obj = cmd.get_object_list(selection='(all)')[0]\n`;
 
-    // Add a surface
+    // FIXME Add a surface (uses static surface color)
     if ($('#show_surface').is(':checked')) {
         // disregards colorScheme and picks 'plain' surface color
-        var surface_color = hexToRgb($('#color_plain').attr('color'));
+        var surface_color = hexToRgb($('#color_static_surface').attr('color'));
         var surface_transparency = 1 - parseFloat($('#surface_opacity').val());
         var surface_probe_radius = parseFloat($('#surface_probe_radius').val());
         s += `cmd.show('surface', struct_obj)\n` +
