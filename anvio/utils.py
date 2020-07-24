@@ -5,13 +5,14 @@
 
 import os
 import sys
+import yaml
 import gzip
-import tarfile
 import time
 import copy
 import socket
 import shutil
 import smtplib
+import tarfile
 import hashlib
 import textwrap
 import linecache
@@ -3518,14 +3519,28 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
 # def is_external_genomes_compatible_with_pan_database(pan_db_path, external_genomes_path):
 
 
+def get_yaml_as_dict(file_path):
+    """YAML parser"""
+
+    filesnpaths.is_file_plain_text(file_path)
+
+    try:
+        return yaml.load(open(file_path), Loader=yaml.FullLoader)
+    except Exception as e:
+        raise ConfigError(f"Anvi'o run into some trouble when trying to parse the file at "
+                          f"{file_path} as a YAML file. It is likely that it is not a properly "
+                          f"formatted YAML file and it needs editing, but here is the error "
+                          f"message in case it clarifies things: '{e}'.")
+
+
 def download_file(url, output_file_path, progress=progress, run=run):
     filesnpaths.is_output_file_writable(output_file_path)
 
     try:
         response = urllib.request.urlopen(url)
     except Exception as e:
-        raise ConfigError("Something went wrong with your download attempt. Here is the "
-                           "problem: '%s'" % e)
+        raise ConfigError(f"Something went wrong with your download attempt. Here is the "
+                          f"problem for the url {url}: '{e}'")
 
     file_size = 0
     if 'Content-Length' in response.headers:
