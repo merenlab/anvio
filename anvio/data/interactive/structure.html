@@ -279,7 +279,7 @@
                                     </div>
                                     <div class="col-md-12">
                                         <label class="col-md-4 settings-label">Color: </label>
-                                        <div class="col-md-8"><div class="colorpicker" id="backbone_color_end" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #c80023"></div></div>
+                                        <div class="col-md-8"><div class="colorpicker" id="backbone_color_end" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #6a8dab"></div></div>
                                     </div>
                                     <div class="clearfix"></div>
                                     <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_background_color_error">Max Value must be greater than Min Value.</div>
@@ -296,30 +296,65 @@
                                 </div>
                             </div>
                             <div class="col-md-12">
-                                <label class="col-md-4 settings-label">Color Scheme: </label>
-                                <div class="col-md-8">
-                                    <select id="surface_type" onchange="create_ngl_views(fetch_variability=false); if ($(this).val() == 'plain') { $('.plain-color').show(); } else { $('.plain-color').hide(); }">
-                                        <option>plain</option>
-                                        <option>electrostatic</option>
-                                        <option>hydrophobicity</option>
-                                        <option>residueindex</option>
-                                        <option>element</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="plain-color">
-                                <div class="col-md-12">
-                                    <label class="col-md-4 settings-label">Color: </label>
-                                    <div class="col-md-8"><div class="colorpicker" id="color_plain" color="#d5e8d5" onchange="create_ngl_views(fetch_variability=false); " style="background-color: #d5e8d5;"></div></div>
-                                </div>
-                            </div>
-                            <div class="col-md-12">
                                 <label class="col-md-4 settings-label">Opacity: </label>
                                 <div class="col-md-8"><input type="text" id="surface_opacity" value="0.12" onblur="create_ngl_views(fetch_variability=false); " /></div>
                             </div>
                             <div class="col-md-12">
                                 <label class="col-md-4 settings-label">Probe radius: </label>
                                 <div class="col-md-8"><input type="text" id="surface_probe_radius" value="1.4" onblur="create_ngl_views(fetch_variability=false); " /></div>
+                            </div>
+                        </div>
+                        <div class="widget col-md-12">
+                            <span class="settings-header" style="margin-left: 10px;"><h5>Surface Color</h5></span>
+                            <div class="col-md-12">
+                                <label class="col-md-4 settings-label">Rule: </label>
+                                <div class="col-md-8">
+                                    <select id="surface_color_type" onchange="surface_rule(this);">
+                                        <option>Static</option>
+                                        <option>Dynamic</option>
+                                        <option>atomindex</option>
+                                        <option>bfactor</option>
+                                        <option>electrostatic</option>
+                                        <option>element</option>
+                                        <option>hydrophobicity</option>
+                                        <option>random</option>
+                                        <option>sstruc</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="static-color-surface" style="display: none;">
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Color: </label>
+                                    <div class="col-md-8"><div class="colorpicker" id="color_static_surface" color="#f7f2f2" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #f7f2f2;"></div></div>
+                                </div>
+                            </div>
+                            <div class="dynamic-color-surface" style="display: none;">
+                                <div class="col-md-12">
+                                    <label class="col-md-4 settings-label">Color by: </label>
+                                    <div class="col-md-8"><select id="surface_color_variable" onChange="onTargetResidueInfoChange(this);"></select></div>
+                                </div>
+                                <div id="surface_color_numerical_panel">
+                                    <span class="settings-header" style="margin-left: 22px;"><h5>Minimum</h5></span>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label">Value: </label>
+                                        <div class="col-md-8"><input type="input" id="surface_color_min" onblur="create_ngl_views(fetch_variability=false);" value="0"></div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label" style="margin-bottom: 15px">Color: </label>
+                                        <div class="col-md-8"><div class="colorpicker" id="surface_color_start" color="#ffffed" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #ffffed"></div></div>
+                                    </div>
+                                    <span class="settings-header" style="margin-left: 22px;"><h5>Maximum</h5></span>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label">Value: </label>
+                                        <div class="col-md-8"><input type="input" id="surface_color_max" onblur="create_ngl_views(fetch_variability=false);" value="1"></div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="col-md-4 settings-label">Color: </label>
+                                        <div class="col-md-8"><div class="colorpicker" id="surface_color_end" color="#c80023" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #c80023"></div></div>
+                                    </div>
+                                    <div class="clearfix"></div>
+                                    <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_backbone_color_error">Max Value must be greater than Min Value.</div>
+                                </div>
                             </div>
                         </div>
                         <div class="widget col-md-12">

@@ -244,6 +244,20 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
         if( component.type !== "structure" ) return;
 
         if ($('#show_surface').is(':checked')) {
+            if ($('#surface_color_type').val() == 'Static') {
+                var color_value = $('#color_static_surface').attr('color');
+            } else if ($('#surface_color_type').val() == 'Dynamic') {
+                // Show range error if min is greater than max
+                if (parseFloat($('#surface_color_min').val()) >= parseFloat($('#surface_color_max').val())) {
+                    $('#dynamic_surface_color_error').show();
+                } else {
+                    $('#dynamic_surface_color_error').hide();
+                }
+                var color_value = getSurfaceColorScheme();
+            } else {
+                var color_value = $('#surface_color_type').val()
+            }
+
             surface_rep_params = {
                 surfaceType: "av",
                 smooth: 3,
@@ -253,11 +267,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 scaleFactor: 3.0,
                 opacity: parseFloat($('#surface_opacity').val()),
                 lowResolution: false,
-            }
-            if ($('#surface_type').val() == 'plain') {
-                surface_rep_params['color'] = $('#color_plain').attr('color')
-            } else {
-                surface_rep_params['colorScheme'] = $('#surface_type').val()
+                color: color_value
             }
             component.addRepresentation("surface", surface_rep_params);
         }
@@ -278,9 +288,9 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
             } else if ($('#backbone_color_type').val() == 'Dynamic') {
                 // Show range error if min is greater than max
                 if (parseFloat($('#backbone_color_min').val()) >= parseFloat($('#backbone_color_max').val())) {
-                    $('#dynamic_background_color_error').show();
+                    $('#dynamic_backbone_color_error').show();
                 } else {
-                    $('#dynamic_background_color_error').hide();
+                    $('#dynamic_backbone_color_error').hide();
                 }
                 var color_value = getBackboneColorScheme();
             } else {
@@ -510,6 +520,31 @@ function getBackboneColorScheme() {
     return schemeId_backbone;
 }
 
+function getSurfaceColorScheme() {
+
+    var schemeId_surface = NGL.ColormakerRegistry.addScheme(function (params) {
+      this.atomColor = function (atom) {
+        let name = $('#surface_color_variable').val();
+        let val = residue_info[atom.resno][name]
+
+        if (val == null) {
+            // Value is null, return the min value color
+            return '0x' + $('#surface_color_start').attr('color').substring(1, 7).toUpperCase()
+        }
+
+        let min_value = parseFloat($('#surface_color_min').val());
+        let max_value = parseFloat($('#surface_color_max').val());
+        let val_normalized = (parseFloat(val) - min_value) / (max_value - min_value);
+        val_normalized = Math.max(0, Math.min(1, val_normalized));
+
+        var hex = getGradientColor($('#surface_color_start').attr('color'), $('#surface_color_end').attr('color'), val_normalized);
+        return '0x' + hex.substring(1, 7).toUpperCase()
+      }
+    })
+
+    return schemeId_surface;
+}
+
 function backbone_rule(element) {
     if ($(element).val() == 'Static') {
         $('.static-color-backbone').show();
@@ -520,6 +555,22 @@ function backbone_rule(element) {
     } else {
         $('.static-color-backbone').hide();
         $('.dynamic-color-backbone').hide();
+    }
+
+    create_ngl_views(fetch_variability=false);
+}
+
+
+function surface_rule(element) {
+    if ($(element).val() == 'Static') {
+        $('.static-color-surface').show();
+        $('.dynamic-color-surface').hide();
+    } else if ($(element).val() == 'Dynamic') {
+        $('.static-color-surface').hide();
+        $('.dynamic-color-surface').show();
+    } else {
+        $('.static-color-surface').hide();
+        $('.dynamic-color-surface').hide();
     }
 
     create_ngl_views(fetch_variability=false);
@@ -934,6 +985,7 @@ function create_ui() {
             $('#color_target_column').empty();
             $('#size_target_column').empty();
             $('#backbone_color_variable').empty();
+            $('#surface_color_variable').empty();
 
             if (!color_legend.hasOwnProperty(engine)) {
                 color_legend[engine] = {};
@@ -947,6 +999,7 @@ function create_ui() {
                 if (types["dtype"] != "object") {
                     // Ok this is some type of numerical data form. We can include it
                     $('#backbone_color_variable').append(`<option value="${info_name}">${info_name}</item>`);
+                    $('#surface_color_variable').append(`<option value="${info_name}">${info_name}</item>`);
                 }
             }
 
