@@ -2146,7 +2146,9 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         summary['pdb_content'] = structure_db.get_pdb_content(gene_callers_id)
         structure_db.disconnect()
 
-        summary['residue_info'] = self.get_residue_info_for_gene(gene_callers_id).to_json(orient='index')
+        residue_info, residue_info_types = self.get_residue_info_for_gene(gene_callers_id)
+        summary['residue_info'] = residue_info.to_json(orient='index')
+        summary['residue_info_types'] = residue_info_types.to_json(orient='index')
 
         summary['histograms'] = {}
         for engine in self.available_engines:
@@ -2171,7 +2173,13 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         # Get residue info from `amino_acid_additional_data`
         from_contigs_db = self.amino_acid_additional_data.get_gene_dataframe(gene_callers_id)
 
-        return from_structure_db.merge(from_contigs_db, 'left', on='codon_order_in_gene')
+        residue_info = from_structure_db.merge(from_contigs_db, 'left', on='codon_order_in_gene')
+        residue_info.drop(['entry_id', 'corresponding_gene_call', 'codon_order_in_gene'], axis=1, inplace=True)
+
+        residue_info_types = residue_info.aggregate([numpy.min, numpy.max, numpy.dtype]).T
+        residue_info_types['dtype'] = residue_info_types['dtype'].astype(str)
+
+        return residue_info, residue_info_types
 
 
     def get_variability(self, options):

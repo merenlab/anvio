@@ -5,6 +5,7 @@ var stages = {};
 var variability = {};
 var histogram_data;
 var residue_info;
+var residue_info_types;
 var column_info;
 var sample_groups;
 var pdb_content;
@@ -483,6 +484,7 @@ function load_protein() {
             histogram_data = data['histograms'];
             pdb_content = data['pdb_content'];
             residue_info = move_codon_number_to_index(JSON.parse(data['residue_info']));
+            residue_info_types = JSON.parse(data['residue_info_types']);
             defer.resolve();
         }
     });
