@@ -7,12 +7,12 @@ import os
 import sys
 import yaml
 import gzip
-import tarfile
 import time
 import copy
 import socket
 import shutil
 import smtplib
+import tarfile
 import hashlib
 import textwrap
 import linecache
@@ -3539,8 +3539,8 @@ def download_file(url, output_file_path, progress=progress, run=run):
     try:
         response = urllib.request.urlopen(url)
     except Exception as e:
-        raise ConfigError("Something went wrong with your download attempt. Here is the "
-                           "problem: '%s'" % e)
+        raise ConfigError(f"Something went wrong with your download attempt. Here is the "
+                          f"problem for the url {url}: '{e}'")
 
     file_size = 0
     if 'Content-Length' in response.headers:
