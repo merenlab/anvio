@@ -398,6 +398,19 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 if (residue_info[residue].hasOwnProperty('phi')) {tooltip_HTML_body += `<tr><td>(Phi, Psi)</td><td>(${residue_info[residue]['phi'].toFixed(1)}, ${residue_info[residue]['psi'].toFixed(1)})</td></tr>`}
                 if (residue_info[residue].hasOwnProperty('contact_numbers')) {tooltip_HTML_body += `<tr><td>Contacts With</td><td>${residue_info[residue]['contact_numbers']}</td></tr>`}
 
+                if ($('#backbone_color_type').val() == 'Dynamic') {
+                    let name = $('#backbone_color_variable').val();
+                    if (!tooltip_HTML_body.includes(name)) {
+                        tooltip_HTML_body += `<tr><td>${name}</td><td>${residue_info[residue][name]}</td></tr>`
+                    }
+                }
+                if ($('#surface_color_type').val() == 'Dynamic') {
+                    let name = $('#surface_color_variable').val();
+                    if (!tooltip_HTML_body.includes(name)) {
+                        tooltip_HTML_body += `<tr><td>${name}</td><td>${residue_info[residue][name]}</td></tr>`
+                    }
+                }
+
                 // Variant data is available if a variant exists at hovered residue
                 if (variability[group].hasOwnProperty(residue)) {
                     var tooltip_HTML_variant_title = `<h5>Variant info</h5>`
