@@ -2176,7 +2176,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
         residue_info = from_structure_db.merge(from_contigs_db, 'left', on='codon_order_in_gene')
         residue_info.drop(['entry_id', 'corresponding_gene_call', 'codon_order_in_gene'], axis=1, inplace=True)
 
-        residue_info_types = residue_info.aggregate([numpy.min, numpy.max, numpy.dtype]).T
+        residue_info_types = residue_info.drop('codon_number', axis=1).aggregate([numpy.min, numpy.max, numpy.dtype]).T
         residue_info_types['dtype'] = residue_info_types['dtype'].astype(str)
 
         return residue_info, residue_info_types
