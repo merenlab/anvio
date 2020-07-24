@@ -275,15 +275,16 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
 
             if ($('#backbone_color_type').val() == 'Static') {
                 var color_value = $('#color_static_backbone').attr('color');
-            } else {
+            } else if ($('#backbone_color_type').val() == 'Dynamic') {
                 // Show range error if min is greater than max
                 if (parseFloat($('#backbone_color_min').val()) >= parseFloat($('#backbone_color_max').val())) {
                     $('#dynamic_background_color_error').show();
                 } else {
                     $('#dynamic_background_color_error').hide();
                 }
-
                 var color_value = getBackboneColorScheme();
+            } else {
+                var color_value = $('#backbone_color_type').val()
             }
 
             backbone_type = $('#backbone_type').val()
@@ -507,6 +508,21 @@ function getBackboneColorScheme() {
     })
 
     return schemeId_backbone;
+}
+
+function backbone_rule(element) {
+    if ($(element).val() == 'Static') {
+        $('.static-color-backbone').show();
+        $('.dynamic-color-backbone').hide();
+    } else if ($(element).val() == 'Dynamic') {
+        $('.static-color-backbone').hide();
+        $('.dynamic-color-backbone').show();
+    } else {
+        $('.static-color-backbone').hide();
+        $('.dynamic-color-backbone').hide();
+    }
+
+    create_ngl_views(fetch_variability=false);
 }
 
 
