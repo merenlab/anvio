@@ -877,6 +877,7 @@ function create_ui() {
 
             $('#color_target_column').empty();
             $('#size_target_column').empty();
+            $('#backbone_color_variable').empty();
 
             if (!color_legend.hasOwnProperty(engine)) {
                 color_legend[engine] = {};
@@ -884,6 +885,13 @@ function create_ui() {
 
             if (!size_legend.hasOwnProperty(engine)) {
                 size_legend[engine] = {};
+            }
+
+            for (const [info_name, types] of Object.entries(residue_info_types)) {
+                if (types["dtype"] != "object") {
+                    // Ok this is some type of numerical data form. We can include it
+                    $('#backbone_color_variable').append(`<option value="${info_name}">${info_name}</item>`);
+                }
             }
 
             column_info.forEach((item) => {
