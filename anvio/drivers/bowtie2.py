@@ -7,6 +7,8 @@ import anvio
 import anvio.terminal as terminal
 import anvio.utils as utils
 
+from anvio.errors import ConfigError
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
@@ -27,14 +29,8 @@ class Bowtie2:
         utils.is_program_exists('bowtie2')
         utils.is_program_exists('bowtie2-build')
 
-        self.k = None
-        self.L = None
-        self.N = None
-        self.score_min = None
-        self.rdg = None
-        self.rfg = None
-        self.norc = False
-        self.options = [self.k, self.L, self.N, self.score_min, self.rdg, self.rfg, self.norc]
+        # If the option key has a value of True, then it will be treated as a switch.
+        self.option_dict = {}
 
         # At the moment, this only allows a FASTA query file rather than paired FASTQ files.
         self.query_fasta = query_fasta
@@ -48,6 +44,12 @@ class Bowtie2:
 
         if not self.run.log_file_path:
             self.run.log_file_path = 'bowtie2_log_file.txt'
+
+
+    def set_option(self, option, value):
+        if option[0] != '-':
+            raise ConfigError("The Bowtie2 option name must start with one or two dashes. Your option was '%s'." % option)
+        self.option_dict[option] = value
 
 
     def build_index(self, output_index_files_prefix=None):
@@ -72,23 +74,13 @@ class Bowtie2:
         self.progress.new("Bowtie2")
         self.progress.update("Mapping using %d threads" % self.num_threads)
 
-        single_dash_params = ['k', 'L', 'N']
-        double_dash_params = ['score_min']
-        flags = ['norc']
-        optional_args = []
-        for param in single_dash_params:
-            arg = self.__getattribute__(param)
-            if arg:
-                optional_args.append('-' + param)
-                optional_args.append(arg)
-        for param in double_dash_params:
-            arg = self.__getattribute__(param)
-            if arg:
-                optional_args.append('--' + param.replace('_', '-'))
-                optional_args.append(arg)
-        for param in flags:
-            if self.__getattribute__(param):
-                optional_args.append('--' + param.replace('_', '-'))
+        optional_cmd_line = []
+        for option, value in self.option_dict.items():
+            if value is True:
+                optional_cmd_line.append(option)
+            else:
+                optional_cmd_line.append(option)
+                optional_cmd_line.append(value)
 
         if output_sam_path:
             self.sam = output_sam_path
@@ -98,7 +90,7 @@ class Bowtie2:
                     '-x', self.index,
                     '-f', self.query_fasta,
                     '-S', output_sam_path,
-                    '-p', self.num_threads] + optional_args
+                    '-p', self.num_threads] + optional_cmd_line
 
         utils.run_command(cmd_line, self.run.log_file_path)
 
