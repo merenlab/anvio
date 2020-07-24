@@ -525,5 +525,11 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": False,
         "provided_by_user": True
+    },
+    "genbank-file": {
+        "name": "GENBANK FILE",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
     }
 }
