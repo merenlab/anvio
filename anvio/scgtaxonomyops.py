@@ -185,7 +185,7 @@ class SanityCheck(object):
 
 
     def sanity_check(self):
-        if sorted(list(locally_known_HMMs_to_remote_FASTAs.keys())) != sorted(self.ctx.default_scgs_for_taxonomy):
+        if sorted(list(locally_known_SCG_names)) != sorted(self.ctx.default_scgs_for_taxonomy):
             raise ConfigError("Oh no. The SCGs designated to be used for all SCG taxonomy tasks in the constants.py "
                               "are not the same names described in locally known HMMs to remote FASTA files "
                               "conversion table definedd in SetupLocalSCGTaxonomyData module. If this makes zero "
@@ -1916,20 +1916,20 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
         os.remove(self.ctx.accession_to_taxonomy_file_path) if os.path.exists(self.ctx.accession_to_taxonomy_file_path) else None
         os.remove(temp_accession_to_taxonomy_file_path) if os.path.exists(temp_accession_to_taxonomy_file_path) else None
 
-        for remote_file_name in self.ctx.target_database_files:
-            remote_file_url = '/'.join([self.ctx.target_database_URL, remote_file_name])
-            local_file_path = os.path.join(self.ctx.SCGs_taxonomy_data_dir, remote_file_name)
+        for file_key in self.ctx.target_database['files']:
+            remote_file_url = '/'.join([self.ctx.target_database['base_url'], self.ctx.target_database['files'][file_key]])
+            local_file_path = os.path.join(self.ctx.SCGs_taxonomy_data_dir, file_key)
 
             utils.download_file(remote_file_url, local_file_path, progress=self.progress, run=self.run)
 
-            if local_file_path.endswith('individual_genes.tar.gz'):
+            if file_key in ['MSA_ARCHAEA.tar.gz', 'MSA_BACTERIA.tar.gz']:
                 self.progress.new("Downloaded file patrol")
                 self.progress.update("Unpacking file '%s'..." % os.path.basename(local_file_path))
                 shutil.unpack_archive(local_file_path, extract_dir=self.ctx.msa_individual_genes_dir_path)
                 os.remove(local_file_path)
                 self.progress.end()
 
-            if local_file_path.endswith('_taxonomy.tsv'):
+            if file_key in ['TAX_ARCHAEA.tsv', 'TAX_BACTERIA.tsv']:
                 with open(temp_accession_to_taxonomy_file_path, 'a') as f:
                     f.write(open(local_file_path).read())
                     os.remove(local_file_path)
@@ -1967,7 +1967,8 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
         # whether whether FASTA files in the directory are suitable for the conversion
         self.progress.update("Checking the conversion dict and FASTA files ...")
         msa_individual_gene_names_required = []
-        [msa_individual_gene_names_required.extend(n) for n in locally_known_HMMs_to_remote_FASTAs.values()]
+        for SCG in locally_known_SCG_names:
+            msa_individual_gene_names_required.extend(self.ctx.target_database['genes'][SCG])
 
         fasta_file_paths = glob.glob(self.ctx.msa_individual_genes_dir_path + '/*.faa')
         msa_individual_gene_names_downloaded = [os.path.basename(f) for f in fasta_file_paths]
@@ -1988,13 +1989,13 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
             self.run.info_single("Good news! The conversion dict and the FASTA files it requires seem to be in place. "
                                  "Anvi'o is now ready to to merge %d FASTA files that correspond to %d SCGs, and "
                                  "create individual search databases for them." % \
-                                        (len(msa_individual_gene_names_required), len(locally_known_HMMs_to_remote_FASTAs)), nl_before=1, nl_after=1, mc="green")
+                                        (len(msa_individual_gene_names_required), len(locally_known_SCG_names)), nl_before=1, nl_after=1, mc="green")
 
         # Merge FASTA files that should be merged. This is defined in the conversion dictionary.
-        for SCG in locally_known_HMMs_to_remote_FASTAs:
+        for SCG in locally_known_SCG_names:
             self.progress.update("Working on %s ..." % (SCG))
 
-            files_to_concatenate = [os.path.join(self.ctx.msa_individual_genes_dir_path, f) for f in locally_known_HMMs_to_remote_FASTAs[SCG]]
+            files_to_concatenate = [os.path.join(self.ctx.msa_individual_genes_dir_path, f) for f in self.ctx.target_database['genes'][SCG]]
             FASTA_file_for_SCG = os.path.join(self.ctx.search_databases_dir_path, SCG)
 
             # concatenate from the dictionary into the new destination
@@ -2143,7 +2144,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
             # even if there are no SCGs to use for taxonomy later, we did attempt ot populate the
             # contigs database, so we shall note that in the self table to make sure the error from
             # `anvi-estimate-genome-taxonomy` is not "you seem to have not run taxonomy".
-            self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.scg_taxonomy_database_version)
+            self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.target_database_release)
 
             # return empty handed like a goose in the job market in 2020
             return None
@@ -2243,7 +2244,7 @@ class PopulateContigsDatabaseWithSCGTaxonomy(SCGTaxonomyArgs, SanityCheck):
         self.tables_for_taxonomy.add(blastp_search_output)
 
         # time to update the self table:
-        self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.scg_taxonomy_database_version)
+        self.tables_for_taxonomy.update_db_self_table_values(taxonomy_was_run=True, database_version=self.ctx.target_database_release)
 
         self.progress.end()
 
