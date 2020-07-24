@@ -6,7 +6,7 @@ With this, you can
 
 ## Items, Layers, and the Interactive Interface 
 
-{:notice}
+{:.notice}
 This process, as well as the definition of an item and a layer, are described in more detail in [this blog post](http://merenlab.org/2017/12/11/additional-data-tables/#views-items-layers-orders-some-anvio-terminology). 
 
 Basically, you can add additional information to the interactive interface by running this program on the database you want to display and a text file containing your information. You can do this with three types of data: 
@@ -34,6 +34,12 @@ Basically, you can add additional information to the interactive interface by ru
                           -t layer_orders \
                           %(misc-data-layer-orders-txt)s 
     {{ codestop }}
+    
+### Additional notes 
+
+You also have the option to associate keys with only a specific data group, or transpose the input before processing (in case you misformatted it). 
+
+If you no longer want to see data you've added with this function, you can export it as the original text file with %(anvi-export-misc-data)s and delete it from the database with %(anvi-delete-misc-data)s.
 
 ## Nucleotides, Amino Acids, and Contigs Databases
 
