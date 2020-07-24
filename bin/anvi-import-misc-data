@@ -18,7 +18,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
-__resources__ = [("A primer on anvi'o misc data tables", "http://merenlab.org/2017/12/11/additional-data-tables/")]
+__resources__ = [("A primer on anvi'o misc data tables", "http://merenlab.org/2017/12/11/additional-data-tables/"),
+    ("Working with anvi'o additional data tables", "http://merenlab.org/2017/12/11/additional-data-tables/#views-items-layers-orders-some-anvio-terminology")]
 __requires__ = ['genes-db', 'pan-db', 'profile-db', 'contigs-db', 'misc-data-items-txt', 'dendrogram', 'phylogeny', 'misc-data-layers-txt', 'misc-data-layer-orders-txt', 'misc-data-nucleotides-txt',  'misc-data-amino-acids-txt']
 __provides__ = ['misc-data-items', 'misc-data-layers', 'misc-data-layer-orders', 'misc-data-nucleotides', 'misc-data-amino-acids']
 __description__ = ("Populate additional data or order tables in pan or profile databases for "

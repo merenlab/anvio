@@ -18,9 +18,11 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __email__ = "a.murat.eren@gmail.com"
+__requires__ = ["pan-db", "profile-db", "misc-data-items", "misc-data-layers", "misc-data-layer-orders"]
 __description__ = ("Remove stuff from 'additional data' or 'order' tables for either items or layers in either "
                    "pan or profile databases. OR, remove stuff from the 'additional data' tables for nucleotides "
                    "or amino acids in contigs databases")
+__resources__ = [("Working with anvi'o additional data tables", "http://merenlab.org/2017/12/11/additional-data-tables/#views-items-layers-orders-some-anvio-terminology")]
 
 
 run = terminal.Run()
