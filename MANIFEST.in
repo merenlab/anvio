@@ -1,4 +1,4 @@
-include *.txt *.md
+include *.txt *.md *.yaml
 recursive-include anvio/data *
 recursive-include anvio/workflows *
 recursive-include anvio/extensions *.h *.c *.pyx *.py
