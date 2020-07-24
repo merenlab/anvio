@@ -272,16 +272,30 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
         }
 
         if ($('#show_backbone').is(':checked')) {
+
+            if ($('#backbone_color_type').val() == 'Static') {
+                var color_value = $('#color_static_backbone').attr('color');
+            } else {
+                // Show range error if min is greater than max
+                if (parseFloat($('#backbone_color_min').val()) >= parseFloat($('#backbone_color_max').val())) {
+                    $('#dynamic_background_color_error').show();
+                } else {
+                    $('#dynamic_background_color_error').hide();
+                }
+
+                var color_value = getBackboneColorScheme();
+            }
+
             backbone_type = $('#backbone_type').val()
 
             if (backbone_type == 'rocket+loop') {
                 // custom
                 component.addRepresentation('rocket', {
-                    color: $('#backbone_color').attr('color'),
+                    color: color_value,
                     scale: 1.8,
                 });
                 component.addRepresentation('tube', {
-                    color: $('#backbone_color').attr('color'),
+                    color: color_value,
                     sele: 'not helix',
                     scale: 2.0,
                     aspectRatio: 1.0,
@@ -291,7 +305,7 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
                 null
             } else {
                 component.addRepresentation(backbone_type, {
-                    color: $('#backbone_color').attr('color'),
+                    color: color_value,
                     scale: 1.5,
                     aspectRatio: 3.0,
                 });
@@ -469,6 +483,32 @@ async function create_single_ngl_view(group, num_rows, num_columns) {
 
     return defer.promise();
 }
+
+function getBackboneColorScheme() {
+
+    var schemeId_backbone = NGL.ColormakerRegistry.addScheme(function (params) {
+      this.atomColor = function (atom) {
+        let name = $('#backbone_color_variable').val();
+        let val = residue_info[atom.resno][name]
+
+        if (val == null) {
+            // Value is null, return the min value color
+            return '0x' + $('#backbone_color_start').attr('color').substring(1, 7).toUpperCase()
+        }
+
+        let min_value = parseFloat($('#backbone_color_min').val());
+        let max_value = parseFloat($('#backbone_color_max').val());
+        let val_normalized = (parseFloat(val) - min_value) / (max_value - min_value);
+        val_normalized = Math.max(0, Math.min(1, val_normalized));
+
+        var hex = getGradientColor($('#backbone_color_start').attr('color'), $('#backbone_color_end').attr('color'), val_normalized);
+        return '0x' + hex.substring(1, 7).toUpperCase()
+      }
+    })
+
+    return schemeId_backbone;
+}
+
 
 function load_protein() {
     let gene_callers_id = $('#gene_callers_id_list').val();
@@ -968,6 +1008,37 @@ function create_ui() {
     });
 
    return defer.promise();
+}
+
+
+function onTargetResidueInfoChange(element) {
+    let name = $(element).val();
+    let type_info = residue_info_types[name];
+
+    $(`#backbone_numerical_panel`).show();
+    $(`#backbone_color_min`).val(type_info['amin']);
+    $(`#backbone_color_max`).val(type_info['amax']);
+
+    $('.colorpicker-legend').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+
+            if (!bySetColor) $(el).val(hex);
+        },
+        onHide: function(cal) {
+            let el = $(cal).data('colpick').el;
+            color_legend[$(el).attr('data-engine')][$(el).attr('data-column')][$(el).attr('data-key')] = $(el).attr('color');
+            draw_variability();
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
+
+    create_ngl_views(fetch_variability=false);
 }
 
 

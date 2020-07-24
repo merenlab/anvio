@@ -241,7 +241,7 @@
                             <div class="col-md-12">
                                 <label class="col-md-4 settings-label">Rule: </label>
                                 <div class="col-md-8">
-                                    <select id="color_type" onchange="if ($(this).val() == 'Static') { $('.static-color-backbone').show(); $('.dynamic-color-backbone').hide(); } else { $('.static-color-backbone').hide(); $('.dynamic-color-backbone').show(); }; create_ngl_views(fetch_variability=false);">
+                                    <select id="backbone_color_type" onchange="if ($(this).val() == 'Static') { $('.static-color-backbone').show(); $('.dynamic-color-backbone').hide(); } else { $('.static-color-backbone').hide(); $('.dynamic-color-backbone').show(); }; create_ngl_views(fetch_variability=false);">
                                         <option>Static</option>
                                         <option>Dynamic</option>
                                     </select>
@@ -250,7 +250,7 @@
                             <div class="static-color-backbone">
                                 <div class="col-md-12">
                                     <label class="col-md-4 settings-label">Color: </label>
-                                    <div class="col-md-8"><div class="colorpicker" id="color_static_backbone" color="#c80023" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #c80023;"></div></div>
+                                    <div class="col-md-8"><div class="colorpicker" id="color_static_backbone" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #c80023;"></div></div>
                                 </div>
                             </div>
                             <div class="dynamic-color-backbone" style="display: none;">
@@ -275,7 +275,7 @@
                                     </div>
                                     <div class="col-md-12">
                                         <label class="col-md-4 settings-label">Color: </label>
-                                        <div class="col-md-8"><div class="colorpicker" id="backbone_color_end" color="#c80023" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #c80023"></div></div>
+                                        <div class="col-md-8"><div class="colorpicker" id="backbone_color_end" color="#6a8dab" onchange="create_ngl_views(fetch_variability=false);" style="background-color: #c80023"></div></div>
                                     </div>
                                     <div class="clearfix"></div>
                                     <div class="alert alert-danger" role="alert" style="display: none; margin-top: 10px;" id="dynamic_background_color_error">Max Value must be greater than Min Value.</div>
