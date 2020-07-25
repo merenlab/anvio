@@ -56,7 +56,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                     "anvi_gen_contigs_database": {"--project-name": "{group}"},
                                     "centrifuge": {"threads": 2},
                                     "anvi_run_hmms": {"run": True, "threads": 5},
-                                    "anvi_run_kegg_kofams": {"run": False, "threads": 4},
+                                    "anvi_run_kegg_kofams": {"run": True, "threads": 4},
                                     "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
                                     "anvi_run_scg_taxonomy": {"run": True, "threads": 6},
                                     'anvi_run_trna_scan': {"run": True, "threads": 6},
@@ -74,7 +74,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.rule_acceptable_params_dict['anvi_run_pfams'] = ['run', '--pfam-data-dir']
 
-        self.rule_acceptable_params_dict['anvi_run_kegg_kofams'] = ['run', '--kegg-data-dir', '--hmmer-program', '--keep-all-hits']
+        self.rule_acceptable_params_dict['anvi_run_kegg_kofams'] = ['run', '--kegg-data-dir', '--hmmer-program', '--keep-all-hits', '--log-bitscores', '--just-do-it']
 
         self.rule_acceptable_params_dict['centrifuge'] = ['run', 'db']
 

@@ -5,13 +5,14 @@
 
 import os
 import sys
+import yaml
 import gzip
-import tarfile
 import time
 import copy
 import socket
 import shutil
 import smtplib
+import tarfile
 import hashlib
 import textwrap
 import linecache
@@ -431,6 +432,8 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
         The command to be run, e.g. "echo hello" or ["echo", "hello"]
     log_file_path : str or Path-like
         All stdout from the command is sent to this filepath
+
+    Raises ConfigError if ret_val < 0, or on OSError.  Does NOT raise if program terminated with exit code > 0.
     """
     cmdline = format_cmdline(cmdline)
 
@@ -453,6 +456,7 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
         ret_val = subprocess.call(cmdline, shell=False, stdout=log_file, stderr=subprocess.STDOUT)
         log_file.close()
 
+        # This can happen in POSIX due to signal termination (e.g., SIGKILL).
         if ret_val < 0:
             raise ConfigError("Command failed to run. What command, you say? This: '%s'" % ' '.join(cmdline))
         else:
@@ -761,7 +765,7 @@ def split_fasta(input_file_path, parts=1, prefix=None, shuffle=False):
             which = seq_idx % parts
             output_fastas[which].write_id(seq_id)
             output_fastas[which].write_seq(seq)
-            
+
         for output_fasta in output_fastas:
             output_fasta.close()
     else:
@@ -1208,6 +1212,16 @@ def remove_sequences_with_only_gaps_from_fasta(input_file_path, output_file_path
             os.remove(output_file_path)
 
     return total_num_sequences, num_sequences_removed
+
+
+def get_num_sequences_in_fasta(input_file):
+    fasta = u.SequenceSource(input_file)
+    num_sequences = 0
+
+    while next(fasta):
+        num_sequences += 1
+
+    return num_sequences
 
 
 def get_all_ids_from_fasta(input_file):
@@ -3512,14 +3526,28 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
 # def is_external_genomes_compatible_with_pan_database(pan_db_path, external_genomes_path):
 
 
+def get_yaml_as_dict(file_path):
+    """YAML parser"""
+
+    filesnpaths.is_file_plain_text(file_path)
+
+    try:
+        return yaml.load(open(file_path), Loader=yaml.FullLoader)
+    except Exception as e:
+        raise ConfigError(f"Anvi'o run into some trouble when trying to parse the file at "
+                          f"{file_path} as a YAML file. It is likely that it is not a properly "
+                          f"formatted YAML file and it needs editing, but here is the error "
+                          f"message in case it clarifies things: '{e}'.")
+
+
 def download_file(url, output_file_path, progress=progress, run=run):
     filesnpaths.is_output_file_writable(output_file_path)
 
     try:
         response = urllib.request.urlopen(url)
     except Exception as e:
-        raise ConfigError("Something went wrong with your download attempt. Here is the "
-                           "problem: '%s'" % e)
+        raise ConfigError(f"Something went wrong with your download attempt. Here is the "
+                          f"problem for the url {url}: '{e}'")
 
     file_size = 0
     if 'Content-Length' in response.headers:

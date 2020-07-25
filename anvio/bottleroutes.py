@@ -574,6 +574,7 @@ class BottleApplication(Bottle):
             data['coverage'] = [coverages[layer].tolist() for layer in layers]
         except:
             data['coverage'] = [[0] * self.interactive.splits_basic_info[split_name]['length']]
+
         data['sequence'] = self.interactive.split_sequences[split_name]
 
         ## get the variability information dict for split:
@@ -588,7 +589,9 @@ class BottleApplication(Bottle):
             data['variability'].append(split_variability_info_dict[layer]['variability'])
 
         levels_occupied = {1: []}
-        for entry_id in  self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
+        gene_entries_in_split = self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]
+
+        for entry_id in gene_entries_in_split:
             gene_callers_id =  self.interactive.genes_in_splits[entry_id]['gene_callers_id']
             p =  self.interactive.genes_in_splits[entry_id]
             # p looks like this at this point:
@@ -604,9 +607,13 @@ class BottleApplication(Bottle):
             p['direction'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['direction']
             p['start_in_contig'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['start']
             p['stop_in_contig'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['stop']
+            p['call_type'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['call_type']
             p['complete_gene_call'] = 'No' if  self.interactive.genes_in_contigs_dict[gene_callers_id]['partial'] else 'Yes'
             p['length'] = p['stop_in_contig'] - p['start_in_contig']
             p['functions'] =  self.interactive.gene_function_calls_dict[gene_callers_id] if gene_callers_id in  self.interactive.gene_function_calls_dict else None
+
+            # get amino acid sequence for the gene call:
+            p['aa_sequence'] = self.interactive.get_sequences_for_gene_callers_ids([gene_callers_id], include_aa_sequences=True)[1][gene_callers_id]['aa_sequence']
 
             for level in levels_occupied:
                 level_ok = True
@@ -662,9 +669,13 @@ class BottleApplication(Bottle):
         p['direction'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['direction']
         p['start_in_contig'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['start']
         p['stop_in_contig'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['stop']
+        p['call_type'] =  self.interactive.genes_in_contigs_dict[gene_callers_id]['call_type']
         p['complete_gene_call'] = 'No' if  self.interactive.genes_in_contigs_dict[gene_callers_id]['partial'] else 'Yes'
         p['length'] = p['stop_in_contig'] - p['start_in_contig']
         p['functions'] =  self.interactive.gene_function_calls_dict[gene_callers_id] if gene_callers_id in  self.interactive.gene_function_calls_dict else None
+
+        # get amino acid sequence for the gene call:
+        p['aa_sequence'] = self.interactive.get_sequences_for_gene_callers_ids([gene_callers_id], include_aa_sequences=True)[1][gene_callers_id]['aa_sequence']
 
         return json.dumps(p)
 
@@ -805,6 +816,9 @@ class BottleApplication(Bottle):
             p['complete_gene_call'] = 'No' if  self.interactive.genes_in_contigs_dict[gene_callers_id]['partial'] else 'Yes'
             p['length'] = p['stop_in_contig'] - p['start_in_contig']
             p['functions'] =  self.interactive.gene_function_calls_dict[gene_callers_id] if gene_callers_id in  self.interactive.gene_function_calls_dict else None
+
+            # get amino acid sequence for the gene call:
+            p['aa_sequence'] = self.interactive.get_sequences_for_gene_callers_ids([gene_callers_id], include_aa_sequences=True)[1][gene_callers_id]['aa_sequence']
 
             for level in levels_occupied:
                 level_ok = True
@@ -1042,15 +1056,18 @@ class BottleApplication(Bottle):
             return json.dumps({'error': "Gene caller id does not seem to be 'integerable'. Not good :/"})
 
         try:
-            gene_calls_tuple = self.interactive.get_sequences_for_gene_callers_ids([gene_callers_id])
+            gene_calls_tuple = self.interactive.get_sequences_for_gene_callers_ids([gene_callers_id], include_aa_sequences=True)
         except Exception as e:
             return json.dumps({'error': "Something went wrong when I tried to access to that gene: '%s' :/" % e})
 
         entry = gene_calls_tuple[1][gene_callers_id]
+
         sequence = entry['sequence']
+        aa_sequence = entry['aa_sequence']
+
         header = '%d|' % (gene_callers_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['contig', 'start', 'stop', 'direction', 'rev_compd', 'length']])
 
-        return json.dumps({'sequence': sequence, 'header': header})
+        return json.dumps({'sequence': sequence, 'aa_sequence': aa_sequence, 'header': header})
 
 
     def get_gene_popup_for_pan(self, gene_callers_id, genome_name):

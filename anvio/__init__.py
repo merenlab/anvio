@@ -833,18 +833,13 @@ D = {
                      "If you are using a program (such as `anvi-run-trna-taxonomy` or `anvi-estimate-trna-taxonomy`) "
                      "you will have to use this parameter to tell those programs where your data are."}
                 ),
-    'scgs-taxonomy-remote-database-url': (
-            ['--scgs-taxonomy-remote-database-url'],
+    'gtdb-release': (
+            ['--gtdb-release'],
             {'default': None,
              'type': str,
-             'metavar': 'URL',
-             'help': "Anvi'o will always try to download the latest release, but if there is a problem with "
-                     "the latest release, feel free to run setup using a different URL. Just to note, anvi'o "
-                     "will expect to find the following files in the URL provided here: 'VERSION', "
-                     "'ar122_msa_individual_genes.tar.gz', 'ar122_taxonomy.tsv', 'bac120_msa_individual_genes.tar.gz', "
-                     "and 'bac120_taxonomy.tsv'. If everything fails, you can give this URL, which is supposed to work "
-                     "if teh server in which these databases are maintained is still online: "
-                     "https://data.ace.uq.edu.au/public/gtdb/data/releases/release89/89.0/"}
+             'metavar': 'RELEASE_NUM',
+             'help': "If you are particularly intersted an earlier release anvi'o knows about, you can set it here "
+                     "Otherwise anvi'o will always use the latest release it knows about."}
                 ),
     'reset': (
             ['--reset'],
@@ -2593,6 +2588,13 @@ D = {
             'action': 'store_true',
             'help': "If you use this flag, anvi'o will not get rid of any raw HMM hits, even those that "
                     "are below the score threshold."}
+                ),
+    'log-bitscores': (
+            ['--log-bitscores'],
+            {'default': False,
+            'action': 'store_true',
+            'help': "Use this flag to generate a tab-delimited text file containing the bit scores "
+                    "of every KOfam hit that is put in the contigs database."}
                 ),
 }
 
