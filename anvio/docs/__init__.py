@@ -26,13 +26,19 @@ ANVIO_ARTIFACTS ={
         "name": "CONTIGS",
         "type": "FASTA",
         "provided_by_anvio": True,
-        "provided_by_user":True
+        "provided_by_user": True
+    },
+    "configuration-ini": {
+        "name": "CONFIGURATION FILE",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
     },
     "external-gene-calls": {
         "name": "EXTERNAL GENE CALLS",
         "type": "TXT",
         "provided_by_anvio": False,
-        "provided_by_user":True
+        "provided_by_user": True
     },
     "concatenated-gene-alignment-fasta": {
         "name": "CONCATENATED GENE ALIGNMENT",

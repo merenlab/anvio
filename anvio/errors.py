@@ -59,6 +59,15 @@ class AnvioError(Exception, object):
         return '%s: %s' % (self.error_type, self.e)
 
 
+class CommandError(AnvioError):
+    """Use this when a command (e.g., something run with utils.run_command) fails."""
+
+    def __init__(self, e=None):
+        self.e = remove_spaces(e)
+        self.error_type = 'Command Error'
+        AnvioError.__init__(self)
+
+
 class ConfigError(AnvioError):
     def __init__(self, e=None):
         self.e = remove_spaces(e)

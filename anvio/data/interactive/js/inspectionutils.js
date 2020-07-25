@@ -66,7 +66,7 @@ function get_gene_functions_table_html(gene){
     functions_table_html =  '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
     functions_table_html += '<h2>Gene Call</h2>';
     functions_table_html += '<table class="table table-striped" style="width: 100%; text-align: center;">';
-    functions_table_html += '<thead><th>ID</th><th>Source</th><th>Length</th><th>Direction</th><th>Start</th><th>Stop</th><th>Complete</th><th>% in split</th></thead>';
+    functions_table_html += '<thead><th>ID</th><th>Source</th><th>Length</th><th>Direction</th><th>Start</th><th>Stop</th><th>Call type</th><th>Complete</th><th>% in split</th></thead>';
     functions_table_html += '<tbody>';
     functions_table_html += '<tr><td>' + gene.gene_callers_id
                           + '</td><td>' + gene.source
@@ -74,11 +74,18 @@ function get_gene_functions_table_html(gene){
                           + '</td><td>' + gene.direction
                           + '</td><td>' + gene.start_in_contig
                           + '</td><td>' + gene.stop_in_contig
+                          + '</td><td>' + gene.call_type
                           + '</td><td>' + gene.complete_gene_call
                           + '</td><td>' + gene.percentage_in_split.toFixed(2) + '%'
                           + '</td></tr></tbody></table>';
 
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence(' + gene.gene_callers_id + ');">Get sequence</button> ';
+    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence(' + gene.gene_callers_id + ');">DNA</button> ';
+
+    if(gene.call_type == 1)
+        functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_aa_sequence(' + gene.gene_callers_id + ');">AA</button> ';
+    else
+        functions_table_html += '<button type="button" class="btn btn-default btn-sm" disabled>Get AA seq</button> ';
+
     functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">blastn @ nr</button> ';
     functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastn @ refseq_genomic</button> ';
     functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">blastx @ nr</button> ';
@@ -126,7 +133,6 @@ function get_gene_functions_table_html_for_pan(gene_callers_id, genome_name){
         success: function(data) {
             data.gene_info['genome_name'] = genome_name;
             data.gene_info['gene_callers_id'] = gene_callers_id;
-            
             gene = data.gene_info;
         }
     });
@@ -216,7 +222,19 @@ function show_sequence(gene_id) {
         cache: false,
         url: '/data/gene/' + gene_id,
         success: function(data) {
-          show_sequence_modal('Split Sequence', data['header'] + '\n' + data['sequence']);
+          show_sequence_modal('Gene DNA Sequence', data['header'] + '\n' + data['sequence']);
+        }
+    });
+}
+
+
+function show_aa_sequence(gene_id) {
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/gene/' + gene_id,
+        success: function(data) {
+          show_sequence_modal('Gene Amino Acid Sequence', data['header'] + '\n' + data['aa_sequence']);
         }
     });
 }
