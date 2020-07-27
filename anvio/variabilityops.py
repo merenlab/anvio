@@ -28,6 +28,7 @@ import anvio.structureops as structureops
 import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
+from anvio.tables.miscdata import TableForAminoAcidAdditionalData
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -539,6 +540,7 @@ class VariabilitySuper(VariabilityFilter, object):
         self.skip_sanity_check = A('skip_sanity_check', bool) or False
         self.include_split_names_in_output = A('include_split_names', null)
         self.include_contig_names_in_output = A('include_contig_names', null)
+        self.include_additional_data_in_output = A('include_additional_data', null)
         self.skip_comprehensive_variability_scores = A('skip_comprehensive_variability_scores', bool) or False
 
         self.append_structure_residue_info = True if self.structure_db_path else False
@@ -566,6 +568,7 @@ class VariabilitySuper(VariabilityFilter, object):
         self.process_functions = [F(self.init_commons),
                                   F(self.load_variability_data),
                                   F(self.load_structure_data),
+                                  F(self.load_additional_data),
                                   F(self.apply_preliminary_filters),
                                   F(self.set_unique_pos_identification_numbers),
                                   F(self.filter_data, function=self.filter_by_num_positions_from_each_split),
@@ -970,6 +973,9 @@ class VariabilitySuper(VariabilityFilter, object):
         if self.append_structure_residue_info and self.engine not in ["AA", "CDN"]:
             raise ConfigError('You provided a structure database, which is only compatible with --engine AA and --engine CDN')
 
+        if self.include_additional_data_in_output and self.engine not in ["AA", "CDN"]:
+            raise ConfigError('Currently, --include-additional-data is only implemented for --engine AA and --engine CDN')
+
         self.progress.update('Making sure our databases are compatible ..')
         utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
         if self.append_structure_residue_info:
@@ -1109,6 +1115,21 @@ class VariabilitySuper(VariabilityFilter, object):
 
         # we're done here. bye.
         profile_db.disconnect()
+        self.progress.end()
+
+
+    def load_additional_data(self):
+        """Loads additional data from the contigs db as self.additional_data"""
+
+        if not self.include_additional_data_in_output:
+            return
+
+        self.progress.new('Loading additional data')
+        self.progress.update('Fetching dataframe ...')
+
+        args = argparse.Namespace(contigs_db=self.contigs_db_path)
+        self.additional_data = TableForAminoAcidAdditionalData(args).get_multigene_dataframe(self.genes_of_interest)
+
         self.progress.end()
 
 
@@ -1739,7 +1760,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def get_residue_structure_information(self):
-        """ Merges self.structure_residue_info with self.data
+        """Merges self.structure_residue_info with self.data
 
         Notes
         =====
@@ -1747,6 +1768,7 @@ class VariabilitySuper(VariabilityFilter, object):
           with structure, this function raises a warning and the structure columns are not added to
           the table. Otherwise this function appends the columns from residue_info to self.data
         """
+
         if not self.append_structure_residue_info:
             return
 
@@ -1754,7 +1776,7 @@ class VariabilitySuper(VariabilityFilter, object):
         genes_with_var_and_struct = [g for g in self.genes_with_structure if g in genes_with_var]
         if not genes_with_var_and_struct:
             run.warning("Before filtering entries, there was an overlap between genes with "
-                        "variability and genes with structuresr, however that is no longer the case. As a result, "
+                        "variability and genes with structures, however that is no longer the case. As a result, "
                         "no structure information columns will be added. Above you can see the number of genes "
                         "remaining with structures after each filtering step.")
             self.append_structure_residue_info = False
