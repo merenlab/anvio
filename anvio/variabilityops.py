@@ -1129,7 +1129,17 @@ class VariabilitySuper(VariabilityFilter, object):
 
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
         self.additional_data = TableForAminoAcidAdditionalData(args).get_multigene_dataframe(self.genes_of_interest)
+        self.additional_data.rename(columns={'gene_callers_id': 'corresponding_gene_call'}, inplace=True)
 
+        if self.additional_data.empty:
+            self.run.warning("There is no additional data in the `amino_acid_additional_data` table of your contigs db "
+                             "that matches your genes of interest. Therefore no additional data will be output, despite your "
+                             "flag --include-additional-data.")
+            self.include_additional_data_in_output = False
+            self.progress.end()
+            return
+
+        self.genes_with_additional_data = set(self.additional_data['corresponding_gene_call'].unique())
         self.progress.end()
 
 
