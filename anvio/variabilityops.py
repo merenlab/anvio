@@ -1010,10 +1010,20 @@ class VariabilitySuper(VariabilityFilter, object):
 
 
     def gen_sqlite_where_clause_for_variability_table(self):
-        """It is impractical to load the entire variability table and then filter it according to our
-           splits_of_interest, sample_ids_of_interest, and genes_of_interest. For example, what if
-           genes_of_interest = set([0]) in a profile database with 50,000 genes? Why is splits of interest
-           not included here? Because split_name is not a column in the variable codon table."""
+        """Gen sqlite query to avoid loading in entire variability table
+
+        It is impractical to load the entire variability table and then filter it according to our
+        splits_of_interest, sample_ids_of_interest, and genes_of_interest. For example, if
+        genes_of_interest is a single gene in a variability table with 6.7 million genes, we should
+        use sqlite filters to avoid clogging memory usage to load the entire 6.7M genes' worth of
+        data into memory.
+
+        Notes
+        =====
+        - FIXME. `variable_codons` does not have a `splits_of_interest` column, but it should (just
+          as `variable_nucleotides` does). This prevents us fom SQL-querying by splits of interest.
+        """
+
         R = lambda x, y: self.run.info("%s that variability data will be fetched for" % \
                          (x.capitalize() if len(y)<200 else "Num of "+x), ", ".join([str(z) for z in y]) if len(y)<200 else len(y))
 
@@ -1051,6 +1061,7 @@ class VariabilitySuper(VariabilityFilter, object):
 
     def load_variability_data(self):
         """Populates self.data (type pandas.DataFrame) from profile database tables."""
+
         if self.table_provided:
             return
 
