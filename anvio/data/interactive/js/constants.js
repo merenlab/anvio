@@ -54,6 +54,32 @@ var default_COG_colors = {
   'S': '#81402e'
 }
 
+var KEGG_categories = {
+  'C': '[C] Carbohydrate metabolism',
+  'E': '[E] Energy metabolism',
+  'L': '[L] Lipid metabolism',
+  'N': '[N] Nucleotide metabolism',
+  'A': '[A] Amino acid metabolism',
+  'G': '[G] Glycan metabolism',
+  'V': '[V] Cofactor/vitamin metabolism',
+  'T': '[T] Biosynthesis of terpenoids and polyketides',
+  'S': '[S] Biosynthesis of other secondary metabolites',
+  'X': '[X] Xenobiotics biodegradation and metabolism'
+}
+
+var default_KEGG_colors = {
+  'C': '#0000ee',
+  'E': '#9933cc',
+  'L': '#009999',
+  'N': '#ff0000',
+  'A': '#ff9933',
+  'G': '#3399ff',
+  'V': '#ff6699',
+  'T': '#00cc33',
+  'S': '#cc3366',
+  'X': '#ccaa99'
+}
+
 var named_functional_sources = {
     'EGGNOG (BACT)': {
         'accession_decorator': (function (d) {
