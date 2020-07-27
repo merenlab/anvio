@@ -45,7 +45,9 @@ var show_nucleotides = true;
 
 // for testing
 var mcags;
-var mcags2;
+// var db_color_mode -- can be cog, kegg, null --> or just directly from menu?
+
+var cog_annotated = false, kegg_annotated = false;
 
 
 function loadAll() {
@@ -76,8 +78,6 @@ function loadAll() {
 
     // For testing
     mcags = Object.keys(COG_categories);
-    mcags2 = mcags;
-    mcags2.unshift("none");
     // For testing
 
     contig_id = getParameterByName('id');
@@ -997,6 +997,13 @@ function createCharts(state){
     }
 
     geneParser = new GeneParser(genes);
+    geneParser["data"].forEach(function(gene) {
+      if(gene.functions != null) {
+        if(gene.functions.hasOwnProperty("COG_CATEGORY")) cog_annotated = true;
+        if(gene.functions.hasOwnProperty("KEGG_CATEGORY")) kegg_annotated = true;
+        if(cog_annotated && kegg_annotated) return;
+      }
+    });
 
     var margin = {top: 20, right: 50, bottom: 150, left: 50};
     var width = VIEWER_WIDTH * .80;
@@ -1092,13 +1099,46 @@ function createCharts(state){
        .attr("fill-opacity", "0.2")
        .attr('transform', 'translate(50, 10)');
 
-    // Update function color table with state
-    /* TODO: if contigs db is cog-annotated */
-    if(!state.hasOwnProperty('cog-colors')) {
-      state['cog-colors'] = default_COG_colors
+    // Set default states and update function color table with appropriate state
+    var mcags2;
+    if(cog_annotated) {
+      if(!state.hasOwnProperty('cog-colors')) {
+        state['cog-colors'] = default_COG_colors
+      }
+      generateFunctionColorTable(state['cog-colors'], "COG");
+      toggleUnmarkedGenes();
+      mcags2 = Object.keys(COG_categories);
+      mcags2.unshift("none");
+
+      document.getElementById('gene_color_order').style.display = "";
+      $('#gene_color_order').append($('<option>', {
+        value: 'COG',
+        text: 'COG'
+      }));
+      document.getElementById('gene_colors_label').style.display="";
     }
-    generateFunctionColorTable(state['cog-colors'], "COG");
-    toggleUnmarkedGenes();
+    if(kegg_annotated) {
+      if(!state.hasOwnProperty('kegg-colors')) {
+        state['kegg-colors'] = default_KEGG_colors;
+      }
+      if(!cog_annotated) {
+        generateFunctionColorTable(state['kegg-colors'], "KEGG");
+        toggleUnmarkedGenes();
+      }
+      mcags2 = Object.keys(KEGG_categories);
+      mcags2.unshift("none");
+
+      document.getElementById('gene_color_order').style.display = "";
+      $('#gene_color_order').append($('<option>', {
+        value: 'KEGG',
+        text: 'KEGG'
+      }));
+      document.getElementById('gene_colors_label').style.display="";
+    }
+    if(!cog_annotated && !cog_annotated) {
+      document.getElementById('table_function_colors').style.display = "none";
+      mcags2 = ['none', 'other', 'tRNA', 'rRNA'];
+    }
 
     // Define arrow markers
     mcags2.forEach(function(category){
@@ -1112,7 +1152,7 @@ function createCharts(state){
           .attr('viewBox', '-5 -5 10 10')
           .append('svg:path')
             .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
-            .attr('fill', category != "none" && state.hasOwnProperty('cog-colors')? $('#picker_' + category).attr('background-color') : "gray");
+            .attr('fill', category != "none" && cog_annotated? $('#picker_' + category).attr('background-color') : "gray");
     });
 
     $('#context-container').css("width", (width + 150) + "px");
