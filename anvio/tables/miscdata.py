@@ -1121,6 +1121,78 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
         AdditionalDataBaseClass.__init__(self, args)
 
 
+    def get_multigene_dataframe(self, gene_caller_ids, keys_of_interest=set([]), group_name=None):
+        """Fetches and pivots table data specific to a group of gene_callers_ids
+
+        Parameters
+        ==========
+        gene_caller_ids : set
+
+        Returns
+        =======
+        output : pd.DataFrame
+            Outputs a dataframe that looks like this:
+
+                gene_callers_id  codon_order_in_gene   MG                SM_               UDP
+                1                149                  NaN    0.0349008254091               NaN
+                1                150                  NaN    0.0116165975232               NaN
+                1                167                  NaN    0.1009224794937   0.1127902398775
+                1                168                  NaN    0.0110966620296  0.03150767340385
+                1                169                  NaN     0.435271159751   0.4638648995855
+                1                171                  NaN    0.0239539337947  0.03150767340385
+                1                172                  NaN    0.0347266126837               NaN
+                1                173                  NaN     0.244954708876   0.1630916348525
+                1                174                  NaN    0.5049807590385    0.604658463037
+                1                175                  NaN    0.0237121180997  0.06609853613995
+                1                176                  NaN    0.0359138454456  0.10012280860365
+                1                177                  NaN    0.0252309121402   0.0691817254722
+                1                178                  NaN   0.02856525986075  0.03150767340385
+                1                179                  NaN   0.01191453799525               NaN
+                ...              ...                  ...               ...                ...
+
+            Only keys that had at least one non-NaN value for the genes are included
+        """
+
+        if self.df is None:
+            self.init_table_as_dataframe()
+
+        if len(gene_caller_ids) == 1:
+            df = self.df[self.df['gene_callers_id'] == gene_caller_ids.pop()]
+        else:
+            df = self.df[self.df['gene_callers_id'].isin(gene_caller_ids)]
+
+        if group_name:
+            df = df[df['data_group'] == group_name]
+
+        if len(keys_of_interest):
+            df = df[df['data_key'].isin(set(keys_of_interest))]
+
+        # Assumes a data_key can possess only 1 data_type
+        dtypes_convert = {
+            'str': str,
+            'int': int,
+            'float': float,
+            'stackedbar': str,
+            'unknown': str,
+        }
+
+        dtypes = {}
+        for data_key, subset in df.groupby('data_key'):
+            dtypes[data_key] = dtypes_convert[subset['data_type'].iloc[0]]
+
+        if df.empty:
+            return pd.DataFrame({}, columns=('codon_order_in_gene',))
+
+        pivot_gene_df = df.pipe(
+            utils.multi_index_pivot,
+            index=['gene_callers_id', 'codon_order_in_gene'],
+            columns='data_key',
+            values='data_value'
+        ).astype(dtypes).reset_index()
+
+        return pivot_gene_df
+
+
     def get_gene_dataframe(self, gene_callers_id, keys_of_interest=set([]), group_name=None):
         """Fetches and pivots table data specific to a gene_callers_id
 
@@ -1149,35 +1221,8 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
             Only keys that had at least one non-NaN value for the gene are included
         """
 
-        if self.df is None:
-            self.init_table_as_dataframe()
-
-        gene_df = self.df[self.df['gene_callers_id'] == gene_callers_id]
-
-        if group_name:
-            gene_df = gene_df[gene_df['data_group'] == group_name]
-
-        if len(keys_of_interest):
-            gene_df = gene_df[gene_df['data_key'].isin(set(keys_of_interest))]
-
-        # Assumes a data_key can possess only 1 data_type
-        dtypes_convert = {
-            'str': str,
-            'int': int,
-            'float': float,
-            'stackedbar': str,
-            'unknown': str,
-        }
-
-        dtypes = {}
-        for data_key, subset in gene_df.groupby('data_key'):
-            dtypes[data_key] = dtypes_convert[subset['data_type'].iloc[0]]
-
-        if gene_df.empty:
-            return pd.DataFrame({}, columns=('codon_order_in_gene',))
-
-        pivot_gene_df = gene_df.pivot(columns='data_key', index='codon_order_in_gene', values='data_value').astype(dtypes)
-        return pivot_gene_df.reset_index()
+        pivot_gene_df = self.get_multigene_dataframe(set([gene_callers_id]))
+        return pivot_gene_df.drop('gene_callers_id', axis=1)
 
 
     def init_table_as_dataframe(self):
