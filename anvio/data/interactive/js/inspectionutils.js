@@ -30,7 +30,7 @@ GeneParser = (function() {
     _ref = this.data;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       gene = _ref[_i];
-      
+
       if (gene.start_in_split > start && gene.start_in_split < stop || gene.stop_in_split > start && gene.stop_in_split < stop || gene.start_in_split <= start && gene.stop_in_split >= stop) {
         _data.push(gene);
       }
@@ -55,7 +55,7 @@ $(document).ready(function() {
   $(window).on('click', function (e) {
     //did not click a popover toggle or popover
     if ($(e.target).data('toggle') !== 'popover'
-        && $(e.target).parents('.popover.in').length === 0) { 
+        && $(e.target).parents('.popover.in').length === 0) {
         $('.popover').popover('hide');
     }
   });
@@ -284,15 +284,16 @@ function drawArrows(_start, _stop) {
 
       var y = 10 + (gene.level * 20);
 
-      var color = 'gray';
-      if (gene.source == 'Ribosomal_RNAs') {
-        color = 'firebrick';
-      }
-      else if (gene.source == 'Transfer_RNAs') {
-        color = '#226ab2';
-      }
-      else if (gene.functions !== null) {
-        color = 'green';
+      var category = "none";
+      if (gene.functions !== null) {
+        if(gene.functions.hasOwnProperty("COG_CATEGORY")) {
+          category = gene.functions["COG_CATEGORY"][0][0];
+        } else if(gene.functions.hasOwnProperty("KEGG_CATEGORY")) {
+          /* TODO: KEGG category implementation */
+        }
+        /* TODO: tRNA vs rRNA implementation */
+
+        if(category == null) category = "none";
       }
 
       if (highlight_gene && gene.gene_callers_id == contig_id)
@@ -311,14 +312,14 @@ function drawArrows(_start, _stop) {
       // M10 15 l20 0
       path = paths.append('svg:path')
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
-           .attr('stroke', color)
+           .attr('stroke', category == "none" ? "gray" : $('#picker_' + category).attr('color'))
            .attr('stroke-width', 6)
            .attr("style", "cursor:pointer;")
            .attr('marker-end', function() {
 
              if ((gene.direction == 'r' && gene.start_in_split > _start) ||
                  (gene.direction == 'f' && gene.stop_in_split  < _stop)) {
-                   return 'url(#arrow_' + color + ')';
+                   return 'url(#arrow_' + category + ')';
                  }
 
               return '';

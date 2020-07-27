@@ -8,7 +8,7 @@ var COG_categories = {
     'G': '[G] Carbohydrate metabolism and transport',
     'H': '[H] Coenzyme metabolis',
     'I': '[I] Lipid metabolism',
-    'J': '[J] Tranlsation',
+    'J': '[J] Translation',
     'K': '[K] Transcription',
     'L': '[L] Replication and repair',
     'M': '[M] Cell wall/membrane/envelop biogenesis',
@@ -24,6 +24,34 @@ var COG_categories = {
     'Z': '[Z] Cytoskeleton',
     'R': '[R] General Functional Prediction only',
     'S': '[S] Function Unknown'
+}
+
+var default_COG_colors = {
+  'A': '#98d67c',
+  'B': '#446af3',
+  'C': '#7e6500',
+  'D': '#ff80ec',
+  'E': '#68a300',
+  'F': '#bc0066',
+  'G': '#acd441',
+  'H': '#c9a1ff',
+  'I': '#eb9800',
+  'J': '#0297f0',
+  'K': '#e74d22',
+  'L': '#01c0ab',
+  'M': '#d1002e',
+  'N': '#00a45c',
+  'O': '#7b3979',
+  'P': '#d6c777',
+  'Q': '#ff9bc6',
+  'T': '#455d00',
+  'U': '#ff8241',
+  'V': '#125e40',
+  'W': '#c35b00',
+  'Y': '#9ecea1',
+  'Z': '#933215',
+  'R': '#ff9a92',
+  'S': '#81402e'
 }
 
 var named_functional_sources = {
