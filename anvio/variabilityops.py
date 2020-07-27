@@ -565,24 +565,27 @@ class VariabilitySuper(VariabilityFilter, object):
         # f = function called in self.process
         # **kwargs = parameters passed to function
         F = lambda f, **kwargs: (f, kwargs)
-        self.process_functions = [F(self.init_commons),
-                                  F(self.load_variability_data),
-                                  F(self.load_structure_data),
-                                  F(self.load_additional_data),
-                                  F(self.apply_preliminary_filters),
-                                  F(self.set_unique_pos_identification_numbers),
-                                  F(self.filter_data, function=self.filter_by_num_positions_from_each_split),
-                                  F(self.compute_additional_fields),
-                                  F(self.filter_data, criterion="departure_from_consensus",
-                                                      min_filter=self.min_departure_from_consensus,
-                                                      min_condition=self.min_departure_from_consensus > 0,
-                                                      max_filter=self.max_departure_from_consensus,
-                                                      max_condition=self.max_departure_from_consensus < 1),
-                                  F(self.recover_base_frequencies_for_all_samples),
-                                  F(self.filter_data, function=self.filter_by_minimum_coverage_in_each_sample),
-                                  F(self.compute_comprehensive_variability_scores),
-                                  F(self.compute_gene_coverage_fields),
-                                  F(self.get_residue_structure_information,)]
+        self.process_functions = [
+            F(self.init_commons),
+            F(self.load_variability_data),
+            F(self.load_structure_data),
+            F(self.load_additional_data),
+            F(self.apply_preliminary_filters),
+            F(self.set_unique_pos_identification_numbers),
+            F(self.filter_data, function=self.filter_by_num_positions_from_each_split),
+            F(self.compute_additional_fields),
+            F(self.filter_data, criterion="departure_from_consensus",
+                                min_filter=self.min_departure_from_consensus,
+                                min_condition=self.min_departure_from_consensus > 0,
+                                max_filter=self.max_departure_from_consensus,
+                                max_condition=self.max_departure_from_consensus < 1),
+            F(self.recover_base_frequencies_for_all_samples),
+            F(self.filter_data, function=self.filter_by_minimum_coverage_in_each_sample),
+            F(self.compute_comprehensive_variability_scores),
+            F(self.compute_gene_coverage_fields),
+            F(self.merge_residue_structure_info,),
+            F(self.merge_additional_data,),
+        ]
 
         if not self.skip_sanity_check:
             self.sanity_check()
@@ -653,9 +656,11 @@ class VariabilitySuper(VariabilityFilter, object):
             ],
             'structural': [
             ],
+            'additional_data': [
+            ],
         }
         self.columns_to_report_order = ['position_identifiers', 'sample_info', 'gene_info', 'coverage_info',
-                                        'sequence_identifiers', 'statistical', 'SSMs', 'structural']
+                                        'sequence_identifiers', 'statistical', 'SSMs', 'structural', 'additional_data']
 
 
 
@@ -1769,7 +1774,50 @@ class VariabilitySuper(VariabilityFilter, object):
         return values, bins
 
 
-    def get_residue_structure_information(self):
+    def merge_additional_data(self):
+        """Merges self.additional_data with self.data
+
+        Notes
+        =====
+        - If by the end of all filtering there is no overlap between genes with variability and genes
+          with structure, this function raises a warning and the structure columns are not added to
+          the table. Otherwise this function appends the columns from residue_info to self.data
+        """
+
+        if not self.include_additional_data_in_output:
+            return
+
+        genes_with_var = list(self.data["corresponding_gene_call"].unique())
+        genes_with_var_and_additional_data = [g for g in self.genes_with_additional_data if g in genes_with_var]
+        if not genes_with_var_and_additional_data:
+            self.run.warning("After filtering, there is no overlap between residues with "
+                             "variability and residues with additional data. As a result, "
+                             "no additional data columns will be added.")
+            self.include_additional_data_in_output = False
+            return
+
+        self.progress.new("Adding additional data")
+        self.progress.update("Appending columns...")
+
+        df = self.additional_data
+        print(self.data.shape)
+        self.data = self.data.merge(self.additional_data,
+                                    on = ["corresponding_gene_call", "codon_order_in_gene"],
+                                    how = "left")
+
+        print(self.data.shape)
+        # Get rid of potentially many, many columns of completely NaN values
+        self.data.dropna(axis=1, how='all', inplace=True)
+        print(self.data.shape)
+
+        import ipdb; ipdb.set_trace() 
+
+        # FIXME
+        self.columns_to_report['additional_data'].extend([])
+        self.progress.end()
+
+
+    def merge_residue_structure_info(self):
         """Merges self.structure_residue_info with self.data
 
         Notes
