@@ -1492,11 +1492,12 @@ D = {
     'min-binding-frequency': (
             ['-m', '--min-binding-frequency'],
             {'metavar': 'FLOAT',
-             'default': 0.0,
+             'default': 0.2,
              'type': float,
              'help': "InteracDome has associated binding 'frequencies', which can be considered scores between 0 to 1 that "
                      "quantify how likely a position is to be involved in binding. Use this parameter to filter out low frequencies. "
-                     "The default is %(default)f."}
+                     "The default is %(default)f. Warning, your contigs database size will grow massively if this is set to 0.0, but "
+                     "you're the boss."}
                 ),
     'min-hit-fraction': (
             ['-f', '--min-hit-fraction'],
