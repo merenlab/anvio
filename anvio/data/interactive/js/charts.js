@@ -21,6 +21,8 @@
 var request_prefix = getParameterByName('request_prefix');
 var VIEWER_WIDTH = window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth;
 
+var current_state_name = "";
+
 var layers;
 var coverage;
 var variability;
@@ -40,6 +42,10 @@ var charts;
 var brush;
 var inspect_mode;
 var show_nucleotides = true;
+
+// for testing
+var mcags;
+var mcags2;
 
 
 function loadAll() {
@@ -67,6 +73,12 @@ function loadAll() {
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
     });
+
+    // For testing
+    mcags = Object.keys(COG_categories);
+    mcags2 = mcags;
+    mcags2.unshift("none");
+    // For testing
 
     contig_id = getParameterByName('id');
     highlight_gene = getParameterByName('highlight_gene') == 'true';
@@ -199,9 +211,150 @@ function loadAll() {
                         brush.event(d3.select(".brush").transition());
                     }
                 });
+
+                document.body.addEventListener("keydown", function(ev) {
+                    if(ev.which == 37 || ev.which == 39) {
+                      let start = parseInt($('#brush_start').val());
+                      let end = parseInt($('#brush_end').val());
+
+                      if(ev.which == 37 && ev.shiftKey) {
+                        start--;
+                        end--;
+                        if(start < 0) return;
+                      } else if(ev.which == 39 && ev.shiftKey) {
+                        start++;
+                        end++;
+                        if(end > sequence.length) return;
+                      } else if(ev.which == 37) { // Left arrow = 37
+                        start -= 3;
+                        end -= 3;
+                        if(start < 0) return;
+                      } else if(ev.which == 39) { // Right arrow = 39
+                        start += 3;
+                        end += 3;
+                        if(end > sequence.length) return;
+                      }
+
+                      $('#brush_start').val(start);
+                      $('#brush_end').val(end);
+
+                      brush.extent([start, end]);
+                      brush(d3.select(".brush").transition());
+                      brush.event(d3.select(".brush").transition());
+
+                      drawArrows(start, end);
+                      display_nucleotides();
+                    }
+                });
             }
         });
 
+}
+
+/*
+ *  Generates KEGG color table html given a color palette.
+ *  Assumes contigs db is KEGG-annotated and metabolism is active
+ */
+function generateFunctionColorTable(fn_colors, fn_type, subset_categories=null) {
+  var db = (function(type){
+    switch(type) {
+      case "COG":
+        return COG_categories;
+      case "KEGG":
+        console.log("(Note for testing: KEGG categories not implemented yet)");
+        return null; // TODO: KEGG_categories dict in constants.js
+      case "tRNA":
+        console.log("(Note for testing: tRNA/rRNA coloring not implemented yet)");
+        return null; // TODO: tRNA vs rRNA dict
+      default:
+        console.log("Warning: Invalid type for function color table");
+        return null;
+    }
+  })(fn_type);
+  if(db == null) return;
+
+  $('#tbody_function_colors').empty();
+
+  if(subset_categories != null) {
+    var new_colors = {};
+    subset_categories.forEach(cag => {
+      if(cag in fn_colors) {
+        new_colors[cag] = fn_colors[cag];
+      }
+    });
+    if(Object.keys(new_colors).length > 0) fn_colors = new_colors;
+  }
+
+  Object.keys(db).forEach(function(category){
+    if(!(category in fn_colors)) {
+      fn_colors[category] = "gray";
+    }
+    var category_name = db[category].substring(4,db[category].length);
+
+    var tbody_content =
+     '<tr id="picker_row_' + category + '"> \
+        <td></td> \
+        <td> \
+          <div id="picker_start_' + category + '" class="colorpicker picker_start" color="#FFFFFF" style="background-color: ' + fn_colors[category] + '; ; visibility: hidden;"></div> \
+          <div id="picker_' + category + '" class="colorpicker" color="' + fn_colors[category] + '" background-color="' + fn_colors[category] + '" style="background-color: ' + fn_colors[category] + '; margin-right:16px"></div> \
+        </td> \
+        <td>' + category_name + '</td> \
+      </tr>';
+
+    $('#tbody_function_colors').append(tbody_content);
+  });
+
+  $('.colorpicker').colpick({
+      layout: 'hex',
+      submit: 0,
+      colorScheme: 'light',
+      onChange: function(hsb, hex, rgb, el, bySetColor) {
+          $(el).css('background-color', '#' + hex);
+          $(el).attr('color', '#' + hex);
+
+          if (!bySetColor) $(el).val(hex);
+      }
+  }).keyup(function() {
+      $(this).colpickSetColor(this.value);
+  });
+}
+
+function redrawArrows() {
+  if(!state.hasOwnProperty('cog-colors')) return;
+
+  // Redefine arrow markers
+  mcags2.forEach(function(category){
+    contextSvg.select('#contextSvgDefs').select('#arrow_' + category )
+        .attr('markerHeight', 2)
+        .attr('markerWidth', 2)
+        .attr('orient', 'auto')
+        .attr('refX', 0)
+        .attr('refY', 0)
+        .attr('viewBox', '-5 -5 10 10')
+        .append('svg:path')
+          .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
+          .attr('fill', category != "none" && state.hasOwnProperty('cog-colors')? $('#picker_' + category).attr('color') : "gray");
+  });
+
+  drawArrows(parseInt($('#brush_start').val()), parseInt($('#brush_end').val()));
+}
+
+function resetFunctionColors(type="COG") {
+  generateFunctionColorTable(state['cog-colors'], type);
+}
+
+function toggleUnmarkedGenes() {
+  if(!state.hasOwnProperty('cog-colors')) return;
+  for(var cag in state['cog-colors']) {
+    if($('#picker_' + cag).attr('color') == "gray") {
+      var row = document.getElementById("picker_row_" + cag);
+      if(row.style.display == "") {
+        row.style.display = "none";
+      } else {
+        row.style.display = "";
+      }
+    }
+  }
 }
 
 function toggle_nucleotide_display() {
@@ -607,6 +760,215 @@ function toggleSettingsPanel() {
     }
 }
 
+function showLoadStateWindow()
+{
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/state/all',
+        success: function(state_list) {
+            $('#loadState_list').empty();
+
+            for (let state_name in state_list) {
+                $('#loadState_list').append('<option lastmodified="' + state_list[state_name]['last_modified'] + '">' + state_name + '</option>');
+            }
+
+            $('#modLoadState').modal('show');
+        }
+    });
+}
+
+function showSaveStateWindow()
+{
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/state/all',
+        success: function(state_list) {
+            $('#saveState_list').empty();
+
+            for (let state_name in state_list) {
+                var _select = "";
+                if (state_name == current_state_name)
+                {
+                    _select = ' selected="selected"';
+                }
+                $('#saveState_list').append('<option ' + _select + '>' + state_name + '</option>');
+            }
+
+            $('#modSaveState').modal('show');
+            if ($('#saveState_list').val() === null) {
+                $('#saveState_name').val('default');
+            } else {
+                $('#saveState_list').trigger('change');
+            }
+        }
+    });
+}
+
+function loadState()
+{
+    var defer = $.Deferred();
+    $('#modLoadState').modal('hide');
+    if ($('#loadState_list').val() == null) {
+        defer.reject();
+        return;
+    }
+
+    var state_name = $('#loadState_list').val();
+    waitingDialog.show('Requesting state data from the server ...',
+        {
+            dialogSize: 'sm',
+            onHide: function() {
+                defer.resolve();
+            },
+            onShow: function() {
+                $.ajax({
+                        type: 'GET',
+                        cache: false,
+                        url: '/state/get/' + state_name,
+                        success: function(response) {
+                            try{
+                                clusteringData = response[1]['data'];
+                                loadOrderingAdditionalData(response[1]);
+                                processState(state_name, response[0]);
+                            }catch(e){
+                                console.error("Exception thrown", e.stack);
+                                toastr.error('Failed to parse state data, ' + e);
+                                defer.reject();
+                                return;
+                            }
+                            waitingDialog.hide();
+                        }
+                    });
+            },
+        }
+    );
+
+    return defer.promise();
+}
+
+function loadOrderingAdditionalData(order) {
+    collapsedNodes = [];
+
+    if (order.hasOwnProperty('additional')) {
+        let orders_additional = order['additional'];
+
+        if (typeof orders_additional === 'string') {
+            orders_additional = JSON.parse(orders_additional);
+        }
+
+        if (orders_additional.hasOwnProperty('collapsedNodes')) {
+            collapsedNodes = orders_additional['collapsedNodes'];
+        }
+    }
+}
+
+function saveState()
+{
+    var name = $('#saveState_name').val();
+
+    if (name.length==0) {
+        $('#saveState_name').focus();
+        return;
+    }
+
+    var state_exists = false;
+
+    $.ajax({
+        type: 'GET',
+        cache: false,
+        async: false,
+        url: '/state/all',
+        success: function(state_list) {
+            for (let state_name in state_list) {
+                if (state_name == name)
+                {
+                    state_exists = true;
+                }
+            }
+
+        }
+    });
+
+    if (state_exists && !confirm('"' + name + '" already exist, do you want to overwrite it?')) {
+        return;
+    }
+
+    $.ajax({
+        type: 'POST',
+        cache: false,
+        url: '/state/save/' + name,
+        data: {
+            'content': JSON.stringify(serializeSettings(true), null, 4)
+        },
+        success: function(response) {
+            if (typeof response != 'object') {
+                response = JSON.parse(response);
+            }
+
+            if (response['status_code']==0)
+            {
+                toastr.error("Failed, Interface running in read only mode.");
+            }
+            else if (response['status_code']==1)
+            {
+                // successfull
+                $('#modSaveState').modal('hide');
+
+                current_state_name = name;
+                toastr.success("State '" + current_state_name + "' successfully saved.");
+            }
+        }
+    });
+}
+
+ /*
+  *  This function takes the state passed from the main interface and
+  *  updates only the function colors.
+  */
+function processState(state_name, state) {
+    if(state.hasOwnProperty('cog-colors')) {
+      /* TODO
+          eventually check individually for each mode (are kegg present? cog? trna etc?)
+          if none, just don't display the table
+          otherwise, add a menu set to whichever the first one is as active
+      */
+      generateFunctionColorTable(state['cog-colors'], "COG");
+      toggleUnmarkedGenes();
+      this.state = state;
+      redrawArrows();
+    }
+    /* TODO
+        - best way to store different types of dbs in the state? all or just those applicable (based on what's in the functions table?)
+        - set table to appropriate colors
+        - set color pickers to kegg (or whatever) colors -- separately for each one, even. local vars for each? ==> use a foreach here to load them in?
+        - have defaults for each of these in constants.js?
+        - what else might a user want to save to the state other than function colors?
+        - show default state?
+    */
+
+    current_state_name = state_name;
+
+    toastr.success("State '" + current_state_name + "' successfully loaded.");
+}
+
+ /*
+  *  This function saves only function colors to the state passed
+  *  from the main interface.
+  */
+function serializeSettings() {
+
+    // if metabolism not active or contigs db not KEGG/etc-annotated, return
+    mcags.forEach((category) => {
+      if($('#picker_' + category).length > 0) {
+        state["cog-colors"][category] = $('#picker_' + category).attr('color');
+      }
+    });
+
+    return state;
+}
+
 function createCharts(state){
     /* Adapted from Tyler Craft's Multiple area charts with D3.js article:
     http://tympanus.net/codrops/2012/08/29/multiple-area-charts-with-d3-js/  */
@@ -720,7 +1082,8 @@ function createCharts(state){
             .attr("width", width + margin.left + margin.right)
             .attr("height", 150);
 
-    var defs = contextSvg.append('svg:defs');
+    var defs = contextSvg.append('svg:defs')
+                         .attr('id', 'contextSvgDefs');
 
     contextSvg.append("rect")
        .attr("width", width)
@@ -729,10 +1092,18 @@ function createCharts(state){
        .attr("fill-opacity", "0.2")
        .attr('transform', 'translate(50, 10)');
 
+    // Update function color table with state
+    /* TODO: if contigs db is cog-annotated */
+    if(!state.hasOwnProperty('cog-colors')) {
+      state['cog-colors'] = default_COG_colors
+    }
+    generateFunctionColorTable(state['cog-colors'], "COG");
+    toggleUnmarkedGenes();
+
     // Define arrow markers
-    ['green', 'gray', 'firebrick', '#226ab2'].forEach(function(color){
+    mcags2.forEach(function(category){
       defs.append('svg:marker')
-          .attr('id', 'arrow_' + color )
+          .attr('id', 'arrow_' + category )
           .attr('markerHeight', 2)
           .attr('markerWidth', 2)
           .attr('orient', 'auto')
@@ -741,7 +1112,7 @@ function createCharts(state){
           .attr('viewBox', '-5 -5 10 10')
           .append('svg:path')
             .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
-            .attr('fill', color);
+            .attr('fill', category != "none" && state.hasOwnProperty('cog-colors')? $('#picker_' + category).attr('background-color') : "gray");
     });
 
     $('#context-container').css("width", (width + 150) + "px");

@@ -24,6 +24,7 @@
         <script type="text/javascript" src="js/charts.js"></script>
         <script type="text/javascript" src="js/inspectionutils.js"></script>
         <script type="text/javascript" src="lib/toastr/build/toastr.min.js"></script>
+        <script type="text/javascript" src="lib/bootstrap-waitingfor/build/bootstrap-waitingfor.js"></script>
         <script type="text/javascript" src="js/constants.js"></script>
     </head>
     <body onload="loadAll();">
@@ -134,7 +135,7 @@
                 <ul class="nav nav-tabs" role="tablist">
                   <li role="presentation" class="active"><a href="#functions_settings" aria-controls="functions_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-stats" aria-hidden="true" data-help="functions-tab"></span> Functions</a></li>
                   <li id="sequence_settings_tab" role="presentation"><a href="#sequence_settings" aria-controls="sequence_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-inbox" aria-hidden="true"></span> Sequence</a></li>
-                  <li id="overlays_settings_tab" role="presentation"><a href="#overlays_settings" aria-controls="overlays_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true" data-help="overlays-tab"></span> Overlays</a></li>
+                  <li id="genes_settings_tab" role="presentation"><a href="#genes_settings" aria-controls="genes_settings" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-briefcase" aria-hidden="true" data-help="genes-tab"></span> Genes</a></li>
                   <li id="search_panel_tab" role="presentation"><a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-search" aria-hidden="true" data-help="search-tab"></span> Search</a></li>
                 </ul>
           </div>
@@ -147,15 +148,34 @@
                 <div style="text-align: left; padding-top: 20px; display: inline-block;">
                   <button type="button" class="btn btn-primary btn-xs" onclick="showSetMaxValuesDialog()" class="btn btn-outline-primary">Set maximum values</button>
                   <button type="button" class="btn btn-primary btn-xs" onclick="resetMaxValues()" class="btn btn-outline-primary">Reset maximum values</button>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="showOverlayGCContentDialog();" class="btn btn-outline-primary">Overlay GC Content</button>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();" class="btn btn-outline-primary">Reset overlay</button>
+
+                  <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 30px" onclick="showLoadStateWindow();" data-help="load-state-button" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-open" aria-hidden="true"></span> Load State</button>
+                  <button type="button" class="btn btn-default btn-sm" style="width: 50%; float: left; margin-top: 7.5px" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true" data-original-title="" title=""><span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> Save State</button>
+
                 </div>
               </div>
             </div>
 
-            <div role="tabpanel" class="tab-pane fade in" id="overlays_settings">
-              <div id="overlays-settings" class="form-horizontal">
-                <div style="text-align: right; padding-top: 20px; display: inline-block;">
-                  <button type="button" class="btn btn-primary btn-xs" onclick="showOverlayGCContentDialog();" class="btn btn-outline-primary">Overlay GC Content</button>
-                  <button type="button" class="btn btn-primary btn-xs" onclick="resetOverlayGCContent();" class="btn btn-outline-primary">Reset overlay</button>
+            <div role="tabpanel" class="tab-pane fade in" id="genes_settings">
+              <div id="genes-settings" class="form-horizontal">
+                <div style="text-align: left; padding-top: 20px; display: inline-block;">
+                  <button type="button" class="btn btn-primary btn-xs" onclick="resetFunctionColors()" class="btn btn-outline-primary">Reset COG colors</button>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="redrawArrows()" class="btn btn-outline-primary">Redraw Gene Arrows</button>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="toggleUnmarkedGenes()" class="btn btn-outline-primary">Toggle Unmarked Gene Pickers</button>
+
+                  <div id="table_function_colors_container" style="margin-top: 20px; color:black">
+                    <table id="table_function_colors">
+                      <thead id="thead_function_colors">
+                        <td></td>
+                        <td data-help="function-color"><div style="width: 32px;"><b>Color</b></div></td>
+                        <td data-help="function-category"><b>COG Category</b></td>
+                      </thead>
+                      <tbody id="tbody_function_colors"></tbody>
+                    </table>
+                  </div>
+
                 </div>
               </div>
             </div>
@@ -165,18 +185,70 @@
                 <button type="button" class="btn btn-primary btn-xs" onclick="show_sequence_modal('Sequence', page_header + '\\n' + sequence);">Get sequence</button>
                 <button type="button" class="btn btn-primary btn-xs disabled btn-selection-sequence"  onclick="show_selected_sequence();" disabled>Get sequence of selected area</button>
                 <button type="button" class="btn btn-primary btn-xs" onclick="toggle_nucleotide_display();">Toggle nucleotides</button>
+
+                <div class="alert-box nucl-activated">Nucleotide Display Activated</div>
+                <div class="alert-box nucl-deactivated">Nucleotide Display Deactivated</div>
               </div>
             </div>
 
             <div role="tabpanel" class="tab-pane fade in" id="search_tab">
               <p style='text-align: center; margin-top: 20px; margin-bottom: 15px'><big><big><a href='#' onclick='showSearchItemsDialog();'>Select or Search Item</a></big></big></p>
             </div>
-
-            <div class="alert-box nucl-activated">Nucleotide Display Activated</div>
-            <div class="alert-box nucl-deactivated">Nucleotide Display Deactivated</div>
           </div>
         </div>
 
+      </div>
+
+      <!-- LOAD STATE -->
+      <div class="modal fade" id="modLoadState">
+          <div class="modal-dialog">
+              <div class="modal-content">
+                  <div class="modal-header">
+                      <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                      <h4 class="modal-title">Load State</h4>
+                  </div>
+
+                  <div class="modal-body">
+                      <select class="form-control" size="10" id="loadState_list" ondblclick="loadState();" onchange="$('#loadState_lastmodified').html('Last modified: ' + $('#loadState_list option:selected').attr('lastmodified')); "></select>
+                      <br />
+                      <div id="loadState_lastmodified">Last modified: n/a</div>
+                  </div>
+
+                  <div class="modal-footer">
+                      <button type="button" class="btn btn-primary" onclick="loadState();">Load</button>
+                      <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      <!-- SAVE STATE -->
+      <div class="modal fade" id="modSaveState">
+          <div class="modal-dialog">
+              <div class="modal-content">
+                  <div class="modal-header">
+                      <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
+                      <h4 class="modal-title">Save State</h4>
+                  </div>
+
+                  <div class="modal-body">
+                      <div class="form-group">
+                          <select class="form-control" id="saveState_list" size="10" onchange="$('#saveState_name').val(this.value);" ondblclick="saveState();"></select>
+                      </div>
+                      <div class="form-group">
+                              <label class="col-md-2 settings-label label-big" for="saveState_name">Name: </label>
+                              <div class="col-md-10">
+                                  <input type="text" id="saveState_name" class="form-control" />
+                              </div>
+                      </div>
+                  </div>
+
+                  <div class="modal-footer">
+                      <button type="button" class="btn btn-primary" onclick="saveState();">Save</button>
+                      <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                  </div>
+              </div>
+          </div>
       </div>
 
     </body>
