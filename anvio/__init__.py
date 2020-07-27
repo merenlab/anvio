@@ -1474,6 +1474,14 @@ D = {
              'help': "Use this flag if you would like split names for each variable position to be included in the "
                      "output file as a column."}
                 ),
+    'include-additional-data': (
+            ['--include-additional-data'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag if you would like to append data stored in the `amino_acid_additional_data` table as "
+                     "additional columns to your output. NOTE: This is not yet implemented for the `nucleotide_additional_data` "
+                     "table."}
+                ),
     'engine': (
             ['--engine'],
             {'default': 'NT',
