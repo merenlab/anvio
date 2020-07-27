@@ -1121,12 +1121,13 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
         AdditionalDataBaseClass.__init__(self, args)
 
 
-    def get_multigene_dataframe(self, gene_caller_ids, keys_of_interest=set([]), group_name=None):
+    def get_multigene_dataframe(self, gene_caller_ids=set([]), keys_of_interest=set([]), group_name=None):
         """Fetches and pivots table data specific to a group of gene_callers_ids
 
         Parameters
         ==========
         gene_caller_ids : set
+            If empty, all are assumed.
 
         Returns
         =======
@@ -1156,7 +1157,9 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
         if self.df is None:
             self.init_table_as_dataframe()
 
-        if len(gene_caller_ids) == 1:
+        if not len(gene_caller_ids):
+            df = self.df
+        elif len(gene_caller_ids) == 1:
             df = self.df[self.df['gene_callers_id'] == gene_caller_ids.pop()]
         else:
             df = self.df[self.df['gene_callers_id'].isin(gene_caller_ids)]
