@@ -1110,6 +1110,7 @@ class VariabilitySuper(VariabilityFilter, object):
             # this is where magic happens for the AA engine. we just read the data from the variable codons table, and it
             # needs to be turned into AAs if the engine is AA.
             if self.engine == 'AA':
+                self.progress.end()
                 self.convert_item_coverages()
                 self.convert_reference_info()
 
@@ -1799,8 +1800,6 @@ class VariabilitySuper(VariabilityFilter, object):
         self.progress.new("Adding additional data")
         self.progress.update("Appending columns...")
 
-        df = self.additional_data
-        print(self.data.shape)
         self.data = self.data.merge(self.additional_data,
                                     on = ["corresponding_gene_call", "codon_order_in_gene"],
                                     how = "left")
