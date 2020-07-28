@@ -1983,6 +1983,12 @@ class VariabilitySuper(VariabilityFilter, object):
         for column_group, columns in self.columns_to_report.items():
             for column, data_type in columns:
                 if column in data.columns:
+                    if column in structure:
+                        self.run.warning(f"Wow. Very sorry to have caught things this late, but there was no other way. "
+                                         f"There are some columns in your output report that appear twice. This probably "
+                                         f"occurred because an additional data column in your contigs database has the same "
+                                         f"name as one of the standard column outputs of anvi-gen-variability-table. This "
+                                         f"column was named '{column}'. The results may be garbled due to this. Sorry :(")
                     structure.append(column)
                     data_types.append(data_type)
         return structure, data_types
