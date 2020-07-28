@@ -1134,7 +1134,8 @@ class VariabilitySuper(VariabilityFilter, object):
         self.progress.update('Fetching dataframe ...')
 
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
-        self.additional_data = TableForAminoAcidAdditionalData(args).get_multigene_dataframe(self.genes_of_interest)
+        self.ad = TableForAminoAcidAdditionalData(args)
+        self.additional_data = self.ad.get_multigene_dataframe(self.genes_of_interest)
         self.additional_data.rename(columns={'gene_callers_id': 'corresponding_gene_call'}, inplace=True)
 
         if self.additional_data.empty:
@@ -1725,14 +1726,13 @@ class VariabilitySuper(VariabilityFilter, object):
         try:
             for func, kwargs in process_functions:
                 func(**kwargs)
-
         except self.EndProcess as e:
             msg = 'Nothing left in the variability data to work with. Quitting :/' if exit_if_data_empty else ''
             e.end(exit_if_data_empty, msg)
 
 
     def get_histogram(self, column, fix_offset=False, **kwargs):
-        """ Return a histogram (counts and bins) for a specified column of self.data
+        """Return a histogram (counts and bins) for a specified column of self.data
 
         Parameters
         ==========
@@ -1798,21 +1798,26 @@ class VariabilitySuper(VariabilityFilter, object):
             return
 
         self.progress.new("Adding additional data")
-        self.progress.update("Appending columns...")
+        self.progress.update("Merging columns...")
 
-        self.data = self.data.merge(self.additional_data,
-                                    on = ["corresponding_gene_call", "codon_order_in_gene"],
-                                    how = "left")
+        self.data = self.data.merge(
+            self.additional_data,
+            on=['corresponding_gene_call', 'codon_order_in_gene'],
+            how='left',
+        )
 
-        print(self.data.shape)
-        # Get rid of potentially many, many columns of completely NaN values
+        # There may be many columns in self.additional_data, many of which could have mostly NaN
+        # values. After filtering self.data, its possible that columns have _all_ NaN values, so we
+        # remove such columns
         self.data.dropna(axis=1, how='all', inplace=True)
-        print(self.data.shape)
 
-        import ipdb; ipdb.set_trace() 
+        # Add types to output. This assumes each data_key has only 1 data_type, and it would be
+        # pretty messed up if that wasn't the case.
+        types = dict(zip(self.ad.df['data_key'], self.ad.df['data_type']))
+        dtypes_convert = {'str': str, 'int': int, 'float': float, 'stackedbar': str, 'unknown': str}
+        types = list(tuple({k: dtypes_convert[v] for k, v in types.items()}.items()))
+        self.columns_to_report['additional_data'].extend(types)
 
-        # FIXME
-        self.columns_to_report['additional_data'].extend([])
         self.progress.end()
 
 
