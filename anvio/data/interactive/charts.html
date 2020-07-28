@@ -161,14 +161,14 @@
             <div role="tabpanel" class="tab-pane fade in" id="genes_settings">
               <div id="genes-settings" class="form-horizontal">
                 <div style="text-align: left; padding-top: 20px; display: inline-block;">
-                  <button type="button" class="btn btn-primary btn-xs" onclick="resetFunctionColors()" class="btn btn-outline-primary">Reset COG colors</button>
+                  <button type="button" class="btn btn-primary btn-xs" onclick="resetFunctionColors()" class="btn btn-outline-primary">Reset Function colors</button>
                   <button type="button" class="btn btn-primary btn-xs" onclick="redrawArrows()" class="btn btn-outline-primary">Redraw Gene Arrows</button>
                   <button type="button" class="btn btn-primary btn-xs" onclick="toggleUnmarkedGenes()" class="btn btn-outline-primary">Toggle Unmarked Gene Pickers</button>
 
                   <div class="form-group form-margin" style="margin-top: 10px; color: #000000">
-                    <label id = "gene_colors_label" class="col-md-4 settings-label" data-help="gene_color_order" data-original-title="" title="" style="display: none">Color genes by:</label>
+                    <label id = "gene_colors_label" class="col-md-4 settings-label" data-help="gene_color_order" data-original-title="" title="">Color genes by:</label>
                     <div class="col-md-8">
-                      <select id="gene_color_order" class="form-control input-xs" style="display: none"></select>
+                      <select id="gene_color_order" class="form-control input-xs"></select>
                     </div>
                   </div>
 
@@ -177,7 +177,7 @@
                       <thead id="thead_function_colors">
                         <td></td>
                         <td data-help="function-color"><div style="width: 32px;"><b>Color</b></div></td>
-                        <td data-help="function-category"><b>COG Category</b></td>
+                        <td data-help="function-category"><b>Category</b></td>
                       </thead>
                       <tbody id="tbody_function_colors"></tbody>
                     </table>

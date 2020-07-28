@@ -55,16 +55,16 @@ var default_COG_colors = {
 }
 
 var KEGG_categories = {
-  'C': '[C] Carbohydrate metabolism',
-  'E': '[E] Energy metabolism',
-  'L': '[L] Lipid metabolism',
-  'N': '[N] Nucleotide metabolism',
-  'A': '[A] Amino acid metabolism',
-  'G': '[G] Glycan metabolism',
-  'V': '[V] Cofactor/vitamin metabolism',
-  'T': '[T] Biosynthesis of terpenoids and polyketides',
-  'S': '[S] Biosynthesis of other secondary metabolites',
-  'X': '[X] Xenobiotics biodegradation and metabolism'
+  'C': 'Carbohydrate metabolism',
+  'E': 'Energy metabolism',
+  'L': 'Lipid metabolism',
+  'N': 'Nucleotide metabolism',
+  'A': 'Amino acid metabolism',
+  'G': 'Glycan biosynthesis and metabolism',
+  'V': 'Metabolism of cofactors and vitamins',
+  'T': 'Metabolism of terpenoids and polyketides',
+  'S': 'Biosynthesis of other secondary metabolites',
+  'X': 'Xenobiotics biodegradation and metabolism'
 }
 
 var default_KEGG_colors = {
@@ -78,6 +78,13 @@ var default_KEGG_colors = {
   'T': '#00cc33',
   'S': '#cc3366',
   'X': '#ccaa99'
+}
+
+var default_source_colors = {
+  'None': 'gray',
+  'Function': 'green',
+  'tRNA': '#226ab2',
+  'rRNA': 'firebrick'
 }
 
 var named_functional_sources = {

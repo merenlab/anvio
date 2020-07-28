@@ -248,7 +248,7 @@ function removeGeneChart() {
 }
 
 
-function drawArrows(_start, _stop) {
+function drawArrows(_start, _stop, colortype) {
 
     width = VIEWER_WIDTH * 0.80;
     genes = geneParser.filterData(_start, _stop);
@@ -285,15 +285,26 @@ function drawArrows(_start, _stop) {
       var y = 10 + (gene.level * 20);
 
       var category = "none";
-      if (gene.functions !== null) {
-        if(gene.functions.hasOwnProperty("COG_CATEGORY")) {
+      if(colortype == "COG") {
+        if(gene.functions !== null && gene.functions.hasOwnProperty("COG_CATEGORY") && gene.functions.COG_CATEGORY != null) {
           category = gene.functions["COG_CATEGORY"][0][0];
-        } else if(gene.functions.hasOwnProperty("KEGG_CATEGORY")) {
-          /* TODO: KEGG category implementation */
         }
-        /* TODO: tRNA vs rRNA implementation */
-
         if(category == null) category = "none";
+      } else if(colortype == "KEGG") {
+        if(gene.functions !== null && gene.functions.hasOwnProperty("KEGG_Class") && gene.functions.KEGG_Class != null) {
+          category = getCategoryForKEGGClass(gene.functions["KEGG_Class"][1]);
+        }
+        if(category == null) category = "none";
+      } else if(colortype == "Source") {
+        if (gene.source == 'Ribosomal_RNAs') {
+          category = 'rRNA';
+        } else if (gene.source == 'Transfer_RNAs') {
+          category = 'tRNA';
+        } else if (gene.functions !== null) {
+          category = 'Function';
+        } else {
+          category = "None";
+        }
       }
 
       if (highlight_gene && gene.gene_callers_id == contig_id)
@@ -367,6 +378,22 @@ function get_comp_nt_color(nts){
         return "orange";
     else
         return "black";
+}
+
+function getCategoryForKEGGClass(class_str) {
+  if(class_str == null) return null;
+
+  var category_name = getClassFromKEGGAnnotation(class_str);
+  return getKeyByValue(KEGG_categories, category_name);
+}
+
+function getClassFromKEGGAnnotation(class_str) {
+  return class_str.substring(17, class_str.indexOf(';', 17));
+}
+
+// https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value/36705765
+function getKeyByValue(object, value) {
+  return Object.keys(object).find(key => object[key] === value);
 }
 
 // https://stackoverflow.com/questions/16947100/max-min-of-large-array-in-js
