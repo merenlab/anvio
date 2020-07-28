@@ -469,6 +469,8 @@ class InteracDomeSuper(Pfam):
             'ligand': 'data_key',
             'binding_freq': 'data_value',
         })
+        # Prepend LIG_ to the data_keys
+        self.amino_acid_additional_data['data_key'] = 'LIG_' + self.amino_acid_additional_data['data_key']
         self.amino_acid_additional_data['item_name'] = (self.amino_acid_additional_data['gene_callers_id'].astype(str) + ':' +
                                                         self.amino_acid_additional_data['codon_order_in_gene'].astype(str))
         self.amino_acid_additional_data.drop(['gene_callers_id', 'codon_order_in_gene'], axis=1, inplace=True)
