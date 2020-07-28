@@ -68,15 +68,7 @@ svg {
     text-shadow: 0 1px 1px rgba(255,255,255,0.8);
 }
 
-svg text {
-   -webkit-user-select: none;
-   -moz-user-select: none;
-   -ms-user-select: none;
-   user-select: none;
-   pointer-events: none;
-}
-
-text.country-title {
+text.sample-title {
     font-size: 20px;
 }
 
@@ -236,4 +228,12 @@ a{
     background-color: #f2dede;
     border-color: #ebccd1;
     display: none;
+}
+
+.noselect {
+   -webkit-user-select: none;
+   -moz-user-select: none;
+   -ms-user-select: none;
+   user-select: none;
+   pointer-events: none;
 }

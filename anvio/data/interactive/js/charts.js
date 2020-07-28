@@ -441,7 +441,8 @@ function display_nucleotides() {
   var nucl_sequence = contextSvg.append("text")
                                 .text(sequence.substring(start, end))
                                 .attr("id", "DNA_sequence")
-                                .attr("fill", "url(#solids)");
+                                .attr("fill", "url(#solids)")
+                                .attr("class", "noselect");
   /* width of monospaced character per font size */
   var nucl_text_font = width/((end-start)*.6002738402061856);
                    nucl_sequence.attr("font-size", nucl_text_font);
@@ -459,6 +460,7 @@ function display_nucleotides() {
   if(show_AAs) {
     var aa_sequence = contextSvg.append("g")
                                 .attr("id", "AA_sequence")
+                                .attr("class", "noselect")
                                 .attr('transform', 'translate(50, 10)');
 
     var textWidth = width/(end-start);
@@ -1179,7 +1181,7 @@ function createCharts(state){
                 .attr("transform", "translate(" + (margin.left) + ", 80)");
 
     context.append("g")
-                .attr("class", "x axis top")
+                .attr("class", "x axis top noselect")
                 .attr("transform", "translate(0,0)")
                 .call(contextAxis)
 
@@ -1414,7 +1416,7 @@ function Chart(options){
 
     if(this.id == 0){
         this.chartContainer.append("g")
-                    .attr("class", "x axis top")
+                    .attr("class", "x axis top noselect")
                     .attr("transform", "translate(0,0)")
                     .call(this.xAxisTop);
     }
@@ -1424,17 +1426,17 @@ function Chart(options){
     this.yAxisLine = d3.svg.axis().scale(this.yScaleLine).orient("right").ticks(5);
 
     this.chartContainer.append("g")
-                   .attr("class", "y axis")
+                   .attr("class", "y axis noselect")
                    .attr("transform", "translate(-10,0)")
                    .call(this.yAxis);
 
     this.lineContainer.append("g")
-                   .attr("class", "y axis")
+                   .attr("class", "y axis noselect")
                    .attr("transform", "translate(" + (this.width + 15) + ",0)")
                    .call(this.yAxisLine);
 
     this.chartContainer.append("text")
-                   .attr("class","country-title")
+                   .attr("class","sample-title")
                    .attr("transform", "translate(0,20)")
                    .text(this.name);
 
