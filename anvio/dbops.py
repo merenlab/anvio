@@ -91,6 +91,15 @@ class ContigsSuperclass(object):
         self.run = r
         self.progress = p
 
+        # if ContigsSuperclass is being used as a base class, then the class that inherits
+        # it may have set a `split_names_of_interest` variable. in which case we don't want to
+        # overwrite it, and use it for any task that requires a focus on a particular set of
+        # splits. But if there is non set by the class that inherits ContigsSuperclass, then
+        # we don't want functions that use/assume `split_names_of_interest` variable to throw
+        # errors because the variable is not set. so what we are doing here ensures that.
+        if not hasattr(self, 'split_names_of_interest'):
+            self.split_names_of_interest = set([])
+
         self.a_meta = {}
 
         self.splits_basic_info = {}
@@ -98,6 +107,7 @@ class ContigsSuperclass(object):
         self.split_sequences = {}
         self.contigs_basic_info = {}
         self.contig_sequences = {}
+        self.nt_positions_info = {}
 
         self.genes_in_contigs_dict = {}
         self.gene_lengths = {}
@@ -146,14 +156,34 @@ class ContigsSuperclass(object):
 
         self.a_meta['creation_date'] = utils.get_time_to_date(self.a_meta['creation_date']) if 'creation_date' in self.a_meta else 'unknown'
 
-        self.progress.update('Reading contigs basic info')
-        self.contigs_basic_info = contigs_db.db.get_table_as_dict(t.contigs_info_table_name, string_the_key=True)
+        ####################################################################################
+        # MINDFULLY READING STUFF FROM THE DATABASE
+        ####################################################################################
+        # read SPLITS and GENES basic information.
+        self.splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, 'split', self.split_names_of_interest, progress=self.progress)
+        self.genes_in_splits = contigs_db.db.smart_get(t.genes_in_splits_table_name, 'split', self.split_names_of_interest, progress=self.progress)
 
-        self.progress.update('Reading splits basic info')
-        self.splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
+        # if there are no splits names of interest, contig names of interest will be an empty set.
+        # that's OK, because `smart_get` will take care of it.
+        contig_names_of_interest = set([self.splits_basic_info[s]['parent'] for s in self.split_names_of_interest])
 
-        self.progress.update('Reading genes in contigs table')
-        self.genes_in_contigs_dict = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
+        # read CONTIGS and GENES basic information.
+        self.contigs_basic_info = contigs_db.db.smart_get(t.contigs_info_table_name, 'contig', contig_names_of_interest, string_the_key=True, progress=self.progress)
+        self.genes_in_contigs_dict = contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig', contig_names_of_interest, progress=self.progress)
+
+        # because this table is as dumb as Eric, it needs some special attention
+        if self.split_names_of_interest:
+            self.progress.update('Reading **SOME** entries in the nucleotide positions info table :)')
+            where_clause = """contig_name IN (%s)""" % ','.join(['"%s"' % c for c in contig_names_of_interest])
+            for contig_name, nt_positions_info in contigs_db.db.get_some_rows_from_table(t.nt_position_info_table_name, where_clause=where_clause):
+                self.nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_positions_info, 'uint8')
+        else:
+            self.progress.update('Reading **ALL** entries in the nucleotide positions info table :(')
+            for contig_name, nt_positions_info in contigs_db.db.get_all_rows_from_table(t.nt_position_info_table_name):
+                self.nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_positions_info, 'uint8')
+        ####################################################################################
+        # /MINDFULLY READING STUFF FROM THE DATABASE
+        ####################################################################################
 
         self.progress.update('Populating gene lengths dict')
         self.gene_lengths = dict([(g, (self.genes_in_contigs_dict[g]['stop'] - self.genes_in_contigs_dict[g]['start'])) for g in self.genes_in_contigs_dict])
@@ -165,8 +195,6 @@ class ContigsSuperclass(object):
             e = self.genes_in_contigs_dict[gene_unique_id]
             self.contig_name_to_genes[e['contig']].add((gene_unique_id, e['start'], e['stop']), )
 
-        self.progress.update('Reading genes in splits table')
-        self.genes_in_splits = contigs_db.db.get_table_as_dict(t.genes_in_splits_table_name)
 
         self.progress.update('Identifying HMM searches for single-copy genes and others')
         self.hmm_sources_info = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
@@ -192,12 +220,6 @@ class ContigsSuperclass(object):
         for entry in list(self.genes_in_splits.values()):
             self.gene_callers_id_to_split_name_dict[entry['gene_callers_id']] = entry['split']
 
-        self.progress.update('Accessing the auxiliary data file')
-
-        self.nt_positions_info = {}
-        for contig_name, nt_position_row in contigs_db.db.get_table_as_dict(t.nt_position_info_table_name).items():
-            self.nt_positions_info[contig_name] = utils.convert_binary_blob_to_numpy_array(nt_position_row['position_info'], 'uint8')
-
         self.progress.end()
 
         contigs_db.disconnect()
@@ -217,7 +239,7 @@ class ContigsSuperclass(object):
         self.progress.update('...')
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
-        splits_taxonomy_table = contigs_db.db.get_table_as_dict(t.splits_taxonomy_table_name)
+        splits_taxonomy_table = contigs_db.db.smart_get(t.splits_taxonomy_table_name, 'split', self.split_names_of_interest, string_the_key=True, error_if_no_data=False, progress=self.progress)
         taxon_names_table = contigs_db.db.get_table_as_dict(t.taxon_names_table_name)
 
         for split_name in splits_taxonomy_table:
@@ -233,11 +255,11 @@ class ContigsSuperclass(object):
             self.run.info('Splits taxonomy', 'Initiated for taxonomic level for "%s"' % t_level)
 
 
-    def init_contig_sequences(self, min_contig_length=0,
-                              gene_caller_ids_of_interest=set([]),
-                              split_names_of_interest=set([]),
-                              contig_names_of_interest=set([])):
+    def init_contig_sequences(self, min_contig_length=0, gene_caller_ids_of_interest=set([]), split_names_of_interest=set([]), contig_names_of_interest=set([])):
         contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        if not len(split_names_of_interest):
+            split_names_of_interest = self.split_names_of_interest
 
         too_many_args = False
         if len(gene_caller_ids_of_interest):
@@ -271,33 +293,21 @@ class ContigsSuperclass(object):
         else:
             subset_provided = False
 
+        if subset_provided and not len(contig_names_of_interest):
+            raise ConfigError("Anvi'o was trying to identify the contig names of interest in `init_contig_sequences` "
+                              "and then after a few steps there was no contig names of interest at all :( Something "
+                              "fishy happened, and code is Jon Snow.")
+
+        self.progress.new('Loading contig sequences')
+        self.contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', contig_names_of_interest, string_the_key=True, progress=self.progress)
+        self.progress.end()
+
         if subset_provided:
-            # someone was interested in a subest of things, but found nothing for them?
-            if not len(contig_names_of_interest):
-                raise ConfigError("Well, it turns out there are no contigs matching to the list of gene calls anvi'o "
-                                  "wanted to work with :( Very sad (and very confusing). If you think this is a bug on "
-                                  "our part, please let us know.")
-
-            self.run.warning("Someone asked the contigs super class to initialize contig sequences that are affiliated "
-                             "with some of the gene calls, split names, or contig names, relevant for this operation "
-                             "(this is happening either becasue the user asked for it, or there was an optimization "
-                             "step somewhere). As a result of which, this class will only know %d contig sequences "
-                             "instead of %d in the database." % (len(contig_names_of_interest), len(self.contigs_basic_info)),
-                             header="JUST SO YOU KNOW", lc='yellow')
-
-            # load some
-            self.progress.new('Loading contig sequences')
-            self.progress.update('Reading SOME contig sequences')
-            self.contig_sequences = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name,
-                                                                  '''contig IN (%s)''' % (', '.join(["'%s'" % s for s in contig_names_of_interest])),
-                                                                  error_if_no_data=True)
-            self.progress.end()
-        else:
-            # load all
-            self.progress.new('Loading contig sequences')
-            self.progress.update('Reading ALL contig sequences')
-            self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
-            self.progress.end()
+            self.run.warning(f"Someone asked the Contigs Superclass to initialize only a subset of contig sequences. "
+                             f"Usually this is a good thing and means that some good code somewhere is looking after "
+                             f"you. Just for your information, this class will only know {len(contig_names_of_interest)} "
+                             f"contig sequences instead of all th things in the database.",
+                             header="THE MORE YOU KNOW 🌈", lc='yellow')
 
         contigs_db.disconnect()
 
@@ -314,7 +324,10 @@ class ContigsSuperclass(object):
         return contigs_shorter_than_M
 
 
-    def init_split_sequences(self, min_contig_length=0, split_names_of_interest=[]):
+    def init_split_sequences(self, min_contig_length=0, split_names_of_interest=set([])):
+        if not len(split_names_of_interest):
+            split_names_of_interest = self.split_names_of_interest
+
         contigs_shorter_than_M = self.init_contig_sequences(min_contig_length)
 
         if not len(self.splits_basic_info):
@@ -380,7 +393,10 @@ class ContigsSuperclass(object):
         self.progress.end()
 
 
-    def init_non_singlecopy_gene_hmm_sources(self, split_names_of_interest=None, return_each_gene_as_a_layer=False):
+    def init_non_singlecopy_gene_hmm_sources(self, split_names_of_interest=set([]), return_each_gene_as_a_layer=False):
+        if not len(split_names_of_interest):
+            split_names_of_interest = self.split_names_of_interest
+
         if not self.contigs_db_path or not len(self.non_singlecopy_gene_hmm_sources):
             return
 
@@ -491,7 +507,14 @@ class ContigsSuperclass(object):
                                                                   error_if_no_data=False).values())
             self.gene_function_call_sources = requested_sources
         else:
-            hits = list(contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name).values())
+            if self.split_names_of_interest:
+                gene_caller_ids_of_interest = set(self.genes_in_contigs_dict.keys())
+            else:
+                gene_caller_ids_of_interest = set([])
+
+            functions_dict = contigs_db.db.smart_get(t.gene_function_calls_table_name, 'gene_callers_id', gene_caller_ids_of_interest, error_if_no_data=False)
+            hits = list(functions_dict.values())
+
             self.gene_function_call_sources = gene_function_sources_in_db
 
         for hit in hits:
@@ -2178,7 +2201,7 @@ class PanSuperclass(object):
         self.gene_clusters_initialized = True
 
 
-    def load_pan_views(self, splits_of_interest=None):
+    def load_pan_views(self, split_names_of_interest=None):
         pan_db = PanDatabase(self.pan_db_path)
 
         views_table = pan_db.db.get_table_as_dict(t.views_table_name)
@@ -2187,7 +2210,7 @@ class PanSuperclass(object):
             table_name = views_table[view]['target_table']
             self.views[view] = {'table_name': table_name,
                                 'header': pan_db.db.get_table_structure(table_name)[1:],
-                                'dict': pan_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest)}
+                                'dict': pan_db.db.get_table_as_dict(table_name, keys_of_interest=split_names_of_interest)}
 
         pan_db.disconnect()
 
@@ -2435,7 +2458,7 @@ class ProfileSuperclass(object):
         # Should we initialize the profile super for a specific list of splits? This is where we take care of that.
         # the user can initialize the profile super two ways: by providing split names of interest explicitly, or
         # by providing collection name and bin names in args.
-        self.split_names_of_interest = A('split_names_of_interest')
+        self.split_names_of_interest = A('split_names_of_interest') or set([])
         self.collection_name = A('collection_name')
 
         # figure out bin names, if there is one to figure out
@@ -2456,7 +2479,7 @@ class ProfileSuperclass(object):
             self.bin_names = None
 
         if self.split_names_of_interest and not isinstance(self.split_names_of_interest, type(set([]))):
-            raise ConfigError("ProfileSuper says the argument `splits_of_interest` must be of type set(). "
+            raise ConfigError("ProfileSuper says the argument `split_names_of_interest` must be of type set(). "
                               "Someone screwed up somewhere :/")
         elif self.split_names_of_interest and self.collection_name:
             raise ConfigError("ProfileSuper is initialized with args that contain both `split_names_of_interest`,\
@@ -3206,18 +3229,21 @@ class ProfileSuperclass(object):
         return collection, bins_info
 
 
-    def load_views(self, splits_of_interest=None, omit_parent_column=False):
+    def load_views(self, split_names_of_interest=None, omit_parent_column=False):
         profile_db = ProfileDatabase(self.profile_db_path)
 
         views_table = profile_db.db.get_table_as_dict(t.views_table_name)
 
-        self.progress.new('Loading views%s' % (' for %d items' % len(splits_of_interest) if splits_of_interest else ''))
+        self.progress.new('Loading views%s' % (' for %d items' % len(split_names_of_interest) if split_names_of_interest else ''))
         for view in views_table:
             self.progress.update('for %s' % view)
             table_name = views_table[view]['target_table']
+
+            data = profile_db.db.smart_get(table_name, 'contig', self.split_names_of_interest, progress=self.progress, omit_parent_column=omit_parent_column)
+
             self.views[view] = {'table_name': table_name,
                                 'header': profile_db.db.get_table_structure(table_name)[1:],
-                                'dict': profile_db.db.get_table_as_dict(table_name, keys_of_interest=splits_of_interest, omit_parent_column=omit_parent_column)}
+                                'dict': data}
 
         self.progress.end()
         profile_db.disconnect()
