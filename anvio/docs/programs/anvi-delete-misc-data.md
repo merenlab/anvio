@@ -44,13 +44,20 @@ anvi-delete-misc-data -p %(profile-db)s \
 
 If your misc-data-table is associated with a specific data group, you can provide that data group to this program with the `-D` flag. 
 
-### From a %(contigs-db)s, you can export 
+### From a %(contigs-db)s, you can delete 
 
 - nucleotide data (%(misc-data-nucleotides)s)
 
 {{ codestart }}
 anvi-delete-misc-data -c %(contigs-db)s \
+                      --target-data-table nucleotides \
                       --keys-to-remove key_1
 {{ codestop }}
 
 - amino acid data (%(misc-data-amino-acids)s)
+
+{{ codestart }}
+anvi-delete-misc-data -c %(contigs-db)s \
+                      --target-data-table amino_acids \
+                      --keys-to-remove key_1
+{{ codestop }}
