@@ -1,4 +1,4 @@
-This is section of your %(profile-db)s/%(pan-db)s that contains custom additional information about each of the items in the central section of the interactive interface. When you run %(anvi-interactive)s, this data will appear as additional concentric circles. 
+This is the section of your %(profile-db)s/%(pan-db)s that contains custom additional information about each of the items in the central section of the interactive interface. When you run %(anvi-interactive)s, this data will appear as additional concentric circles. 
 
 As also defined in [this blog post](http://merenlab.org/2017/12/11/additional-data-tables/#views-items-layers-orders-some-anvio-terminology), this type of data will include information about each item (whether that's a contig, gene, or bin). This data can be either numerical or categorical and will be imported by the user through the command %(anvi-import-misc-data)s. 
 
