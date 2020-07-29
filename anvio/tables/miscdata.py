@@ -1225,7 +1225,11 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
         """
 
         pivot_gene_df = self.get_multigene_dataframe(set([gene_callers_id]))
-        return pivot_gene_df.drop('gene_callers_id', axis=1)
+
+        if not pivot_gene_df.empty:
+            pivot_gene_df.drop('gene_callers_id', axis=1, inplace=True)
+
+        return pivot_gene_df
 
 
     def init_table_as_dataframe(self):
