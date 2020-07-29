@@ -241,7 +241,7 @@ class HMMer:
                 merged_files_dict[output]['buffer'].seek(0)
                 out.write(merged_files_dict[output]['buffer'].read())
 
-            if desired_output == 'table':
+            if output == 'table':
                 num_raw_hits = filesnpaths.get_num_lines_in_file(output_file_path)
                 self.run.info('Number of raw hits', num_raw_hits)
                 output_file_path = output_file_path if num_raw_hits else None
