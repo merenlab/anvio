@@ -149,10 +149,14 @@ class InteracDomeSuper(Pfam):
         """Runs InteracDome."""
 
         tmp_directory_path = filesnpaths.get_temp_directory_path()
+        gene_caller_ids = list(self.contigs_db.genes_in_contigs_dict.keys())
+
+        self.run.info("num genes that HMM will be run on", len(gene_caller_ids))
 
         # export AA sequences for genes
         target_files_dict = {'AA:DOMAIN': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
         self.contigs_db.gen_FASTA_file_of_sequences_for_gene_caller_ids(
+            gene_caller_ids_list=gene_caller_ids,
             output_file_path=target_files_dict['AA:DOMAIN'],
             simple_headers=True,
             rna_alphabet=False,
