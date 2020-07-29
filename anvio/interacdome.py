@@ -563,9 +563,12 @@ class InteracDomeSetup(object):
         self.pfam_setup = None
 
         self.interacdome_files = {
-            # FIXME The links at interacdome.princeton.edu are not static
-            'representable_interactions.txt': 'https://interacdome.princeton.edu/session/27bd022617a0f20aa4a92e14a7f7a513/download/downloadBP?w=',
-            'confident_interactions.txt': 'https://interacdome.princeton.edu/session/27bd022617a0f20aa4a92e14a7f7a513/download/downloadConfidentBP?w=',
+            # NOTE These are mirror links to the InteracDome dataset taken from
+            # https://interacdome.princeton.edu/ on July 21st, tagged as v0.3. The reason for this
+            # was to create a static, permanent link
+            'representable_interactions.txt': 'https://ndownloader.figshare.com/files/24019757',
+            'confident_interactions.txt': 'https://ndownloader.figshare.com/files/24019694',
+ 
         }
 
         if self.interacdome_data_dir and args.reset:
