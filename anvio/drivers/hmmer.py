@@ -121,10 +121,11 @@ class HMMer:
         noise_cutoff_terms : str
             Filter out hits with built-in flags. e.g. '--cut_ga'
 
-        desired_output : set, 'table'
+        desired_output : str OR list, 'table'
             HMMER programs have a couple of outputs. For the standard output (specified by the hmmer
-            program flag `-o`), use 'standard'. For the tabular output (specified by the hmmer
-            program flag `--tblout` or `--domtblout`), use 'table'.
+            program flag `-o`), pass 'standard'. For the tabular output (specified by the hmmer
+            program flag `--tblout` or `--domtblout`), pass 'table'. If you want to use both, pass
+            ('standard', 'table')
 
         out_fmt : str, '--tblout'
             HMMer programs have different table output formats. For example, choose from --tblout or
@@ -142,8 +143,12 @@ class HMMer:
         if not self.target_files_dict[target]:
             raise ConfigError("HMMer class does not know about Sequences file for the target %s :/" % target)
 
-        if desired_output not in ['standard', 'table']:
-            raise ConfigError("HMMer.run_hmmer :: Unknown desired_output, '%s'" % desired_output)
+        if isinstance(desired_output, str):
+            desired_output = (desired_output, )
+
+        for output in desired_output:
+            if output not in ['standard', 'table']:
+                raise ConfigError("HMMer.run_hmmer :: Unknown desired_output, '%s'" % output)
 
         if out_fmt not in ['--tblout', '--domtblout']:
             raise ConfigError("HMMer.run_hmmer :: Unknown out_fmt, '%s'" % out_fmt)
@@ -170,8 +175,11 @@ class HMMer:
         self.verify_hmmpress_output(hmm)
 
         workers = []
-        merged_file_buffer = io.StringIO()
-        buffer_write_lock = Lock()
+
+        # Holds buffer and write lock for each output
+        merged_files_dict = {}
+        for output in desired_output:
+            merged_files_dict[output] = {'buffer': io.StringIO(), 'lock': Lock()}
 
         num_parts = len(self.target_files_dict[target])
         cores_per_process = 1
@@ -214,8 +222,7 @@ class HMMer:
                                                        output_file,
                                                        desired_output,
                                                        log_file,
-                                                       merged_file_buffer,
-                                                       buffer_write_lock))
+                                                       merged_files_dict))
             t.start()
             workers.append(t)
 
@@ -226,24 +233,30 @@ class HMMer:
         for worker in workers:
             worker.join()
 
-        output_file_path = os.path.join(tmp_dir, 'hmm.hits')
+        output_file_paths = []
+        for output in desired_output:
+            output_file_path = os.path.join(tmp_dir, f"hmm.{output}")
 
-        with open(output_file_path, 'w') as out:
-            merged_file_buffer.seek(0)
-            out.write(merged_file_buffer.read())
+            with open(output_file_path, 'w') as out:
+                merged_files_dict[output]['buffer'].seek(0)
+                out.write(merged_files_dict[output]['buffer'].read())
+
+            if desired_output == 'table':
+                num_raw_hits = filesnpaths.get_num_lines_in_file(output_file_path)
+                self.run.info('Number of raw hits', num_raw_hits)
+                output_file_path = output_file_path if num_raw_hits else None
+
+            output_file_paths.append(output_file_path)
 
         self.progress.end()
 
-        if desired_output == 'table':
-            num_raw_hits = filesnpaths.get_num_lines_in_file(output_file_path)
-            self.run.info('Number of raw hits', num_raw_hits)
-            return output_file_path if num_raw_hits else None
-
-        return output_file_path
+        # Return output path as string if desired_output is len 1. Else return tuple of output paths
+        output = output_file_paths[0] if len(output_file_paths) == 1 else tuple(output_file_paths)
+        return output
 
 
     def hmmer_worker(self, partial_input_file, cmd_line, table_output_file, standard_output_file, desired_output, log_file,
-                     merged_file_buffer, buffer_write_lock):
+                     merged_files_dict):
 
         # First we run the command
         utils.run_command(cmd_line, log_file)
@@ -254,11 +267,19 @@ class HMMer:
                               "we have this log file which should clarify the problem: '%s'. Please do not forget to include this "
                               "file in your question if you were to seek help from the community." % (self.program_to_use, log_file))
 
-        # Then we append the results to the main file
-        if desired_output == 'table':
-            self.append_to_main_table_file(merged_file_buffer, table_output_file, buffer_write_lock)
-        elif desired_output == 'standard':
-            self.append_to_main_standard_file(merged_file_buffer, standard_output_file, buffer_write_lock)
+        # Then we append the results to the main file(s)
+        for output in desired_output:
+            main_file_buffer = merged_files_dict[output]['buffer']
+            main_file_lock = merged_files_dict[output]['lock']
+
+            if output == 'table':
+                worker_file = table_output_file
+                append_function = self.append_to_main_table_file
+            elif output == 'standard':
+                worker_file = standard_output_file
+                append_function = self.append_to_main_standard_file
+
+            append_function(main_file_buffer, worker_file, main_file_lock)
 
 
     def append_to_main_standard_file(self, merged_file_buffer, standard_output_file, buffer_write_lock):
@@ -296,7 +317,7 @@ class HMMer:
     def append_to_main_table_file(self, merged_file_buffer, table_output_file, buffer_write_lock):
         """Append table output to the main file.
 
-        FIXME In addition to appending, this functio also pre-processes the data, which should not
+        FIXME In addition to appending, this function also pre-processes the data, which should not
         be done here. That qualifies as hmmer output parsing, and should be in
         anvio/parsers/hmmer.py.
         """
