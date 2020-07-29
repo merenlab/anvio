@@ -198,7 +198,7 @@ class BottleApplication(Bottle):
         try:
             # allow output to terminal when debugging
             if anvio.DEBUG:
-                server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': True, 'server': self._wsgi_for_bottle})
+                server_process = Process(target=self.run, kwargs={'host': ip, 'port': port, 'quiet': False, 'server': self._wsgi_for_bottle})
                 server_process.start()
             else:
                 with terminal.SuppressAllOutput():
