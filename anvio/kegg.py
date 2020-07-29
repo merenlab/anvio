@@ -67,9 +67,8 @@ OUTPUT_MODES = {'kofam_hits_in_modules': {
                     'headers': ["unique_id", "kegg_module", "module_name", "module_class", "module_category",
                                 "module_subcategory", "module_definition", "module_completeness", "module_is_complete",
                                 "kofam_hits_in_module", "gene_caller_ids_in_module"],
-                    'only_complete': True,
-                    'description': "Information on complete KEGG modules. Only modules whose completeness is above the "
-                                   "threshold will be included, but you include all modules by running with --module-completion-threshold 0"
+                    'only_complete': False,
+                    'description': "Information on KEGG modules"
                     },
                 'modules_custom': {
                     'output_suffix': "modules_custom.txt",
@@ -925,6 +924,7 @@ class KeggRunHMMs(KeggContext):
         self.num_threads = A('num_threads')
         self.hmm_program = A('hmmer_program') or 'hmmsearch'
         self.keep_all_hits = True if A('keep_all_hits') else False
+        self.log_bitscores = True if A('log_bitscores') else False
         self.ko_dict = None # should be set up by setup_ko_dict()
 
         # init the base class
@@ -1038,9 +1038,15 @@ class KeggRunHMMs(KeggContext):
         parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
         if self.keep_all_hits:
             run.info_single("All HMM hits will be kept regardless of score.")
-            search_results_dict = parser.get_search_results()
+            if self.log_bitscores:
+                search_results_dict, bitscore_dict = parser.get_search_results(return_bitscore_dict=True)
+            else:
+                search_results_dict = parser.get_search_results()
         else:
-            search_results_dict = parser.get_search_results(noise_cutoff_dict=self.ko_dict)
+            if self.log_bitscores:
+                search_results_dict, bitscore_dict = parser.get_search_results(noise_cutoff_dict=self.ko_dict, return_bitscore_dict=True)
+            else:
+                search_results_dict = parser.get_search_results(noise_cutoff_dict=self.ko_dict)
 
         # add functions and KEGG modules info to database
         functions_dict = {}
@@ -1062,7 +1068,6 @@ class KeggRunHMMs(KeggContext):
             names = self.kegg_modules_db.get_module_names_for_knum(knum)
             classes = self.kegg_modules_db.get_module_classes_for_knum_as_list(knum)
 
-            # FIXME? some KOs are not associated with modules. Should we report this?
             if mods:
                 mod_annotation = "!!!".join(mods)
                 mod_class_annotation = "!!!".join(classes) # why do we split by '!!!'? Because that is how it is done in COGs. So so sorry. :'(
@@ -1100,6 +1105,11 @@ class KeggRunHMMs(KeggContext):
                              "a functional source.")
             gene_function_calls_table.add_empty_sources_to_functional_sources({'KOfam'})
 
+        # If requested, store bit scores of each hit in file
+        if self.log_bitscores:
+            self.bitscore_log_file = os.path.splitext(os.path.basename(self.contigs_db_path))[0] + "_bitscores.txt"
+            anvio.utils.store_dict_as_TAB_delimited_file(bitscore_dict, self.bitscore_log_file, key_header='entry_id')
+            self.run.info("Bit score information file: ", self.bitscore_log_file)
 
         if anvio.DEBUG:
             run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up "
@@ -2575,7 +2585,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
 
         # init the base class for access to shared paths and such
         KeggContext.__init__(self, args)
-        
+
         KeggEstimatorArgs.__init__(self, self.args)
 
         if anvio.DEBUG:

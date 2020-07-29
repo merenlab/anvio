@@ -527,6 +527,8 @@ class HMMERTableOutput(Parser):
 
         CONTIG:
             Undocumented FIXME
+
+        `DOMAIN` is untested.
     """
 
     def __init__(self, hmmer_table_txt, alphabet='AA', context='GENE', program='hmmscan', run=terminal.Run()):
@@ -611,50 +613,58 @@ class HMMERTableOutput(Parser):
         """
 
         col_info = [
-            ('gene_callers_id', str), # target name
-            ('f',               str), # accession
-            ('gene_length',     str), # tlen
-            ('hmm_name',        str), # query name
-            ('hmm_id',          str), # accession
-            ('hmm_length',      str), # qlen
-            ('evalue',          str), # E-value (full sequence)
-            ('bitscore',        str), # score (full sequence)
-            ('bias',            str), # bias (full sequence)
-            ('match_num',       str), # # (this domain)
-            ('num_matches',     str), # of (this domain)
-            ('dom_c_evalue',    str), # c-Evalue (this domain)
-            ('dom_i_evalue',    str), # i-Evalue (this domain)
-            ('dom_bitscore',    str), # score (this domain)
-            ('dom_bias',        str), # bias (this domain)
-            ('hmm_start',       str), # from (hmm coord)
-            ('hmm_stop',        str), # to (hmm coord)
-            ('gene_start',      str), # from (ali coord)
-            ('gene_stop',       str), # to (ali coord)
-            ('f',               str), # from (env coord)
-            ('f',               str), # to (env coord)
-            ('mean_post_prob',  str), # acc
+            ('gene_callers_id', int),   # target name
+            ('f',               str),   # accession
+            ('gene_length',     int),   # tlen
+            ('hmm_name',        str),   # query name
+            ('hmm_id',          str),   # accession
+            ('hmm_length',      int),   # qlen
+            ('evalue',          float), # E-value (full sequence)
+            ('bitscore',        float), # score (full sequence)
+            ('bias',            float), # bias (full sequence)
+            ('match_num',       int),   # # (this domain)
+            ('num_matches',     int),   # of (this domain)
+            ('dom_c_evalue',    float), # c-Evalue (this domain)
+            ('dom_i_evalue',    float), # i-Evalue (this domain)
+            ('dom_bitscore',    str),   # score (this domain)
+            ('dom_bias',        float), # bias (this domain)
+            ('hmm_start',       int),   # from (hmm coord)
+            ('hmm_stop',        int),   # to (hmm coord)
+            ('gene_start',      int),   # from (ali coord)
+            ('gene_stop',       int),   # to (ali coord)
+            ('f',               str),   # from (env coord)
+            ('f',               str),   # to (env coord)
+            ('mean_post_prob',  float), # acc
         ]
 
         return list(zip(*col_info))
 
 
-    def get_search_results(self, noise_cutoff_dict = None):
+    def get_search_results(self, noise_cutoff_dict=None, return_bitscore_dict=False):
         """Goes through the hits provided by `hmmscan` and generates an annotation dictionary with the relevant information about each hit.
 
         This function makes sure only hits with a high enough bit score make it into the annotation dictionary.
 
         Parameters
         ==========
-        noise_cutoff_dict : dict
+        noise_cutoff_dict : dictionary
             dictionary of noise cutoff terms; see setup_ko_dict in kofam.py for an example
+
+        return_bitscore_dict : boolean
+            if True, this function will also return a dictionary of bitscores for each hit
 
         Returns
         =======
-        annotations_dict : dict
-            dictionary of annotations
+        annotations_dict : dictionary
+            dictionary of annotations, one annotation per HMM hit
+        bitscore_dict : dictionary
+            dictionary of bitscore information, one entry per HMM hit, including full and domain-level bitscore.
+            only returned if return_bitscore_dict is True, and only applies to GENE context.
         """
 
         annotations_dict = {}
+        bit_score_info_dict = {}
+
 
         # this is the stuff we are going to try to fill with this:
         # search_table_structure = ['entry_id', 'source', 'alphabet', 'contig', 'gene_callers_id' 'gene_name', 'gene_hmm_id', 'e_value']
@@ -664,6 +674,8 @@ class HMMERTableOutput(Parser):
 
         for hit in list(self.dicts['hits'].values()):
             entry = None
+            bit_score_info_dict_entry = None
+
             if self.context == 'GENE':
                 # Here we only add the hit to the annotations_dict if the appropriate bit score is above the
                 # threshold set in noise_cutoff_dict (which is indexed by profile name (aka gene_name in the hits dict)
@@ -689,6 +701,14 @@ class HMMERTableOutput(Parser):
                                  'gene_hmm_id': hit['gene_hmm_id'],
                                  'gene_callers_id': hit['gene_callers_id'],
                                  'e_value': hit['e_value']}
+                        if return_bitscore_dict:
+                            bit_score_info_dict_entry = {'entry_id': entry_id,
+                                     'gene_name': hit['gene_name'],
+                                     'gene_hmm_id': hit['gene_hmm_id'],
+                                     'gene_callers_id': hit['gene_callers_id'],
+                                     'e_value': hit['e_value'],
+                                     'bit_score': hit['bit_score'],
+                                     'domain_bit_score': hit['dom_bit_score']}
                     else:
                         num_hits_removed += 1
 
@@ -703,6 +723,14 @@ class HMMERTableOutput(Parser):
                              'gene_hmm_id': hit['gene_hmm_id'],
                              'gene_callers_id': hit['gene_callers_id'],
                              'e_value': hit['e_value']}
+                    if return_bitscore_dict:
+                        bit_score_info_dict_entry = {'entry_id': entry_id,
+                                 'gene_name': hit['gene_name'],
+                                 'gene_hmm_id': hit['gene_hmm_id'],
+                                 'gene_callers_id': hit['gene_callers_id'],
+                                 'e_value': hit['e_value'],
+                                 'bit_score': hit['bit_score'],
+                                 'domain_bit_score': hit['dom_bit_score']}
 
                 else:
                     entry = {'entry_id': entry_id,
@@ -710,6 +738,14 @@ class HMMERTableOutput(Parser):
                              'gene_hmm_id': hit['gene_hmm_id'],
                              'gene_callers_id': hit['gene_callers_id'],
                              'e_value': hit['e_value']}
+                    if return_bitscore_dict:
+                        bit_score_info_dict_entry = {'entry_id': entry_id,
+                                 'gene_name': hit['gene_name'],
+                                 'gene_hmm_id': hit['gene_hmm_id'],
+                                 'gene_callers_id': hit['gene_callers_id'],
+                                 'e_value': hit['e_value'],
+                                 'bit_score': hit['bit_score'],
+                                 'domain_bit_score': hit['dom_bit_score']}
             elif self.context == 'CONTIG' and (self.alphabet == 'DNA' or self.alphabet == 'RNA'):
                 entry = {'entry_id': entry_id,
                          'gene_name': hit['gene_name'],
@@ -724,9 +760,14 @@ class HMMERTableOutput(Parser):
             if entry:
                 entry_id += 1
                 annotations_dict[entry_id] = entry
+                if return_bitscore_dict and bit_score_info_dict_entry:
+                    bit_score_info_dict[entry_id] = bit_score_info_dict_entry
 
         self.run.info("Number of weak hits removed", num_hits_removed)
         self.run.info("Number of hits in annotation dict ", len(annotations_dict.keys()))
+
+        if return_bitscore_dict:
+            return annotations_dict, bit_score_info_dict
 
         return annotations_dict
 
