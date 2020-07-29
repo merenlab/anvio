@@ -1,0 +1,15 @@
+>seq1 apple
+A
+a
+>seq2 banana
+AC
+ac
+>seq3 cat
+ACT
+act
+>seq4 dog
+ACTG
+actg
+>seq5 extra
+ACTGA
+actga

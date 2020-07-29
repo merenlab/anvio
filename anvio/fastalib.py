@@ -100,6 +100,7 @@ class SequenceSource():
             self.file_pointer = io.open(self.fasta_file_path, 'rU', newline='')
 
         if not self.file_pointer.read(1) == '>':
+            self.file_pointer.close()
             raise FastaLibError("File '%s' does not seem to be a FASTA file." % self.fasta_file_path)
 
         self.file_pointer.seek(0)
