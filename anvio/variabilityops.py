@@ -544,6 +544,7 @@ class VariabilitySuper(VariabilityFilter, object):
         self.skip_comprehensive_variability_scores = A('skip_comprehensive_variability_scores', bool) or False
 
         self.append_structure_residue_info = True if self.structure_db_path else False
+        self.genes_with_structure = set([])
         self.table_provided = False if self.data.empty else True
         self.load_all_genes = True
         self.load_all_samples = True
