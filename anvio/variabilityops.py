@@ -1119,6 +1119,7 @@ class VariabilitySuper(VariabilityFilter, object):
             self.data["split_name"] = self.data["corresponding_gene_call"].apply(lambda x: self.gene_callers_id_to_split_name_dict[x])
 
         self.data["codon_number"] = utils.convert_sequence_indexing(self.data["codon_order_in_gene"], source="M0", destination="M1")
+        self.data["codon_number"] = self.data["codon_number"].astype(int)
 
         # we're done here. bye.
         profile_db.disconnect()
@@ -2108,6 +2109,7 @@ class NucleotidesEngine(dbops.ContigsSuperclass, VariabilitySuper):
                                                             'corresponding_gene_call': corresponding_gene_call,
                                                             'gene_length': gene_length,
                                                             'codon_order_in_gene': codon_order_in_gene,
+                                                            'codon_number': codon_order_in_gene + 1,
                                                             'split_name': split}
                     new_entries[next_available_entry_id][base_at_pos] = split_coverage_across_samples[sample_id][pos]
                     next_available_entry_id += 1
@@ -2222,6 +2224,7 @@ class QuinceModeWrapperForFancyEngines(object):
                                                             'corresponding_gene_call': corresponding_gene_call,
                                                             'gene_length': gene_length,
                                                             'codon_order_in_gene': codon_order_in_gene,
+                                                            'codon_number': codon_order_in_gene + 1,
                                                             'departure_from_reference': 0,
                                                             'coverage': None,
                                                             'reference': reference_item}
