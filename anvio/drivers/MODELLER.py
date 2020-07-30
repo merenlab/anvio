@@ -80,15 +80,14 @@ class MODELLER:
 
         A = lambda x, t: t(args.__dict__[x]) if x in self.args.__dict__ else None
         null = lambda x: x
-        self.scoring_method = A('scoring_method', str)
-        self.deviation = A('deviation', float)
-        self.very_fast = A('very_fast', bool)
+        self.scoring_method = A('scoring_method', str) or 'DOPE_score'
+        self.very_fast = A('very_fast', bool) or False
         self.executable = A('modeller_executable', null) or up_to_date_modeller_exec
-        self.num_models = A('num_models', int)
+        self.num_models = A('num_models', int) or 5
         self.modeller_database = A('modeller_database', str) or 'pdb_95'
-        self.max_number_templates = A('max_number_templates', null)
-        self.percent_identical_cutoff = A('percent_identical_cutoff', null)
-        self.deviation = A('deviation', null)
+        self.max_number_templates = A('max_number_templates', null) or 5
+        self.percent_identical_cutoff = A('percent_identical_cutoff', null) or 30
+        self.deviation = A('deviation', null) or 4
         self.pdb_db_path = A('pdb_db', null)
         self.offline_mode = A('offline_mode', null)
 
