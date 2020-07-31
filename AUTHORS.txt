@@ -2,7 +2,6 @@
 Developers and contributors at the University of Chicago
 ===============================================================================
 A. Murat Eren (a.murat.eren at gmail dot com)
-Özcan Esen (ozcanesen at gmail dot com)
 Evan Kiefl (kiefl.evan at gmail dot com)
 Iva Veseli (iveseli at uchicago.edu)
 Matthew Schechter (mschechter at uchicago dot edu)
@@ -14,10 +13,11 @@ Florian Trigodet (trigodet dot florian at gmail dot com)
 ===============================================================================
 Developers and contributors at large
 ===============================================================================
+Özcan Esen                                                    Turkey
 Alon Shaiber               Weill Cornell Medicine             United States
 Quentin Clayssen           University of Nantes               France
 Ryan Moore                 University of Delaware             United States
-Mahmoud Yousef (mahmoudyousef at uchicago dot edu)
+Mahmoud Yousef             University of Chicago              United States
 Emanuel Burgos             University of Wisconsin-Madison    United States
 Gökmen Göksel              Koding, Inc.                       United States
 Faruk Uzun                 Monera, Inc.                       Turkey
@@ -38,12 +38,12 @@ Elmar Pruesse              University of Colorado Denver      United States
 C. Titus Brown             University of California Davis     United States
 Bryan Merill               Stanford University                United States
 Lucas Paoli                ETH Zurich                         Switzerland
-Ines Martinez              University of Alberta              Canada
+Inés Martinez              University of Alberta              Canada
 
 ===============================================================================
 Developers and contributors no longer on GitHub
 ===============================================================================
-Tobias Paczian             Argonne National Laboratory        United States
+Tobias Paczian
 
 --
 

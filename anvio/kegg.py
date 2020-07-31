@@ -906,8 +906,9 @@ class KeggSetup(KeggContext):
 
 
 class KeggRunHMMs(KeggContext):
-    """ Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DB for later metabolism prediction.
+    """Class for running `hmmscan` against the KOfam database and adding the resulting hits to contigs DB for later metabolism prediction.
 
+    Parameters
     ==========
     args: Namespace object
         All the arguments supplied by user to anvi-run-kegg-kofams
@@ -1014,7 +1015,7 @@ class KeggRunHMMs(KeggContext):
 
         # run hmmscan
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-        hmm_hits_file = hmmer.run_hmmscan('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, None)
+        hmm_hits_file = hmmer.run_hmmer('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, None)
 
         # get an instance of gene functions table
         gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
@@ -1034,7 +1035,7 @@ class KeggRunHMMs(KeggContext):
             return
 
         # parse hmmscan output
-        parser = parser_modules['search']['hmmscan'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
+        parser = parser_modules['search']['hmmer_table_output'](hmm_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
         if self.keep_all_hits:
             run.info_single("All HMM hits will be kept regardless of score.")
             if self.log_bitscores:
