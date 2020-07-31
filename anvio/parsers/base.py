@@ -90,7 +90,7 @@ class Parser(object):
                     else:
                         failed_lines_text = '%s' % (', '.join([str(l) for l in failed_lines]))
 
-                    run.warning("This is the base parser class --a part of the code you should never hear from. PLEASE "
+                    run.warning("This is the base parser class--a part of the code you should never hear from. PLEASE "
                                 "READ THIS CAREFULLY. While anvi'o was trying to parse some files assocaited with the "
                                 "annotation source `%s`, it found that %d of the lines in this file were not able to "
                                 "made sense of. This part of the code does not know anything more than that. It doesn't "
@@ -102,20 +102,20 @@ class Parser(object):
 
 
 class TaxonomyHelper(object):
-    """This is the class that takes an annotations dictionary, and returns
-       genes_taxonomy, and taxon names dicts.
+    """This is the class that takes an annotations dictionary, and returns genes_taxonomy, and taxon names dicts.
 
-       annotations dictionary must contain t_species, t_genus,
-       t_family, t_class, t_order, t_phylum, t_domain, as keys for each
-       gene call:
+    annotations dictionary must contain t_species, t_genus,
+    t_family, t_class, t_order, t_phylum, t_domain, as keys for each
+    gene call:
 
-            annotations_dict[gene_call_id]['t_species'] = 'Bifidobacterium longum'
+         annotations_dict[gene_call_id]['t_species'] = 'Bifidobacterium longum'
 
-       the purpose of this class is to return to dictionaries that removes the
-       redundancy of taxon names, by creating a dict that contains each unique
-       taaxonomy found, and a secondary dict that associates each gene call with
-       the names dictionary.
-       """
+    the purpose of this class is to return to dictionaries that removes the
+    redundancy of taxon names, by creating a dict that contains each unique
+    taaxonomy found, and a secondary dict that associates each gene call with
+    the names dictionary.
+    """
+
     def __init__(self, annotations_dict, run=terminal.Run(), progress=terminal.Progress()):
         self.run = run
         self.progress = progress
