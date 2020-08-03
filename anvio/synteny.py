@@ -114,7 +114,7 @@ class NGram(object):
         if self.list_annotation_sources:
             self.run.info('Available functional annotation sources', ', '.join(self.gene_function_source_set))
             sys.exit()
- 
+
         # This houses the ngrams' data
         self.ngram_attributes_list = []
 
@@ -277,6 +277,7 @@ class NGram(object):
         ngram_counts_dict = Counter({})
         annotations_dict = {}
         gene_callers_id_windows = self.get_windows(N, gene_caller_ids_list)
+
         for window in gene_callers_id_windows:
 
             annotated_window_dict = self.annotate_window(window)
@@ -291,16 +292,13 @@ class NGram(object):
             if ngram[1] == True:
                 annotated_window_dict_ordered = {}
                 for annotation_source, annotation in annotated_window_dict.items():
-                    if annotation_source == self.ngram_source:
-                        pass
-                    else:
-                        annotated_window_flipped = annotation[::-1]
-                        annotated_window_dict_ordered[annotation_source] = annotated_window_flipped
+                    annotated_window_flipped = annotation[::-1]
+                    annotated_window_dict_ordered[annotation_source] = annotated_window_flipped
+                    annotations_dict[ngram[0]] = annotated_window_dict_ordered # record flipped version of annotation
             else:
-                pass
+                annotations_dict[ngram[0]] = annotated_window_dict
 
             ngram_counts_dict[ngram[0]] += 1
-            annotations_dict[ngram[0]] = annotated_window_dict
 
         return ngram_counts_dict, annotations_dict
 
