@@ -57,8 +57,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                                                               '--simplify-names']
         rule_acceptable_params_dict['anvi_trnaseq'] = ['run',
                                                        '--skip-fasta-check',
-                                                       '--write-buffer-size',
-                                                       '--max-possible-alignments']
+                                                       '--write-buffer-size']
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
         # Default values for certain accessible parameters
