@@ -40,16 +40,6 @@ if __name__ == '__main__':
     groupB.add_argument(*anvio.A('skip-fasta-check'), **anvio.K('skip-fasta-check'))
     groupB.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupB.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size', {'default': 50000}))
-    groupB.add_argument('--max-possible-alignments', type=int, default=50, dest='max_possible_alignments',
-                        help=("The third stage of clustering, agglomerative clustering of modified sequences, "
-                              "involves mapping representative sequences from the second stage against themselves "
-                              "with one mismatch and no gaps allowed in alignments. "
-                              "From experience with large datasets, "
-                              "parameterizing Bowtie2 to return up to 50 alignments per query "
-                              "leads to a minimum number of agglomerative clusters "
-                              "that decreases only marginally with more alignments. "
-                              "Tinkering with this parameter by increasing its value "
-                              "will slow down agglomerative clustering."))
 
     args = anvio.get_args(parser)
     try:
