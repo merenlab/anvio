@@ -944,6 +944,11 @@ class GetReadsFromBAM:
                             mate_DIRECTION = 'R2' if read_DIRECTION == 'R1' else 'R1'
                             short_reads_for_splits_dict[mate_DIRECTION][defline] = has_unknown_mate[defline]
                             short_reads_for_splits_dict[read_DIRECTION][defline] = read.query_sequence
+
+                            # rev_comp the R2 since we know which one is which now
+                            short_reads_for_splits_dict['R2'][defline] = utils.rev_comp(short_reads_for_splits_dict['R2'][defline])
+
+
                             del has_unknown_mate[defline]
 
                         else:
@@ -983,8 +988,8 @@ class GetReadsFromBAM:
                 self.run.info('Output file for %s' % read_type, output_file_path, progress=self.progress)
 
             self.progress.end()
-            self.run.info('Num paired-end reads stored',pp(len(short_reds_for_splits_dict['R1'])), mc='green', nl_before=1)
-            self.run.info('Num unpaired reads stored',pp(len(short_reds_for_splits_dict['UNPAIRED'])), mc='green')
+            self.run.info('Num paired-end reads stored', pp(len(short_reds_for_splits_dict['R1'])), mc='green', nl_before=1)
+            self.run.info('Num unpaired reads stored', pp(len(short_reds_for_splits_dict['UNPAIRED'])), mc='green')
         else:
             output_file_path = self.output_file_path or 'short_reads.fa'
             utils.store_dict_as_FASTA_file(short_reds_for_splits_dict['all'], output_file_path)
