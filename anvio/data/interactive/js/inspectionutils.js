@@ -248,7 +248,7 @@ function removeGeneChart() {
 }
 
 
-function drawArrows(_start, _stop, colortype) {
+function drawArrows(_start, _stop, colortype, color_genes) {
 
     width = VIEWER_WIDTH * 0.80;
     genes = geneParser.filterData(_start, _stop);
@@ -306,6 +306,9 @@ function drawArrows(_start, _stop, colortype) {
           category = "None";
         }
       }
+      if(color_genes != null && color_genes.includes("" + gene.gene_callers_id)) {
+        category = gene.gene_callers_id;
+      }
 
       if (highlight_gene && gene.gene_callers_id == contig_id)
       {
@@ -322,6 +325,7 @@ function drawArrows(_start, _stop, colortype) {
 
       // M10 15 l20 0
       path = paths.append('svg:path')
+           .attr('id', 'gene_' + gene.gene_callers_id)
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
            .attr('stroke', category == "none" ? "gray" : $('#picker_' + category).attr('color'))
            .attr('stroke-width', 6)
@@ -340,6 +344,11 @@ function drawArrows(_start, _stop, colortype) {
              })
            .attr('data-content', get_gene_functions_table_html(gene) + '')
 	    .attr('data-toggle', 'popover');
+      // disable default right-click behavior
+      document.querySelector('#gene_' + gene.gene_callers_id).addEventListener('contextmenu', function (evt) { evt.preventDefault(); });
+      $('#gene_' + gene.gene_callers_id).contextmenu(function() {
+        toggleGeneIDColor(gene.gene_callers_id);
+      });
     });
     $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
 
