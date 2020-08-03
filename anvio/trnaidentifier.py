@@ -19,18 +19,6 @@ __email__ = "samuelmiller10@gmail.com"
 __status__ = "Development"
 
 
-THREEPRIME_VARIANTS = ['CCA',
-                       'C', 'CC',
-                       'CCC', 'CCG', 'CCT',
-                       'CAA', 'CGA', 'CTA',
-                       'ACA', 'GCA', 'TCA',
-                       'CCAA', 'CCAC', 'CCAG', 'CCAT',
-                       'CCAAA', 'CCAAC', 'CCAAG', 'CCAAT',
-                       'CCACA', 'CCACC', 'CCACG', 'CCACT',
-                       'CCAGA', 'CCAGC', 'CCAGG', 'CCAGT',
-                       'CCATA', 'CCATC', 'CCATG', 'CCATT']
-
-
 class _TRNAFeature:
     conserved_nucleotides = ({}, )
 
