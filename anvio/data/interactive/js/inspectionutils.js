@@ -289,7 +289,7 @@ function drawArrows(_start, _stop, colortype) {
         if(gene.functions !== null && gene.functions.hasOwnProperty("COG_CATEGORY") && gene.functions.COG_CATEGORY != null) {
           category = gene.functions["COG_CATEGORY"][0][0];
         }
-        if(category == null) category = "none";
+        if(category == null || category == "X") category = "none";
       } else if(colortype == "KEGG") {
         if(gene.functions !== null && gene.functions.hasOwnProperty("KEGG_Class") && gene.functions.KEGG_Class != null) {
           category = getCategoryForKEGGClass(gene.functions["KEGG_Class"][1]);
