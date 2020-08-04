@@ -942,12 +942,15 @@ class GetReadsFromBAM:
                             # from has_unknown_mate since its mate is now known.
                             read_DIRECTION = 'R1' if read.is_read1 else 'R2'
                             mate_DIRECTION = 'R2' if read_DIRECTION == 'R1' else 'R1'
-                            short_reads_for_splits_dict[mate_DIRECTION][defline] = has_unknown_mate[defline]
-                            short_reads_for_splits_dict[read_DIRECTION][defline] = read.query_sequence
 
-                            # rev_comp the R2 since we know which one is which now
-                            short_reads_for_splits_dict['R2'][defline] = utils.rev_comp(short_reads_for_splits_dict['R2'][defline])
+                            # rev_comp either R1 or R2 to match the original short reads orientation 
+                            if read.is_reverse:
+                                short_reads_for_splits_dict[mate_DIRECTION][defline] = has_unknown_mate[defline]
+                                short_reads_for_splits_dict[read_DIRECTION][defline] = utils.rev_comp(read.query_sequence)
 
+                            else
+                                short_reads_for_splits_dict[mate_DIRECTION][defline] = utils.rev_comp(has_unknown_mate[defline])
+                                short_reads_for_splits_dict[read_DIRECTION][defline] = utils.read.query_sequence
 
                             del has_unknown_mate[defline]
 
