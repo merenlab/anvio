@@ -733,14 +733,15 @@ class TRNASeqDataset:
 
         self.progress.update("Generating target sequences")
         threeprime_target_names, threeprime_target_seqs = self.get_unprofiled_threeprime_targets()
+        self.progress.end()
 
-        self.progress.update("Aligning")
         aligned_query_dict, aligned_target_dict = Aligner(threeprime_query_names,
                                                           threeprime_query_seqs,
                                                           threeprime_target_names,
                                                           threeprime_target_seqs,
                                                           num_threads=self.num_threads).align(max_mismatch_freq=0)
 
+        self.progress.new("Mapping short unprofiled tRNA fragments to profiled tRNA")
         self.progress.update("Filtering unprofiled queries aligning with the 3' end of targets")
         new_unique_trna_seqs = []
         nontrna_indices_to_remove = []
@@ -888,14 +889,15 @@ class TRNASeqDataset:
 
         self.progress.update("Generating target sequences")
         nonthreeprime_target_names, nonthreeprime_target_seqs = self.get_unprofiled_nonthreeprime_targets()
+        self.progress.end()
 
-        self.progress.update("Aligning")
         aligned_query_dict, aligned_target_dict = Aligner(nonthreeprime_query_names,
                                                           nonthreeprime_query_seqs,
                                                           nonthreeprime_target_names,
                                                           nonthreeprime_target_seqs,
                                                           num_threads=self.num_threads).align(max_mismatch_freq=0)
 
+        self.progress.new("Mapping unprofiled interior tRNA fragments to profiled tRNA")
         self.progress.update("Filtering unprofiled queries aligning with the interior or 5' end of targets")
         nontrna_indices = []
         mapping_dict = {}

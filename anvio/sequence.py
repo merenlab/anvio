@@ -13,6 +13,7 @@ from hashlib import sha224
 
 import anvio
 import anvio.constants as constants
+import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 
@@ -204,7 +205,7 @@ def get_kmers(name_seq_pair, kmer_size, include_full_length=True):
 
 
 class Kmerizer:
-    def __init__(self, names, seqs, num_threads=1):
+    def __init__(self, names, seqs, num_threads=1, progress=terminal.Progress()):
         """Gets hashed k-mers from input sequences.
 
         Parameters
@@ -227,6 +228,7 @@ class Kmerizer:
         self.names = names
         self.seqs = seqs
         self.num_threads = num_threads
+        self.progress = progress
 
 
     def get_prefix_kmer_dict(self, kmer_size, include_full_length=True):
@@ -291,12 +293,23 @@ class Kmerizer:
             as a given k-mer can occur multiple times in the sequence.
         """
 
+        self.progress.new("Extracting k-mers of length %d" % kmer_size)
+
         pool = multiprocessing.Pool(self.num_threads)
-        all_seq_kmer_items = pool.map(functools.partial(get_kmers, kmer_size=kmer_size, include_full_length=include_full_length),
-                                      zip(self.names, self.seqs))
+        all_seq_kmer_items = []
+        total_seq_count = len(self.names)
+        for i, seq_kmer_item in enumerate(pool.imap_unordered(functools.partial(get_kmers,
+                                                                                kmer_size=kmer_size,
+                                                                                include_full_length=include_full_length),
+                                                              zip(self.names, self.seqs),
+                                                              chunksize=int(len(self.names) / self.num_threads) + 1)):
+            all_seq_kmer_items.append(seq_kmer_item)
+            if i % 1000 == 0:
+                self.progress.update("k-mers have been extracted from %d/%d sequences" % (i, total_seq_count))
         pool.close()
         pool.join()
 
+        self.progress.update("Grouping k-mers")
         kmer_items = [kmer_item for seq_kmer_items in all_seq_kmer_items for kmer_item in seq_kmer_items]
         kmer_items.sort(key=lambda kmer_item: kmer_item[0])
 
@@ -304,6 +317,8 @@ class Kmerizer:
         for hashed_kmer, kmer_items in itertools.groupby(kmer_items, key=lambda kmer_item: kmer_item[0]):
             kmer_dict[hashed_kmer] = [(name, seq_start_indices) for hashed_kmer, name, seq_start_indices, seq_length
                                       in sorted(kmer_items, key=lambda kmer_item: (-kmer_item[3], kmer_item[1]))]
+
+        self.progress.end()
 
         return kmer_dict
 
@@ -1036,7 +1051,7 @@ class Alignment:
 
 
 class Aligner:
-    def __init__(self, query_names, query_seqs, target_names, target_seqs, num_threads=1):
+    def __init__(self, query_names, query_seqs, target_names, target_seqs, num_threads=1, progress=terminal.Progress()):
         """Align query sequences to target sequences
 
         Parameters
@@ -1055,6 +1070,8 @@ class Aligner:
 
         num_threads : int
             Threads available for multithreaded operations
+
+        progress : terminal.Progress object
         """
         if len(query_names) != len(query_seqs):
             raise ConfigError("Your Mapper query input lists were not the same length. "
@@ -1071,6 +1088,7 @@ class Aligner:
         self.target_names = target_names
         self.target_seqs = target_seqs
         self.num_threads = num_threads
+        self.progress = progress
 
 
     def align(self, max_mismatch_freq=0):
@@ -1078,14 +1096,16 @@ class Aligner:
 
         Parameters
         ==========
-        max_mismatch_freq :
+        max_mismatch_freq : float
+            Max mismatch frequency of alignment, on interval [0, 1)
 
         Returns
         =======
         aligned_query_dict : dict
-            Keys are query names and values are AlignedQuery objects
+            Keys are query names and values are AlignedQuery objects.
+
         aligned_target_dict : dict
-            Keys are target names and values are AlignedTarget objects
+            Keys are target names and values are AlignedTarget objects.
         """
 
         if not 0 <= max_mismatch_freq < 1:
@@ -1194,113 +1214,162 @@ class Aligner:
         return aligned_query_dict, aligned_target_dict
 
 
-    def align_without_indels(self, query_names, query_seqs, target_names, target_seqs, seed_size, max_mismatch_freq=0):
+    def align_without_indels(self,
+                             query_names,
+                             query_seqs,
+                             target_names,
+                             target_seqs,
+                             seed_size,
+                             max_mismatch_freq=0):
         """Match input queries to input targets without indels.
+
+        Parameters
+        ==========
+        query_names : list
+
+        query_seqs : list
+
+        target_names : list
+
+        target_seqs : list
+
+        seed_size : int
+
+        max_mismatch_freq : float, 0
 
         Returns
         =======
         aligned_query_dict : dict
             Keys are query names and values are AlignedQuery objects
+
         aligned_target_dict : dict
             Keys are target names and values are AlignedTarget objects
         """
 
         kmer_dict = Kmerizer(target_names, target_seqs, num_threads=self.num_threads).get_kmer_dict(seed_size)
-        target_seq_dict = dict(zip(target_names, target_seqs))
+
+        self.progress.new("Aligning sequences without indels")
+        self.progress.update("...")
 
         aligned_query_dict = {}
         aligned_target_dict = {}
-        for query_name, query_seq in zip(query_names, query_seqs):
-            query_has_aligned = False
-            mismatch_limit = int(max_mismatch_freq * len(query_seq))
-            aligned_query = AlignedQuery(query_seq, name=query_name)
 
-            aligned_targets_plus_starts = []
+        target_seq_dict = dict(zip(target_names, target_seqs))
 
-            for seed_query_start, seed_query_end in zip(range(0, len(query_seq) - seed_size + 1),
-                                                        range(seed_size, len(query_seq) + 1)):
-                seed_hash = sha224(query_seq[seed_query_start: seed_query_end].encode('utf-8')).hexdigest()
+        pool = multiprocessing.Pool(self.num_threads)
+        num_processed_queries = 0
+        total_query_count = len(query_names)
+        for (query_name,
+             query_seq,
+             alignment_info) in pool.imap_unordered(functools.partial(find_alignment,
+                                                                      kmer_dict=kmer_dict,
+                                                                      seed_size=seed_size,
+                                                                      target_seq_dict=target_seq_dict,
+                                                                      max_mismatch_freq=max_mismatch_freq),
+                                                    zip(query_names, query_seqs),
+                                                    chunksize=int(len(query_names) / self.num_threads) + 1):
+            if alignment_info:
+                aligned_query = AlignedQuery(query_seq, name=query_name)
+                aligned_query_dict[query_name] = aligned_query
+                for target_name, target_seq, alignment_target_start, cigartuples in alignment_info:
+                    if target_name in aligned_target_dict:
+                        aligned_target = aligned_target_dict[target_name]
+                    else:
+                        aligned_target = AlignedTarget(target_seq, name=target_name)
+                        aligned_target_dict[target_name] = aligned_target
+                    alignment = Alignment(0, alignment_target_start, cigartuples, aligned_query, aligned_target)
+                    aligned_query.alignments.append(alignment)
+                    aligned_target.alignments.append(alignment)
 
-                if seed_hash not in kmer_dict:
-                    continue
+            num_processed_queries += 1
+            if num_processed_queries % 1000 == 0:
+                self.progress.update("%d/%d query sequences have been processed" % (num_processed_queries, total_query_count))
+        pool.close()
+        pool.join()
 
-                for target_name, seed_target_starts in kmer_dict[seed_hash]:
-                    for seed_target_start in seed_target_starts:
-                        if seed_target_start < seed_query_start:
-                            continue
-                        target_seq = target_seq_dict[target_name]
-                        seed_target_end = seed_target_start + seed_size
-                        if len(target_seq) - seed_target_end < len(query_seq) - seed_query_end:
-                            continue
-                        alignment_target_start = seed_target_start - seed_query_start
-                        if (target_name, alignment_target_start) in aligned_targets_plus_starts:
-                            continue
-
-                        cigartuples = []
-                        mismatch_count = 0
-                        for query_base, target_base in zip(query_seq[0: seed_query_start],
-                                                           target_seq[alignment_target_start: seed_target_start]):
-                            if query_base == target_base:
-                                if cigartuples:
-                                    if cigartuples[-1][0] == 7:
-                                        cigartuples[-1][1] += 1
-                                    else:
-                                        cigartuples.append([7, 1])
-                                else:
-                                    cigartuples.append([7, 1])
-                            else:
-                                mismatch_count += 1
-                                if cigartuples:
-                                    if cigartuples[-1][0] == 8:
-                                        cigartuples[-1][1] += 1
-                                    else:
-                                        cigartuples.append([8, 1])
-                                else:
-                                    cigartuples.append([8, 1])
-                        if mismatch_count > mismatch_limit:
-                            continue
-
-                        if cigartuples:
-                            if cigartuples[-1][0] == 7:
-                                cigartuples[-1][1] += seed_size
-                            else:
-                                cigartuples.append([7, seed_size])
-                        else:
-                            cigartuples.append([7, seed_size])
-
-                        for query_base, target_base in zip(query_seq[seed_query_end: len(query_seq)],
-                                                           target_seq[seed_target_end: seed_target_end + len(query_seq) - seed_query_end]):
-                            if query_base == target_base:
-                                if cigartuples[-1][0] == 7:
-                                    cigartuples[-1][1] += 1
-                                else:
-                                    cigartuples.append([7, 1])
-                            else:
-                                mismatch_count += 1
-                                if cigartuples[-1][0] == 8:
-                                    cigartuples[-1][1] += 1
-                                else:
-                                    cigartuples.append([8, 1])
-                        if mismatch_count > mismatch_limit:
-                            continue
-
-                        if not query_has_aligned:
-                            aligned_query_dict[query_name] = aligned_query
-                            query_has_aligned = True
-
-                        aligned_targets_plus_starts.append((target_name, alignment_target_start))
-                        if target_name in aligned_target_dict:
-                            aligned_target = aligned_target_dict[target_name]
-                        else:
-                            aligned_target = AlignedTarget(target_seq, name=target_name)
-                            aligned_target_dict[target_name] = aligned_target
-
-                        alignment = Alignment(0,
-                                              alignment_target_start,
-                                              [tuple(cigartuple) for cigartuple in cigartuples],
-                                              aligned_query=aligned_query,
-                                              aligned_target=aligned_target)
-                        aligned_query.add_alignment(alignment)
-                        aligned_target.add_alignment(alignment)
+        self.progress.end()
 
         return aligned_query_dict, aligned_target_dict
+
+
+def find_alignment(name_seq_pair, kmer_dict, seed_size, target_seq_dict, max_mismatch_freq=0):
+    query_name, query_seq = name_seq_pair
+    mismatch_limit = int(max_mismatch_freq * len(query_seq))
+
+    encountered_alignment_sites = []
+    alignment_info = []
+    for seed_query_start, seed_query_end in zip(range(0, len(query_seq) - seed_size + 1),
+                                                range(seed_size, len(query_seq) + 1)):
+        seed_hash = sha224(query_seq[seed_query_start: seed_query_end].encode('utf-8')).hexdigest()
+
+        if seed_hash not in kmer_dict:
+            continue
+
+        for target_name, seed_target_starts in kmer_dict[seed_hash]:
+            for seed_target_start in seed_target_starts:
+                if seed_target_start < seed_query_start:
+                    continue
+                target_seq = target_seq_dict[target_name]
+                seed_target_end = seed_target_start + seed_size
+                if len(target_seq) - seed_target_end < len(query_seq) - seed_query_end:
+                    continue
+                alignment_target_start = seed_target_start - seed_query_start
+
+                if (target_name, alignment_target_start) in encountered_alignment_sites:
+                    continue
+
+                cigartuples = []
+                mismatch_count = 0
+                for query_base, target_base in zip(query_seq[0: seed_query_start],
+                                                    target_seq[alignment_target_start: seed_target_start]):
+                    if query_base == target_base:
+                        if cigartuples:
+                            if cigartuples[-1][0] == 7:
+                                cigartuples[-1][1] += 1
+                            else:
+                                cigartuples.append([7, 1])
+                        else:
+                            cigartuples.append([7, 1])
+                    else:
+                        mismatch_count += 1
+                        if cigartuples:
+                            if cigartuples[-1][0] == 8:
+                                cigartuples[-1][1] += 1
+                            else:
+                                cigartuples.append([8, 1])
+                        else:
+                            cigartuples.append([8, 1])
+                if mismatch_count > mismatch_limit:
+                    continue
+
+                if cigartuples:
+                    if cigartuples[-1][0] == 7:
+                        cigartuples[-1][1] += seed_size
+                    else:
+                        cigartuples.append([7, seed_size])
+                else:
+                    cigartuples.append([7, seed_size])
+
+                for query_base, target_base in zip(query_seq[seed_query_end: len(query_seq)],
+                                                   target_seq[seed_target_end: seed_target_end + len(query_seq) - seed_query_end]):
+                    if query_base == target_base:
+                        if cigartuples[-1][0] == 7:
+                            cigartuples[-1][1] += 1
+                        else:
+                            cigartuples.append([7, 1])
+                    else:
+                        mismatch_count += 1
+                        if cigartuples[-1][0] == 8:
+                            cigartuples[-1][1] += 1
+                        else:
+                            cigartuples.append([8, 1])
+                if mismatch_count > mismatch_limit:
+                    continue
+
+                alignment_info.append((target_name,
+                                       target_seq,
+                                       alignment_target_start,
+                                       [tuple(cigartuple) for cigartuple in cigartuples]))
+                encountered_alignment_sites.append((target_name, alignment_target_start))
+
+    return query_name, query_seq, alignment_info
