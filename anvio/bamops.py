@@ -947,8 +947,7 @@ class GetReadsFromBAM:
                             if read.is_reverse:
                                 short_reads_for_splits_dict[mate_DIRECTION][defline] = has_unknown_mate[defline]
                                 short_reads_for_splits_dict[read_DIRECTION][defline] = utils.rev_comp(read.query_sequence)
-
-                            else
+                            else:
                                 short_reads_for_splits_dict[mate_DIRECTION][defline] = utils.rev_comp(has_unknown_mate[defline])
                                 short_reads_for_splits_dict[read_DIRECTION][defline] = utils.read.query_sequence
 
