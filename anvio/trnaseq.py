@@ -706,7 +706,7 @@ class TRNASeqDataset:
                     num_query_seqs += 1
 
             if num_processed_nontrna_seqs % 50000 == 0:
-                self.progress.update("%d queries under consideration from %d/%d nominal \"non-tRNA\" sequences"
+                self.progress.update("%d queries made from %d/%d nominal \"non-tRNA\""
                                      % (num_query_seqs, num_processed_nontrna_seqs, total_nontrna_seqs))
 
         target_names = []
@@ -719,7 +719,7 @@ class TRNASeqDataset:
             num_processed_trimmed_seqs += 1
 
             if num_processed_trimmed_seqs % 50000 == 0:
-                self.progress.update("%d/%d trimmed sequences processed as target sequences"
+                self.progress.update("%d/%d trimmed sequences made into targets"
                                      % (num_processed_trimmed_seqs, total_trimmed_seqs))
 
         self.progress.end()
