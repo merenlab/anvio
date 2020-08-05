@@ -35,7 +35,6 @@ __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
 
 
-
 class UniqueSeq:
     def __init__(self, seq, input_names, identification_method=None, acceptor_length=None, extra_fiveprime_length=None, skip_init=False):
         self.string = seq
@@ -677,43 +676,6 @@ class TRNASeqDataset:
         self.progress.end()
 
 
-    def get_unprofiled_threeprime_queries(self):
-        # Short unprofiled 3' tRNA fragments are shorter than the span of the acceptor through the T arm.
-        # A candidate query must end in CCA or a recognized 3' variant.
-
-        threeprime_query_names = []
-        threeprime_query_seqs = []
-        target_acceptor_variant_lengths = range(min(map(len, THREEPRIME_VARIANTS)),
-                                                max(map(len, THREEPRIME_VARIANTS)) + 1)
-        for nontrna_index, unique_seq in enumerate(self.unique_nontrna_seqs):
-            unique_seq_string = unique_seq.string
-            if len(unique_seq_string) >= self.SHORT_FRAGMENT_LENGTH:
-                continue
-            for target_acceptor_variant_length in target_acceptor_variant_lengths:
-                if unique_seq_string[-target_acceptor_variant_length: ] in THREEPRIME_VARIANTS:
-                    threeprime_query_names.append(unique_seq.representative_name + '_' + str(nontrna_index))
-                    threeprime_query_seqs.append(unique_seq_string)
-                    break
-
-        return threeprime_query_names, threeprime_query_seqs
-
-
-    def get_unprofiled_threeprime_targets(self):
-        # Short unprofiled 3' tRNA fragments may or may not have the same 3'-acceptor variants as profiled tRNA.
-        # Therefore, add a range of different acceptor variants to trimmed profiled tRNA sequences
-        # for detection of fragments with unrepresented endings.
-
-        threeprime_target_names = []
-        threeprime_target_seqs = []
-        for trimmed_seq in self.trimmed_trna_seqs:
-            representative_name = trimmed_seq.representative_name
-            for acceptor_variant in self.TARGET_ACCEPTOR_VARIANTS:
-                threeprime_target_names.append(representative_name + '_' + acceptor_variant)
-                threeprime_target_seqs.append(trimmed_seq.string + acceptor_variant)
-
-        return threeprime_target_names, threeprime_target_seqs
-
-
     def map_threeprime(self):
         """
         When 3' tRNA fragments are not long enough to be profiled successfully
@@ -726,72 +688,114 @@ class TRNASeqDataset:
         mapped tRNA 1:                                                    GTTCAATTCCCCGTCGCGGAG CC
         mapped tRNA 2:                                                 GGGGTTCAATTCCCCGTCGCGGAG CCA
         """
-        self.progress.new("Mapping short unprofiled tRNA fragments to profiled tRNA")
+        self.progress.new("Preparing to map short unprofiled tRNA fragments to profiled tRNA")
 
-        self.progress.update("Gathering unprofiled query sequences")
-        threeprime_query_names, threeprime_query_seqs = self.get_unprofiled_threeprime_queries()
+        query_ids = []
+        query_seqs = []
+        num_processed_nontrna_seqs = 0
+        total_nontrna_seqs = len(self.unique_nontrna_seqs)
+        num_query_seqs = 0
+        for nontrna_index, unique_seq in enumerate(self.unique_nontrna_seqs):
+            unique_seq_string = unique_seq.string
+            num_processed_nontrna_seqs += 1
 
-        self.progress.update("Generating target sequences")
-        threeprime_target_names, threeprime_target_seqs = self.get_unprofiled_threeprime_targets()
+            for threeprime_variant in THREEPRIME_VARIANTS:
+                if unique_seq_string[-len(threeprime_variant): ] == threeprime_variant:
+                    query_ids.append((nontrna_index, threeprime_variant))
+                    query_seqs.append(unique_seq_string[: -len(threeprime_variant)][::-1])
+                    num_query_seqs += 1
+
+            if num_processed_nontrna_seqs % 10000 == 0:
+                self.progress.update("%d query sequences under consideration "
+                                     "from %d/%d nominal unique non-tRNA sequences"
+                                     % (num_query_seqs, num_processed_nontrna_seqs, total_nontrna_seqs))
+
+        target_names = []
+        target_seqs = []
+        num_processed_trimmed_seqs = 0
+        total_trimmed_seqs = len(self.trimmed_trna_seqs)
+        for trimmed_seq in self.trimmed_trna_seqs:
+            target_names.append(trimmed_seq.representative_name)
+            target_seqs.append(trimmed_seq.string[::-1])
+
+            if num_processed_trimmed_seqs % 10000 == 0:
+                self.progress.update("%d/%d trimmed sequences processed as target sequences"
+                                     % (num_processed_trimmed_seqs, total_trimmed_seqs))
+
         self.progress.end()
 
-        aligned_query_dict, aligned_target_dict = Aligner(threeprime_query_names,
-                                                          threeprime_query_seqs,
-                                                          threeprime_target_names,
-                                                          threeprime_target_seqs,
-                                                          num_threads=self.num_threads).align(max_mismatch_freq=0)
+        all_query_matches = Aligner(query_ids,
+                                    query_seqs,
+                                    target_names,
+                                    target_seqs,
+                                    num_threads=self.num_threads).match_prefixes(max_matches_per_query=1)
 
-        self.progress.new("Mapping short unprofiled tRNA fragments to profiled tRNA")
-        self.progress.update("Filtering unprofiled queries aligning with the 3' end of targets")
-        new_unique_trna_seqs = []
+        self.progress.new("Processing mapping results")
+        num_processed_nontrna_seqs = 0
+        num_mapped_nontrna_seqs = 0
+        num_mapped_nontrna_reads = 0
         nontrna_indices_to_remove = []
-        mapped_count = 0
-        for query_name, aligned_query in aligned_query_dict.items():
-            # Only one alignment needs to be considered for the query sequence.
-            for alignment in aligned_query.alignments:
-                alignment_reference_start = alignment.target_start
-                alignment_reference_end = alignment.target_end
+        new_unique_trna_seqs = []
+        if query_ids:
+            if all_query_matches[0]:
+                num_nontrna_matches = 1
+            else:
+                num_nontrna_matches = 0
+            prev_nontrna_index = query_ids[0][0]
+            prev_threeprime_variant = query_ids[0][1]
+        for query_id, query_matches in zip(query_ids[1:], all_query_matches[1:]):
+            nontrna_index, threeprime_variant = query_id
 
-                reference_name = alignment.aligned_target.name
-                reference_acceptor_string = reference_name.split('_')[-1]
+            if nontrna_index == prev_nontrna_index:
+                if query_matches:
+                    num_nontrna_matches += 1
+            else:
+                if num_nontrna_matches == 1:
+                    # do stuff for prev nontrna
+                    unique_seq = self.unique_nontrna_seqs[prev_nontrna_index]
+                    unique_seq.identification_method = 'mapped'
+                    unique_seq.acceptor_length = len(prev_threeprime_variant)
+                    unique_seq.extra_fiveprime_length = 0
+                    new_unique_trna_seqs.append(unique_seq)
+                    nontrna_indices_to_remove.append(prev_nontrna_index)
+                    num_mapped_nontrna_seqs += 1
+                    num_mapped_nontrna_reads += unique_seq.input_count
 
-                acceptorless_reference_length = len(alignment.aligned_target.seq) - len(reference_acceptor_string)
+                if query_matches:
+                    num_nontrna_matches = 1
+                else:
+                    num_nontrna_matches = 0
+                prev_nontrna_index = nontrna_index
+                prev_threeprime_variant = threeprime_variant
 
-                if alignment_reference_end <= acceptorless_reference_length:
-                    # The query does not align with the reference sequence's acceptor tail.
-                    continue
-                if alignment_reference_start >= acceptorless_reference_length:
-                    # The user provided a really short sequence entirely contained in the acceptor tail.
-                    continue
+                num_processed_nontrna_seqs += 1
+                self.progress.update("%d unique nominal non-tRNA sequences map to tRNA of %d/%d processed"
+                                     % (num_mapped_nontrna_seqs, num_processed_nontrna_seqs, total_nontrna_seqs))
 
-                nontrna_index = int(query_name.split('_')[-1])
-                query_name = query_name[: -len(str(nontrna_index)) - 1]
-                query_acceptor_string = reference_acceptor_string[
-                    : len(reference_acceptor_string) - (len(alignment.aligned_target.seq) - alignment_reference_end)]
+        if num_nontrna_matches == 1:
+            unique_seq = self.unique_nontrna_seqs[prev_nontrna_index]
+            unique_seq.identification_method = 'mapped'
+            unique_seq.acceptor_length = len(prev_threeprime_variant)
+            unique_seq.extra_fiveprime_length = 0
+            new_unique_trna_seqs.append(unique_seq)
+            nontrna_indices_to_remove.append(prev_nontrna_index)
+            num_mapped_nontrna_seqs += 1
+            num_mapped_nontrna_reads += unique_seq.input_count
+        if query_ids:
+            num_processed_nontrna_seqs += 1
 
-                unique_seq = self.unique_nontrna_seqs[nontrna_index]
-                unique_seq.identification_method = 'mapped'
-                unique_seq.acceptor_length = len(query_acceptor_string)
-                unique_seq.extra_fiveprime_length = 0
-                new_unique_trna_seqs.append(unique_seq)
-
-                nontrna_indices_to_remove.append(nontrna_index)
-                mapped_count += unique_seq.input_count
-
-                break
-
+        self.progress.update("Reassigning nominal non-tRNA sequences as mapped tRNA sequences")
         for nontrna_index in sorted(nontrna_indices_to_remove, reverse=True):
             del self.unique_nontrna_seqs[nontrna_index]
 
-        new_unique_trna_seqs.sort(key=lambda unique_seq: unique_seq.representative_name)
         self.unique_trna_seqs.extend(new_unique_trna_seqs)
 
-        self.progress.end() # the call below to trim_ends calls self.progress.new, so end the current progress
+        self.progress.end()
 
         self.trim_ends(new_unique_trna_seqs)
         self.trimmed_trna_seqs.sort(key=lambda trimmed_seq: trimmed_seq.representative_name)
 
-        self.run.info("Mapped short reads to 3' end of tRNA", mapped_count)
+        self.run.info("Mapped short reads to 3' end of tRNA", num_mapped_nontrna_reads)
 
 
     def dereplicate_threeprime(self):
@@ -1341,7 +1345,6 @@ class TRNASeqDataset:
         self.map_nonthreeprime()
 
         self.calc_normalization_stats()
-
         self.write_trimmed_table()
         self.write_normalized_table()
 
