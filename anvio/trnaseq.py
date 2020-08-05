@@ -706,8 +706,7 @@ class TRNASeqDataset:
                     num_query_seqs += 1
 
             if num_processed_nontrna_seqs % 50000 == 0:
-                self.progress.update("%d query sequences under consideration "
-                                     "from %d/%d nominal unique non-tRNA sequences"
+                self.progress.update("%d queries under consideration from %d/%d nominal \"non-tRNA\" sequences"
                                      % (num_query_seqs, num_processed_nontrna_seqs, total_nontrna_seqs))
 
         target_names = []
@@ -770,8 +769,9 @@ class TRNASeqDataset:
                 prev_threeprime_variant = threeprime_variant
 
                 num_processed_nontrna_seqs += 1
-                self.progress.update("%d unique nominal non-tRNA sequences map to tRNA of %d/%d processed"
-                                     % (num_mapped_nontrna_seqs, num_processed_nontrna_seqs, total_nontrna_seqs))
+                if num_processed_nontrna_seqs % 50000 == 0:
+                    self.progress.update("%d unique \"non-tRNA\" of %d/%d processed map to profiled tRNA"
+                                         % (num_mapped_nontrna_seqs, num_processed_nontrna_seqs, total_nontrna_seqs))
 
         if num_nontrna_matches == 1:
             unique_seq = self.unique_nontrna_seqs[prev_nontrna_index]
