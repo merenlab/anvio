@@ -324,7 +324,7 @@ class Kmerizer:
                                 chunksize=int(len(self.names) / self.num_threads) + 1)):
             all_seq_kmer_items.append(seq_kmer_item)
             num_extracted_kmers += len(seq_kmer_item)
-            if i % 10000 == 0:
+            if num_processed_seqs % 50000 == 0:
                 self.progress.update("%d k-mers have been extracted from %d/%d sequences" % (num_extracted_kmers,
                                                                                              num_processed_seqs,
                                                                                              total_seq_count))
