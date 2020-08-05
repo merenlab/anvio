@@ -1217,7 +1217,7 @@ class Aligner:
             if query_matches:
                 num_queries_matching_targets += 1
             if num_processed_queries % 10000 == 0:
-                self.progress.update("%d queries match target prefixes of %d/%d queries processed"
+                self.progress.update("%d queries of %d/%d processed match target prefixes"
                                      % (num_queries_matching_targets, num_processed_queries, total_query_count))
         self.progress.end()
 
