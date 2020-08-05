@@ -10,6 +10,6 @@ When you run %(anvi-estimate-scg-taxonomy)s on
 - a single metagenome, this table will list all of the hits for the chosen single-copy core gene (by default, the one with the most hits) and their taxonomy information. 
 - a %(contigs-db)s and %(profile-db)s with the flag `--compute-scg-coverages`, additional columns will be added that describe the coverage values for your single-copy core gene hits across your samples. 
 - a %(collection)s, this table will show you each of your bins, and the best taxonomy estimate for each one, similar to running it on a single genome. 
-- a %(metagenomes)s, this table will give a gene entry-id, its taxonomy, and its corresponding coverage in your metagenomes. This format is essentially identical to the output for a single metagenome. If you provide the flag `--matrix-format`, then it will list taxonomy information in each row, and tell you the coverage of each in each of your metagenomes. 
+- a %(metagenomes)s artifact, this table will give a gene entry-id, its taxonomy, and its corresponding coverage in your metagenomes. This format is essentially identical to the output for a single metagenome. If you provide the flag `--matrix-format`, then it will list taxonomy information in each row, and tell you the coverage of each in each of your metagenomes. 
 
 This may sound confusing, but it is easier to understand when looking at the functionality of %(anvi-estimate-scg-taxonomy)s and the comprehensive examples given on [this page](http://merenlab.org/2019/10/08/anvio-scg-taxonomy/#estimating-taxonomy-in-the-terminal).
