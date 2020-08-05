@@ -661,7 +661,7 @@ D = {
                      "will expect to find the following files in the URL provided here: 'VERSION', "
                      "'ar122_msa_individual_genes.tar.gz', 'ar122_taxonomy.tsv', 'bac120_msa_individual_genes.tar.gz', "
                      "and 'bac120_taxonomy.tsv'. If everything fails, you can give this URL, which is supposed to work "
-                     "if teh server in which these databases are maintained is still online: "
+                     "if the server in which these databases are maintained is still online: "
                      "https://data.ace.uq.edu.au/public/gtdb/data/releases/release89/89.0/"}
                 ),
     'reset': (
