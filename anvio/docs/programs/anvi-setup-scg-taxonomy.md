@@ -1,4 +1,7 @@
-This program **downloads and sets up the search databases used for the scg-taxonomy workflow** (from [GTDB](https://gtdb.ecogenomic.org/)) so that you can run %(anvi-run-scg-taxonomy)s or %(anvi-estimate-scg-taxonomy)s. This program generates a %(scgs-taxonomy-db)s artifact, which is required to run both of those programs. 
+This program **downloads and sets up the search databases used for the scg-taxonomy workflow** (from [GTDB](https://gtdb.ecogenomic.org/)) with the end goal of running %(anvi-estimate-scg-taxonomy)s. This program generates a %(scgs-taxonomy-db)s artifact, which is required to run both of those programs. 
+
+{:.notice}
+For more information on that workflow, check out [this page](http://merenlab.org/2019/10/08/anvio-scg-taxonomy/)
 
 You will only have to run this program once per anvio installation. 
 
