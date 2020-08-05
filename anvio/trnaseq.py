@@ -688,7 +688,7 @@ class TRNASeqDataset:
         mapped tRNA 1:                                                    GTTCAATTCCCCGTCGCGGAG CC
         mapped tRNA 2:                                                 GGGGTTCAATTCCCCGTCGCGGAG CCA
         """
-        self.progress.new("Preparing to map short unprofiled tRNA fragments to profiled tRNA")
+        self.progress.new("Preparing short unprofiled mapping")
 
         query_ids = []
         query_seqs = []
@@ -705,7 +705,7 @@ class TRNASeqDataset:
                     query_seqs.append(unique_seq_string[: -len(threeprime_variant)][::-1])
                     num_query_seqs += 1
 
-            if num_processed_nontrna_seqs % 10000 == 0:
+            if num_processed_nontrna_seqs % 50000 == 0:
                 self.progress.update("%d query sequences under consideration "
                                      "from %d/%d nominal unique non-tRNA sequences"
                                      % (num_query_seqs, num_processed_nontrna_seqs, total_nontrna_seqs))
@@ -717,8 +717,9 @@ class TRNASeqDataset:
         for trimmed_seq in self.trimmed_trna_seqs:
             target_names.append(trimmed_seq.representative_name)
             target_seqs.append(trimmed_seq.string[::-1])
+            num_processed_trimmed_seqs += 1
 
-            if num_processed_trimmed_seqs % 10000 == 0:
+            if num_processed_trimmed_seqs % 50000 == 0:
                 self.progress.update("%d/%d trimmed sequences processed as target sequences"
                                      % (num_processed_trimmed_seqs, total_trimmed_seqs))
 
