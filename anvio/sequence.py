@@ -231,6 +231,21 @@ class Kmerizer:
         self.progress = progress
 
 
+    def get_prefix_kmer_dict1(self, kmer_size):
+        kmer_dict = {}
+        for name, seq in zip(self.names, self.seqs):
+            if kmer_size > len(seq):
+                continue
+
+            hashed_kmer = sha224(seq[: kmer_size].encode('utf-8')).hexdigest()
+            if hashed_kmer in kmer_dict:
+                kmer_dict[hashed_kmer][name] = seq
+            else:
+                kmer_dict[hashed_kmer] = {name: seq}
+
+        return kmer_dict
+
+
     def get_prefix_kmer_dict(self, kmer_size, include_full_length=True):
         """Get k-mers of a given size from the beginning of input sequences.
 
@@ -272,7 +287,7 @@ class Kmerizer:
         return kmer_dict
 
 
-    def get_kmer_dict(self, kmer_size, include_full_length=True):
+    def get_kmer_dict(self, kmer_size, include_full_length=True, sort_kmer_items=False):
         """Get k-mers of a given size from the input sequences.
 
         Parameters
@@ -282,6 +297,8 @@ class Kmerizer:
 
         include_full_length : bool, True
             Whether to include or ignore full-length input sequences among the hashed k-mers
+
+        sort_kmer_items : bool, False
 
         Returns
         =======
@@ -298,25 +315,38 @@ class Kmerizer:
         pool = multiprocessing.Pool(self.num_threads)
         all_seq_kmer_items = []
         total_seq_count = len(self.names)
-        for i, seq_kmer_item in enumerate(pool.imap_unordered(functools.partial(get_kmers,
-                                                                                kmer_size=kmer_size,
-                                                                                include_full_length=include_full_length),
-                                                              zip(self.names, self.seqs),
-                                                              chunksize=int(len(self.names) / self.num_threads) + 1)):
+        num_extracted_kmers = 0
+        for num_processed_seqs, seq_kmer_item in enumerate(
+            pool.imap_unordered(functools.partial(get_kmers,
+                                                  kmer_size=kmer_size,
+                                                  include_full_length=include_full_length),
+                                zip(self.names, self.seqs),
+                                chunksize=int(len(self.names) / self.num_threads) + 1)):
             all_seq_kmer_items.append(seq_kmer_item)
-            if i % 1000 == 0:
-                self.progress.update("k-mers have been extracted from %d/%d sequences" % (i, total_seq_count))
+            num_extracted_kmers += len(seq_kmer_item)
+            if i % 10000 == 0:
+                self.progress.update("%d k-mers have been extracted from %d/%d sequences" % (num_extracted_kmers,
+                                                                                             num_processed_seqs,
+                                                                                             total_seq_count))
         pool.close()
         pool.join()
 
         self.progress.update("Grouping k-mers")
-        kmer_items = [kmer_item for seq_kmer_items in all_seq_kmer_items for kmer_item in seq_kmer_items]
-        kmer_items.sort(key=lambda kmer_item: kmer_item[0])
-
         kmer_dict = {}
-        for hashed_kmer, kmer_items in itertools.groupby(kmer_items, key=lambda kmer_item: kmer_item[0]):
-            kmer_dict[hashed_kmer] = [(name, seq_start_indices) for hashed_kmer, name, seq_start_indices, seq_length
-                                      in sorted(kmer_items, key=lambda kmer_item: (-kmer_item[3], kmer_item[1]))]
+        for hashed_kmer, kmer_items in itertools.groupby(sorted([kmer_item
+                                                                 for seq_kmer_items in all_seq_kmer_items
+                                                                 for kmer_item in seq_kmer_items],
+                                                                key=lambda kmer_item: kmer_item[0]),
+                                                         key=lambda kmer_item: kmer_item[0]):
+            if sort_kmer_items:
+                kmer_dict[hashed_kmer] = [(name, seq_start_indices)
+                                          for hashed_kmer, name, seq_start_indices, seq_length
+                                          in sorted(kmer_items,
+                                                    key=lambda kmer_item: (-kmer_item[3], kmer_item[1]))]
+            else:
+                kmer_dict[hashed_kmer] = [(name, seq_start_indices)
+                                          for hashed_kmer, name, seq_start_indices, seq_length
+                                          in kmer_items]
 
         self.progress.end()
 
@@ -1091,7 +1121,7 @@ class Aligner:
         self.progress = progress
 
 
-    def align(self, max_mismatch_freq=0):
+    def align(self, max_mismatch_freq=0, only_prefixes=False):
         """Perform end-to-end alignment of queries to targets.
 
         Parameters
@@ -1162,6 +1192,38 @@ class Aligner:
         return aligned_query_dict, aligned_target_dict
 
 
+    def match_prefixes(self, max_matches_per_query=float('inf')):
+
+        kmer_size = min(map(len, self.query_names))
+
+        self.progress.new("Matching queries to target prefixes")
+
+        self.progress.update("Extracting prefix k-mers from target sequences")
+        kmer_dict = Kmerizer(self.target_names,
+                             self.target_seqs).get_prefix_kmer_dict1(kmer_size)
+
+        pool = multiprocessing.Pool(self.num_threads)
+        num_queries_matching_targets = 0
+        total_query_count = len(self.query_names)
+        all_query_matches = []
+        for (num_processed_queries,
+             query_matches) in enumerate(pool.imap(functools.partial(find_prefix_match,
+                                                                     kmer_size=kmer_size,
+                                                                     kmer_dict=kmer_dict,
+                                                                     max_matches_per_query=max_matches_per_query),
+                                                   self.query_seqs,
+                                                   chunksize=int(len(self.query_names) / self.num_threads) + 1)):
+            all_query_matches.append(query_matches)
+            if query_matches:
+                num_queries_matching_targets += 1
+            if num_processed_queries % 10000 == 0:
+                self.progress.update("%d queries match target prefixes of %d/%d queries processed"
+                                     % (num_queries_matching_targets, num_processed_queries, total_query_count))
+        self.progress.end()
+
+        return all_query_matches
+
+
     def match_subseqs(self):
         """Match input queries to input targets without mismatches or indels.
 
@@ -1169,6 +1231,7 @@ class Aligner:
         =======
         aligned_query_dict : dict
             Keys are query names and values are AlignedQuery objects
+
         aligned_target_dict : dict
             Keys are target names and values are AlignedTarget objects
         """
@@ -1290,6 +1353,22 @@ class Aligner:
         self.progress.end()
 
         return aligned_query_dict, aligned_target_dict
+
+
+def find_prefix_match(query_seq, kmer_size, kmer_dict, max_matches_per_query=float('inf')):
+    query_hash = sha224(query_seq[: kmer_size].encode('utf-8')).hexdigest()
+
+    matches = []
+    if query_hash not in kmer_dict:
+        return matches
+
+    for target_name, target_seq in kmer_dict[query_hash].items():
+        if query_seq == target_seq[: len(query_seq)]:
+            matches.append(target_name)
+            if len(matches) >= max_matches_per_query:
+                break
+
+    return matches
 
 
 def find_alignment(name_seq_pair, kmer_dict, seed_size, target_seq_dict, max_mismatch_freq=0):
